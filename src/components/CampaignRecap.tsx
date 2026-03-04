@@ -100,7 +100,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
 
   return (
     <div
-      className="break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
+      className="media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
