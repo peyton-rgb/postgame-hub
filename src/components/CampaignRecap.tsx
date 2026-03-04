@@ -87,7 +87,7 @@ function getTopPerformers(athletes: Athlete[], count = 5) {
     .slice(0, count);
 }
 
-// ── Masonry Card ──────────────────────────────────────────────
+// ── Masonry Card (v2 — overlay at top) ───────────────────────
 
 function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
   const [slideIdx, setSlideIdx] = useState(0);
