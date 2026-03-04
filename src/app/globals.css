@@ -10,4 +10,40 @@
 body {
   background: #000;
   color: #fff;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+/* Recap page typography */
+.recap-container {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 24px;
+  line-height: 1.4;
+}
+
+.recap-container .recap-footer-area {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .recap-container {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .recap-container .recap-footer-area {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+}
+
+/* Masonry responsive columns */
+@media (max-width: 768px) {
+  .recap-container [data-masonry] {
+    column-count: 2 !important;
+  }
+}
+@media (max-width: 480px) {
+  .recap-container [data-masonry] {
+    column-count: 1 !important;
+  }
 }

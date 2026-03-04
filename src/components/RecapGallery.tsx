@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { SchoolBadge } from "./SchoolBadge";
 import type { Campaign, Athlete, Media } from "@/lib/types";
 
 function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
@@ -26,12 +25,11 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
 
   return (
     <div
-      className="break-inside-avoid mb-2 rounded-lg overflow-hidden bg-[#111]"
+      className="break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div className="relative overflow-hidden">
-        {/* VIDEO PLAYBACK — works in real browser! */}
         {isVideo && playing ? (
           <video
             src={current.file_url}
@@ -49,8 +47,8 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
             alt={athlete.name}
           />
         ) : (
-          <div className="w-full aspect-[4/5] bg-[#0a0a0a] flex items-center justify-center">
-            <span className="text-[10px] text-gray-700 font-black uppercase">
+          <div className="w-full aspect-[4/5] bg-black flex items-center justify-center">
+            <span className="text-[10px] text-white/30 font-black uppercase">
               No media
             </span>
           </div>
@@ -75,21 +73,15 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           {athlete.post_type}
         </span>
 
-        {/* Carousel arrows */}
-        {items.length > 1 && hovered && !playing && (
+        {/* Carousel arrows — visible on hover even during video playback */}
+        {items.length > 1 && hovered && (
           <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[4] flex justify-between px-1.5">
             <button
               onClick={goPrev}
               className="w-7 h-7 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center"
             >
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M12.5 15L7.5 10L12.5 5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <button
@@ -97,13 +89,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
               className="w-7 h-7 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center"
             >
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M7.5 5L12.5 10L7.5 15"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
@@ -132,16 +118,15 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           </div>
         )}
 
-        {/* Creator overlay */}
-        <div className="absolute bottom-0 left-0 right-0 z-[2] px-3 pt-5 pb-2.5 bg-gradient-to-t from-black/85 to-transparent flex items-end gap-2">
-          <SchoolBadge school={athlete.school} size={26} />
+        {/* Creator overlay — no SchoolBadge */}
+        <div className="absolute bottom-0 left-0 right-0 z-[2] px-3 pt-5 pb-2.5 bg-gradient-to-t from-black/85 to-transparent">
           <div className="min-w-0">
             <div className="text-[11px] font-black uppercase text-white truncate">
               {athlete.name}
             </div>
             <div className="text-[9px] text-white/55 font-semibold flex items-center gap-1.5">
               {athlete.school}
-              <span className="px-1 py-px rounded text-[7px] font-bold uppercase bg-[#D73F09] text-white">
+              <span className="px-1 py-px rounded text-[7px] font-bold uppercase bg-brand text-white">
                 {athlete.sport}
               </span>
             </div>
@@ -172,26 +157,26 @@ export function RecapGallery({
   const cols = campaign.settings?.columns || 4;
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white font-sans">
       {/* Header */}
-      <div className="px-12 pt-12 pb-6">
-        <div className="text-xs font-bold uppercase tracking-[3px] text-[#D73F09] mb-2">
+      <div className="px-6 md:px-12 pt-12 pb-6">
+        <div className="text-xs font-bold uppercase tracking-[3px] text-brand mb-2">
           {campaign.client_name}
         </div>
         <h1 className="text-3xl font-black mb-6">{campaign.name}</h1>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-5">
             <h2 className="text-xl font-black">Content Gallery</h2>
-            <div className="flex gap-1">
+            <div className="flex gap-2">
               {["all", "photo", "video"].map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase ${
+                  className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase ${
                     filter === f
-                      ? "bg-[#D73F09] text-white"
-                      : "border border-gray-700 text-gray-500"
+                      ? "bg-brand text-white"
+                      : "border border-white/15 text-white/40"
                   }`}
                 >
                   {f === "all" ? "All" : f === "photo" ? "Photos" : "Videos"}
@@ -199,17 +184,18 @@ export function RecapGallery({
               ))}
             </div>
           </div>
-          <span className="text-xs text-gray-600 font-semibold">
+          <span className="text-xs text-white/30 font-semibold">
             {filtered.length} posts
           </span>
         </div>
       </div>
 
       {/* Masonry grid */}
-      <div className="px-12 pb-12">
+      <div className="px-6 md:px-12 pb-12">
         <div
+          data-masonry
           style={{ columnCount: cols, columnGap: 8 }}
-          className="bg-[#0a0a0a] border border-gray-800 rounded-xl p-2"
+          className="bg-black border border-white/10 rounded-xl p-2"
         >
           {filtered.map((a) => (
             <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} />
@@ -218,12 +204,12 @@ export function RecapGallery({
       </div>
 
       {/* Footer */}
-      <div className="px-12 py-8 border-t border-gray-900 flex items-center justify-between">
-        <span className="text-xs text-gray-700">
+      <div className="px-6 md:px-12 py-8 border-t border-white/10 flex items-center justify-between">
+        <span className="text-xs text-white/30">
           Powered by Postgame
         </span>
-        <span className="text-xs text-gray-700">
-          © {new Date().getFullYear()} {campaign.client_name}
+        <span className="text-xs text-white/30">
+          &copy; {new Date().getFullYear()} {campaign.client_name}
         </span>
       </div>
     </div>

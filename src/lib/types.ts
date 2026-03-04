@@ -26,6 +26,7 @@ export interface Campaign {
     platform?: string;
     tags?: string[];
     visible_sections?: VisibleSections;
+    brand_logo_url?: string;
   };
 }
 

@@ -96,6 +96,9 @@ export default function CampaignEditor() {
   });
   const [savingInfo, setSavingInfo] = useState(false);
 
+  // Brand logo state
+  const [brandLogoUrl, setBrandLogoUrl] = useState("");
+
   // CSV state
   const [csvParsed, setCsvParsed] = useState<ParsedAthlete[]>([]);
   const [csvImporting, setCsvImporting] = useState(false);
@@ -125,6 +128,7 @@ export default function CampaignEditor() {
         brief: true, metrics: true, platform_breakdown: true,
         top_performers: true, content_gallery: true, roster: true,
       });
+      setBrandLogoUrl(camp.settings.brand_logo_url || "");
     }
 
     const grouped: Record<string, Media[]> = {};
@@ -143,6 +147,7 @@ export default function CampaignEditor() {
       ...campaign.settings,
       description, quarter, campaign_type: campaignType,
       platform, tags, visible_sections: visibleSections,
+      brand_logo_url: brandLogoUrl,
     };
     const { data } = await supabase
       .from("campaigns")
@@ -435,6 +440,41 @@ export default function CampaignEditor() {
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
                 className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
                 placeholder="Twenty-five college athletes across six sports showcase the adidas Evo SL..." />
+            </div>
+
+            {/* Brand Logo Upload */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Brand Logo</label>
+              <div className="flex items-center gap-4">
+                {brandLogoUrl ? (
+                  <div className="relative">
+                    <img src={brandLogoUrl} className="h-16 object-contain bg-white/5 rounded-lg p-2" alt="Brand logo" />
+                    <button
+                      onClick={() => setBrandLogoUrl("")}
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white/20 text-white text-xs flex items-center justify-center hover:bg-red-600">
+                      &times;
+                    </button>
+                  </div>
+                ) : null}
+                <button
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (!file) return;
+                      const path = `${id}/brand-logo-${Date.now()}-${file.name}`;
+                      const url = await uploadFile(file, path);
+                      if (url) setBrandLogoUrl(url);
+                    };
+                    input.click();
+                  }}
+                  className="px-5 py-2.5 border border-gray-700 rounded-lg text-sm font-bold text-gray-400 hover:text-white hover:border-gray-500">
+                  {brandLogoUrl ? "Replace Logo" : "Upload Logo"}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-600 mt-1">Displayed in the recap header and footer</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
