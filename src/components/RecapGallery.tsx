@@ -36,7 +36,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
             autoPlay
             controls
             playsInline
-            className="w-full block"
+            className="w-full block relative z-[1]"
             onEnded={() => setPlaying(false)}
           />
         ) : displaySrc ? (
@@ -73,12 +73,12 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           {athlete.post_type}
         </span>
 
-        {/* Carousel arrows — visible on hover even during video playback */}
+        {/* Carousel arrows — visible on hover, work during video playback */}
         {items.length > 1 && hovered && (
-          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[4] flex justify-between px-1.5">
+          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
             <button
               onClick={goPrev}
-              className="w-7 h-7 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center"
+              className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
                 <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -86,7 +86,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
             </button>
             <button
               onClick={goNext}
-              className="w-7 h-7 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center"
+              className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
                 <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -95,8 +95,8 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           </div>
         )}
 
-        {/* Dots */}
-        {items.length > 1 && (
+        {/* Dots — hidden during video playback so they don't block controls */}
+        {items.length > 1 && !playing && (
           <div
             className={`absolute bottom-11 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${
               hovered ? "opacity-100" : "opacity-0"
@@ -118,7 +118,8 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           </div>
         )}
 
-        {/* Creator overlay — no SchoolBadge */}
+        {/* Creator overlay — hidden during video playback so native controls are accessible */}
+        {!playing && (
         <div className="absolute bottom-0 left-0 right-0 z-[2] px-3 pt-5 pb-2.5 bg-gradient-to-t from-black/85 to-transparent">
           <div className="min-w-0">
             <div className="text-[11px] font-black uppercase text-white truncate">
@@ -132,6 +133,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

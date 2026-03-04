@@ -106,7 +106,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
     >
       <div className="relative overflow-hidden">
         {isVideo && playing ? (
-          <video src={current.file_url} autoPlay controls playsInline className="w-full block" onEnded={() => setPlaying(false)} />
+          <video src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1]" onEnded={() => setPlaying(false)} />
         ) : displaySrc ? (
           <img src={displaySrc} className="w-full block" draggable={false} alt={athlete.name} />
         ) : isVideo ? (
@@ -131,19 +131,20 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           {athlete.post_type}
         </span>
 
-        {/* Carousel arrows — visible on hover even during video playback */}
+        {/* Carousel arrows — visible on hover, work during video playback */}
         {items.length > 1 && hovered && (
-          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[4] flex justify-between px-1.5">
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="w-7 h-7 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center">
+          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
+            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1)); }} className="w-7 h-7 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center">
+            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           </div>
         )}
 
-        {items.length > 1 && (
+        {/* Dot indicators — hidden during video playback so they don't block controls */}
+        {items.length > 1 && !playing && (
           <div className={`absolute bottom-11 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
             {items.map((_, i) => (
               <div key={i} onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full cursor-pointer ${slideIdx === i ? "bg-white" : "bg-white/35"}`} />
@@ -151,17 +152,19 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           </div>
         )}
 
-        {/* Bottom overlay — no SchoolBadge */}
-        <div className="absolute bottom-0 left-0 right-0 z-[2] px-3 pt-5 pb-2.5 bg-gradient-to-t from-black/85 to-transparent">
-          <div className="min-w-0">
-            <div className="text-[11px] font-black uppercase text-white truncate">{athlete.name}</div>
-            <div className="text-[9px] text-white/55 font-semibold flex items-center gap-1.5">
-              {athlete.school}
-              {athlete.ig_followers ? <span className="text-white/40">· {fmt(athlete.ig_followers)}</span> : null}
-              <span className="px-1 py-px rounded text-[7px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
+        {/* Bottom overlay — hidden during video playback so native controls (volume, expand) are accessible */}
+        {!playing && (
+          <div className="absolute bottom-0 left-0 right-0 z-[2] px-3 pt-5 pb-2.5 bg-gradient-to-t from-black/85 to-transparent">
+            <div className="min-w-0">
+              <div className="text-[11px] font-black uppercase text-white truncate">{athlete.name}</div>
+              <div className="text-[9px] text-white/55 font-semibold flex items-center gap-1.5">
+                {athlete.school}
+                {athlete.ig_followers ? <span className="text-white/40">· {fmt(athlete.ig_followers)}</span> : null}
+                <span className="px-1 py-px rounded text-[7px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
