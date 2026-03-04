@@ -7,6 +7,7 @@ import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
 import { SchoolBadge } from "@/components/SchoolBadge";
 import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { MasonryPreview } from "@/components/MasonryPreview";
+import { CampaignRecap } from "@/components/CampaignRecap";
 import { parsePerformanceCSV, type ParsedAthlete } from "@/lib/csv-parser";
 import Link from "next/link";
 
@@ -19,6 +20,53 @@ const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "roster", label: "Campaign Roster" },
 ];
 
+function fmt(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return n.toLocaleString();
+}
+
+function generateDescription(campaignName: string, clientName: string, parsed: ParsedAthlete[]): {
+  description: string;
+  platform: string;
+  tags: string[];
+} {
+  const schools = new Set(parsed.map((a) => a.school));
+  const sports = new Set(parsed.map((a) => a.sport.toLowerCase()));
+  const athleteCount = parsed.length;
+  const schoolCount = schools.size;
+  const sportCount = sports.size;
+
+  let totalFollowers = 0;
+  let hasIgFeed = false;
+  let hasIgReel = false;
+  let hasTiktok = false;
+
+  for (const a of parsed) {
+    totalFollowers += a.ig_followers || 0;
+    if (a.metrics.ig_feed?.post_url) hasIgFeed = true;
+    if (a.metrics.ig_reel?.post_url) hasIgReel = true;
+    if (a.metrics.tiktok?.post_url) hasTiktok = true;
+  }
+
+  const sportList = Array.from(sports).slice(0, 4).join(", ");
+  const reachStr = fmt(totalFollowers);
+
+  const platforms: string[] = [];
+  if (hasIgFeed) platforms.push("Feed");
+  if (hasIgReel) platforms.push("Reels");
+  if (hasTiktok) platforms.push("TikTok");
+  const platformStr = platforms.length > 0
+    ? "Instagram (" + platforms.filter(p => p !== "TikTok").join(" + ") + ")" + (hasTiktok ? " + TikTok" : "")
+    : "Instagram";
+
+  const desc = `The ${clientName} ${campaignName} campaign activates ${athleteCount} college athletes representing ${schoolCount} universities and ${sportCount} sports to authentically showcase ${clientName.toLowerCase()} product through organic Instagram content — feed posts and behind-the-scenes Reels — integrating the shoe into their training and competition moments. The campaign emphasizes real performance over polished studio aesthetics, letting each athlete's discipline and competitive edge speak for the product.\n\nWith a combined social reach of ${reachStr}+ followers, this roster spans Power Five and mid-major conferences, delivering diverse audience coverage across ${sportList} for ${clientName}.`;
+
+  const autoTags = [clientName, "Product Seeding", "Social First", "NIL Campaign"];
+
+  return { description: desc, platform: platformStr, tags: autoTags };
+}
+
 export default function CampaignEditor() {
   const params = useParams();
   const id = params.id as string;
@@ -30,6 +78,7 @@ export default function CampaignEditor() {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPublishReview, setShowPublishReview] = useState(false);
   const [pendingVideo, setPendingVideo] = useState<{ athleteId: string; file: File } | null>(null);
   const [publishing, setPublishing] = useState(false);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -161,6 +210,33 @@ export default function CampaignEditor() {
       }
     }
 
+    // Auto-generate campaign info from CSV data
+    if (campaign && !description) {
+      const auto = generateDescription(campaign.name, campaign.client_name, csvParsed);
+      setDescription(auto.description);
+      setPlatform(auto.platform);
+      setTags(auto.tags);
+
+      // Auto-save to DB
+      const newSettings = {
+        ...campaign.settings,
+        description: auto.description,
+        platform: auto.platform,
+        tags: auto.tags,
+        quarter: quarter || "",
+        campaign_type: campaignType || "Product Seeding",
+        visible_sections: visibleSections,
+      };
+      const { data: updatedCamp } = await supabase
+        .from("campaigns")
+        .update({ settings: newSettings })
+        .eq("id", campaign.id)
+        .select()
+        .single();
+      if (updatedCamp) setCampaign(updatedCamp);
+      if (!campaignType) setCampaignType("Product Seeding");
+    }
+
     setCsvDone(true);
     setCsvImporting(false);
     // Reload data
@@ -253,6 +329,41 @@ export default function CampaignEditor() {
     );
   }
 
+  // ── PUBLISH REVIEW MODE ─────────────────────────────────
+  if (showPublishReview) {
+    return (
+      <div>
+        {/* Review bar */}
+        <div className="sticky top-0 z-50 px-8 py-3 border-b border-gray-800 bg-black/95 backdrop-blur-xl flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setShowPublishReview(false)}
+              className="px-4 py-2 border border-gray-700 rounded-lg text-sm font-bold text-white hover:border-gray-500">
+              ← Back to Editor
+            </button>
+            <span className="text-sm font-bold text-yellow-400">Review Before Publishing</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={() => { setShowPublishReview(false); setStep(1); }}
+              className="px-4 py-2 border border-gray-700 rounded-lg text-sm font-bold text-gray-400 hover:text-white">
+              Edit Info
+            </button>
+            <button onClick={async () => { await togglePublish(); setShowPublishReview(false); }} disabled={publishing}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-500 disabled:opacity-50">
+              {publishing ? "Publishing..." : "Confirm & Publish"}
+            </button>
+          </div>
+        </div>
+
+        {/* Full recap preview */}
+        <CampaignRecap
+          campaign={campaign}
+          athletes={athletes.filter((a) => selected.includes(a.id))}
+          media={media}
+        />
+      </div>
+    );
+  }
+
   const selectedAthletes = athletes.filter((a) => selected.includes(a.id));
   const uploadedCount = Object.keys(media).filter((k) => media[k]?.length > 0).length;
 
@@ -284,12 +395,19 @@ export default function CampaignEditor() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-gray-500">{selected.length} posts · {uploadedCount} with media</span>
-          <button onClick={togglePublish} disabled={publishing}
-            className={`px-5 py-2 text-sm font-bold rounded-lg ${campaign.published ? "bg-gray-800 text-gray-400 hover:bg-gray-700" : "bg-green-600 text-white hover:bg-green-500"}`}>
-            {publishing ? "..." : campaign.published ? "Unpublish" : "Publish"}
-          </button>
-          {campaign.published && (
-            <a href={`/recap/${campaign.slug}`} target="_blank" className="text-[#D73F09] text-sm font-bold hover:underline">View →</a>
+          {campaign.published ? (
+            <>
+              <button onClick={togglePublish} disabled={publishing}
+                className="px-5 py-2 text-sm font-bold rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700">
+                {publishing ? "..." : "Unpublish"}
+              </button>
+              <a href={`/recap/${campaign.slug}`} target="_blank" className="text-[#D73F09] text-sm font-bold hover:underline">View →</a>
+            </>
+          ) : (
+            <button onClick={() => setShowPublishReview(true)}
+              className="px-5 py-2 text-sm font-bold rounded-lg bg-green-600 text-white hover:bg-green-500">
+              Review & Publish
+            </button>
           )}
         </div>
       </div>
