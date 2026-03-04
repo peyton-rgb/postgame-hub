@@ -31,6 +31,12 @@ function computeStats(athletes: Athlete[]) {
   let tiktokPosts = 0;
   let totalReach = 0;
 
+  // Per-platform aggregates from CSV data
+  const igFeed = { reach: 0, impressions: 0, likes: 0, comments: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+  const igStory = { count: 0, impressions: 0 };
+  const igReel = { views: 0, likes: 0, comments: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+  const tiktok = { views: 0, likes_comments: 0, saves_shares: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+
   for (const a of athletes) {
     const m = a.metrics || {};
     if (m.ig_feed?.post_url) {
@@ -49,6 +55,32 @@ function computeStats(athletes: Athlete[]) {
     totalImpressions += (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0) + (m.ig_reel?.views || 0) + (m.tiktok?.views || 0);
     totalEngagements += (m.ig_feed?.total_engagements || 0) + (m.ig_reel?.total_engagements || 0) + (m.tiktok?.total_engagements || 0);
     totalReach += (m.ig_feed?.reach || 0) + (a.ig_followers || 0);
+
+    // IG Feed
+    igFeed.reach += m.ig_feed?.reach || 0;
+    igFeed.impressions += m.ig_feed?.impressions || 0;
+    igFeed.likes += m.ig_feed?.likes || 0;
+    igFeed.comments += m.ig_feed?.comments || 0;
+    igFeed.engagements += m.ig_feed?.total_engagements || 0;
+    if (m.ig_feed?.engagement_rate != null && m.ig_feed.engagement_rate > 0) { igFeed.engRateSum += m.ig_feed.engagement_rate; igFeed.engRateCount++; }
+
+    // IG Story
+    igStory.count += m.ig_story?.count || 0;
+    igStory.impressions += m.ig_story?.impressions || 0;
+
+    // IG Reel
+    igReel.views += m.ig_reel?.views || 0;
+    igReel.likes += m.ig_reel?.likes || 0;
+    igReel.comments += m.ig_reel?.comments || 0;
+    igReel.engagements += m.ig_reel?.total_engagements || 0;
+    if (m.ig_reel?.engagement_rate != null && m.ig_reel.engagement_rate > 0) { igReel.engRateSum += m.ig_reel.engagement_rate; igReel.engRateCount++; }
+
+    // TikTok
+    tiktok.views += m.tiktok?.views || 0;
+    tiktok.likes_comments += m.tiktok?.likes_comments || 0;
+    tiktok.saves_shares += m.tiktok?.saves_shares || 0;
+    tiktok.engagements += m.tiktok?.total_engagements || 0;
+    if (m.tiktok?.engagement_rate != null && m.tiktok.engagement_rate > 0) { tiktok.engRateSum += m.tiktok.engagement_rate; tiktok.engRateCount++; }
 
     const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
     if (rates.length > 0) {
@@ -71,6 +103,10 @@ function computeStats(athletes: Athlete[]) {
     igReelPosts,
     tiktokPosts,
     totalReach,
+    igFeed,
+    igStory,
+    igReel,
+    tiktok,
   };
 }
 
@@ -89,7 +125,10 @@ function getTopPerformers(athletes: Athlete[], count = 5) {
 
 // ── Masonry Card (v2 — overlay at top) ───────────────────────
 
-function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
+function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Media[] }) {
+  // Videos always first in carousel
+  const items = [...rawItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
+
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -122,7 +161,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
         {isVideo && playing ? (
           <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1]" onEnded={() => setPlaying(false)} />
         ) : displaySrc ? (
-          <img src={displaySrc} className="w-full block" draggable={false} alt={athlete.name} />
+          <img src={displaySrc} className={`w-full block ${isVideo ? "aspect-[9/16] object-cover" : ""}`} draggable={false} alt={athlete.name} />
         ) : isVideo ? (
           <div className="w-full aspect-[4/5] bg-black flex items-center justify-center" onClick={() => setPlaying(true)}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -179,6 +218,64 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Top Performer Media Card ─────────────────────────────────
+
+function TopPerformerMedia({ items, name, height }: { items: Media[]; name: string; height: number }) {
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [playing, setPlaying] = useState(false);
+
+  const current = items[slideIdx];
+  const isVideo = current?.type === "video";
+  const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : null);
+
+  return (
+    <div
+      className="absolute inset-0"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {isVideo && playing ? (
+        <video src={current.file_url} autoPlay controls playsInline className="w-full h-full object-cover" onEnded={() => setPlaying(false)} />
+      ) : displaySrc ? (
+        <img src={displaySrc} className="w-full h-full object-cover" draggable={false} alt={name} />
+      ) : isVideo ? (
+        <div className="w-full h-full bg-black flex items-center justify-center cursor-pointer" onClick={() => setPlaying(true)}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+      ) : null}
+
+      {isVideo && !playing && (
+        <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
+          <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
+          </div>
+        </div>
+      )}
+
+      {/* Carousel arrows */}
+      {items.length > 1 && hovered && (
+        <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1 pointer-events-none">
+          <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-6 h-6 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1)); }} className="pointer-events-auto w-6 h-6 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        </div>
+      )}
+
+      {items.length > 1 && !playing && (
+        <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
+          {items.map((_, i) => (
+            <div key={i} onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full cursor-pointer ${slideIdx === i ? "bg-white" : "bg-white/35"}`} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -330,45 +427,121 @@ export function CampaignRecap({
       {show("metrics") && (
         <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
           <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Campaign Metrics</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+          {/* Summary row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
             {[
-              { value: stats.totalPosts, label: "TOTAL POSTS", format: false },
-              { value: stats.totalImpressions, label: "TOTAL IMPRESSIONS", format: true },
-              { value: stats.totalEngagements, label: "TOTAL ENGAGEMENTS", format: true },
-              { value: stats.avgEngRate, label: "AVG ENGAGEMENT RATE", format: false, isPct: true },
+              { value: stats.totalPosts, label: "TOTAL POSTS" },
+              { value: fmt(stats.totalImpressions), label: "TOTAL IMPRESSIONS" },
+              { value: fmt(stats.totalEngagements), label: "TOTAL ENGAGEMENTS" },
+              { value: pct(stats.avgEngRate), label: "AVG ENGAGEMENT RATE" },
             ].map((m) => (
               <div key={m.label} className="bg-white/[0.03] border border-white/10 rounded-xl p-4 md:p-6 text-center">
-                <div className="text-xl md:text-3xl font-black text-white mb-2">
-                  {m.isPct ? pct(m.value) : m.format ? fmt(m.value) : m.value}
-                </div>
+                <div className="text-xl md:text-3xl font-black text-white mb-2">{m.value}</div>
                 <div className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-white/40">{m.label}</div>
               </div>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* ── SECTION 4: PLATFORM BREAKDOWN ──────────────────── */}
-      {show("platform_breakdown") && (
-        <div className="px-6 md:px-12 py-8 border-t border-white/10">
-          <h3 className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/40 mb-4">Platform Breakdown</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[
-              { label: "IG FEED", value: stats.igFeedPosts, suffix: "POSTS" },
-              { label: "IG REELS/BTS", value: stats.igReelPosts, suffix: "POSTS" },
-              { label: "TIKTOK", value: stats.tiktokPosts > 0 ? stats.tiktokPosts : null, suffix: stats.tiktokPosts > 0 ? "POSTS" : "DATA TRACKED" },
-            ].map((p) => (
-              <div key={p.label} className="bg-white/[0.03] border border-white/10 rounded-xl p-4 md:p-5">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">{p.label}</div>
-                <div className="text-xl md:text-2xl font-black">{p.value ?? "Data"}</div>
-                <div className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-white/30 mt-1">{p.suffix}</div>
+          {/* Per-platform breakdown tables */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* IG Feed */}
+            {stats.igFeedPosts > 0 && (
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider">IG Feed</h3>
+                  <span className="text-[10px] font-bold text-brand">{stats.igFeedPosts} posts</span>
+                </div>
+                <div className="space-y-0">
+                  {[
+                    { label: "Reach", value: fmt(stats.igFeed.reach) },
+                    { label: "Impressions", value: fmt(stats.igFeed.impressions) },
+                    { label: "Likes", value: fmt(stats.igFeed.likes) },
+                    { label: "Comments", value: fmt(stats.igFeed.comments) },
+                    { label: "Total Engagements", value: fmt(stats.igFeed.engagements) },
+                    { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? pct(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "—" },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
+                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
+                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* IG Reels */}
+            {stats.igReelPosts > 0 && (
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider">IG Reels / BTS</h3>
+                  <span className="text-[10px] font-bold text-brand">{stats.igReelPosts} posts</span>
+                </div>
+                <div className="space-y-0">
+                  {[
+                    { label: "Views", value: fmt(stats.igReel.views) },
+                    { label: "Likes", value: fmt(stats.igReel.likes) },
+                    { label: "Comments", value: fmt(stats.igReel.comments) },
+                    { label: "Total Engagements", value: fmt(stats.igReel.engagements) },
+                    { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? pct(stats.igReel.engRateSum / stats.igReel.engRateCount) : "—" },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
+                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
+                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TikTok */}
+            {stats.tiktokPosts > 0 && (
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider">TikTok</h3>
+                  <span className="text-[10px] font-bold text-brand">{stats.tiktokPosts} posts</span>
+                </div>
+                <div className="space-y-0">
+                  {[
+                    { label: "Views", value: fmt(stats.tiktok.views) },
+                    { label: "Likes + Comments", value: fmt(stats.tiktok.likes_comments) },
+                    { label: "Saves + Shares", value: fmt(stats.tiktok.saves_shares) },
+                    { label: "Total Engagements", value: fmt(stats.tiktok.engagements) },
+                    { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? pct(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "—" },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
+                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
+                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* IG Stories (if data exists) */}
+            {(stats.igStory.count > 0 || stats.igStory.impressions > 0) && (
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider">IG Stories</h3>
+                </div>
+                <div className="space-y-0">
+                  {[
+                    { label: "Story Count", value: fmt(stats.igStory.count) },
+                    { label: "Impressions", value: fmt(stats.igStory.impressions) },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
+                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
+                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* ── SECTION 5: TOP PERFORMERS (Podium with media cards) ── */}
+      {/* ── SECTION 5: TOP PERFORMERS (Podium with content cards) ── */}
       {show("top_performers") && topPerformers.length > 0 && (
         <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
           <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Top Performers by Engagement Rate</h2>
@@ -377,26 +550,25 @@ export function CampaignRecap({
           <div className="hidden md:flex items-end justify-center gap-3">
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
-              const thumb = items[0]?.thumbnail_url || (items[0]?.type !== "video" ? items[0]?.file_url : null);
               const isFirst = i === 0;
               return (
-                <div
-                  key={a.id}
-                  className={`relative rounded-xl overflow-hidden border border-white/10 flex-1 max-w-[220px] transition-all ${
-                    isFirst ? "h-[340px]" : "h-[280px]"
-                  }`}
-                >
-                  {thumb ? (
-                    <img src={thumb} className="absolute inset-0 w-full h-full object-cover" alt={a.name} />
-                  ) : (
-                    <div className="absolute inset-0 bg-black" />
-                  )}
-                  {/* Rank badge */}
-                  <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-brand text-white text-sm font-black flex items-center justify-center z-10">
-                    {i + 1}
+                <div key={a.id} className={`flex-1 max-w-[220px] ${isFirst ? "" : ""}`}>
+                  {/* Content card */}
+                  <div className={`relative rounded-xl overflow-hidden border border-white/10 ${isFirst ? "h-[340px]" : "h-[280px]"}`}>
+                    {items.length > 0 ? (
+                      <TopPerformerMedia items={items} name={a.name} height={isFirst ? 340 : 280} />
+                    ) : (
+                      <div className="absolute inset-0 bg-black flex items-center justify-center">
+                        <span className="text-[10px] text-white/20 font-bold uppercase">No content</span>
+                      </div>
+                    )}
+                    {/* Rank badge */}
+                    <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-brand text-white text-sm font-black flex items-center justify-center z-10">
+                      {i + 1}
+                    </div>
                   </div>
-                  {/* Info overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent z-10">
+                  {/* Info below card */}
+                  <div className="mt-2.5 px-1">
                     <div className="text-sm font-black uppercase truncate">{a.name}</div>
                     <div className="text-[10px] text-white/50 mb-1">{a.school} &middot; {a.sport}</div>
                     <div className="text-lg font-black text-brand">{pct(a.bestEngRate)}</div>
@@ -411,24 +583,22 @@ export function CampaignRecap({
           <div className="md:hidden grid grid-cols-2 gap-2">
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
-              const thumb = items[0]?.thumbnail_url || (items[0]?.type !== "video" ? items[0]?.file_url : null);
               const isFirst = i === 0;
               return (
-                <div
-                  key={a.id}
-                  className={`relative rounded-xl overflow-hidden border border-white/10 ${
-                    isFirst ? "col-span-2 h-[260px]" : "h-[200px]"
-                  }`}
-                >
-                  {thumb ? (
-                    <img src={thumb} className="absolute inset-0 w-full h-full object-cover" alt={a.name} />
-                  ) : (
-                    <div className="absolute inset-0 bg-black" />
-                  )}
-                  <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-brand text-white text-xs font-black flex items-center justify-center z-10">
-                    {i + 1}
+                <div key={a.id} className={isFirst ? "col-span-2" : ""}>
+                  <div className={`relative rounded-xl overflow-hidden border border-white/10 ${isFirst ? "h-[260px]" : "h-[200px]"}`}>
+                    {items.length > 0 ? (
+                      <TopPerformerMedia items={items} name={a.name} height={isFirst ? 260 : 200} />
+                    ) : (
+                      <div className="absolute inset-0 bg-black flex items-center justify-center">
+                        <span className="text-[10px] text-white/20 font-bold uppercase">No content</span>
+                      </div>
+                    )}
+                    <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-brand text-white text-xs font-black flex items-center justify-center z-10">
+                      {i + 1}
+                    </div>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent z-10">
+                  <div className="mt-2 px-1">
                     <div className="text-xs font-black uppercase truncate">{a.name}</div>
                     <div className="text-[10px] text-white/50">{a.school}</div>
                     <div className="text-base font-black text-brand">{pct(a.bestEngRate)}</div>

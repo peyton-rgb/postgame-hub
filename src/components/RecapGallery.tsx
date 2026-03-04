@@ -3,7 +3,10 @@
 import { useState, useRef, useCallback } from "react";
 import type { Campaign, Athlete, Media } from "@/lib/types";
 
-function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
+function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Media[] }) {
+  // Videos always first in carousel
+  const items = [...rawItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
+
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -57,7 +60,7 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
         ) : displaySrc ? (
           <img
             src={displaySrc}
-            className="w-full block"
+            className={`w-full block ${isVideo ? "aspect-[9/16] object-cover" : ""}`}
             draggable={false}
             alt={athlete.name}
           />
