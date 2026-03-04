@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -93,20 +93,34 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const current = items[slideIdx];
   const isVideo = current?.type === "video";
   const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : null);
+
+  // Forward mousemove to video element so browser keeps native controls visible
+  const keepControlsVisible = useCallback(() => {
+    if (playing && videoRef.current) {
+      const rect = videoRef.current.getBoundingClientRect();
+      videoRef.current.dispatchEvent(new MouseEvent("mousemove", {
+        bubbles: true,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.bottom - 30,
+      }));
+    }
+  }, [playing]);
 
   return (
     <div
       className="media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onMouseMove={keepControlsVisible}
     >
       <div className="relative overflow-hidden">
         {isVideo && playing ? (
-          <video src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1]" onEnded={() => setPlaying(false)} />
+          <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1]" onEnded={() => setPlaying(false)} />
         ) : displaySrc ? (
           <img src={displaySrc} className="w-full block" draggable={false} alt={athlete.name} />
         ) : isVideo ? (

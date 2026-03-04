@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Campaign, Athlete, Media } from "@/lib/types";
 
 function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const current = items[slideIdx];
   const isVideo = current?.type === "video";
@@ -23,15 +24,29 @@ function MasonryCard({ athlete, items }: { athlete: Athlete; items: Media[] }) {
     setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1));
   };
 
+  // Forward mousemove to video element so browser keeps native controls visible
+  const keepControlsVisible = useCallback(() => {
+    if (playing && videoRef.current) {
+      const rect = videoRef.current.getBoundingClientRect();
+      videoRef.current.dispatchEvent(new MouseEvent("mousemove", {
+        bubbles: true,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.bottom - 30,
+      }));
+    }
+  }, [playing]);
+
   return (
     <div
       className="media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onMouseMove={keepControlsVisible}
     >
       <div className="relative overflow-hidden">
         {isVideo && playing ? (
           <video
+            ref={videoRef}
             src={current.file_url}
             autoPlay
             controls

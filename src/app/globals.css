@@ -36,19 +36,6 @@ body {
   }
 }
 
-/* Force video controls visible when hovering anywhere on the card */
-.media-card:hover video::-webkit-media-controls-panel {
-  opacity: 1 !important;
-  transition: opacity 0.15s ease;
-}
-.media-card:hover video::-webkit-media-controls {
-  opacity: 1 !important;
-}
-/* Firefox */
-.media-card:hover video::-moz-range-track {
-  opacity: 1 !important;
-}
-
 /* Masonry responsive columns */
 @media (max-width: 768px) {
   .recap-container [data-masonry] {
