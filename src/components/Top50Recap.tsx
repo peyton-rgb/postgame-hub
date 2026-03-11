@@ -12,14 +12,15 @@ function getSocialLinks(athlete: Athlete) {
   const links: { platform: string; url: string; icon: "ig" | "tiktok" }[] = [];
   const m = athlete.metrics || {};
 
-  // Instagram profile
-  if (athlete.ig_handle) {
+  // One IG link: prefer post URL, fall back to profile
+  const igPostUrl = m.ig_feed?.post_url || m.ig_reel?.post_url;
+  if (igPostUrl) {
+    links.push({ platform: "Instagram", url: igPostUrl, icon: "ig" });
+  } else if (athlete.ig_handle) {
     links.push({ platform: "Instagram", url: `https://instagram.com/${athlete.ig_handle.replace("@", "")}`, icon: "ig" });
   }
 
-  // Individual post links
-  if (m.ig_feed?.post_url) links.push({ platform: "IG Feed Post", url: m.ig_feed.post_url, icon: "ig" });
-  if (m.ig_reel?.post_url) links.push({ platform: "IG Reel", url: m.ig_reel.post_url, icon: "ig" });
+  // TikTok post
   if (m.tiktok?.post_url) links.push({ platform: "TikTok", url: m.tiktok.post_url, icon: "tiktok" });
 
   return links;
@@ -397,20 +398,13 @@ export function Top50Recap({
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-center gap-1">
-                          {links.filter(l => l.platform !== "Instagram").map((link, i) => (
-                            <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                          {links.map((link, j) => (
+                            <a key={j} href={link.url} target="_blank" rel="noopener noreferrer"
                               className="w-6 h-6 rounded flex items-center justify-center bg-white/5 hover:bg-white/15 transition-colors"
                               title={link.platform}>
                               <SocialIcon type={link.icon} className="text-white/50 hover:text-white" />
                             </a>
                           ))}
-                          {links.find(l => l.platform === "Instagram") && (
-                            <a href={links.find(l => l.platform === "Instagram")!.url} target="_blank" rel="noopener noreferrer"
-                              className="w-6 h-6 rounded flex items-center justify-center bg-white/5 hover:bg-white/15 transition-colors"
-                              title="Instagram Profile">
-                              <SocialIcon type="ig" className="text-white/50 hover:text-white" />
-                            </a>
-                          )}
                         </div>
                       </td>
                     </tr>
