@@ -2,131 +2,13 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
+import { fmt, pct, computeStats, getTopPerformers, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
+import { PostgameLogo } from "./PostgameLogo";
+import { TopPerformerMedia } from "./TopPerformerMedia";
 
-// ── Helpers ───────────────────────────────────────────────────
-
-function fmt(n: number | undefined): string {
-  if (n == null) return "0";
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
-  return n.toLocaleString();
-}
-
-function pct(n: number | undefined): string {
-  if (n == null) return "0%";
-  return n.toFixed(2) + "%";
-}
-
-function computeStats(athletes: Athlete[]) {
-  const schools = new Set(athletes.map((a) => a.school));
-  const sports = new Set(athletes.map((a) => a.sport));
-
-  let totalPosts = 0;
-  let totalImpressions = 0;
-  let totalEngagements = 0;
-  let totalEngRateSum = 0;
-  let engRateCount = 0;
-  let igFeedPosts = 0;
-  let igReelPosts = 0;
-  let tiktokPosts = 0;
-  let totalReach = 0;
-
-  // Per-platform aggregates from CSV data
-  const igFeed = { reach: 0, impressions: 0, likes: 0, comments: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
-  const igStory = { count: 0, impressions: 0 };
-  const igReel = { views: 0, likes: 0, comments: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
-  const tiktok = { views: 0, likes_comments: 0, saves_shares: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
-
-  for (const a of athletes) {
-    const m = a.metrics || {};
-    if (m.ig_feed?.post_url) {
-      igFeedPosts++;
-      totalPosts++;
-    }
-    if (m.ig_reel?.post_url) {
-      igReelPosts++;
-      totalPosts++;
-    }
-    if (m.tiktok?.post_url) {
-      tiktokPosts++;
-      totalPosts++;
-    }
-
-    totalImpressions += (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0) + (m.ig_reel?.views || 0) + (m.tiktok?.views || 0);
-    totalEngagements += (m.ig_feed?.total_engagements || 0) + (m.ig_reel?.total_engagements || 0) + (m.tiktok?.total_engagements || 0);
-    totalReach += (m.ig_feed?.reach || 0) + (a.ig_followers || 0);
-
-    // IG Feed
-    igFeed.reach += m.ig_feed?.reach || 0;
-    igFeed.impressions += m.ig_feed?.impressions || 0;
-    igFeed.likes += m.ig_feed?.likes || 0;
-    igFeed.comments += m.ig_feed?.comments || 0;
-    igFeed.engagements += m.ig_feed?.total_engagements || 0;
-    if (m.ig_feed?.engagement_rate != null && m.ig_feed.engagement_rate > 0) { igFeed.engRateSum += m.ig_feed.engagement_rate; igFeed.engRateCount++; }
-
-    // IG Story
-    igStory.count += m.ig_story?.count || 0;
-    igStory.impressions += m.ig_story?.impressions || 0;
-
-    // IG Reel
-    igReel.views += m.ig_reel?.views || 0;
-    igReel.likes += m.ig_reel?.likes || 0;
-    igReel.comments += m.ig_reel?.comments || 0;
-    igReel.engagements += m.ig_reel?.total_engagements || 0;
-    if (m.ig_reel?.engagement_rate != null && m.ig_reel.engagement_rate > 0) { igReel.engRateSum += m.ig_reel.engagement_rate; igReel.engRateCount++; }
-
-    // TikTok
-    tiktok.views += m.tiktok?.views || 0;
-    tiktok.likes_comments += m.tiktok?.likes_comments || 0;
-    tiktok.saves_shares += m.tiktok?.saves_shares || 0;
-    tiktok.engagements += m.tiktok?.total_engagements || 0;
-    if (m.tiktok?.engagement_rate != null && m.tiktok.engagement_rate > 0) { tiktok.engRateSum += m.tiktok.engagement_rate; tiktok.engRateCount++; }
-
-    const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-    if (rates.length > 0) {
-      totalEngRateSum += rates.reduce((s, r) => s + r, 0) / rates.length;
-      engRateCount++;
-    }
-  }
-
-  const avgEngRate = engRateCount > 0 ? totalEngRateSum / engRateCount : 0;
-
-  return {
-    athleteCount: athletes.length,
-    schoolCount: schools.size,
-    sportCount: sports.size,
-    totalPosts,
-    totalImpressions,
-    totalEngagements,
-    avgEngRate,
-    igFeedPosts,
-    igReelPosts,
-    tiktokPosts,
-    totalReach,
-    igFeed,
-    igStory,
-    igReel,
-    tiktok,
-  };
-}
-
-function getTopPerformers(athletes: Athlete[], count = 5) {
-  return [...athletes]
-    .map((a) => {
-      const m = a.metrics || {};
-      const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-      const best = rates.length > 0 ? Math.max(...rates) : 0;
-      return { ...a, bestEngRate: best };
-    })
-    .filter((a) => a.bestEngRate > 0)
-    .sort((a, b) => b.bestEngRate - a.bestEngRate)
-    .slice(0, count);
-}
-
-// ── Masonry Card (v2 — overlay at top) ───────────────────────
+// ── Masonry Card ─────────────────────────────────────────────
 
 function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Media[] }) {
-  // Videos always first in carousel
   const items = [...rawItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
 
   const [slideIdx, setSlideIdx] = useState(0);
@@ -137,8 +19,8 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
   const current = items[slideIdx];
   const isVideo = current?.type === "video";
   const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : null);
+  const postUrl = getPostUrl(athlete);
 
-  // Forward mousemove to video element so browser keeps native controls visible
   const keepControlsVisible = useCallback(() => {
     if (playing && videoRef.current) {
       const rect = videoRef.current.getBoundingClientRect();
@@ -149,6 +31,24 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
       }));
     }
   }, [playing]);
+
+  const handleDownload = async () => {
+    if (!current?.file_url) return;
+    try {
+      const res = await fetch(current.file_url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${athlete.name.replace(/\s+/g, "-")}-${slideIdx + 1}.${isVideo ? "mp4" : "jpg"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(current.file_url, "_blank");
+    }
+  };
 
   return (
     <div
@@ -180,24 +80,56 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
           </div>
         )}
 
-        {/* Creator overlay — top of card so it never blocks video controls */}
+        {/* Creator overlay — top of card */}
         <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
-          <div className="min-w-0">
-            <div className="text-[11px] font-black uppercase text-white truncate">{athlete.name}</div>
-            <div className="text-[9px] text-white/55 font-semibold flex items-center gap-1.5">
-              {athlete.school}
-              {athlete.ig_followers ? <span className="text-white/40">· {fmt(athlete.ig_followers)}</span> : null}
-              <span className="px-1 py-px rounded text-[7px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-black uppercase text-white truncate">{athlete.name}</div>
+              <div className="text-[9px] text-white/55 font-semibold flex items-center gap-1.5">
+                {athlete.school}
+                {athlete.ig_followers ? <span className="text-white/40">&middot; {fmt(athlete.ig_followers)}</span> : null}
+                <span className="px-1 py-px rounded text-[7px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
+              </div>
+            </div>
+            {/* Download + Link buttons */}
+            <div className="flex gap-1 ml-2 flex-shrink-0">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
+                title="Download"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
+              {postUrl && (
+                <a
+                  href={postUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
+                  title="View Post"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                </a>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Type badge — bottom-right so it doesn't overlap the top overlay */}
+        {/* Media type badge — uses actual media type, not CSV post_type */}
         <span className="absolute bottom-2 right-2 z-[3] px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-black/65 text-white backdrop-blur">
-          {athlete.post_type}
+          {getMediaLabel(items)}
         </span>
 
-        {/* Carousel arrows — visible on hover, work during video playback */}
+        {/* Carousel arrows */}
         {items.length > 1 && hovered && (
           <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
             <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
@@ -209,7 +141,6 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
           </div>
         )}
 
-        {/* Dot indicators — hidden during video playback so they don't block controls */}
         {items.length > 1 && !playing && (
           <div className={`absolute bottom-11 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
             {items.map((_, i) => (
@@ -222,73 +153,17 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
   );
 }
 
-// ── Top Performer Media Card ─────────────────────────────────
-
-function TopPerformerMedia({ items, name, height }: { items: Media[]; name: string; height: number }) {
-  const [slideIdx, setSlideIdx] = useState(0);
-  const [hovered, setHovered] = useState(false);
-  const [playing, setPlaying] = useState(false);
-
-  const current = items[slideIdx];
-  const isVideo = current?.type === "video";
-  const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : null);
-
-  return (
-    <div
-      className="absolute inset-0"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {isVideo && playing ? (
-        <video src={current.file_url} autoPlay controls playsInline className="w-full h-full object-cover" onEnded={() => setPlaying(false)} />
-      ) : displaySrc ? (
-        <img src={displaySrc} className="w-full h-full object-cover" draggable={false} alt={name} />
-      ) : isVideo ? (
-        <div className="w-full h-full bg-black flex items-center justify-center cursor-pointer" onClick={() => setPlaying(true)}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        </div>
-      ) : null}
-
-      {isVideo && !playing && (
-        <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
-          <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
-          </div>
-        </div>
-      )}
-
-      {/* Carousel arrows */}
-      {items.length > 1 && hovered && (
-        <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1 pointer-events-none">
-          <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-6 h-6 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1)); }} className="pointer-events-auto w-6 h-6 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-            <svg width="10" height="10" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </button>
-        </div>
-      )}
-
-      {items.length > 1 && !playing && (
-        <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
-          {items.map((_, i) => (
-            <div key={i} onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full cursor-pointer ${slideIdx === i ? "bg-white" : "bg-white/35"}`} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main Recap Component ──────────────────────────────────────
 
 export function CampaignRecap({
   campaign,
   athletes,
+  allAthletes,
   media,
 }: {
   campaign: Campaign;
   athletes: Athlete[];
+  allAthletes?: Athlete[];
   media: Record<string, Media[]>;
 }) {
   const [filter, setFilter] = useState("all");
@@ -296,14 +171,20 @@ export function CampaignRecap({
   const vis: VisibleSections = settings.visible_sections || {};
   const show = (key: keyof VisibleSections) => vis[key] !== false;
 
-  const stats = computeStats(athletes);
-  const topPerformers = getTopPerformers(athletes);
+  // Full roster for metrics, top performers, roster, hero stats
+  // Gallery athletes for Content Gallery only
+  const fullRoster = allAthletes || athletes;
+
+  const stats = computeStats(fullRoster);
+  const topPerformers = getTopPerformers(fullRoster);
   const cols = settings.columns || 4;
 
+  // Gallery filter uses actual uploaded media types (not CSV post_type)
   const filtered = athletes.filter((a) => {
+    const items = media[a.id] || [];
     if (filter === "all") return true;
-    if (filter === "photo") return a.post_type !== "IG Reel";
-    return a.post_type === "IG Reel";
+    if (filter === "photo") return items.some((m) => m.type === "image");
+    return items.some((m) => m.type === "video");
   });
 
   const contentTypes = [
@@ -312,16 +193,15 @@ export function CampaignRecap({
     stats.tiktokPosts > 0 && "TikTok BTS",
   ].filter(Boolean).join(", ");
 
-  const rosterAthletes = [...athletes].sort((a, b) => (b.ig_followers || 0) - (a.ig_followers || 0));
+  // Roster uses full campaign roster, sorted by followers
+  const rosterAthletes = [...fullRoster].sort((a, b) => (b.ig_followers || 0) - (a.ig_followers || 0));
 
   return (
     <div className="recap-container min-h-screen bg-black text-white font-sans">
 
       {/* ── POSTGAME TOP BAR ───────────────────────────────── */}
       <div className="px-6 md:px-12 py-3 border-b border-white/5 flex items-center justify-between">
-        <span className="text-[11px] md:text-xs font-black uppercase tracking-[3px] text-white/40">
-          POSTGAME
-        </span>
+        <PostgameLogo size="sm" className="opacity-50" />
         <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-white/20">
           Campaign Recap
         </span>
@@ -329,16 +209,25 @@ export function CampaignRecap({
 
       {/* ── SECTION 1: HERO HEADER ─────────────────────────── */}
       <div className="relative px-6 md:px-12 pt-8 md:pt-10 pb-8 md:pb-10 bg-gradient-to-b from-white/[0.04] to-black">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-          <div className="flex-1">
-            {/* Brand logo + badges */}
-            <div className="flex items-center gap-3 mb-4">
-              {settings.brand_logo_url && (
-                <img src={settings.brand_logo_url} className="h-8 md:h-14 object-contain" alt={campaign.client_name} />
-              )}
-              {!settings.brand_logo_url && campaign.client_logo_url && (
-                <img src={campaign.client_logo_url} className="h-6 md:h-10 object-contain" alt={campaign.client_name} />
-              )}
+        <div className="flex flex-col gap-6">
+          {/* Brand logo box */}
+          {settings.brand_logo_url ? (
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 md:p-6 inline-flex items-center justify-center self-start">
+              <img src={settings.brand_logo_url} className="h-12 md:h-20 object-contain" alt={campaign.client_name} />
+            </div>
+          ) : campaign.client_logo_url ? (
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 md:p-6 inline-flex items-center justify-center self-start">
+              <img src={campaign.client_logo_url} className="h-10 md:h-16 object-contain" alt={campaign.client_name} />
+            </div>
+          ) : (
+            <div className="bg-white/[0.03] border-2 border-dashed border-white/10 rounded-xl p-5 md:p-6 inline-flex items-center justify-center self-start">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-white/20">Brand Logo</span>
+            </div>
+          )}
+
+          {/* Badges row */}
+          {(settings.quarter || settings.campaign_type) && (
+            <div className="flex items-center gap-3">
               {settings.quarter && (
                 <span className="px-2.5 py-1.5 bg-white/[0.06] border border-white/10 rounded text-[10px] font-bold uppercase tracking-wider text-white/60">
                   {settings.quarter}
@@ -350,44 +239,22 @@ export function CampaignRecap({
                 </span>
               )}
             </div>
+          )}
 
-            <h1 className="text-2xl md:text-4xl font-black uppercase leading-tight mb-3">
-              {campaign.name}
-            </h1>
+          <h1 className="text-2xl md:text-4xl font-black uppercase leading-tight">
+            {campaign.name}
+          </h1>
 
-            {settings.description && (
-              <p className="text-sm md:text-base text-white/50 max-w-lg leading-relaxed mb-4">
-                {settings.description.slice(0, 200)}
-                {(settings.description?.length || 0) > 200 ? "..." : ""}
-              </p>
-            )}
-
-            {/* Tag pills */}
-            {settings.tags && settings.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {settings.tags.map((tag) => (
-                  <span key={tag} className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand text-white">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 gap-px bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-            {[
-              { value: stats.athleteCount, label: "ATHLETES" },
-              { value: stats.schoolCount, label: "SCHOOLS" },
-              { value: stats.sportCount, label: "SPORTS" },
-              { value: settings.quarter || "—", label: "YEAR" },
-            ].map((s) => (
-              <div key={s.label} className="bg-black px-4 md:px-6 py-3 md:py-4 text-center min-w-[80px]">
-                <div className="text-lg md:text-xl font-black text-brand">{s.value}</div>
-                <div className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-white/40 mt-1">{s.label}</div>
-              </div>
-            ))}
-          </div>
+          {/* Tag pills */}
+          {settings.tags && settings.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {settings.tags.map((tag) => (
+                <span key={tag} className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand text-white">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -402,7 +269,7 @@ export function CampaignRecap({
             <div className="space-y-0">
               {[
                 { label: "BRAND", value: campaign.client_name },
-                { label: "CAMPAIGN", value: `${campaign.name}` },
+                { label: "CAMPAIGN", value: campaign.name },
                 { label: "QUARTER", value: settings.quarter },
                 { label: "TYPE", value: settings.campaign_type },
                 { label: "PLATFORM", value: settings.platform },
@@ -443,9 +310,8 @@ export function CampaignRecap({
             ))}
           </div>
 
-          {/* Per-platform breakdown tables */}
+          {/* Per-platform breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* IG Feed */}
             {stats.igFeedPosts > 0 && (
               <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -459,7 +325,7 @@ export function CampaignRecap({
                     { label: "Likes", value: fmt(stats.igFeed.likes) },
                     { label: "Comments", value: fmt(stats.igFeed.comments) },
                     { label: "Total Engagements", value: fmt(stats.igFeed.engagements) },
-                    { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? pct(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "—" },
+                    { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? pct(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "\u2014" },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
                       <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
@@ -470,7 +336,6 @@ export function CampaignRecap({
               </div>
             )}
 
-            {/* IG Reels */}
             {stats.igReelPosts > 0 && (
               <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -483,7 +348,7 @@ export function CampaignRecap({
                     { label: "Likes", value: fmt(stats.igReel.likes) },
                     { label: "Comments", value: fmt(stats.igReel.comments) },
                     { label: "Total Engagements", value: fmt(stats.igReel.engagements) },
-                    { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? pct(stats.igReel.engRateSum / stats.igReel.engRateCount) : "—" },
+                    { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? pct(stats.igReel.engRateSum / stats.igReel.engRateCount) : "\u2014" },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
                       <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
@@ -494,7 +359,6 @@ export function CampaignRecap({
               </div>
             )}
 
-            {/* TikTok */}
             {stats.tiktokPosts > 0 && (
               <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -507,7 +371,7 @@ export function CampaignRecap({
                     { label: "Likes + Comments", value: fmt(stats.tiktok.likes_comments) },
                     { label: "Saves + Shares", value: fmt(stats.tiktok.saves_shares) },
                     { label: "Total Engagements", value: fmt(stats.tiktok.engagements) },
-                    { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? pct(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "—" },
+                    { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? pct(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "\u2014" },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
                       <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
@@ -518,7 +382,6 @@ export function CampaignRecap({
               </div>
             )}
 
-            {/* IG Stories (if data exists) */}
             {(stats.igStory.count > 0 || stats.igStory.impressions > 0) && (
               <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -541,37 +404,35 @@ export function CampaignRecap({
         </div>
       )}
 
-      {/* ── SECTION 5: TOP PERFORMERS (Podium with content cards) ── */}
+      {/* ── SECTION 5: TOP PERFORMERS ─────────────────────── */}
       {show("top_performers") && topPerformers.length > 0 && (
         <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
           <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Top Performers by Engagement Rate</h2>
 
-          {/* Desktop: side-by-side with #1 elevated */}
+          {/* Desktop: all same size, #1 highlighted in orange */}
           <div className="hidden md:flex items-end justify-center gap-3">
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
               const isFirst = i === 0;
               return (
-                <div key={a.id} className={`flex-1 max-w-[220px] ${isFirst ? "" : ""}`}>
-                  {/* Content card */}
-                  <div className={`relative rounded-xl overflow-hidden border border-white/10 ${isFirst ? "h-[340px]" : "h-[280px]"}`}>
+                <div key={a.id} className="flex-1 max-w-[220px]">
+                  <div className={`relative rounded-xl overflow-hidden h-[300px] ${isFirst ? "border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)]" : "border border-white/10"}`}>
                     {items.length > 0 ? (
-                      <TopPerformerMedia items={items} name={a.name} height={isFirst ? 340 : 280} />
+                      <TopPerformerMedia items={items} name={a.name} />
                     ) : (
                       <div className="absolute inset-0 bg-black flex items-center justify-center">
                         <span className="text-[10px] text-white/20 font-bold uppercase">No content</span>
                       </div>
                     )}
                     {/* Rank badge */}
-                    <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-brand text-white text-sm font-black flex items-center justify-center z-10">
+                    <div className={`absolute top-3 left-3 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 ${isFirst ? "bg-brand" : "bg-white/20 backdrop-blur"}`}>
                       {i + 1}
                     </div>
                   </div>
-                  {/* Info below card */}
                   <div className="mt-2.5 px-1">
                     <div className="text-sm font-black uppercase truncate">{a.name}</div>
                     <div className="text-[10px] text-white/50 mb-1">{a.school} &middot; {a.sport}</div>
-                    <div className="text-lg font-black text-brand">{pct(a.bestEngRate)}</div>
+                    <div className={`text-lg font-black ${isFirst ? "text-brand" : "text-white/70"}`}>{pct(a.bestEngRate)}</div>
                     <div className="text-[8px] text-white/40 font-bold uppercase tracking-wider">Engagement Rate</div>
                   </div>
                 </div>
@@ -579,29 +440,29 @@ export function CampaignRecap({
             })}
           </div>
 
-          {/* Mobile: #1 full-width, rest in 2-col grid */}
+          {/* Mobile: #1 full-width + orange highlight, rest 2-col */}
           <div className="md:hidden grid grid-cols-2 gap-2">
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
               const isFirst = i === 0;
               return (
                 <div key={a.id} className={isFirst ? "col-span-2" : ""}>
-                  <div className={`relative rounded-xl overflow-hidden border border-white/10 ${isFirst ? "h-[260px]" : "h-[200px]"}`}>
+                  <div className={`relative rounded-xl overflow-hidden h-[200px] ${isFirst ? "border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)]" : "border border-white/10"}`}>
                     {items.length > 0 ? (
-                      <TopPerformerMedia items={items} name={a.name} height={isFirst ? 260 : 200} />
+                      <TopPerformerMedia items={items} name={a.name} />
                     ) : (
                       <div className="absolute inset-0 bg-black flex items-center justify-center">
                         <span className="text-[10px] text-white/20 font-bold uppercase">No content</span>
                       </div>
                     )}
-                    <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-brand text-white text-xs font-black flex items-center justify-center z-10">
+                    <div className={`absolute top-2 left-2 w-7 h-7 rounded-full text-white text-xs font-black flex items-center justify-center z-10 ${isFirst ? "bg-brand" : "bg-white/20 backdrop-blur"}`}>
                       {i + 1}
                     </div>
                   </div>
                   <div className="mt-2 px-1">
                     <div className="text-xs font-black uppercase truncate">{a.name}</div>
                     <div className="text-[10px] text-white/50">{a.school}</div>
-                    <div className="text-base font-black text-brand">{pct(a.bestEngRate)}</div>
+                    <div className={`text-base font-black ${isFirst ? "text-brand" : "text-white/70"}`}>{pct(a.bestEngRate)}</div>
                   </div>
                 </div>
               );
@@ -613,26 +474,21 @@ export function CampaignRecap({
       {/* ── SECTION 6: CONTENT GALLERY ─────────────────────── */}
       {show("content_gallery") && (
         <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5">
-              <h2 className="text-lg md:text-xl font-black uppercase">Content Gallery</h2>
-              <div className="flex gap-2">
-                {["all", "photo", "video"].map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase ${
-                      filter === f ? "bg-brand text-white" : "border border-white/15 text-white/40"
-                    }`}
-                  >
-                    {f === "all" ? "All" : f === "photo" ? "Photos" : "Videos"}
-                  </button>
-                ))}
-              </div>
+          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 mb-6">
+            <h2 className="text-lg md:text-xl font-black uppercase">Content Gallery</h2>
+            <div className="flex gap-2">
+              {["all", "photo", "video"].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase ${
+                    filter === f ? "bg-brand text-white" : "border border-white/15 text-white/40"
+                  }`}
+                >
+                  {f === "all" ? "All" : f === "photo" ? "Photos" : "Videos"}
+                </button>
+              ))}
             </div>
-            <span className="text-[10px] md:text-xs text-white/30 font-semibold">
-              {filtered.length} athletes · Feed, Reels & BTS
-            </span>
           </div>
           <div data-masonry style={{ columnCount: cols, columnGap: 8 }} className="bg-black border border-white/10 rounded-xl p-2">
             {filtered.map((a) => (
@@ -646,20 +502,60 @@ export function CampaignRecap({
       {show("roster") && (
         <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
           <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Campaign Roster</h2>
-          <div className="space-y-1">
+
+          {/* Desktop: full table with headers */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 w-10">#</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">Athlete</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">School</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">Sport</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">IG Handle</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Followers</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Impressions</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Engagements</th>
+                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Eng. Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rosterAthletes.map((a, i) => (
+                  <tr key={a.id} className="border-b border-white/[0.06] hover:bg-white/[0.02]">
+                    <td className="px-3 py-3 text-sm font-black text-white/30">{i + 1}</td>
+                    <td className="px-3 py-3 text-sm font-black uppercase">{a.name}</td>
+                    <td className="px-3 py-3 text-sm text-white/50">{a.school}</td>
+                    <td className="px-3 py-3">
+                      <span className="px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-brand/15 text-brand">
+                        {a.sport}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-white/40">{a.ig_handle ? `@${a.ig_handle}` : "\u2014"}</td>
+                    <td className="px-3 py-3 text-sm font-bold text-white/50 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>
+                    <td className="px-3 py-3 text-sm font-bold text-white/50 text-right">{fmt(getTotalImpressions(a))}</td>
+                    <td className="px-3 py-3 text-sm font-bold text-white/50 text-right">{fmt(getTotalEngagements(a))}</td>
+                    <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: compact cards */}
+          <div className="md:hidden space-y-1">
             {rosterAthletes.map((a, i) => (
-              <div key={a.id} className="flex items-center gap-3 md:gap-4 py-3 px-3 md:px-4 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+              <div key={a.id} className="flex items-center gap-3 py-3 px-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                 <span className="text-sm font-black text-white/30 w-6 text-right">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-black uppercase">{a.name}</div>
-                  <div className="text-[10px] text-white/40">{a.school}</div>
+                  <div className="text-[10px] text-white/40">{a.school} &middot; {a.sport}</div>
                 </div>
-                <span className="hidden md:inline px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-brand/15 text-brand">
-                  {a.sport}
-                </span>
-                <span className="text-sm font-bold text-white/50 w-16 text-right">
-                  {a.ig_followers ? fmt(a.ig_followers) : "—"}
-                </span>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-sm font-bold text-white/50">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>
+                  {getBestEngRate(a) > 0 && (
+                    <div className="text-[10px] font-bold text-brand">{pct(getBestEngRate(a))}</div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -669,11 +565,7 @@ export function CampaignRecap({
       {/* ── FOOTER ─────────────────────────────────────────── */}
       <div className="recap-footer-area px-6 md:px-12 py-8 border-t border-white/10">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black uppercase tracking-[2px] text-white/30">
-              POSTGAME
-            </span>
-          </div>
+          <PostgameLogo size="sm" className="opacity-30" />
           <div className="flex items-center gap-3">
             {settings.brand_logo_url && (
               <img src={settings.brand_logo_url} className="h-5 object-contain opacity-50" alt="" />

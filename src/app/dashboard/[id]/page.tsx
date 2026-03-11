@@ -327,6 +327,7 @@ export default function CampaignEditor() {
       <MasonryPreview
         campaign={campaign}
         athletes={athletes.filter((a) => selected.includes(a.id))}
+        allAthletes={athletes}
         media={media}
         onBack={() => setShowPreview(false)}
         onPublish={togglePublish}
@@ -337,6 +338,18 @@ export default function CampaignEditor() {
 
   const selectedAthletes = athletes.filter((a) => selected.includes(a.id));
   const uploadedCount = Object.keys(media).filter((k) => media[k]?.length > 0).length;
+
+  // Top performers by engagement rate (from ALL athletes, not just selected)
+  const topPerformers = [...athletes]
+    .map((a) => {
+      const m = a.metrics || {};
+      const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
+      const best = rates.length > 0 ? Math.max(...rates) : 0;
+      return { ...a, bestEngRate: best };
+    })
+    .filter((a) => a.bestEngRate > 0)
+    .sort((a, b) => b.bestEngRate - a.bestEngRate)
+    .slice(0, 5);
 
   const steps = [
     { n: 1, title: "Campaign Info", desc: "Brief, tags & section visibility" },
@@ -444,9 +457,28 @@ export default function CampaignEditor() {
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Type</label>
+                <div className="flex gap-2 mb-2">
+                  {[
+                    { value: "Product Seeding", label: "Standard Recap" },
+                    { value: "top_50", label: "Top 50 Rankings" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setCampaignType(opt.value)}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                        campaignType === opt.value
+                          ? "bg-[#D73F09]/15 border-[#D73F09] text-[#D73F09]"
+                          : "border-gray-700 text-gray-400 hover:border-gray-500"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
                 <input value={campaignType} onChange={(e) => setCampaignType(e.target.value)}
                   className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
-                  placeholder="Product Seeding" />
+                  placeholder="Or type a custom type..." />
               </div>
             </div>
 
@@ -596,58 +628,128 @@ export default function CampaignEditor() {
 
         {/* ── STEP 4: Upload Content ──────────────────────── */}
         {step === 4 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {selectedAthletes.map((a) => {
-              const items = media[a.id] || [];
-              const thumb = items[0]?.thumbnail_url || items[0]?.file_url || null;
-              return (
-                <div key={a.id} className="bg-[#111] border border-gray-800 rounded-xl overflow-hidden">
-                  <div onClick={() => fileRefs.current[a.id]?.click()}
-                    onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
-                    onDragOver={(e) => e.preventDefault()}
-                    className="aspect-[4/5] max-h-[300px] bg-[#0a0a0a] flex flex-col items-center justify-center gap-2 cursor-pointer relative overflow-hidden">
-                    {thumb && !items[0]?.file_url?.match(/\.(mp4|mov|webm|avi)$/i)
-                      ? <img src={thumb} className="w-full h-full object-cover" alt="" />
-                      : thumb && items[0]?.thumbnail_url
-                        ? <img src={items[0].thumbnail_url} className="w-full h-full object-cover" alt="" />
-                        : items.length > 0
-                          ? <div className="flex flex-col items-center gap-2">
-                              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                              <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">{items.length} file{items.length > 1 ? "s" : ""}</span>
-                            </div>
-                          : <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">Drop files or click</span>}
-                    {items.length > 1 && (
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 text-white text-[10px] font-bold rounded">{items.length} files</div>
-                    )}
-                    <input ref={(el: HTMLInputElement | null) => { fileRefs.current[a.id] = el; }}
-                      type="file" accept="image/*,video/*" multiple
-                      onChange={(e) => handleFiles(a.id, e.target.files)} className="hidden" />
-                  </div>
-                  {items.length > 0 && (
-                    <div className="flex gap-1 p-2 bg-[#0a0a0a] border-t border-gray-900 overflow-x-auto">
-                      {items.map((m) => (
-                        <div key={m.id} className="relative flex-shrink-0">
-                          <div className={`w-10 h-10 rounded overflow-hidden border-2 ${m.type === "video" ? "border-purple-500" : "border-gray-700"}`}>
-                            {m.type === "video" && !m.thumbnail_url
-                              ? <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-                              : <img src={m.thumbnail_url || m.file_url} className="w-full h-full object-cover" alt="" />}
-                          </div>
-                          <button onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
-                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gray-700 text-white text-[10px] flex items-center justify-center hover:bg-red-600">×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="p-3 border-t border-gray-900 flex items-center gap-2">
-                    <SchoolBadge school={a.school} size={24} />
-                    <div>
-                      <div className="text-xs font-black uppercase">{a.name}</div>
-                      <div className="text-[10px] text-gray-600">{a.school} · {a.sport}</div>
-                    </div>
-                  </div>
+          <div className="space-y-10">
+            {/* Top Performers Content Upload */}
+            {topPerformers.length > 0 && (
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-[#D73F09]">Top Performers Content</h3>
+                  <span className="text-[10px] text-gray-500 font-bold">Upload hero content for your top 5 athletes</span>
                 </div>
-              );
-            })}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {topPerformers.map((a, idx) => {
+                    const items = media[a.id] || [];
+                    const thumb = items[0]?.thumbnail_url || items[0]?.file_url || null;
+                    return (
+                      <div key={a.id} className={`bg-[#111] rounded-xl overflow-hidden border ${idx === 0 ? "border-[#D73F09]" : "border-gray-800"}`}>
+                        <div onClick={() => fileRefs.current[a.id]?.click()}
+                          onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
+                          onDragOver={(e) => e.preventDefault()}
+                          className="aspect-[4/5] max-h-[240px] bg-[#0a0a0a] flex flex-col items-center justify-center gap-2 cursor-pointer relative overflow-hidden">
+                          {thumb && !items[0]?.file_url?.match(/\.(mp4|mov|webm|avi)$/i)
+                            ? <img src={thumb} className="w-full h-full object-cover" alt="" />
+                            : thumb && items[0]?.thumbnail_url
+                              ? <img src={items[0].thumbnail_url} className="w-full h-full object-cover" alt="" />
+                              : items.length > 0
+                                ? <div className="flex flex-col items-center gap-2">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                    <span className="text-[10px] text-gray-600 font-bold uppercase">{items.length} file{items.length > 1 ? "s" : ""}</span>
+                                  </div>
+                                : <span className="text-[10px] text-gray-600 font-bold uppercase">Drop files or click</span>}
+                          {items.length > 1 && (
+                            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 text-white text-[10px] font-bold rounded">{items.length}</div>
+                          )}
+                          {/* Rank badge */}
+                          <div className={`absolute top-2 left-2 w-6 h-6 rounded-full text-white text-[10px] font-black flex items-center justify-center ${idx === 0 ? "bg-[#D73F09]" : "bg-gray-700"}`}>
+                            {idx + 1}
+                          </div>
+                          <input ref={(el: HTMLInputElement | null) => { fileRefs.current[a.id] = el; }}
+                            type="file" accept="image/*,video/*" multiple
+                            onChange={(e) => handleFiles(a.id, e.target.files)} className="hidden" />
+                        </div>
+                        {items.length > 0 && (
+                          <div className="flex gap-1 p-1.5 bg-[#0a0a0a] border-t border-gray-900 overflow-x-auto">
+                            {items.map((m) => (
+                              <div key={m.id} className="relative flex-shrink-0">
+                                <div className={`w-8 h-8 rounded overflow-hidden border ${m.type === "video" ? "border-purple-500" : "border-gray-700"}`}>
+                                  {m.type === "video" && !m.thumbnail_url
+                                    ? <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                                    : <img src={m.thumbnail_url || m.file_url} className="w-full h-full object-cover" alt="" />}
+                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
+                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gray-700 text-white text-[8px] flex items-center justify-center hover:bg-red-600">×</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="p-2 border-t border-gray-900">
+                          <div className="text-[10px] font-black uppercase truncate">{a.name}</div>
+                          <div className="text-[9px] text-gray-600 truncate">{a.school} · {a.bestEngRate.toFixed(1)}% eng.</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Content Gallery Upload */}
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider mb-4">Content Gallery Uploads</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {selectedAthletes.map((a) => {
+                  const items = media[a.id] || [];
+                  const thumb = items[0]?.thumbnail_url || items[0]?.file_url || null;
+                  return (
+                    <div key={a.id} className="bg-[#111] border border-gray-800 rounded-xl overflow-hidden">
+                      <div onClick={() => fileRefs.current[a.id]?.click()}
+                        onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
+                        onDragOver={(e) => e.preventDefault()}
+                        className="aspect-[4/5] max-h-[300px] bg-[#0a0a0a] flex flex-col items-center justify-center gap-2 cursor-pointer relative overflow-hidden">
+                        {thumb && !items[0]?.file_url?.match(/\.(mp4|mov|webm|avi)$/i)
+                          ? <img src={thumb} className="w-full h-full object-cover" alt="" />
+                          : thumb && items[0]?.thumbnail_url
+                            ? <img src={items[0].thumbnail_url} className="w-full h-full object-cover" alt="" />
+                            : items.length > 0
+                              ? <div className="flex flex-col items-center gap-2">
+                                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                  <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">{items.length} file{items.length > 1 ? "s" : ""}</span>
+                                </div>
+                              : <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">Drop files or click</span>}
+                        {items.length > 1 && (
+                          <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 text-white text-[10px] font-bold rounded">{items.length} files</div>
+                        )}
+                        <input ref={(el: HTMLInputElement | null) => { fileRefs.current[a.id] = el; }}
+                          type="file" accept="image/*,video/*" multiple
+                          onChange={(e) => handleFiles(a.id, e.target.files)} className="hidden" />
+                      </div>
+                      {items.length > 0 && (
+                        <div className="flex gap-1 p-2 bg-[#0a0a0a] border-t border-gray-900 overflow-x-auto">
+                          {items.map((m) => (
+                            <div key={m.id} className="relative flex-shrink-0">
+                              <div className={`w-10 h-10 rounded overflow-hidden border-2 ${m.type === "video" ? "border-purple-500" : "border-gray-700"}`}>
+                                {m.type === "video" && !m.thumbnail_url
+                                  ? <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                                  : <img src={m.thumbnail_url || m.file_url} className="w-full h-full object-cover" alt="" />}
+                              </div>
+                              <button onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
+                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gray-700 text-white text-[10px] flex items-center justify-center hover:bg-red-600">×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="p-3 border-t border-gray-900 flex items-center gap-2">
+                        <SchoolBadge school={a.school} size={24} />
+                        <div>
+                          <div className="text-xs font-black uppercase">{a.name}</div>
+                          <div className="text-[10px] text-gray-600">{a.school} · {a.sport}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>

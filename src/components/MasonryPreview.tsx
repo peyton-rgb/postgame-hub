@@ -1,11 +1,13 @@
 "use client";
 
 import { CampaignRecap } from "./CampaignRecap";
+import { Top50Recap } from "./Top50Recap";
 import type { Campaign, Athlete, Media } from "@/lib/types";
 
 export function MasonryPreview({
   campaign,
   athletes,
+  allAthletes,
   media,
   onBack,
   onPublish,
@@ -13,6 +15,7 @@ export function MasonryPreview({
 }: {
   campaign: Campaign;
   athletes: Athlete[];
+  allAthletes?: Athlete[];
   media: Record<string, Media[]>;
   onBack: () => void;
   onPublish: () => void;
@@ -65,7 +68,11 @@ export function MasonryPreview({
       </div>
 
       {/* Exact same component the public page renders */}
-      <CampaignRecap campaign={campaign} athletes={athletes} media={media} />
+      {campaign.settings?.campaign_type === "top_50" ? (
+        <Top50Recap campaign={campaign} athletes={allAthletes || athletes} media={media} />
+      ) : (
+        <CampaignRecap campaign={campaign} athletes={athletes} allAthletes={allAthletes} media={media} />
+      )}
     </div>
   );
 }
