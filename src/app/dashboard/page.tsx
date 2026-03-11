@@ -11,6 +11,8 @@ export default function Dashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newClient, setNewClient] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Campaign | null>(null);
   const supabase = createBrowserSupabase();
 
   useEffect(() => {
@@ -53,6 +55,19 @@ export default function Dashboard() {
     }
   }
 
+  async function deleteCampaign(campaign: Campaign) {
+    setDeleting(campaign.id);
+    // Delete in order: media → athletes → campaign (foreign key constraints)
+    await supabase.from("media").delete().eq("campaign_id", campaign.id);
+    await supabase.from("athletes").delete().eq("campaign_id", campaign.id);
+    const { error } = await supabase.from("campaigns").delete().eq("id", campaign.id);
+    if (!error) {
+      setCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
+    }
+    setDeleting(null);
+    setConfirmDelete(null);
+  }
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -72,6 +87,37 @@ export default function Dashboard() {
       </div>
 
       <div className="p-8">
+        {/* Delete confirmation modal */}
+        {confirmDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <div className="bg-[#111] border border-gray-700 rounded-2xl p-8 w-[420px]">
+              <h2 className="text-lg font-black mb-2">Delete Campaign</h2>
+              <p className="text-sm text-gray-400 mb-1">
+                Are you sure you want to delete <span className="text-white font-bold">{confirmDelete.name}</span>?
+              </p>
+              <p className="text-xs text-red-400/70 mb-6">
+                This will permanently remove the campaign and all its athletes, media, and metrics. This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  disabled={deleting === confirmDelete.id}
+                  className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteCampaign(confirmDelete)}
+                  disabled={deleting === confirmDelete.id}
+                  className="flex-1 px-4 py-3 bg-red-600 rounded-lg text-white font-bold text-sm hover:bg-red-500 disabled:opacity-50"
+                >
+                  {deleting === confirmDelete.id ? "Deleting..." : "Delete Campaign"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Create modal */}
         {showCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -129,24 +175,40 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {campaigns.map((c) => (
-              <Link
+              <div
                 key={c.id}
-                href={`/dashboard/${c.id}`}
-                className="block p-6 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors"
+                className="relative p-6 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors group"
               >
+                <Link href={`/dashboard/${c.id}`} className="absolute inset-0 z-0" />
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
                     {c.client_name}
                   </span>
-                  <span
-                    className={`text-xs font-bold px-2 py-1 rounded ${
-                      c.published
-                        ? "bg-green-900/30 text-green-400"
-                        : "bg-gray-800 text-gray-500"
-                    }`}
-                  >
-                    {c.published ? "Published" : "Draft"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs font-bold px-2 py-1 rounded ${
+                        c.published
+                          ? "bg-green-900/30 text-green-400"
+                          : "bg-gray-800 text-gray-500"
+                      }`}
+                    >
+                      {c.published ? "Published" : "Draft"}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmDelete(c);
+                      }}
+                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Delete campaign"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <h3 className="text-lg font-black mb-2">{c.name}</h3>
                 <p className="text-xs text-gray-600">
@@ -157,7 +219,7 @@ export default function Dashboard() {
                     </span>
                   )}
                 </p>
-              </Link>
+              </div>
             ))}
           </div>
         )}
