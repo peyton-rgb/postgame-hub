@@ -56,18 +56,78 @@ function parseCSVLine(line: string): string[] {
 // Find the column index by matching against possible header names (case-insensitive)
 function findCol(headers: string[], ...names: string[]): number {
   for (const name of names) {
-    const lower = name.toLowerCase();
-    const idx = headers.findIndex((h) => h.toLowerCase().replace(/[^a-z0-9]/g, "").includes(lower.replace(/[^a-z0-9]/g, "")));
+    const lower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const idx = headers.findIndex((h) => {
+      const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return hClean === lower || hClean.includes(lower) || lower.includes(hClean);
+    });
     if (idx !== -1) return idx;
   }
   return -1;
 }
 
-export function parsePerformanceCSV(csvText: string): ParsedAthlete[] {
+/**
+ * Parse an Info/Roster CSV — athlete identity data
+ * Expected columns: First, Last, IG Handle, School, Sport, Gender, Notes (flexible matching)
+ */
+export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
 
-  // Parse header row to find column indices by name
+  const headers = parseCSVLine(lines[0]);
+
+  const iFirst = findCol(headers, "first", "firstname", "first name");
+  const iLast = findCol(headers, "last", "lastname", "last name");
+  const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram");
+  const iFollowers = findCol(headers, "ig followers", "followers", "ig_followers");
+  const iReachLevel = findCol(headers, "reach level", "reach_level", "reachlevel");
+  const iSchool = findCol(headers, "school", "university", "college");
+  const iSport = findCol(headers, "sport", "sports");
+  const iGender = findCol(headers, "gender", "sex");
+  const iNotes = findCol(headers, "notes", "note", "bio", "insight", "description");
+
+  const cFirst = iFirst !== -1 ? iFirst : 0;
+  const cLast = iLast !== -1 ? iLast : 1;
+
+  const titleCase = (s: string) =>
+    s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+
+  const athletes: ParsedAthlete[] = [];
+
+  for (const line of lines.slice(1)) {
+    const cols = parseCSVLine(line);
+    const first = cols[cFirst]?.trim() || "";
+    const last = cols[cLast]?.trim() || "";
+    if (!first || !last) continue;
+    if (first.toUpperCase().includes("CALCULATIONS")) continue;
+    if (first.toUpperCase().includes("DO NOT")) continue;
+
+    athletes.push({
+      first: titleCase(first),
+      last: titleCase(last),
+      name: `${titleCase(first)} ${titleCase(last)}`,
+      ig_handle: iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "",
+      ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
+      reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
+      school: iSchool !== -1 ? (cols[iSchool]?.trim() || "") : "",
+      sport: iSport !== -1 ? (cols[iSport]?.trim() || "") : "",
+      gender: iGender !== -1 ? (cols[iGender]?.trim() || "") : "",
+      notes: iNotes !== -1 ? (cols[iNotes]?.trim() || "") : "",
+      metrics: {},
+    });
+  }
+
+  return athletes;
+}
+
+/**
+ * Parse a Metrics/Performance CSV — engagement and post data
+ * Expected columns: First, Last, IG Followers, IG Feed Post, Engagement Rate, etc.
+ */
+export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return [];
+
   const headers = parseCSVLine(lines[0]);
 
   // Core identity columns
@@ -81,21 +141,24 @@ export function parsePerformanceCSV(csvText: string): ParsedAthlete[] {
   const iGender = findCol(headers, "gender", "sex");
   const iNotes = findCol(headers, "notes", "note", "bio", "insight", "description");
 
-  // IG Feed columns
-  const iIgFeedUrl = findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url");
+  // IG Feed columns — flexible matching for variations like "IG Feed 1 Impressions"
+  const iIgFeedUrl = findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
   const iIgFeedReach = findCol(headers, "ig feed reach", "feed reach");
-  const iIgFeedImpressions = findCol(headers, "ig feed impressions", "feed impressions");
-  const iIgFeedLikes = findCol(headers, "ig feed likes", "feed likes");
-  const iIgFeedComments = findCol(headers, "ig feed comments", "feed comments");
+  const iIgFeedImpressions = findCol(headers, "ig feed impressions", "ig feed 1 impressions", "feed impressions");
+  const iIgFeedLikes = findCol(headers, "ig feed likes", "ig feed 1 likes", "feed likes");
+  const iIgFeedComments = findCol(headers, "ig feed comments", "ig feed 1 comments", "feed comments");
+  // Match "Total Engagement" (feed) — but be careful not to match the reel one
+  // We find the first "total engagement" that appears after the feed columns
   const iIgFeedEngagements = findCol(headers, "ig feed total engagements", "feed total engagements", "ig feed engagements", "feed engagements");
+  // Match first "Engagement Rate" column (feed)
   const iIgFeedEngRate = findCol(headers, "ig feed engagement rate", "feed engagement rate", "ig feed eng rate", "feed eng rate");
 
   // IG Story columns
-  const iIgStoryCount = findCol(headers, "ig story count", "story count", "ig stories count", "stories count", "ig story");
+  const iIgStoryCount = findCol(headers, "ig story count", "story count", "ig stories count", "stories count", "ig story post", "ig story");
   const iIgStoryImpressions = findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions");
 
   // IG Reel columns
-  const iIgReelUrl = findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url");
+  const iIgReelUrl = findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post");
   const iIgReelViews = findCol(headers, "ig reel views", "reel views", "ig reels views", "reels views");
   const iIgReelLikes = findCol(headers, "ig reel likes", "reel likes", "ig reels likes", "reels likes");
   const iIgReelComments = findCol(headers, "ig reel comments", "reel comments", "ig reels comments", "reels comments");
@@ -110,42 +173,40 @@ export function parsePerformanceCSV(csvText: string): ParsedAthlete[] {
   const iTiktokEngagements = findCol(headers, "tiktok total engagements", "tiktok engagements", "tt total engagements", "tt engagements");
   const iTiktokEngRate = findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate");
 
-  // Fallback: if header matching failed, use positional indices (original layout)
-  const col = (found: number, fallback: number) => found !== -1 ? found : fallback;
+  // For columns that have duplicate names (e.g. two "Engagement Rate" columns),
+  // find them positionally — first occurrence is feed, second is reel
+  let feedEngRateIdx = iIgFeedEngRate;
+  let reelEngRateIdx = iIgReelEngRate;
+  let feedTotalEngIdx = iIgFeedEngagements;
+  let reelTotalEngIdx = iIgReelEngagements;
 
-  const cFirst = col(iFirst, 0);
-  const cLast = col(iLast, 1);
-  const cHandle = col(iHandle, 2);
-  const cFollowers = col(iFollowers, 3);
-  const cReachLevel = col(iReachLevel, 4);
-  const cSchool = col(iSchool, 27);
-  const cSport = col(iSport, 28);
-  const cGender = col(iGender, 29);
+  // Handle duplicate "Engagement Rate" columns by position
+  if (feedEngRateIdx === -1 || reelEngRateIdx === -1) {
+    const engRateIndices: number[] = [];
+    headers.forEach((h, i) => {
+      const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (clean === "engagementrate") engRateIndices.push(i);
+    });
+    if (engRateIndices.length >= 1 && feedEngRateIdx === -1) feedEngRateIdx = engRateIndices[0];
+    if (engRateIndices.length >= 2 && reelEngRateIdx === -1) reelEngRateIdx = engRateIndices[1];
+  }
 
-  const cIgFeedUrl = col(iIgFeedUrl, 5);
-  const cIgFeedReach = col(iIgFeedReach, 6);
-  const cIgFeedImpressions = col(iIgFeedImpressions, 7);
-  const cIgFeedLikes = col(iIgFeedLikes, 8);
-  const cIgFeedComments = col(iIgFeedComments, 9);
-  const cIgFeedEngagements = col(iIgFeedEngagements, 10);
-  const cIgFeedEngRate = col(iIgFeedEngRate, 11);
+  // Handle duplicate "Total Engagements" columns by position
+  if (feedTotalEngIdx === -1 || reelTotalEngIdx === -1) {
+    const totalEngIndices: number[] = [];
+    headers.forEach((h, i) => {
+      const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (clean === "totalengagement" || clean === "totalengagements") totalEngIndices.push(i);
+    });
+    if (totalEngIndices.length >= 1 && feedTotalEngIdx === -1) feedTotalEngIdx = totalEngIndices[0];
+    if (totalEngIndices.length >= 2 && reelTotalEngIdx === -1) reelTotalEngIdx = totalEngIndices[1];
+  }
 
-  const cIgStoryCount = col(iIgStoryCount, 12);
-  const cIgStoryImpressions = col(iIgStoryImpressions, 13);
+  const cFirst = iFirst !== -1 ? iFirst : 0;
+  const cLast = iLast !== -1 ? iLast : 1;
 
-  const cIgReelUrl = col(iIgReelUrl, 15);
-  const cIgReelViews = col(iIgReelViews, 16);
-  const cIgReelLikes = col(iIgReelLikes, 17);
-  const cIgReelComments = col(iIgReelComments, 18);
-  const cIgReelEngagements = col(iIgReelEngagements, 19);
-  const cIgReelEngRate = col(iIgReelEngRate, 20);
-
-  const cTiktokUrl = col(iTiktokUrl, 21);
-  const cTiktokViews = col(iTiktokViews, 22);
-  const cTiktokLikesComments = col(iTiktokLikesComments, 23);
-  const cTiktokSavesShares = col(iTiktokSavesShares, 24);
-  const cTiktokEngagements = col(iTiktokEngagements, 25);
-  const cTiktokEngRate = col(iTiktokEngRate, 26);
+  const titleCase = (s: string) =>
+    s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
   const dataRows = lines.slice(1);
   const athletes: ParsedAthlete[] = [];
@@ -161,63 +222,111 @@ export function parsePerformanceCSV(csvText: string): ParsedAthlete[] {
     if (first.toUpperCase().includes("CALCULATIONS")) continue;
     if (first.toUpperCase().includes("DO NOT")) continue;
 
-    const school = cols[cSchool]?.trim() || "";
-    const sport = cols[cSport]?.trim() || "";
-    if (!school && !sport) continue;
-
-    const igFeedUrl = cols[cIgFeedUrl]?.trim() || undefined;
-    const igReelUrl = cols[cIgReelUrl]?.trim() || undefined;
-    const tiktokUrl = cols[cTiktokUrl]?.trim() || undefined;
+    const getVal = (idx: number) => idx !== -1 ? cols[idx] : undefined;
 
     const metrics: AthleteMetrics = {
       ig_feed: {
-        post_url: igFeedUrl,
-        reach: parseNum(cols[cIgFeedReach]),
-        impressions: parseNum(cols[cIgFeedImpressions]),
-        likes: parseNum(cols[cIgFeedLikes]),
-        comments: parseNum(cols[cIgFeedComments]),
-        total_engagements: parseNum(cols[cIgFeedEngagements]),
-        engagement_rate: parseRate(cols[cIgFeedEngRate]),
+        post_url: getVal(iIgFeedUrl)?.trim() || undefined,
+        reach: parseNum(getVal(iIgFeedReach)),
+        impressions: parseNum(getVal(iIgFeedImpressions)),
+        likes: parseNum(getVal(iIgFeedLikes)),
+        comments: parseNum(getVal(iIgFeedComments)),
+        total_engagements: parseNum(getVal(feedTotalEngIdx)),
+        engagement_rate: parseRate(getVal(feedEngRateIdx)),
       },
       ig_story: {
-        count: parseNum(cols[cIgStoryCount]),
-        impressions: parseNum(cols[cIgStoryImpressions]),
+        count: parseNum(getVal(iIgStoryCount)),
+        impressions: parseNum(getVal(iIgStoryImpressions)),
       },
       ig_reel: {
-        post_url: igReelUrl,
-        views: parseNum(cols[cIgReelViews]),
-        likes: parseNum(cols[cIgReelLikes]),
-        comments: parseNum(cols[cIgReelComments]),
-        total_engagements: parseNum(cols[cIgReelEngagements]),
-        engagement_rate: parseRate(cols[cIgReelEngRate]),
+        post_url: getVal(iIgReelUrl)?.trim() || undefined,
+        views: parseNum(getVal(iIgReelViews)),
+        likes: parseNum(getVal(iIgReelLikes)),
+        comments: parseNum(getVal(iIgReelComments)),
+        total_engagements: parseNum(getVal(reelTotalEngIdx)),
+        engagement_rate: parseRate(getVal(reelEngRateIdx)),
       },
       tiktok: {
-        post_url: tiktokUrl,
-        views: parseNum(cols[cTiktokViews]),
-        likes_comments: parseNum(cols[cTiktokLikesComments]),
-        saves_shares: parseNum(cols[cTiktokSavesShares]),
-        total_engagements: parseNum(cols[cTiktokEngagements]),
-        engagement_rate: parseRate(cols[cTiktokEngRate]),
+        post_url: getVal(iTiktokUrl)?.trim() || undefined,
+        views: parseNum(getVal(iTiktokViews)),
+        likes_comments: parseNum(getVal(iTiktokLikesComments)),
+        saves_shares: parseNum(getVal(iTiktokSavesShares)),
+        total_engagements: parseNum(getVal(iTiktokEngagements)),
+        engagement_rate: parseRate(getVal(iTiktokEngRate)),
       },
     };
-
-    const titleCase = (s: string) =>
-      s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
     athletes.push({
       first: titleCase(first),
       last: titleCase(last),
       name: `${titleCase(first)} ${titleCase(last)}`,
-      ig_handle: cols[cHandle]?.trim() || "",
-      ig_followers: parseNum(cols[cFollowers]) || 0,
-      reach_level: cols[cReachLevel]?.trim() || "",
-      school,
-      sport,
-      gender: cols[cGender]?.trim() || "",
+      ig_handle: iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "",
+      ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
+      reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
+      school: iSchool !== -1 ? (cols[iSchool]?.trim() || "") : "",
+      sport: iSport !== -1 ? (cols[iSport]?.trim() || "") : "",
+      gender: iGender !== -1 ? (cols[iGender]?.trim() || "") : "",
       notes: iNotes !== -1 ? (cols[iNotes]?.trim() || "") : "",
       metrics,
     });
   }
 
   return athletes;
+}
+
+/**
+ * Merge info and metrics parsed athletes by name match.
+ * Info provides identity (school, sport, handle, etc.), metrics provides performance data.
+ * Either can be empty — the other will be used as-is.
+ */
+export function mergeAthleteData(info: ParsedAthlete[], metrics: ParsedAthlete[]): ParsedAthlete[] {
+  if (!info.length) return metrics;
+  if (!metrics.length) return info;
+
+  const merged: ParsedAthlete[] = [];
+  const metricsMap = new Map<string, ParsedAthlete>();
+
+  for (const m of metrics) {
+    metricsMap.set(m.name.toLowerCase(), m);
+  }
+
+  const usedMetrics = new Set<string>();
+
+  for (const inf of info) {
+    const key = inf.name.toLowerCase();
+    const met = metricsMap.get(key);
+
+    if (met) {
+      usedMetrics.add(key);
+      merged.push({
+        ...inf,
+        // Prefer info CSV for identity, but fill gaps from metrics
+        ig_handle: inf.ig_handle || met.ig_handle,
+        ig_followers: inf.ig_followers || met.ig_followers,
+        reach_level: inf.reach_level || met.reach_level,
+        school: inf.school || met.school,
+        sport: inf.sport || met.sport,
+        gender: inf.gender || met.gender,
+        notes: inf.notes || met.notes,
+        // Always use metrics CSV for performance data
+        metrics: met.metrics,
+      });
+    } else {
+      merged.push(inf);
+    }
+  }
+
+  // Add any metrics athletes not in info CSV
+  for (const met of metrics) {
+    if (!usedMetrics.has(met.name.toLowerCase())) {
+      merged.push(met);
+    }
+  }
+
+  return merged;
+}
+
+// Legacy function — kept for backward compatibility
+export function parsePerformanceCSV(csvText: string): ParsedAthlete[] {
+  return parseMetricsCSV(csvText);
 }

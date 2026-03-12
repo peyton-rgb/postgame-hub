@@ -7,7 +7,7 @@ import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
 import { SchoolBadge } from "@/components/SchoolBadge";
 import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { MasonryPreview } from "@/components/MasonryPreview";
-import { parsePerformanceCSV, type ParsedAthlete } from "@/lib/csv-parser";
+import { parseInfoCSV, parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
 import Link from "next/link";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
@@ -97,10 +97,14 @@ export default function CampaignEditor() {
   // Brand logo state
   const [brandLogoUrl, setBrandLogoUrl] = useState("");
 
-  // CSV state
+  // CSV state — two files that merge
+  const [infoParsed, setInfoParsed] = useState<ParsedAthlete[]>([]);
+  const [metricsParsed, setMetricsParsed] = useState<ParsedAthlete[]>([]);
   const [csvParsed, setCsvParsed] = useState<ParsedAthlete[]>([]);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvDone, setCsvDone] = useState(false);
+  const [infoFileName, setInfoFileName] = useState("");
+  const [metricsFileName, setMetricsFileName] = useState("");
 
   useEffect(() => { loadData(); }, [id]);
 
@@ -157,12 +161,27 @@ export default function CampaignEditor() {
     setSavingInfo(false);
   }
 
-  function handleCSVFile(file: File) {
+  function handleInfoCSV(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const parsed = parsePerformanceCSV(text);
-      setCsvParsed(parsed);
+      const parsed = parseInfoCSV(text);
+      setInfoParsed(parsed);
+      setInfoFileName(file.name);
+      setCsvParsed(mergeAthleteData(parsed, metricsParsed));
+      setCsvDone(false);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleMetricsCSV(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const parsed = parseMetricsCSV(text);
+      setMetricsParsed(parsed);
+      setMetricsFileName(file.name);
+      setCsvParsed(mergeAthleteData(infoParsed, parsed));
       setCsvDone(false);
     };
     reader.readAsText(file);
@@ -408,23 +427,66 @@ export default function CampaignEditor() {
         {/* ── STEP 1: CSV Upload ────────────────────────────── */}
         {step === 1 && (
           <div className="max-w-4xl space-y-6">
-            <div
-              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
-              onDragOver={(e) => e.preventDefault()}
-              className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center cursor-pointer hover:border-[#D73F09]/50"
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = ".csv";
-                input.onchange = (e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0];
-                  if (f) handleCSVFile(f);
-                };
-                input.click();
-              }}
-            >
-              <div className="text-sm font-bold text-gray-400 mb-1">Drop CSV here or click to upload</div>
-              <div className="text-xs text-gray-600">Adidas Performance Tracker format</div>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Info CSV Upload */}
+              <div
+                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleInfoCSV(f); }}
+                onDragOver={(e) => e.preventDefault()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${infoFileName ? "border-green-600/50 bg-green-600/5" : "border-gray-700 hover:border-[#D73F09]/50"}`}
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = ".csv";
+                  input.onchange = (e) => {
+                    const f = (e.target as HTMLInputElement).files?.[0];
+                    if (f) handleInfoCSV(f);
+                  };
+                  input.click();
+                }}
+              >
+                <div className="text-xs font-black uppercase tracking-wider text-[#D73F09] mb-3">1. Campaign Info</div>
+                {infoFileName ? (
+                  <>
+                    <div className="text-sm font-bold text-green-400 mb-1">{infoFileName}</div>
+                    <div className="text-xs text-gray-500">{infoParsed.length} athletes found · Click to replace</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-bold text-gray-400 mb-1">Drop CSV or click to upload</div>
+                    <div className="text-xs text-gray-600">Athlete roster — name, handle, school, sport</div>
+                  </>
+                )}
+              </div>
+
+              {/* Metrics CSV Upload */}
+              <div
+                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleMetricsCSV(f); }}
+                onDragOver={(e) => e.preventDefault()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${metricsFileName ? "border-green-600/50 bg-green-600/5" : "border-gray-700 hover:border-[#D73F09]/50"}`}
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = ".csv";
+                  input.onchange = (e) => {
+                    const f = (e.target as HTMLInputElement).files?.[0];
+                    if (f) handleMetricsCSV(f);
+                  };
+                  input.click();
+                }}
+              >
+                <div className="text-xs font-black uppercase tracking-wider text-[#D73F09] mb-3">2. Campaign Metrics</div>
+                {metricsFileName ? (
+                  <>
+                    <div className="text-sm font-bold text-green-400 mb-1">{metricsFileName}</div>
+                    <div className="text-xs text-gray-500">{metricsParsed.length} athletes found · Click to replace</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-bold text-gray-400 mb-1">Drop CSV or click to upload</div>
+                    <div className="text-xs text-gray-600">Performance data — engagement, reach, post URLs</div>
+                  </>
+                )}
+              </div>
             </div>
 
             {csvParsed.length > 0 && (
