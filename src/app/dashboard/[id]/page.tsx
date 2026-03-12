@@ -354,8 +354,8 @@ export default function CampaignEditor() {
     .slice(0, 5);
 
   const steps = [
-    { n: 1, title: "Campaign Info", desc: "Brief, tags & section visibility" },
-    { n: 2, title: "Import CSV", desc: "Upload performance data" },
+    { n: 1, title: "Import CSV", desc: "Upload performance data" },
+    { n: 2, title: "Campaign Info", desc: "Brief, tags & section visibility" },
     { n: 3, title: "Select Posts", desc: "Choose athletes to feature" },
     { n: 4, title: "Upload Content", desc: "Add images & videos" },
   ];
@@ -405,8 +405,71 @@ export default function CampaignEditor() {
       {/* Content */}
       <div className="p-8 pb-24">
 
-        {/* ── STEP 1: Campaign Info ─────────────────────────── */}
+        {/* ── STEP 1: CSV Upload ────────────────────────────── */}
         {step === 1 && (
+          <div className="max-w-4xl space-y-6">
+            <div
+              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
+              onDragOver={(e) => e.preventDefault()}
+              className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center cursor-pointer hover:border-[#D73F09]/50"
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".csv";
+                input.onchange = (e) => {
+                  const f = (e.target as HTMLInputElement).files?.[0];
+                  if (f) handleCSVFile(f);
+                };
+                input.click();
+              }}
+            >
+              <div className="text-sm font-bold text-gray-400 mb-1">Drop CSV here or click to upload</div>
+              <div className="text-xs text-gray-600">Adidas Performance Tracker format</div>
+            </div>
+
+            {csvParsed.length > 0 && (
+              <>
+                <div className="text-sm font-bold text-gray-300">{csvParsed.length} athletes parsed</div>
+                <div className="overflow-x-auto border border-gray-800 rounded-xl">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-800 text-left">
+                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Name</th>
+                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Handle</th>
+                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Followers</th>
+                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">School</th>
+                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Sport</th>
+                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">IG Feed Eng.</th>
+                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">IG Reel Eng.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvParsed.map((a, i) => (
+                        <tr key={i} className="border-b border-gray-800/50">
+                          <td className="px-3 py-2 font-bold text-white">{a.name}</td>
+                          <td className="px-3 py-2 text-gray-400">@{a.ig_handle}</td>
+                          <td className="px-3 py-2 text-gray-400">{a.ig_followers.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-gray-400">{a.school}</td>
+                          <td className="px-3 py-2 text-gray-400">{a.sport}</td>
+                          <td className="px-3 py-2 text-gray-400">{a.metrics.ig_feed?.engagement_rate != null ? a.metrics.ig_feed.engagement_rate + "%" : "—"}</td>
+                          <td className="px-3 py-2 text-gray-400">{a.metrics.ig_reel?.engagement_rate != null ? a.metrics.ig_reel.engagement_rate + "%" : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <button onClick={importCSV} disabled={csvImporting || csvDone}
+                  className={`px-6 py-2.5 rounded-lg text-sm font-bold text-white ${csvDone ? "bg-green-600" : "bg-[#D73F09] hover:bg-[#c43808]"} disabled:opacity-50`}>
+                  {csvImporting ? "Importing..." : csvDone ? "Imported Successfully" : "Import Athletes & Metrics"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── STEP 2: Campaign Info ─────────────────────────── */}
+        {step === 2 && (
           <div className="max-w-3xl space-y-6">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Description</label>
@@ -538,69 +601,6 @@ export default function CampaignEditor() {
               className="px-6 py-2.5 bg-[#D73F09] rounded-lg text-sm font-bold text-white hover:bg-[#c43808] disabled:opacity-50">
               {savingInfo ? "Saving..." : "Save Campaign Info"}
             </button>
-          </div>
-        )}
-
-        {/* ── STEP 2: CSV Upload ───────────────────────────── */}
-        {step === 2 && (
-          <div className="max-w-4xl space-y-6">
-            <div
-              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
-              onDragOver={(e) => e.preventDefault()}
-              className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center cursor-pointer hover:border-[#D73F09]/50"
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = ".csv";
-                input.onchange = (e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0];
-                  if (f) handleCSVFile(f);
-                };
-                input.click();
-              }}
-            >
-              <div className="text-sm font-bold text-gray-400 mb-1">Drop CSV here or click to upload</div>
-              <div className="text-xs text-gray-600">Adidas Performance Tracker format</div>
-            </div>
-
-            {csvParsed.length > 0 && (
-              <>
-                <div className="text-sm font-bold text-gray-300">{csvParsed.length} athletes parsed</div>
-                <div className="overflow-x-auto border border-gray-800 rounded-xl">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-gray-800 text-left">
-                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Name</th>
-                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Handle</th>
-                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Followers</th>
-                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">School</th>
-                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">Sport</th>
-                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">IG Feed Eng.</th>
-                        <th className="px-3 py-2 text-gray-500 font-bold uppercase">IG Reel Eng.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {csvParsed.map((a, i) => (
-                        <tr key={i} className="border-b border-gray-800/50">
-                          <td className="px-3 py-2 font-bold text-white">{a.name}</td>
-                          <td className="px-3 py-2 text-gray-400">@{a.ig_handle}</td>
-                          <td className="px-3 py-2 text-gray-400">{a.ig_followers.toLocaleString()}</td>
-                          <td className="px-3 py-2 text-gray-400">{a.school}</td>
-                          <td className="px-3 py-2 text-gray-400">{a.sport}</td>
-                          <td className="px-3 py-2 text-gray-400">{a.metrics.ig_feed?.engagement_rate != null ? a.metrics.ig_feed.engagement_rate + "%" : "—"}</td>
-                          <td className="px-3 py-2 text-gray-400">{a.metrics.ig_reel?.engagement_rate != null ? a.metrics.ig_reel.engagement_rate + "%" : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <button onClick={importCSV} disabled={csvImporting || csvDone}
-                  className={`px-6 py-2.5 rounded-lg text-sm font-bold text-white ${csvDone ? "bg-green-600" : "bg-[#D73F09] hover:bg-[#c43808]"} disabled:opacity-50`}>
-                  {csvImporting ? "Importing..." : csvDone ? "Imported Successfully" : "Import Athletes & Metrics"}
-                </button>
-              </>
-            )}
           </div>
         )}
 
