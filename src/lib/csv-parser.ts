@@ -57,8 +57,10 @@ function parseCSVLine(line: string): string[] {
 function findCol(headers: string[], ...names: string[]): number {
   for (const name of names) {
     const lower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!lower) continue;
     const idx = headers.findIndex((h) => {
       const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!hClean) return false; // Skip empty headers
       return hClean === lower || hClean.includes(lower) || lower.includes(hClean);
     });
     if (idx !== -1) return idx;

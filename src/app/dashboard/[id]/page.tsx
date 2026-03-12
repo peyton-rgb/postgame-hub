@@ -7,7 +7,7 @@ import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
 import { SchoolBadge } from "@/components/SchoolBadge";
 import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { MasonryPreview } from "@/components/MasonryPreview";
-import { parseInfoCSV, parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
+import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
 import Link from "next/link";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
@@ -200,7 +200,7 @@ export default function CampaignEditor() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const parsed = parseInfoCSV(text);
+      const parsed = parseMetricsCSV(text);
       setInfoParsed(parsed);
       setInfoFileName(file.name);
       setCsvParsed(mergeAthleteData(parsed, metricsParsed));
