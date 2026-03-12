@@ -89,8 +89,11 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const cFirst = iFirst !== -1 ? iFirst : 0;
   const cLast = iLast !== -1 ? iLast : 1;
 
+  const UPPER_WORDS = new Set(["II", "III", "IV", "V", "JR", "SR", "JR.", "SR."]);
   const titleCase = (s: string) =>
-    s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    s.split(/\s+/).map((w) =>
+      UPPER_WORDS.has(w.toUpperCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+    ).join(" ");
 
   const athletes: ParsedAthlete[] = [];
 
@@ -205,8 +208,11 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const cFirst = iFirst !== -1 ? iFirst : 0;
   const cLast = iLast !== -1 ? iLast : 1;
 
+  const UPPER_WORDS = new Set(["II", "III", "IV", "V", "JR", "SR", "JR.", "SR."]);
   const titleCase = (s: string) =>
-    s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    s.split(/\s+/).map((w) =>
+      UPPER_WORDS.has(w.toUpperCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+    ).join(" ");
 
   const dataRows = lines.slice(1);
   const athletes: ParsedAthlete[] = [];
@@ -274,6 +280,11 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   return athletes;
 }
 
+// Normalize name for matching — strips extra spaces, lowercases, handles suffixes
+function normalizeNameKey(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 /**
  * Merge info and metrics parsed athletes by name match.
  * Info provides identity (school, sport, handle, etc.), metrics provides performance data.
@@ -287,13 +298,13 @@ export function mergeAthleteData(info: ParsedAthlete[], metrics: ParsedAthlete[]
   const metricsMap = new Map<string, ParsedAthlete>();
 
   for (const m of metrics) {
-    metricsMap.set(m.name.toLowerCase(), m);
+    metricsMap.set(normalizeNameKey(m.name), m);
   }
 
   const usedMetrics = new Set<string>();
 
   for (const inf of info) {
-    const key = inf.name.toLowerCase();
+    const key = normalizeNameKey(inf.name);
     const met = metricsMap.get(key);
 
     if (met) {
@@ -318,7 +329,7 @@ export function mergeAthleteData(info: ParsedAthlete[], metrics: ParsedAthlete[]
 
   // Add any metrics athletes not in info CSV
   for (const met of metrics) {
-    if (!usedMetrics.has(met.name.toLowerCase())) {
+    if (!usedMetrics.has(normalizeNameKey(met.name))) {
       merged.push(met);
     }
   }
