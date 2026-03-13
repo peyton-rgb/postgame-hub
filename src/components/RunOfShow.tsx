@@ -352,6 +352,36 @@ export function RunOfShow({ shoot }: { shoot: Shoot }) {
           </div>
         </div>
 
+        {/* Example Videos */}
+        <div className="mb-10">
+          <h2 className="text-xl font-black mb-5 flex items-center gap-2 text-gray-900">
+            <span className="w-2 h-2 rounded-full bg-[#D73F09] inline-block" />
+            Example Videos
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                className="w-full aspect-[9/16] object-cover bg-black"
+              >
+                <source src="/example-1.mp4" type="video/mp4" />
+              </video>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                className="w-full aspect-[9/16] object-cover bg-black"
+              >
+                <source src="/example-2.mp4" type="video/mp4" />
+              </video>
+            </div>
+          </div>
+        </div>
+
         {/* Shot List */}
         <div className="mb-10">
           <h2 className="text-xl font-black mb-5 flex items-center gap-2 text-gray-900">
