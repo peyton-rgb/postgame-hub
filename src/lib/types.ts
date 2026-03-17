@@ -60,6 +60,19 @@ export interface AthleteMetrics {
     total_engagements?: number;
     engagement_rate?: number;
   };
+  clicks?: {
+    link_clicks?: number;
+    click_through_rate?: number;
+    landing_page_views?: number;
+    cost_per_click?: number;
+  };
+  sales?: {
+    conversions?: number;
+    revenue?: number;
+    conversion_rate?: number;
+    cost_per_acquisition?: number;
+    roas?: number;
+  };
 }
 
 export interface Athlete {

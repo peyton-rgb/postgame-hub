@@ -22,7 +22,7 @@ interface EditableRow {
   metrics: AthleteMetrics;
 }
 
-type PlatformTab = "identity" | "ig_feed" | "ig_story" | "ig_reel" | "tiktok";
+type PlatformTab = "identity" | "ig_feed" | "ig_story" | "ig_reel" | "tiktok" | "clicks" | "sales";
 
 interface Props {
   athletes: Athlete[];
@@ -155,21 +155,59 @@ const TIKTOK_COLS: ColDef[] = [
     setValue: (r) => r },
 ];
 
+const CLICKS_COLS: ColDef[] = [
+  { key: "clicks_link_clicks", label: "Link Clicks", type: "number", width: "100px",
+    getValue: (r) => metricVal(r.metrics, "clicks", "link_clicks"),
+    setValue: (r, v) => setMetricVal(r, "clicks", "link_clicks", v) },
+  { key: "clicks_ctr", label: "CTR %", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "clicks", "click_through_rate"),
+    setValue: (r, v) => setMetricVal(r, "clicks", "click_through_rate", v) },
+  { key: "clicks_lpv", label: "Landing Page Views", type: "number", width: "140px",
+    getValue: (r) => metricVal(r.metrics, "clicks", "landing_page_views"),
+    setValue: (r, v) => setMetricVal(r, "clicks", "landing_page_views", v) },
+  { key: "clicks_cpc", label: "CPC ($)", type: "number", width: "90px",
+    getValue: (r) => metricVal(r.metrics, "clicks", "cost_per_click"),
+    setValue: (r, v) => setMetricVal(r, "clicks", "cost_per_click", v) },
+];
+
+const SALES_COLS: ColDef[] = [
+  { key: "sales_conversions", label: "Conversions", type: "number", width: "100px",
+    getValue: (r) => metricVal(r.metrics, "sales", "conversions"),
+    setValue: (r, v) => setMetricVal(r, "sales", "conversions", v) },
+  { key: "sales_revenue", label: "Revenue ($)", type: "number", width: "110px",
+    getValue: (r) => metricVal(r.metrics, "sales", "revenue"),
+    setValue: (r, v) => setMetricVal(r, "sales", "revenue", v) },
+  { key: "sales_conv_rate", label: "Conv. Rate %", type: "number", width: "100px",
+    getValue: (r) => metricVal(r.metrics, "sales", "conversion_rate"),
+    setValue: (r, v) => setMetricVal(r, "sales", "conversion_rate", v) },
+  { key: "sales_cpa", label: "CPA ($)", type: "number", width: "90px",
+    getValue: (r) => metricVal(r.metrics, "sales", "cost_per_acquisition"),
+    setValue: (r, v) => setMetricVal(r, "sales", "cost_per_acquisition", v) },
+  { key: "sales_roas", label: "ROAS", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "sales", "roas"),
+    setValue: (r, v) => setMetricVal(r, "sales", "roas", v) },
+];
+
 const TAB_COLS: Record<PlatformTab, ColDef[]> = {
   identity: IDENTITY_COLS,
   ig_feed: IG_FEED_COLS,
   ig_story: IG_STORY_COLS,
   ig_reel: IG_REEL_COLS,
   tiktok: TIKTOK_COLS,
+  clicks: CLICKS_COLS,
+  sales: SALES_COLS,
 };
 
-const TABS: { key: PlatformTab; label: string; color: string }[] = [
+const BASE_TABS: { key: PlatformTab; label: string; color: string }[] = [
   { key: "identity", label: "Identity", color: "#D73F09" },
   { key: "ig_feed", label: "IG Feed", color: "#E1306C" },
   { key: "ig_story", label: "IG Story", color: "#58C322" },
   { key: "ig_reel", label: "IG Reel", color: "#A855F7" },
   { key: "tiktok", label: "TikTok", color: "#00F2EA" },
 ];
+
+const CLICKS_TAB = { key: "clicks" as PlatformTab, label: "Clicks", color: "#F59E0B" };
+const SALES_TAB = { key: "sales" as PlatformTab, label: "Sales", color: "#10B981" };
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -213,9 +251,10 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<PlatformTab>("identity");
   const [isDirty, setIsDirty] = useState(false);
-  const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvFileName, setCsvFileName] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
+  const dragCounter = useRef(0);
 
   // Sync rows when athletes prop changes (e.g. after save reloads data)
   useEffect(() => {
@@ -248,6 +287,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
 
   // CSV bulk import
   const handleCsvFile = useCallback((file: File) => {
+    if (!file.name.endsWith(".csv")) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -257,7 +297,6 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
       setCsvFileName(file.name);
 
       setRows((prev) => {
-        // Merge parsed into existing rows by name
         const existing = new Map<string, number>();
         prev.forEach((r, i) => {
           if (r.name.trim()) existing.set(r.name.toLowerCase().trim(), i);
@@ -271,7 +310,6 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
           const existingIdx = existing.get(key);
 
           if (existingIdx != null) {
-            // Merge into existing row
             const row = updated[existingIdx];
             updated[existingIdx] = {
               ...row,
@@ -284,7 +322,6 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               metrics: autoFillMetrics(pa.metrics),
             };
           } else {
-            // Add new row
             newRows.push({
               _key: `csv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               _isNew: true,
@@ -305,10 +342,51 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
       });
 
       setIsDirty(true);
-      setShowCsvImport(false);
+      setIsDragging(false);
     };
     reader.readAsText(file);
   }, []);
+
+  // Global drag handlers for the entire component
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current++;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    const f = e.dataTransfer.files[0];
+    if (f) handleCsvFile(f);
+    else setIsDragging(false);
+  }, [handleCsvFile]);
+
+  // Determine which tabs to show based on data
+  const hasClicksData = rows.some((r) => {
+    const c = r.metrics?.clicks;
+    return c && (c.link_clicks != null || c.click_through_rate != null || c.landing_page_views != null || c.cost_per_click != null);
+  });
+  const hasSalesData = rows.some((r) => {
+    const s = r.metrics?.sales;
+    return s && (s.conversions != null || s.revenue != null || s.conversion_rate != null || s.cost_per_acquisition != null || s.roas != null);
+  });
+
+  const tabs = [
+    ...BASE_TABS,
+    ...(hasClicksData ? [CLICKS_TAB] : []),
+    ...(hasSalesData ? [SALES_TAB] : []),
+  ];
 
   const cols = TAB_COLS[activeTab];
   const newCount = rows.filter((r) => r._isNew).length;
@@ -316,7 +394,26 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
   // ─── Render ──────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Full-screen drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm rounded-xl border-2 border-dashed border-[#D73F09] flex flex-col items-center justify-center pointer-events-none">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#D73F09" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <div className="text-lg font-black text-[#D73F09] mt-3">Drop CSV to Import</div>
+          <div className="text-sm text-gray-400 mt-1">Athlete roster + metrics data</div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-400">
@@ -326,10 +423,19 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowCsvImport(!showCsvImport)}
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".csv";
+              input.onchange = (ev) => {
+                const f = (ev.target as HTMLInputElement).files?.[0];
+                if (f) handleCsvFile(f);
+              };
+              input.click();
+            }}
             className="px-3 py-1.5 border border-gray-700 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-gray-500"
           >
-            {showCsvImport ? "Cancel Import" : "Bulk Import CSV"}
+            Import CSV
           </button>
           <button onClick={addRow}
             className="px-3 py-1.5 border border-gray-700 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-gray-500">
@@ -338,32 +444,17 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
         </div>
       </div>
 
-      {/* CSV Import Zone */}
-      {showCsvImport && (
-        <div
-          onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCsvFile(f); }}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".csv";
-            input.onchange = (e) => {
-              const f = (e.target as HTMLInputElement).files?.[0];
-              if (f) handleCsvFile(f);
-            };
-            input.click();
-          }}
-          className="border-2 border-dashed border-gray-700 hover:border-[#D73F09]/50 rounded-xl p-6 text-center cursor-pointer transition-colors"
-        >
-          <div className="text-sm font-bold text-gray-400 mb-1">Drop CSV or click to upload</div>
-          <div className="text-xs text-gray-600">Athlete roster + metrics — will merge with existing data by name</div>
-          {csvFileName && <div className="text-xs text-green-400 mt-2">Last imported: {csvFileName}</div>}
+      {/* CSV status */}
+      {csvFileName && (
+        <div className="flex items-center gap-2 text-xs text-green-400">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+          Imported: {csvFileName}
         </div>
       )}
 
       {/* Platform Tabs */}
-      <div className="flex gap-1 border-b border-gray-800">
-        {TABS.map((tab) => (
+      <div className="flex gap-1 border-b border-gray-800 overflow-x-auto">
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -382,13 +473,29 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
       {/* Table */}
       {rows.length === 0 ? (
         <div className="py-16 text-center">
-          <div className="text-gray-500 text-sm mb-4">No athletes yet</div>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <div className="text-gray-500 text-sm mb-1">No athletes yet</div>
+          <div className="text-gray-600 text-xs mb-4">Drag & drop a CSV file here, or use the buttons below</div>
           <div className="flex items-center justify-center gap-3">
             <button onClick={addRow}
               className="px-4 py-2 bg-[#D73F09] rounded-lg text-sm font-bold text-white hover:bg-[#c43808]">
               + Add Athlete
             </button>
-            <button onClick={() => setShowCsvImport(true)}
+            <button
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".csv";
+                input.onchange = (ev) => {
+                  const f = (ev.target as HTMLInputElement).files?.[0];
+                  if (f) handleCsvFile(f);
+                };
+                input.click();
+              }}
               className="px-4 py-2 border border-gray-700 rounded-lg text-sm font-bold text-gray-400 hover:text-white">
               Import CSV
             </button>

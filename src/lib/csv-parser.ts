@@ -178,6 +178,19 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iTiktokEngagements = findCol(headers, "tiktok total engagements", "tiktok engagements", "tt total engagements", "tt engagements");
   const iTiktokEngRate = findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate");
 
+  // Clicks columns
+  const iLinkClicks = findCol(headers, "link clicks", "clicks", "link click", "total clicks");
+  const iClickThroughRate = findCol(headers, "click through rate", "ctr", "click rate", "clickthrough rate");
+  const iLandingPageViews = findCol(headers, "landing page views", "lpv", "landing views", "page views");
+  const iCostPerClick = findCol(headers, "cost per click", "cpc", "avg cpc", "average cpc");
+
+  // Sales columns
+  const iConversions = findCol(headers, "conversions", "conversion", "total conversions", "purchases", "sales");
+  const iRevenue = findCol(headers, "revenue", "total revenue", "sales revenue", "gmv", "gross revenue");
+  const iConversionRate = findCol(headers, "conversion rate", "conv rate", "cvr");
+  const iCostPerAcquisition = findCol(headers, "cost per acquisition", "cpa", "cost per conversion", "cost per purchase");
+  const iRoas = findCol(headers, "roas", "return on ad spend", "return on spend");
+
   // For columns that have duplicate names (e.g. two "Engagement Rate" columns),
   // find them positionally — first occurrence is feed, second is reel
   let feedEngRateIdx = iIgFeedEngRate;
@@ -261,6 +274,19 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
         saves_shares: parseNum(getVal(iTiktokSavesShares)),
         total_engagements: parseNum(getVal(iTiktokEngagements)),
         engagement_rate: parseRate(getVal(iTiktokEngRate)),
+      },
+      clicks: {
+        link_clicks: parseNum(getVal(iLinkClicks)),
+        click_through_rate: parseRate(getVal(iClickThroughRate)),
+        landing_page_views: parseNum(getVal(iLandingPageViews)),
+        cost_per_click: parseNum(getVal(iCostPerClick)),
+      },
+      sales: {
+        conversions: parseNum(getVal(iConversions)),
+        revenue: parseNum(getVal(iRevenue)),
+        conversion_rate: parseRate(getVal(iConversionRate)),
+        cost_per_acquisition: parseNum(getVal(iCostPerAcquisition)),
+        roas: parseNum(getVal(iRoas)),
       },
     };
 
