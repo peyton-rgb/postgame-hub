@@ -1,18 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Campaign } from "@/lib/types";
+import { parseMetricsCSV } from "@/lib/csv-parser";
+import { autoFillMetrics } from "@/lib/metrics-helpers";
 import Link from "next/link";
 
 export default function CampaignList() {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newClient, setNewClient] = useState("");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvDragging, setCsvDragging] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Campaign | null>(null);
+  const dragCounterRef = useRef(0);
   const supabase = createBrowserSupabase();
 
   useEffect(() => {
@@ -30,6 +38,8 @@ export default function CampaignList() {
 
   async function createCampaign() {
     if (!newName.trim() || !newClient.trim()) return;
+    setCreating(true);
+
     const slug = newName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -48,10 +58,46 @@ export default function CampaignList() {
       .single();
 
     if (data) {
+      // If CSV was attached, parse and import athletes
+      if (csvFile) {
+        try {
+          const text = await csvFile.text();
+          const parsed = parseMetricsCSV(text);
+
+          if (parsed.length > 0) {
+            const athleteRows = parsed.map((pa, i) => ({
+              campaign_id: data.id,
+              name: pa.name,
+              ig_handle: pa.ig_handle || "",
+              ig_followers: pa.ig_followers || 0,
+              school: pa.school || "",
+              sport: pa.sport || "",
+              gender: pa.gender || "",
+              notes: pa.notes || "",
+              post_type: pa.metrics.ig_reel?.post_url ? "IG Reel" : pa.metrics.tiktok?.post_url ? "TikTok" : "IG Feed",
+              post_url: pa.metrics.ig_feed?.post_url || pa.metrics.ig_reel?.post_url || null,
+              metrics: autoFillMetrics(pa.metrics),
+              sort_order: i,
+            }));
+
+            await supabase.from("athletes").insert(athleteRows);
+          }
+        } catch (err) {
+          console.error("CSV import error:", err);
+        }
+      }
+
       setCampaigns([data, ...campaigns]);
       setShowCreate(false);
       setNewName("");
       setNewClient("");
+      setCsvFile(null);
+      setCreating(false);
+
+      // Navigate straight to the campaign editor
+      router.push(`/dashboard/${data.id}`);
+    } else {
+      setCreating(false);
     }
   }
 
@@ -113,7 +159,7 @@ export default function CampaignList() {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#111] border border-gray-700 rounded-2xl p-8 w-[420px]">
+          <div className="bg-[#111] border border-gray-700 rounded-2xl p-8 w-[480px]">
             <h2 className="text-lg font-black mb-6">New Campaign</h2>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
               Campaign Name
@@ -131,20 +177,90 @@ export default function CampaignList() {
               value={newClient}
               onChange={(e) => setNewClient(e.target.value)}
               placeholder="e.g. Adidas"
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-6 focus:border-[#D73F09] outline-none"
+              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-5 focus:border-[#D73F09] outline-none"
             />
+
+            {/* CSV Upload Zone */}
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+              Import Roster CSV <span className="text-gray-700 normal-case">(optional)</span>
+            </label>
+            <div
+              onDragEnter={(e) => { e.preventDefault(); dragCounterRef.current++; setCsvDragging(true); }}
+              onDragLeave={(e) => { e.preventDefault(); dragCounterRef.current--; if (dragCounterRef.current === 0) setCsvDragging(false); }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                dragCounterRef.current = 0;
+                setCsvDragging(false);
+                const f = e.dataTransfer.files[0];
+                if (f && f.name.endsWith(".csv")) setCsvFile(f);
+              }}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".csv";
+                input.onchange = (ev) => {
+                  const f = (ev.target as HTMLInputElement).files?.[0];
+                  if (f) setCsvFile(f);
+                };
+                input.click();
+              }}
+              className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all mb-6 ${
+                csvDragging
+                  ? "border-[#D73F09] bg-[#D73F09]/5"
+                  : csvFile
+                    ? "border-green-500/40 bg-green-500/5"
+                    : "border-gray-700 hover:border-gray-500"
+              }`}
+            >
+              {csvFile ? (
+                <div className="flex items-center justify-center gap-3">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-bold text-green-400">{csvFile.name}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Athletes will be imported on create</div>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCsvFile(null); }}
+                    className="ml-2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-red-400 hover:bg-red-400/10 flex items-center justify-center text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={csvDragging ? "#D73F09" : "#555"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <div className="text-xs font-bold text-gray-400">Drop CSV here or click to browse</div>
+                  <div className="text-[10px] text-gray-600 mt-1">Athlete roster + metrics spreadsheet</div>
+                </>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <button
-                onClick={() => setShowCreate(false)}
-                className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500"
+                onClick={() => { setShowCreate(false); setCsvFile(null); setCsvDragging(false); }}
+                disabled={creating}
+                className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={createCampaign}
-                className="flex-1 px-4 py-3 bg-[#D73F09] rounded-lg text-white font-bold text-sm hover:bg-[#B33407]"
+                disabled={creating || !newName.trim() || !newClient.trim()}
+                className="flex-1 px-4 py-3 bg-[#D73F09] rounded-lg text-white font-bold text-sm hover:bg-[#B33407] disabled:opacity-50"
               >
-                Create Campaign
+                {creating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    Creating...
+                  </span>
+                ) : csvFile ? "Create & Import" : "Create Campaign"}
               </button>
             </div>
           </div>
