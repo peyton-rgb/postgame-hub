@@ -45,17 +45,23 @@ export default function CampaignList() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("campaigns")
       .insert({
         name: newName,
-        slug,
+        slug: `${slug}-${Date.now().toString(36)}`,
         client_name: newClient,
         published: false,
         settings: { primary_color: "#D73F09", layout: "masonry", columns: 4 },
       })
       .select()
       .single();
+
+    if (error) {
+      console.error("Campaign create error:", JSON.stringify(error));
+      setCreating(false);
+      return;
+    }
 
     if (data) {
       // If CSV was attached, parse and import athletes
