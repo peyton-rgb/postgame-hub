@@ -47,6 +47,7 @@ export function computeStats(athletes: Athlete[]) {
     if (m.ig_feed?.post_url) { igFeedPosts++; totalPosts++; }
     if (m.ig_reel?.post_url) { igReelPosts++; totalPosts++; }
     if (m.tiktok?.post_url) { tiktokPosts++; totalPosts++; }
+    if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
     totalImpressions += (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0) + (m.ig_reel?.views || 0) + (m.tiktok?.views || 0);
     totalEngagements += (m.ig_feed?.total_engagements || 0) + (m.ig_reel?.total_engagements || 0) + (m.tiktok?.total_engagements || 0);

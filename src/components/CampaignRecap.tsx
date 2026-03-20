@@ -267,6 +267,7 @@ export function CampaignRecap({
                 { label: "TYPE", value: settings.campaign_type },
                 { label: "PLATFORM", value: settings.platform },
                 { label: "ATHLETES", value: String(stats.athleteCount) },
+                { label: "ATHLETES", value: String(stats.athleteCount) },
                 { label: "SCHOOLS", value: String(stats.schoolCount) },
                 { label: "SPORTS", value: String(stats.sportCount) },
                 { label: "TOTAL REACH", value: fmt(stats.totalReach) + "+ Followers" },
@@ -335,7 +336,7 @@ export function CampaignRecap({
             {stats.igReelPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black uppercase tracking-wider">IG Reels / BTS</h3>
+                  <h3 className="text-sm font-black uppercase tracking-wider">IG Reels</h3>
                   <span className="text-xs font-bold text-brand">{stats.igReelPosts} posts</span>
                 </div>
                 <div className="space-y-0">
