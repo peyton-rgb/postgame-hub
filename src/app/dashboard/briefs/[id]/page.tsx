@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import type { Brief } from "@/lib/types";
+import type { Brief, Campaign } from "@/lib/types";
 import { generateBriefHTML, type BriefFields } from "@/lib/brief-template";
 import Link from "next/link";
 
@@ -34,6 +34,7 @@ const FIELD_CONFIG = [
 
 export default function BriefEditor() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [brief, setBrief] = useState<Brief | null>(null);
   const [fields, setFields] = useState<BriefFields>(EMPTY_FIELDS);
   const [loading, setLoading] = useState(true);
@@ -44,24 +45,76 @@ export default function BriefEditor() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const supabase = createBrowserSupabase();
 
+  // Tracker linking state
+  const [trackers, setTrackers] = useState<Campaign[]>([]);
+  const [selectedTrackerId, setSelectedTrackerId] = useState<string | null>(null);
+  const [creatingTracker, setCreatingTracker] = useState(false);
+  const [newTrackerName, setNewTrackerName] = useState("");
+
   useEffect(() => {
     loadBrief();
+    loadTrackers();
   }, [id]);
+
+  async function loadTrackers() {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("type", "tracker")
+      .order("created_at", { ascending: false });
+    setTrackers(data || []);
+  }
 
   async function loadBrief() {
     const { data } = await supabase
       .from("briefs")
-      .select("*")
+      .select("*, tracker_id")
       .eq("id", id)
       .single();
     if (data) {
       setBrief(data);
+      setSelectedTrackerId(data.tracker_id || null);
       // Try to parse stored fields from html_content metadata, or use defaults
       const storedFields = parseStoredFields(data);
       setFields(storedFields);
       setRawHtml(data.html_content || "");
     }
     setLoading(false);
+  }
+
+  async function createTrackerFromBrief() {
+    const trackerName = newTrackerName.trim() || `${fields.title || brief?.title || "Untitled"} Tracker`;
+    const clientName = fields.clientName || brief?.client_name || "";
+    if (!clientName) return;
+
+    setCreatingTracker(true);
+    const slug = trackerName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") +
+      "-" + Date.now().toString(36);
+
+    const { data } = await supabase
+      .from("campaigns")
+      .insert({
+        name: trackerName,
+        slug,
+        client_name: clientName,
+        published: false,
+        type: "tracker",
+        settings: { primary_color: "#D73F09" },
+      })
+      .select()
+      .single();
+
+    if (data) {
+      // Link to this brief
+      setSelectedTrackerId(data.id);
+      await supabase.from("briefs").update({ tracker_id: data.id }).eq("id", id);
+      setTrackers((prev) => [data, ...prev]);
+      setNewTrackerName("");
+    }
+    setCreatingTracker(false);
   }
 
   function parseStoredFields(brief: Brief): BriefFields {
@@ -106,6 +159,7 @@ export default function BriefEditor() {
       client_name: fields.clientName || brief.client_name,
       html_content: htmlContent,
       updated_at: new Date().toISOString(),
+      tracker_id: selectedTrackerId || null,
     };
     if (publish !== undefined) {
       updates.published = publish;
@@ -263,6 +317,69 @@ export default function BriefEditor() {
                 className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none resize-y"
               />
             </div>
+          </div>
+
+          {/* Performance Tracker Link */}
+          <div className="border-t border-gray-800 pt-4">
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
+              Performance Tracker
+            </label>
+
+            {/* Select existing tracker */}
+            <select
+              value={selectedTrackerId || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedTrackerId(val || null);
+                setSaved(false);
+              }}
+              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none mb-3 appearance-none"
+            >
+              <option value="">No tracker linked</option>
+              {trackers.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} — {t.client_name}
+                </option>
+              ))}
+            </select>
+
+            {/* Quick link to edit selected tracker */}
+            {selectedTrackerId && (
+              <Link
+                href={`/dashboard/trackers/${selectedTrackerId}`}
+                className="inline-flex items-center gap-2 text-xs text-[#D73F09] hover:underline mb-3"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Open Tracker →
+              </Link>
+            )}
+
+            {/* Or create new tracker */}
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600 my-3">
+              <div className="flex-1 border-t border-gray-800" />
+              or
+              <div className="flex-1 border-t border-gray-800" />
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newTrackerName}
+                onChange={(e) => setNewTrackerName(e.target.value)}
+                placeholder="New tracker name..."
+                className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none"
+              />
+              <button
+                onClick={createTrackerFromBrief}
+                disabled={creatingTracker}
+                className="px-4 py-2 bg-[#D73F09] text-white text-xs font-bold rounded-lg hover:bg-[#B33407] disabled:opacity-50 whitespace-nowrap"
+              >
+                {creatingTracker ? "Creating..." : "+ Create"}
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-600 mt-2">
+              Creates a new tracker and links it to this brief. It will also appear in the Performance Trackers tab.
+            </p>
           </div>
 
           {/* Raw HTML toggle */}

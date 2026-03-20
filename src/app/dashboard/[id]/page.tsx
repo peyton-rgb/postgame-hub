@@ -10,6 +10,7 @@ import { MasonryPreview } from "@/components/MasonryPreview";
 import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
+import heic2any from "heic2any";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Brief" },
@@ -136,14 +137,28 @@ export default function CampaignEditor() {
   // Metrics spreadsheet save state
   const [savingMetrics, setSavingMetrics] = useState(false);
 
+  // Tracker linking state
+  const [trackers, setTrackers] = useState<Campaign[]>([]);
+  const [linkedTrackerId, setLinkedTrackerId] = useState<string | null>(null);
+  const [importingTracker, setImportingTracker] = useState(false);
+
+  // Bulk upload state
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; matched: number; unmatched: string[] }>({ done: 0, total: 0, matched: 0, unmatched: [] });
+  const [bulkDragging, setBulkDragging] = useState(false);
+  const bulkDragCounter = useRef(0);
+
   useEffect(() => { loadData(); }, [id]);
 
   async function loadData() {
-    const [{ data: camp }, { data: aths }, { data: med }] = await Promise.all([
+    const [{ data: camp }, { data: aths }, { data: med }, { data: trks }] = await Promise.all([
       supabase.from("campaigns").select("*").eq("id", id).single(),
       supabase.from("athletes").select("*").eq("campaign_id", id).order("sort_order"),
       supabase.from("media").select("*").eq("campaign_id", id).order("sort_order"),
+      supabase.from("campaigns").select("*").eq("type", "tracker").order("created_at", { ascending: false }),
     ]);
+
+    setTrackers(trks || []);
 
     setCampaign(camp);
     setAthletes(aths || []);
@@ -170,6 +185,54 @@ export default function CampaignEditor() {
     });
     setMedia(grouped);
     setLoading(false);
+  }
+
+  async function importFromTracker(trackerId: string) {
+    setImportingTracker(true);
+    setLinkedTrackerId(trackerId);
+
+    // Fetch athletes from the tracker
+    const { data: trackerAthletes } = await supabase
+      .from("athletes")
+      .select("*")
+      .eq("campaign_id", trackerId)
+      .order("sort_order");
+
+    if (trackerAthletes && trackerAthletes.length > 0) {
+      // Delete existing athletes for this campaign first
+      await supabase.from("media").delete().eq("campaign_id", id);
+      await supabase.from("athletes").delete().eq("campaign_id", id);
+
+      // Copy tracker athletes into this campaign
+      const newRows = trackerAthletes.map((a: Athlete, i: number) => ({
+        campaign_id: id,
+        name: a.name,
+        ig_handle: a.ig_handle || "",
+        ig_followers: a.ig_followers || 0,
+        school: a.school || "",
+        sport: a.sport || "",
+        gender: a.gender || "",
+        notes: a.notes || "",
+        post_type: a.post_type || "IG Feed",
+        post_url: a.post_url,
+        metrics: a.metrics || {},
+        sort_order: i,
+      }));
+
+      await supabase.from("athletes").insert(newRows);
+
+      // Reload data
+      const { data: aths } = await supabase
+        .from("athletes")
+        .select("*")
+        .eq("campaign_id", id)
+        .order("sort_order");
+      setAthletes(aths || []);
+      setSelected((aths || []).map((a: Athlete) => a.id));
+      setMedia({});
+    }
+
+    setImportingTracker(false);
   }
 
   async function saveCampaignInfo() {
@@ -251,6 +314,7 @@ export default function CampaignEditor() {
         quarter: quarter || "",
         campaign_type: campaignType || "Product Seeding",
         visible_sections: visibleSections,
+        brand_logo_url: brandLogoUrl,
       };
       const { data: updatedCamp } = await supabase
         .from("campaigns")
@@ -266,6 +330,21 @@ export default function CampaignEditor() {
     await loadData();
   }
 
+  async function convertHeicIfNeeded(file: File): Promise<File> {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".heic") || name.endsWith(".heif") || file.type === "image/heic" || file.type === "image/heif") {
+      try {
+        const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 }) as Blob;
+        const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
+        return new File([blob], newName, { type: "image/jpeg" });
+      } catch (e) {
+        console.error("HEIC conversion failed:", e);
+        return file;
+      }
+    }
+    return file;
+  }
+
   async function uploadFile(file: File, path: string): Promise<string | null> {
     const { data, error } = await supabase.storage
       .from("campaign-media")
@@ -278,7 +357,9 @@ export default function CampaignEditor() {
   async function handleFiles(athleteId: string, fileList: FileList | null) {
     if (!fileList) return;
     for (const file of Array.from(fileList)) {
-      if (file.type.startsWith("image/")) {
+      const name = file.name.toLowerCase();
+      const isHeic = name.endsWith(".heic") || name.endsWith(".heif");
+      if (file.type.startsWith("image/") || isHeic) {
         await uploadImage(athleteId, file);
       } else if (file.type.startsWith("video/")) {
         setPendingVideo({ athleteId, file });
@@ -287,8 +368,9 @@ export default function CampaignEditor() {
   }
 
   async function uploadImage(athleteId: string, file: File) {
-    const path = `${id}/${athleteId}/${Date.now()}-${file.name}`;
-    const url = await uploadFile(file, path);
+    const converted = await convertHeicIfNeeded(file);
+    const path = `${id}/${athleteId}/${Date.now()}-${converted.name}`;
+    const url = await uploadFile(converted, path);
     if (!url) return;
     const existing = media[athleteId] || [];
     const { data } = await supabase
@@ -303,9 +385,10 @@ export default function CampaignEditor() {
     const { athleteId, file: videoFile } = pendingVideo;
     const videoPath = `${id}/${athleteId}/${Date.now()}-${videoFile.name}`;
     const videoUrl = await uploadFile(videoFile, videoPath);
-    if (!videoUrl) return;
-    const thumbPath = `${id}/${athleteId}/${Date.now()}-thumb-${thumbnailFile.name}`;
-    const thumbUrl = await uploadFile(thumbnailFile, thumbPath);
+    if (!videoUrl) { setPendingVideo(null); return; }
+    const convertedThumb = await convertHeicIfNeeded(thumbnailFile);
+    const thumbPath = `${id}/${athleteId}/${Date.now()}-thumb-${convertedThumb.name}`;
+    const thumbUrl = await uploadFile(convertedThumb, thumbPath);
     if (!thumbUrl) { setPendingVideo(null); return; }
     const existing = media[athleteId] || [];
     const { data } = await supabase
@@ -327,6 +410,99 @@ export default function CampaignEditor() {
     setMedia((prev) => ({ ...prev, [athleteId]: (prev[athleteId] || []).filter((m) => m.id !== mediaId) }));
   }
 
+  function matchFileToAthlete(fileName: string, athleteList: Athlete[]): Athlete | null {
+    // Strip extension and clean up
+    const clean = fileName.replace(/\.[^.]+$/, "").toLowerCase().replace(/[_-]+/g, " ").trim();
+
+    // Try exact match first
+    for (const a of athleteList) {
+      if (a.name.toLowerCase() === clean) return a;
+    }
+
+    // Try last name match
+    for (const a of athleteList) {
+      const parts = a.name.toLowerCase().split(" ");
+      const lastName = parts[parts.length - 1];
+      if (clean === lastName) return a;
+      // filename might be "lastname_firstname" or "firstname_lastname"
+      if (clean.includes(lastName) && parts.some((p) => clean.includes(p))) return a;
+    }
+
+    // Try first + last anywhere in filename
+    for (const a of athleteList) {
+      const parts = a.name.toLowerCase().split(" ").filter((p) => p.length > 2);
+      if (parts.length >= 2 && parts.every((p) => clean.includes(p))) return a;
+    }
+
+    // Try just last name if it's unique enough (4+ chars)
+    for (const a of athleteList) {
+      const parts = a.name.toLowerCase().split(" ");
+      const lastName = parts[parts.length - 1];
+      if (lastName.length >= 4 && clean.includes(lastName)) return a;
+    }
+
+    return null;
+  }
+
+  async function handleBulkUpload(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList).filter((f) => {
+      const name = f.name.toLowerCase();
+      return f.type.startsWith("image/") || name.endsWith(".heic") || name.endsWith(".heif");
+    });
+    if (files.length === 0) return;
+
+    setBulkUploading(true);
+    setBulkProgress({ done: 0, total: files.length, matched: 0, unmatched: [] });
+
+    const unmatched: string[] = [];
+    let matched = 0;
+    // Track which athletes we've already seen so we only delete existing media on the first file
+    const seenAthletes = new Set<string>();
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const athlete = matchFileToAthlete(file.name, selectedAthletes);
+
+      if (athlete) {
+        // Only delete existing media on the FIRST file for this athlete
+        if (!seenAthletes.has(athlete.id)) {
+          seenAthletes.add(athlete.id);
+          const existing = media[athlete.id] || [];
+          for (const m of existing) {
+            await supabase.from("media").delete().eq("id", m.id);
+          }
+          // Clear local state for this athlete so we build fresh
+          setMedia((prev) => ({ ...prev, [athlete.id]: [] }));
+        }
+
+        // Upload photo (convert HEIC if needed)
+        const converted = await convertHeicIfNeeded(file);
+        const path = `${id}/${athlete.id}/${Date.now()}-${converted.name}`;
+        const url = await uploadFile(converted, path);
+        if (url) {
+          const { data } = await supabase
+            .from("media")
+            .insert({ athlete_id: athlete.id, campaign_id: id, type: "image", file_url: url, sort_order: 0 })
+            .select().single();
+          if (data) {
+            setMedia((prev) => {
+              const current = prev[athlete.id] || [];
+              return { ...prev, [athlete.id]: [...current, data] };
+            });
+          }
+        }
+        matched++;
+      } else {
+        unmatched.push(file.name);
+      }
+
+      setBulkProgress({ done: i + 1, total: files.length, matched, unmatched: [...unmatched] });
+    }
+
+    setBulkUploading(false);
+  }
+
   async function togglePublish() {
     if (!campaign) return;
     setPublishing(true);
@@ -343,9 +519,19 @@ export default function CampaignEditor() {
   if (!campaign) return <div className="min-h-screen flex items-center justify-center text-gray-500">Campaign not found</div>;
 
   if (showPreview) {
+    // Merge unsaved editor state into campaign so the preview reflects current values
+    const previewCampaign = {
+      ...campaign,
+      settings: {
+        ...campaign.settings,
+        description, quarter, campaign_type: campaignType,
+        platform, tags, visible_sections: visibleSections,
+        brand_logo_url: brandLogoUrl,
+      },
+    };
     return (
       <MasonryPreview
-        campaign={campaign}
+        campaign={previewCampaign}
         athletes={athletes.filter((a) => selected.includes(a.id))}
         allAthletes={athletes}
         media={media}
@@ -364,7 +550,7 @@ export default function CampaignEditor() {
     .map((a) => {
       const m = a.metrics || {};
       const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-      const best = rates.length > 0 ? Math.max(...rates) : 0;
+      const best = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
       return { ...a, bestEngRate: best };
     })
     .filter((a) => a.bestEngRate > 0)
@@ -426,6 +612,54 @@ export default function CampaignEditor() {
         {/* ── STEP 1: Athletes & Metrics ─────────────────────── */}
         {step === 1 && (
           <div>
+            {/* Tracker link dropdown */}
+            {trackers.length > 0 && (
+              <div className="mb-6 p-4 bg-[#111] border border-gray-800 rounded-xl">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                      Import from Performance Tracker
+                    </label>
+                    <select
+                      value={linkedTrackerId || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) importFromTracker(val);
+                        else setLinkedTrackerId(null);
+                      }}
+                      disabled={importingTracker}
+                      className="w-full px-4 py-2.5 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none disabled:opacity-50"
+                    >
+                      <option value="">Select a tracker to import...</option>
+                      {trackers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} — {t.client_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {importingTracker && (
+                    <div className="flex items-center gap-2 text-sm text-gray-400 pt-5">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      Importing...
+                    </div>
+                  )}
+                  {linkedTrackerId && !importingTracker && (
+                    <a
+                      href={`/dashboard/trackers/${linkedTrackerId}`}
+                      target="_blank"
+                      className="pt-5 text-xs text-[#D73F09] hover:underline whitespace-nowrap"
+                    >
+                      Open Tracker →
+                    </a>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-600 mt-2">
+                  Imports all athlete data &amp; metrics from the selected tracker into this recap.
+                </p>
+              </div>
+            )}
+
             <MetricsSpreadsheet
               athletes={athletes}
               campaignId={id}
@@ -597,122 +831,171 @@ export default function CampaignEditor() {
 
         {/* ── STEP 4: Upload Content ──────────────────────── */}
         {step === 4 && (
-          <div className="space-y-10">
-            {/* Top Performers Content Upload */}
-            {topPerformers.length > 0 && (
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-sm font-black uppercase tracking-wider text-[#D73F09]">Top Performers Content</h3>
-                  <span className="text-[10px] text-gray-500 font-bold">Upload hero content for your top 5 athletes</span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {topPerformers.map((a, idx) => {
-                    const items = media[a.id] || [];
-                    const thumb = items[0]?.thumbnail_url || items[0]?.file_url || null;
-                    return (
-                      <div key={a.id} className={`bg-[#111] rounded-xl overflow-hidden border ${idx === 0 ? "border-[#D73F09]" : "border-gray-800"}`}>
-                        <div onClick={() => fileRefs.current[a.id]?.click()}
-                          onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
-                          onDragOver={(e) => e.preventDefault()}
-                          className="aspect-[4/5] max-h-[240px] bg-[#0a0a0a] flex flex-col items-center justify-center gap-2 cursor-pointer relative overflow-hidden">
-                          {thumb && !items[0]?.file_url?.match(/\.(mp4|mov|webm|avi)$/i)
-                            ? <img src={thumb} className="w-full h-full object-cover" alt="" />
-                            : thumb && items[0]?.thumbnail_url
-                              ? <img src={items[0].thumbnail_url} className="w-full h-full object-cover" alt="" />
-                              : items.length > 0
-                                ? <div className="flex flex-col items-center gap-2">
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                                    <span className="text-[10px] text-gray-600 font-bold uppercase">{items.length} file{items.length > 1 ? "s" : ""}</span>
-                                  </div>
-                                : <span className="text-[10px] text-gray-600 font-bold uppercase">Drop files or click</span>}
-                          {items.length > 1 && (
-                            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 text-white text-[10px] font-bold rounded">{items.length}</div>
-                          )}
-                          {/* Rank badge */}
-                          <div className={`absolute top-2 left-2 w-6 h-6 rounded-full text-white text-[10px] font-black flex items-center justify-center ${idx === 0 ? "bg-[#D73F09]" : "bg-gray-700"}`}>
-                            {idx + 1}
-                          </div>
-                          <input ref={(el: HTMLInputElement | null) => { fileRefs.current[a.id] = el; }}
-                            type="file" accept="image/*,video/*" multiple
-                            onChange={(e) => handleFiles(a.id, e.target.files)} className="hidden" />
-                        </div>
-                        {items.length > 0 && (
-                          <div className="flex gap-1 p-1.5 bg-[#0a0a0a] border-t border-gray-900 overflow-x-auto">
-                            {items.map((m) => (
-                              <div key={m.id} className="relative flex-shrink-0">
-                                <div className={`w-8 h-8 rounded overflow-hidden border ${m.type === "video" ? "border-purple-500" : "border-gray-700"}`}>
-                                  {m.type === "video" && !m.thumbnail_url
-                                    ? <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-                                    : <img src={m.thumbnail_url || m.file_url} className="w-full h-full object-cover" alt="" />}
-                                </div>
-                                <button onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
-                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gray-700 text-white text-[8px] flex items-center justify-center hover:bg-red-600">×</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <div className="p-2 border-t border-gray-900">
-                          <div className="text-[10px] font-black uppercase truncate">{a.name}</div>
-                          <div className="text-[9px] text-gray-600 truncate">{a.school} · {a.bestEngRate.toFixed(1)}% eng.</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+          <div className="space-y-8">
 
-            {/* Content Gallery Upload */}
+            {/* Bulk Upload Drop Zone */}
+            <div
+              onDragEnter={(e) => { e.preventDefault(); bulkDragCounter.current++; setBulkDragging(true); }}
+              onDragLeave={(e) => { e.preventDefault(); bulkDragCounter.current--; if (bulkDragCounter.current === 0) setBulkDragging(false); }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                bulkDragCounter.current = 0;
+                setBulkDragging(false);
+                handleBulkUpload(e.dataTransfer.files);
+              }}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.multiple = true;
+                input.setAttribute("webkitdirectory", "");
+                input.onchange = (ev) => handleBulkUpload((ev.target as HTMLInputElement).files);
+                input.click();
+              }}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+                bulkDragging
+                  ? "border-[#D73F09] bg-[#D73F09]/5"
+                  : "border-gray-700 hover:border-gray-500"
+              }`}
+            >
+              {bulkUploading ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center gap-3">
+                    <svg className="animate-spin h-5 w-5 text-[#D73F09]" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    <span className="text-sm font-bold">Uploading {bulkProgress.done} / {bulkProgress.total}...</span>
+                  </div>
+                  <div className="w-64 mx-auto bg-gray-800 rounded-full h-2">
+                    <div className="bg-[#D73F09] h-2 rounded-full transition-all" style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }} />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <span className="text-green-400 font-bold">{bulkProgress.matched} matched</span>
+                    {bulkProgress.unmatched.length > 0 && (
+                      <span className="text-red-400 font-bold ml-3">{bulkProgress.unmatched.length} unmatched</span>
+                    )}
+                  </div>
+                </div>
+              ) : bulkProgress.total > 0 && !bulkUploading ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    <span className="text-sm font-bold text-green-400">
+                      {bulkProgress.matched} of {bulkProgress.total} photos matched to athletes
+                    </span>
+                  </div>
+                  {bulkProgress.unmatched.length > 0 && (
+                    <div className="text-xs text-red-400/70">
+                      Unmatched: {bulkProgress.unmatched.slice(0, 5).join(", ")}{bulkProgress.unmatched.length > 5 ? ` +${bulkProgress.unmatched.length - 5} more` : ""}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-gray-600 mt-1">Drop more files to replace</div>
+                </div>
+              ) : (
+                <>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={bulkDragging ? "#D73F09" : "#555"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <div className="text-sm font-bold text-gray-300 mb-1">Bulk Upload Cover Photos</div>
+                  <div className="text-xs text-gray-500 mb-3">
+                    Drop a folder of images or click to browse. Files are auto-matched to athletes by name.
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2 text-[10px] text-gray-600">
+                    <span className="px-2 py-1 rounded bg-gray-800/50">✓ &quot;firstname lastname.jpg&quot;</span>
+                    <span className="px-2 py-1 rounded bg-gray-800/50">✓ &quot;lastname_firstname.png&quot;</span>
+                    <span className="px-2 py-1 rounded bg-gray-800/50">✓ &quot;lastname.jpg&quot;</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Cover Photo Grid */}
             <div>
-              <h3 className="text-sm font-black uppercase tracking-wider mb-4">Content Gallery Uploads</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-black uppercase tracking-wider">Cover Photos</h3>
+                <span className="text-xs text-gray-500 font-bold">
+                  {Object.keys(media).filter((k) => selectedAthletes.some((a) => a.id === k) && media[k]?.length > 0).length} / {selectedAthletes.length} assigned
+                </span>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                 {selectedAthletes.map((a) => {
                   const items = media[a.id] || [];
-                  const thumb = items[0]?.thumbnail_url || items[0]?.file_url || null;
+                  const cover = items[0];
+                  const coverSrc = cover?.thumbnail_url || (cover?.type !== "video" ? cover?.file_url : null);
+
                   return (
-                    <div key={a.id} className="bg-[#111] border border-gray-800 rounded-xl overflow-hidden">
-                      <div onClick={() => fileRefs.current[a.id]?.click()}
+                    <div key={a.id} className="group relative">
+                      <div
+                        onClick={() => fileRefs.current[a.id]?.click()}
                         onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
                         onDragOver={(e) => e.preventDefault()}
-                        className="aspect-[4/5] max-h-[300px] bg-[#0a0a0a] flex flex-col items-center justify-center gap-2 cursor-pointer relative overflow-hidden">
-                        {thumb && !items[0]?.file_url?.match(/\.(mp4|mov|webm|avi)$/i)
-                          ? <img src={thumb} className="w-full h-full object-cover" alt="" />
-                          : thumb && items[0]?.thumbnail_url
-                            ? <img src={items[0].thumbnail_url} className="w-full h-full object-cover" alt="" />
-                            : items.length > 0
-                              ? <div className="flex flex-col items-center gap-2">
-                                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                                  <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">{items.length} file{items.length > 1 ? "s" : ""}</span>
-                                </div>
-                              : <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">Drop files or click</span>}
-                        {items.length > 1 && (
-                          <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 text-white text-[10px] font-bold rounded">{items.length} files</div>
+                        className={`aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                          coverSrc
+                            ? "border-transparent hover:border-[#D73F09]"
+                            : "border-dashed border-gray-700 hover:border-gray-500 bg-[#0a0a0a]"
+                        }`}
+                      >
+                        {coverSrc ? (
+                          <img src={coverSrc} className="w-full h-full object-cover" alt={a.name} loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                          </div>
                         )}
                         <input ref={(el: HTMLInputElement | null) => { fileRefs.current[a.id] = el; }}
-                          type="file" accept="image/*,video/*" multiple
+                          type="file" accept="image/*,video/*,.heic,.heif" multiple
                           onChange={(e) => handleFiles(a.id, e.target.files)} className="hidden" />
                       </div>
-                      {items.length > 0 && (
-                        <div className="flex gap-1 p-2 bg-[#0a0a0a] border-t border-gray-900 overflow-x-auto">
-                          {items.map((m) => (
-                            <div key={m.id} className="relative flex-shrink-0">
-                              <div className={`w-10 h-10 rounded overflow-hidden border-2 ${m.type === "video" ? "border-purple-500" : "border-gray-700"}`}>
-                                {m.type === "video" && !m.thumbnail_url
-                                  ? <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-                                  : <img src={m.thumbnail_url || m.file_url} className="w-full h-full object-cover" alt="" />}
-                              </div>
-                              <button onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
-                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gray-700 text-white text-[10px] flex items-center justify-center hover:bg-red-600">×</button>
-                            </div>
-                          ))}
-                        </div>
+
+                      {/* Remove button on hover */}
+                      {coverSrc && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (cover) removeMedia(a.id, cover.id); }}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white text-[10px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        >×</button>
                       )}
-                      <div className="p-3 border-t border-gray-900 flex items-center gap-2">
-                        <SchoolBadge school={a.school} size={24} />
-                        <div>
-                          <div className="text-xs font-black uppercase">{a.name}</div>
-                          <div className="text-[10px] text-gray-600">{a.school} · {a.sport}</div>
+
+                      {/* Thumbnail carousel */}
+                      <div className="flex gap-0.5 mt-1 overflow-x-auto scrollbar-none">
+                        {items.map((m) => {
+                          const thumbSrc = m.thumbnail_url || (m.type !== "video" ? m.file_url : null);
+                          return (
+                            <div key={m.id} className="relative flex-shrink-0 group/thumb">
+                              <div className={`w-7 h-7 rounded overflow-hidden border ${m.id === cover?.id ? "border-[#D73F09]" : m.type === "video" ? "border-purple-500/50" : "border-gray-700"}`}>
+                                {thumbSrc ? (
+                                  <img src={thumbSrc} className="w-full h-full object-cover" alt="" loading="lazy" />
+                                ) : (
+                                  <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
+                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
+                                className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-black/80 text-white text-[7px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-10"
+                              >×</button>
+                            </div>
+                          );
+                        })}
+                        {/* Add photo button */}
+                        <div
+                          className="flex-shrink-0 w-7 h-7 rounded border border-dashed border-gray-600 hover:border-[#D73F09] flex items-center justify-center cursor-pointer transition-colors"
+                          onClick={(e) => { e.stopPropagation(); fileRefs.current[a.id]?.click(); }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
                         </div>
+                      </div>
+
+                      <div className="mt-1.5 px-0.5">
+                        <div className="text-[10px] font-bold uppercase truncate text-gray-300">{a.name}</div>
+                        <div className="text-[9px] text-gray-600 truncate">{a.school}</div>
                       </div>
                     </div>
                   );

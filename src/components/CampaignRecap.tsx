@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
-import { fmt, pct, computeStats, getTopPerformers, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
+import { fmt, pct, dollar, computeStats, getTopPerformers, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 
@@ -61,14 +61,14 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
         {isVideo && playing ? (
           <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1]" onEnded={() => setPlaying(false)} />
         ) : displaySrc ? (
-          <img src={displaySrc} className={`w-full block ${isVideo ? "aspect-[9/16] object-cover" : ""}`} draggable={false} alt={athlete.name} />
+          <img src={displaySrc} className={`w-full block ${isVideo ? "aspect-[9/16] object-cover" : ""}`} draggable={false} alt={athlete.name} loading="lazy" />
         ) : isVideo ? (
           <div className="w-full aspect-[4/5] bg-black flex items-center justify-center" onClick={() => setPlaying(true)}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           </div>
         ) : (
           <div className="w-full aspect-[4/5] bg-black flex items-center justify-center">
-            <span className="text-[10px] text-white/30 font-black uppercase">No media</span>
+            <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
           </div>
         )}
 
@@ -84,11 +84,11 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
         <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-black uppercase text-white truncate">{athlete.name}</div>
-              <div className="text-[9px] text-white/55 font-semibold flex items-center gap-1.5">
+              <div className="text-xs font-black uppercase text-white truncate">{athlete.name}</div>
+              <div className="text-[10px] text-white/70 font-semibold flex items-center gap-1.5">
                 {athlete.school}
-                {athlete.ig_followers ? <span className="text-white/40">&middot; {fmt(athlete.ig_followers)}</span> : null}
-                <span className="px-1 py-px rounded text-[7px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
+                {athlete.ig_followers ? <span className="text-white/70">&middot; {fmt(athlete.ig_followers)}</span> : null}
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
               </div>
             </div>
             {/* Download + Link buttons */}
@@ -125,7 +125,7 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
         </div>
 
         {/* Media type badge — uses actual media type, not CSV post_type */}
-        <span className="absolute bottom-2 right-2 z-[3] px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-black/65 text-white backdrop-blur">
+        <span className="absolute bottom-2 right-2 z-[3] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-black/65 text-white backdrop-blur">
           {getMediaLabel(items)}
         </span>
 
@@ -182,6 +182,7 @@ export function CampaignRecap({
   // Gallery filter uses actual uploaded media types (not CSV post_type)
   const filtered = athletes.filter((a) => {
     const items = media[a.id] || [];
+    if (items.length === 0) return false;
     if (filter === "all") return true;
     if (filter === "photo") return items.some((m) => m.type === "image");
     return items.some((m) => m.type === "video");
@@ -197,51 +198,43 @@ export function CampaignRecap({
   const rosterAthletes = [...fullRoster].sort((a, b) => (b.ig_followers || 0) - (a.ig_followers || 0));
 
   return (
-    <div className="recap-container min-h-screen bg-black text-white font-sans">
+    <div className="recap-container min-h-screen bg-[#111111] text-white font-sans">
 
       {/* ── POSTGAME TOP BAR ───────────────────────────────── */}
-      <div className="px-6 md:px-12 py-3 border-b border-white/5 flex items-center justify-between">
-        <PostgameLogo size="sm" className="opacity-50" />
-        <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-white/20">
+      <div className="px-6 md:px-12 py-3 border-b border-white/[0.12] flex items-center justify-between">
+        <PostgameLogo size="sm" className="opacity-60" />
+        <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-white/50">
           Campaign Recap
         </span>
       </div>
 
       {/* ── SECTION 1: HERO HEADER ─────────────────────────── */}
-      <div className="relative px-6 md:px-12 pt-8 md:pt-10 pb-8 md:pb-10 bg-gradient-to-b from-white/[0.04] to-black">
-        <div className="flex flex-col gap-6">
-          {/* Brand logo box */}
+      <div className="relative px-6 md:px-12 pt-10 md:pt-14 pb-10 md:pb-14 bg-gradient-to-b from-white/[0.08] to-transparent">
+        <div className="flex flex-col items-center text-center gap-6">
+          {/* Brand logo — big, no container */}
           {settings.brand_logo_url ? (
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 md:p-6 inline-flex items-center justify-center self-start">
-              <img src={settings.brand_logo_url} className="h-12 md:h-20 object-contain" alt={campaign.client_name} />
-            </div>
+            <img src={settings.brand_logo_url} className="h-28 md:h-44 object-contain" alt={campaign.client_name} />
           ) : campaign.client_logo_url ? (
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 md:p-6 inline-flex items-center justify-center self-start">
-              <img src={campaign.client_logo_url} className="h-10 md:h-16 object-contain" alt={campaign.client_name} />
-            </div>
-          ) : (
-            <div className="bg-white/[0.03] border-2 border-dashed border-white/10 rounded-xl p-5 md:p-6 inline-flex items-center justify-center self-start">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-white/20">Brand Logo</span>
-            </div>
-          )}
+            <img src={campaign.client_logo_url} className="h-24 md:h-40 object-contain" alt={campaign.client_name} />
+          ) : null}
 
           {/* Badges row */}
           {(settings.quarter || settings.campaign_type) && (
             <div className="flex items-center gap-3">
               {settings.quarter && (
-                <span className="px-2.5 py-1.5 bg-white/[0.06] border border-white/10 rounded text-[10px] font-bold uppercase tracking-wider text-white/60">
+                <span className="px-3 py-1.5 bg-white/[0.10] border border-white/[0.15] rounded text-xs font-bold uppercase tracking-wider text-white/70">
                   {settings.quarter}
                 </span>
               )}
               {settings.campaign_type && (
-                <span className="px-2.5 py-1.5 bg-white/[0.06] border border-white/10 rounded text-[10px] font-bold uppercase tracking-wider text-white/60">
+                <span className="px-3 py-1.5 bg-white/[0.10] border border-white/[0.15] rounded text-xs font-bold uppercase tracking-wider text-white/70">
                   {settings.campaign_type}
                 </span>
               )}
             </div>
           )}
 
-          <h1 className="text-2xl md:text-4xl font-black uppercase leading-tight">
+          <h1 className="text-3xl md:text-5xl font-black uppercase leading-tight">
             {campaign.name}
           </h1>
 
@@ -249,7 +242,7 @@ export function CampaignRecap({
           {settings.tags && settings.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {settings.tags.map((tag) => (
-                <span key={tag} className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand text-white">
+                <span key={tag} className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-brand text-white">
                   {tag}
                 </span>
               ))}
@@ -260,10 +253,10 @@ export function CampaignRecap({
 
       {/* ── SECTION 2: CAMPAIGN BRIEF ──────────────────────── */}
       {show("brief") && settings.description && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
-          <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Campaign Brief</h2>
+        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Brief</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
-            <div className="text-sm md:text-base text-white/50 leading-relaxed whitespace-pre-line">
+            <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
               {settings.description}
             </div>
             <div className="space-y-0">
@@ -280,9 +273,9 @@ export function CampaignRecap({
                 { label: "TOTAL POSTS", value: String(stats.totalPosts) },
                 { label: "CONTENT TYPE", value: contentTypes },
               ].filter((r) => r.value).map((row) => (
-                <div key={row.label} className="flex items-baseline py-2.5 border-b border-white/[0.06]">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/30 w-32 flex-shrink-0">{row.label}</span>
-                  <span className="text-sm font-semibold text-white/70">{row.value}</span>
+                <div key={row.label} className="flex items-baseline py-3 border-b border-white/[0.12]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-white/70 w-36 flex-shrink-0">{row.label}</span>
+                  <span className="text-base font-semibold text-white/90">{row.value}</span>
                 </div>
               ))}
             </div>
@@ -292,20 +285,23 @@ export function CampaignRecap({
 
       {/* ── SECTION 3: CAMPAIGN METRICS ────────────────────── */}
       {show("metrics") && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
-          <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Campaign Metrics</h2>
+        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Metrics</h2>
 
           {/* Summary row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <div className={`grid grid-cols-2 gap-3 mb-8 ${
+            stats.hasSales ? "md:grid-cols-3" : "md:grid-cols-4"
+          }`}>
             {[
               { value: stats.totalPosts, label: "TOTAL POSTS" },
               { value: fmt(stats.totalImpressions), label: "TOTAL IMPRESSIONS" },
               { value: fmt(stats.totalEngagements), label: "TOTAL ENGAGEMENTS" },
               { value: pct(stats.avgEngRate), label: "AVG ENGAGEMENT RATE" },
+              ...(stats.hasSales ? [{ value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
             ].map((m) => (
-              <div key={m.label} className="bg-white/[0.03] border border-white/10 rounded-xl p-4 md:p-6 text-center">
-                <div className="text-xl md:text-3xl font-black text-white mb-2">{m.value}</div>
-                <div className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-white/40">{m.label}</div>
+              <div key={m.label} className="bg-white/[0.07] border border-white/[0.15] rounded-xl p-5 md:p-8 text-center">
+                <div className="text-2xl md:text-4xl font-black text-white mb-2">{m.value}</div>
+                <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/70">{m.label}</div>
               </div>
             ))}
           </div>
@@ -313,23 +309,23 @@ export function CampaignRecap({
           {/* Per-platform breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {stats.igFeedPosts > 0 && (
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+              <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider">IG Feed</h3>
-                  <span className="text-[10px] font-bold text-brand">{stats.igFeedPosts} posts</span>
+                  <h3 className="text-sm font-black uppercase tracking-wider">IG Feed</h3>
+                  <span className="text-xs font-bold text-brand">{stats.igFeedPosts} posts</span>
                 </div>
                 <div className="space-y-0">
                   {[
-                    { label: "Reach", value: fmt(stats.igFeed.reach) },
-                    { label: "Impressions", value: fmt(stats.igFeed.impressions) },
-                    { label: "Likes", value: fmt(stats.igFeed.likes) },
-                    { label: "Comments", value: fmt(stats.igFeed.comments) },
-                    { label: "Total Engagements", value: fmt(stats.igFeed.engagements) },
-                    { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? pct(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "\u2014" },
-                  ].map((row) => (
-                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
-                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
-                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    { label: "Reach", value: fmt(stats.igFeed.reach), raw: stats.igFeed.reach },
+                    { label: "Impressions", value: fmt(stats.igFeed.impressions), raw: stats.igFeed.impressions },
+                    { label: "Likes", value: fmt(stats.igFeed.likes), raw: stats.igFeed.likes },
+                    { label: "Comments", value: fmt(stats.igFeed.comments), raw: stats.igFeed.comments },
+                    { label: "Total Engagements", value: fmt(stats.igFeed.engagements), raw: stats.igFeed.engagements },
+                    { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? pct(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "\u2014", raw: stats.igFeed.engRateCount },
+                  ].filter((row) => row.raw > 0).map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
+                      <span className="text-xs text-white/70 font-semibold">{row.label}</span>
+                      <span className="text-base font-bold text-white/90">{row.value}</span>
                     </div>
                   ))}
                 </div>
@@ -337,22 +333,22 @@ export function CampaignRecap({
             )}
 
             {stats.igReelPosts > 0 && (
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+              <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider">IG Reels / BTS</h3>
-                  <span className="text-[10px] font-bold text-brand">{stats.igReelPosts} posts</span>
+                  <h3 className="text-sm font-black uppercase tracking-wider">IG Reels / BTS</h3>
+                  <span className="text-xs font-bold text-brand">{stats.igReelPosts} posts</span>
                 </div>
                 <div className="space-y-0">
                   {[
-                    { label: "Views", value: fmt(stats.igReel.views) },
-                    { label: "Likes", value: fmt(stats.igReel.likes) },
-                    { label: "Comments", value: fmt(stats.igReel.comments) },
-                    { label: "Total Engagements", value: fmt(stats.igReel.engagements) },
-                    { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? pct(stats.igReel.engRateSum / stats.igReel.engRateCount) : "\u2014" },
-                  ].map((row) => (
-                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
-                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
-                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    { label: "Views", value: fmt(stats.igReel.views), raw: stats.igReel.views },
+                    { label: "Likes", value: fmt(stats.igReel.likes), raw: stats.igReel.likes },
+                    { label: "Comments", value: fmt(stats.igReel.comments), raw: stats.igReel.comments },
+                    { label: "Total Engagements", value: fmt(stats.igReel.engagements), raw: stats.igReel.engagements },
+                    { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? pct(stats.igReel.engRateSum / stats.igReel.engRateCount) : "\u2014", raw: stats.igReel.engRateCount },
+                  ].filter((row) => row.raw > 0).map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
+                      <span className="text-xs text-white/70 font-semibold">{row.label}</span>
+                      <span className="text-base font-bold text-white/90">{row.value}</span>
                     </div>
                   ))}
                 </div>
@@ -360,22 +356,22 @@ export function CampaignRecap({
             )}
 
             {stats.tiktokPosts > 0 && (
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+              <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider">TikTok</h3>
-                  <span className="text-[10px] font-bold text-brand">{stats.tiktokPosts} posts</span>
+                  <h3 className="text-sm font-black uppercase tracking-wider">TikTok</h3>
+                  <span className="text-xs font-bold text-brand">{stats.tiktokPosts} posts</span>
                 </div>
                 <div className="space-y-0">
                   {[
-                    { label: "Views", value: fmt(stats.tiktok.views) },
-                    { label: "Likes + Comments", value: fmt(stats.tiktok.likes_comments) },
-                    { label: "Saves + Shares", value: fmt(stats.tiktok.saves_shares) },
-                    { label: "Total Engagements", value: fmt(stats.tiktok.engagements) },
-                    { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? pct(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "\u2014" },
-                  ].map((row) => (
-                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
-                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
-                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    { label: "Views", value: fmt(stats.tiktok.views), raw: stats.tiktok.views },
+                    { label: "Likes + Comments", value: fmt(stats.tiktok.likes_comments), raw: stats.tiktok.likes_comments },
+                    { label: "Saves + Shares", value: fmt(stats.tiktok.saves_shares), raw: stats.tiktok.saves_shares },
+                    { label: "Total Engagements", value: fmt(stats.tiktok.engagements), raw: stats.tiktok.engagements },
+                    { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? pct(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "\u2014", raw: stats.tiktok.engRateCount },
+                  ].filter((row) => row.raw > 0).map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
+                      <span className="text-xs text-white/70 font-semibold">{row.label}</span>
+                      <span className="text-base font-bold text-white/90">{row.value}</span>
                     </div>
                   ))}
                 </div>
@@ -383,57 +379,93 @@ export function CampaignRecap({
             )}
 
             {(stats.igStory.count > 0 || stats.igStory.impressions > 0) && (
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+              <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider">IG Stories</h3>
+                  <h3 className="text-sm font-black uppercase tracking-wider">IG Stories</h3>
                 </div>
                 <div className="space-y-0">
                   {[
                     { label: "Story Count", value: fmt(stats.igStory.count) },
                     { label: "Impressions", value: fmt(stats.igStory.impressions) },
                   ].map((row) => (
-                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0">
-                      <span className="text-[10px] text-white/40 font-semibold">{row.label}</span>
-                      <span className="text-sm font-bold text-white/80">{row.value}</span>
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
+                      <span className="text-xs text-white/70 font-semibold">{row.label}</span>
+                      <span className="text-base font-bold text-white/90">{row.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
           </div>
+
+          {/* Sales breakdown */}
+          {stats.hasSales && (
+            <div className="mt-6 max-w-md">
+              <div className="bg-white/[0.06] border border-emerald-500/20 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <h3 className="text-sm font-black uppercase tracking-wider">Sales</h3>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-white/[0.06] rounded-lg p-3 text-center">
+                    <div className="text-xl md:text-2xl font-black text-emerald-400">{fmt(stats.sales.conversions)}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1">Conversions</div>
+                  </div>
+                  <div className="bg-white/[0.06] rounded-lg p-3 text-center">
+                    <div className="text-xl md:text-2xl font-black text-emerald-400">{dollar(stats.sales.revenue)}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1">Revenue</div>
+                  </div>
+                </div>
+                <div className="space-y-0">
+                  {[
+                    { label: "Avg Conversion Rate", value: stats.sales.conversion_rate_count > 0 ? pct(stats.sales.conversion_rate_sum / stats.sales.conversion_rate_count) : "—" },
+                    { label: "Avg Cost Per Acquisition", value: stats.sales.cost_per_acquisition_count > 0 ? dollar(stats.sales.cost_per_acquisition_sum / stats.sales.cost_per_acquisition_count) : "—" },
+                    { label: "Avg ROAS", value: stats.sales.roas_count > 0 ? (stats.sales.roas_sum / stats.sales.roas_count).toFixed(2) + "x" : "—" },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
+                      <span className="text-xs text-white/70 font-semibold">{row.label}</span>
+                      <span className="text-base font-bold text-white/90">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── SECTION 5: TOP PERFORMERS ─────────────────────── */}
       {show("top_performers") && topPerformers.length > 0 && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
-          <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Top Performers by Engagement Rate</h2>
+        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Top Performers by Engagement Rate</h2>
 
           {/* Desktop: all same size, #1 highlighted in orange */}
-          <div className="hidden md:flex items-end justify-center gap-3">
+          <div className="hidden md:flex items-end justify-center gap-4">
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
               const isFirst = i === 0;
               return (
-                <div key={a.id} className="flex-1 max-w-[220px]">
-                  <div className={`relative rounded-xl overflow-hidden h-[300px] ${isFirst ? "border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)]" : "border border-white/10"}`}>
+                <div key={a.id} className="flex-1 max-w-[280px]">
+                  <div className={`relative rounded-xl overflow-hidden h-[380px] ${isFirst ? "border-2 border-brand shadow-[0_0_25px_rgba(215,63,9,0.3)]" : "border border-white/[0.12]"}`}>
                     {items.length > 0 ? (
                       <TopPerformerMedia items={items} name={a.name} />
                     ) : (
-                      <div className="absolute inset-0 bg-black flex items-center justify-center">
-                        <span className="text-[10px] text-white/20 font-bold uppercase">No content</span>
+                      <div className="absolute inset-0 bg-[#1a1a1a] flex items-center justify-center">
+                        <span className="text-xs text-white/35 font-bold uppercase">No content</span>
                       </div>
                     )}
                     {/* Rank badge */}
-                    <div className={`absolute top-3 left-3 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 ${isFirst ? "bg-brand" : "bg-white/20 backdrop-blur"}`}>
+                    <div className={`absolute top-3 left-3 w-9 h-9 rounded-full text-white text-base font-black flex items-center justify-center z-10 ${isFirst ? "bg-brand" : "bg-white/20 backdrop-blur"}`}>
                       {i + 1}
                     </div>
                   </div>
-                  <div className="mt-2.5 px-1">
-                    <div className="text-sm font-black uppercase truncate">{a.name}</div>
-                    <div className="text-[10px] text-white/50 mb-1">{a.school} &middot; {a.sport}</div>
-                    <div className={`text-lg font-black ${isFirst ? "text-brand" : "text-white/70"}`}>{pct(a.bestEngRate)}</div>
-                    <div className="text-[8px] text-white/40 font-bold uppercase tracking-wider">Engagement Rate</div>
+                  <div className="mt-3 px-1">
+                    <div className="text-base font-black uppercase truncate">{a.name}</div>
+                    <div className="text-xs text-white/70 mb-1">{a.school} &middot; {a.sport}</div>
+                    <div className={`text-xl font-black ${isFirst ? "text-brand" : "text-white/80"}`}>{pct(a.bestEngRate)}</div>
+                    <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">Engagement Rate</div>
                   </div>
                 </div>
               );
@@ -441,28 +473,28 @@ export function CampaignRecap({
           </div>
 
           {/* Mobile: #1 full-width + orange highlight, rest 2-col */}
-          <div className="md:hidden grid grid-cols-2 gap-2">
+          <div className="md:hidden grid grid-cols-2 gap-3">
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
               const isFirst = i === 0;
               return (
                 <div key={a.id} className={isFirst ? "col-span-2" : ""}>
-                  <div className={`relative rounded-xl overflow-hidden h-[200px] ${isFirst ? "border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)]" : "border border-white/10"}`}>
+                  <div className={`relative rounded-xl overflow-hidden ${isFirst ? "h-[280px] border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)]" : "h-[220px] border border-white/[0.12]"}`}>
                     {items.length > 0 ? (
                       <TopPerformerMedia items={items} name={a.name} />
                     ) : (
-                      <div className="absolute inset-0 bg-black flex items-center justify-center">
-                        <span className="text-[10px] text-white/20 font-bold uppercase">No content</span>
+                      <div className="absolute inset-0 bg-[#1a1a1a] flex items-center justify-center">
+                        <span className="text-xs text-white/35 font-bold uppercase">No content</span>
                       </div>
                     )}
-                    <div className={`absolute top-2 left-2 w-7 h-7 rounded-full text-white text-xs font-black flex items-center justify-center z-10 ${isFirst ? "bg-brand" : "bg-white/20 backdrop-blur"}`}>
+                    <div className={`absolute top-2.5 left-2.5 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 ${isFirst ? "bg-brand" : "bg-white/20 backdrop-blur"}`}>
                       {i + 1}
                     </div>
                   </div>
-                  <div className="mt-2 px-1">
-                    <div className="text-xs font-black uppercase truncate">{a.name}</div>
-                    <div className="text-[10px] text-white/50">{a.school}</div>
-                    <div className={`text-base font-black ${isFirst ? "text-brand" : "text-white/70"}`}>{pct(a.bestEngRate)}</div>
+                  <div className="mt-2.5 px-1">
+                    <div className="text-sm font-black uppercase truncate">{a.name}</div>
+                    <div className="text-xs text-white/70">{a.school}</div>
+                    <div className={`text-lg font-black ${isFirst ? "text-brand" : "text-white/80"}`}>{pct(a.bestEngRate)}</div>
                   </div>
                 </div>
               );
@@ -473,16 +505,16 @@ export function CampaignRecap({
 
       {/* ── SECTION 6: CONTENT GALLERY ─────────────────────── */}
       {show("content_gallery") && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
+        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 mb-6">
-            <h2 className="text-lg md:text-xl font-black uppercase">Content Gallery</h2>
+            <h2 className="text-xl md:text-2xl font-black uppercase">Content Gallery</h2>
             <div className="flex gap-2">
               {["all", "photo", "video"].map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase ${
-                    filter === f ? "bg-brand text-white" : "border border-white/15 text-white/40"
+                  className={`px-4 py-2 rounded-full text-xs font-bold uppercase ${
+                    filter === f ? "bg-brand text-white" : "border border-white/15 text-white/70"
                   }`}
                 >
                   {f === "all" ? "All" : f === "photo" ? "Photos" : "Videos"}
@@ -490,7 +522,7 @@ export function CampaignRecap({
               ))}
             </div>
           </div>
-          <div data-masonry style={{ columnCount: cols, columnGap: 8 }} className="bg-black border border-white/10 rounded-xl p-2">
+          <div data-masonry style={{ columnCount: cols, columnGap: 8 }} className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
             {filtered.map((a) => (
               <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} />
             ))}
@@ -500,83 +532,127 @@ export function CampaignRecap({
 
       {/* ── SECTION 7: CAMPAIGN ROSTER ─────────────────────── */}
       {show("roster") && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/10">
-          <h2 className="text-lg md:text-xl font-black uppercase tracking-wide mb-8">Campaign Roster</h2>
+        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Roster</h2>
 
           {/* Desktop: full table with headers */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-white/10">
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 w-10">#</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">Athlete</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">School</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">Sport</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30">IG Handle</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Followers</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Impressions</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Engagements</th>
-                  <th className="px-3 py-3 text-[9px] font-bold uppercase tracking-wider text-white/30 text-right">Eng. Rate</th>
+                <tr className="border-b border-white/[0.15]">
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Sport</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">IG Handle</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Followers</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>
+                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>
                 </tr>
               </thead>
               <tbody>
-                {rosterAthletes.map((a, i) => (
-                  <tr key={a.id} className="border-b border-white/[0.06] hover:bg-white/[0.02]">
-                    <td className="px-3 py-3 text-sm font-black text-white/30">{i + 1}</td>
+                {rosterAthletes.map((a, i) => {
+                  const m = a.metrics || {};
+                  const feedUrl = m.ig_feed?.post_url || null;
+                  const reelUrl = m.ig_reel?.post_url || null;
+                  return (
+                  <tr key={a.id} className="border-b border-white/[0.10] hover:bg-white/[0.04]">
+                    <td className="px-3 py-3 text-sm font-black text-white/45">{i + 1}</td>
                     <td className="px-3 py-3 text-sm font-black uppercase">{a.name}</td>
-                    <td className="px-3 py-3 text-sm text-white/50">{a.school}</td>
+                    <td className="px-3 py-3 text-sm text-white/70">{a.school}</td>
                     <td className="px-3 py-3">
-                      <span className="px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-brand/15 text-brand">
+                      <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">
                         {a.sport}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-sm text-white/40">{a.ig_handle ? `@${a.ig_handle}` : "\u2014"}</td>
-                    <td className="px-3 py-3 text-sm font-bold text-white/50 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>
-                    <td className="px-3 py-3 text-sm font-bold text-white/50 text-right">{fmt(getTotalImpressions(a))}</td>
-                    <td className="px-3 py-3 text-sm font-bold text-white/50 text-right">{fmt(getTotalEngagements(a))}</td>
+                    <td className="px-3 py-3 text-sm">{a.ig_handle ? (
+                      <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors">@{a.ig_handle}</a>
+                    ) : "\u2014"}</td>
+                    <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>
+                    <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>
+                    <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>
                     <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>
+                    <td className="px-3 py-3 text-center">
+                      {feedUrl ? (
+                        <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                      ) : (
+                        <span className="text-white/35">&mdash;</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {reelUrl ? (
+                        <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                        </a>
+                      ) : (
+                        <span className="text-white/35">&mdash;</span>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Mobile: compact cards */}
           <div className="md:hidden space-y-1">
-            {rosterAthletes.map((a, i) => (
-              <div key={a.id} className="flex items-center gap-3 py-3 px-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-                <span className="text-sm font-black text-white/30 w-6 text-right">{i + 1}</span>
+            {rosterAthletes.map((a, i) => {
+              const m = a.metrics || {};
+              const feedUrl = m.ig_feed?.post_url || null;
+              const reelUrl = m.ig_reel?.post_url || null;
+              return (
+              <div key={a.id} className="flex items-center gap-3 py-3 px-3 rounded-lg bg-white/[0.05] border border-white/[0.10]">
+                <span className="text-sm font-black text-white/45 w-6 text-right">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-black uppercase">{a.name}</div>
-                  <div className="text-[10px] text-white/40">{a.school} &middot; {a.sport}</div>
+                  <div className="text-xs text-white/70">{a.school} &middot; {a.sport}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-bold text-white/50">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>
+                  <div className="text-sm font-bold text-white/70">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>
                   {getBestEngRate(a) > 0 && (
-                    <div className="text-[10px] font-bold text-brand">{pct(getBestEngRate(a))}</div>
+                    <div className="text-xs font-bold text-brand">{pct(getBestEngRate(a))}</div>
+                  )}
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  {feedUrl && (
+                    <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </a>
+                  )}
+                  {reelUrl && (
+                    <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                    </a>
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* ── FOOTER ─────────────────────────────────────────── */}
-      <div className="recap-footer-area px-6 md:px-12 py-8 border-t border-white/10">
+      <div className="recap-footer-area px-6 md:px-12 py-8 border-t border-white/[0.15]">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <PostgameLogo size="sm" className="opacity-30" />
+          <PostgameLogo size="sm" className="opacity-40" />
           <div className="flex items-center gap-3">
             {settings.brand_logo_url && (
               <img src={settings.brand_logo_url} className="h-5 object-contain opacity-50" alt="" />
             )}
-            <span className="text-white/30">
+            <span className="text-sm text-white/50">
               &copy; {new Date().getFullYear()} {campaign.client_name}
             </span>
           </div>
         </div>
         <div className="text-center mt-4">
-          <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">
+          <span className="text-xs text-white/45 font-bold uppercase tracking-widest">
             Powered by Postgame
           </span>
         </div>

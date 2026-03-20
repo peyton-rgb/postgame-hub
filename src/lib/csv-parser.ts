@@ -199,25 +199,40 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   let reelTotalEngIdx = iIgReelEngagements;
 
   // Handle duplicate "Engagement Rate" columns by position
-  if (feedEngRateIdx === -1 || reelEngRateIdx === -1) {
+  // Also handles when both findCol calls matched the same column via fuzzy matching
+  if (feedEngRateIdx === -1 || reelEngRateIdx === -1 || feedEngRateIdx === reelEngRateIdx) {
     const engRateIndices: number[] = [];
     headers.forEach((h, i) => {
       const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
       if (clean === "engagementrate") engRateIndices.push(i);
     });
-    if (engRateIndices.length >= 1 && feedEngRateIdx === -1) feedEngRateIdx = engRateIndices[0];
-    if (engRateIndices.length >= 2 && reelEngRateIdx === -1) reelEngRateIdx = engRateIndices[1];
+    if (engRateIndices.length >= 1) feedEngRateIdx = engRateIndices[0];
+    if (engRateIndices.length >= 2) reelEngRateIdx = engRateIndices[1];
   }
 
-  // Handle duplicate "Total Engagements" columns by position
-  if (feedTotalEngIdx === -1 || reelTotalEngIdx === -1) {
+  // Handle duplicate "Engagements" / "Total Engagements" columns by position
+  // Matches: "engagements", "totalengagement", "totalengagements"
+  if (feedTotalEngIdx === -1 || reelTotalEngIdx === -1 || feedTotalEngIdx === reelTotalEngIdx) {
     const totalEngIndices: number[] = [];
     headers.forEach((h, i) => {
       const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (clean === "totalengagement" || clean === "totalengagements") totalEngIndices.push(i);
+      if (clean === "engagements" || clean === "engagement" || clean === "totalengagement" || clean === "totalengagements") totalEngIndices.push(i);
     });
-    if (totalEngIndices.length >= 1 && feedTotalEngIdx === -1) feedTotalEngIdx = totalEngIndices[0];
-    if (totalEngIndices.length >= 2 && reelTotalEngIdx === -1) reelTotalEngIdx = totalEngIndices[1];
+    if (totalEngIndices.length >= 1) feedTotalEngIdx = totalEngIndices[0];
+    if (totalEngIndices.length >= 2) reelTotalEngIdx = totalEngIndices[1];
+  }
+
+  // Handle duplicate "Impressions" columns by position (first = feed, second = story)
+  let feedImpressionsIdx = iIgFeedImpressions;
+  let storyImpressionsIdx = iIgStoryImpressions;
+  if (feedImpressionsIdx === -1 || storyImpressionsIdx === -1 || feedImpressionsIdx === storyImpressionsIdx) {
+    const impIndices: number[] = [];
+    headers.forEach((h, i) => {
+      const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (clean === "impressions") impIndices.push(i);
+    });
+    if (impIndices.length >= 1) feedImpressionsIdx = impIndices[0];
+    if (impIndices.length >= 2) storyImpressionsIdx = impIndices[1];
   }
 
   const cFirst = iFirst !== -1 ? iFirst : 0;
@@ -249,7 +264,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
       ig_feed: {
         post_url: getVal(iIgFeedUrl)?.trim() || undefined,
         reach: parseNum(getVal(iIgFeedReach)),
-        impressions: parseNum(getVal(iIgFeedImpressions)),
+        impressions: parseNum(getVal(feedImpressionsIdx)),
         likes: parseNum(getVal(iIgFeedLikes)),
         comments: parseNum(getVal(iIgFeedComments)),
         total_engagements: parseNum(getVal(feedTotalEngIdx)),
@@ -257,7 +272,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
       },
       ig_story: {
         count: parseNum(getVal(iIgStoryCount)),
-        impressions: parseNum(getVal(iIgStoryImpressions)),
+        impressions: parseNum(getVal(storyImpressionsIdx)),
       },
       ig_reel: {
         post_url: getVal(iIgReelUrl)?.trim() || undefined,
@@ -275,19 +290,23 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
         total_engagements: parseNum(getVal(iTiktokEngagements)),
         engagement_rate: parseRate(getVal(iTiktokEngRate)),
       },
-      clicks: {
-        link_clicks: parseNum(getVal(iLinkClicks)),
-        click_through_rate: parseRate(getVal(iClickThroughRate)),
-        landing_page_views: parseNum(getVal(iLandingPageViews)),
-        cost_per_click: parseNum(getVal(iCostPerClick)),
-      },
-      sales: {
-        conversions: parseNum(getVal(iConversions)),
-        revenue: parseNum(getVal(iRevenue)),
-        conversion_rate: parseRate(getVal(iConversionRate)),
-        cost_per_acquisition: parseNum(getVal(iCostPerAcquisition)),
-        roas: parseNum(getVal(iRoas)),
-      },
+      ...((iLinkClicks !== -1 || iClickThroughRate !== -1 || iLandingPageViews !== -1 || iCostPerClick !== -1) ? {
+        clicks: {
+          link_clicks: parseNum(getVal(iLinkClicks)),
+          click_through_rate: parseRate(getVal(iClickThroughRate)),
+          landing_page_views: parseNum(getVal(iLandingPageViews)),
+          cost_per_click: parseNum(getVal(iCostPerClick)),
+        },
+      } : {}),
+      ...((iConversions !== -1 || iRevenue !== -1 || iConversionRate !== -1 || iCostPerAcquisition !== -1 || iRoas !== -1) ? {
+        sales: {
+          conversions: parseNum(getVal(iConversions)),
+          revenue: parseNum(getVal(iRevenue)),
+          conversion_rate: parseRate(getVal(iConversionRate)),
+          cost_per_acquisition: parseNum(getVal(iCostPerAcquisition)),
+          roas: parseNum(getVal(iRoas)),
+        },
+      } : {}),
     };
 
     athletes.push({

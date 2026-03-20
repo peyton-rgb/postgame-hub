@@ -63,13 +63,20 @@ export default async function RecapPage({ params }: Props) {
     mediaByAthlete[m.athlete_id].push(m);
   });
 
+  const allAthletes = athletes || [];
+  // Gallery athletes: only those with actual uploaded media
+  const galleryAthletes = allAthletes.filter((a: any) => {
+    const items = mediaByAthlete[a.id];
+    return items && items.some((m: any) => !m.is_video_thumbnail);
+  });
+
   const isTop50 = campaign.settings?.campaign_type === "top_50";
 
   if (isTop50) {
     return (
       <Top50Recap
         campaign={campaign}
-        athletes={athletes || []}
+        athletes={allAthletes}
         media={mediaByAthlete}
       />
     );
@@ -78,8 +85,8 @@ export default async function RecapPage({ params }: Props) {
   return (
     <CampaignRecap
       campaign={campaign}
-      athletes={athletes || []}
-      allAthletes={athletes || []}
+      athletes={galleryAthletes}
+      allAthletes={allAthletes}
       media={mediaByAthlete}
     />
   );

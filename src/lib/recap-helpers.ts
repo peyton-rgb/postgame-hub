@@ -9,7 +9,14 @@ export function fmt(n: number | undefined): string {
 
 export function pct(n: number | undefined): string {
   if (n == null) return "0%";
-  return n.toFixed(2) + "%";
+  return Math.round(n) + "%";
+}
+
+export function dollar(n: number | undefined): string {
+  if (n == null) return "$0";
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return "$" + (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function computeStats(athletes: Athlete[]) {
@@ -30,6 +37,10 @@ export function computeStats(athletes: Athlete[]) {
   const igStory = { count: 0, impressions: 0 };
   const igReel = { views: 0, likes: 0, comments: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
   const tiktok = { views: 0, likes_comments: 0, saves_shares: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+  const clicks = { link_clicks: 0, click_through_rate_sum: 0, click_through_rate_count: 0, landing_page_views: 0, cost_per_click_sum: 0, cost_per_click_count: 0 };
+  const sales = { conversions: 0, revenue: 0, conversion_rate_sum: 0, conversion_rate_count: 0, cost_per_acquisition_sum: 0, cost_per_acquisition_count: 0, roas_sum: 0, roas_count: 0 };
+  let hasClicks = false;
+  let hasSales = false;
 
   for (const a of athletes) {
     const m = a.metrics || {};
@@ -68,6 +79,27 @@ export function computeStats(athletes: Athlete[]) {
       totalEngRateSum += rates.reduce((s, r) => s + r, 0) / rates.length;
       engRateCount++;
     }
+
+    // Clicks
+    if (m.clicks) {
+      const c = m.clicks;
+      if (c.link_clicks || c.click_through_rate || c.landing_page_views || c.cost_per_click) hasClicks = true;
+      clicks.link_clicks += c.link_clicks || 0;
+      clicks.landing_page_views += c.landing_page_views || 0;
+      if (c.click_through_rate != null && c.click_through_rate > 0) { clicks.click_through_rate_sum += c.click_through_rate; clicks.click_through_rate_count++; }
+      if (c.cost_per_click != null && c.cost_per_click > 0) { clicks.cost_per_click_sum += c.cost_per_click; clicks.cost_per_click_count++; }
+    }
+
+    // Sales
+    if (m.sales) {
+      const s = m.sales;
+      if (s.conversions || s.revenue || s.conversion_rate || s.cost_per_acquisition || s.roas) hasSales = true;
+      sales.conversions += s.conversions || 0;
+      sales.revenue += s.revenue || 0;
+      if (s.conversion_rate != null && s.conversion_rate > 0) { sales.conversion_rate_sum += s.conversion_rate; sales.conversion_rate_count++; }
+      if (s.cost_per_acquisition != null && s.cost_per_acquisition > 0) { sales.cost_per_acquisition_sum += s.cost_per_acquisition; sales.cost_per_acquisition_count++; }
+      if (s.roas != null && s.roas > 0) { sales.roas_sum += s.roas; sales.roas_count++; }
+    }
   }
 
   const avgEngRate = engRateCount > 0 ? totalEngRateSum / engRateCount : 0;
@@ -77,6 +109,7 @@ export function computeStats(athletes: Athlete[]) {
     totalPosts, totalImpressions, totalEngagements, avgEngRate,
     igFeedPosts, igReelPosts, tiktokPosts, totalReach,
     igFeed, igStory, igReel, tiktok,
+    clicks, hasClicks, sales, hasSales,
   };
 }
 
@@ -85,7 +118,7 @@ export function getTopPerformers(athletes: Athlete[], count = 5) {
     .map((a) => {
       const m = a.metrics || {};
       const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-      const best = rates.length > 0 ? Math.max(...rates) : 0;
+      const best = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
       return { ...a, bestEngRate: best };
     })
     .filter((a) => a.bestEngRate > 0)
@@ -109,7 +142,7 @@ export function getMediaLabel(items: Media[]): string {
 export function getBestEngRate(athlete: Athlete): number {
   const m = athlete.metrics || {};
   const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-  return rates.length > 0 ? Math.max(...rates) : 0;
+  return rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
 }
 
 export function getTotalImpressions(athlete: Athlete): number {

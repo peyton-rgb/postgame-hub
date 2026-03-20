@@ -5,15 +5,16 @@ import { Suspense } from "react";
 import CampaignList from "@/components/CampaignList";
 import RunOfShowList from "@/components/RunOfShowList";
 import BriefList from "@/components/BriefList";
+import TrackerList from "@/components/TrackerList";
 import ComingSoon from "@/components/ComingSoon";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import Link from "next/link";
 
 const TABS = [
   { key: "recaps", label: "Recaps" },
+  { key: "trackers", label: "Performance Trackers" },
   { key: "ros", label: "Run of Shows" },
   { key: "briefs", label: "Briefs" },
-  { key: "media-kits", label: "Media Kits" },
   { key: "event-pages", label: "Event Pages" },
 ] as const;
 
@@ -69,9 +70,9 @@ function DashboardContent() {
       {/* Tab content */}
       <div className="p-8">
         {activeTab === "recaps" && <CampaignList />}
+        {activeTab === "trackers" && <TrackerList />}
         {activeTab === "ros" && <RunOfShowList />}
         {activeTab === "briefs" && <BriefList />}
-        {activeTab === "media-kits" && <ComingSoon label="Media Kits" />}
         {activeTab === "event-pages" && <ComingSoon label="Event Pages" />}
       </div>
     </div>

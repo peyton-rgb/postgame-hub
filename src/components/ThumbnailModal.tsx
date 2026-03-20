@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import heic2any from "heic2any";
 
 export function ThumbnailModal({
   athleteName,
@@ -15,15 +16,33 @@ export function ThumbnailModal({
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [converting, setConverting] = useState(false);
 
-  const handleFile = (f: File | undefined) => {
+  const handleFile = async (f: File | undefined) => {
     if (!f) return;
-    // Accept any image type, including HEIC/HEIF from iOS
     if (!f.type.startsWith("image/") && !f.name.match(/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i)) return;
-    setFile(f);
-    // Use object URL for faster, more reliable preview
-    const url = URL.createObjectURL(f);
-    setPreview(url);
+
+    const name = f.name.toLowerCase();
+    const isHeic = name.endsWith(".heic") || name.endsWith(".heif") || f.type === "image/heic" || f.type === "image/heif";
+
+    if (isHeic) {
+      setConverting(true);
+      try {
+        const blob = await heic2any({ blob: f, toType: "image/jpeg", quality: 0.9 }) as Blob;
+        const newName = f.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
+        const converted = new File([blob], newName, { type: "image/jpeg" });
+        setFile(converted);
+        setPreview(URL.createObjectURL(converted));
+      } catch (e) {
+        console.error("HEIC conversion failed:", e);
+        setFile(f);
+        setPreview(URL.createObjectURL(f));
+      }
+      setConverting(false);
+    } else {
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+    }
   };
 
   const handleSubmit = async () => {
@@ -61,7 +80,12 @@ export function ThumbnailModal({
           onDragOver={(e) => e.preventDefault()}
           className="aspect-[4/5] rounded-xl overflow-hidden border-2 border-dashed border-white/15 bg-black cursor-pointer flex flex-col items-center justify-center gap-2 mb-6 relative"
         >
-          {preview ? (
+          {converting ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-brand rounded-full animate-spin" />
+              <span className="text-xs text-white/40 font-bold">Converting HEIC...</span>
+            </div>
+          ) : preview ? (
             <img src={preview} className="w-full h-full object-cover" alt="" />
           ) : (
             <>
@@ -86,7 +110,7 @@ export function ThumbnailModal({
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             onChange={(e) => handleFile(e.target.files?.[0])}
             className="hidden"
           />
@@ -101,10 +125,10 @@ export function ThumbnailModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!file || uploading}
+            disabled={!file || uploading || converting}
             className="flex-1 px-5 py-2.5 bg-brand rounded-lg text-white font-bold text-sm disabled:opacity-30"
           >
-            {uploading ? "Uploading..." : "Use as Thumbnail"}
+            {converting ? "Converting..." : uploading ? "Uploading..." : "Use as Thumbnail"}
           </button>
         </div>
       </div>

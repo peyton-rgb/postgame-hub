@@ -20,17 +20,30 @@ export default function CampaignList() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Campaign | null>(null);
+  const [trackers, setTrackers] = useState<Campaign[]>([]);
+  const [selectedTrackerId, setSelectedTrackerId] = useState<string>("");
   const dragCounterRef = useRef(0);
   const supabase = createBrowserSupabase();
 
   useEffect(() => {
     loadCampaigns();
+    loadTrackers();
   }, []);
+
+  async function loadTrackers() {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("type", "tracker")
+      .order("created_at", { ascending: false });
+    setTrackers(data || []);
+  }
 
   async function loadCampaigns() {
     const { data } = await supabase
       .from("campaigns")
       .select("*")
+      .in("type", ["recap"])
       .order("created_at", { ascending: false });
     setCampaigns(data || []);
     setLoading(false);
@@ -64,8 +77,38 @@ export default function CampaignList() {
     }
 
     if (data) {
-      // If CSV was attached, parse and import athletes
-      if (csvFile) {
+      // If a tracker is linked, import its athletes
+      if (selectedTrackerId) {
+        try {
+          const { data: trackerAthletes } = await supabase
+            .from("athletes")
+            .select("*")
+            .eq("campaign_id", selectedTrackerId)
+            .order("sort_order");
+
+          if (trackerAthletes && trackerAthletes.length > 0) {
+            const athleteRows = trackerAthletes.map((a: any, i: number) => ({
+              campaign_id: data.id,
+              name: a.name,
+              ig_handle: a.ig_handle || "",
+              ig_followers: a.ig_followers || 0,
+              school: a.school || "",
+              sport: a.sport || "",
+              gender: a.gender || "",
+              notes: a.notes || "",
+              post_type: a.post_type || "IG Feed",
+              post_url: a.post_url || null,
+              metrics: a.metrics || {},
+              sort_order: i,
+            }));
+
+            await supabase.from("athletes").insert(athleteRows);
+          }
+        } catch (err) {
+          console.error("Tracker import error:", err);
+        }
+      } else if (csvFile) {
+        // If CSV was attached, parse and import athletes
         try {
           const text = await csvFile.text();
           const parsed = parseMetricsCSV(text);
@@ -98,6 +141,7 @@ export default function CampaignList() {
       setNewName("");
       setNewClient("");
       setCsvFile(null);
+      setSelectedTrackerId("");
       setCreating(false);
 
       // Navigate straight to the campaign editor
@@ -186,71 +230,104 @@ export default function CampaignList() {
               className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-5 focus:border-[#D73F09] outline-none"
             />
 
-            {/* CSV Upload Zone */}
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-              Import Roster CSV <span className="text-gray-700 normal-case">(optional)</span>
-            </label>
-            <div
-              onDragEnter={(e) => { e.preventDefault(); dragCounterRef.current++; setCsvDragging(true); }}
-              onDragLeave={(e) => { e.preventDefault(); dragCounterRef.current--; if (dragCounterRef.current === 0) setCsvDragging(false); }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                dragCounterRef.current = 0;
-                setCsvDragging(false);
-                const f = e.dataTransfer.files[0];
-                if (f && f.name.endsWith(".csv")) setCsvFile(f);
-              }}
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = ".csv";
-                input.onchange = (ev) => {
-                  const f = (ev.target as HTMLInputElement).files?.[0];
-                  if (f) setCsvFile(f);
-                };
-                input.click();
-              }}
-              className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all mb-6 ${
-                csvDragging
-                  ? "border-[#D73F09] bg-[#D73F09]/5"
-                  : csvFile
-                    ? "border-green-500/40 bg-green-500/5"
-                    : "border-gray-700 hover:border-gray-500"
-              }`}
-            >
-              {csvFile ? (
-                <div className="flex items-center justify-center gap-3">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <div>
-                    <div className="text-sm font-bold text-green-400">{csvFile.name}</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Athletes will be imported on create</div>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setCsvFile(null); }}
-                    className="ml-2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-red-400 hover:bg-red-400/10 flex items-center justify-center text-xs"
-                  >
-                    ×
-                  </button>
+            {/* Link to Performance Tracker */}
+            {trackers.length > 0 && (
+              <div className="mb-5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Link Performance Tracker <span className="text-gray-700 normal-case">(optional)</span>
+                </label>
+                <select
+                  value={selectedTrackerId}
+                  onChange={(e) => {
+                    setSelectedTrackerId(e.target.value);
+                    if (e.target.value) setCsvFile(null); // clear CSV if tracker selected
+                  }}
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none"
+                >
+                  <option value="">Select a tracker to import athletes...</option>
+                  {trackers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} — {t.client_name}
+                    </option>
+                  ))}
+                </select>
+                {selectedTrackerId && (
+                  <p className="text-[10px] text-green-500/70 mt-1.5">
+                    All athletes &amp; metrics from this tracker will be imported into the recap.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* CSV Upload Zone — hidden when a tracker is selected */}
+            {!selectedTrackerId && (
+              <>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Import Roster CSV <span className="text-gray-700 normal-case">(optional)</span>
+                </label>
+                <div
+                  onDragEnter={(e) => { e.preventDefault(); dragCounterRef.current++; setCsvDragging(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); dragCounterRef.current--; if (dragCounterRef.current === 0) setCsvDragging(false); }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    dragCounterRef.current = 0;
+                    setCsvDragging(false);
+                    const f = e.dataTransfer.files[0];
+                    if (f && f.name.endsWith(".csv")) setCsvFile(f);
+                  }}
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = ".csv";
+                    input.onchange = (ev) => {
+                      const f = (ev.target as HTMLInputElement).files?.[0];
+                      if (f) setCsvFile(f);
+                    };
+                    input.click();
+                  }}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all mb-6 ${
+                    csvDragging
+                      ? "border-[#D73F09] bg-[#D73F09]/5"
+                      : csvFile
+                        ? "border-green-500/40 bg-green-500/5"
+                        : "border-gray-700 hover:border-gray-500"
+                  }`}
+                >
+                  {csvFile ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <div>
+                        <div className="text-sm font-bold text-green-400">{csvFile.name}</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">Athletes will be imported on create</div>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCsvFile(null); }}
+                        className="ml-2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-red-400 hover:bg-red-400/10 flex items-center justify-center text-xs"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={csvDragging ? "#D73F09" : "#555"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      <div className="text-xs font-bold text-gray-400">Drop CSV here or click to browse</div>
+                      <div className="text-[10px] text-gray-600 mt-1">Athlete roster + metrics spreadsheet</div>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={csvDragging ? "#D73F09" : "#555"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                  <div className="text-xs font-bold text-gray-400">Drop CSV here or click to browse</div>
-                  <div className="text-[10px] text-gray-600 mt-1">Athlete roster + metrics spreadsheet</div>
-                </>
-              )}
-            </div>
+              </>
+            )}
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowCreate(false); setCsvFile(null); setCsvDragging(false); }}
+                onClick={() => { setShowCreate(false); setCsvFile(null); setCsvDragging(false); setSelectedTrackerId(""); }}
                 disabled={creating}
                 className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500 disabled:opacity-50"
               >
@@ -266,7 +343,7 @@ export default function CampaignList() {
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                     Creating...
                   </span>
-                ) : csvFile ? "Create & Import" : "Create Campaign"}
+                ) : selectedTrackerId ? "Create & Link Tracker" : csvFile ? "Create & Import" : "Create Campaign"}
               </button>
             </div>
           </div>

@@ -375,11 +375,11 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
   // Determine which tabs to show based on data
   const hasClicksData = rows.some((r) => {
     const c = r.metrics?.clicks;
-    return c && (c.link_clicks != null || c.click_through_rate != null || c.landing_page_views != null || c.cost_per_click != null);
+    return c && (c.link_clicks || c.click_through_rate || c.landing_page_views || c.cost_per_click);
   });
   const hasSalesData = rows.some((r) => {
     const s = r.metrics?.sales;
-    return s && (s.conversions != null || s.revenue != null || s.conversion_rate != null || s.cost_per_acquisition != null || s.roas != null);
+    return s && (s.conversions || s.revenue || s.conversion_rate || s.cost_per_acquisition || s.roas);
   });
 
   const tabs = [
