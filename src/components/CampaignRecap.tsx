@@ -293,6 +293,7 @@ export function CampaignRecap({
             stats.hasSales ? "md:grid-cols-3" : "md:grid-cols-4"
           }`}>
             {[
+              { value: stats.athleteCount, label: "ATHLETES" },
               { value: stats.totalPosts, label: "TOTAL POSTS" },
               { value: fmt(stats.totalImpressions), label: "TOTAL IMPRESSIONS" },
               { value: fmt(stats.totalEngagements), label: "TOTAL ENGAGEMENTS" },
