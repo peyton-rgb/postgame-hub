@@ -1,4 +1,4 @@
-import { createServerSupabase } from "@/lib/supabase";
+import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { DynamicRunOfShowDetail } from "@/components/DynamicRunOfShow";
 import type { Metadata } from "next";
@@ -8,7 +8,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string; city: string };
 }): Promise<Metadata> {
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
 
   const { data: ros } = await supabase
     .from("run_of_shows")
@@ -39,7 +39,7 @@ export default async function DynamicShootPage({
 }: {
   params: { slug: string; city: string };
 }) {
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
 
   const { data: ros } = await supabase
     .from("run_of_shows")

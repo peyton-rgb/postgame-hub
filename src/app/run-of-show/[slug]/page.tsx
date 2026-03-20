@@ -1,4 +1,4 @@
-import { createServerSupabase } from "@/lib/supabase";
+import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,7 +10,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
   const { data: ros } = await supabase
     .from("run_of_shows")
     .select("name, client_name, event_name")
@@ -31,7 +31,7 @@ export default async function DynamicRunOfShowIndex({
 }: {
   params: { slug: string };
 }) {
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
 
   const { data: ros } = await supabase
     .from("run_of_shows")

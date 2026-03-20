@@ -1,4 +1,4 @@
-import { createServerSupabase } from "@/lib/supabase";
+import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -7,7 +7,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
   const { data } = await supabase
     .from("briefs")
     .select("title, client_name")
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BriefPage({ params }: Props) {
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
   const { data: brief } = await supabase
     .from("briefs")
     .select("*")

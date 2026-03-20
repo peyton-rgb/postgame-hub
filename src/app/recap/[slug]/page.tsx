@@ -1,4 +1,4 @@
-import { createServerSupabase } from "@/lib/supabase";
+import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
@@ -10,7 +10,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
   const { data: campaign } = await supabase
     .from("campaigns")
     .select("name, client_name, settings")
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function RecapPage({ params }: Props) {
   const { slug } = await params;
-  const supabase = createServerSupabase();
+  const supabase = createPlainSupabase();
 
   const { data: campaign } = await supabase
     .from("campaigns")

@@ -9,6 +9,7 @@ import TrackerList from "@/components/TrackerList";
 import ComingSoon from "@/components/ComingSoon";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import Link from "next/link";
+import { createBrowserSupabase } from "@/lib/supabase";
 
 const TABS = [
   { key: "recaps", label: "Recaps" },
@@ -38,15 +39,26 @@ function DashboardContent() {
             <PostgameLogo size="md" />
             <h1 className="text-xl font-black">Page Creator</h1>
           </div>
-          <Link
-            href="/media-library"
-            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-400 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-            </svg>
-            Media Library
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/media-library"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-400 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              Media Library
+            </Link>
+            <button
+              onClick={async () => {
+                await createBrowserSupabase().auth.signOut();
+                window.location.href = "/login";
+              }}
+              className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
 
         {/* Tab bar */}
