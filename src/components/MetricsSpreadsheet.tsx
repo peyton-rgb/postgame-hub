@@ -553,7 +553,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
                       return (
                         <td key={col.key} className="px-2 py-1">
                           <div className="bg-[#0a0a0a] rounded px-2 py-1.5 text-gray-400 font-mono text-xs min-w-[60px]">
-                            {val !== "" && val != null ? (typeof val === "number" ? val.toFixed(2) : val) : "—"}
+                            {val !== "" && val != null ? (typeof val === "number" ? (col.key.includes("rate") ? Math.round(val) + "%" : val.toFixed(2)) : val) : "—"}
                           </div>
                         </td>
                       );
