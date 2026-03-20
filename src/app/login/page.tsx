@@ -36,11 +36,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-10">
-          <h1 className="text-2xl font-black tracking-tight text-white">
-            POSTGAME<span className="text-[#D73F09]">.</span>
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your dashboard</p>
+        <div className="flex flex-col items-center mb-10">
+          <img src="/postgame-logo-white.png" className="h-8 object-contain mb-3" alt="Postgame" />
+          <p className="text-sm text-gray-500">Sign in to your dashboard</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
