@@ -17,12 +17,14 @@ interface EditableRow {
   school: string;
   sport: string;
   gender: string;
+  content_rating: string;
+  reach_level: string;
   notes: string;
   post_type: string;
   metrics: AthleteMetrics;
 }
 
-type PlatformTab = "identity" | "ig_feed" | "ig_story" | "ig_reel" | "tiktok" | "clicks" | "sales";
+type PlatformTab = "identity" | "ig_feed" | "ig_story" | "ig_reel" | "tiktok" | "clicks" | "sales" | "targets";
 
 interface Props {
   athletes: Athlete[];
@@ -70,6 +72,10 @@ const IDENTITY_COLS: ColDef[] = [
     getValue: (r) => r.ig_handle, setValue: (r, v) => ({ ...r, ig_handle: v }) },
   { key: "ig_followers", label: "Followers", type: "number", width: "100px",
     getValue: (r) => r.ig_followers, setValue: (r, v) => ({ ...r, ig_followers: v === "" ? "" : parseInt(v) || 0 }) },
+  { key: "content_rating", label: "Content Rating", type: "text", width: "120px",
+    getValue: (r) => r.content_rating, setValue: (r, v) => ({ ...r, content_rating: v }) },
+  { key: "reach_level", label: "Reach Level", type: "text", width: "140px",
+    getValue: (r) => r.reach_level, setValue: (r, v) => ({ ...r, reach_level: v }) },
   { key: "school", label: "School", type: "text", width: "150px",
     getValue: (r) => r.school, setValue: (r, v) => ({ ...r, school: v }) },
   { key: "sport", label: "Sport", type: "text", width: "120px",
@@ -96,6 +102,12 @@ const IG_FEED_COLS: ColDef[] = [
   { key: "ig_feed_comments", label: "Comments", type: "number", width: "90px",
     getValue: (r) => metricVal(r.metrics, "ig_feed", "comments"),
     setValue: (r, v) => setMetricVal(r, "ig_feed", "comments", v) },
+  { key: "ig_feed_shares", label: "Shares", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "ig_feed", "shares"),
+    setValue: (r, v) => setMetricVal(r, "ig_feed", "shares", v) },
+  { key: "ig_feed_reposts", label: "Reposts", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "ig_feed", "reposts"),
+    setValue: (r, v) => setMetricVal(r, "ig_feed", "reposts", v) },
   { key: "ig_feed_total", label: "Total Eng.", type: "number", width: "90px", computed: true,
     getValue: (r) => metricVal(r.metrics, "ig_feed", "total_engagements"),
     setValue: (r) => r },
@@ -126,6 +138,12 @@ const IG_REEL_COLS: ColDef[] = [
   { key: "ig_reel_comments", label: "Comments", type: "number", width: "90px",
     getValue: (r) => metricVal(r.metrics, "ig_reel", "comments"),
     setValue: (r, v) => setMetricVal(r, "ig_reel", "comments", v) },
+  { key: "ig_reel_shares", label: "Shares", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "ig_reel", "shares"),
+    setValue: (r, v) => setMetricVal(r, "ig_reel", "shares", v) },
+  { key: "ig_reel_reposts", label: "Reposts", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "ig_reel", "reposts"),
+    setValue: (r, v) => setMetricVal(r, "ig_reel", "reposts", v) },
   { key: "ig_reel_total", label: "Total Eng.", type: "number", width: "90px", computed: true,
     getValue: (r) => metricVal(r.metrics, "ig_reel", "total_engagements"),
     setValue: (r) => r },
@@ -141,12 +159,12 @@ const TIKTOK_COLS: ColDef[] = [
   { key: "tiktok_views", label: "Views", type: "number", width: "90px",
     getValue: (r) => metricVal(r.metrics, "tiktok", "views"),
     setValue: (r, v) => setMetricVal(r, "tiktok", "views", v) },
-  { key: "tiktok_likes_comments", label: "Likes+Comments", type: "number", width: "120px",
-    getValue: (r) => metricVal(r.metrics, "tiktok", "likes_comments"),
-    setValue: (r, v) => setMetricVal(r, "tiktok", "likes_comments", v) },
-  { key: "tiktok_saves_shares", label: "Saves+Shares", type: "number", width: "110px",
-    getValue: (r) => metricVal(r.metrics, "tiktok", "saves_shares"),
-    setValue: (r, v) => setMetricVal(r, "tiktok", "saves_shares", v) },
+  { key: "tiktok_likes", label: "Likes", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "tiktok", "likes"),
+    setValue: (r, v) => setMetricVal(r, "tiktok", "likes", v) },
+  { key: "tiktok_comments", label: "Comments", type: "number", width: "90px",
+    getValue: (r) => metricVal(r.metrics, "tiktok", "comments"),
+    setValue: (r, v) => setMetricVal(r, "tiktok", "comments", v) },
   { key: "tiktok_total", label: "Total Eng.", type: "number", width: "90px", computed: true,
     getValue: (r) => metricVal(r.metrics, "tiktok", "total_engagements"),
     setValue: (r) => r },
@@ -168,6 +186,33 @@ const CLICKS_COLS: ColDef[] = [
   { key: "clicks_cpc", label: "CPC ($)", type: "number", width: "90px",
     getValue: (r) => metricVal(r.metrics, "clicks", "cost_per_click"),
     setValue: (r, v) => setMetricVal(r, "clicks", "cost_per_click", v) },
+  { key: "clicks_orders", label: "Orders", type: "number", width: "80px",
+    getValue: (r) => metricVal(r.metrics, "clicks", "orders"),
+    setValue: (r, v) => setMetricVal(r, "clicks", "orders", v) },
+  { key: "clicks_sales", label: "Sales ($)", type: "number", width: "90px",
+    getValue: (r) => metricVal(r.metrics, "clicks", "sales"),
+    setValue: (r, v) => setMetricVal(r, "clicks", "sales", v) },
+  { key: "clicks_cpm", label: "CPM ($)", type: "number", width: "90px",
+    getValue: (r) => metricVal(r.metrics, "clicks", "cpm"),
+    setValue: (r, v) => setMetricVal(r, "clicks", "cpm", v) },
+];
+
+const TARGETS_COLS: ColDef[] = [
+  { key: "targets_athlete", label: "Athlete Target", type: "number", width: "110px",
+    getValue: (r) => metricVal(r.metrics, "targets", "athlete_target"),
+    setValue: (r, v) => setMetricVal(r, "targets", "athlete_target", v) },
+  { key: "targets_content_unit", label: "Content Unit Target", type: "number", width: "140px",
+    getValue: (r) => metricVal(r.metrics, "targets", "content_unit_target"),
+    setValue: (r, v) => setMetricVal(r, "targets", "content_unit_target", v) },
+  { key: "targets_post", label: "Post Target", type: "number", width: "100px",
+    getValue: (r) => metricVal(r.metrics, "targets", "post_target"),
+    setValue: (r, v) => setMetricVal(r, "targets", "post_target", v) },
+  { key: "targets_cpp", label: "Cost Per Post ($)", type: "number", width: "120px",
+    getValue: (r) => metricVal(r.metrics, "targets", "cost_per_post"),
+    setValue: (r, v) => setMetricVal(r, "targets", "cost_per_post", v) },
+  { key: "targets_cpa", label: "Cost Per Athlete ($)", type: "number", width: "140px",
+    getValue: (r) => metricVal(r.metrics, "targets", "cost_per_athlete"),
+    setValue: (r, v) => setMetricVal(r, "targets", "cost_per_athlete", v) },
 ];
 
 const SALES_COLS: ColDef[] = [
@@ -196,6 +241,7 @@ const TAB_COLS: Record<PlatformTab, ColDef[]> = {
   tiktok: TIKTOK_COLS,
   clicks: CLICKS_COLS,
   sales: SALES_COLS,
+  targets: TARGETS_COLS,
 };
 
 const BASE_TABS: { key: PlatformTab; label: string; color: string }[] = [
@@ -208,6 +254,7 @@ const BASE_TABS: { key: PlatformTab; label: string; color: string }[] = [
 
 const CLICKS_TAB = { key: "clicks" as PlatformTab, label: "Clicks", color: "#F59E0B" };
 const SALES_TAB = { key: "sales" as PlatformTab, label: "Sales", color: "#10B981" };
+const TARGETS_TAB = { key: "targets" as PlatformTab, label: "Targets", color: "#6366F1" };
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -222,6 +269,8 @@ function athleteToRow(a: Athlete): EditableRow {
     school: a.school || "",
     sport: a.sport || "",
     gender: a.gender || "",
+    content_rating: a.content_rating || "",
+    reach_level: a.reach_level || "",
     notes: a.notes || "",
     post_type: a.post_type || "IG Feed",
     metrics: autoFillMetrics(a.metrics || {}),
@@ -238,6 +287,8 @@ function blankRow(): EditableRow {
     school: "",
     sport: "",
     gender: "",
+    content_rating: "",
+    reach_level: "",
     notes: "",
     post_type: "IG Feed",
     metrics: {},
@@ -318,6 +369,8 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               school: pa.school || row.school,
               sport: pa.sport || row.sport,
               gender: pa.gender || row.gender,
+              content_rating: pa.content_rating || row.content_rating,
+              reach_level: pa.reach_level || row.reach_level,
               notes: pa.notes || row.notes,
               metrics: autoFillMetrics(pa.metrics),
             };
@@ -331,6 +384,8 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               school: pa.school,
               sport: pa.sport,
               gender: pa.gender,
+              content_rating: pa.content_rating || "",
+              reach_level: pa.reach_level || "",
               notes: pa.notes,
               post_type: pa.metrics.ig_reel?.post_url ? "IG Reel" : pa.metrics.tiktok?.post_url ? "TikTok" : "IG Feed",
               metrics: autoFillMetrics(pa.metrics),
@@ -375,17 +430,22 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
   // Determine which tabs to show based on data
   const hasClicksData = rows.some((r) => {
     const c = r.metrics?.clicks;
-    return c && (c.link_clicks || c.click_through_rate || c.landing_page_views || c.cost_per_click);
+    return c && (c.link_clicks || c.click_through_rate || c.landing_page_views || c.cost_per_click || c.orders || c.sales || c.cpm);
   });
   const hasSalesData = rows.some((r) => {
     const s = r.metrics?.sales;
     return s && (s.conversions || s.revenue || s.conversion_rate || s.cost_per_acquisition || s.roas);
+  });
+  const hasTargetsData = rows.some((r) => {
+    const t = r.metrics?.targets;
+    return t && (t.athlete_target || t.content_unit_target || t.post_target || t.cost_per_post || t.cost_per_athlete);
   });
 
   const tabs = [
     ...BASE_TABS,
     ...(hasClicksData ? [CLICKS_TAB] : []),
     ...(hasSalesData ? [SALES_TAB] : []),
+    ...(hasTargetsData ? [TARGETS_TAB] : []),
   ];
 
   const cols = TAB_COLS[activeTab];

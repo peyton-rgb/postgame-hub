@@ -6,6 +6,7 @@ export interface ParsedAthlete {
   name: string;
   ig_handle: string;
   ig_followers: number;
+  content_rating: string;
   reach_level: string;
   school: string;
   sport: string;
@@ -82,6 +83,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const iLast = findCol(headers, "last", "lastname", "last name", "lname");
   const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername");
   const iFollowers = findCol(headers, "ig followers", "followers", "ig_followers", "instagram followers");
+  const iContentRating = findCol(headers, "content rating", "content_rating", "contentrating", "rating");
   const iReachLevel = findCol(headers, "reach level", "reach_level", "reachlevel");
   const iSchool = findCol(headers, "school", "university", "college");
   const iSport = findCol(headers, "sport", "sports");
@@ -113,6 +115,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
       name: `${titleCase(first)} ${titleCase(last)}`,
       ig_handle: iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "",
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
+      content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",
       reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
       school: iSchool !== -1 ? (cols[iSchool]?.trim() || "") : "",
       sport: iSport !== -1 ? (cols[iSport]?.trim() || "") : "",
@@ -140,6 +143,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iLast = findCol(headers, "last", "lastname", "last name", "lname");
   const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername");
   const iFollowers = findCol(headers, "ig followers", "followers", "ig_followers", "instagram followers");
+  const iContentRating = findCol(headers, "content rating", "content_rating", "contentrating", "rating");
   const iReachLevel = findCol(headers, "reach level", "reach_level", "reachlevel");
   const iSchool = findCol(headers, "school", "university", "college");
   const iSport = findCol(headers, "sport", "sports");
@@ -152,44 +156,57 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iIgFeedImpressions = findCol(headers, "ig feed impressions", "ig feed 1 impressions", "feed impressions");
   const iIgFeedLikes = findCol(headers, "ig feed likes", "ig feed 1 likes", "feed likes");
   const iIgFeedComments = findCol(headers, "ig feed comments", "ig feed 1 comments", "feed comments");
-  // Match "Total Engagement" (feed) — but be careful not to match the reel one
-  // We find the first "total engagement" that appears after the feed columns
-  const iIgFeedEngagements = findCol(headers, "ig feed total engagements", "feed total engagements", "ig feed engagements", "feed engagements");
-  // Match first "Engagement Rate" column (feed)
+  const iIgFeedShares = findCol(headers, "ig feed shares", "feed shares");
+  const iIgFeedReposts = findCol(headers, "ig feed reposts", "feed reposts");
+  const iIgFeedEngagements = findCol(headers, "ig feed total engagements", "feed total engagements", "ig feed engagements", "feed engagements", "total ig feed engagements");
   const iIgFeedEngRate = findCol(headers, "ig feed engagement rate", "feed engagement rate", "ig feed eng rate", "feed eng rate");
 
   // IG Story columns
   const iIgStoryCount = findCol(headers, "ig story count", "story count", "ig stories count", "stories count", "ig story post", "ig story");
-  const iIgStoryImpressions = findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions");
+  const iIgStoryImpressions = findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions", "total ig story impressions");
 
   // IG Reel columns
   const iIgReelUrl = findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post");
   const iIgReelViews = findCol(headers, "ig reel views", "reel views", "ig reels views", "reels views");
   const iIgReelLikes = findCol(headers, "ig reel likes", "reel likes", "ig reels likes", "reels likes");
   const iIgReelComments = findCol(headers, "ig reel comments", "reel comments", "ig reels comments", "reels comments");
-  const iIgReelEngagements = findCol(headers, "ig reel total engagements", "reel total engagements", "ig reel engagements", "reel engagements", "ig reels engagements");
+  const iIgReelShares = findCol(headers, "ig reel shares", "reel shares");
+  const iIgReelReposts = findCol(headers, "ig reel reposts", "reel reposts");
+  const iIgReelEngagements = findCol(headers, "ig reel total engagements", "reel total engagements", "ig reel engagements", "reel engagements", "ig reels engagements", "total ig reel engagements");
   const iIgReelEngRate = findCol(headers, "ig reel engagement rate", "reel engagement rate", "ig reel eng rate", "reel eng rate", "ig reels engagement rate");
 
-  // TikTok columns
+  // TikTok columns — support both combined and separate likes/comments
   const iTiktokUrl = findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url");
   const iTiktokViews = findCol(headers, "tiktok views", "tt views", "tiktok video views");
+  const iTiktokLikes = findCol(headers, "tiktok likes", "tt likes");
+  const iTiktokComments = findCol(headers, "tiktok comments", "tt comments");
   const iTiktokLikesComments = findCol(headers, "tiktok likes comments", "tiktok likes + comments", "tt likes comments", "tiktok likes/comments");
   const iTiktokSavesShares = findCol(headers, "tiktok saves shares", "tiktok saves + shares", "tt saves shares", "tiktok saves/shares");
-  const iTiktokEngagements = findCol(headers, "tiktok total engagements", "tiktok engagements", "tt total engagements", "tt engagements");
-  const iTiktokEngRate = findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate");
+  const iTiktokEngagements = findCol(headers, "tiktok total engagements", "tiktok engagements", "tt total engagements", "tt engagements", "total engagements");
+  const iTiktokEngRate = findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate", "engagement rate");
 
   // Clicks columns
   const iLinkClicks = findCol(headers, "link clicks", "clicks", "link click", "total clicks");
   const iClickThroughRate = findCol(headers, "click through rate", "ctr", "click rate", "clickthrough rate");
   const iLandingPageViews = findCol(headers, "landing page views", "lpv", "landing views", "page views");
   const iCostPerClick = findCol(headers, "cost per click", "cpc", "avg cpc", "average cpc");
+  const iOrders = findCol(headers, "orders", "order", "total orders");
+  const iSalesAmount = findCol(headers, "sales", "total sales", "sales amount");
+  const iCpm = findCol(headers, "cpm", "cost per mille", "cost per thousand");
 
   // Sales columns
-  const iConversions = findCol(headers, "conversions", "conversion", "total conversions", "purchases", "sales");
+  const iConversions = findCol(headers, "conversions", "conversion", "total conversions", "purchases");
   const iRevenue = findCol(headers, "revenue", "total revenue", "sales revenue", "gmv", "gross revenue");
   const iConversionRate = findCol(headers, "conversion rate", "conv rate", "cvr");
   const iCostPerAcquisition = findCol(headers, "cost per acquisition", "cpa", "cost per conversion", "cost per purchase");
   const iRoas = findCol(headers, "roas", "return on ad spend", "return on spend");
+
+  // Targets columns
+  const iAthleteTarget = findCol(headers, "athlete target", "athlete_target", "athletetarget");
+  const iContentUnitTarget = findCol(headers, "content unit target", "content_unit_target", "contentunittarget");
+  const iPostTarget = findCol(headers, "post target", "post_target", "posttarget");
+  const iCostPerPost = findCol(headers, "cost per post", "cost_per_post", "costperpost");
+  const iCostPerAthlete = findCol(headers, "cost per athlete", "cost_per_athlete", "costperathlete");
 
   // For columns that have duplicate names (e.g. two "Engagement Rate" columns),
   // find them positionally — first occurrence is feed, second is reel
@@ -267,6 +284,8 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
         impressions: parseNum(getVal(feedImpressionsIdx)),
         likes: parseNum(getVal(iIgFeedLikes)),
         comments: parseNum(getVal(iIgFeedComments)),
+        shares: parseNum(getVal(iIgFeedShares)),
+        reposts: parseNum(getVal(iIgFeedReposts)),
         total_engagements: parseNum(getVal(feedTotalEngIdx)),
         engagement_rate: parseRate(getVal(feedEngRateIdx)),
       },
@@ -279,23 +298,30 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
         views: parseNum(getVal(iIgReelViews)),
         likes: parseNum(getVal(iIgReelLikes)),
         comments: parseNum(getVal(iIgReelComments)),
+        shares: parseNum(getVal(iIgReelShares)),
+        reposts: parseNum(getVal(iIgReelReposts)),
         total_engagements: parseNum(getVal(reelTotalEngIdx)),
         engagement_rate: parseRate(getVal(reelEngRateIdx)),
       },
       tiktok: {
         post_url: getVal(iTiktokUrl)?.trim() || undefined,
         views: parseNum(getVal(iTiktokViews)),
+        likes: parseNum(getVal(iTiktokLikes)),
+        comments: parseNum(getVal(iTiktokComments)),
         likes_comments: parseNum(getVal(iTiktokLikesComments)),
         saves_shares: parseNum(getVal(iTiktokSavesShares)),
         total_engagements: parseNum(getVal(iTiktokEngagements)),
         engagement_rate: parseRate(getVal(iTiktokEngRate)),
       },
-      ...((iLinkClicks !== -1 || iClickThroughRate !== -1 || iLandingPageViews !== -1 || iCostPerClick !== -1) ? {
+      ...((iLinkClicks !== -1 || iClickThroughRate !== -1 || iLandingPageViews !== -1 || iCostPerClick !== -1 || iOrders !== -1 || iSalesAmount !== -1 || iCpm !== -1) ? {
         clicks: {
           link_clicks: parseNum(getVal(iLinkClicks)),
           click_through_rate: parseRate(getVal(iClickThroughRate)),
           landing_page_views: parseNum(getVal(iLandingPageViews)),
           cost_per_click: parseNum(getVal(iCostPerClick)),
+          orders: parseNum(getVal(iOrders)),
+          sales: parseNum(getVal(iSalesAmount)),
+          cpm: parseNum(getVal(iCpm)),
         },
       } : {}),
       ...((iConversions !== -1 || iRevenue !== -1 || iConversionRate !== -1 || iCostPerAcquisition !== -1 || iRoas !== -1) ? {
@@ -307,6 +333,15 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
           roas: parseNum(getVal(iRoas)),
         },
       } : {}),
+      ...((iAthleteTarget !== -1 || iContentUnitTarget !== -1 || iPostTarget !== -1 || iCostPerPost !== -1 || iCostPerAthlete !== -1) ? {
+        targets: {
+          athlete_target: parseNum(getVal(iAthleteTarget)),
+          content_unit_target: parseNum(getVal(iContentUnitTarget)),
+          post_target: parseNum(getVal(iPostTarget)),
+          cost_per_post: parseNum(getVal(iCostPerPost)),
+          cost_per_athlete: parseNum(getVal(iCostPerAthlete)),
+        },
+      } : {}),
     };
 
     athletes.push({
@@ -315,6 +350,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
       name: `${titleCase(first)} ${titleCase(last)}`,
       ig_handle: iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "",
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
+      content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",
       reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
       school: iSchool !== -1 ? (cols[iSchool]?.trim() || "") : "",
       sport: iSport !== -1 ? (cols[iSport]?.trim() || "") : "",
@@ -361,6 +397,7 @@ export function mergeAthleteData(info: ParsedAthlete[], metrics: ParsedAthlete[]
         // Prefer info CSV for identity, but fill gaps from metrics
         ig_handle: inf.ig_handle || met.ig_handle,
         ig_followers: inf.ig_followers || met.ig_followers,
+        content_rating: inf.content_rating || met.content_rating,
         reach_level: inf.reach_level || met.reach_level,
         school: inf.school || met.school,
         sport: inf.sport || met.sport,

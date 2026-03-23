@@ -55,6 +55,8 @@ export default function TrackerEditor() {
       school: r.school,
       sport: r.sport,
       gender: r.gender,
+      content_rating: r.content_rating || null,
+      reach_level: r.reach_level || null,
       notes: r.notes,
       post_type: r.post_type || "IG Feed",
       post_url: r.metrics?.ig_feed?.post_url || r.metrics?.ig_reel?.post_url || null,

@@ -33,11 +33,11 @@ export function computeStats(athletes: Athlete[]) {
   let tiktokPosts = 0;
   let totalReach = 0;
 
-  const igFeed = { reach: 0, impressions: 0, likes: 0, comments: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+  const igFeed = { reach: 0, impressions: 0, likes: 0, comments: 0, shares: 0, reposts: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
   const igStory = { count: 0, impressions: 0 };
-  const igReel = { views: 0, likes: 0, comments: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
-  const tiktok = { views: 0, likes_comments: 0, saves_shares: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
-  const clicks = { link_clicks: 0, click_through_rate_sum: 0, click_through_rate_count: 0, landing_page_views: 0, cost_per_click_sum: 0, cost_per_click_count: 0 };
+  const igReel = { views: 0, likes: 0, comments: 0, shares: 0, reposts: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+  const tiktok = { views: 0, likes: 0, comments: 0, likes_comments: 0, saves_shares: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+  const clicks = { link_clicks: 0, click_through_rate_sum: 0, click_through_rate_count: 0, landing_page_views: 0, cost_per_click_sum: 0, cost_per_click_count: 0, orders: 0, salesAmount: 0, cpm_sum: 0, cpm_count: 0 };
   const sales = { conversions: 0, revenue: 0, conversion_rate_sum: 0, conversion_rate_count: 0, cost_per_acquisition_sum: 0, cost_per_acquisition_count: 0, roas_sum: 0, roas_count: 0 };
   let hasClicks = false;
   let hasSales = false;
@@ -57,6 +57,8 @@ export function computeStats(athletes: Athlete[]) {
     igFeed.impressions += m.ig_feed?.impressions || 0;
     igFeed.likes += m.ig_feed?.likes || 0;
     igFeed.comments += m.ig_feed?.comments || 0;
+    igFeed.shares += m.ig_feed?.shares || 0;
+    igFeed.reposts += m.ig_feed?.reposts || 0;
     igFeed.engagements += m.ig_feed?.total_engagements || 0;
     if (m.ig_feed?.engagement_rate != null && m.ig_feed.engagement_rate > 0) { igFeed.engRateSum += m.ig_feed.engagement_rate; igFeed.engRateCount++; }
 
@@ -66,10 +68,14 @@ export function computeStats(athletes: Athlete[]) {
     igReel.views += m.ig_reel?.views || 0;
     igReel.likes += m.ig_reel?.likes || 0;
     igReel.comments += m.ig_reel?.comments || 0;
+    igReel.shares += m.ig_reel?.shares || 0;
+    igReel.reposts += m.ig_reel?.reposts || 0;
     igReel.engagements += m.ig_reel?.total_engagements || 0;
     if (m.ig_reel?.engagement_rate != null && m.ig_reel.engagement_rate > 0) { igReel.engRateSum += m.ig_reel.engagement_rate; igReel.engRateCount++; }
 
     tiktok.views += m.tiktok?.views || 0;
+    tiktok.likes += m.tiktok?.likes || 0;
+    tiktok.comments += m.tiktok?.comments || 0;
     tiktok.likes_comments += m.tiktok?.likes_comments || 0;
     tiktok.saves_shares += m.tiktok?.saves_shares || 0;
     tiktok.engagements += m.tiktok?.total_engagements || 0;
@@ -84,11 +90,14 @@ export function computeStats(athletes: Athlete[]) {
     // Clicks
     if (m.clicks) {
       const c = m.clicks;
-      if (c.link_clicks || c.click_through_rate || c.landing_page_views || c.cost_per_click) hasClicks = true;
+      if (c.link_clicks || c.click_through_rate || c.landing_page_views || c.cost_per_click || c.orders || c.sales || c.cpm) hasClicks = true;
       clicks.link_clicks += c.link_clicks || 0;
       clicks.landing_page_views += c.landing_page_views || 0;
+      clicks.orders += c.orders || 0;
+      clicks.salesAmount += c.sales || 0;
       if (c.click_through_rate != null && c.click_through_rate > 0) { clicks.click_through_rate_sum += c.click_through_rate; clicks.click_through_rate_count++; }
       if (c.cost_per_click != null && c.cost_per_click > 0) { clicks.cost_per_click_sum += c.cost_per_click; clicks.cost_per_click_count++; }
+      if (c.cpm != null && c.cpm > 0) { clicks.cpm_sum += c.cpm; clicks.cpm_count++; }
     }
 
     // Sales

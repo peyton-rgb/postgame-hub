@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
+import type { Campaign, Athlete, Media, VisibleSections, KpiTargets } from "@/lib/types";
 import { SchoolBadge } from "@/components/SchoolBadge";
 import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { MasonryPreview } from "@/components/MasonryPreview";
@@ -14,6 +14,8 @@ import heic2any from "heic2any";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Brief" },
+  { key: "key_takeaways", label: "Key Takeaways" },
+  { key: "kpi_targets", label: "KPI Targets" },
   { key: "metrics", label: "Campaign Metrics" },
   { key: "platform_breakdown", label: "Platform Breakdown" },
   { key: "top_performers", label: "Top Performers" },
@@ -126,13 +128,17 @@ export default function CampaignEditor() {
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [visibleSections, setVisibleSections] = useState<VisibleSections>({
-    brief: true, metrics: true, platform_breakdown: true,
+    brief: true, key_takeaways: true, kpi_targets: true, metrics: true, platform_breakdown: true,
     top_performers: true, content_gallery: true, roster: true,
   });
   const [savingInfo, setSavingInfo] = useState(false);
 
   // Brand logo state
   const [brandLogoUrl, setBrandLogoUrl] = useState("");
+
+  // Key takeaways + KPI targets
+  const [keyTakeaways, setKeyTakeaways] = useState("");
+  const [kpiTargets, setKpiTargets] = useState<KpiTargets>({});
 
   // Editable campaign name / client name
   const [editingName, setEditingName] = useState(false);
@@ -178,10 +184,12 @@ export default function CampaignEditor() {
       setPlatform(camp.settings.platform || "");
       setTags(camp.settings.tags || []);
       setVisibleSections(camp.settings.visible_sections || {
-        brief: true, metrics: true, platform_breakdown: true,
+        brief: true, key_takeaways: true, kpi_targets: true, metrics: true, platform_breakdown: true,
         top_performers: true, content_gallery: true, roster: true,
       });
       setBrandLogoUrl(camp.settings.brand_logo_url || "");
+      setKeyTakeaways(camp.settings.key_takeaways || "");
+      setKpiTargets(camp.settings.kpi_targets || {});
     }
 
     const grouped: Record<string, Media[]> = {};
@@ -260,6 +268,8 @@ export default function CampaignEditor() {
       description, quarter, campaign_type: campaignType,
       platform, tags, visible_sections: visibleSections,
       brand_logo_url: brandLogoUrl,
+      key_takeaways: keyTakeaways,
+      kpi_targets: kpiTargets,
     };
     const { data } = await supabase
       .from("campaigns")
@@ -271,7 +281,7 @@ export default function CampaignEditor() {
     setSavingInfo(false);
   }
 
-  async function saveMetrics(rows: { _key: string; _isNew: boolean; id?: string; name: string; ig_handle: string; ig_followers: number | ""; school: string; sport: string; gender: string; notes: string; post_type: string; metrics: import("@/lib/types").AthleteMetrics }[], deletedIds: string[]) {
+  async function saveMetrics(rows: { _key: string; _isNew: boolean; id?: string; name: string; ig_handle: string; ig_followers: number | ""; school: string; sport: string; gender: string; content_rating: string; reach_level: string; notes: string; post_type: string; metrics: import("@/lib/types").AthleteMetrics }[], deletedIds: string[]) {
     setSavingMetrics(true);
 
     // Delete removed athletes
@@ -289,6 +299,8 @@ export default function CampaignEditor() {
         ig_handle: row.ig_handle,
         ig_followers: row.ig_followers === "" ? 0 : row.ig_followers,
         gender: row.gender,
+        content_rating: row.content_rating || null,
+        reach_level: row.reach_level || null,
         notes: row.notes,
         post_type: row.post_type || "IG Feed",
         post_url: row.metrics?.ig_feed?.post_url || row.metrics?.ig_reel?.post_url || null,
@@ -311,7 +323,8 @@ export default function CampaignEditor() {
         name: r.name,
         ig_handle: r.ig_handle,
         ig_followers: r.ig_followers === "" ? 0 : r.ig_followers,
-        reach_level: "",
+        content_rating: r.content_rating || "",
+        reach_level: r.reach_level || "",
         school: r.school,
         sport: r.sport,
         gender: r.gender,
@@ -332,6 +345,8 @@ export default function CampaignEditor() {
         campaign_type: campaignType || "Product Seeding",
         visible_sections: visibleSections,
         brand_logo_url: brandLogoUrl,
+        key_takeaways: keyTakeaways,
+        kpi_targets: kpiTargets,
       };
       const { data: updatedCamp } = await supabase
         .from("campaigns")
@@ -544,6 +559,8 @@ export default function CampaignEditor() {
         description, quarter, campaign_type: campaignType,
         platform, tags, visible_sections: visibleSections,
         brand_logo_url: brandLogoUrl,
+        key_takeaways: keyTakeaways,
+        kpi_targets: kpiTargets,
       },
     };
     return (
@@ -728,6 +745,56 @@ export default function CampaignEditor() {
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
                 className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
                 placeholder="Twenty-five college athletes across six sports showcase the adidas Evo SL..." />
+            </div>
+
+            {/* Key Takeaways */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Key Takeaways</label>
+              <textarea value={keyTakeaways} onChange={(e) => setKeyTakeaways(e.target.value)} rows={4}
+                className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                placeholder="Callouts, recommendations, and highlights for executives..." />
+              <p className="text-[10px] text-gray-600 mt-1">Displayed prominently in the recap for executive review</p>
+            </div>
+
+            {/* Campaign KPI Targets */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Campaign KPI Targets</label>
+              <p className="text-[10px] text-gray-600 mb-3">Set goals from the brief/SOW. The recap will show actual vs. target.</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { key: "athlete_quantity" as const, label: "Athletes", placeholder: "e.g. 50" },
+                  { key: "content_units" as const, label: "Content Units", placeholder: "e.g. 150" },
+                  { key: "posts" as const, label: "Posts", placeholder: "e.g. 100" },
+                  { key: "impressions" as const, label: "Impressions", placeholder: "e.g. 500000" },
+                  { key: "engagements" as const, label: "Engagements", placeholder: "e.g. 25000" },
+                  { key: "engagement_rate" as const, label: "Eng. Rate %", placeholder: "e.g. 5" },
+                  { key: "cpm" as const, label: "CPM ($)", placeholder: "e.g. 12" },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">{label}</label>
+                    <input
+                      type="number"
+                      value={kpiTargets[key] ?? ""}
+                      onChange={(e) => setKpiTargets((prev) => ({
+                        ...prev,
+                        [key]: e.target.value === "" ? undefined : parseFloat(e.target.value),
+                      }))}
+                      className="w-full bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                      placeholder={placeholder}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">Other KPIs</label>
+                <textarea
+                  value={kpiTargets.other_kpis ?? ""}
+                  onChange={(e) => setKpiTargets((prev) => ({ ...prev, other_kpis: e.target.value || undefined }))}
+                  rows={2}
+                  className="w-full bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                  placeholder="Any additional KPIs or notes (e.g. athlete reviews, click targets)..."
+                />
+              </div>
             </div>
 
             {/* Brand Logo Upload */}

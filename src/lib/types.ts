@@ -1,10 +1,23 @@
 export interface VisibleSections {
   brief?: boolean;
+  key_takeaways?: boolean;
+  kpi_targets?: boolean;
   metrics?: boolean;
   platform_breakdown?: boolean;
   top_performers?: boolean;
   content_gallery?: boolean;
   roster?: boolean;
+}
+
+export interface KpiTargets {
+  athlete_quantity?: number;
+  content_units?: number;
+  posts?: number;
+  impressions?: number;
+  engagements?: number;
+  engagement_rate?: number;
+  cpm?: number;
+  other_kpis?: string;
 }
 
 export interface Campaign {
@@ -27,6 +40,8 @@ export interface Campaign {
     tags?: string[];
     visible_sections?: VisibleSections;
     brand_logo_url?: string;
+    key_takeaways?: string;
+    kpi_targets?: KpiTargets;
   };
 }
 
@@ -37,6 +52,8 @@ export interface AthleteMetrics {
     impressions?: number;
     likes?: number;
     comments?: number;
+    shares?: number;
+    reposts?: number;
     total_engagements?: number;
     engagement_rate?: number;
   };
@@ -49,12 +66,16 @@ export interface AthleteMetrics {
     views?: number;
     likes?: number;
     comments?: number;
+    shares?: number;
+    reposts?: number;
     total_engagements?: number;
     engagement_rate?: number;
   };
   tiktok?: {
     post_url?: string;
     views?: number;
+    likes?: number;
+    comments?: number;
     likes_comments?: number;
     saves_shares?: number;
     total_engagements?: number;
@@ -65,6 +86,9 @@ export interface AthleteMetrics {
     click_through_rate?: number;
     landing_page_views?: number;
     cost_per_click?: number;
+    orders?: number;
+    sales?: number;
+    cpm?: number;
   };
   sales?: {
     conversions?: number;
@@ -72,6 +96,13 @@ export interface AthleteMetrics {
     conversion_rate?: number;
     cost_per_acquisition?: number;
     roas?: number;
+  };
+  targets?: {
+    athlete_target?: number;
+    content_unit_target?: number;
+    post_target?: number;
+    cost_per_post?: number;
+    cost_per_athlete?: number;
   };
 }
 
@@ -88,6 +119,8 @@ export interface Athlete {
   ig_handle?: string;
   ig_followers?: number;
   gender?: string;
+  content_rating?: string;
+  reach_level?: string;
   notes?: string;
   metrics?: AthleteMetrics;
 }
@@ -148,6 +181,7 @@ export interface Brief {
   client_name: string;
   html_content: string;
   published: boolean;
+  external_url: string | null;
   created_at: string;
   updated_at: string;
 }

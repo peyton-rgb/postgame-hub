@@ -283,6 +283,70 @@ export function CampaignRecap({
         </div>
       )}
 
+      {/* ── KEY TAKEAWAYS ─────────────────────────────────── */}
+      {show("key_takeaways") && settings.key_takeaways && (
+        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Key Takeaways</h2>
+          <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 md:p-8">
+            <div className="text-sm md:text-base text-white/90 leading-relaxed whitespace-pre-line">{settings.key_takeaways}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── KPI TARGETS ───────────────────────────────────── */}
+      {show("kpi_targets") && settings.kpi_targets && (() => {
+        const t = settings.kpi_targets;
+        const hasAnyTarget = t.athlete_quantity || t.content_units || t.posts || t.impressions || t.engagements || t.engagement_rate || t.cpm || t.other_kpis;
+        if (!hasAnyTarget) return null;
+
+        const avgCpm = stats.hasClicks && stats.clicks.cpm_count > 0 ? stats.clicks.cpm_sum / stats.clicks.cpm_count : 0;
+
+        const kpiRows = [
+          t.athlete_quantity != null ? { label: "Athletes", target: t.athlete_quantity, actual: stats.athleteCount } : null,
+          t.content_units != null ? { label: "Content Units", target: t.content_units, actual: null } : null,
+          t.posts != null ? { label: "Posts", target: t.posts, actual: stats.totalPosts } : null,
+          t.impressions != null ? { label: "Impressions", target: t.impressions, actual: stats.totalImpressions } : null,
+          t.engagements != null ? { label: "Engagements", target: t.engagements, actual: stats.totalEngagements } : null,
+          t.engagement_rate != null ? { label: "Engagement Rate", target: t.engagement_rate, actual: stats.avgEngRate, isPercent: true } : null,
+          t.cpm != null ? { label: "CPM", target: t.cpm, actual: avgCpm, isDollar: true } : null,
+        ].filter(Boolean) as { label: string; target: number; actual: number | null; isPercent?: boolean; isDollar?: boolean }[];
+
+        return (
+          <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+            <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign KPI Targets</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {kpiRows.map((row) => {
+                const pctOfGoal = row.actual != null && row.target > 0 ? (row.actual / row.target) * 100 : null;
+                const color = pctOfGoal == null ? "text-gray-400" : pctOfGoal >= 100 ? "text-emerald-400" : pctOfGoal >= 80 ? "text-amber-400" : "text-red-400";
+                const formatVal = (n: number | null) => {
+                  if (n == null) return "\u2014";
+                  if (row.isPercent) return pct(n);
+                  if (row.isDollar) return dollar(n);
+                  return fmt(n);
+                };
+
+                return (
+                  <div key={row.label} className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 text-center">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">{row.label}</div>
+                    <div className="text-xs text-white/60 mb-1">Target: <span className="text-white/80 font-bold">{formatVal(row.target)}</span></div>
+                    <div className={`text-2xl font-black ${color}`}>{formatVal(row.actual)}</div>
+                    {pctOfGoal != null && (
+                      <div className={`text-[10px] font-bold mt-1 ${color}`}>{Math.round(pctOfGoal)}% of goal</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {t.other_kpis && (
+              <div className="mt-4 bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">Other KPIs</div>
+                <div className="text-sm text-white/80 whitespace-pre-line">{t.other_kpis}</div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* ── SECTION 3: CAMPAIGN METRICS ────────────────────── */}
       {show("metrics") && (
         <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
@@ -319,6 +383,8 @@ export function CampaignRecap({
                     { label: "Impressions", value: fmt(stats.igFeed.impressions), raw: stats.igFeed.impressions },
                     { label: "Likes", value: fmt(stats.igFeed.likes), raw: stats.igFeed.likes },
                     { label: "Comments", value: fmt(stats.igFeed.comments), raw: stats.igFeed.comments },
+                    { label: "Shares", value: fmt(stats.igFeed.shares), raw: stats.igFeed.shares },
+                    { label: "Reposts", value: fmt(stats.igFeed.reposts), raw: stats.igFeed.reposts },
                     { label: "Total Engagements", value: fmt(stats.igFeed.engagements), raw: stats.igFeed.engagements },
                     { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? pct(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "\u2014", raw: stats.igFeed.engRateCount },
                   ].filter((row) => row.raw > 0).map((row) => (
@@ -342,6 +408,8 @@ export function CampaignRecap({
                     { label: "Views", value: fmt(stats.igReel.views), raw: stats.igReel.views },
                     { label: "Likes", value: fmt(stats.igReel.likes), raw: stats.igReel.likes },
                     { label: "Comments", value: fmt(stats.igReel.comments), raw: stats.igReel.comments },
+                    { label: "Shares", value: fmt(stats.igReel.shares), raw: stats.igReel.shares },
+                    { label: "Reposts", value: fmt(stats.igReel.reposts), raw: stats.igReel.reposts },
                     { label: "Total Engagements", value: fmt(stats.igReel.engagements), raw: stats.igReel.engagements },
                     { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? pct(stats.igReel.engRateSum / stats.igReel.engRateCount) : "\u2014", raw: stats.igReel.engRateCount },
                   ].filter((row) => row.raw > 0).map((row) => (
@@ -363,7 +431,9 @@ export function CampaignRecap({
                 <div className="space-y-0">
                   {[
                     { label: "Views", value: fmt(stats.tiktok.views), raw: stats.tiktok.views },
-                    { label: "Likes + Comments", value: fmt(stats.tiktok.likes_comments), raw: stats.tiktok.likes_comments },
+                    { label: "Likes", value: fmt(stats.tiktok.likes), raw: stats.tiktok.likes },
+                    { label: "Comments", value: fmt(stats.tiktok.comments), raw: stats.tiktok.comments },
+                    { label: "Likes + Comments", value: fmt(stats.tiktok.likes_comments), raw: stats.tiktok.likes > 0 ? 0 : stats.tiktok.likes_comments },
                     { label: "Saves + Shares", value: fmt(stats.tiktok.saves_shares), raw: stats.tiktok.saves_shares },
                     { label: "Total Engagements", value: fmt(stats.tiktok.engagements), raw: stats.tiktok.engagements },
                     { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? pct(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "\u2014", raw: stats.tiktok.engRateCount },
