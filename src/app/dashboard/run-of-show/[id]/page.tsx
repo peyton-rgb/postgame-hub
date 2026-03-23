@@ -708,7 +708,12 @@ export default function RunOfShowEditor() {
         r.camera_settings ||
           "Shoot in S-Log · 60fps · Same-day uploads mandatory"
       );
-      setContacts(r.contacts || []);
+      const defaultContacts = [
+        { name: "Aaron H.", phone: "(941) 786-5956", initials: "AH" },
+        { name: "Peyton J.", phone: "(941) 567-8565", initials: "PJ" },
+        { name: "Dom M.", phone: "(352) 530-7027", initials: "DM" },
+      ];
+      setContacts(r.contacts && r.contacts.length > 0 ? r.contacts : defaultContacts);
       setPublished(r.published);
     }
     setShoots(shootsRes.data || []);
