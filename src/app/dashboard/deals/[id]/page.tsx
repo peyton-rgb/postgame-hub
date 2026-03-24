@@ -24,7 +24,9 @@ export default function DealEditor() {
   const [value, setValue] = useState("");
   const [description, setDescription] = useState("");
   const [dateAnnounced, setDateAnnounced] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [featured, setFeatured] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadDeal();
@@ -43,6 +45,7 @@ export default function DealEditor() {
       setValue(data.value || "");
       setDescription(data.description || "");
       setDateAnnounced(data.date_announced || "");
+      setImageUrl(data.image_url || "");
       setFeatured(data.featured);
     }
     setLoading(false);
@@ -60,6 +63,7 @@ export default function DealEditor() {
       deal_type: dealType || null,
       value: value || null,
       description: description || null,
+      image_url: imageUrl || null,
       date_announced: dateAnnounced || null,
       featured,
       updated_at: new Date().toISOString(),
@@ -153,6 +157,55 @@ export default function DealEditor() {
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Value</label>
             <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. $50,000" className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+          </div>
+        </div>
+
+        {/* Image */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Deal Image</label>
+          {imageUrl && (
+            <div className="mb-3 relative group">
+              <img src={imageUrl} alt="Deal" className="w-full max-h-64 object-cover rounded-lg border border-gray-700" />
+              <button
+                onClick={() => setImageUrl("")}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/80 text-gray-400 hover:text-red-400 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
+          )}
+          <div className="flex gap-3">
+            <input
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="Paste image URL or upload below"
+              className="flex-1 px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none"
+            />
+            <button
+              onClick={async () => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = async (ev) => {
+                  const file = (ev.target as HTMLInputElement).files?.[0];
+                  if (!file) return;
+                  setUploading(true);
+                  const path = `deals/${deal.id}/${Date.now()}-${file.name}`;
+                  const { data: uploadData, error } = await supabase.storage
+                    .from("campaign-media")
+                    .upload(path, file, { upsert: true });
+                  if (error) { setUploading(false); return; }
+                  const { data: { publicUrl } } = supabase.storage.from("campaign-media").getPublicUrl(uploadData.path);
+                  setImageUrl(publicUrl);
+                  setUploading(false);
+                };
+                input.click();
+              }}
+              disabled={uploading}
+              className="px-4 py-3 border border-gray-700 rounded-lg text-gray-400 text-sm font-bold hover:border-[#D73F09] hover:text-[#D73F09] transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {uploading ? "Uploading..." : "Upload"}
+            </button>
           </div>
         </div>
 

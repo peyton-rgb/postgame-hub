@@ -199,6 +199,7 @@ export interface Deal {
   tier: "tier_1" | "tier_2" | "tier_3";
   value: string | null;
   description: string | null;
+  image_url: string | null;
   featured: boolean;
   published: boolean;
   sort_order: number;

@@ -208,9 +208,19 @@ function FilterSelect({
 
 function DealCard({ deal }: { deal: Deal }) {
   return (
-    <div className="border border-gray-800 rounded-xl hover:border-gray-600 transition-all group"
-      style={{ padding: "clamp(20px, 3vw, 28px)" }}
-    >
+    <div className="border border-gray-800 rounded-xl hover:border-gray-600 transition-all group overflow-hidden">
+      {/* Deal Image */}
+      {deal.image_url && (
+        <div className="aspect-[4/5] overflow-hidden">
+          <img
+            src={deal.image_url}
+            alt={deal.athlete_name || deal.brand_name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        </div>
+      )}
+
+      <div style={{ padding: "clamp(16px, 2.5vw, 24px)" }}>
       {/* Athlete Name = Header */}
       <h3
         className="font-bold tracking-tight"
@@ -275,6 +285,7 @@ function DealCard({ deal }: { deal: Deal }) {
           })}
         </p>
       )}
+      </div>
     </div>
   );
 }
