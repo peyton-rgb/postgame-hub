@@ -326,7 +326,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
     setHiddenCols((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
-      onHiddenColumnsChange?.([...next]);
+      onHiddenColumnsChange?.(Array.from(next));
       return next;
     });
   }, [onHiddenColumnsChange]);

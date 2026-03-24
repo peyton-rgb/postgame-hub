@@ -39,6 +39,7 @@ export interface Campaign {
     platform?: string;
     tags?: string[];
     visible_sections?: VisibleSections;
+    hidden_columns?: string[];
     brand_logo_url?: string;
     key_takeaways?: string;
     kpi_targets?: KpiTargets;
