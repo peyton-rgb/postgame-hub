@@ -66,7 +66,7 @@ export default function DealsPage() {
           <img
             src="/postgame-logo-white.png"
             alt="Postgame"
-            className="h-6 md:h-8 object-contain mx-auto mb-5 md:mb-6"
+            className="h-10 md:h-14 object-contain mx-auto mb-5 md:mb-6"
           />
           <h1
             className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
