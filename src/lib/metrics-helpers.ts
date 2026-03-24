@@ -21,10 +21,12 @@ export function autoFillMetrics(metrics: AthleteMetrics): AthleteMetrics {
     if (likes != null || comments != null || shares != null || reposts != null) {
       const total = (likes ?? 0) + (comments ?? 0) + (shares ?? 0) + (reposts ?? 0);
       result.ig_feed.total_engagements = total;
-      result.ig_feed.engagement_rate =
-        impressions > 0 ? Math.round((total / impressions) * 10000) / 100 : 0;
+      // Only auto-calculate rate if not already provided (CSV rates may use a different formula)
+      if (result.ig_feed.engagement_rate == null) {
+        result.ig_feed.engagement_rate =
+          impressions > 0 ? Math.round((total / impressions) * 10000) / 100 : 0;
+      }
     }
-    // Otherwise keep whatever was parsed from CSV
   }
 
   // IG Reel: total = likes + comments + shares + reposts, rate = total / views * 100
@@ -38,8 +40,10 @@ export function autoFillMetrics(metrics: AthleteMetrics): AthleteMetrics {
     if (likes != null || comments != null || shares != null || reposts != null) {
       const total = (likes ?? 0) + (comments ?? 0) + (shares ?? 0) + (reposts ?? 0);
       result.ig_reel.total_engagements = total;
-      result.ig_reel.engagement_rate =
-        views > 0 ? Math.round((total / views) * 10000) / 100 : 0;
+      if (result.ig_reel.engagement_rate == null) {
+        result.ig_reel.engagement_rate =
+          views > 0 ? Math.round((total / views) * 10000) / 100 : 0;
+      }
     }
   }
 
@@ -57,8 +61,10 @@ export function autoFillMetrics(metrics: AthleteMetrics): AthleteMetrics {
       const engFromCombined = (likesComments ?? 0) + (savesShares ?? 0);
       const total = (likes != null || comments != null) ? engFromIndividual + (savesShares ?? 0) : engFromCombined;
       result.tiktok.total_engagements = total;
-      result.tiktok.engagement_rate =
-        views > 0 ? Math.round((total / views) * 10000) / 100 : 0;
+      if (result.tiktok.engagement_rate == null) {
+        result.tiktok.engagement_rate =
+          views > 0 ? Math.round((total / views) * 10000) / 100 : 0;
+      }
     }
   }
 
