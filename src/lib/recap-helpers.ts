@@ -129,10 +129,24 @@ export function getTopPerformers(athletes: Athlete[], count = 5) {
       const m = a.metrics || {};
       const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
       const best = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
-      return { ...a, bestEngRate: best };
+      return { ...a, bestEngRate: best, totalImpressions: getTotalImpressions(a) };
     })
     .filter((a) => a.bestEngRate > 0)
     .sort((a, b) => b.bestEngRate - a.bestEngRate)
+    .slice(0, count);
+}
+
+export function getTopPerformersByImpressions(athletes: Athlete[], count = 5) {
+  return [...athletes]
+    .map((a) => {
+      const m = a.metrics || {};
+      const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
+      const best = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
+      const total = getTotalImpressions(a);
+      return { ...a, bestEngRate: best, totalImpressions: total };
+    })
+    .filter((a) => a.totalImpressions > 0)
+    .sort((a, b) => b.totalImpressions - a.totalImpressions)
     .slice(0, count);
 }
 

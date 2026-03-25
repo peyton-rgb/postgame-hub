@@ -2,14 +2,16 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
-import { fmt, pct, dollar, computeStats, getTopPerformers, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
+import { fmt, pct, dollar, computeStats, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 
 // ── Masonry Card ─────────────────────────────────────────────
 
-function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Media[] }) {
-  const items = [...rawItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
+function MasonryCard({ athlete, items: rawItems, activeFilter }: { athlete: Athlete; items: Media[]; activeFilter: string }) {
+  // When photo filter is active, exclude video items from the carousel
+  const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
+  const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
 
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
@@ -87,7 +89,7 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
               <div className="text-xs font-black uppercase text-white truncate">{athlete.name}</div>
               <div className="text-[10px] text-white/70 font-semibold flex items-center gap-1.5">
                 {athlete.school}
-                {athlete.ig_followers ? <span className="text-white/70">&middot; {fmt(athlete.ig_followers)}</span> : null}
+                {athlete.ig_followers ? <span className="text-white/70 inline-flex items-center gap-0.5">&middot; <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>{fmt(athlete.ig_followers)}</span> : null}
                 <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
               </div>
             </div>
@@ -167,6 +169,7 @@ export function CampaignRecap({
   media: Record<string, Media[]>;
 }) {
   const [filter, setFilter] = useState("all");
+  const [topPerformerMode, setTopPerformerMode] = useState<"engagement" | "impressions">("engagement");
   const settings = campaign.settings || {};
   const vis: VisibleSections = settings.visible_sections || {};
   const show = (key: keyof VisibleSections) => vis[key] !== false;
@@ -176,15 +179,24 @@ export function CampaignRecap({
   const fullRoster = allAthletes || athletes;
 
   const stats = computeStats(fullRoster);
-  const topPerformers = getTopPerformers(fullRoster);
+  const topPerformers = topPerformerMode === "engagement"
+    ? getTopPerformers(fullRoster)
+    : getTopPerformersByImpressions(fullRoster);
   const cols = settings.columns || 4;
 
   // Gallery filter uses actual uploaded media types (not CSV post_type)
+  // Photo filter: only show athletes that have images, AND exclude those with only video
   const filtered = athletes.filter((a) => {
     const items = media[a.id] || [];
     if (items.length === 0) return false;
     if (filter === "all") return true;
-    if (filter === "photo") return items.some((m) => m.type === "image");
+    if (filter === "photo") {
+      const hasImage = items.some((m) => m.type === "image");
+      const hasVideo = items.some((m) => m.type === "video");
+      // If both photo and video exist, filter out video items (handled in MasonryCard)
+      // Only include athletes that have at least one image
+      return hasImage;
+    }
     return items.some((m) => m.type === "video");
   });
 
@@ -374,7 +386,7 @@ export function CampaignRecap({
             {stats.igFeedPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black uppercase tracking-wider">IG Feed</h3>
+                  <h3 className="text-sm font-black uppercase tracking-wider flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>IG Feed</h3>
                   <span className="text-xs font-bold text-brand">{stats.igFeedPosts} posts</span>
                 </div>
                 <div className="space-y-0">
@@ -400,7 +412,7 @@ export function CampaignRecap({
             {stats.igReelPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black uppercase tracking-wider">IG Reels</h3>
+                  <h3 className="text-sm font-black uppercase tracking-wider flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="8" y1="2" x2="12" y2="8"/><line x1="16" y1="2" x2="12" y2="8"/><polygon points="10,12 10,18 16,15" fill="currentColor" stroke="none"/></svg>IG Reels</h3>
                   <span className="text-xs font-bold text-brand">{stats.igReelPosts} posts</span>
                 </div>
                 <div className="space-y-0">
@@ -425,7 +437,7 @@ export function CampaignRecap({
             {stats.tiktokPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black uppercase tracking-wider">TikTok</h3>
+                  <h3 className="text-sm font-black uppercase tracking-wider flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.88-2.89 2.89 2.89 0 0 1 2.88-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.77a8.28 8.28 0 0 0 4.76 1.5v-3.4a4.85 4.85 0 0 1-1-.18z"/></svg>TikTok</h3>
                   <span className="text-xs font-bold text-brand">{stats.tiktokPosts} posts</span>
                 </div>
                 <div className="space-y-0">
@@ -450,7 +462,7 @@ export function CampaignRecap({
             {(stats.igStory.count > 0 || stats.igStory.impressions > 0) && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black uppercase tracking-wider">IG Stories</h3>
+                  <h3 className="text-sm font-black uppercase tracking-wider flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>IG Stories</h3>
                 </div>
                 <div className="space-y-0">
                   {[
@@ -508,15 +520,37 @@ export function CampaignRecap({
       {/* ── SECTION 5: TOP PERFORMERS ─────────────────────── */}
       {show("top_performers") && topPerformers.length > 0 && (
         <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Top Performers by Engagement Rate</h2>
+          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 mb-8">
+            <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide">Top Performers</h2>
+            <div className="flex gap-2">
+              {(["engagement", "impressions"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setTopPerformerMode(mode)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold uppercase ${
+                    topPerformerMode === mode ? "bg-brand text-white" : "border border-white/15 text-white/70"
+                  }`}
+                >
+                  {mode === "engagement" ? "Engagement Rate" : "Impressions"}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Desktop: all same size, #1 highlighted in orange */}
           <div className="hidden md:flex items-end justify-center gap-4">
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
               const isFirst = i === 0;
+              const metricValue = topPerformerMode === "engagement" ? pct(a.bestEngRate) : fmt(a.totalImpressions);
+              const metricLabel = topPerformerMode === "engagement" ? "Engagement Rate" : "Impressions";
               return (
                 <div key={a.id} className="flex-1 max-w-[280px]">
+                  {/* Number above image */}
+                  <div className="text-center mb-2">
+                    <div className="text-2xl font-black text-brand">{metricValue}</div>
+                    <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
+                  </div>
                   <div className={`relative rounded-xl overflow-hidden h-[380px] ${isFirst ? "border-2 border-brand shadow-[0_0_25px_rgba(215,63,9,0.3)]" : "border border-white/[0.12]"}`}>
                     {items.length > 0 ? (
                       <TopPerformerMedia items={items} name={a.name} />
@@ -530,11 +564,9 @@ export function CampaignRecap({
                       {i + 1}
                     </div>
                   </div>
-                  <div className="mt-3 px-1">
+                  <div className="mt-3 px-1 text-center">
                     <div className="text-base font-black uppercase truncate">{a.name}</div>
-                    <div className="text-xs text-white/70 mb-1">{a.school} &middot; {a.sport}</div>
-                    <div className={`text-xl font-black ${isFirst ? "text-brand" : "text-white/80"}`}>{pct(a.bestEngRate)}</div>
-                    <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">Engagement Rate</div>
+                    <div className="text-xs text-white/70">{a.school} &middot; {a.sport}</div>
                   </div>
                 </div>
               );
@@ -546,8 +578,15 @@ export function CampaignRecap({
             {topPerformers.map((a, i) => {
               const items = media[a.id] || [];
               const isFirst = i === 0;
+              const metricValue = topPerformerMode === "engagement" ? pct(a.bestEngRate) : fmt(a.totalImpressions);
+              const metricLabel = topPerformerMode === "engagement" ? "Engagement Rate" : "Impressions";
               return (
                 <div key={a.id} className={isFirst ? "col-span-2" : ""}>
+                  {/* Number above image */}
+                  <div className="text-center mb-1.5">
+                    <div className={`${isFirst ? "text-xl" : "text-lg"} font-black text-brand`}>{metricValue}</div>
+                    <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
+                  </div>
                   <div className={`relative rounded-xl overflow-hidden ${isFirst ? "h-[280px] border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)]" : "h-[220px] border border-white/[0.12]"}`}>
                     {items.length > 0 ? (
                       <TopPerformerMedia items={items} name={a.name} />
@@ -560,10 +599,9 @@ export function CampaignRecap({
                       {i + 1}
                     </div>
                   </div>
-                  <div className="mt-2.5 px-1">
+                  <div className="mt-2.5 px-1 text-center">
                     <div className="text-sm font-black uppercase truncate">{a.name}</div>
                     <div className="text-xs text-white/70">{a.school}</div>
-                    <div className={`text-lg font-black ${isFirst ? "text-brand" : "text-white/80"}`}>{pct(a.bestEngRate)}</div>
                   </div>
                 </div>
               );
@@ -593,7 +631,7 @@ export function CampaignRecap({
           </div>
           <div data-masonry style={{ columnCount: cols, columnGap: 8 }} className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
             {filtered.map((a) => (
-              <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} />
+              <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} />
             ))}
           </div>
         </div>
@@ -638,7 +676,7 @@ export function CampaignRecap({
                       </span>
                     </td>
                     <td className="px-3 py-3 text-sm">{a.ig_handle ? (
-                      <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors">@{a.ig_handle}</a>
+                      <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
                     ) : "\u2014"}</td>
                     <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>
                     <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>
