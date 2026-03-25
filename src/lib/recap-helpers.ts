@@ -49,7 +49,8 @@ export function computeStats(athletes: Athlete[]) {
     if (m.tiktok?.post_url) { tiktokPosts++; totalPosts++; }
     if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
-    totalImpressions += (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0) + (m.ig_reel?.views || 0);
+    const storyImpressions = (m.ig_story?.impressions || 0) * (m.ig_story?.count || 1);
+    totalImpressions += (m.ig_feed?.impressions || 0) + storyImpressions + (m.ig_reel?.views || 0);
     totalEngagements += (m.ig_feed?.total_engagements || 0) + (m.ig_reel?.total_engagements || 0) + (m.tiktok?.total_engagements || 0);
     totalReach += (m.ig_feed?.reach || 0) + (a.ig_followers || 0);
 
@@ -63,7 +64,7 @@ export function computeStats(athletes: Athlete[]) {
     if (m.ig_feed?.engagement_rate != null && m.ig_feed.engagement_rate > 0) { igFeed.engRateSum += m.ig_feed.engagement_rate; igFeed.engRateCount++; }
 
     igStory.count += m.ig_story?.count || 0;
-    igStory.impressions += m.ig_story?.impressions || 0;
+    igStory.impressions += storyImpressions;
 
     igReel.views += m.ig_reel?.views || 0;
     igReel.likes += m.ig_reel?.likes || 0;
@@ -171,7 +172,7 @@ export function getBestEngRate(athlete: Athlete): number {
 
 export function getTotalImpressions(athlete: Athlete): number {
   const m = athlete.metrics || {};
-  return (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0) + (m.ig_reel?.views || 0);
+  return (m.ig_feed?.impressions || 0) + ((m.ig_story?.impressions || 0) * (m.ig_story?.count || 1)) + (m.ig_reel?.views || 0);
 }
 
 export function getTotalEngagements(athlete: Athlete): number {
