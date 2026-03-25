@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
 import { fmt, pct, dollar, computeStats, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
@@ -168,11 +168,15 @@ export function CampaignRecap({
 }) {
   const [filter, setFilter] = useState("all");
   const [topPerformerMode, setTopPerformerMode] = useState<"engagement" | "impressions">("engagement");
+  const [activeSection, setActiveSection] = useState<string>("");
   const settings = campaign.settings || {};
   const vis: VisibleSections = settings.visible_sections || {};
   const show = (key: keyof VisibleSections) => vis[key] !== false;
   const hiddenCols = new Set(settings.hidden_columns || []);
   const showCol = (key: string) => !hiddenCols.has(key);
+
+  // Section refs for scroll navigation
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Full roster for metrics, top performers, roster, hero stats
   // Gallery athletes for Content Gallery only
@@ -183,6 +187,50 @@ export function CampaignRecap({
     ? getTopPerformers(fullRoster)
     : getTopPerformersByImpressions(fullRoster);
   const cols = settings.columns || 4;
+
+  // Build nav tabs dynamically based on visible sections + data availability
+  const hasKpi = settings.kpi_targets && (settings.kpi_targets.athlete_quantity || settings.kpi_targets.content_units || settings.kpi_targets.posts || settings.kpi_targets.impressions || settings.kpi_targets.engagements || settings.kpi_targets.engagement_rate || settings.kpi_targets.cpm || settings.kpi_targets.other_kpis);
+  const navTabs = [
+    show("brief") && settings.description && { key: "brief", label: "Brief" },
+    show("key_takeaways") && settings.key_takeaways && { key: "key_takeaways", label: "Takeaways" },
+    show("kpi_targets") && hasKpi && { key: "kpi_targets", label: "KPIs" },
+    show("metrics") && { key: "metrics", label: "Metrics" },
+    show("top_performers") && topPerformers.length > 0 && { key: "top_performers", label: "Top Performers" },
+    show("content_gallery") && { key: "content_gallery", label: "Best In Class" },
+    show("roster") && { key: "roster", label: "Roster" },
+  ].filter(Boolean) as { key: string; label: string }[];
+
+  // Scroll to section
+  const scrollToSection = (key: string) => {
+    const el = sectionRefs.current[key];
+    if (el) {
+      const navHeight = 48;
+      const top = el.getBoundingClientRect().top + window.scrollY - navHeight;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  };
+
+  // Intersection observer for active section tracking
+  const navTabKeys = navTabs.map((t) => t.key).join(",");
+  useEffect(() => {
+    const handleIntersect = (entries: IntersectionObserverEntry[]) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const key = entry.target.getAttribute("data-section");
+          if (key) setActiveSection(key);
+        }
+      }
+    };
+    const observer = new IntersectionObserver(handleIntersect, {
+      rootMargin: "-60px 0px -70% 0px",
+      threshold: 0,
+    });
+    for (const key of navTabKeys.split(",")) {
+      const el = sectionRefs.current[key];
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [navTabKeys]);
 
   // Gallery filter uses actual uploaded media types (not CSV post_type)
   // Photo filter: only show athletes that have images, and exclude video items in MasonryCard
@@ -213,6 +261,27 @@ export function CampaignRecap({
           Campaign Recap
         </span>
       </div>
+
+      {/* ── STICKY SECTION NAV ────────────────────────────── */}
+      {navTabs.length > 1 && (
+        <div className="sticky top-0 z-50 bg-[#111111]/92 backdrop-blur-md border-b border-white/[0.10]">
+          <div className="flex justify-center gap-0 overflow-x-auto scrollbar-hide">
+            {navTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => scrollToSection(tab.key)}
+                className={`px-5 md:px-7 py-3.5 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap border-b-2 ${
+                  activeSection === tab.key
+                    ? "text-white border-[#D73F09]"
+                    : "text-white/45 border-transparent hover:text-white/80 hover:border-white/20"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── SECTION 1: HERO HEADER ─────────────────────────── */}
       <div className="relative px-6 md:px-12 pt-10 md:pt-14 pb-10 md:pb-14 bg-gradient-to-b from-white/[0.08] to-transparent">
@@ -259,7 +328,7 @@ export function CampaignRecap({
 
       {/* ── SECTION 2: CAMPAIGN BRIEF ──────────────────────── */}
       {show("brief") && settings.description && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+        <div ref={(el) => { sectionRefs.current["brief"] = el; }} data-section="brief" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Brief</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
             <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
@@ -291,7 +360,7 @@ export function CampaignRecap({
 
       {/* ── KEY TAKEAWAYS ─────────────────────────────────── */}
       {show("key_takeaways") && settings.key_takeaways && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+        <div ref={(el) => { sectionRefs.current["key_takeaways"] = el; }} data-section="key_takeaways" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Key Takeaways</h2>
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 md:p-8">
             <div className="text-sm md:text-base text-white/90 leading-relaxed whitespace-pre-line">{settings.key_takeaways}</div>
@@ -318,7 +387,7 @@ export function CampaignRecap({
         ].filter(Boolean) as { label: string; target: number; actual: number | null; isPercent?: boolean; isDollar?: boolean }[];
 
         return (
-          <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+          <div ref={(el) => { sectionRefs.current["kpi_targets"] = el; }} data-section="kpi_targets" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
             <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign KPI Targets</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {kpiRows.map((row) => {
@@ -355,7 +424,7 @@ export function CampaignRecap({
 
       {/* ── SECTION 3: CAMPAIGN METRICS ────────────────────── */}
       {show("metrics") && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+        <div ref={(el) => { sectionRefs.current["metrics"] = el; }} data-section="metrics" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Metrics</h2>
 
           {/* Summary row */}
@@ -376,6 +445,7 @@ export function CampaignRecap({
           </div>
 
           {/* Per-platform breakdown */}
+          {show("platform_breakdown") && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {stats.igFeedPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
@@ -472,6 +542,7 @@ export function CampaignRecap({
               </div>
             )}
           </div>
+          )}
 
           {/* Sales breakdown */}
           {stats.hasSales && (
@@ -513,7 +584,7 @@ export function CampaignRecap({
 
       {/* ── SECTION 5: TOP PERFORMERS ─────────────────────── */}
       {show("top_performers") && topPerformers.length > 0 && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+        <div ref={(el) => { sectionRefs.current["top_performers"] = el; }} data-section="top_performers" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 mb-8">
             <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide">Top Performers</h2>
             <div className="flex gap-2">
@@ -618,7 +689,7 @@ export function CampaignRecap({
 
       {/* ── SECTION 6: CONTENT GALLERY ─────────────────────── */}
       {show("content_gallery") && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+        <div ref={(el) => { sectionRefs.current["content_gallery"] = el; }} data-section="content_gallery" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 mb-6">
             <h2 className="text-xl md:text-2xl font-black uppercase">Best In Class Content</h2>
             <div className="flex gap-2">
@@ -645,7 +716,7 @@ export function CampaignRecap({
 
       {/* ── SECTION 7: CAMPAIGN ROSTER ─────────────────────── */}
       {show("roster") && (
-        <div className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+        <div ref={(el) => { sectionRefs.current["roster"] = el; }} data-section="roster" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Roster</h2>
 
           {/* Desktop: full table with headers */}
