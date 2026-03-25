@@ -132,13 +132,13 @@ export interface Media {
   campaign_id: string;
   type: "image" | "video";
   file_url: string;
-  thumbnail_url: string | null; // For videos: user-uploaded thumbnail
+  thumbnail_url: string | null;
   sort_order: number;
-  is_video_thumbnail: boolean; // true = this is a video's thumbnail image
+  is_video_thumbnail: boolean;
   created_at: string;
 }
 
-// ─── Run of Show Types ────────────────────────────────────
+// Run of Show Types
 
 export interface RosContact {
   name: string;
@@ -173,7 +173,7 @@ export interface RunOfShow {
   updated_at: string;
 }
 
-// ─── Brief Types ──────────────────────────────────────────
+// Brief Types
 
 export interface Brief {
   id: string;
@@ -187,7 +187,7 @@ export interface Brief {
   updated_at: string;
 }
 
-// ─── Deal Tracker Types ──────────────────────────────────
+// Deal Tracker Types
 
 export interface Deal {
   id: string;
@@ -224,6 +224,8 @@ export interface PressArticle {
   published: boolean;
   published_date: string | null;
   sort_order: number;
+  archived: boolean;
+  show_logo: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -252,7 +254,7 @@ export interface CaseStudy {
   updated_at: string;
 }
 
-// ─── Shoot Types ──────────────────────────────────────────
+// Shoot Types
 
 export interface RosShoot {
   id: string;
