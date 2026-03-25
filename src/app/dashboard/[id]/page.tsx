@@ -550,6 +550,20 @@ export default function CampaignEditor() {
     setMedia((prev) => ({ ...prev, [athleteId]: (prev[athleteId] || []).filter((m) => m.id !== mediaId) }));
   }
 
+  async function setCoverPhoto(athleteId: string, mediaId: string) {
+    const items = media[athleteId] || [];
+    const targetIndex = items.findIndex((m) => m.id === mediaId);
+    if (targetIndex <= 0) return; // already cover or not found
+    const newItems = [...items];
+    const [target] = newItems.splice(targetIndex, 1);
+    newItems.unshift(target);
+    // Update sort_order in DB
+    for (let i = 0; i < newItems.length; i++) {
+      await supabase.from("media").update({ sort_order: i }).eq("id", newItems[i].id);
+    }
+    setMedia((prev) => ({ ...prev, [athleteId]: newItems }));
+  }
+
   function matchFileToAthlete(fileName: string, athleteList: Athlete[]): Athlete | null {
     // Strip extension and clean up
     const clean = fileName.replace(/\.[^.]+$/, "").toLowerCase().replace(/[_-]+/g, " ").trim();
@@ -605,25 +619,19 @@ export default function CampaignEditor() {
       const athlete = matchFileToAthlete(file.name, selectedAthletes);
 
       if (athlete) {
-        // Only delete existing media on the FIRST file for this athlete
         if (!seenAthletes.has(athlete.id)) {
           seenAthletes.add(athlete.id);
-          const existing = media[athlete.id] || [];
-          for (const m of existing) {
-            await supabase.from("media").delete().eq("id", m.id);
-          }
-          // Clear local state for this athlete so we build fresh
-          setMedia((prev) => ({ ...prev, [athlete.id]: [] }));
         }
 
-        // Upload photo (convert HEIC if needed)
+        // Append photo after existing media (don't replace)
         const converted = await convertHeicIfNeeded(file);
         const path = `${id}/${athlete.id}/${Date.now()}-${converted.name}`;
         const url = await uploadFile(converted, path);
         if (url) {
+          const existing = media[athlete.id] || [];
           const { data } = await supabase
             .from("media")
-            .insert({ athlete_id: athlete.id, campaign_id: id, type: "image", file_url: url, sort_order: 0 })
+            .insert({ athlete_id: athlete.id, campaign_id: id, type: "image", file_url: url, sort_order: existing.length })
             .select().single();
           if (data) {
             setMedia((prev) => {
@@ -1191,11 +1199,22 @@ export default function CampaignEditor() {
 
                       {/* Thumbnail carousel */}
                       <div className="flex gap-0.5 mt-1 overflow-x-auto scrollbar-none">
-                        {items.map((m) => {
+                        {items.map((m, idx) => {
                           const thumbSrc = m.thumbnail_url || (m.type !== "video" ? m.file_url : null);
+                          const isCover = idx === 0;
                           return (
                             <div key={m.id} className="relative flex-shrink-0 group/thumb">
-                              <div className={`w-7 h-7 rounded overflow-hidden border ${m.id === cover?.id ? "border-[#D73F09]" : m.type === "video" ? "border-purple-500/50" : "border-gray-700"}`}>
+                              <div
+                                onClick={(e) => { e.stopPropagation(); if (!isCover) setCoverPhoto(a.id, m.id); }}
+                                title={isCover ? "Cover photo" : "Click to set as cover"}
+                                className={`w-9 h-9 rounded overflow-hidden border-2 cursor-pointer transition-all ${
+                                  isCover
+                                    ? "border-[#D73F09] ring-1 ring-[#D73F09]/40"
+                                    : m.type === "video"
+                                    ? "border-purple-500/50 hover:border-purple-400"
+                                    : "border-gray-700 hover:border-[#D73F09]/60"
+                                }`}
+                              >
                                 {thumbSrc ? (
                                   <img src={thumbSrc} className="w-full h-full object-cover" alt="" loading="lazy" />
                                 ) : (
@@ -1204,6 +1223,12 @@ export default function CampaignEditor() {
                                   </div>
                                 )}
                               </div>
+                              {/* Cover star badge */}
+                              {isCover && (
+                                <div className="absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full bg-[#D73F09] flex items-center justify-center z-10">
+                                  <svg width="7" height="7" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </div>
+                              )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
                                 className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-black/80 text-white text-[7px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-10"
