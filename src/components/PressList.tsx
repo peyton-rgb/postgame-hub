@@ -231,11 +231,15 @@ export default function PressList() {
                     className="w-full h-full object-cover"
                   />
                   {article.show_logo && (
-                    <img
-                      src="/postgame-logo-white.png"
-                      alt=""
-                      className="absolute bottom-1.5 left-1.5 h-3 object-contain drop-shadow-lg"
-                    />
+                    <div className={`absolute bottom-1.5 ${article.logo_position === "bottom-right" ? "right-1.5" : "left-1.5"} flex items-center gap-1 drop-shadow-lg`}>
+                      <img src="/postgame-logo-white.png" alt="" className="h-3 object-contain" />
+                      {article.brand_logo_url && (
+                        <>
+                          <span className="text-white/60 text-[8px] font-bold">×</span>
+                          <img src={article.brand_logo_url} alt="" className="h-3 object-contain" />
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
