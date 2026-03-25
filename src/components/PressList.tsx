@@ -13,6 +13,7 @@ export default function PressList() {
   const [newPublication, setNewPublication] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<PressArticle | null>(null);
+  const [filter, setFilter] = useState<"active" | "archived">("active");
   const supabase = createBrowserSupabase();
 
   useEffect(() => {
@@ -47,6 +48,8 @@ export default function PressList() {
         featured: false,
         published: false,
         sort_order: 0,
+        archived: false,
+        show_logo: false,
       })
       .select()
       .single();
@@ -56,6 +59,21 @@ export default function PressList() {
       setShowCreate(false);
       setNewTitle("");
       setNewPublication("");
+    }
+  }
+
+  async function toggleArchive(article: PressArticle, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const newArchived = !article.archived;
+    const { data } = await supabase
+      .from("press_articles")
+      .update({ archived: newArchived, updated_at: new Date().toISOString() })
+      .eq("id", article.id)
+      .select()
+      .single();
+    if (data) {
+      setArticles((prev) => prev.map((a) => (a.id === data.id ? data : a)));
     }
   }
 
@@ -69,9 +87,35 @@ export default function PressList() {
     setConfirmDelete(null);
   }
 
+  const filtered = articles.filter((a) =>
+    filter === "archived" ? a.archived : !a.archived
+  );
+
   return (
     <>
-      <div className="flex justify-end mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex gap-1 bg-[#111] border border-gray-800 rounded-lg p-1">
+          <button
+            onClick={() => setFilter("active")}
+            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${
+              filter === "active"
+                ? "bg-[#D73F09] text-white"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setFilter("archived")}
+            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${
+              filter === "archived"
+                ? "bg-yellow-600 text-white"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Archived
+          </button>
+        </div>
         <button
           onClick={() => setShowCreate(true)}
           className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407]"
@@ -151,32 +195,60 @@ export default function PressList() {
 
       {loading ? (
         <div className="text-gray-500 text-center py-20">Loading...</div>
-      ) : articles.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-gray-500 mb-4">No press articles yet.</p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="text-[#D73F09] font-bold text-sm hover:underline"
-          >
-            Create your first article →
-          </button>
+          <p className="text-gray-500 mb-4">
+            {filter === "archived" ? "No archived articles." : "No press articles yet."}
+          </p>
+          {filter === "active" && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="text-[#D73F09] font-bold text-sm hover:underline"
+            >
+              Create your first article →
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {articles.map((article) => (
+          {filtered.map((article) => (
             <div
               key={article.id}
-              className="relative p-6 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors group"
+              className={`relative p-6 bg-[#111] border rounded-xl hover:border-gray-600 transition-colors group ${
+                article.archived ? "border-yellow-900/40" : "border-gray-800"
+              }`}
             >
               <Link
                 href={`/dashboard/press/${article.id}`}
                 className="absolute inset-0 z-0"
               />
+              {/* Image thumbnail */}
+              {article.image_url && (
+                <div className="relative rounded-lg overflow-hidden bg-gray-900 mb-3 h-32">
+                  <img
+                    src={article.image_url}
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {article.show_logo && (
+                    <img
+                      src="/postgame-logo-white.png"
+                      alt=""
+                      className="absolute bottom-1.5 left-1.5 h-3 object-contain drop-shadow-lg"
+                    />
+                  )}
+                </div>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   {article.publication || "No publication"}
                 </span>
                 <div className="flex items-center gap-2">
+                  {article.archived && (
+                    <span className="text-xs font-bold px-2 py-1 rounded bg-yellow-900/30 text-yellow-400">
+                      Archived
+                    </span>
+                  )}
                   <span
                     className={`text-xs font-bold px-2 py-1 rounded ${
                       article.published
@@ -186,6 +258,17 @@ export default function PressList() {
                   >
                     {article.published ? "Published" : "Draft"}
                   </span>
+                  <button
+                    onClick={(e) => toggleArchive(article, e)}
+                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-yellow-400 hover:bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                    title={article.archived ? "Unarchive" : "Archive"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="21 8 21 21 3 21 3 8" />
+                      <rect x="1" y="3" width="22" height="5" />
+                      <line x1="10" y1="12" x2="14" y2="12" />
+                    </svg>
+                  </button>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
