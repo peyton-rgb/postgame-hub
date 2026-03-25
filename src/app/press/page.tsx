@@ -22,15 +22,14 @@ export default async function PressPage() {
   const rest = allArticles.filter((a) => a.id !== featuredArticle?.id);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FAFAF8", fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Google Fonts */}
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+    <div className="min-h-screen" style={{ backgroundColor: "#FAFAF8", fontFamily: "Arial, sans-serif" }}>
+      {/* Fonts */}
 
       {/* Header */}
       <div className="border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-16 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.3em] text-[#D73F09] mb-4">Postgame</p>
-          <h1 className="text-5xl md:text-7xl font-black text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-5xl md:text-7xl font-black text-gray-900" style={{ fontFamily: "Arial, sans-serif" }}>
             Press & News
           </h1>
           <div className="w-16 h-0.5 bg-[#D73F09] mx-auto mt-6" />
@@ -48,7 +47,7 @@ export default async function PressPage() {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               {featuredArticle.image_url && (
-                <div className="aspect-[16/10] rounded-xl overflow-hidden bg-gray-100">
+                <div className="aspect-[4/5] rounded-xl overflow-hidden bg-gray-100">
                   <img
                     src={featuredArticle.image_url}
                     alt={featuredArticle.title}
@@ -69,7 +68,7 @@ export default async function PressPage() {
                     </span>
                   )}
                 </div>
-                <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 group-hover:text-[#D73F09] transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 group-hover:text-[#D73F09] transition-colors" style={{ fontFamily: "Arial, sans-serif" }}>
                   {featuredArticle.title}
                 </h2>
                 {featuredArticle.excerpt && (
@@ -101,7 +100,7 @@ export default async function PressPage() {
                 className="block group"
               >
                 {article.image_url && (
-                  <div className="aspect-[16/10] rounded-lg overflow-hidden bg-gray-100 mb-4">
+                  <div className="aspect-[4/5] rounded-lg overflow-hidden bg-gray-100 mb-4">
                     <img
                       src={article.image_url}
                       alt={article.title}
@@ -121,7 +120,7 @@ export default async function PressPage() {
                     </span>
                   )}
                 </div>
-                <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-[#D73F09] transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-[#D73F09] transition-colors" style={{ fontFamily: "Arial, sans-serif" }}>
                   {article.title}
                 </h3>
                 {article.excerpt && (
