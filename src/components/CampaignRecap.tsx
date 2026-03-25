@@ -226,6 +226,10 @@ export function CampaignRecap({
             <img src={campaign.client_logo_url} className="h-24 md:h-40 object-contain" alt={campaign.client_name} />
           ) : null}
 
+          <h1 className="text-3xl md:text-5xl font-black uppercase leading-tight">
+            {campaign.name}
+          </h1>
+
           {/* Badges row */}
           {(settings.quarter || settings.campaign_type) && (
             <div className="flex items-center gap-3">
@@ -241,10 +245,6 @@ export function CampaignRecap({
               )}
             </div>
           )}
-
-          <h1 className="text-3xl md:text-5xl font-black uppercase leading-tight">
-            {campaign.name}
-          </h1>
 
           {/* Tag pills */}
           {settings.tags && settings.tags.length > 0 && (
