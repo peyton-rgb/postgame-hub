@@ -16,7 +16,9 @@ export default function PressEditor() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingBrandLogo, setUploadingBrandLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const brandLogoInputRef = useRef<HTMLInputElement>(null);
   const supabase = createBrowserSupabase();
 
   const [title, setTitle] = useState("");
@@ -32,6 +34,8 @@ export default function PressEditor() {
   const [featured, setFeatured] = useState(false);
   const [archived, setArchived] = useState(false);
   const [showLogo, setShowLogo] = useState(false);
+  const [brandLogoUrl, setBrandLogoUrl] = useState("");
+  const [logoPosition, setLogoPosition] = useState<"bottom-left" | "bottom-right">("bottom-left");
 
   useEffect(() => {
     loadArticle();
@@ -54,6 +58,8 @@ export default function PressEditor() {
       setFeatured(data.featured);
       setArchived(data.archived ?? false);
       setShowLogo(data.show_logo ?? false);
+      setBrandLogoUrl(data.brand_logo_url || "");
+      setLogoPosition(data.logo_position || "bottom-left");
     }
     setLoading(false);
   }
@@ -78,7 +84,31 @@ export default function PressEditor() {
       }
     }
     setUploading(false);
+    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleBrandLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !article) return;
+
+    setUploadingBrandLogo(true);
+    const ext = file.name.split(".").pop() || "png";
+    const filePath = `press/${article.id}/brand-logo-${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage.from("press-media").upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+    if (!error) {
+      const { data: urlData } = supabase.storage.from("press-media").getPublicUrl(filePath);
+      if (urlData?.publicUrl) {
+        setBrandLogoUrl(urlData.publicUrl);
+      }
+    }
+    setUploadingBrandLogo(false);
+    if (brandLogoInputRef.current) brandLogoInputRef.current.value = "";
   }
 
   async function saveArticle(publish?: boolean) {
@@ -98,6 +128,8 @@ export default function PressEditor() {
       featured,
       archived,
       show_logo: showLogo,
+      brand_logo_url: brandLogoUrl || null,
+      logo_position: logoPosition,
       updated_at: new Date().toISOString(),
     };
     if (publish !== undefined) updates.published = publish;
@@ -164,6 +196,7 @@ export default function PressEditor() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-3xl mx-auto w-full space-y-6">
+        {/* Image Upload Section */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Article Image</label>
           <div className="space-y-3">
@@ -171,11 +204,15 @@ export default function PressEditor() {
               <div className="relative rounded-lg overflow-hidden bg-gray-900 border border-gray-700">
                 <img src={imageUrl} alt="Article preview" className="w-full h-auto max-h-64 object-contain" />
                 {showLogo && (
-                  <img
-                    src="/postgame-logo-white.png"
-                    alt="Postgame"
-                    className="absolute bottom-3 left-3 h-5 object-contain drop-shadow-lg"
-                  />
+                  <div className={`absolute bottom-3 ${logoPosition === "bottom-right" ? "right-3" : "left-3"} flex items-center gap-2 drop-shadow-lg`}>
+                    <img src="/postgame-logo-white.png" alt="Postgame" className="h-5 object-contain" />
+                    {brandLogoUrl && (
+                      <>
+                        <span className="text-white/60 text-xs font-bold">×</span>
+                        <img src={brandLogoUrl} alt="Brand" className="h-5 object-contain" />
+                      </>
+                    )}
+                  </div>
                 )}
                 <button
                   onClick={() => setImageUrl("")}
@@ -268,6 +305,7 @@ export default function PressEditor() {
           </div>
         </div>
 
+        {/* Toggles Section */}
         <div className="border border-gray-800 rounded-xl p-5 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Article Options</h3>
           <div className="flex flex-col gap-4">
@@ -281,10 +319,81 @@ export default function PressEditor() {
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} className="w-5 h-5 rounded border-gray-700 bg-black text-[#D73F09] focus:ring-[#D73F09]" />
               <div>
-                <span className="text-sm font-bold text-gray-300">Show Brand Logo</span>
-                <p className="text-xs text-gray-600">Display Postgame logo in the lower-left corner of the image</p>
+                <span className="text-sm font-bold text-gray-300">Show Logo Lockup</span>
+                <p className="text-xs text-gray-600">Display Postgame logo (and optional brand logo) on the image</p>
               </div>
             </label>
+            {showLogo && (
+              <div className="ml-8 space-y-4 border-l-2 border-gray-800 pl-4">
+                {/* Logo Position */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Logo Position</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLogoPosition("bottom-left")}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                        logoPosition === "bottom-left"
+                          ? "border-[#D73F09] bg-[#D73F09]/10 text-[#D73F09]"
+                          : "border-gray-700 text-gray-500 hover:border-gray-500"
+                      }`}
+                    >
+                      ↙ Bottom Left
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLogoPosition("bottom-right")}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                        logoPosition === "bottom-right"
+                          ? "border-[#D73F09] bg-[#D73F09]/10 text-[#D73F09]"
+                          : "border-gray-700 text-gray-500 hover:border-gray-500"
+                      }`}
+                    >
+                      ↘ Bottom Right
+                    </button>
+                  </div>
+                </div>
+                {/* Brand Logo Upload */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Brand / Partner Logo</label>
+                  {brandLogoUrl && (
+                    <div className="flex items-center gap-3 mb-2 p-2 bg-gray-900 border border-gray-700 rounded-lg">
+                      <img src={brandLogoUrl} alt="Brand logo" className="h-8 object-contain" />
+                      <button
+                        onClick={() => setBrandLogoUrl("")}
+                        className="text-xs text-gray-500 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <input
+                      ref={brandLogoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBrandLogoUpload}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => brandLogoInputRef.current?.click()}
+                      disabled={uploadingBrandLogo}
+                      className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-xs font-bold text-gray-300 hover:border-[#D73F09] hover:text-[#D73F09] transition-colors disabled:opacity-50"
+                    >
+                      {uploadingBrandLogo ? "Uploading..." : brandLogoUrl ? "Replace" : "Upload Logo"}
+                    </button>
+                    <span className="text-xs text-gray-600 self-center">or</span>
+                    <input
+                      value={brandLogoUrl}
+                      onChange={(e) => setBrandLogoUrl(e.target.value)}
+                      placeholder="Paste logo URL..."
+                      className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs focus:border-[#D73F09] outline-none"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">Optional — shows as Postgame × Brand lockup</p>
+                </div>
+              </div>
+            )}
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} className="w-5 h-5 rounded border-gray-700 bg-black text-[#D73F09] focus:ring-[#D73F09]" />
               <div>
