@@ -18,9 +18,17 @@ export default async function PressPage() {
     .order("published_date", { ascending: false });
 
   const allArticles = (articles || []) as PressArticle[];
-  // Most recent article is auto-highlighted at the top
-  const highlightedArticle = allArticles.length > 0 ? allArticles[0] : null;
-  const rest = allArticles.slice(1);
+
+  // Split into dated and undated articles
+  const datedArticles = allArticles
+    .filter((a) => a.published_date)
+    .sort((a, b) => new Date(b.published_date!).getTime() - new Date(a.published_date!).getTime());
+  const undatedArticles = allArticles.filter((a) => !a.published_date);
+
+  // Only the most recent dated article is highlighted as "Latest"
+  const highlightedArticle = datedArticles.length > 0 ? datedArticles[0] : null;
+  // Remaining dated articles, then undated at the bottom
+  const rest = [...datedArticles.slice(1), ...undatedArticles];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FAFAF8", fontFamily: "Arial, sans-serif" }}>
