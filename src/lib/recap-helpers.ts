@@ -49,7 +49,7 @@ export function computeStats(athletes: Athlete[]) {
     if (m.tiktok?.post_url) { tiktokPosts++; totalPosts++; }
     if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
-    totalImpressions += (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0) + (m.ig_reel?.views || 0);
+    totalImpressions += (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0);
     totalEngagements += (m.ig_feed?.total_engagements || 0) + (m.ig_reel?.total_engagements || 0) + (m.tiktok?.total_engagements || 0);
     totalReach += (m.ig_feed?.reach || 0) + (a.ig_followers || 0);
 
@@ -171,7 +171,7 @@ export function getBestEngRate(athlete: Athlete): number {
 
 export function getTotalImpressions(athlete: Athlete): number {
   const m = athlete.metrics || {};
-  return (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0) + (m.ig_reel?.views || 0);
+  return (m.ig_feed?.impressions || 0) + (m.ig_story?.impressions || 0);
 }
 
 export function getTotalEngagements(athlete: Athlete): number {
