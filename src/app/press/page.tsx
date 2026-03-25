@@ -41,7 +41,7 @@ export default async function PressPage() {
           <h1 className="text-5xl md:text-7xl font-black text-gray-900" style={{ fontFamily: "Arial, sans-serif" }}>
             Press & News
           </h1>
-          <p className="text-gray-400 text-sm md:text-base mt-2 max-w-2xl">Your source for all the latest press coverage and media highlights from Postgame NIL campaigns.</p>
+          <p className="text-gray-400 text-base md:text-lg mt-3 max-w-2xl mx-auto text-center">Your source for all the latest press coverage and media highlights from Postgame NIL campaigns.</p>
           <div className="w-16 h-0.5 bg-[#D73F09] mx-auto mt-6" />
         </div>
       </div>
@@ -182,4 +182,5 @@ export default async function PressPage() {
     </div>
   );
 }
+
 
