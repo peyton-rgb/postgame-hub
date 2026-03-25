@@ -201,11 +201,12 @@ export default function PressEditor() {
           <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Article Image</label>
           <div className="space-y-3">
             {imageUrl && (
-              <div className="relative rounded-lg overflow-hidden bg-gray-900 border border-gray-700">
-                <img src={imageUrl} alt="Article preview" className="w-full h-auto max-h-64 object-contain" />
-                {showLogo && (
-                  <div className={`absolute bottom-3 ${logoPosition === "bottom-right" ? "right-3" : "left-3"} flex items-center gap-2 drop-shadow-lg`}>
-                    <img src="/postgame-logo-white.png" alt="Postgame" className="h-5 object-contain" />
+              <div className="rounded-lg overflow-hidden bg-gray-900 border border-gray-700 flex items-center justify-center">
+                <div className="relative inline-flex w-full">
+                  <img src={imageUrl} alt="Article preview" className="w-full h-auto max-h-64 object-contain" />
+                  {showLogo && (
+                    <div className={`absolute bottom-3 ${logoPosition === "bottom-right" ? "right-3" : "left-3"} flex items-center gap-2 drop-shadow-lg`}>
+                      <img src="/postgame-logo-white.png" alt="Postgame" className="h-5 object-contain" />
                     {brandLogoUrl && (
                       <>
                         <span className="text-white/60 text-xs font-bold">×</span>
@@ -214,16 +215,17 @@ export default function PressEditor() {
                     )}
                   </div>
                 )}
-                <button
-                  onClick={() => setImageUrl("")}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-600/80 transition-colors"
-                  title="Remove image"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
+                  <button
+                    onClick={() => setImageUrl("")}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-600/80 transition-colors"
+                    title="Remove image"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
             <div className="flex gap-3">
