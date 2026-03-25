@@ -533,7 +533,7 @@ export function CampaignRecap({
                 <div className="space-y-0">
                   {[
                     { label: "Story Count", value: fmt(stats.igStory.count), col: "ig_story_count" },
-                    { label: "Impressions", value: fmt(stats.igStory.impressions), col: "ig_story_impressions" },
+                    { label: "Total Story Impressions", value: fmt(stats.igStory.impressions), col: "ig_story_impressions" },
                   ].filter((row) => showCol(row.col)).map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
                       <span className="text-xs text-white/70 font-semibold">{row.label}</span>

@@ -212,30 +212,87 @@ export default function CampaignEditor() {
       .eq("campaign_id", trackerId)
       .order("sort_order");
 
+    // Fetch existing athletes for this campaign (to merge, not wipe)
+    const { data: existingAthletes } = await supabase
+      .from("athletes")
+      .select("*")
+      .eq("campaign_id", id)
+      .order("sort_order");
+
     if (trackerAthletes && trackerAthletes.length > 0) {
-      // Delete existing athletes for this campaign first
-      await supabase.from("media").delete().eq("campaign_id", id);
-      await supabase.from("athletes").delete().eq("campaign_id", id);
+      // Build a name->athlete map of existing athletes to preserve media links
+      const existingByName = new Map<string, Athlete>();
+      for (const a of (existingAthletes || [])) {
+        existingByName.set(a.name.toLowerCase().trim(), a);
+      }
 
-      // Copy tracker athletes into this campaign
-      const newRows = trackerAthletes.map((a: Athlete, i: number) => ({
-        campaign_id: id,
-        name: a.name,
-        ig_handle: a.ig_handle || "",
-        ig_followers: a.ig_followers || 0,
-        school: a.school || "",
-        sport: a.sport || "",
-        gender: a.gender || "",
-        notes: a.notes || "",
-        post_type: a.post_type || "IG Feed",
-        post_url: a.post_url,
-        metrics: a.metrics || {},
-        sort_order: i,
-      }));
+      const toUpdate: { id: string; data: Record<string, unknown> }[] = [];
+      const toInsert: Record<string, unknown>[] = [];
+      const matchedExistingIds = new Set<string>();
 
-      await supabase.from("athletes").insert(newRows);
+      for (let i = 0; i < trackerAthletes.length; i++) {
+        const ta = trackerAthletes[i];
+        const key = ta.name.toLowerCase().trim();
+        const existing = existingByName.get(key);
 
-      // Reload data
+        if (existing) {
+          // Merge: update identity + metrics, preserve the athlete ID (and its media)
+          matchedExistingIds.add(existing.id);
+          toUpdate.push({
+            id: existing.id,
+            data: {
+              ig_handle: ta.ig_handle || existing.ig_handle || "",
+              ig_followers: ta.ig_followers || existing.ig_followers || 0,
+              school: ta.school || existing.school || "",
+              sport: ta.sport || existing.sport || "",
+              gender: ta.gender || existing.gender || "",
+              notes: ta.notes || existing.notes || "",
+              post_type: ta.post_type || existing.post_type || "IG Feed",
+              post_url: ta.post_url || existing.post_url,
+              metrics: ta.metrics || existing.metrics || {},
+              sort_order: i,
+            },
+          });
+        } else {
+          // New athlete from tracker — insert fresh
+          toInsert.push({
+            campaign_id: id,
+            name: ta.name,
+            ig_handle: ta.ig_handle || "",
+            ig_followers: ta.ig_followers || 0,
+            school: ta.school || "",
+            sport: ta.sport || "",
+            gender: ta.gender || "",
+            notes: ta.notes || "",
+            post_type: ta.post_type || "IG Feed",
+            post_url: ta.post_url,
+            metrics: ta.metrics || {},
+            sort_order: i,
+          });
+        }
+      }
+
+      // Only delete athletes that are NOT in the tracker (removed athletes)
+      const toDeleteIds = (existingAthletes || [])
+        .filter((a) => !matchedExistingIds.has(a.id))
+        .map((a) => a.id);
+
+      if (toDeleteIds.length > 0) {
+        await supabase.from("media").delete().in("athlete_id", toDeleteIds);
+        await supabase.from("athletes").delete().in("id", toDeleteIds);
+      }
+
+      // Update existing athletes
+      for (const u of toUpdate) {
+        await supabase.from("athletes").update(u.data).eq("id", u.id);
+      }
+
+      // Insert new athletes
+      if (toInsert.length > 0) {
+        await supabase.from("athletes").insert(toInsert);
+      }
+
+      // Reload all data
       const { data: aths } = await supabase
         .from("athletes")
         .select("*")
@@ -243,7 +300,19 @@ export default function CampaignEditor() {
         .order("sort_order");
       setAthletes(aths || []);
       setSelected((aths || []).map((a: Athlete) => a.id));
-      setMedia({});
+
+      // Reload media (preserved for existing athletes)
+      const { data: allMedia } = await supabase
+        .from("media")
+        .select("*")
+        .eq("campaign_id", id)
+        .order("sort_order");
+      const grouped: Record<string, Media[]> = {};
+      for (const m of (allMedia || [])) {
+        if (!grouped[m.athlete_id]) grouped[m.athlete_id] = [];
+        grouped[m.athlete_id].push(m);
+      }
+      setMedia(grouped);
     }
 
     setImportingTracker(false);
