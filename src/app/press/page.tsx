@@ -14,16 +14,15 @@ export default async function PressPage() {
     .from("press_articles")
     .select("*")
     .eq("published", true)
+    .eq("archived", false)
     .order("published_date", { ascending: false });
 
   const allArticles = (articles || []) as PressArticle[];
-  const featuredArticle = allArticles.find((a) => a.featured);
-  const rest = allArticles.filter((a) => a.id !== featuredArticle?.id);
+  const highlightedArticle = allArticles.length > 0 ? allArticles[0] : null;
+  const rest = allArticles.slice(1);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FAFAF8", fontFamily: "Arial, sans-serif" }}>
-      {/* Fonts */}
-
       {/* Header */}
       <div className="border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-16 text-center">
@@ -35,50 +34,61 @@ export default async function PressPage() {
         </div>
       </div>
 
-      {/* Featured Article */}
-      {featuredArticle && (
+      {highlightedArticle && (
         <section className="max-w-6xl mx-auto px-6 py-16">
+          <div className="mb-6">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#D73F09] bg-[#D73F09]/10 px-3 py-1 rounded-full">
+              Latest
+            </span>
+          </div>
           <a
-            href={featuredArticle.external_url || "#"}
-            target={featuredArticle.external_url ? "_blank" : undefined}
+            href={highlightedArticle.external_url || "#"}
+            target={highlightedArticle.external_url ? "_blank" : undefined}
             rel="noopener noreferrer"
             className="block group"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-              {featuredArticle.image_url && (
-                <div className="rounded-xl overflow-hidden bg-gray-100">
+              {highlightedArticle.image_url && (
+                <div className="relative rounded-xl overflow-hidden bg-gray-100">
                   <img
-                    src={featuredArticle.image_url}
-                    alt={featuredArticle.title}
+                    src={highlightedArticle.image_url}
+                    alt={highlightedArticle.title}
                     className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
                   />
+                  {highlightedArticle.show_logo && (
+                    <img
+                      src="/postgame-logo-white.png"
+                      alt="Postgame"
+                      className="absolute bottom-3 left-3 h-4 md:h-5 object-contain drop-shadow-lg"
+                    />
+                  )}
                 </div>
               )}
-              <div className={featuredArticle.image_url ? "" : "md:col-span-2 max-w-2xl"}>
+              <div className={highlightedArticle.image_url ? "" : "md:col-span-2 max-w-2xl"}>
                 <div className="flex items-center gap-3 mb-4">
-                  {featuredArticle.category && (
+                  {highlightedArticle.category && (
                     <span className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">
-                      {featuredArticle.category}
+                      {highlightedArticle.category}
                     </span>
                   )}
-                  {featuredArticle.published_date && (
+                  {highlightedArticle.published_date && (
                     <span className="text-xs text-gray-400">
-                      {new Date(featuredArticle.published_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                      {new Date(highlightedArticle.published_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                     </span>
                   )}
                 </div>
                 <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 group-hover:text-[#D73F09] transition-colors" style={{ fontFamily: "Arial, sans-serif" }}>
-                  {featuredArticle.title}
+                  {highlightedArticle.title}
                 </h2>
-                {featuredArticle.excerpt && (
-                  <p className="text-gray-600 text-lg leading-relaxed mb-4">{featuredArticle.excerpt}</p>
+                {highlightedArticle.excerpt && (
+                  <p className="text-gray-600 text-lg leading-relaxed mb-4">{highlightedArticle.excerpt}</p>
                 )}
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  {featuredArticle.publication && (
-                    <span className="font-bold">{featuredArticle.publication}</span>
+                  {highlightedArticle.publication && (
+                    <span className="font-bold">{highlightedArticle.publication}</span>
                   )}
-                  {featuredArticle.author && featuredArticle.publication && <span>·</span>}
-                  {featuredArticle.author && <span>{featuredArticle.author}</span>}
+                  {highlightedArticle.author && highlightedArticle.publication && <span>\u00b7</span>}
+                  {highlightedArticle.author && <span>{highlightedArticle.author}</span>}
                 </div>
               </div>
             </div>
@@ -86,7 +96,6 @@ export default async function PressPage() {
         </section>
       )}
 
-      {/* Article Grid */}
       {rest.length > 0 && (
         <section className="max-w-6xl mx-auto px-6 pb-20">
           <div className="columns-1 md:columns-2 lg:columns-3 gap-8" style={{ columnFill: "balance" }}>
@@ -99,12 +108,19 @@ export default async function PressPage() {
                 className="block group mb-8 break-inside-avoid"
               >
                 {article.image_url && (
-                  <div className="rounded-lg overflow-hidden bg-gray-100 mb-4">
+                  <div className="relative rounded-lg overflow-hidden bg-gray-100 mb-4">
                     <img
                       src={article.image_url}
                       alt={article.title}
                       className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
                     />
+                    {article.show_logo && (
+                      <img
+                        src="/postgame-logo-white.png"
+                        alt="Postgame"
+                        className="absolute bottom-2 left-2 h-3 md:h-4 object-contain drop-shadow-lg"
+                      />
+                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-3 mb-2">
@@ -127,7 +143,7 @@ export default async function PressPage() {
                 )}
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   {article.publication && <span className="font-bold">{article.publication}</span>}
-                  {article.author && article.publication && <span>·</span>}
+                  {article.author && article.publication && <span>\u00b7</span>}
                   {article.author && <span>{article.author}</span>}
                 </div>
               </a>
