@@ -28,7 +28,7 @@ export default function TrackerEditor() {
 
   async function loadData() {
     const [{ data: camp }, { data: aths }] = await Promise.all([
-      supabase.from("campaigns").select("*").eq("id", id).single(),
+      supabase.from("campaign_recaps").select("*").eq("id", id).single(),
       supabase.from("athletes").select("*").eq("campaign_id", id).order("sort_order"),
     ]);
 
@@ -40,7 +40,7 @@ export default function TrackerEditor() {
   async function handleHiddenColumnsChange(columns: string[]) {
     if (!tracker) return;
     const newSettings = { ...tracker.settings, hidden_columns: columns };
-    await supabase.from("campaigns").update({ settings: newSettings }).eq("id", id);
+    await supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", id);
     setTracker({ ...tracker, settings: newSettings });
   }
 

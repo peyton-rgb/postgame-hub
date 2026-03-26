@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const supabase = createPlainSupabase();
   const { data: campaign } = await supabase
-    .from("campaigns")
+    .from("campaign_recaps")
     .select("name, client_name, settings")
     .eq("slug", slug)
     .eq("published", true)
@@ -38,7 +38,7 @@ export default async function RecapPage({ params }: Props) {
   const supabase = createPlainSupabase();
 
   const { data: campaign } = await supabase
-    .from("campaigns")
+    .from("campaign_recaps")
     .select("*")
     .eq("slug", slug)
     .eq("published", true)

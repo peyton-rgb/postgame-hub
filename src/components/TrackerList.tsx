@@ -31,7 +31,7 @@ export default function TrackerList() {
 
   async function loadTrackers() {
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .select("*")
       .order("created_at", { ascending: false });
     setTrackers(data || []);
@@ -48,7 +48,7 @@ export default function TrackerList() {
       .replace(/^-|-$/g, "");
 
     const { data, error } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .insert({
         name: newName,
         slug: `${slug}-${Date.now().toString(36)}`,
@@ -112,7 +112,7 @@ export default function TrackerList() {
   async function deleteTracker(tracker: Campaign) {
     setDeleting(tracker.id);
     await supabase.from("athletes").delete().eq("campaign_id", tracker.id);
-    const { error } = await supabase.from("campaigns").delete().eq("id", tracker.id);
+    const { error } = await supabase.from("campaign_recaps").delete().eq("id", tracker.id);
     if (!error) {
       setTrackers((prev) => prev.filter((t) => t.id !== tracker.id));
     }

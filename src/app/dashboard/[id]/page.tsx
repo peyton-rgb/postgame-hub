@@ -166,10 +166,10 @@ export default function CampaignEditor() {
 
   async function loadData() {
     const [{ data: camp }, { data: aths }, { data: med }, { data: trks }] = await Promise.all([
-      supabase.from("campaigns").select("*").eq("id", id).single(),
+      supabase.from("campaign_recaps").select("*").eq("id", id).single(),
       supabase.from("athletes").select("*").eq("campaign_id", id).order("sort_order"),
       supabase.from("media").select("*").eq("campaign_id", id).order("sort_order"),
-      supabase.from("campaigns").select("*").eq("type", "tracker").order("created_at", { ascending: false }),
+      supabase.from("campaign_recaps").select("*").eq("type", "tracker").order("created_at", { ascending: false }),
     ]);
 
     setTrackers(trks || []);
@@ -323,7 +323,7 @@ export default function CampaignEditor() {
   async function saveCampaignName(field: "name" | "client_name", value: string) {
     if (!campaign || !value.trim()) return;
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .update({ [field]: value.trim() })
       .eq("id", campaign.id)
       .select()
@@ -343,7 +343,7 @@ export default function CampaignEditor() {
       kpi_targets: kpiTargets,
     };
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .update({ settings: newSettings })
       .eq("id", campaign.id)
       .select()
@@ -371,7 +371,7 @@ export default function CampaignEditor() {
         kpi_targets: kpiTargets,
       };
       const { data } = await supabase
-        .from("campaigns")
+        .from("campaign_recaps")
         .update({ settings: newSettings })
         .eq("id", campaign.id)
         .select()
@@ -459,7 +459,7 @@ export default function CampaignEditor() {
         kpi_targets: kpiTargets,
       };
       const { data: updatedCamp } = await supabase
-        .from("campaigns")
+        .from("campaign_recaps")
         .update({ settings: newSettings })
         .eq("id", campaign.id)
         .select()
@@ -701,7 +701,7 @@ export default function CampaignEditor() {
     if (!campaign) return;
     setPublishing(true);
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .update({ published: !campaign.published })
       .eq("id", campaign.id)
       .select().single();
@@ -899,7 +899,7 @@ export default function CampaignEditor() {
               onHiddenColumnsChange={async (cols) => {
                 if (!campaign) return;
                 const newSettings = { ...campaign.settings, hidden_columns: cols };
-                await supabase.from("campaigns").update({ settings: newSettings }).eq("id", campaign.id);
+                await supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", campaign.id);
                 setCampaign({ ...campaign, settings: newSettings });
               }}
             />

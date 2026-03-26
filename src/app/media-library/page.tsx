@@ -38,7 +38,7 @@ export default function MediaLibrary() {
     setLoading(true);
     // Fetch all data in parallel
     const [campsRes, athletesRes, mediaRes] = await Promise.all([
-      supabase.from("campaigns").select("*").order("created_at", { ascending: false }),
+      supabase.from("campaign_recaps").select("*").order("created_at", { ascending: false }),
       supabase.from("athletes").select("id, campaign_id"),
       supabase.from("media").select("id, campaign_id").eq("is_video_thumbnail", false),
     ]);

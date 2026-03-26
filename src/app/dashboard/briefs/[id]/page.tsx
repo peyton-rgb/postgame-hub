@@ -58,7 +58,7 @@ export default function BriefEditor() {
 
   async function loadTrackers() {
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .select("*")
       .eq("type", "tracker")
       .order("created_at", { ascending: false });
@@ -95,7 +95,7 @@ export default function BriefEditor() {
       "-" + Date.now().toString(36);
 
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .insert({
         name: trackerName,
         slug,

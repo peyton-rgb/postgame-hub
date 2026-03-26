@@ -34,7 +34,7 @@ export default function CampaignList() {
 
   async function loadTrackers() {
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .select("*")
       .eq("type", "tracker")
       .order("created_at", { ascending: false });
@@ -43,7 +43,7 @@ export default function CampaignList() {
 
   async function loadCampaigns() {
     const { data } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .select("*")
       .in("type", ["recap"])
       .order("created_at", { ascending: false });
@@ -61,7 +61,7 @@ export default function CampaignList() {
       .replace(/^-|-$/g, "");
 
     const { data, error } = await supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .insert({
         name: newName,
         slug: `${slug}-${Date.now().toString(36)}`,
@@ -157,7 +157,7 @@ export default function CampaignList() {
     setDeleting(campaign.id);
     await supabase.from("media").delete().eq("campaign_id", campaign.id);
     await supabase.from("athletes").delete().eq("campaign_id", campaign.id);
-    const { error } = await supabase.from("campaigns").delete().eq("id", campaign.id);
+    const { error } = await supabase.from("campaign_recaps").delete().eq("id", campaign.id);
     if (!error) {
       setCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
     }
