@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { PressArticle } from "@/lib/types";
 import Link from "next/link";
+import ViewToggle, { type ViewMode } from "./ViewToggle";
 
 export default function PressList() {
   const [articles, setArticles] = useState<PressArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newPublication, setNewPublication] = useState("");
@@ -94,6 +96,8 @@ export default function PressList() {
   return (
     <>
       <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+        <ViewToggle mode={viewMode} onChange={setViewMode} />
         <div className="flex gap-1 bg-[#111] border border-gray-800 rounded-lg p-1">
           <button
             onClick={() => setFilter("active")}
@@ -115,6 +119,7 @@ export default function PressList() {
           >
             Archived
           </button>
+        </div>
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -210,58 +215,143 @@ export default function PressList() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((article) => (
-            <div
-              key={article.id}
-              className={`relative p-6 bg-[#111] border rounded-xl hover:border-gray-600 transition-colors group ${
-                article.archived ? "border-yellow-900/40" : "border-gray-800"
-              }`}
-            >
-              <Link
-                href={`/dashboard/press/${article.id}`}
-                className="absolute inset-0 z-0"
-              />
-              {/* Image thumbnail */}
-              {article.image_url && (
-                <div className="relative rounded-lg overflow-hidden bg-gray-900 mb-3 h-32">
-                  <img
-                    src={article.image_url}
-                    alt={article.title}
-                    className="w-full h-full object-cover"
-                  />
-                  {article.show_logo && (
-                    <div className={`absolute bottom-1.5 ${article.logo_position === "bottom-right" ? "right-1.5" : "left-1.5"} flex items-center gap-1 drop-shadow-lg`}>
-                      <img src="/postgame-logo-white.png" alt="" className="h-3 object-contain" />
-                      {article.brand_logo_url && (
-                        <>
-                          <span className="text-white/60 text-[8px] font-bold">×</span>
-                          <img src={article.brand_logo_url} alt="" className="h-3 object-contain" />
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                  {article.publication || "No publication"}
-                </span>
-                <div className="flex items-center gap-2">
-                  {article.archived && (
-                    <span className="text-xs font-bold px-2 py-1 rounded bg-yellow-900/30 text-yellow-400">
-                      Archived
-                    </span>
-                  )}
-                  <span
-                    className={`text-xs font-bold px-2 py-1 rounded ${
-                      article.published
-                        ? "bg-green-900/30 text-green-400"
-                        : "bg-gray-800 text-gray-500"
-                    }`}
-                  >
-                    {article.published ? "Published" : "Draft"}
+        viewMode === "card" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((article) => (
+              <div
+                key={article.id}
+                className={`relative p-6 bg-[#111] border rounded-xl hover:border-gray-600 transition-colors group ${
+                  article.archived ? "border-yellow-900/40" : "border-gray-800"
+                }`}
+              >
+                <Link
+                  href={`/dashboard/press/${article.id}`}
+                  className="absolute inset-0 z-0"
+                />
+                {article.image_url && (
+                  <div className="relative rounded-lg overflow-hidden bg-gray-900 mb-3 h-32">
+                    <img
+                      src={article.image_url}
+                      alt={article.title}
+                      className="w-full h-full object-cover"
+                    />
+                    {article.show_logo && (
+                      <div className={`absolute bottom-1.5 ${article.logo_position === "bottom-right" ? "right-1.5" : "left-1.5"} flex items-center gap-1 drop-shadow-lg`}>
+                        <img src="/postgame-logo-white.png" alt="" className="h-3 object-contain" />
+                        {article.brand_logo_url && (
+                          <>
+                            <span className="text-white/60 text-[8px] font-bold">×</span>
+                            <img src={article.brand_logo_url} alt="" className="h-3 object-contain" />
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    {article.publication || "No publication"}
                   </span>
+                  <div className="flex items-center gap-2">
+                    {article.archived && (
+                      <span className="text-xs font-bold px-2 py-1 rounded bg-yellow-900/30 text-yellow-400">
+                        Archived
+                      </span>
+                    )}
+                    <span
+                      className={`text-xs font-bold px-2 py-1 rounded ${
+                        article.published
+                          ? "bg-green-900/30 text-green-400"
+                          : "bg-gray-800 text-gray-500"
+                      }`}
+                    >
+                      {article.published ? "Published" : "Draft"}
+                    </span>
+                    <button
+                      onClick={(e) => toggleArchive(article, e)}
+                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-yellow-400 hover:bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                      title={article.archived ? "Unarchive" : "Archive"}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="21 8 21 21 3 21 3 8" />
+                        <rect x="1" y="3" width="22" height="5" />
+                        <line x1="10" y1="12" x2="14" y2="12" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmDelete(article);
+                      }}
+                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Delete article"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <h3 className="text-lg font-black mb-1">{article.title}</h3>
+                {article.category && (
+                  <p className="text-sm text-gray-400">{article.category}</p>
+                )}
+                <p className="text-xs text-gray-600 mt-2">
+                  {new Date(article.created_at).toLocaleDateString()}
+                  {article.published && (
+                    <span className="ml-2 text-[#D73F09]">/press/{article.slug}</span>
+                  )}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {filtered.map((article) => (
+              <div
+                key={article.id}
+                className={`relative flex items-center gap-4 px-5 py-4 bg-[#111] border rounded-lg hover:border-gray-600 transition-colors group ${
+                  article.archived ? "border-yellow-900/40" : "border-gray-800"
+                }`}
+              >
+                <Link href={`/dashboard/press/${article.id}`} className="absolute inset-0 z-0" />
+                {article.image_url && (
+                  <div className="shrink-0 w-16 h-10 rounded overflow-hidden bg-gray-900">
+                    <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-bold truncate">{article.title}</h3>
+                    {article.archived && (
+                      <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded bg-yellow-900/30 text-yellow-400">
+                        Archived
+                      </span>
+                    )}
+                    <span
+                      className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${
+                        article.published
+                          ? "bg-green-900/30 text-green-400"
+                          : "bg-gray-800 text-gray-500"
+                      }`}
+                    >
+                      {article.published ? "Published" : "Draft"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs text-gray-500">{article.publication || "No publication"}</span>
+                    {article.category && <span className="text-xs text-gray-600">{article.category}</span>}
+                    <span className="text-[10px] text-gray-700">
+                      {new Date(article.created_at).toLocaleDateString()}
+                    </span>
+                    {article.published && (
+                      <span className="text-[10px] text-[#D73F09]">/press/{article.slug}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={(e) => toggleArchive(article, e)}
                     className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-yellow-400 hover:bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-all"
@@ -289,19 +379,9 @@ export default function PressList() {
                   </button>
                 </div>
               </div>
-              <h3 className="text-lg font-black mb-1">{article.title}</h3>
-              {article.category && (
-                <p className="text-sm text-gray-400">{article.category}</p>
-              )}
-              <p className="text-xs text-gray-600 mt-2">
-                {new Date(article.created_at).toLocaleDateString()}
-                {article.published && (
-                  <span className="ml-2 text-[#D73F09]">/press/{article.slug}</span>
-                )}
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
     </>
   );
