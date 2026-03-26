@@ -291,31 +291,48 @@ export function Top50Recap({
       {/* ── HERO ──────────────────────────────────────────── */}
       <div className="relative px-6 md:px-12 pt-12 md:pt-16 pb-10 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(215,63,9,0.08)_0%,transparent_60%)]" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6">
-            <span className="px-4 py-2 bg-brand text-white rounded-md text-[11px] font-black uppercase tracking-widest">
-              Top 50
-            </span>
-            {settings.quarter && (
-              <span className="px-3 py-2 bg-white/[0.06] border border-white/10 rounded-md text-[11px] font-bold uppercase tracking-widest text-white/50">
-                {settings.quarter}
+        <div className="relative z-10 flex items-start justify-between">
+          {/* Left side - title and stats */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="px-4 py-2 bg-brand text-white rounded-md text-[11px] font-black uppercase tracking-widest">
+                Top 50
               </span>
+              {settings.quarter && (
+                <span className="px-3 py-2 bg-white/[0.06] border border-white/10 rounded-md text-[11px] font-bold uppercase tracking-widest text-white/50">
+                  {settings.quarter}
+                </span>
+              )}
+            </div>
+
+            <h1 className="text-4xl md:text-[64px] font-black uppercase tracking-tight leading-[1.05] mb-4">
+              The <span className="text-brand">Top 50</span>
+              <br />Athletes
+            </h1>
+
+            {settings.description && (
+              <p className="text-lg md:text-xl text-white/35 max-w-xl leading-relaxed">{settings.description}</p>
             )}
+
+            <div className="flex gap-9 mt-8">
+              <div><div className="text-4xl md:text-[40px] font-black">{stats.athleteCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Athletes</div></div>
+              <div><div className="text-4xl md:text-[40px] font-black">{uniCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Universities</div></div>
+              <div><div className="text-4xl md:text-[40px] font-black">{sports.length}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Sports</div></div>
+            </div>
           </div>
 
-          <h1 className="text-4xl md:text-[64px] font-black uppercase tracking-tight leading-[1.05] mb-4">
-            The <span className="text-brand">Top 50</span>
-            <br />Athletes
-          </h1>
-
-          {settings.description && (
-            <p className="text-lg md:text-xl text-white/35 max-w-xl leading-relaxed">{settings.description}</p>
-          )}
-
-          <div className="flex gap-9 mt-8">
-            <div><div className="text-4xl md:text-[40px] font-black">{stats.athleteCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Athletes</div></div>
-            <div><div className="text-4xl md:text-[40px] font-black">{uniCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Universities</div></div>
-            <div><div className="text-4xl md:text-[40px] font-black">{sports.length}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Sports</div></div>
+          {/* Right side - brand logo + year */}
+          <div className="hidden md:flex flex-col items-end gap-4">
+            {(settings.brand_logo_url || campaign.client_logo_url) && (
+              <img
+                src={settings.brand_logo_url || campaign.client_logo_url}
+                alt={campaign.client_name || "Brand"}
+                className="h-24 lg:h-32 object-contain opacity-80"
+              />
+            )}
+            <div className="text-[80px] lg:text-[120px] font-black text-white/[0.06] leading-none tracking-tighter">
+              {settings.quarter?.match(/\d{4}/)?.[0] || new Date().getFullYear()}
+            </div>
           </div>
         </div>
       </div>
