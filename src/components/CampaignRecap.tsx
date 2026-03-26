@@ -8,7 +8,7 @@ import { TopPerformerMedia } from "./TopPerformerMedia";
 
 // ── Masonry Card ─────────────────────────────────────────────
 
-function MasonryCard({ athlete, items: rawItems, activeFilter }: { athlete: Athlete; items: Media[]; activeFilter: string }) {
+function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { athlete: Athlete; items: Media[]; activeFilter: string; cardIndex: number }) {
   // When photo filter is active, exclude video items from the carousel
   const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
   const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
@@ -16,6 +16,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter }: { athlete: Athl
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const current = items[slideIdx];
@@ -63,7 +64,22 @@ function MasonryCard({ athlete, items: rawItems, activeFilter }: { athlete: Athl
         {isVideo && playing ? (
           <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1]" onEnded={() => setPlaying(false)} />
         ) : displaySrc ? (
-          <img src={displaySrc} className={`w-full block ${isVideo ? "aspect-[9/16] object-cover" : ""}`} draggable={false} alt={athlete.name} loading="lazy" />
+          <img
+            src={displaySrc}
+            className={`w-full block object-cover ${isVideo ? "aspect-[9/16]" : naturalRatio ? "" : "aspect-[4/5]"}`}
+            style={!isVideo && naturalRatio ? { aspectRatio: `${naturalRatio}` } : undefined}
+            draggable={false}
+            alt={athlete.name}
+            loading="lazy"
+            onLoad={(e) => {
+              if (!isVideo && !naturalRatio) {
+                const img = e.currentTarget;
+                if (img.naturalWidth && img.naturalHeight) {
+                  setNaturalRatio(img.naturalWidth / img.naturalHeight);
+                }
+              }
+            }}
+          />
         ) : isVideo ? (
           <div className="w-full aspect-[4/5] bg-black flex items-center justify-center" onClick={() => setPlaying(true)}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -706,8 +722,8 @@ export function CampaignRecap({
             </div>
           </div>
           <div data-masonry style={{ columnCount: cols, columnGap: 8 }} className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            {filtered.map((a) => (
-              <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} />
+            {filtered.map((a, i) => (
+              <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
             ))}
           </div>
         </div>
