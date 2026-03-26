@@ -7,6 +7,8 @@ export interface VisibleSections {
   top_performers?: boolean;
   content_gallery?: boolean;
   roster?: boolean;
+  clicks?: boolean;
+  sales?: boolean;
 }
 
 export interface KpiTargets {

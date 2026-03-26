@@ -21,6 +21,8 @@ const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "top_performers", label: "Top Performers" },
   { key: "content_gallery", label: "Best In Class Content" },
   { key: "roster", label: "Campaign Roster" },
+  { key: "clicks", label: "Clicks & Conversions" },
+  { key: "sales", label: "Sales" },
 ];
 
 function fmt(n: number): string {

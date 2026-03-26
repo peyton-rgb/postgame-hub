@@ -435,7 +435,7 @@ export function CampaignRecap({
               { value: fmt(stats.totalImpressions), label: "TOTAL IMPRESSIONS" },
               { value: fmt(stats.totalEngagements), label: "TOTAL ENGAGEMENTS" },
               { value: pct(stats.avgEngRate), label: "AVG ENGAGEMENT RATE" },
-              ...(stats.hasSales ? [{ value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
+              ...(stats.hasSales && show("sales") ? [{ value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
             ].map((m) => (
               <div key={m.label} className="bg-white/[0.07] border border-white/[0.15] rounded-xl p-5 md:p-8 text-center flex-1 min-w-[140px] max-w-[220px]">
                 <div className="text-2xl md:text-4xl font-black text-white mb-2">{m.value}</div>
@@ -544,7 +544,7 @@ export function CampaignRecap({
           )}
 
           {/* Sales breakdown */}
-          {stats.hasSales && (
+          {stats.hasSales && show("sales") && (
             <div className="mt-6 max-w-md">
               <div className="bg-white/[0.06] border border-emerald-500/20 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -732,9 +732,9 @@ export function CampaignRecap({
                   {showCol("ig_feed_impressions") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
                   {showCol("ig_feed_total") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
                   {showCol("ig_feed_rate") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
-                  {stats.hasClicks && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
-                  {stats.hasClicks && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
-                  {stats.hasClicks && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
+                  {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
+                  {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
+                  {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
                   <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>
                   <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>
                 </tr>
@@ -761,9 +761,9 @@ export function CampaignRecap({
                     {showCol("ig_feed_impressions") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>}
                     {showCol("ig_feed_total") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>}
                     {showCol("ig_feed_rate") && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>}
-                    {stats.hasClicks && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
-                    {stats.hasClicks && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
-                    {stats.hasClicks && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
                     <td className="px-3 py-3 text-center">
                       {feedUrl ? (
                         <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
@@ -807,7 +807,7 @@ export function CampaignRecap({
                   {showCol("ig_feed_rate") && getBestEngRate(a) > 0 && (
                     <div className="text-xs font-bold text-brand">{pct(getBestEngRate(a))}</div>
                   )}
-                  {stats.hasClicks && (
+                  {stats.hasClicks && show("clicks") && (
                     (showCol("clicks_link_clicks") && m.clicks?.link_clicks) ||
                     (showCol("clicks_orders") && m.clicks?.orders) ||
                     (showCol("clicks_sales") && m.clicks?.sales)
