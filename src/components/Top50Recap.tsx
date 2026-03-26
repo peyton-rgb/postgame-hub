@@ -61,7 +61,7 @@ function FeaturedCard({
         {/* Background image */}
         <div className="absolute inset-0">
           {imgSrc ? (
-            <img src={imgSrc} className="w-full h-full object-cover" alt={athlete.name} />
+            <img src={imgSrc} className="w-full h-full object-cover object-top" alt={athlete.name} />
           ) : (
             <div className="w-full h-full bg-black" />
           )}
@@ -170,7 +170,7 @@ function RosterCard({
       {/* Photo */}
       <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden flex-shrink-0 bg-[#111] border border-white/[0.05]">
         {thumbSrc ? (
-          <img src={thumbSrc} className="w-full h-full object-cover" alt={athlete.name} />
+          <img src={thumbSrc} className="w-full h-full object-cover object-top" alt={athlete.name} />
         ) : (
           <div className="w-full h-full bg-[#111]" />
         )}
