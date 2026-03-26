@@ -622,14 +622,25 @@ export default function CampaignEditor() {
           seenAthletes.add(athlete.id);
         }
 
+        // Skip if this filename already exists for this athlete (prevent duplicates)
+        const existing = media[athlete.id] || [];
+        const cleanName = file.name.toLowerCase();
+        const alreadyUploaded = existing.some((m) => {
+          const existingName = m.file_url.split("/").pop()?.replace(/^\d+-/, "").toLowerCase();
+          return existingName === cleanName;
+        });
+        if (alreadyUploaded) {
+          matched++;
+          setBulkProgress({ done: i + 1, total: files.length, matched, unmatched: [...unmatched] });
+          continue;
+        }
+
         const isVideo = file.type.startsWith("video/") || file.name.toLowerCase().endsWith(".mov") || file.name.toLowerCase().endsWith(".mp4");
 
         if (isVideo) {
-          // Upload video directly (no thumbnail for bulk uploads)
           const path = `${id}/${athlete.id}/${Date.now()}-${file.name}`;
           const url = await uploadFile(file, path);
           if (url) {
-            const existing = media[athlete.id] || [];
             const { data } = await supabase
               .from("media")
               .insert({ athlete_id: athlete.id, campaign_id: id, type: "video", file_url: url, sort_order: existing.length })
@@ -642,12 +653,10 @@ export default function CampaignEditor() {
             }
           }
         } else {
-          // Upload image
           const converted = await convertHeicIfNeeded(file);
           const path = `${id}/${athlete.id}/${Date.now()}-${converted.name}`;
           const url = await uploadFile(converted, path);
           if (url) {
-            const existing = media[athlete.id] || [];
             const { data } = await supabase
               .from("media")
               .insert({ athlete_id: athlete.id, campaign_id: id, type: "image", file_url: url, sort_order: existing.length })
