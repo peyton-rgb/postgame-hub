@@ -1275,6 +1275,14 @@ export default function CampaignEditor() {
                                   <svg width="7" height="7" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                                 </div>
                               )}
+                              {/* Video play button overlay */}
+                              {m.type === "video" && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="w-4 h-4 rounded-full bg-black/60 flex items-center justify-center">
+                                    <svg width="7" height="7" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="8 5 19 12 8 19 8 5"/></svg>
+                                  </div>
+                                </div>
+                              )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); removeMedia(a.id, m.id); }}
                                 className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-black/80 text-white text-[7px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-10"
