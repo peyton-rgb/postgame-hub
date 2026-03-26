@@ -85,11 +85,11 @@ function FeaturedCard({
             </span>
           </div>
 
-          <div className="text-2xl md:text-3xl font-black uppercase tracking-tight leading-tight">{athlete.name}</div>
-          <div className="text-sm text-white/40 mt-1 font-medium">{getFullSchoolName(athlete.school)}</div>
+          <div className="text-2xl md:text-[28px] font-black uppercase tracking-tight leading-tight">{athlete.name}</div>
+          <div className="text-sm md:text-base text-white/40 mt-1 font-medium">{getFullSchoolName(athlete.school)}</div>
 
           {athlete.notes && (
-            <p className="text-sm text-white/35 leading-relaxed mt-2 line-clamp-2">{athlete.notes}</p>
+            <p className="text-sm md:text-base text-white/35 leading-relaxed mt-2 line-clamp-2">{athlete.notes}</p>
           )}
 
           {/* Meta row */}
@@ -165,10 +165,10 @@ function RosterCard({
       <div className="w-[3px] self-stretch flex-shrink-0 opacity-35 group-hover:opacity-100 transition-opacity" style={{ background: color }} />
 
       {/* Rank */}
-      <div className="text-sm font-black text-white/15 w-9 text-center flex-shrink-0">#{rank}</div>
+      <div className="text-base font-black text-white/15 w-9 text-center flex-shrink-0">#{rank}</div>
 
       {/* Photo */}
-      <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[#111] border border-white/[0.05]">
+      <div className="w-14 h-14 md:w-[60px] md:h-[60px] rounded-lg overflow-hidden flex-shrink-0 bg-[#111] border border-white/[0.05]">
         {thumbSrc ? (
           <img src={thumbSrc} className="w-full h-full object-cover" alt={athlete.name} />
         ) : (
@@ -177,29 +177,29 @@ function RosterCard({
       </div>
 
       {/* School logo */}
-      <SchoolLogo school={athlete.school} size={36} />
+      <SchoolLogo school={athlete.school} size={38} />
 
       {/* Identity: sport stacked above name */}
-      <div className="flex-shrink-0 w-[200px] md:w-[280px] min-w-0">
-        <span className="inline-block px-2 py-0.5 bg-brand/12 text-brand rounded text-[10px] font-extrabold uppercase tracking-wider mb-1">
+      <div className="flex-shrink-0 w-[220px] md:w-[300px] min-w-0">
+        <span className="inline-block px-2.5 py-1 bg-brand/12 text-brand rounded text-xs font-extrabold uppercase tracking-wider mb-1">
           {athlete.sport}
         </span>
-        <div className="text-base md:text-lg font-black uppercase tracking-tight leading-tight truncate">{athlete.name}</div>
-        <div className="text-xs text-white/30 font-medium truncate">{getFullSchoolName(athlete.school)}</div>
+        <div className="text-lg md:text-xl font-black uppercase tracking-tight leading-tight truncate">{athlete.name}</div>
+        <div className="text-sm text-white/30 font-medium truncate">{getFullSchoolName(athlete.school)}</div>
       </div>
 
       {/* Notes */}
       <div className="flex-1 min-w-0 hidden md:block">
-        <p className="text-sm text-white/35 leading-relaxed line-clamp-2">{athlete.notes || "Elite collegiate athlete and brand partner."}</p>
+        <p className="text-base text-white/35 leading-relaxed line-clamp-2">{athlete.notes || "Elite collegiate athlete and brand partner."}</p>
         <div className="flex gap-1 mt-1.5">
-          <span className="px-2.5 py-0.5 bg-white/[0.05] border border-white/[0.06] rounded text-[10px] font-bold text-white/40">CVS Top 50</span>
+          <span className="px-2.5 py-1 bg-white/[0.05] border border-white/[0.06] rounded text-xs font-bold text-white/40">CVS Top 50</span>
         </div>
       </div>
 
       {/* Right: followers + links */}
       <div className="flex items-center gap-4 flex-shrink-0 ml-auto">
         {athlete.ig_followers ? (
-          <span className="hidden md:flex items-center gap-1.5 text-sm font-bold text-white/30 whitespace-nowrap">
+          <span className="hidden md:flex items-center gap-1.5 text-base font-bold text-white/30 whitespace-nowrap">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
             {fmt(athlete.ig_followers)}
           </span>
@@ -211,7 +211,7 @@ function RosterCard({
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs font-bold text-white/25 px-2.5 py-1.5 rounded transition-all hover:bg-white/[0.08] hover:text-white/60 whitespace-nowrap"
+              className="flex items-center gap-1.5 text-sm font-bold text-white/25 px-2.5 py-1.5 rounded transition-all hover:bg-white/[0.08] hover:text-white/60 whitespace-nowrap"
             >
               <SocialIcon type={link.icon} className="w-[12px] h-[12px]" />
               <span className="hidden md:inline">{link.platform === "Instagram" ? "Post" : "TikTok"}</span>
@@ -303,19 +303,19 @@ export function Top50Recap({
             )}
           </div>
 
-          <h1 className="text-3xl md:text-[52px] font-black uppercase tracking-tight leading-[1.05] mb-4">
+          <h1 className="text-4xl md:text-[64px] font-black uppercase tracking-tight leading-[1.05] mb-4">
             The <span className="text-brand">Top 50</span>
             <br />Athletes
           </h1>
 
           {settings.description && (
-            <p className="text-base text-white/35 max-w-xl leading-relaxed">{settings.description}</p>
+            <p className="text-lg md:text-xl text-white/35 max-w-xl leading-relaxed">{settings.description}</p>
           )}
 
           <div className="flex gap-9 mt-8">
-            <div><div className="text-3xl font-black">{stats.athleteCount}</div><div className="text-[9px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Athletes</div></div>
-            <div><div className="text-3xl font-black">{uniCount}</div><div className="text-[9px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Universities</div></div>
-            <div><div className="text-3xl font-black">{sports.length}</div><div className="text-[9px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Sports</div></div>
+            <div><div className="text-4xl md:text-[40px] font-black">{stats.athleteCount}</div><div className="text-[11px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Athletes</div></div>
+            <div><div className="text-4xl md:text-[40px] font-black">{uniCount}</div><div className="text-[11px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Universities</div></div>
+            <div><div className="text-4xl md:text-[40px] font-black">{sports.length}</div><div className="text-[11px] font-bold uppercase tracking-widest text-white/30 mt-0.5">Sports</div></div>
           </div>
         </div>
       </div>
@@ -329,12 +329,12 @@ export function Top50Recap({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search athletes..."
-            className="pl-9 pr-4 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm font-medium outline-none w-52 placeholder:text-white/20 focus:border-brand/50"
+            className="pl-10 pr-4 py-2.5 bg-white/[0.05] border border-white/10 rounded-lg text-white text-base font-medium outline-none w-56 placeholder:text-white/20 focus:border-brand/50"
           />
         </div>
         <button
           onClick={() => setSportFilter("all")}
-          className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all ${
+          className={`px-4 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${
             sportFilter === "all" ? "bg-brand border-brand text-white" : "bg-white/[0.04] border border-white/[0.08] text-white/35 hover:border-white/20 hover:text-white/70"
           }`}
         >
@@ -344,7 +344,7 @@ export function Top50Recap({
           <button
             key={s}
             onClick={() => setSportFilter(s)}
-            className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all ${
+            className={`px-4 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${
               sportFilter === s ? "bg-brand border-brand text-white" : "bg-white/[0.04] border border-white/[0.08] text-white/35 hover:border-white/20 hover:text-white/70"
             }`}
           >
@@ -356,7 +356,7 @@ export function Top50Recap({
       {/* ── FEATURED ATHLETES ─────────────────────────────── */}
       {filteredTop3.length > 0 && (
         <div className="px-6 md:px-12 pt-7 pb-10">
-          <div className="text-sm font-extrabold uppercase tracking-[3px] text-white/25 mb-4">Featured Athletes</div>
+          <div className="text-base font-extrabold uppercase tracking-[3px] text-white/25 mb-4">Featured Athletes</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5" style={{ gridTemplateColumns: filteredTop3.length >= 3 ? "1.3fr 1fr 1fr" : undefined }}>
             {filteredTop3.map((a, i) => (
               <FeaturedCard key={a.id} athlete={a} rank={i + 1} items={media[a.id] || []} />
@@ -370,7 +370,7 @@ export function Top50Recap({
 
       {/* ── FULL ROSTER ───────────────────────────────────── */}
       <div className="px-6 md:px-12 pt-9 pb-16">
-        <div className="text-sm font-extrabold uppercase tracking-[3px] text-white/25 mb-4">Full Roster</div>
+        <div className="text-base font-extrabold uppercase tracking-[3px] text-white/25 mb-4">Full Roster</div>
         <div className="flex flex-col gap-1">
           {filteredRest.map((a, i) => (
             <RosterCard key={a.id} athlete={a} rank={i + 4} items={media[a.id] || []} />
