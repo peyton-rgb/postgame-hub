@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Deal } from "@/lib/types";
+import Link from "next/link";
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -208,7 +209,7 @@ function FilterSelect({
 
 function DealCard({ deal }: { deal: Deal }) {
   return (
-    <div className="border border-gray-800 rounded-xl hover:border-gray-600 transition-all group overflow-hidden">
+    <Link href={`/deals/${deal.id}`} className="block border border-gray-800 rounded-xl hover:border-gray-600 transition-all group overflow-hidden">
       {/* Deal Image */}
       {deal.image_url && (
         <div className="aspect-[4/5] overflow-hidden">
@@ -286,6 +287,6 @@ function DealCard({ deal }: { deal: Deal }) {
         </p>
       )}
       </div>
-    </div>
+    </Link>
   );
 }

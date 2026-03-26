@@ -367,7 +367,7 @@ export default function CampaignList() {
           </button>
         </div>
       ) : (
-        {viewMode === "card" ? (
+        viewMode === "card" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {campaigns.map((c) => (
               <div
@@ -465,7 +465,7 @@ export default function CampaignList() {
               </div>
             ))}
           </div>
-        )}
+        )
       )}
     </>
   );

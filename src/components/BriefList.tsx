@@ -173,10 +173,19 @@ export default function BriefList() {
               key={brief.id}
               className="relative p-6 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors group"
             >
-              <Link
-                href={`/dashboard/briefs/${brief.id}`}
-                className="absolute inset-0 z-0"
-              />
+              {brief.external_url ? (
+                <a
+                  href={brief.external_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 z-0"
+                />
+              ) : (
+                <Link
+                  href={`/dashboard/briefs/${brief.id}`}
+                  className="absolute inset-0 z-0"
+                />
+              )}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   {brief.client_name}
@@ -184,12 +193,14 @@ export default function BriefList() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`text-xs font-bold px-2 py-1 rounded ${
-                      brief.published
+                      brief.external_url
+                        ? "bg-blue-900/30 text-blue-400"
+                        : brief.published
                         ? "bg-green-900/30 text-green-400"
                         : "bg-gray-800 text-gray-500"
                     }`}
                   >
-                    {brief.published ? "Published" : "Draft"}
+                    {brief.external_url ? "External" : brief.published ? "Published" : "Draft"}
                   </span>
                   <button
                     onClick={(e) => {

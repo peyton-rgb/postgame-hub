@@ -172,7 +172,7 @@ export default function DealList() {
           </button>
         </div>
       ) : (
-        {viewMode === "card" ? (
+        viewMode === "card" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {deals.map((deal) => (
               <div
@@ -271,7 +271,7 @@ export default function DealList() {
               </div>
             ))}
           </div>
-        )}
+        )
       )}
     </>
   );
