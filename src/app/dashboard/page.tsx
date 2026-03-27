@@ -9,6 +9,7 @@ import DealList from "@/components/DealList";
 import PressList from "@/components/PressList";
 import CaseStudyList from "@/components/CaseStudyList";
 import TrackerList from "@/components/TrackerList";
+import BrandKitList from "@/components/BrandKitList";
 import ComingSoon from "@/components/ComingSoon";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import Link from "next/link";
@@ -17,6 +18,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 const TABS = [
   { key: "recaps", label: "Recaps" },
   { key: "trackers", label: "Performance Trackers" },
+  { key: "brands", label: "Brand Kits" },
   { key: "ros", label: "Run of Shows" },
   { key: "briefs", label: "Briefs" },
   { key: "deals", label: "Deal Tracker" },
@@ -99,6 +101,7 @@ function DashboardContent() {
       <div className="p-8">
         {activeTab === "recaps" && <CampaignList />}
         {activeTab === "trackers" && <TrackerList />}
+        {activeTab === "brands" && <BrandKitList />}
         {activeTab === "ros" && <RunOfShowList />}
         {activeTab === "briefs" && <BriefList />}
         {activeTab === "deals" && <DealList />}

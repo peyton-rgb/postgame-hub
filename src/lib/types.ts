@@ -35,6 +35,33 @@ export interface Brand {
   admin_brand_id: string | null;
 }
 
+export interface BrandKit extends Brand {
+  logo_primary_url: string | null;
+  logo_dark_url: string | null;
+  logo_light_url: string | null;
+  logo_mark_url: string | null;
+  font_primary: string | null;
+  font_secondary: string | null;
+  font_primary_url: string | null;
+  font_secondary_url: string | null;
+  brand_guidelines_url: string | null;
+  brand_colors: { hex: string; name: string }[];
+  kit_notes: string | null;
+}
+
+export interface BrandAsset {
+  id: string;
+  brand_id: string;
+  type: 'logo' | 'font' | 'guideline' | 'other';
+  variant: string | null;
+  label: string | null;
+  file_url: string;
+  file_name: string | null;
+  file_size: number | null;
+  mime_type: string | null;
+  created_at: string;
+}
+
 export interface Campaign {
   id: string;
   name: string;
