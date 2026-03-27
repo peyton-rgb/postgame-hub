@@ -35,7 +35,7 @@ export default function CampaignList() {
   async function loadTrackers() {
     const { data } = await supabase
       .from("campaign_recaps")
-      .select("*")
+      .select("*, brands(logo_light_url, logo_url, primary_color)")
       .eq("type", "tracker")
       .order("created_at", { ascending: false });
     setTrackers(data || []);
@@ -44,7 +44,7 @@ export default function CampaignList() {
   async function loadCampaigns() {
     const { data } = await supabase
       .from("campaign_recaps")
-      .select("*")
+      .select("*, brands(logo_light_url, logo_url, primary_color)")
       .in("type", ["recap"])
       .order("created_at", { ascending: false });
     setCampaigns(data || []);
@@ -376,10 +376,19 @@ export default function CampaignList() {
               >
                 <Link href={`/dashboard/${c.id}`} className="absolute inset-0 z-0" />
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    {c.client_name}
-                  </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {(c as any).brands?.logo_light_url || (c as any).brands?.logo_url ? (
+                      <img
+                        src={((c as any).brands.logo_light_url || (c as any).brands.logo_url) as string}
+                        alt={c.client_name}
+                        className="h-[24px] max-w-[80px] object-contain flex-shrink-0"
+                      />
+                    ) : null}
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 truncate">
+                      {c.client_name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <span
                       className={`text-xs font-bold px-2 py-1 rounded ${
                         c.published
@@ -439,6 +448,13 @@ export default function CampaignList() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 mt-1">
+                    {(c as any).brands?.logo_light_url || (c as any).brands?.logo_url ? (
+                      <img
+                        src={((c as any).brands.logo_light_url || (c as any).brands.logo_url) as string}
+                        alt={c.client_name}
+                        className="h-[16px] max-w-[60px] object-contain flex-shrink-0"
+                      />
+                    ) : null}
                     <span className="text-xs text-gray-500">{c.client_name}</span>
                     <span className="text-[10px] text-gray-700">
                       {new Date(c.created_at).toLocaleDateString()}
