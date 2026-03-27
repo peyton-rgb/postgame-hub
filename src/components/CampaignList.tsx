@@ -24,13 +24,24 @@ export default function CampaignList() {
   const [confirmDelete, setConfirmDelete] = useState<Campaign | null>(null);
   const [trackers, setTrackers] = useState<Campaign[]>([]);
   const [selectedTrackerId, setSelectedTrackerId] = useState<string>("");
+  const [brands, setBrands] = useState<any[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState("");
+  const [brandCampaigns, setBrandCampaigns] = useState<any[]>([]);
+  const [selectedBrandCampaignId, setSelectedBrandCampaignId] = useState("");
   const dragCounterRef = useRef(0);
   const supabase = createBrowserSupabase();
 
   useEffect(() => {
     loadCampaigns();
     loadTrackers();
+    loadBrands();
   }, []);
+
+  useEffect(() => {
+    if (selectedBrandId) loadBrandCampaigns(selectedBrandId);
+    else setBrandCampaigns([]);
+    setSelectedBrandCampaignId("");
+  }, [selectedBrandId]);
 
   async function loadTrackers() {
     const { data } = await supabase
@@ -51,6 +62,24 @@ export default function CampaignList() {
     setLoading(false);
   }
 
+  async function loadBrands() {
+    const { data } = await supabase
+      .from("brands")
+      .select("id, name, logo_light_url, logo_url, primary_color")
+      .eq("archived", false)
+      .order("name");
+    setBrands(data || []);
+  }
+
+  async function loadBrandCampaigns(brandId: string) {
+    const { data } = await supabase
+      .from("brand_campaigns")
+      .select("id, name, status, created_at")
+      .eq("brand_id", brandId)
+      .order("created_at", { ascending: false });
+    setBrandCampaigns(data || []);
+  }
+
   async function createCampaign() {
     if (!newName.trim() || !newClient.trim()) return;
     setCreating(true);
@@ -66,6 +95,7 @@ export default function CampaignList() {
         name: newName,
         slug: `${slug}-${Date.now().toString(36)}`,
         client_name: newClient,
+        brand_id: selectedBrandId || null,
         published: false,
         settings: { primary_color: "#D73F09", layout: "masonry", columns: 4 },
       })
@@ -144,6 +174,9 @@ export default function CampaignList() {
       setNewClient("");
       setCsvFile(null);
       setSelectedTrackerId("");
+      setSelectedBrandId("");
+      setSelectedBrandCampaignId("");
+      setBrandCampaigns([]);
       setCreating(false);
 
       // Navigate straight to the campaign editor
@@ -224,14 +257,65 @@ export default function CampaignList() {
               className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-4 focus:border-[#D73F09] outline-none"
             />
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-              Client Name
+              Brand
             </label>
-            <input
-              value={newClient}
-              onChange={(e) => setNewClient(e.target.value)}
-              placeholder="e.g. Adidas"
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-5 focus:border-[#D73F09] outline-none"
-            />
+            <div className="relative mb-4">
+              <select
+                value={selectedBrandId}
+                onChange={(e) => {
+                  const brandId = e.target.value;
+                  setSelectedBrandId(brandId);
+                  const brand = brands.find((b) => b.id === brandId);
+                  if (brand) setNewClient(brand.name);
+                  else setNewClient("");
+                }}
+                className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none"
+              >
+                <option value="">Select a brand...</option>
+                {brands.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              {selectedBrandId && (() => {
+                const brand = brands.find((b) => b.id === selectedBrandId);
+                const logoUrl = brand?.logo_light_url || brand?.logo_url;
+                return logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt=""
+                    className="absolute right-10 top-1/2 -translate-y-1/2 h-[16px] max-w-[60px] object-contain pointer-events-none"
+                  />
+                ) : null;
+              })()}
+            </div>
+
+            {/* Brand Campaign selector */}
+            {selectedBrandId && brandCampaigns.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Campaign <span className="text-gray-700 normal-case">(optional)</span>
+                </label>
+                <select
+                  value={selectedBrandCampaignId}
+                  onChange={(e) => {
+                    const bcId = e.target.value;
+                    setSelectedBrandCampaignId(bcId);
+                    const bc = brandCampaigns.find((c) => c.id === bcId);
+                    if (bc) setNewName(bc.name);
+                  }}
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none"
+                >
+                  <option value="">Select a campaign or enter name above...</option>
+                  {brandCampaigns.map((bc) => (
+                    <option key={bc.id} value={bc.id}>
+                      {bc.name}{bc.status === "archived" ? " (archived)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Link to Performance Tracker */}
             {trackers.length > 0 && (
@@ -330,7 +414,7 @@ export default function CampaignList() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowCreate(false); setCsvFile(null); setCsvDragging(false); setSelectedTrackerId(""); }}
+                onClick={() => { setShowCreate(false); setCsvFile(null); setCsvDragging(false); setSelectedTrackerId(""); setSelectedBrandId(""); setSelectedBrandCampaignId(""); setBrandCampaigns([]); }}
                 disabled={creating}
                 className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500 disabled:opacity-50"
               >
