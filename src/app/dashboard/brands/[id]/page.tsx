@@ -4,10 +4,34 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserSupabase } from "@/lib/supabase";
-import type { BrandKit, BrandAsset } from "@/lib/types";
+import type { BrandKit, BrandAsset, Campaign } from "@/lib/types";
+
+type BrandTab = "campaigns" | "brand-kit";
+
+interface BrandCampaign {
+  id: string;
+  brand_id: string;
+  name: string;
+  status: string;
+  budget: number | null;
+  has_brief: boolean;
+  has_tracker: boolean;
+  drive_folder_url: string | null;
+  created_at: string;
+}
 
 function getInitials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function formatMonth(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function formatBudget(amount: number) {
+  if (amount >= 1000) return `$${(amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1)}k`;
+  return `$${amount.toLocaleString()}`;
 }
 
 /* ── Upload Zone ── */
@@ -131,11 +155,17 @@ export default function BrandKitEditorPage() {
   const router = useRouter();
   const supabase = createBrowserSupabase();
 
+  const [activeTab, setActiveTab] = useState<BrandTab>("campaigns");
   const [brand, setBrand] = useState<BrandKit | null>(null);
   const [assets, setAssets] = useState<BrandAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Campaigns tab state
+  const [brandCampaigns, setBrandCampaigns] = useState<BrandCampaign[]>([]);
+  const [recaps, setRecaps] = useState<Campaign[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
 
   // Form state
   const [logoPrimary, setLogoPrimary] = useState<string | null>(null);
@@ -156,7 +186,10 @@ export default function BrandKitEditorPage() {
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) loadBrand();
+    if (id) {
+      loadBrand();
+      loadCampaigns();
+    }
   }, [id]);
 
   async function loadBrand() {
@@ -188,6 +221,17 @@ export default function BrandKitEditorPage() {
     setKitNotes(b.kit_notes || "");
     setAssets(assetData || []);
     setLoading(false);
+  }
+
+  async function loadCampaigns() {
+    setCampaignsLoading(true);
+    const [{ data: bc }, { data: rc }] = await Promise.all([
+      supabase.from("brand_campaigns").select("*").eq("brand_id", id).order("created_at", { ascending: false }),
+      supabase.from("campaign_recaps").select("*").eq("brand_id", id).order("created_at", { ascending: false }),
+    ]);
+    setBrandCampaigns(bc || []);
+    setRecaps(rc || []);
+    setCampaignsLoading(false);
   }
 
   async function uploadFile(file: File, slot: string): Promise<string | null> {
@@ -300,6 +344,11 @@ export default function BrandKitEditorPage() {
     ...brandColors.map((c) => c.hex),
   ];
 
+  const TABS: { key: BrandTab; label: string }[] = [
+    { key: "campaigns", label: "Campaigns" },
+    { key: "brand-kit", label: "Brand Kit" },
+  ];
+
   return (
     <div className="min-h-screen">
       {/* Sticky header */}
@@ -328,30 +377,32 @@ export default function BrandKitEditorPage() {
               </a>
             )}
           </div>
-          <button
-            onClick={saveKit}
-            disabled={saving}
-            className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors flex items-center gap-2 ${
-              saved
-                ? "bg-green-600 text-white"
-                : "bg-[#D73F09] hover:bg-[#B33407] text-white"
-            } disabled:opacity-50`}
-          >
-            {saved ? (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Saved
-              </>
-            ) : saving ? "Saving..." : "Save Kit"}
-          </button>
+          {activeTab === "brand-kit" && (
+            <button
+              onClick={saveKit}
+              disabled={saving}
+              className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors flex items-center gap-2 ${
+                saved
+                  ? "bg-green-600 text-white"
+                  : "bg-[#D73F09] hover:bg-[#B33407] text-white"
+              } disabled:opacity-50`}
+            >
+              {saved ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Saved
+                </>
+              ) : saving ? "Saving..." : "Save Kit"}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto p-8 space-y-10">
+      <div className="max-w-5xl mx-auto px-8">
         {/* Brand identity header card */}
-        <div className="p-6 bg-[#111] border border-gray-800 rounded-2xl flex items-start gap-6">
+        <div className="p-6 mt-8 bg-[#111] border border-gray-800 rounded-2xl flex items-start gap-6">
           <div
             className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-gray-800 flex items-center justify-center"
             style={{
@@ -373,15 +424,18 @@ export default function BrandKitEditorPage() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-black text-white mb-2">{brand.name}</h1>
-            <input
-              type="text"
-              placeholder="Website URL..."
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              className="w-full max-w-md px-3 py-1.5 bg-transparent border border-gray-800 hover:border-gray-700 focus:border-gray-600 rounded-lg text-sm text-gray-400 placeholder-gray-700 outline-none transition-colors mb-3"
-            />
+            {website && (
+              <a
+                href={website.startsWith("http") ? website : `https://${website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                {website}
+              </a>
+            )}
             {allColors.length > 0 && (
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 mt-3">
                 {allColors.map((c, i) => (
                   <div key={i} className="w-6 h-6 rounded-full border border-white/10" style={{ backgroundColor: c }} />
                 ))}
@@ -390,228 +444,366 @@ export default function BrandKitEditorPage() {
           </div>
         </div>
 
-        {/* ── Logo Variations ── */}
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Logo Variations</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <UploadZone
-              label="Primary Logo"
-              imageUrl={logoPrimary}
-              uploading={uploadingSlot === "primary"}
-              onUpload={(f) => uploadLogoVariant(f, "primary", setLogoPrimary)}
-            />
-            <UploadZone
-              label="Dark Version"
-              imageUrl={logoDark}
-              uploading={uploadingSlot === "dark"}
-              onUpload={(f) => uploadLogoVariant(f, "dark", setLogoDark)}
-            />
-            <UploadZone
-              label="Light / White Version"
-              imageUrl={logoLight}
-              uploading={uploadingSlot === "light"}
-              onUpload={(f) => uploadLogoVariant(f, "light", setLogoLight)}
-            />
-            <UploadZone
-              label="Logo Mark / Icon"
-              imageUrl={logoMark}
-              uploading={uploadingSlot === "mark"}
-              onUpload={(f) => uploadLogoVariant(f, "mark", setLogoMark)}
-            />
-          </div>
+        {/* Tab bar */}
+        <div className="flex gap-1 mt-6 border-b border-gray-800">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-colors ${
+                activeTab === tab.key
+                  ? "text-white border-b-2 border-[#D73F09] bg-white/5"
+                  : "text-gray-500 hover:text-gray-300 border-b-2 border-transparent"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {/* Additional logo files */}
-          {logoAssets.length > 0 && (
-            <div className="mt-4 border border-gray-800 rounded-xl overflow-hidden">
-              {logoAssets.map((a) => (
-                <AssetRow key={a.id} asset={a} onDelete={() => deleteAsset(a.id)} />
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => triggerFileInput("image/*,.svg,.ai,.eps", (f) => uploadAssetFile(f, "logo"))}
-            className="mt-3 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
-          >
-            + Upload more logo files
-          </button>
-        </section>
-
-        {/* ── Color Palette ── */}
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Color Palette</h2>
-          <div className="space-y-3">
-            {/* Primary */}
-            <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-lg border border-white/10 overflow-hidden cursor-pointer" style={{ backgroundColor: primaryColor }}>
-                <input
-                  type="color"
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                />
+        {/* ════════════ CAMPAIGNS TAB ════════════ */}
+        {activeTab === "campaigns" && (
+          <div className="py-8 space-y-8">
+            {campaignsLoading ? (
+              <div className="text-gray-500 text-center py-20">Loading...</div>
+            ) : brandCampaigns.length === 0 && recaps.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-gray-500 mb-2">No campaigns yet for {brand.name}.</p>
               </div>
-              <input
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                className="w-28 px-2 py-1.5 bg-black border border-gray-800 rounded-lg text-xs text-gray-400 font-mono outline-none focus:border-gray-600 transition-colors"
-              />
-              <span className="text-xs text-gray-600 font-bold">Primary</span>
-            </div>
-            {/* Secondary */}
-            <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-lg border border-white/10 overflow-hidden cursor-pointer" style={{ backgroundColor: secondaryColor }}>
-                <input
-                  type="color"
-                  value={secondaryColor}
-                  onChange={(e) => setSecondaryColor(e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                />
-              </div>
-              <input
-                value={secondaryColor}
-                onChange={(e) => setSecondaryColor(e.target.value)}
-                className="w-28 px-2 py-1.5 bg-black border border-gray-800 rounded-lg text-xs text-gray-400 font-mono outline-none focus:border-gray-600 transition-colors"
-              />
-              <span className="text-xs text-gray-600 font-bold">Secondary</span>
-            </div>
-
-            {/* Brand colors */}
-            <div className="mt-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 block mb-2">Brand Colors</span>
-              <div className="flex flex-wrap gap-2">
-                {brandColors.map((c, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-[#111] border border-gray-800 rounded-lg">
-                    <div className="relative w-6 h-6 rounded border border-white/10 overflow-hidden cursor-pointer" style={{ backgroundColor: c.hex }}>
-                      <input
-                        type="color"
-                        value={c.hex}
-                        onChange={(e) => {
-                          const updated = [...brandColors];
-                          updated[i] = { ...updated[i], hex: e.target.value };
-                          setBrandColors(updated);
-                        }}
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                      />
+            ) : (
+              <>
+                {/* Brand Campaigns section */}
+                {brandCampaigns.length > 0 && (
+                  <section>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Campaigns</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {brandCampaigns.map((c) => (
+                        <div
+                          key={c.id}
+                          className="p-5 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-base font-black text-white">{c.name}</h3>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-1 rounded ${
+                                c.status === "active"
+                                  ? "bg-green-900/30 text-green-400"
+                                  : "bg-gray-800 text-gray-500"
+                              }`}
+                            >
+                              {c.status === "active" ? "Active" : "Archived"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs text-gray-500">{formatMonth(c.created_at)}</span>
+                            {c.budget != null && c.budget > 0 && (
+                              <span className="text-xs font-bold text-gray-400">{formatBudget(c.budget)}</span>
+                            )}
+                            {c.has_brief && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-900/30 text-purple-400">Brief</span>
+                            )}
+                            {c.has_tracker && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-900/30 text-blue-400">Tracker</span>
+                            )}
+                            {c.drive_folder_url && (
+                              <a
+                                href={c.drive_folder_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-gray-500 hover:text-white transition-colors"
+                                title="Drive Folder"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  </section>
+                )}
+
+                {/* Recaps section */}
+                {recaps.length > 0 && (
+                  <section>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Recaps</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {recaps.map((r) => (
+                        <div
+                          key={r.id}
+                          className="p-5 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-base font-black text-white">{r.name}</h3>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-1 rounded ${
+                                r.published
+                                  ? "bg-green-900/30 text-green-400"
+                                  : "bg-gray-800 text-gray-500"
+                              }`}
+                            >
+                              {r.published ? "Published" : "Draft"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-500">{formatMonth(r.created_at)}</span>
+                            <Link
+                              href={`/dashboard/${r.id}`}
+                              className="text-xs font-bold text-[#D73F09] hover:underline"
+                            >
+                              Edit
+                            </Link>
+                            {r.published && r.slug && (
+                              <a
+                                href={`/recap/${r.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-gray-500 hover:text-white transition-colors"
+                              >
+                                View Live ↗
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ════════════ BRAND KIT TAB ════════════ */}
+        {activeTab === "brand-kit" && (
+          <div className="py-8 space-y-10">
+            {/* ── Logo Variations ── */}
+            <section>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Logo Variations</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <UploadZone
+                  label="Primary Logo"
+                  imageUrl={logoPrimary}
+                  uploading={uploadingSlot === "primary"}
+                  onUpload={(f) => uploadLogoVariant(f, "primary", setLogoPrimary)}
+                />
+                <UploadZone
+                  label="Dark Version"
+                  imageUrl={logoDark}
+                  uploading={uploadingSlot === "dark"}
+                  onUpload={(f) => uploadLogoVariant(f, "dark", setLogoDark)}
+                />
+                <UploadZone
+                  label="Light / White Version"
+                  imageUrl={logoLight}
+                  uploading={uploadingSlot === "light"}
+                  onUpload={(f) => uploadLogoVariant(f, "light", setLogoLight)}
+                />
+                <UploadZone
+                  label="Logo Mark / Icon"
+                  imageUrl={logoMark}
+                  uploading={uploadingSlot === "mark"}
+                  onUpload={(f) => uploadLogoVariant(f, "mark", setLogoMark)}
+                />
+              </div>
+
+              {/* Additional logo files */}
+              {logoAssets.length > 0 && (
+                <div className="mt-4 border border-gray-800 rounded-xl overflow-hidden">
+                  {logoAssets.map((a) => (
+                    <AssetRow key={a.id} asset={a} onDelete={() => deleteAsset(a.id)} />
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => triggerFileInput("image/*,.svg,.ai,.eps", (f) => uploadAssetFile(f, "logo"))}
+                className="mt-3 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
+              >
+                + Upload more logo files
+              </button>
+            </section>
+
+            {/* ── Color Palette ── */}
+            <section>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Color Palette</h2>
+              <div className="space-y-3">
+                {/* Primary */}
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 rounded-lg border border-white/10 overflow-hidden cursor-pointer" style={{ backgroundColor: primaryColor }}>
                     <input
-                      value={c.name}
-                      placeholder="Name"
-                      onChange={(e) => {
-                        const updated = [...brandColors];
-                        updated[i] = { ...updated[i], name: e.target.value };
-                        setBrandColors(updated);
-                      }}
-                      className="w-20 px-1 py-0.5 bg-transparent border-none text-xs text-gray-400 outline-none"
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                     />
-                    <span className="text-[10px] text-gray-600 font-mono">{c.hex}</span>
+                  </div>
+                  <input
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-28 px-2 py-1.5 bg-black border border-gray-800 rounded-lg text-xs text-gray-400 font-mono outline-none focus:border-gray-600 transition-colors"
+                  />
+                  <span className="text-xs text-gray-600 font-bold">Primary</span>
+                </div>
+                {/* Secondary */}
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 rounded-lg border border-white/10 overflow-hidden cursor-pointer" style={{ backgroundColor: secondaryColor }}>
+                    <input
+                      type="color"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                    />
+                  </div>
+                  <input
+                    value={secondaryColor}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    className="w-28 px-2 py-1.5 bg-black border border-gray-800 rounded-lg text-xs text-gray-400 font-mono outline-none focus:border-gray-600 transition-colors"
+                  />
+                  <span className="text-xs text-gray-600 font-bold">Secondary</span>
+                </div>
+
+                {/* Brand colors */}
+                <div className="mt-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 block mb-2">Brand Colors</span>
+                  <div className="flex flex-wrap gap-2">
+                    {brandColors.map((c, i) => (
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-[#111] border border-gray-800 rounded-lg">
+                        <div className="relative w-6 h-6 rounded border border-white/10 overflow-hidden cursor-pointer" style={{ backgroundColor: c.hex }}>
+                          <input
+                            type="color"
+                            value={c.hex}
+                            onChange={(e) => {
+                              const updated = [...brandColors];
+                              updated[i] = { ...updated[i], hex: e.target.value };
+                              setBrandColors(updated);
+                            }}
+                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                          />
+                        </div>
+                        <input
+                          value={c.name}
+                          placeholder="Name"
+                          onChange={(e) => {
+                            const updated = [...brandColors];
+                            updated[i] = { ...updated[i], name: e.target.value };
+                            setBrandColors(updated);
+                          }}
+                          className="w-20 px-1 py-0.5 bg-transparent border-none text-xs text-gray-400 outline-none"
+                        />
+                        <span className="text-[10px] text-gray-600 font-mono">{c.hex}</span>
+                        <button
+                          onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+                          className="text-gray-700 hover:text-red-400 transition-colors ml-1"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
                     <button
-                      onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
-                      className="text-gray-700 hover:text-red-400 transition-colors ml-1"
+                      onClick={() => setBrandColors([...brandColors, { hex: "#888888", name: "" }])}
+                      className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-dashed border-gray-700 hover:border-gray-500 rounded-lg transition-colors"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
+                      + Add Color
                     </button>
                   </div>
-                ))}
-                <button
-                  onClick={() => setBrandColors([...brandColors, { hex: "#888888", name: "" }])}
-                  className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-dashed border-gray-700 hover:border-gray-500 rounded-lg transition-colors"
-                >
-                  + Add Color
-                </button>
+                </div>
               </div>
-            </div>
+            </section>
+
+            {/* ── Typography ── */}
+            <section>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Typography</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Primary Font</label>
+                  <input
+                    value={fontPrimary}
+                    onChange={(e) => setFontPrimary(e.target.value)}
+                    placeholder="e.g. Inter, Helvetica..."
+                    className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
+                  />
+                  <input
+                    value={fontPrimaryUrl}
+                    onChange={(e) => setFontPrimaryUrl(e.target.value)}
+                    placeholder="Font URL (Google Fonts, etc.)..."
+                    className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-gray-400 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Secondary Font</label>
+                  <input
+                    value={fontSecondary}
+                    onChange={(e) => setFontSecondary(e.target.value)}
+                    placeholder="e.g. Georgia, Merriweather..."
+                    className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
+                  />
+                  <input
+                    value={fontSecondaryUrl}
+                    onChange={(e) => setFontSecondaryUrl(e.target.value)}
+                    placeholder="Font URL..."
+                    className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-gray-400 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {fontAssets.length > 0 && (
+                <div className="mt-4 border border-gray-800 rounded-xl overflow-hidden">
+                  {fontAssets.map((a) => (
+                    <AssetRow key={a.id} asset={a} onDelete={() => deleteAsset(a.id)} />
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => triggerFileInput(".ttf,.otf,.woff,.woff2", (f) => uploadAssetFile(f, "font"))}
+                className="mt-3 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
+              >
+                + Upload font files
+              </button>
+            </section>
+
+            {/* ── Brand Guidelines ── */}
+            <section>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Brand Guidelines</h2>
+              <input
+                value={guidelinesUrl}
+                onChange={(e) => setGuidelinesUrl(e.target.value)}
+                placeholder="Brand guidelines URL..."
+                className="w-full max-w-lg px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-gray-400 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors mb-3"
+              />
+
+              {guidelineAssets.length > 0 && (
+                <div className="border border-gray-800 rounded-xl overflow-hidden mb-3">
+                  {guidelineAssets.map((a) => (
+                    <AssetRow key={a.id} asset={a} onDelete={() => deleteAsset(a.id)} />
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => triggerFileInput(".pdf,image/*", (f) => uploadAssetFile(f, "guideline"))}
+                className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
+              >
+                + Upload brand guidelines PDF
+              </button>
+            </section>
+
+            {/* ── Notes ── */}
+            <section>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Notes</h2>
+              <textarea
+                value={kitNotes}
+                onChange={(e) => setKitNotes(e.target.value)}
+                placeholder="Any notes about this brand's kit, preferences, usage rules..."
+                rows={4}
+                className="w-full px-4 py-3 bg-black border border-gray-800 rounded-xl text-sm text-gray-300 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors resize-y"
+              />
+            </section>
           </div>
-        </section>
-
-        {/* ── Typography ── */}
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Typography</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Primary Font</label>
-              <input
-                value={fontPrimary}
-                onChange={(e) => setFontPrimary(e.target.value)}
-                placeholder="e.g. Inter, Helvetica..."
-                className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
-              />
-              <input
-                value={fontPrimaryUrl}
-                onChange={(e) => setFontPrimaryUrl(e.target.value)}
-                placeholder="Font URL (Google Fonts, etc.)..."
-                className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-gray-400 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
-              />
-            </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Secondary Font</label>
-              <input
-                value={fontSecondary}
-                onChange={(e) => setFontSecondary(e.target.value)}
-                placeholder="e.g. Georgia, Merriweather..."
-                className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
-              />
-              <input
-                value={fontSecondaryUrl}
-                onChange={(e) => setFontSecondaryUrl(e.target.value)}
-                placeholder="Font URL..."
-                className="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-gray-400 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors"
-              />
-            </div>
-          </div>
-
-          {fontAssets.length > 0 && (
-            <div className="mt-4 border border-gray-800 rounded-xl overflow-hidden">
-              {fontAssets.map((a) => (
-                <AssetRow key={a.id} asset={a} onDelete={() => deleteAsset(a.id)} />
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => triggerFileInput(".ttf,.otf,.woff,.woff2", (f) => uploadAssetFile(f, "font"))}
-            className="mt-3 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
-          >
-            + Upload font files
-          </button>
-        </section>
-
-        {/* ── Brand Guidelines ── */}
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Brand Guidelines</h2>
-          <input
-            value={guidelinesUrl}
-            onChange={(e) => setGuidelinesUrl(e.target.value)}
-            placeholder="Brand guidelines URL..."
-            className="w-full max-w-lg px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm text-gray-400 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors mb-3"
-          />
-
-          {guidelineAssets.length > 0 && (
-            <div className="border border-gray-800 rounded-xl overflow-hidden mb-3">
-              {guidelineAssets.map((a) => (
-                <AssetRow key={a.id} asset={a} onDelete={() => deleteAsset(a.id)} />
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => triggerFileInput(".pdf,image/*", (f) => uploadAssetFile(f, "guideline"))}
-            className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
-          >
-            + Upload brand guidelines PDF
-          </button>
-        </section>
-
-        {/* ── Notes ── */}
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Notes</h2>
-          <textarea
-            value={kitNotes}
-            onChange={(e) => setKitNotes(e.target.value)}
-            placeholder="Any notes about this brand's kit, preferences, usage rules..."
-            rows={4}
-            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-xl text-sm text-gray-300 placeholder-gray-700 outline-none focus:border-gray-600 transition-colors resize-y"
-          />
-        </section>
+        )}
       </div>
     </div>
   );
