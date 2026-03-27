@@ -38,17 +38,23 @@ export default function BrandList() {
   }, []);
 
   async function load() {
-    const [{ data: brandsData }, { data: campaigns }] = await Promise.all([
+    const [
+      { data: brandsData },
+      { data: bcRows },
+      { data: crRows },
+    ] = await Promise.all([
       supabase.from("brands").select("*").eq("archived", false).order("name"),
-      supabase.from("campaigns").select("brand_id").not("brand_id", "is", null),
+      supabase.from("brand_campaigns").select("brand_id").not("brand_id", "is", null),
+      supabase.from("campaign_recaps").select("brand_id").not("brand_id", "is", null),
     ]);
 
     setBrands(brandsData || []);
 
     const counts: Record<string, number> = {};
-    (campaigns || []).forEach((c: { brand_id: string }) => {
-      if (c.brand_id) counts[c.brand_id] = (counts[c.brand_id] || 0) + 1;
-    });
+    for (const row of [...(bcRows || []), ...(crRows || [])]) {
+      const bid = (row as { brand_id: string }).brand_id;
+      if (bid) counts[bid] = (counts[bid] || 0) + 1;
+    }
     setCampaignCounts(counts);
     setLoading(false);
   }
