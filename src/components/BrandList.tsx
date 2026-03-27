@@ -14,6 +14,30 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
+function BrandLogo({ brand }: { brand: Brand }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  if (brand.logo_url && !imgFailed) {
+    return (
+      <img
+        src={brand.logo_url}
+        alt={brand.name}
+        className="w-14 h-14 object-contain rounded-xl bg-gray-900"
+        onError={() => setImgFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-lg font-black"
+      style={{ backgroundColor: brand.primary_color || "#D73F09" }}
+    >
+      {getInitials(brand.name)}
+    </div>
+  );
+}
+
 export default function BrandList() {
   const router = useRouter();
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -311,20 +335,7 @@ export default function BrandList() {
             >
               {/* Logo / initials */}
               <div className="mb-4">
-                {brand.logo_url ? (
-                  <img
-                    src={brand.logo_url}
-                    alt={brand.name}
-                    className="w-14 h-14 object-contain rounded-xl bg-gray-900"
-                  />
-                ) : (
-                  <div
-                    className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-lg font-black"
-                    style={{ backgroundColor: brand.primary_color || "#D73F09" }}
-                  >
-                    {getInitials(brand.name)}
-                  </div>
-                )}
+                <BrandLogo brand={brand} />
               </div>
 
               <h3 className="text-base font-black mb-1 group-hover:text-white transition-colors">
