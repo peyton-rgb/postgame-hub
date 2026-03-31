@@ -246,6 +246,8 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iSalesAmount = findCol(headers, "sales", "total sales", "sales amount");
   const iCpm = findCol(headers, "cpm", "cost per mille", "cost per thousand");
 
+  console.log('CSV DEBUG:', JSON.stringify({ headerCount: headers.length, iLinkClicks, iOrders, iSalesAmount, headers: headers.slice(-10) }));
+
   // Sales columns
   const iConversions = findCol(headers, "conversions", "conversion", "total conversions", "purchases");
   const iRevenue = findCol(headers, "revenue", "total revenue", "sales revenue", "gmv", "gross revenue");
