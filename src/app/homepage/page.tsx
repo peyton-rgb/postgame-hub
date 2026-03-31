@@ -139,14 +139,21 @@ const globalStyles = `
   /* Campaign grid */
   .hp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
   .hp-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    border: 1px solid var(--border); border-radius: 16px;
     overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 28px; min-height: 220px; position: relative;
   }
   .hp-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
-  .hp-card-img { width: 100%; aspect-ratio: 16/10; object-fit: cover; display: block; }
-  .hp-card-body { padding: 20px; }
-  .hp-card-title { font-size: 18px; font-weight: 800; margin: 0 0 6px; }
+  .hp-card-featured { grid-row: span 2; min-height: 464px; }
+  .hp-card-brand { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); margin-bottom: 8px; }
+  .hp-card-title { font-size: 28px; line-height: 1.05; margin: 0 0 10px; }
   .hp-card-meta { font-size: 12px; color: var(--text-muted); }
+  .rc-1 { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+  .rc-2 { background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 50%, #3d1f14 100%); }
+  .rc-3 { background: linear-gradient(135deg, #141414 0%, #1a2a1a 50%, #1e3a1e 100%); }
+  .rc-4 { background: linear-gradient(135deg, #1a1a1a 0%, #2a1a2d 50%, #3a1e3d 100%); }
+  .rc-5 { background: linear-gradient(135deg, #1a1a1a 0%, #1a2a2a 50%, #1e3a3a 100%); }
 
   /* Athletes */
   .hp-athletes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
@@ -158,10 +165,14 @@ const globalStyles = `
   .hp-athlete-avatar {
     width: 80px; height: 80px; border-radius: 50%; background: var(--border);
     margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;
-    font-size: 28px; font-weight: 900; color: var(--orange);
+    font-size: 28px; font-weight: 900; color: var(--orange); overflow: hidden;
   }
-  .hp-athlete-name { font-size: 15px; font-weight: 800; margin: 0 0 4px; }
-  .hp-athlete-meta { font-size: 12px; color: var(--text-muted); }
+  .hp-athlete-sport {
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--orange); margin-bottom: 6px;
+  }
+  .hp-athlete-name { font-size: 22px; line-height: 1.05; margin: 0 0 4px; }
+  .hp-athlete-school { font-size: 12px; color: var(--text-muted); }
 
   /* Brand partners */
   .hp-brands {
@@ -173,15 +184,27 @@ const globalStyles = `
     transition: opacity 0.2s, filter 0.2s;
   }
   .hp-brand-logo:hover { opacity: 1; filter: none; }
+  .hp-brand-placeholder {
+    width: 100px; height: 40px; border-radius: 8px; background: var(--surface);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.05em; transition: border-color 0.2s;
+  }
+  .hp-brand-placeholder:hover { border-color: var(--orange); }
 
-  /* Services */
+  /* Services — 3x2 grid */
   .hp-services { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
   .hp-service {
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
     padding: 40px 28px; transition: border-color 0.25s;
   }
   .hp-service:hover { border-color: var(--orange); }
-  .hp-service-icon { font-size: 32px; margin-bottom: 16px; }
+  .hp-service-accent { border-left: 3px solid var(--orange); }
+  .hp-service-num {
+    font-size: 11px; font-weight: 800; color: var(--text-dim); letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+  .hp-service-accent .hp-service-num { color: var(--orange); }
   .hp-service-title { font-size: 20px; font-weight: 800; margin: 0 0 10px; }
   .hp-service-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 0; }
 
@@ -268,6 +291,15 @@ function settingUrl(val: unknown): string | undefined {
   if (!val) return undefined;
   if (typeof val === "object" && val !== null && "url" in val) return String((val as Record<string, unknown>).url);
   return undefined;
+}
+
+/** Safely extract items array from section content (handles content.items or content directly) */
+function sectionItems(section: PageSection): Record<string, unknown>[] {
+  const c = section.content;
+  if (!c) return [];
+  if (Array.isArray(c)) return c;
+  if (Array.isArray(c.items)) return c.items as Record<string, unknown>[];
+  return [];
 }
 
 // ── Fallback ────────────────────────────────────────────────
@@ -399,84 +431,116 @@ export default async function HomepagePage() {
       )}
 
       {/* Campaign Highlights */}
-      {showSection("featured_campaigns") && featuredCampaigns && (
-        <section className="hp-section">
-          <h2 className="hp-display hp-section-title">{featuredCampaigns.title || "Campaign Highlights"}</h2>
-          {featuredCampaigns.subtitle && <p className="hp-section-sub">{featuredCampaigns.subtitle}</p>}
-          <div className="hp-grid">
-            {((featuredCampaigns.content?.items || []) as { title: string; image_url?: string; meta?: string; href?: string }[]).map((item, i) => (
-              <a key={i} href={item.href || "#"} className="hp-card" style={{ textDecoration: "none", color: "inherit" }}>
-                {item.image_url && <img src={item.image_url} alt={item.title} className="hp-card-img" />}
-                <div className="hp-card-body">
-                  <div className="hp-card-title">{item.title}</div>
-                  {item.meta && <div className="hp-card-meta">{item.meta}</div>}
-                </div>
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
+      {showSection("featured_campaigns") && featuredCampaigns && (() => {
+        const items = sectionItems(featuredCampaigns);
+        return items.length > 0 ? (
+          <section className="hp-section">
+            <h2 className="hp-display hp-section-title">{featuredCampaigns.title || "Campaign Highlights"}</h2>
+            {featuredCampaigns.subtitle && <p className="hp-section-sub">{featuredCampaigns.subtitle}</p>}
+            <div className="hp-grid">
+              {items.map((item, i) => {
+                const brand = String(item.brand_name || item.brand || "");
+                const title = String(item.title || item.name || "");
+                const href = String(item.href || item.slug ? `/recap/${item.slug}` : "#");
+                const athletes = item.athlete_count || item.athletes;
+                const platforms = item.platforms || item.platform;
+                const metaParts = [
+                  athletes ? `${athletes} Athletes` : null,
+                  platforms ? String(platforms) : null,
+                ].filter(Boolean);
+                return (
+                  <a key={i} href={href} className={`hp-card rc-${(i % 5) + 1}${i === 0 ? " hp-card-featured" : ""}`} style={{ textDecoration: "none", color: "inherit" }}>
+                    {brand && <div className="hp-card-brand">{brand}</div>}
+                    <div className="hp-display hp-card-title">{title}</div>
+                    {metaParts.length > 0 && <div className="hp-card-meta">{metaParts.join(" · ")}</div>}
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        ) : null;
+      })()}
 
       {/* Featured Athletes */}
-      {showSection("featured_athletes") && featuredAthletes && (
-        <section className="hp-section">
-          <h2 className="hp-display hp-section-title">{featuredAthletes.title || "Featured Athletes"}</h2>
-          {featuredAthletes.subtitle && <p className="hp-section-sub">{featuredAthletes.subtitle}</p>}
-          <div className="hp-athletes">
-            {((featuredAthletes.content?.items || []) as { name: string; school?: string; sport?: string; image_url?: string }[]).map((item, i) => (
-              <div key={i} className="hp-athlete">
-                <div className="hp-athlete-avatar">
-                  {item.image_url ? (
-                    <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    item.name.split(" ").map((n) => n[0]).join("").slice(0, 2)
-                  )}
-                </div>
-                <div className="hp-athlete-name">{item.name}</div>
-                <div className="hp-athlete-meta">{[item.school, item.sport].filter(Boolean).join(" · ")}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {showSection("featured_athletes") && featuredAthletes && (() => {
+        const items = sectionItems(featuredAthletes);
+        return items.length > 0 ? (
+          <section className="hp-section">
+            <h2 className="hp-display hp-section-title">{featuredAthletes.title || "Featured Athletes"}</h2>
+            {featuredAthletes.subtitle && <p className="hp-section-sub">{featuredAthletes.subtitle}</p>}
+            <div className="hp-athletes">
+              {items.map((item, i) => {
+                const name = String(item.name || "");
+                const school = String(item.school || "");
+                const sport = String(item.sport || "");
+                const imageUrl = String(item.image_url || "");
+                return (
+                  <div key={i} className="hp-athlete">
+                    <div className="hp-athlete-avatar">
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        name.split(" ").map((n) => n[0]).join("").slice(0, 2)
+                      )}
+                    </div>
+                    {sport && <div className="hp-athlete-sport">{sport}</div>}
+                    <div className="hp-display hp-athlete-name">{name}</div>
+                    {school && <div className="hp-athlete-school">{school}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null;
+      })()}
 
       {/* Brand Partners */}
-      {showSection("brand_partners") && brandPartners && (
-        <section className="hp-section" style={{ textAlign: "center" }}>
-          <h2 className="hp-display hp-section-title">{brandPartners.title || "Brand Partners"}</h2>
-          {brandPartners.subtitle && <p className="hp-section-sub" style={{ margin: "0 auto 48px" }}>{brandPartners.subtitle}</p>}
-          <div className="hp-brands">
-            {((brandPartners.content?.items || []) as { name: string; logo_url?: string; href?: string }[]).map((item, i) => (
-              item.logo_url ? (
-                <a key={i} href={item.href || "#"}>
-                  <img src={item.logo_url} alt={item.name} className="hp-brand-logo" />
-                </a>
-              ) : (
-                <span key={i} style={{ fontSize: 14, fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {item.name}
-                </span>
-              )
-            ))}
-          </div>
-        </section>
-      )}
+      {showSection("brand_partners") && brandPartners && (() => {
+        const items = sectionItems(brandPartners);
+        return items.length > 0 ? (
+          <section className="hp-section" style={{ textAlign: "center" }}>
+            <h2 className="hp-display hp-section-title">{brandPartners.title || "Brand Partners"}</h2>
+            {brandPartners.subtitle && <p className="hp-section-sub" style={{ margin: "0 auto 48px" }}>{brandPartners.subtitle}</p>}
+            <div className="hp-brands">
+              {items.map((item, i) => {
+                const name = String(item.name || "");
+                const logoUrl = String(item.logo_url || "");
+                const href = String(item.href || "#");
+                return logoUrl ? (
+                  <a key={i} href={href}>
+                    <img src={logoUrl} alt={name} className="hp-brand-logo" />
+                  </a>
+                ) : (
+                  <div key={i} className="hp-brand-placeholder">{name}</div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null;
+      })()}
 
       {/* Services Grid */}
-      {showSection("services_grid") && servicesGrid && (
-        <section className="hp-section" id="services">
-          <h2 className="hp-display hp-section-title">{servicesGrid.title || "Our Services"}</h2>
-          {servicesGrid.subtitle && <p className="hp-section-sub">{servicesGrid.subtitle}</p>}
-          <div className="hp-services">
-            {((servicesGrid.content?.items || []) as { title: string; description?: string; icon?: string }[]).map((item, i) => (
-              <div key={i} className="hp-service">
-                {item.icon && <div className="hp-service-icon">{item.icon}</div>}
-                <div className="hp-service-title">{item.title}</div>
-                {item.description && <p className="hp-service-desc">{item.description}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {showSection("services_grid") && servicesGrid && (() => {
+        const items = sectionItems(servicesGrid);
+        return items.length > 0 ? (
+          <section className="hp-section" id="services">
+            <h2 className="hp-display hp-section-title">{servicesGrid.title || "Our Services"}</h2>
+            {servicesGrid.subtitle && <p className="hp-section-sub">{servicesGrid.subtitle}</p>}
+            <div className="hp-services">
+              {items.map((item, i) => {
+                const accent = item.accent === true;
+                return (
+                  <div key={i} className={`hp-service${accent ? " hp-service-accent" : ""}`}>
+                    <div className="hp-service-num">{String(i + 1).padStart(2, "0")}</div>
+                    <div className="hp-service-title">{String(item.title || "")}</div>
+                    {item.description && <p className="hp-service-desc">{String(item.description)}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null;
+      })()}
 
       {/* CTA */}
       {showSection("cta") && (s("cta_title") || s("cta_desc")) && (
