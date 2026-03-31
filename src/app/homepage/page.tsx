@@ -243,6 +243,20 @@ function getSetting(page: HomepageData["page"], key: string): unknown {
   return (page.settings as Record<string, unknown>)?.[key];
 }
 
+/** Safely extract a display string from a setting that may be a string or {text, url} object */
+function settingText(val: unknown): string | undefined {
+  if (!val) return undefined;
+  if (typeof val === "string") return val;
+  if (typeof val === "object" && val !== null && "text" in val) return String((val as Record<string, unknown>).text);
+  return undefined;
+}
+
+function settingUrl(val: unknown): string | undefined {
+  if (!val) return undefined;
+  if (typeof val === "object" && val !== null && "url" in val) return String((val as Record<string, unknown>).url);
+  return undefined;
+}
+
 // ── Fallback ────────────────────────────────────────────────
 function FallbackHomepage() {
   return (
@@ -288,7 +302,8 @@ export default async function HomepagePage() {
   if (!data) return <FallbackHomepage />;
 
   const { page, sections } = data;
-  const s = (key: string) => getSetting(page, key) as string | undefined;
+  const raw = (key: string) => getSetting(page, key);
+  const s = (key: string) => settingText(raw(key));
   const publicSections = (page.settings as Record<string, unknown>)?.public_sections as Record<string, boolean> | undefined;
   const showSection = (key: string) => !publicSections || publicSections[key] !== false;
 
@@ -350,10 +365,10 @@ export default async function HomepagePage() {
         )}
         <div className="hp-hero-actions hp-fade-up hp-fade-up-d3">
           {s("hero_cta_primary") && (
-            <a href="/deals" className="hp-btn-solid">{s("hero_cta_primary")}</a>
+            <a href={settingUrl(raw("hero_cta_primary")) || "/deals"} className="hp-btn-solid">{s("hero_cta_primary")}</a>
           )}
           {s("hero_cta_secondary") && (
-            <a href="mailto:hello@postgame.co" className="hp-btn-outline">{s("hero_cta_secondary")}</a>
+            <a href={settingUrl(raw("hero_cta_secondary")) || "mailto:hello@postgame.co"} className="hp-btn-outline">{s("hero_cta_secondary")}</a>
           )}
         </div>
       </section>
