@@ -17,8 +17,7 @@ export interface ParsedAthlete {
 
 function parseNum(val: string | undefined): number | undefined {
   if (!val || val.trim() === "") return undefined;
-  const cleaned = val.replace(/,/g, "").replace(/%/g, "").trim();
-  const n = parseFloat(cleaned);
+  const n = parseFloat(val.replace(/[$,%]/g, "").trim());
   return isNaN(n) ? undefined : n;
 }
 
@@ -245,8 +244,6 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iOrders = findCol(headers, "orders", "order", "total orders");
   const iSalesAmount = findCol(headers, "sales", "total sales", "sales amount");
   const iCpm = findCol(headers, "cpm", "cost per mille", "cost per thousand");
-
-  console.log('CSV DEBUG:', JSON.stringify({ headerCount: headers.length, iLinkClicks, iOrders, iSalesAmount, headers: headers.slice(-10) }));
 
   // Sales columns
   const iConversions = findCol(headers, "conversions", "conversion", "total conversions", "purchases");
