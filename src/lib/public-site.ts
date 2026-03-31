@@ -8,7 +8,7 @@ const supabase = createClient(
 export interface PageSection {
   id: string;
   page_id: string;
-  section_type: string;
+  type: string;
   title: string | null;
   subtitle: string | null;
   content: Record<string, unknown>;
@@ -44,27 +44,34 @@ export async function getHomepage(): Promise<HomepageData | null> {
     .order("sort_order", { referencedTable: "page_sections", ascending: true })
     .single();
 
+  console.log('[HOMEPAGE DEBUG] embed query:', { error: error?.message, hasPage: !!page, sectionCount: page?.page_sections?.length });
+
   if (error || !page) {
     // Fallback: try fetching page and sections separately (in case embedding isn't set up)
-    const { data: pageOnly } = await supabase
+    const { data: pageOnly, error: pageErr } = await supabase
       .from("pages")
       .select("*")
       .eq("slug", "homepage")
       .eq("published", true)
       .single();
 
+    console.log('[HOMEPAGE DEBUG] fallback page:', { error: pageErr?.message, hasPage: !!pageOnly, pageId: pageOnly?.id });
+
     if (!pageOnly) return null;
 
-    const { data: sections } = await supabase
+    const { data: sections, error: secErr } = await supabase
       .from("page_sections")
       .select("*")
       .eq("page_id", pageOnly.id)
       .order("sort_order", { ascending: true });
 
+    console.log('[HOMEPAGE DEBUG] fallback sections:', { error: secErr?.message, count: sections?.length, types: sections?.map((s: any) => s.section_type) });
+
     return { page: pageOnly as Page, sections: (sections || []) as PageSection[] };
   }
 
   const { page_sections: sections, ...pageData } = page as any;
+  console.log('[HOMEPAGE DEBUG] embed sections:', { count: sections?.length, types: sections?.map((s: any) => s.section_type), keys: sections?.[0] ? Object.keys(sections[0]) : [], firstSection: JSON.stringify(sections?.[0]).slice(0, 300) });
   return { page: pageData as Page, sections: (sections || []) as PageSection[] };
 }
 
