@@ -90,7 +90,13 @@ const SECTION_LABELS: Record<string, string> = {
   services_grid: "Services Grid",
 };
 
-const GRADIENTS = ["rc-1", "rc-2", "rc-3", "rc-4", "rc-5"];
+const GRADIENTS: { key: string; color: string }[] = [
+  { key: "rc-1", color: "linear-gradient(135deg, #1a1a2e, #0f3460)" },
+  { key: "rc-2", color: "linear-gradient(135deg, #1a1a1a, #3d1f14)" },
+  { key: "rc-3", color: "linear-gradient(135deg, #141414, #1e3a1e)" },
+  { key: "rc-4", color: "linear-gradient(135deg, #1a1a1a, #3a1e3d)" },
+  { key: "rc-5", color: "linear-gradient(135deg, #1a1a1a, #1e3a3a)" },
+];
 
 export default function HomepageEditorPage() {
   const [page, setPage] = useState<PageData | null>(null);
@@ -102,6 +108,7 @@ export default function HomepageEditorPage() {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState<string | null>(null);
   const [pickerItems, setPickerItems] = useState<any[]>([]);
+  const [pickerSearch, setPickerSearch] = useState("");
 
   const supabase = createBrowserSupabase();
 
@@ -189,12 +196,14 @@ export default function HomepageEditorPage() {
   // Pickers
   const openCampaignPicker = async () => {
     setShowPicker("campaign");
+    setPickerSearch("");
     const { data } = await supabase
-      .from("campaign_recaps")
-      .select("id, name, client_name, slug")
+      .from("brand_campaigns")
+      .select("id, name, brands(name)")
+      .not("name", "is", null)
       .order("created_at", { ascending: false })
-      .limit(20);
-    setPickerItems(data || []);
+      .limit(30);
+    setPickerItems((data || []).map((d: any) => ({ id: d.id, name: d.name, brand_name: d.brands?.name || "" })));
   };
 
   const openBrandPicker = async () => {
@@ -358,8 +367,28 @@ export default function HomepageEditorPage() {
                   <div style={{ marginTop: 20 }}>
                     <Field label="Eyebrow" value={String(sec.content?.eyebrow || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, eyebrow: v })} />
                     <Field label="Description" value={String(sec.content?.description || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, description: v })} />
+                    <button style={{ ...S.btnSmall, marginBottom: 16, border: "1px solid #D73F09", color: "#D73F09" }} onClick={openCampaignPicker}>Browse Campaigns</button>
                     {getCampaigns().map((c, i) => (
-                      <div key={i} style={S.itemCard}>
+                      <div key={i} style={{ ...S.itemCard, borderLeft: c.featured ? "3px solid #D73F09" : "3px solid transparent" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: "#D73F09" }}>{c.brand || "No Brand"}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{c.name}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <button
+                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: c.featured ? "#D73F09" : "rgba(255,255,255,0.2)", padding: 0 }}
+                              title={c.featured ? "Featured (big card)" : "Set as featured"}
+                              onClick={() => {
+                                const items = getCampaigns().map((item, j) => ({ ...item, featured: j === i }));
+                                updateSectionItems("featured_campaigns", "campaigns", items);
+                              }}
+                            >&#9733;</button>
+                            <button style={{ ...S.btnDanger, padding: "4px 10px", fontSize: 13 }} onClick={() => {
+                              updateSectionItems("featured_campaigns", "campaigns", getCampaigns().filter((_, j) => j !== i));
+                            }}>&times;</button>
+                          </div>
+                        </div>
                         <div style={S.row}>
                           <div style={S.col}>
                             <label style={S.label}>Brand</label>
@@ -377,39 +406,32 @@ export default function HomepageEditorPage() {
                               updateSectionItems("featured_campaigns", "campaigns", items);
                             }} />
                           </div>
-                        </div>
-                        <div style={S.row}>
                           <div style={S.col}>
                             <label style={S.label}>Meta</label>
                             <input style={S.input} value={c.meta} onChange={(e) => {
                               const items = [...getCampaigns()];
                               items[i] = { ...items[i], meta: e.target.value };
                               updateSectionItems("featured_campaigns", "campaigns", items);
-                            }} />
+                            }} placeholder="Athletes · TikTok · Instagram" />
                           </div>
-                          <div style={{ width: 120 }}>
-                            <label style={S.label}>Gradient</label>
-                            <select style={S.gradientSelect} value={c.gradient} onChange={(e) => {
-                              const items = [...getCampaigns()];
-                              items[i] = { ...items[i], gradient: e.target.value };
-                              updateSectionItems("featured_campaigns", "campaigns", items);
-                            }}>
-                              {GRADIENTS.map((g) => <option key={g} value={g}>{g}</option>)}
-                            </select>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "end", gap: 8 }}>
-                            <label style={{ ...S.label, marginBottom: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                              Featured
-                              <Toggle on={c.featured} onChange={(v) => {
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                          <span style={S.label}>Gradient</span>
+                          {GRADIENTS.map((g) => (
+                            <button
+                              key={g.key}
+                              onClick={() => {
                                 const items = [...getCampaigns()];
-                                items[i] = { ...items[i], featured: v };
+                                items[i] = { ...items[i], gradient: g.key };
                                 updateSectionItems("featured_campaigns", "campaigns", items);
-                              }} />
-                            </label>
-                            <button style={S.btnDanger} onClick={() => {
-                              updateSectionItems("featured_campaigns", "campaigns", getCampaigns().filter((_, j) => j !== i));
-                            }}>Remove</button>
-                          </div>
+                              }}
+                              style={{
+                                width: 28, height: 28, borderRadius: 6, background: g.color, border: c.gradient === g.key ? "2px solid #D73F09" : "2px solid transparent",
+                                cursor: "pointer", boxShadow: c.gradient === g.key ? "0 0 0 1px #D73F09" : "none",
+                              }}
+                              title={g.key}
+                            />
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -581,24 +603,43 @@ export default function HomepageEditorPage() {
       )}
 
       {/* Campaign Picker Modal */}
-      {showPicker === "campaign" && (
-        <div style={S.picker} onClick={() => setShowPicker(null)}>
-          <div style={S.pickerContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 16px" }}>Add Campaign</h3>
-            {pickerItems.map((item) => (
-              <div key={item.id} style={{ ...S.itemCard, cursor: "pointer" }} onClick={() => {
-                const newItem: CampaignItem = { brand: item.client_name || "", name: item.name, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false };
-                updateSectionItems("featured_campaigns", "campaigns", [...getCampaigns(), newItem]);
-                setShowPicker(null);
-              }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{item.client_name}</div>
+      {showPicker === "campaign" && (() => {
+        const q = pickerSearch.toLowerCase();
+        const filtered = q ? pickerItems.filter((item) => item.name?.toLowerCase().includes(q) || item.brand_name?.toLowerCase().includes(q)) : pickerItems;
+        return (
+          <div style={S.picker} onClick={() => setShowPicker(null)}>
+            <div style={S.pickerContent} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Browse Campaigns</h3>
+                <button style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 20, cursor: "pointer" }} onClick={() => setShowPicker(null)}>&times;</button>
               </div>
-            ))}
-            {pickerItems.length === 0 && <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>No campaigns found</div>}
+              <input
+                style={{ ...S.input, marginBottom: 12 }}
+                placeholder="Search campaigns..."
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+                autoFocus
+              />
+              <div style={{ maxHeight: 400, overflow: "auto" }}>
+                {filtered.map((item) => (
+                  <div key={item.id} style={{ ...S.itemCard, cursor: "pointer", transition: "border-color 0.15s" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(215,63,9,0.4)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
+                    onClick={() => {
+                      const newItem: CampaignItem = { brand: item.brand_name || "", name: item.name, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false };
+                      updateSectionItems("featured_campaigns", "campaigns", [...getCampaigns(), newItem]);
+                      setShowPicker(null);
+                    }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#D73F09", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{item.brand_name}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
+                  </div>
+                ))}
+                {filtered.length === 0 && <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, padding: 16, textAlign: "center" }}>No campaigns found</div>}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Brand Picker Modal */}
       {showPicker === "brand" && (
