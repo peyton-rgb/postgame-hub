@@ -156,6 +156,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
     const cols = parseCSVLine(line);
     const first = cols[cFirst]?.trim() || "";
     const last = cols[cLast]?.trim() || "";
+    console.log('ROW:', JSON.stringify({ first, last, isJunk: isJunkRow(first, last) }));
     if (isJunkRow(first, last) || !last) continue;
 
     const rawHandle = iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "";
