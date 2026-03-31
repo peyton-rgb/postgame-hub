@@ -36,6 +36,18 @@ function parseRate(val: string | undefined): number | undefined {
  */
 function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: number } {
   const row0 = parseCSVLine(lines[0]);
+
+  // Check if row 0 contains platform group labels (IG FEED POSTS, IG STORY, TIKTOK, etc.)
+  // If so, it's always a group label row — even if it also has "First"/"Last" in the identity columns
+  const hasPlatformGroups = row0.some((h) => {
+    const clean = h.toLowerCase().replace(/[^a-z ]/g, "").trim();
+    return /\b(ig feed|ig story|ig reel|tiktok|tt post)\b/.test(clean);
+  });
+
+  if (hasPlatformGroups && lines.length >= 2) {
+    return { headers: parseCSVLine(lines[1]), dataStartIndex: 2 };
+  }
+
   // Check if row 0 contains recognizable column headers
   const hasIdentityHeaders = row0.some((h) => {
     const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -46,7 +58,7 @@ function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: 
     return { headers: row0, dataStartIndex: 1 };
   }
 
-  // Row 0 is a group label row — use row 1 as headers
+  // Row 0 has neither platform groups nor identity headers — try row 1
   if (lines.length >= 2) {
     return { headers: parseCSVLine(lines[1]), dataStartIndex: 2 };
   }
