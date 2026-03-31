@@ -293,13 +293,19 @@ function settingUrl(val: unknown): string | undefined {
   return undefined;
 }
 
-/** Safely extract items array from section content (handles content.items or content directly) */
-function sectionItems(section: PageSection): Record<string, unknown>[] {
+/** Get a content field from a section, with fallback */
+function contentArr(section: PageSection, ...keys: string[]): Record<string, unknown>[] {
   const c = section.content;
   if (!c) return [];
+  for (const k of keys) {
+    if (Array.isArray(c[k])) return c[k] as Record<string, unknown>[];
+  }
   if (Array.isArray(c)) return c;
-  if (Array.isArray(c.items)) return c.items as Record<string, unknown>[];
   return [];
+}
+function contentStr(section: PageSection, key: string): string {
+  const v = section.content?.[key];
+  return typeof v === "string" ? v : "";
 }
 
 // ── Fallback ────────────────────────────────────────────────
@@ -432,28 +438,27 @@ export default async function HomepagePage() {
 
       {/* Campaign Highlights */}
       {showSection("featured_campaigns") && featuredCampaigns && (() => {
-        const items = sectionItems(featuredCampaigns);
-        return items.length > 0 ? (
+        const campaigns = contentArr(featuredCampaigns, "campaigns", "items");
+        const eyebrow = contentStr(featuredCampaigns, "eyebrow");
+        const description = contentStr(featuredCampaigns, "description");
+        return campaigns.length > 0 ? (
           <section className="hp-section">
+            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
             <h2 className="hp-display hp-section-title">{featuredCampaigns.title || "Campaign Highlights"}</h2>
-            {featuredCampaigns.subtitle && <p className="hp-section-sub">{featuredCampaigns.subtitle}</p>}
+            {(description || featuredCampaigns.subtitle) && <p className="hp-section-sub">{description || featuredCampaigns.subtitle}</p>}
             <div className="hp-grid">
-              {items.map((item, i) => {
-                const brand = String(item.brand_name || item.brand || "");
-                const title = String(item.title || item.name || "");
-                const href = String(item.href || item.slug ? `/recap/${item.slug}` : "#");
-                const athletes = item.athlete_count || item.athletes;
-                const platforms = item.platforms || item.platform;
-                const metaParts = [
-                  athletes ? `${athletes} Athletes` : null,
-                  platforms ? String(platforms) : null,
-                ].filter(Boolean);
+              {campaigns.map((item, i) => {
+                const brand = String(item.brand || item.brand_name || "");
+                const title = String(item.name || item.title || "");
+                const meta = String(item.meta || "");
+                const isFeatured = item.featured === true || i === 0;
+                const gradient = String(item.gradient || `rc-${(i % 5) + 1}`);
                 return (
-                  <a key={i} href={href} className={`hp-card rc-${(i % 5) + 1}${i === 0 ? " hp-card-featured" : ""}`} style={{ textDecoration: "none", color: "inherit" }}>
+                  <div key={i} className={`hp-card ${gradient}${isFeatured ? " hp-card-featured" : ""}`}>
                     {brand && <div className="hp-card-brand">{brand}</div>}
                     <div className="hp-display hp-card-title">{title}</div>
-                    {metaParts.length > 0 && <div className="hp-card-meta">{metaParts.join(" · ")}</div>}
-                  </a>
+                    {meta && <div className="hp-card-meta">{meta}</div>}
+                  </div>
                 );
               })}
             </div>
@@ -463,13 +468,16 @@ export default async function HomepagePage() {
 
       {/* Featured Athletes */}
       {showSection("featured_athletes") && featuredAthletes && (() => {
-        const items = sectionItems(featuredAthletes);
-        return items.length > 0 ? (
+        const athletes = contentArr(featuredAthletes, "athletes", "items");
+        const eyebrow = contentStr(featuredAthletes, "eyebrow");
+        const description = contentStr(featuredAthletes, "description");
+        return athletes.length > 0 ? (
           <section className="hp-section">
+            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
             <h2 className="hp-display hp-section-title">{featuredAthletes.title || "Featured Athletes"}</h2>
-            {featuredAthletes.subtitle && <p className="hp-section-sub">{featuredAthletes.subtitle}</p>}
+            {(description || featuredAthletes.subtitle) && <p className="hp-section-sub">{description || featuredAthletes.subtitle}</p>}
             <div className="hp-athletes">
-              {items.map((item, i) => {
+              {athletes.map((item, i) => {
                 const name = String(item.name || "");
                 const school = String(item.school || "");
                 const sport = String(item.sport || "");
@@ -496,44 +504,59 @@ export default async function HomepagePage() {
 
       {/* Brand Partners */}
       {showSection("brand_partners") && brandPartners && (() => {
-        const items = sectionItems(brandPartners);
-        return items.length > 0 ? (
+        const logos = contentArr(brandPartners, "logos", "items");
+        const eyebrow = contentStr(brandPartners, "eyebrow");
+        const description = contentStr(brandPartners, "description");
+        return (
           <section className="hp-section" style={{ textAlign: "center" }}>
+            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
             <h2 className="hp-display hp-section-title">{brandPartners.title || "Brand Partners"}</h2>
-            {brandPartners.subtitle && <p className="hp-section-sub" style={{ margin: "0 auto 48px" }}>{brandPartners.subtitle}</p>}
-            <div className="hp-brands">
-              {items.map((item, i) => {
-                const name = String(item.name || "");
-                const logoUrl = String(item.logo_url || "");
-                const href = String(item.href || "#");
-                return logoUrl ? (
-                  <a key={i} href={href}>
-                    <img src={logoUrl} alt={name} className="hp-brand-logo" />
-                  </a>
-                ) : (
-                  <div key={i} className="hp-brand-placeholder">{name}</div>
-                );
-              })}
-            </div>
+            {(description || brandPartners.subtitle) && <p className="hp-section-sub" style={{ margin: "0 auto 48px" }}>{description || brandPartners.subtitle}</p>}
+            {logos.length > 0 ? (
+              <div className="hp-brands">
+                {logos.map((item, i) => {
+                  const name = String(item.name || "");
+                  const logoUrl = String(item.logo_url || "");
+                  const href = String(item.href || "#");
+                  return logoUrl ? (
+                    <a key={i} href={href}>
+                      <img src={logoUrl} alt={name} className="hp-brand-logo" />
+                    </a>
+                  ) : (
+                    <div key={i} className="hp-brand-placeholder">{name}</div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="hp-brands">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="hp-brand-placeholder">Brand</div>
+                ))}
+              </div>
+            )}
           </section>
-        ) : null;
+        );
       })()}
 
       {/* Services Grid */}
       {showSection("services_grid") && servicesGrid && (() => {
-        const items = sectionItems(servicesGrid);
-        return items.length > 0 ? (
+        const services = contentArr(servicesGrid, "services", "items");
+        const eyebrow = contentStr(servicesGrid, "eyebrow");
+        const description = contentStr(servicesGrid, "description");
+        return services.length > 0 ? (
           <section className="hp-section" id="services">
+            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
             <h2 className="hp-display hp-section-title">{servicesGrid.title || "Our Services"}</h2>
-            {servicesGrid.subtitle && <p className="hp-section-sub">{servicesGrid.subtitle}</p>}
+            {(description || servicesGrid.subtitle) && <p className="hp-section-sub">{description || servicesGrid.subtitle}</p>}
             <div className="hp-services">
-              {items.map((item, i) => {
+              {services.map((item, i) => {
                 const accent = item.accent === true;
+                const num = String(item.num || String(i + 1).padStart(2, "0"));
                 return (
                   <div key={i} className={`hp-service${accent ? " hp-service-accent" : ""}`}>
-                    <div className="hp-service-num">{String(i + 1).padStart(2, "0")}</div>
-                    <div className="hp-service-title">{String(item.title || "")}</div>
-                    {item.description && <p className="hp-service-desc">{String(item.description)}</p>}
+                    <div className="hp-service-num">{num}</div>
+                    <div className="hp-service-title">{String(item.name || item.title || "")}</div>
+                    {(item.desc || item.description) && <p className="hp-service-desc">{String(item.desc || item.description)}</p>}
                   </div>
                 );
               })}
