@@ -33,22 +33,39 @@ export interface HomepageData {
 }
 
 export async function getHomepage(): Promise<HomepageData | null> {
+  // Use foreign key embedding to fetch page + sections in one query.
+  // This goes through the pages table RLS policy (anon can read published pages),
+  // avoiding the separate page_sections RLS that may block direct anon SELECT.
   const { data: page, error } = await supabase
     .from("pages")
-    .select("*")
+    .select("*, page_sections(*)")
     .eq("slug", "homepage")
     .eq("published", true)
+    .order("sort_order", { referencedTable: "page_sections", ascending: true })
     .single();
 
-  if (error || !page) return null;
+  if (error || !page) {
+    // Fallback: try fetching page and sections separately (in case embedding isn't set up)
+    const { data: pageOnly } = await supabase
+      .from("pages")
+      .select("*")
+      .eq("slug", "homepage")
+      .eq("published", true)
+      .single();
 
-  const { data: sections } = await supabase
-    .from("page_sections")
-    .select("*")
-    .eq("page_id", page.id)
-    .order("sort_order", { ascending: true });
+    if (!pageOnly) return null;
 
-  return { page: page as Page, sections: (sections || []) as PageSection[] };
+    const { data: sections } = await supabase
+      .from("page_sections")
+      .select("*")
+      .eq("page_id", pageOnly.id)
+      .order("sort_order", { ascending: true });
+
+    return { page: pageOnly as Page, sections: (sections || []) as PageSection[] };
+  }
+
+  const { page_sections: sections, ...pageData } = page as any;
+  return { page: pageData as Page, sections: (sections || []) as PageSection[] };
 }
 
 export async function getPress(limit = 10) {
