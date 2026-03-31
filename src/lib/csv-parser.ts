@@ -155,8 +155,8 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   for (const line of lines.slice(dataStartIndex)) {
     const cols = parseCSVLine(line);
     const first = cols[cFirst]?.trim() || "";
+    if (first.toLowerCase().trim() === "first") continue;
     const last = cols[cLast]?.trim() || "";
-    console.log('ROW:', JSON.stringify({ first, last, isJunk: isJunkRow(first, last) }));
     if (isJunkRow(first, last) || !last) continue;
 
     const rawHandle = iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "";
@@ -320,6 +320,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     const cols = parseCSVLine(line);
 
     const first = cols[cFirst]?.trim() || "";
+    if (first.toLowerCase().trim() === "first") continue;
     const last = cols[cLast]?.trim() || "";
 
     // Skip junk rows (CALCULATIONS, totals, blank names)
