@@ -44,6 +44,10 @@ const globalStyles = `
   .hp-nav-logo { font-size: 22px; font-weight: 900; color: var(--orange); text-decoration: none; }
   .hp-nav-links { display: flex; align-items: center; gap: 32px; }
   .hp-nav-item { position: relative; }
+  .hp-nav-item::after {
+    content: ''; position: absolute; left: -12px; right: -12px;
+    top: 100%; height: 18px;
+  }
   .hp-nav-item > button,
   .hp-nav-item > a {
     background: none; border: none; color: var(--text-muted); font-size: 13px;
@@ -53,12 +57,21 @@ const globalStyles = `
   .hp-nav-item:hover > button,
   .hp-nav-item:hover > a { color: var(--text); }
   .hp-nav-dropdown {
-    display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 8px 0; min-width: 180px; margin-top: 8px;
+    padding: 8px 0; min-width: 180px; padding-top: 16px; margin-top: 0;
     box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
   }
-  .hp-nav-item:hover .hp-nav-dropdown { display: block; }
+  .hp-nav-dropdown > a:first-child { margin-top: -8px; }
+  .hp-nav-item:hover .hp-nav-dropdown {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition-delay: 0s;
+  }
+  .hp-nav-item:not(:hover) .hp-nav-dropdown {
+    transition-delay: 0.2s;
+  }
   .hp-nav-dropdown a {
     display: block; padding: 10px 20px; font-size: 13px; color: var(--text-muted);
     text-decoration: none; font-weight: 600; transition: all 0.15s;
