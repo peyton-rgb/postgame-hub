@@ -66,11 +66,14 @@ function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: 
   return { headers: row0, dataStartIndex: 1 };
 }
 
-/** Check if a row should be skipped (CALCULATIONS, totals, blank first name) */
-function isJunkRow(first: string): boolean {
+/** Check if a row should be skipped (CALCULATIONS, totals, blank first name, header leak) */
+function isJunkRow(first: string, last: string): boolean {
   if (!first) return true;
   const upper = first.toUpperCase();
-  return upper.includes("CALCULATIONS") || upper.includes("DO NOT");
+  if (upper.includes("CALCULATIONS") || upper.includes("DO NOT")) return true;
+  // catch header row leaking as data
+  if (first.toLowerCase() === "first" && last.toLowerCase() === "last") return true;
+  return false;
 }
 
 function parseCSVLine(line: string): string[] {
@@ -153,7 +156,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
     const cols = parseCSVLine(line);
     const first = cols[cFirst]?.trim() || "";
     const last = cols[cLast]?.trim() || "";
-    if (isJunkRow(first) || !last) continue;
+    if (isJunkRow(first, last) || !last) continue;
 
     const rawHandle = iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "";
 
@@ -319,7 +322,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     const last = cols[cLast]?.trim() || "";
 
     // Skip junk rows (CALCULATIONS, totals, blank names)
-    if (isJunkRow(first) || !last) continue;
+    if (isJunkRow(first, last) || !last) continue;
 
     const getVal = (idx: number) => idx !== -1 ? cols[idx] : undefined;
 
