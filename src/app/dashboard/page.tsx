@@ -65,6 +65,15 @@ function DashboardContent() {
               </svg>
               Media Library
             </Link>
+            <Link
+              href="/dashboard/homepage"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-black text-[#D73F09] border-2 border-[#D73F09] hover:bg-[#D73F09] hover:text-white rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              Website Editor
+            </Link>
             <button
               onClick={async () => {
                 await createBrowserSupabase().auth.signOut();

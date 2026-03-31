@@ -201,6 +201,7 @@ export default function HomepageEditorPage() {
       .from("brand_campaigns")
       .select("id, name, brands(name)")
       .not("name", "is", null)
+      .neq("name", "")
       .order("created_at", { ascending: false })
       .limit(30);
     setPickerItems((data || []).map((d: any) => ({ id: d.id, name: d.name, brand_name: d.brands?.name || "" })));
