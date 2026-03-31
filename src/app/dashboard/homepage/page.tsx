@@ -10,7 +10,7 @@ const PAGE_ID = "1e2328e1-26d0-41c5-8876-8af003a22a6a";
 type Tab = "hero" | "sections" | "settings";
 
 interface StatItem { value: string; label: string }
-interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string }
+interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; campaign_id?: string }
 interface AthleteItem { name: string; sport: string; school: string; gradient: string }
 interface BrandItem { name: string; logo_url: string }
 interface ServiceItem { name: string; desc: string; accent: boolean }
@@ -111,7 +111,9 @@ export default function HomepageEditorPage() {
   const [pickerItems, setPickerItems] = useState<any[]>([]);
   const [pickerSearch, setPickerSearch] = useState("");
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [mediaPickerMode, setMediaPickerMode] = useState<"full" | "media-only">("full");
   const [mediaPickerTarget, setMediaPickerTarget] = useState<number | null>(null);
+  const [mediaPickerInitialCampaign, setMediaPickerInitialCampaign] = useState<{ id: string; name: string; brand_name: string } | undefined>(undefined);
 
   const supabase = createBrowserSupabase();
 
@@ -197,19 +199,6 @@ export default function HomepageEditorPage() {
   };
 
   // Pickers
-  const openCampaignPicker = async () => {
-    setShowPicker("campaign");
-    setPickerSearch("");
-    const { data } = await supabase
-      .from("brand_campaigns")
-      .select("id, name, brands(name)")
-      .not("name", "is", null)
-      .neq("name", "")
-      .order("created_at", { ascending: false })
-      .limit(30);
-    setPickerItems((data || []).map((d: any) => ({ id: d.id, name: d.name, brand_name: d.brands?.name || "" })));
-  };
-
   const openBrandPicker = async () => {
     setShowPicker("brand");
     const { data } = await supabase
@@ -371,99 +360,47 @@ export default function HomepageEditorPage() {
                   <div style={{ marginTop: 20 }}>
                     <Field label="Eyebrow" value={String(sec.content?.eyebrow || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, eyebrow: v })} />
                     <Field label="Description" value={String(sec.content?.description || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, description: v })} />
-                    <button style={{ ...S.btnSmall, marginBottom: 16, border: "1px solid #D73F09", color: "#D73F09" }} onClick={openCampaignPicker}>Browse Campaigns</button>
                     {getCampaigns().map((c, i) => (
-                      <div key={i} style={{ ...S.itemCard, borderLeft: c.featured ? "3px solid #D73F09" : "3px solid transparent" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: "#D73F09" }}>{c.brand || "No Brand"}</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{c.name}</span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <button
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: c.featured ? "#D73F09" : "rgba(255,255,255,0.2)", padding: 0 }}
-                              title={c.featured ? "Featured (big card)" : "Set as featured"}
-                              onClick={() => {
-                                const items = getCampaigns().map((item, j) => ({ ...item, featured: j === i }));
-                                updateSectionItems("featured_campaigns", "campaigns", items);
-                              }}
-                            >&#9733;</button>
-                            <button style={{ ...S.btnDanger, padding: "4px 10px", fontSize: 13 }} onClick={() => {
-                              updateSectionItems("featured_campaigns", "campaigns", getCampaigns().filter((_, j) => j !== i));
-                            }}>&times;</button>
-                          </div>
+                      <div key={i} style={{ ...S.itemCard, borderLeft: c.featured ? "3px solid #D73F09" : "3px solid transparent", display: "flex", gap: 14 }}>
+                        {/* Thumbnail */}
+                        <div
+                          style={{ width: 80, height: 80, borderRadius: 8, flexShrink: 0, background: c.image_url ? `url(${c.image_url}) center/cover` : "#222", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase" as const }}
+                          onClick={() => { setMediaPickerTarget(i); setMediaPickerMode("media-only"); setMediaPickerInitialCampaign(c.campaign_id ? { id: c.campaign_id, name: c.name, brand_name: c.brand } : undefined); setMediaPickerOpen(true); }}
+                          title="Click to change image"
+                        >
+                          {!c.image_url && "No img"}
                         </div>
-                        <div style={S.row}>
-                          <div style={S.col}>
-                            <label style={S.label}>Brand</label>
-                            <input style={S.input} value={c.brand} onChange={(e) => {
-                              const items = [...getCampaigns()];
-                              items[i] = { ...items[i], brand: e.target.value };
-                              updateSectionItems("featured_campaigns", "campaigns", items);
-                            }} />
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 13, fontWeight: 800, color: "#D73F09" }}>{c.brand || "No Brand"}</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{c.name}</span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <button
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: c.featured ? "#D73F09" : "rgba(255,255,255,0.2)", padding: 0 }}
+                                title={c.featured ? "Featured (big card)" : "Set as featured"}
+                                onClick={() => { const items = getCampaigns().map((item, j) => ({ ...item, featured: j === i })); updateSectionItems("featured_campaigns", "campaigns", items); }}
+                              >&#9733;</button>
+                              <button style={{ ...S.btnDanger, padding: "4px 8px", fontSize: 13 }} onClick={() => { updateSectionItems("featured_campaigns", "campaigns", getCampaigns().filter((_, j) => j !== i)); }}>&times;</button>
+                            </div>
                           </div>
-                          <div style={S.col}>
-                            <label style={S.label}>Campaign Name</label>
-                            <input style={S.input} value={c.name} onChange={(e) => {
-                              const items = [...getCampaigns()];
-                              items[i] = { ...items[i], name: e.target.value };
-                              updateSectionItems("featured_campaigns", "campaigns", items);
-                            }} />
+                          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                            <input style={{ ...S.input, fontSize: 12 }} value={c.brand} placeholder="Brand" onChange={(e) => { const items = [...getCampaigns()]; items[i] = { ...items[i], brand: e.target.value }; updateSectionItems("featured_campaigns", "campaigns", items); }} />
+                            <input style={{ ...S.input, fontSize: 12 }} value={c.name} placeholder="Campaign" onChange={(e) => { const items = [...getCampaigns()]; items[i] = { ...items[i], name: e.target.value }; updateSectionItems("featured_campaigns", "campaigns", items); }} />
+                            <input style={{ ...S.input, fontSize: 12 }} value={c.meta} placeholder="Athletes · TikTok · Instagram" onChange={(e) => { const items = [...getCampaigns()]; items[i] = { ...items[i], meta: e.target.value }; updateSectionItems("featured_campaigns", "campaigns", items); }} />
                           </div>
-                          <div style={S.col}>
-                            <label style={S.label}>Meta</label>
-                            <input style={S.input} value={c.meta} onChange={(e) => {
-                              const items = [...getCampaigns()];
-                              items[i] = { ...items[i], meta: e.target.value };
-                              updateSectionItems("featured_campaigns", "campaigns", items);
-                            }} placeholder="Athletes · TikTok · Instagram" />
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {GRADIENTS.map((g) => (
+                              <button key={g.key} onClick={() => { const items = [...getCampaigns()]; items[i] = { ...items[i], gradient: g.key }; updateSectionItems("featured_campaigns", "campaigns", items); }}
+                                style={{ width: 22, height: 22, borderRadius: 4, background: g.color, border: c.gradient === g.key ? "2px solid #D73F09" : "2px solid transparent", cursor: "pointer" }} title={g.key} />
+                            ))}
                           </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                          <span style={S.label}>Gradient</span>
-                          {GRADIENTS.map((g) => (
-                            <button
-                              key={g.key}
-                              onClick={() => {
-                                const items = [...getCampaigns()];
-                                items[i] = { ...items[i], gradient: g.key };
-                                updateSectionItems("featured_campaigns", "campaigns", items);
-                              }}
-                              style={{
-                                width: 28, height: 28, borderRadius: 6, background: g.color, border: c.gradient === g.key ? "2px solid #D73F09" : "2px solid transparent",
-                                cursor: "pointer", boxShadow: c.gradient === g.key ? "0 0 0 1px #D73F09" : "none",
-                              }}
-                              title={g.key}
-                            />
-                          ))}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-                          <span style={S.label}>Card Image</span>
-                          {c.image_url && (
-                            <img src={c.image_url} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(255,255,255,0.1)" }} />
-                          )}
-                          <button
-                            style={{ ...S.btnSmall, border: "1px solid #D73F09", color: "#D73F09" }}
-                            onClick={() => { setMediaPickerTarget(i); setMediaPickerOpen(true); }}
-                          >
-                            Select Media
-                          </button>
-                          {c.image_url && (
-                            <button
-                              style={S.btnDanger}
-                              onClick={() => {
-                                const items = [...getCampaigns()];
-                                items[i] = { ...items[i], image_url: undefined };
-                                updateSectionItems("featured_campaigns", "campaigns", items);
-                              }}
-                            >
-                              Remove
-                            </button>
-                          )}
                         </div>
                       </div>
                     ))}
-                    <button style={S.btnAdd} onClick={openCampaignPicker}>+ Add Campaign</button>
+                    <button style={S.btnAdd} onClick={() => { setMediaPickerTarget(null); setMediaPickerMode("full"); setMediaPickerInitialCampaign(undefined); setMediaPickerOpen(true); }}>+ Add Campaign</button>
                   </div>
                 )}
 
@@ -630,44 +567,6 @@ export default function HomepageEditorPage() {
         </div>
       )}
 
-      {/* Campaign Picker Modal */}
-      {showPicker === "campaign" && (() => {
-        const q = pickerSearch.toLowerCase();
-        const filtered = q ? pickerItems.filter((item) => item.name?.toLowerCase().includes(q) || item.brand_name?.toLowerCase().includes(q)) : pickerItems;
-        return (
-          <div style={S.picker} onClick={() => setShowPicker(null)}>
-            <div style={S.pickerContent} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Browse Campaigns</h3>
-                <button style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 20, cursor: "pointer" }} onClick={() => setShowPicker(null)}>&times;</button>
-              </div>
-              <input
-                style={{ ...S.input, marginBottom: 12 }}
-                placeholder="Search campaigns..."
-                value={pickerSearch}
-                onChange={(e) => setPickerSearch(e.target.value)}
-                autoFocus
-              />
-              <div style={{ maxHeight: 400, overflow: "auto" }}>
-                {filtered.map((item) => (
-                  <div key={item.id} style={{ ...S.itemCard, cursor: "pointer", transition: "border-color 0.15s" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(215,63,9,0.4)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
-                    onClick={() => {
-                      const newItem: CampaignItem = { brand: item.brand_name || "", name: item.name, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false };
-                      updateSectionItems("featured_campaigns", "campaigns", [...getCampaigns(), newItem]);
-                      setShowPicker(null);
-                    }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "#D73F09", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{item.brand_name}</div>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
-                  </div>
-                ))}
-                {filtered.length === 0 && <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, padding: 16, textAlign: "center" }}>No campaigns found</div>}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Brand Picker Modal */}
       {showPicker === "brand" && (
@@ -692,12 +591,19 @@ export default function HomepageEditorPage() {
       {/* Campaign Media Picker */}
       <CampaignMediaPicker
         open={mediaPickerOpen}
+        mode={mediaPickerMode}
+        initialCampaign={mediaPickerInitialCampaign}
         onClose={() => { setMediaPickerOpen(false); setMediaPickerTarget(null); }}
         onSelect={(item) => {
           if (mediaPickerTarget !== null) {
+            // Updating image on existing card
             const items = [...getCampaigns()];
             items[mediaPickerTarget] = { ...items[mediaPickerTarget], image_url: item.url };
             updateSectionItems("featured_campaigns", "campaigns", items);
+          } else {
+            // Adding new campaign from full flow
+            const newItem: CampaignItem = { brand: item.brand, name: item.campaign, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false, image_url: item.url, campaign_id: item.campaign_id };
+            updateSectionItems("featured_campaigns", "campaigns", [...getCampaigns(), newItem]);
           }
           setMediaPickerOpen(false);
           setMediaPickerTarget(null);

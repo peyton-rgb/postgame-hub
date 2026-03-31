@@ -3,16 +3,23 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 
+export interface MediaPickerResult {
+  type: "image" | "video";
+  url: string;
+  brand: string;
+  campaign: string;
+  campaign_id: string;
+  campaign_recap_id?: string;
+}
+
 export interface CampaignMediaPickerProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (item: {
-    type: "image" | "video";
-    url: string;
-    brand: string;
-    campaign: string;
-    campaign_id: string;
-  }) => void;
+  onSelect: (item: MediaPickerResult) => void;
+  /** 'full' = Brand → Campaign → Media (default). 'media-only' = skip to media step for a pre-set campaign. */
+  mode?: "full" | "media-only";
+  /** Required when mode='media-only' — the campaign to browse media for */
+  initialCampaign?: { id: string; name: string; brand_name: string };
 }
 
 type Step = "brand" | "campaign" | "media";
@@ -27,6 +34,8 @@ interface CampaignRow {
   id: string;
   name: string;
   brand_name: string;
+  source: "recap" | "brand_campaign";
+  hasMedia?: boolean;
 }
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
@@ -174,6 +183,8 @@ export default function CampaignMediaPicker({
   open,
   onClose,
   onSelect,
+  mode = "full",
+  initialCampaign,
 }: CampaignMediaPickerProps) {
   const supabase = createBrowserSupabase();
 
@@ -201,16 +212,23 @@ export default function CampaignMediaPicker({
   // Reset on open
   useEffect(() => {
     if (open) {
-      setStep("brand");
-      setSelectedBrand(null);
-      setSelectedCampaign(null);
-      setBrandSearch("");
-      setCampaignSearch("");
       setMediaTab("browse");
       setFiles([]);
       setUploadedUrl(null);
       setPasteUrl("");
-      loadBrands();
+
+      if (mode === "media-only" && initialCampaign) {
+        setSelectedCampaign({ id: initialCampaign.id, name: initialCampaign.name, brand_name: initialCampaign.brand_name, source: "recap" });
+        setStep("media");
+        loadFiles(initialCampaign.id);
+      } else {
+        setStep("brand");
+        setSelectedBrand(null);
+        setSelectedCampaign(null);
+        setBrandSearch("");
+        setCampaignSearch("");
+        loadBrands();
+      }
     }
   }, [open]);
 
@@ -225,36 +243,75 @@ export default function CampaignMediaPicker({
   };
 
   const loadCampaigns = async (brandId: string | null) => {
-    let q = supabase
+    // Query campaign_recaps (have media folders)
+    let qRecaps = supabase
       .from("campaign_recaps")
       .select("id, name, brands(name)")
       .not("name", "is", null)
       .neq("name", "")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(50);
+    if (brandId) qRecaps = qRecaps.eq("brand_id", brandId);
 
-    if (brandId) q = q.eq("brand_id", brandId);
+    // Query brand_campaigns (may not have media yet)
+    let qBrand = supabase
+      .from("brand_campaigns")
+      .select("id, name, brands(name)")
+      .not("name", "is", null)
+      .neq("name", "")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (brandId) qBrand = qBrand.eq("brand_id", brandId);
 
-    const { data } = await q;
-    setCampaigns(
-      (data || []).map((d: Record<string, unknown>) => ({
-        id: String(d.id),
-        name: String(d.name),
-        brand_name: String(
-          (d.brands as Record<string, unknown> | null)?.name || ""
-        ),
-      }))
-    );
+    const [{ data: recaps }, { data: brandCampaigns }] = await Promise.all([qRecaps, qBrand]);
+
+    const merged: CampaignRow[] = [];
+    const seen = new Set<string>();
+
+    // Recaps first (they have media)
+    for (const d of (recaps || []) as Record<string, unknown>[]) {
+      const key = `${String(d.name).toLowerCase()}|${String((d.brands as any)?.name || "").toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push({ id: String(d.id), name: String(d.name), brand_name: String((d.brands as any)?.name || ""), source: "recap", hasMedia: true });
+    }
+
+    // Then brand_campaigns (dedup by name+brand)
+    for (const d of (brandCampaigns || []) as Record<string, unknown>[]) {
+      const key = `${String(d.name).toLowerCase()}|${String((d.brands as any)?.name || "").toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push({ id: String(d.id), name: String(d.name), brand_name: String((d.brands as any)?.name || ""), source: "brand_campaign" });
+    }
+
+    setCampaigns(merged);
   };
 
   const loadFiles = useCallback(
     async (campaignId: string) => {
       setLoadingFiles(true);
-      const { data } = await supabase.storage
-        .from("campaign-media")
-        .list(campaignId, { limit: 100 });
 
-      const items = (data || [])
+      // Recursively list all files including nested folders
+      const allFiles: { name: string; path: string }[] = [];
+      const listFolder = async (prefix: string) => {
+        const { data } = await supabase.storage
+          .from("campaign-media")
+          .list(prefix, { limit: 200 });
+        if (!data) return;
+        for (const f of data) {
+          if (!f.name) continue;
+          const fullPath = `${prefix}/${f.name}`;
+          // If no extension, assume it's a folder
+          if (!f.name.includes(".")) {
+            await listFolder(fullPath);
+          } else {
+            allFiles.push({ name: f.name, path: fullPath });
+          }
+        }
+      };
+      await listFolder(campaignId);
+
+      const items = allFiles
         .filter((f) => {
           const e = ext(f.name);
           if (IMAGE_EXTS.includes(e)) return true;
@@ -262,11 +319,9 @@ export default function CampaignMediaPicker({
           return false;
         })
         .map((f) => {
-          const {
-            data: { publicUrl },
-          } = supabase.storage
+          const { data: { publicUrl } } = supabase.storage
             .from("campaign-media")
-            .getPublicUrl(`${campaignId}/${f.name}`);
+            .getPublicUrl(f.path);
           return { name: f.name, url: publicUrl };
         });
 
@@ -309,6 +364,7 @@ export default function CampaignMediaPicker({
       brand: selectedCampaign.brand_name,
       campaign: selectedCampaign.name,
       campaign_id: selectedCampaign.id,
+      campaign_recap_id: selectedCampaign.source === "recap" ? selectedCampaign.id : undefined,
     });
     onClose();
   };
@@ -333,6 +389,7 @@ export default function CampaignMediaPicker({
         brand: selectedCampaign.brand_name,
         campaign: selectedCampaign.name,
         campaign_id: selectedCampaign.id,
+        campaign_recap_id: selectedCampaign.source === "recap" ? selectedCampaign.id : undefined,
       });
       onClose();
     }
@@ -354,6 +411,7 @@ export default function CampaignMediaPicker({
       brand: selectedCampaign.brand_name,
       campaign: selectedCampaign.name,
       campaign_id: selectedCampaign.id,
+      campaign_recap_id: selectedCampaign.source === "recap" ? selectedCampaign.id : undefined,
     });
     onClose();
   };
@@ -521,7 +579,10 @@ export default function CampaignMediaPicker({
                 >
                   {c.brand_name}
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{c.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{c.name}</span>
+                  {c.hasMedia && <span style={{ fontSize: 9, fontWeight: 800, background: "rgba(215,63,9,0.15)", color: "#D73F09", padding: "2px 6px", borderRadius: 4, textTransform: "uppercase" }}>has media</span>}
+                </div>
               </div>
             ))}
             {filteredCampaigns.length === 0 && (
