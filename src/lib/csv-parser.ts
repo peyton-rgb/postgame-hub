@@ -29,6 +29,38 @@ function parseRate(val: string | undefined): number | undefined {
   return isNaN(n) ? undefined : n;
 }
 
+/**
+ * Detect if the first row is a platform group header (e.g. "IG FEED POSTS", "IG STORIES")
+ * rather than the actual column headers. If so, return row 1 as headers and data starting at row 2.
+ * Otherwise, return row 0 as headers and data starting at row 1.
+ */
+function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: number } {
+  const row0 = parseCSVLine(lines[0]);
+  // Check if row 0 contains recognizable column headers
+  const hasIdentityHeaders = row0.some((h) => {
+    const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return ["first", "firstname", "last", "lastname", "fname", "lname"].includes(clean);
+  });
+
+  if (hasIdentityHeaders) {
+    return { headers: row0, dataStartIndex: 1 };
+  }
+
+  // Row 0 is a group label row — use row 1 as headers
+  if (lines.length >= 2) {
+    return { headers: parseCSVLine(lines[1]), dataStartIndex: 2 };
+  }
+
+  return { headers: row0, dataStartIndex: 1 };
+}
+
+/** Check if a row should be skipped (CALCULATIONS, totals, blank first name) */
+function isJunkRow(first: string): boolean {
+  if (!first) return true;
+  const upper = first.toUpperCase();
+  return upper.includes("CALCULATIONS") || upper.includes("DO NOT");
+}
+
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = "";
@@ -81,7 +113,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
 
-  const headers = parseCSVLine(lines[0]);
+  const { headers, dataStartIndex } = detectHeaderRow(lines);
 
   const iFirst = findCol(headers, "first", "firstname", "first name", "fname");
   const iLast = findCol(headers, "last", "lastname", "last name", "lname");
@@ -105,19 +137,19 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
 
   const athletes: ParsedAthlete[] = [];
 
-  for (const line of lines.slice(1)) {
+  for (const line of lines.slice(dataStartIndex)) {
     const cols = parseCSVLine(line);
     const first = cols[cFirst]?.trim() || "";
     const last = cols[cLast]?.trim() || "";
-    if (!first || !last) continue;
-    if (first.toUpperCase().includes("CALCULATIONS")) continue;
-    if (first.toUpperCase().includes("DO NOT")) continue;
+    if (isJunkRow(first) || !last) continue;
+
+    const rawHandle = iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "";
 
     athletes.push({
       first: titleCase(first),
       last: titleCase(last),
       name: `${titleCase(first)} ${titleCase(last)}`,
-      ig_handle: iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "",
+      ig_handle: rawHandle.replace(/^\s+|\s+$/g, ""),
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
       content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",
       reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
@@ -140,7 +172,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
 
-  const headers = parseCSVLine(lines[0]);
+  const { headers, dataStartIndex } = detectHeaderRow(lines);
 
   // Core identity columns
   const iFirst = findCol(headers, "first", "firstname", "first name", "fname");
@@ -265,7 +297,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
       UPPER_WORDS.has(w.toUpperCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
     ).join(" ");
 
-  const dataRows = lines.slice(1);
+  const dataRows = lines.slice(dataStartIndex);
   const athletes: ParsedAthlete[] = [];
 
   for (const line of dataRows) {
@@ -274,10 +306,8 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     const first = cols[cFirst]?.trim() || "";
     const last = cols[cLast]?.trim() || "";
 
-    // Skip junk rows
-    if (!first || !last) continue;
-    if (first.toUpperCase().includes("CALCULATIONS")) continue;
-    if (first.toUpperCase().includes("DO NOT")) continue;
+    // Skip junk rows (CALCULATIONS, totals, blank names)
+    if (isJunkRow(first) || !last) continue;
 
     const getVal = (idx: number) => idx !== -1 ? cols[idx] : undefined;
 
@@ -352,7 +382,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
       first: titleCase(first),
       last: titleCase(last),
       name: `${titleCase(first)} ${titleCase(last)}`,
-      ig_handle: iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "",
+      ig_handle: iHandle !== -1 ? (cols[iHandle]?.replace(/^\s+|\s+$/g, "") || "") : "",
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
       content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",
       reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
