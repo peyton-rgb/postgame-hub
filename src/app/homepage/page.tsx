@@ -272,7 +272,7 @@ function ScrollScript() {
 
 // ── Helpers ─────────────────────────────────────────────────
 function getSection(sections: PageSection[], type: string): PageSection | undefined {
-  return sections.find((s) => s.type === type && s.visible);
+  return sections.find((s) => s.type === type && s.visible !== false);
 }
 
 function getSetting(page: HomepageData["page"], key: string): unknown {
@@ -367,11 +367,6 @@ export default async function HomepagePage() {
   return (
     <div className="hp-body">
       <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-
-      {/* DEBUG */}
-      <div style={{color:'lime',background:'rgba(0,0,0,0.9)',position:'fixed',top:0,left:0,zIndex:9999,padding:'8px 16px',fontSize:12,fontFamily:'monospace',maxWidth:'100vw',wordBreak:'break-all'}}>
-        Sections: {sections.length} | Types: {sections.map(s => s.type).join(', ')} | Visible: {sections.filter(s => s.visible).map(s => s.type).join(', ')} | FC content keys: {featuredCampaigns ? Object.keys(featuredCampaigns.content || {}).join(',') : 'null'}
-      </div>
 
       {/* Nav */}
       <nav className="hp-nav">
