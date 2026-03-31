@@ -630,6 +630,9 @@ export function CampaignRecap({
                   <div className="text-center mb-2">
                     <div className="text-2xl font-black text-brand">{metricValue}</div>
                     <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
+                    {topPerformerMode === "engagement" && a.bestPlatform && (
+                      <div className="text-[10px] text-white/40 font-medium mt-0.5">{a.bestPlatform}</div>
+                    )}
                   </div>
                   <div className="relative rounded-xl overflow-hidden h-[380px] border-2 border-brand shadow-[0_0_25px_rgba(215,63,9,0.3)]">
                     {items.length > 0 ? (
@@ -672,6 +675,9 @@ export function CampaignRecap({
                   <div className="text-center mb-1.5">
                     <div className={`${isFirst ? "text-xl" : "text-lg"} font-black text-brand`}>{metricValue}</div>
                     <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
+                    {topPerformerMode === "engagement" && a.bestPlatform && (
+                      <div className="text-[10px] text-white/40 font-medium mt-0.5">{a.bestPlatform}</div>
+                    )}
                   </div>
                   <div className={`relative rounded-xl overflow-hidden border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)] ${isFirst ? "h-[280px]" : "h-[220px]"}`}>
                     {items.length > 0 ? (

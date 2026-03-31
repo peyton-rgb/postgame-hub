@@ -574,6 +574,12 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
             className="px-3 py-1.5 border border-gray-700 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-gray-500">
             + Add Athlete
           </button>
+          {isDirty && (
+            <button onClick={handleSave} disabled={saving}
+              className="px-4 py-1.5 bg-[#D73F09] rounded-lg text-xs font-bold text-white hover:bg-[#c43808] disabled:opacity-50">
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -711,16 +717,6 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
         </div>
       )}
 
-      {/* Save Footer */}
-      {isDirty && (
-        <div className="sticky bottom-0 bg-black/95 backdrop-blur-xl border-t border-gray-800 -mx-8 px-8 py-3 flex items-center justify-between">
-          <span className="text-xs text-[#D73F09] font-bold">Unsaved changes</span>
-          <button onClick={handleSave} disabled={saving}
-            className="px-6 py-2 bg-[#D73F09] rounded-lg text-sm font-bold text-white hover:bg-[#c43808] disabled:opacity-50">
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -124,13 +124,20 @@ export function computeStats(athletes: Athlete[]) {
   };
 }
 
+function bestEngByPlatform(m: Athlete["metrics"]): { rate: number; platform: string } {
+  const candidates: { rate: number; platform: string }[] = [];
+  if (m?.ig_feed?.engagement_rate && m.ig_feed.engagement_rate > 0) candidates.push({ rate: m.ig_feed.engagement_rate, platform: "IG Feed" });
+  if (m?.ig_reel?.engagement_rate && m.ig_reel.engagement_rate > 0) candidates.push({ rate: m.ig_reel.engagement_rate, platform: "IG Reel" });
+  if (m?.tiktok?.engagement_rate && m.tiktok.engagement_rate > 0) candidates.push({ rate: m.tiktok.engagement_rate, platform: "TikTok" });
+  if (candidates.length === 0) return { rate: 0, platform: "" };
+  return candidates.reduce((best, c) => c.rate > best.rate ? c : best);
+}
+
 export function getTopPerformers(athletes: Athlete[], count = 5) {
   return [...athletes]
     .map((a) => {
-      const m = a.metrics || {};
-      const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-      const best = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
-      return { ...a, bestEngRate: best, totalImpressions: getTotalImpressions(a) };
+      const { rate, platform } = bestEngByPlatform(a.metrics);
+      return { ...a, bestEngRate: rate, bestPlatform: platform, totalImpressions: getTotalImpressions(a) };
     })
     .filter((a) => a.bestEngRate > 0)
     .sort((a, b) => b.bestEngRate - a.bestEngRate)
@@ -140,11 +147,9 @@ export function getTopPerformers(athletes: Athlete[], count = 5) {
 export function getTopPerformersByImpressions(athletes: Athlete[], count = 5) {
   return [...athletes]
     .map((a) => {
-      const m = a.metrics || {};
-      const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-      const best = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
+      const { rate, platform } = bestEngByPlatform(a.metrics);
       const total = getTotalImpressions(a);
-      return { ...a, bestEngRate: best, totalImpressions: total };
+      return { ...a, bestEngRate: rate, bestPlatform: platform, totalImpressions: total };
     })
     .filter((a) => a.totalImpressions > 0)
     .sort((a, b) => b.totalImpressions - a.totalImpressions)
@@ -165,9 +170,7 @@ export function getMediaLabel(items: Media[]): string {
 }
 
 export function getBestEngRate(athlete: Athlete): number {
-  const m = athlete.metrics || {};
-  const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-  return rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
+  return bestEngByPlatform(athlete.metrics).rate;
 }
 
 export function getTotalImpressions(athlete: Athlete): number {
