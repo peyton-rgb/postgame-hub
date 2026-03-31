@@ -154,6 +154,8 @@ const globalStyles = `
   .rc-3 { background: linear-gradient(135deg, #141414 0%, #1a2a1a 50%, #1e3a1e 100%); }
   .rc-4 { background: linear-gradient(135deg, #1a1a1a 0%, #2a1a2d 50%, #3a1e3d 100%); }
   .rc-5 { background: linear-gradient(135deg, #1a1a1a 0%, #1a2a2a 50%, #1e3a3a 100%); }
+  .hp-card-has-img { background-size: cover; background-position: center; }
+  .hp-card-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.75) 100%); border-radius: 16px; }
 
   /* Athletes */
   .hp-athletes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
@@ -453,11 +455,20 @@ export default async function HomepagePage() {
                 const meta = String(item.meta || "");
                 const isFeatured = item.featured === true || i === 0;
                 const gradient = String(item.gradient || `rc-${(i % 5) + 1}`);
+                const imageUrl = String(item.image_url || "");
+                const hasImage = !!imageUrl;
                 return (
-                  <div key={i} className={`hp-card ${gradient}${isFeatured ? " hp-card-featured" : ""}`}>
-                    {brand && <div className="hp-card-brand">{brand}</div>}
-                    <div className="hp-display hp-card-title">{title}</div>
-                    {meta && <div className="hp-card-meta">{meta}</div>}
+                  <div
+                    key={i}
+                    className={`hp-card ${hasImage ? "hp-card-has-img" : gradient}${isFeatured ? " hp-card-featured" : ""}`}
+                    style={hasImage ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                  >
+                    {hasImage && <div className="hp-card-overlay" />}
+                    <div style={{ position: "relative", zIndex: 1 }}>
+                      {brand && <div className="hp-card-brand">{brand}</div>}
+                      <div className="hp-display hp-card-title">{title}</div>
+                      {meta && <div className="hp-card-meta">{meta}</div>}
+                    </div>
                   </div>
                 );
               })}

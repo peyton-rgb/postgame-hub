@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
+import CampaignMediaPicker from "@/components/CampaignMediaPicker";
 import Link from "next/link";
 
 const PAGE_ID = "1e2328e1-26d0-41c5-8876-8af003a22a6a";
@@ -9,7 +10,7 @@ const PAGE_ID = "1e2328e1-26d0-41c5-8876-8af003a22a6a";
 type Tab = "hero" | "sections" | "settings";
 
 interface StatItem { value: string; label: string }
-interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean }
+interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string }
 interface AthleteItem { name: string; sport: string; school: string; gradient: string }
 interface BrandItem { name: string; logo_url: string }
 interface ServiceItem { name: string; desc: string; accent: boolean }
@@ -109,6 +110,8 @@ export default function HomepageEditorPage() {
   const [showPicker, setShowPicker] = useState<string | null>(null);
   const [pickerItems, setPickerItems] = useState<any[]>([]);
   const [pickerSearch, setPickerSearch] = useState("");
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState<number | null>(null);
 
   const supabase = createBrowserSupabase();
 
@@ -434,6 +437,30 @@ export default function HomepageEditorPage() {
                             />
                           ))}
                         </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+                          <span style={S.label}>Card Image</span>
+                          {c.image_url && (
+                            <img src={c.image_url} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(255,255,255,0.1)" }} />
+                          )}
+                          <button
+                            style={{ ...S.btnSmall, border: "1px solid #D73F09", color: "#D73F09" }}
+                            onClick={() => { setMediaPickerTarget(i); setMediaPickerOpen(true); }}
+                          >
+                            Select Media
+                          </button>
+                          {c.image_url && (
+                            <button
+                              style={S.btnDanger}
+                              onClick={() => {
+                                const items = [...getCampaigns()];
+                                items[i] = { ...items[i], image_url: undefined };
+                                updateSectionItems("featured_campaigns", "campaigns", items);
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <button style={S.btnAdd} onClick={openCampaignPicker}>+ Add Campaign</button>
@@ -661,6 +688,21 @@ export default function HomepageEditorPage() {
           </div>
         </div>
       )}
+
+      {/* Campaign Media Picker */}
+      <CampaignMediaPicker
+        open={mediaPickerOpen}
+        onClose={() => { setMediaPickerOpen(false); setMediaPickerTarget(null); }}
+        onSelect={(item) => {
+          if (mediaPickerTarget !== null) {
+            const items = [...getCampaigns()];
+            items[mediaPickerTarget] = { ...items[mediaPickerTarget], image_url: item.url };
+            updateSectionItems("featured_campaigns", "campaigns", items);
+          }
+          setMediaPickerOpen(false);
+          setMediaPickerTarget(null);
+        }}
+      />
 
       {/* Toast */}
       {toast && <div style={S.toast}>{toast}</div>}
