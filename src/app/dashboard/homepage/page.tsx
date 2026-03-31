@@ -10,7 +10,7 @@ const PAGE_ID = "1e2328e1-26d0-41c5-8876-8af003a22a6a";
 type Tab = "hero" | "sections" | "settings";
 
 interface StatItem { value: string; label: string }
-interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; campaign_id?: string }
+interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; media_type?: "image" | "video"; campaign_id?: string }
 interface AthleteItem { name: string; sport: string; school: string; gradient: string }
 interface BrandItem { name: string; logo_url: string }
 interface ServiceItem { name: string; desc: string; accent: boolean }
@@ -364,11 +364,20 @@ export default function HomepageEditorPage() {
                       <div key={i} style={{ ...S.itemCard, borderLeft: c.featured ? "3px solid #D73F09" : "3px solid transparent", display: "flex", gap: 14 }}>
                         {/* Thumbnail */}
                         <div
-                          style={{ width: 80, height: 80, borderRadius: 8, flexShrink: 0, background: c.image_url ? `url(${c.image_url}) center/cover` : "#222", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase" as const }}
+                          style={{ width: 80, height: 80, borderRadius: 8, flexShrink: 0, background: c.image_url && c.media_type !== "video" ? `url(${c.image_url}) center/cover` : "#222", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase" as const, overflow: "hidden", position: "relative" as const }}
                           onClick={() => { setMediaPickerTarget(i); setMediaPickerMode("media-only"); setMediaPickerInitialCampaign(c.campaign_id ? { id: c.campaign_id, name: c.name, brand_name: c.brand } : undefined); setMediaPickerOpen(true); }}
-                          title="Click to change image"
+                          title="Click to change media"
                         >
-                          {!c.image_url && "No img"}
+                          {c.image_url && c.media_type === "video" ? (
+                            <>
+                              <video src={c.image_url} muted preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
+                                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(255,255,255,0.85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <div style={{ width: 0, height: 0, borderTop: "4px solid transparent", borderBottom: "4px solid transparent", borderLeft: "7px solid #111", marginLeft: 1 }} />
+                                </div>
+                              </div>
+                            </>
+                          ) : !c.image_url ? "No img" : null}
                         </div>
                         {/* Info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -596,13 +605,13 @@ export default function HomepageEditorPage() {
         onClose={() => { setMediaPickerOpen(false); setMediaPickerTarget(null); }}
         onSelect={(item) => {
           if (mediaPickerTarget !== null) {
-            // Updating image on existing card
+            // Updating media on existing card
             const items = [...getCampaigns()];
-            items[mediaPickerTarget] = { ...items[mediaPickerTarget], image_url: item.url };
+            items[mediaPickerTarget] = { ...items[mediaPickerTarget], image_url: item.url, media_type: item.type };
             updateSectionItems("featured_campaigns", "campaigns", items);
           } else {
             // Adding new campaign from full flow
-            const newItem: CampaignItem = { brand: item.brand, name: item.campaign, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false, image_url: item.url, campaign_id: item.campaign_id };
+            const newItem: CampaignItem = { brand: item.brand, name: item.campaign, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false, image_url: item.url, media_type: item.type, campaign_id: item.campaign_id };
             updateSectionItems("featured_campaigns", "campaigns", [...getCampaigns(), newItem]);
           }
           setMediaPickerOpen(false);

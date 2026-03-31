@@ -456,14 +456,19 @@ export default async function HomepagePage() {
                 const isFeatured = item.featured === true || i === 0;
                 const gradient = String(item.gradient || `rc-${(i % 5) + 1}`);
                 const imageUrl = String(item.image_url || "");
-                const hasImage = !!imageUrl;
+                const mediaType = String(item.media_type || "image");
+                const hasMedia = !!imageUrl;
+                const isVideo = hasMedia && mediaType === "video";
                 return (
                   <div
                     key={i}
-                    className={`hp-card ${hasImage ? "hp-card-has-img" : gradient}${isFeatured ? " hp-card-featured" : ""}`}
-                    style={hasImage ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                    className={`hp-card ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}${isFeatured ? " hp-card-featured" : ""}`}
+                    style={hasMedia && !isVideo ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : isVideo ? { overflow: "hidden" } : undefined}
                   >
-                    {hasImage && <div className="hp-card-overlay" />}
+                    {isVideo && (
+                      <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} src={imageUrl} />
+                    )}
+                    {hasMedia && <div className="hp-card-overlay" />}
                     <div style={{ position: "relative", zIndex: 1 }}>
                       {brand && <div className="hp-card-brand">{brand}</div>}
                       <div className="hp-display hp-card-title">{title}</div>
