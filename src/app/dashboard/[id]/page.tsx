@@ -628,9 +628,27 @@ export default function CampaignEditor() {
     setMedia((prev) => ({ ...prev, [athleteId]: newItems }));
   }
 
-  function matchFileToAthlete(fileName: string, athleteList: Athlete[]): Athlete | null {
+  function matchFileToAthlete(fileName: string, athleteList: Athlete[], relativePath?: string): Athlete | null {
     // Strip extension and clean up
     const clean = fileName.replace(/\.[^.]+$/, "").toLowerCase().replace(/[_-]+/g, " ").trim();
+
+    // If file is inside an athlete-named subfolder, try matching the folder name first
+    if (relativePath) {
+      const pathParts = relativePath.split("/");
+      if (pathParts.length >= 2) {
+        const folderName = pathParts[pathParts.length - 2].toLowerCase().replace(/[_-]+/g, " ").trim();
+        for (const a of athleteList) {
+          const nameLower = a.name.toLowerCase();
+          if (folderName === nameLower) return a;
+          // Check if folder contains first and last name
+          const parts = nameLower.split(" ").filter((p) => p.length > 2);
+          if (parts.length >= 2 && parts.every((p) => folderName.includes(p))) return a;
+          // Check last name match on folder
+          const lastName = nameLower.split(" ").pop() || "";
+          if (lastName.length >= 4 && folderName.includes(lastName) && nameLower.split(" ").some((p) => folderName.includes(p))) return a;
+        }
+      }
+    }
 
     // Try exact match first
     for (const a of athleteList) {
@@ -679,7 +697,7 @@ export default function CampaignEditor() {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const athlete = matchFileToAthlete(file.name, selectedAthletes);
+      const athlete = matchFileToAthlete(file.name, selectedAthletes, (file as any).webkitRelativePath);
 
       if (athlete) {
         if (!seenAthletes.has(athlete.id)) {
