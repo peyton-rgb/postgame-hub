@@ -3,9 +3,10 @@
 import type { Media } from "@/lib/types";
 
 export function TopPerformerMedia({ items, name }: { items: Media[]; name: string }) {
-  // Show only the first image — prefer thumbnail, then image file
+  // Show only the first image — prefer thumbnail, then image file, then fall back to first image in set
   const first = items[0];
-  const displaySrc = first?.thumbnail_url || (first?.type !== "video" ? first?.file_url : null);
+  const firstImage = items.find((m) => m.type === "image");
+  const displaySrc = first?.thumbnail_url || (first?.type !== "video" ? first?.file_url : firstImage?.file_url ?? null);
 
   if (!displaySrc) {
     return (

@@ -207,12 +207,6 @@ export function ThumbnailModal({
                   <span className="text-[10px] text-white/40 font-mono w-8">{formatTime(duration)}</span>
                 </div>
 
-                {/* Frame preview */}
-                {framePreview && (
-                  <div className="rounded-lg overflow-hidden border border-white/10">
-                    <img src={framePreview} className="w-full block object-cover" style={{ objectPosition: "center 20%" }} alt="Selected frame" />
-                  </div>
-                )}
               </>
             )}
             <canvas ref={canvasRef} className="hidden" />
