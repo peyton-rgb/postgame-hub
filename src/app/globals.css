@@ -36,6 +36,11 @@ body {
   }
 }
 
+/* 16:9 cards span full width of masonry grid */
+.column-span-all {
+  column-span: all;
+}
+
 /* Masonry responsive columns */
 @media (max-width: 768px) {
   .recap-container [data-masonry] {
