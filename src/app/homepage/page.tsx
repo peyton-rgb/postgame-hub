@@ -191,14 +191,26 @@ const globalStyles = `
   /* Athletes */
   .hp-athletes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
   .hp-athlete {
-    text-align: center; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 32px 16px; transition: border-color 0.2s;
+    position: relative; border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--border); transition: border-color 0.2s, transform 0.25s;
+    aspect-ratio: 3/4;
   }
-  .hp-athlete:hover { border-color: var(--orange); }
-  .hp-athlete-avatar {
-    width: 80px; height: 80px; border-radius: 50%; background: var(--border);
-    margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;
-    font-size: 28px; font-weight: 900; color: var(--orange); overflow: hidden;
+  .hp-athlete:hover { border-color: var(--orange); transform: translateY(-4px); }
+  .hp-athlete-img {
+    width: 100%; height: 100%; object-fit: cover; object-position: center 20%;
+    display: block;
+  }
+  .hp-athlete-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%);
+  }
+  .hp-athlete-info {
+    position: absolute; bottom: 0; left: 0; right: 0; padding: 20px;
+  }
+  .hp-athlete-brand-logo {
+    position: absolute; top: 12px; right: 12px;
+    height: 24px; max-width: 60px; object-fit: contain;
+    opacity: 0.7; filter: brightness(2);
   }
   .hp-athlete-sport {
     font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
@@ -596,18 +608,24 @@ export default async function HomepagePage() {
                 const school = String(item.school || "");
                 const sport = String(item.sport || "");
                 const imageUrl = String(item.image_url || "");
+                const brand = String(item.brand || "");
+                const brandLogoUrl = brand ? brandLogos.get(brand.toLowerCase()) || "" : "";
                 return (
                   <div key={i} className="hp-athlete">
-                    <div className="hp-athlete-avatar">
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        name.split(" ").map((n) => n[0]).join("").slice(0, 2)
-                      )}
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={name} className="hp-athlete-img" />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: 900, color: "var(--orange)" }}>
+                        {name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      </div>
+                    )}
+                    <div className="hp-athlete-overlay" />
+                    {brandLogoUrl && <img src={brandLogoUrl} alt={brand} className="hp-athlete-brand-logo" />}
+                    <div className="hp-athlete-info">
+                      {sport && <div className="hp-athlete-sport">{sport}</div>}
+                      <div className="hp-display hp-athlete-name">{name}</div>
+                      {school && <div className="hp-athlete-school">{school}</div>}
                     </div>
-                    {sport && <div className="hp-athlete-sport">{sport}</div>}
-                    <div className="hp-display hp-athlete-name">{name}</div>
-                    {school && <div className="hp-athlete-school">{school}</div>}
                   </div>
                 );
               })}

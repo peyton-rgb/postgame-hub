@@ -11,7 +11,7 @@ type Tab = "hero" | "sections" | "settings";
 
 interface StatItem { value: string; label: string }
 interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; media_type?: "image" | "video"; aspect_ratio?: "landscape" | "portrait"; campaign_id?: string; focal_point?: string }
-interface AthleteItem { name: string; sport: string; school: string; gradient: string }
+interface AthleteItem { name: string; sport: string; school: string; image_url?: string; brand?: string; brand_id?: string; deal_id?: string; gradient?: string }
 interface BrandItem { name: string; logo_url: string }
 interface ServiceItem { name: string; desc: string; accent: boolean }
 
@@ -114,6 +114,11 @@ export default function HomepageEditorPage() {
   const [mediaPickerMode, setMediaPickerMode] = useState<"full" | "media-only">("full");
   const [mediaPickerTarget, setMediaPickerTarget] = useState<number | null>(null);
   const [mediaPickerInitialCampaign, setMediaPickerInitialCampaign] = useState<{ id: string; name: string; brand_name: string } | undefined>(undefined);
+  const [athletePickerOpen, setAthletePickerOpen] = useState(false);
+  const [athletePickerDeals, setAthletePickerDeals] = useState<any[]>([]);
+  const [athletePickerSearch, setAthletePickerSearch] = useState("");
+  const [athletePickerSport, setAthletePickerSport] = useState("");
+  const [athletePickerBrand, setAthletePickerBrand] = useState("");
 
   const supabase = createBrowserSupabase();
 
@@ -209,6 +214,30 @@ export default function HomepageEditorPage() {
       .limit(30);
     setPickerItems(data || []);
   };
+
+  const openAthletePicker = async () => {
+    setAthletePickerOpen(true);
+    setAthletePickerSearch("");
+    setAthletePickerSport("");
+    setAthletePickerBrand("");
+    const { data } = await supabase
+      .from("deals")
+      .select("id, athlete_name, athlete_school, athlete_sport, brand_name, image_url, brand_id")
+      .eq("published", true)
+      .order("sort_order", { ascending: true });
+    setAthletePickerDeals(data || []);
+  };
+
+  const filteredAthleteDeals = athletePickerDeals.filter((d) => {
+    const q = athletePickerSearch.toLowerCase();
+    if (q && !d.athlete_name?.toLowerCase().includes(q) && !d.athlete_school?.toLowerCase().includes(q) && !d.brand_name?.toLowerCase().includes(q)) return false;
+    if (athletePickerSport && d.athlete_sport !== athletePickerSport) return false;
+    if (athletePickerBrand && d.brand_name !== athletePickerBrand) return false;
+    return true;
+  });
+
+  const athletePickerSports = [...new Set(athletePickerDeals.map((d) => d.athlete_sport).filter(Boolean))].sort();
+  const athletePickerBrands = [...new Set(athletePickerDeals.map((d) => d.brand_name).filter(Boolean))].sort();
 
   // Save
   const handleSave = async () => {
@@ -435,41 +464,31 @@ export default function HomepageEditorPage() {
                     <Field label="Eyebrow" value={String(sec.content?.eyebrow || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, eyebrow: v })} />
                     <Field label="Description" value={String(sec.content?.description || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, description: v })} />
                     {getAthletes().map((a, i) => (
-                      <div key={i} style={S.itemCard}>
-                        <div style={S.row}>
-                          <div style={S.col}>
-                            <label style={S.label}>Name</label>
-                            <input style={S.input} value={a.name} onChange={(e) => {
-                              const items = [...getAthletes()];
-                              items[i] = { ...items[i], name: e.target.value };
-                              updateSectionItems("featured_athletes", "athletes", items);
-                            }} />
-                          </div>
-                          <div style={S.col}>
-                            <label style={S.label}>Sport</label>
-                            <input style={S.input} value={a.sport} onChange={(e) => {
-                              const items = [...getAthletes()];
-                              items[i] = { ...items[i], sport: e.target.value };
-                              updateSectionItems("featured_athletes", "athletes", items);
-                            }} />
-                          </div>
-                          <div style={S.col}>
-                            <label style={S.label}>School</label>
-                            <input style={S.input} value={a.school} onChange={(e) => {
-                              const items = [...getAthletes()];
-                              items[i] = { ...items[i], school: e.target.value };
-                              updateSectionItems("featured_athletes", "athletes", items);
-                            }} />
-                          </div>
-                          <button style={S.btnDanger} onClick={() => {
-                            updateSectionItems("featured_athletes", "athletes", getAthletes().filter((_, j) => j !== i));
-                          }}>Remove</button>
+                      <div key={i} style={{ ...S.itemCard, display: "flex", alignItems: "center", gap: 14 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, overflow: "hidden", background: "#222", border: "1px solid rgba(255,255,255,0.1)" }}>
+                          {a.image_url ? (
+                            <img src={a.image_url} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, color: "#D73F09" }}>
+                              {a.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                            </div>
+                          )}
                         </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{a.name}</span>
+                            {a.sport && <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: "#D73F09", background: "rgba(215,63,9,0.15)", padding: "2px 8px", borderRadius: 10 }}>{a.sport}</span>}
+                          </div>
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                            {a.school}{a.brand ? ` · ${a.brand}` : ""}
+                          </div>
+                        </div>
+                        <button style={{ ...S.btnDanger, padding: "4px 8px", fontSize: 13 }} onClick={() => {
+                          updateSectionItems("featured_athletes", "athletes", getAthletes().filter((_, j) => j !== i));
+                        }}>&times;</button>
                       </div>
                     ))}
-                    <button style={S.btnAdd} onClick={() => {
-                      updateSectionItems("featured_athletes", "athletes", [...getAthletes(), { name: "", sport: "", school: "", gradient: "rc-1" }]);
-                    }}>+ Add Athlete</button>
+                    <button style={S.btnAdd} onClick={openAthletePicker}>+ Add Athlete</button>
                   </div>
                 )}
 
@@ -610,6 +629,72 @@ export default function HomepageEditorPage() {
               </div>
             ))}
             {pickerItems.length === 0 && <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>No brands found</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Athlete Picker Modal */}
+      {athletePickerOpen && (
+        <div style={S.picker} onClick={() => setAthletePickerOpen(false)}>
+          <div style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, width: 600, maxHeight: "70vh", display: "flex", flexDirection: "column" as const }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 16px" }}>Add Athlete from Deal Tracker</h3>
+            <input
+              style={{ ...S.input, marginBottom: 12 }}
+              placeholder="Search by name, school, or brand..."
+              value={athletePickerSearch}
+              onChange={(e) => setAthletePickerSearch(e.target.value)}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <select style={{ ...S.gradientSelect, flex: 1 }} value={athletePickerSport} onChange={(e) => setAthletePickerSport(e.target.value)}>
+                <option value="">All Sports</option>
+                {athletePickerSports.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select style={{ ...S.gradientSelect, flex: 1 }} value={athletePickerBrand} onChange={(e) => setAthletePickerBrand(e.target.value)}>
+                <option value="">All Brands</option>
+                {athletePickerBrands.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+              {filteredAthleteDeals.length === 0 && <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, padding: 12 }}>No athletes found</div>}
+              {filteredAthleteDeals.slice(0, 100).map((deal) => (
+                <div
+                  key={deal.id}
+                  style={{ ...S.itemCard, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+                  onClick={() => {
+                    const existing = getAthletes();
+                    const newAthlete: AthleteItem = {
+                      name: deal.athlete_name || "",
+                      sport: deal.athlete_sport || "",
+                      school: deal.athlete_school || "",
+                      image_url: deal.image_url || "",
+                      brand: deal.brand_name || "",
+                      brand_id: deal.brand_id || "",
+                      deal_id: deal.id,
+                    };
+                    updateSectionItems("featured_athletes", "athletes", [...existing, newAthlete]);
+                    setAthletePickerOpen(false);
+                  }}
+                >
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, overflow: "hidden", background: "#222", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    {deal.image_url ? (
+                      <img src={deal.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#D73F09" }}>?</div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700 }}>{deal.athlete_name}</span>
+                      {deal.athlete_sport && <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: "#D73F09", background: "rgba(215,63,9,0.15)", padding: "2px 8px", borderRadius: 10 }}>{deal.athlete_sport}</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>
+                      {deal.athlete_school}{deal.brand_name ? ` · ${deal.brand_name}` : ""}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
