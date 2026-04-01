@@ -27,18 +27,30 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Detect wide content: upgrade to 16:9 if cover image is landscape and no video
+  // Detect wide content: use 16:9 if video is landscape, or if all photos are wide
   useEffect(() => {
-    if (hasVideo) return;
-    const coverImg = rawItems.find((m) => m.type === "image");
-    if (!coverImg) return;
-    const img = new Image();
-    img.onload = () => {
-      if (img.naturalWidth > img.naturalHeight * 1.2) {
-        setCardRatio("16/9");
-      }
-    };
-    img.src = coverImg.file_url;
+    if (hasVideo) {
+      const vid = rawItems.find((m) => m.type === "video");
+      if (!vid) return;
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        if (video.videoWidth > video.videoHeight * 1.2) {
+          setCardRatio("16/9");
+        }
+      };
+      video.src = vid.file_url;
+    } else {
+      const coverImg = rawItems.find((m) => m.type === "image");
+      if (!coverImg) return;
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth > img.naturalHeight * 1.2) {
+          setCardRatio("16/9");
+        }
+      };
+      img.src = coverImg.file_url;
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const current = items[slideIdx];
