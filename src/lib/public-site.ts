@@ -97,6 +97,16 @@ export async function getDealTracker() {
   return data || [];
 }
 
+export async function getBrandLogos() {
+  const { data } = await supabase.from('brands').select('name, logo_url, logo_light_url').eq('archived', false);
+  const map = new Map<string, string>();
+  data?.forEach((b: any) => {
+    if (b.logo_light_url) map.set(b.name.toLowerCase(), b.logo_light_url);
+    else if (b.logo_url) map.set(b.name.toLowerCase(), b.logo_url);
+  });
+  return map;
+}
+
 export async function getBrands() {
   const { data } = await supabase
     .from("brands")

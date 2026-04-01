@@ -1,4 +1,4 @@
-import { getHomepage, type HomepageData, type PageSection } from "@/lib/public-site";
+import { getHomepage, getBrandLogos, type HomepageData, type PageSection } from "@/lib/public-site";
 
 export const revalidate = 60;
 
@@ -138,25 +138,26 @@ const globalStyles = `
 
   /* Campaign hero (featured) */
   .hp-campaigns-hero {
-    border: 1px solid var(--border); border-radius: 16px;
-    overflow: hidden; position: relative; min-height: 420px;
+    border: 2px solid #D73F09; border-radius: 16px;
+    overflow: hidden; position: relative; min-height: 400px;
     display: flex; flex-direction: column; justify-content: flex-end;
     padding: 48px; margin-bottom: 16px;
+    box-shadow: 0 0 30px rgba(215,63,9,0.3);
     transition: box-shadow 0.25s;
   }
-  .hp-campaigns-hero:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+  .hp-campaigns-hero:hover { box-shadow: 0 0 40px rgba(215,63,9,0.4), 0 16px 48px rgba(0,0,0,0.4); }
   .hp-campaigns-hero .hp-card-brand { font-size: 14px; }
-  .hp-campaigns-hero .hp-card-title { font-size: clamp(32px, 5vw, 48px); }
+  .hp-campaigns-hero .hp-card-title { font-size: clamp(28px, 5vw, 44px); }
   .hp-campaigns-hero .hp-card-meta { font-size: 14px; }
   .hp-campaigns-hero .hp-card-overlay { background: linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.85) 100%); }
 
   /* Campaign masonry (non-featured) */
   .hp-campaigns-masonry { column-count: 3; column-gap: 16px; }
   .hp-card {
-    border: 1px solid var(--border); border-radius: 16px;
+    border: 1px solid var(--border); border-radius: 12px;
     overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
     display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 28px; min-height: 260px; position: relative;
+    padding: 28px; min-height: 220px; position: relative;
     break-inside: avoid; margin-bottom: 16px;
   }
   .hp-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
@@ -376,8 +377,9 @@ function FallbackHomepage() {
 // ── Main Page ───────────────────────────────────────────────
 export default async function HomepagePage() {
   let data: HomepageData | null = null;
+  let brandLogos = new Map<string, string>();
   try {
-    data = await getHomepage();
+    [data, brandLogos] = await Promise.all([getHomepage(), getBrandLogos()]);
   } catch {
     // Supabase unreachable
   }
@@ -490,11 +492,19 @@ export default async function HomepagePage() {
                   : null
               );
 
-              const renderLogo = (brand: string, logoUrl: string) => (
-                <div className="hp-card-logo">
-                  {logoUrl ? <img src={logoUrl} alt={brand} /> : brand.charAt(0).toUpperCase()}
-                </div>
-              );
+              const renderLogo = (brand: string, logoUrl: string, isHero: boolean) => {
+                const resolvedLogo = logoUrl || brandLogos.get(brand.toLowerCase()) || "";
+                if (resolvedLogo) {
+                  return isHero
+                    ? <img src={resolvedLogo} alt={brand} style={{ height: 44, maxWidth: 120, objectFit: 'contain' as const }} />
+                    : <img src={resolvedLogo} alt={brand} style={{ height: 32, maxWidth: 80, objectFit: 'contain' as const }} />;
+                }
+                return (
+                  <div className="hp-card-logo">
+                    {brand.charAt(0).toUpperCase()}
+                  </div>
+                );
+              };
 
               const renderCardContent = (item: Record<string, unknown>, isHero: boolean, idx: number) => {
                 const brand = String(item.brand || item.brand_name || "");
@@ -522,7 +532,7 @@ export default async function HomepagePage() {
                     {hasMedia && <div className="hp-card-overlay" />}
                     <div style={{ position: "relative", zIndex: 1 }}>
                       <div className="hp-card-content-row">
-                        {renderLogo(brand, logoUrl)}
+                        {renderLogo(brand, logoUrl, isHero)}
                         <div>
                           {brand && <div className="hp-card-brand">{brand}</div>}
                           <div className="hp-display hp-card-title">{title}</div>
