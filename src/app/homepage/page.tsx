@@ -136,8 +136,21 @@ const globalStyles = `
   .hp-section-title { font-size: clamp(36px, 5vw, 56px); margin: 0 0 12px; }
   .hp-section-sub { font-size: 15px; color: var(--text-muted); margin: 0 0 48px; max-width: 500px; }
 
-  /* Campaign grid */
-  .hp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  /* Campaign featured hero */
+  .hp-campaigns-featured {
+    border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; position: relative; min-height: 400px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 40px; margin-bottom: 24px;
+    transition: box-shadow 0.25s;
+  }
+  .hp-campaigns-featured:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+  .hp-campaigns-featured .hp-card-brand { font-size: 13px; }
+  .hp-campaigns-featured .hp-card-title { font-size: clamp(36px, 4vw, 52px); }
+  .hp-campaigns-featured .hp-card-meta { font-size: 14px; }
+
+  /* Campaign grid (non-featured) */
+  .hp-campaigns-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
   .hp-card {
     border: 1px solid var(--border); border-radius: 16px;
     overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
@@ -145,10 +158,13 @@ const globalStyles = `
     padding: 28px; min-height: 220px; position: relative;
   }
   .hp-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
-  .hp-card-featured { grid-row: span 2; min-height: 464px; }
+  .hp-card-portrait { aspect-ratio: 3/4; min-height: unset; }
   .hp-card-brand { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); margin-bottom: 8px; }
   .hp-card-title { font-size: 28px; line-height: 1.05; margin: 0 0 10px; }
   .hp-card-meta { font-size: 12px; color: var(--text-muted); }
+
+  /* Legacy grid class kept for other sections */
+  .hp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
   .rc-1 { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
   .rc-2 { background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 50%, #3d1f14 100%); }
   .rc-3 { background: linear-gradient(135deg, #141414 0%, #1a2a1a 50%, #1e3a1e 100%); }
@@ -236,6 +252,8 @@ const globalStyles = `
     .hp-nav-links { display: none; }
     .hp-nav-mobile-toggle { display: block; }
     .hp-grid { grid-template-columns: repeat(2, 1fr); }
+    .hp-campaigns-grid { grid-template-columns: repeat(2, 1fr); }
+    .hp-campaigns-featured { min-height: 280px; padding: 28px; }
     .hp-athletes { grid-template-columns: repeat(2, 1fr); }
     .hp-services { grid-template-columns: 1fr; }
     .hp-stats { gap: 32px; flex-wrap: wrap; }
@@ -245,6 +263,7 @@ const globalStyles = `
   }
   @media (max-width: 600px) {
     .hp-grid { grid-template-columns: 1fr; }
+    .hp-campaigns-grid { grid-template-columns: 1fr; }
     .hp-athletes { grid-template-columns: 1fr; }
     .hp-stats { flex-direction: column; align-items: center; gap: 24px; }
   }
@@ -448,25 +467,34 @@ export default async function HomepagePage() {
             {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
             <h2 className="hp-display hp-section-title">{featuredCampaigns.title || "Campaign Highlights"}</h2>
             {(description || featuredCampaigns.subtitle) && <p className="hp-section-sub">{description || featuredCampaigns.subtitle}</p>}
-            <div className="hp-grid">
-              {campaigns.map((item, i) => {
+            {(() => {
+              const featuredIdx = campaigns.findIndex((c) => c.featured === true);
+              const fi = featuredIdx >= 0 ? featuredIdx : 0;
+              const featured = campaigns[fi];
+              const rest = campaigns.filter((_, idx) => idx !== fi);
+
+              const renderCard = (item: Record<string, unknown>, isFeatured: boolean, idx: number) => {
                 const brand = String(item.brand || item.brand_name || "");
                 const title = String(item.name || item.title || "");
                 const meta = String(item.meta || "");
-                const isFeatured = item.featured === true || i === 0;
-                const gradient = String(item.gradient || `rc-${(i % 5) + 1}`);
+                const gradient = String(item.gradient || `rc-${(idx % 5) + 1}`);
                 const imageUrl = String(item.image_url || "");
                 const mediaType = String(item.media_type || "image");
+                const aspect = String(item.aspect_ratio || "landscape");
                 const hasMedia = !!imageUrl;
                 const isVideo = hasMedia && mediaType === "video";
+                const cardClass = isFeatured
+                  ? `hp-campaigns-featured ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}`
+                  : `hp-card ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}${aspect === "portrait" ? " hp-card-portrait" : ""}`;
+
                 return (
                   <div
-                    key={i}
-                    className={`hp-card ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}${isFeatured ? " hp-card-featured" : ""}`}
-                    style={hasMedia && !isVideo ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : isVideo ? { overflow: "hidden" } : undefined}
+                    key={idx}
+                    className={cardClass}
+                    style={hasMedia && !isVideo ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
                   >
                     {isVideo && (
-                      <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} src={imageUrl} />
+                      <video autoPlay muted loop playsInline preload="auto" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} src={imageUrl} />
                     )}
                     {hasMedia && <div className="hp-card-overlay" />}
                     <div style={{ position: "relative", zIndex: 1 }}>
@@ -476,8 +504,19 @@ export default async function HomepagePage() {
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              };
+
+              return (
+                <>
+                  {featured && renderCard(featured, true, fi)}
+                  {rest.length > 0 && (
+                    <div className="hp-campaigns-grid">
+                      {rest.map((item, i) => renderCard(item, false, i))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </section>
         ) : null;
       })()}

@@ -10,7 +10,7 @@ const PAGE_ID = "1e2328e1-26d0-41c5-8876-8af003a22a6a";
 type Tab = "hero" | "sections" | "settings";
 
 interface StatItem { value: string; label: string }
-interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; media_type?: "image" | "video"; campaign_id?: string }
+interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; media_type?: "image" | "video"; aspect_ratio?: "landscape" | "portrait"; campaign_id?: string }
 interface AthleteItem { name: string; sport: string; school: string; gradient: string }
 interface BrandItem { name: string; logo_url: string }
 interface ServiceItem { name: string; desc: string; accent: boolean }
@@ -405,6 +405,11 @@ export default function HomepageEditorPage() {
                               <button key={g.key} onClick={() => { const items = [...getCampaigns()]; items[i] = { ...items[i], gradient: g.key }; updateSectionItems("featured_campaigns", "campaigns", items); }}
                                 style={{ width: 22, height: 22, borderRadius: 4, background: g.color, border: c.gradient === g.key ? "2px solid #D73F09" : "2px solid transparent", cursor: "pointer" }} title={g.key} />
                             ))}
+                            <span style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
+                            <button onClick={() => { const items = [...getCampaigns()]; items[i] = { ...items[i], aspect_ratio: (c.aspect_ratio || "landscape") === "landscape" ? "portrait" : "landscape" }; updateSectionItems("featured_campaigns", "campaigns", items); }}
+                              style={{ ...S.btnSmall, fontSize: 10, padding: "3px 8px", color: c.aspect_ratio === "portrait" ? "#D73F09" : "rgba(255,255,255,0.4)", borderColor: c.aspect_ratio === "portrait" ? "#D73F09" : "rgba(255,255,255,0.15)" }}
+                              title="Toggle landscape/portrait"
+                            >{c.aspect_ratio === "portrait" ? "Portrait" : "Landscape"}</button>
                           </div>
                         </div>
                       </div>
@@ -611,7 +616,7 @@ export default function HomepageEditorPage() {
             updateSectionItems("featured_campaigns", "campaigns", items);
           } else {
             // Adding new campaign from full flow
-            const newItem: CampaignItem = { brand: item.brand, name: item.campaign, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false, image_url: item.url, media_type: item.type, campaign_id: item.campaign_id };
+            const newItem: CampaignItem = { brand: item.brand, name: item.campaign, meta: "", gradient: `rc-${(getCampaigns().length % 5) + 1}`, featured: false, image_url: item.url, media_type: item.type, aspect_ratio: "landscape", campaign_id: item.campaign_id };
             updateSectionItems("featured_campaigns", "campaigns", [...getCampaigns(), newItem]);
           }
           setMediaPickerOpen(false);
