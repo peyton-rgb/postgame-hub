@@ -8,23 +8,38 @@ import { TopPerformerMedia } from "./TopPerformerMedia";
 
 // ── Masonry Card ─────────────────────────────────────────────
 
-const CARD_RATIOS = ["1/1", "9/16", "4/5", "16/9"] as const;
+const DEFAULT_RATIOS = ["1/1", "9/16", "4/5"] as const;
 const VIDEO_SAFE_RATIOS = ["9/16", "4/5"] as const;
 
 function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { athlete: Athlete; items: Media[]; activeFilter: string; cardIndex: number }) {
-  // If athlete has a video, only allow portrait ratios (9:16 or 4:5)
-  const hasVideo = rawItems.some((m) => m.type === "video");
-  const ratios = hasVideo ? VIDEO_SAFE_RATIOS : CARD_RATIOS;
-  const cardRatio = ratios[cardIndex % ratios.length];
-
   // When photo filter is active, exclude video items from the carousel
   const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
   const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
 
+  const hasVideo = rawItems.some((m) => m.type === "video");
+  const defaultRatio = hasVideo
+    ? VIDEO_SAFE_RATIOS[cardIndex % VIDEO_SAFE_RATIOS.length]
+    : DEFAULT_RATIOS[cardIndex % DEFAULT_RATIOS.length];
+
+  const [cardRatio, setCardRatio] = useState(defaultRatio);
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Detect wide content: upgrade to 16:9 if cover image is landscape and no video
+  useEffect(() => {
+    if (hasVideo) return;
+    const coverImg = rawItems.find((m) => m.type === "image");
+    if (!coverImg) return;
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth > img.naturalHeight * 1.2) {
+        setCardRatio("16/9");
+      }
+    };
+    img.src = coverImg.file_url;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const current = items[slideIdx];
   const isVideo = current?.type === "video";
