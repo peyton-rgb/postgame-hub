@@ -36,9 +36,10 @@ body {
   }
 }
 
-/* 16:9 cards span full width of masonry grid */
-.column-span-all {
+/* 16:9 cards break out of column to ~75% grid width */
+.wide-card {
   column-span: all;
+  max-width: 75%;
 }
 
 /* Masonry responsive columns */

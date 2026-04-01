@@ -90,7 +90,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
 
   return (
     <div
-      className={`media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black${cardRatio === "16/9" ? " column-span-all" : ""}`}
+      className={`media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black${cardRatio === "16/9" ? " wide-card" : ""}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onMouseMove={keepControlsVisible}
