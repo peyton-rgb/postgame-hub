@@ -9,10 +9,13 @@ import { TopPerformerMedia } from "./TopPerformerMedia";
 // ── Masonry Card ─────────────────────────────────────────────
 
 const CARD_RATIOS = ["1/1", "9/16", "4/5", "16/9"] as const;
+const VIDEO_SAFE_RATIOS = ["9/16", "4/5"] as const;
 
 function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { athlete: Athlete; items: Media[]; activeFilter: string; cardIndex: number }) {
-  // Stable random aspect ratio per card based on cardIndex
-  const cardRatio = CARD_RATIOS[cardIndex % CARD_RATIOS.length];
+  // If athlete has a video, only allow portrait ratios (9:16 or 4:5)
+  const hasVideo = rawItems.some((m) => m.type === "video");
+  const ratios = hasVideo ? VIDEO_SAFE_RATIOS : CARD_RATIOS;
+  const cardRatio = ratios[cardIndex % ratios.length];
 
   // When photo filter is active, exclude video items from the carousel
   const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
