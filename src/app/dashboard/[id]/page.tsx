@@ -821,6 +821,7 @@ export default function CampaignEditor() {
           athleteName={athletes.find((a) => a.id === pendingVideo.athleteId)?.name || ""}
           onUpload={async (file) => await uploadVideoWithThumbnail(file)}
           onCancel={() => setPendingVideo(null)}
+          videoFile={pendingVideo.file}
         />
       )}
 
