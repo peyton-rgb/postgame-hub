@@ -90,7 +90,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
 
   return (
     <div
-      className={`media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black${cardRatio === "16/9" ? " wide-card" : ""}`}
+      className="media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onMouseMove={keepControlsVisible}
@@ -284,6 +284,30 @@ export function CampaignRecap({
     if (filter === "photo") return items.some((m) => m.type === "image");
     return items.some((m) => m.type === "video");
   });
+
+  // Detect athletes with landscape videos to render them as full-width cards above masonry
+  const [wideAthleteIds, setWideAthleteIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const detected = new Set<string>();
+    let pending = 0;
+    athletes.forEach((a) => {
+      const vid = (media[a.id] || []).find((m) => m.type === "video");
+      if (!vid) return;
+      pending++;
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        if (video.videoWidth > video.videoHeight * 1.2) detected.add(a.id);
+        pending--;
+        if (pending === 0 && detected.size > 0) setWideAthleteIds(new Set(detected));
+      };
+      video.onerror = () => { pending--; if (pending === 0 && detected.size > 0) setWideAthleteIds(new Set(detected)); };
+      video.src = vid.file_url;
+    });
+  }, [athletes, media]);
+
+  const wideFiltered = filtered.filter((a) => wideAthleteIds.has(a.id));
+  const normalFiltered = filtered.filter((a) => !wideAthleteIds.has(a.id));
 
   const contentTypes = [
     stats.igFeedPosts > 0 && "IG Feed",
@@ -754,10 +778,19 @@ export function CampaignRecap({
               ))}
             </div>
           </div>
-          <div data-masonry style={{ columnCount: cols, columnGap: 8 }} className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            {filtered.map((a, i) => (
-              <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
-            ))}
+          <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
+            {wideFiltered.length > 0 && (
+              <div className="mb-2 flex flex-col gap-2">
+                {wideFiltered.map((a, i) => (
+                  <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
+                ))}
+              </div>
+            )}
+            <div data-masonry style={{ columnCount: cols, columnGap: 8 }}>
+              {normalFiltered.map((a, i) => (
+                <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + wideFiltered.length} />
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -36,12 +36,6 @@ body {
   }
 }
 
-/* 16:9 cards break out of column to ~75% grid width */
-.wide-card {
-  column-span: all;
-  max-width: 75%;
-}
-
 /* Masonry responsive columns */
 @media (max-width: 768px) {
   .recap-container [data-masonry] {
