@@ -8,7 +8,12 @@ import { TopPerformerMedia } from "./TopPerformerMedia";
 
 // ── Masonry Card ─────────────────────────────────────────────
 
+const CARD_RATIOS = ["1/1", "9/16", "4/5", "16/9"] as const;
+
 function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { athlete: Athlete; items: Media[]; activeFilter: string; cardIndex: number }) {
+  // Stable random aspect ratio per card based on cardIndex
+  const cardRatio = CARD_RATIOS[cardIndex % CARD_RATIOS.length];
+
   // When photo filter is active, exclude video items from the carousel
   const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
   const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
@@ -16,12 +21,12 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const current = items[slideIdx];
   const isVideo = current?.type === "video";
-  const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : null);
+  const coverImage = items.find((m) => m.type === "image");
+  const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : coverImage?.file_url ?? null);
   const postUrl = getPostUrl(athlete);
 
   const keepControlsVisible = useCallback(() => {
@@ -62,30 +67,22 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
     >
       <div className="relative overflow-hidden">
         {isVideo && playing ? (
-          <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1]" onEnded={() => setPlaying(false)} />
+          <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1] object-cover" style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }} onEnded={() => setPlaying(false)} />
         ) : displaySrc ? (
           <img
             src={displaySrc}
-            className={`w-full block object-cover ${isVideo ? "aspect-[9/16]" : naturalRatio ? "" : "aspect-[4/5]"}`}
-            style={!isVideo && naturalRatio ? { aspectRatio: `${naturalRatio}` } : undefined}
+            className="w-full block object-cover"
+            style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
             draggable={false}
             alt={athlete.name}
             loading="lazy"
-            onLoad={(e) => {
-              if (!isVideo && !naturalRatio) {
-                const img = e.currentTarget;
-                if (img.naturalWidth && img.naturalHeight) {
-                  setNaturalRatio(img.naturalWidth / img.naturalHeight);
-                }
-              }
-            }}
           />
         ) : isVideo ? (
-          <div className="w-full aspect-[4/5] bg-black flex items-center justify-center" onClick={() => setPlaying(true)}>
+          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }} onClick={() => setPlaying(true)}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           </div>
         ) : (
-          <div className="w-full aspect-[4/5] bg-black flex items-center justify-center">
+          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }}>
             <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
           </div>
         )}
