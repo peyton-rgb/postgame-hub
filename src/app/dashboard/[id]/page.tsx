@@ -638,27 +638,29 @@ export default function CampaignEditor() {
       if (pathParts.length >= 2) {
         const folderName = pathParts[pathParts.length - 2].toLowerCase().replace(/[_-]+/g, " ").trim();
         for (const a of athleteList) {
-          const nameLower = a.name.toLowerCase();
+          const nameLower = a.name.trim().toLowerCase();
           if (folderName === nameLower) return a;
           // Check if folder contains first and last name
           const parts = nameLower.split(" ").filter((p) => p.length > 2);
           if (parts.length >= 2 && parts.every((p) => folderName.includes(p))) return a;
           // Check last name match on folder
-          const lastName = nameLower.split(" ").pop() || "";
-          if (lastName.length >= 4 && folderName.includes(lastName) && nameLower.split(" ").some((p) => folderName.includes(p))) return a;
+          const nameParts = nameLower.split(" ").filter(Boolean);
+          const lastName = nameParts[nameParts.length - 1] || "";
+          if (lastName.length >= 4 && folderName.includes(lastName) && nameParts.some((p) => folderName.includes(p))) return a;
         }
       }
     }
 
     // Try exact match first
     for (const a of athleteList) {
-      if (a.name.toLowerCase() === clean) return a;
+      if (a.name.trim().toLowerCase() === clean) return a;
     }
 
     // Try last name match
     for (const a of athleteList) {
-      const parts = a.name.toLowerCase().split(" ");
+      const parts = a.name.trim().toLowerCase().split(" ").filter(Boolean);
       const lastName = parts[parts.length - 1];
+      if (!lastName) continue;
       if (clean === lastName) return a;
       // filename might be "lastname_firstname" or "firstname_lastname"
       if (clean.includes(lastName) && parts.some((p) => clean.includes(p))) return a;
@@ -666,15 +668,15 @@ export default function CampaignEditor() {
 
     // Try first + last anywhere in filename
     for (const a of athleteList) {
-      const parts = a.name.toLowerCase().split(" ").filter((p) => p.length > 2);
+      const parts = a.name.trim().toLowerCase().split(" ").filter((p) => p.length > 2);
       if (parts.length >= 2 && parts.every((p) => clean.includes(p))) return a;
     }
 
     // Try just last name if it's unique enough (4+ chars)
     for (const a of athleteList) {
-      const parts = a.name.toLowerCase().split(" ");
+      const parts = a.name.trim().toLowerCase().split(" ").filter(Boolean);
       const lastName = parts[parts.length - 1];
-      if (lastName.length >= 4 && clean.includes(lastName)) return a;
+      if (lastName && lastName.length >= 4 && clean.includes(lastName)) return a;
     }
 
     return null;
