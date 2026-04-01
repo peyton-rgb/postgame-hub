@@ -136,32 +136,43 @@ const globalStyles = `
   .hp-section-title { font-size: clamp(36px, 5vw, 56px); margin: 0 0 12px; }
   .hp-section-sub { font-size: 15px; color: var(--text-muted); margin: 0 0 48px; max-width: 500px; }
 
-  /* Campaign featured hero */
-  .hp-campaigns-featured {
+  /* Campaign hero (featured) */
+  .hp-campaigns-hero {
     border: 1px solid var(--border); border-radius: 16px;
-    overflow: hidden; position: relative; min-height: 400px;
+    overflow: hidden; position: relative; min-height: 420px;
     display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 40px; margin-bottom: 24px;
+    padding: 48px; margin-bottom: 16px;
     transition: box-shadow 0.25s;
   }
-  .hp-campaigns-featured:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
-  .hp-campaigns-featured .hp-card-brand { font-size: 13px; }
-  .hp-campaigns-featured .hp-card-title { font-size: clamp(36px, 4vw, 52px); }
-  .hp-campaigns-featured .hp-card-meta { font-size: 14px; }
+  .hp-campaigns-hero:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+  .hp-campaigns-hero .hp-card-brand { font-size: 14px; }
+  .hp-campaigns-hero .hp-card-title { font-size: clamp(32px, 5vw, 48px); }
+  .hp-campaigns-hero .hp-card-meta { font-size: 14px; }
+  .hp-campaigns-hero .hp-card-overlay { background: linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.85) 100%); }
 
-  /* Campaign grid (non-featured) */
-  .hp-campaigns-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  /* Campaign masonry (non-featured) */
+  .hp-campaigns-masonry { column-count: 3; column-gap: 16px; }
   .hp-card {
     border: 1px solid var(--border); border-radius: 16px;
     overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
     display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 28px; min-height: 220px; position: relative;
+    padding: 28px; min-height: 260px; position: relative;
+    break-inside: avoid; margin-bottom: 16px;
   }
   .hp-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
-  .hp-card-portrait { aspect-ratio: 3/4; min-height: unset; }
-  .hp-card-brand { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); margin-bottom: 8px; }
-  .hp-card-title { font-size: 28px; line-height: 1.05; margin: 0 0 10px; }
+  .hp-card-portrait { min-height: 360px; }
+  .hp-card-brand { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); margin-bottom: 4px; }
+  .hp-card-title { font-size: 24px; line-height: 1.05; margin: 0 0 6px; }
   .hp-card-meta { font-size: 12px; color: var(--text-muted); }
+
+  /* Card content row with logo */
+  .hp-card-content-row { display: flex; align-items: center; gap: 12px; }
+  .hp-card-logo {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    background: var(--orange); display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; color: #fff; overflow: hidden;
+  }
+  .hp-card-logo img { width: 100%; height: 100%; object-fit: cover; }
 
   /* Legacy grid class kept for other sections */
   .hp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
@@ -252,8 +263,8 @@ const globalStyles = `
     .hp-nav-links { display: none; }
     .hp-nav-mobile-toggle { display: block; }
     .hp-grid { grid-template-columns: repeat(2, 1fr); }
-    .hp-campaigns-grid { grid-template-columns: repeat(2, 1fr); }
-    .hp-campaigns-featured { min-height: 280px; padding: 28px; }
+    .hp-campaigns-masonry { column-count: 2; }
+    .hp-campaigns-hero { min-height: 280px; padding: 28px; }
     .hp-athletes { grid-template-columns: repeat(2, 1fr); }
     .hp-services { grid-template-columns: 1fr; }
     .hp-stats { gap: 32px; flex-wrap: wrap; }
@@ -263,7 +274,7 @@ const globalStyles = `
   }
   @media (max-width: 600px) {
     .hp-grid { grid-template-columns: 1fr; }
-    .hp-campaigns-grid { grid-template-columns: 1fr; }
+    .hp-campaigns-masonry { column-count: 1; }
     .hp-athletes { grid-template-columns: 1fr; }
     .hp-stats { flex-direction: column; align-items: center; gap: 24px; }
   }
@@ -473,7 +484,19 @@ export default async function HomepagePage() {
               const featured = campaigns[fi];
               const rest = campaigns.filter((_, idx) => idx !== fi);
 
-              const renderCard = (item: Record<string, unknown>, isFeatured: boolean, idx: number) => {
+              const renderMedia = (imageUrl: string, isVideo: boolean) => (
+                isVideo
+                  ? <video autoPlay muted loop playsInline preload="auto" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} src={imageUrl} />
+                  : null
+              );
+
+              const renderLogo = (brand: string, logoUrl: string) => (
+                <div className="hp-card-logo">
+                  {logoUrl ? <img src={logoUrl} alt={brand} /> : brand.charAt(0).toUpperCase()}
+                </div>
+              );
+
+              const renderCardContent = (item: Record<string, unknown>, isHero: boolean, idx: number) => {
                 const brand = String(item.brand || item.brand_name || "");
                 const title = String(item.name || item.title || "");
                 const meta = String(item.meta || "");
@@ -481,26 +504,31 @@ export default async function HomepagePage() {
                 const imageUrl = String(item.image_url || "");
                 const mediaType = String(item.media_type || "image");
                 const aspect = String(item.aspect_ratio || "landscape");
+                const logoUrl = String(item.brand_logo_url || "");
                 const hasMedia = !!imageUrl;
                 const isVideo = hasMedia && mediaType === "video";
-                const cardClass = isFeatured
-                  ? `hp-campaigns-featured ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}`
+
+                const cls = isHero
+                  ? `hp-campaigns-hero ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}`
                   : `hp-card ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}${aspect === "portrait" ? " hp-card-portrait" : ""}`;
 
                 return (
                   <div
                     key={idx}
-                    className={cardClass}
+                    className={cls}
                     style={hasMedia && !isVideo ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
                   >
-                    {isVideo && (
-                      <video autoPlay muted loop playsInline preload="auto" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} src={imageUrl} />
-                    )}
+                    {isVideo && renderMedia(imageUrl, true)}
                     {hasMedia && <div className="hp-card-overlay" />}
                     <div style={{ position: "relative", zIndex: 1 }}>
-                      {brand && <div className="hp-card-brand">{brand}</div>}
-                      <div className="hp-display hp-card-title">{title}</div>
-                      {meta && <div className="hp-card-meta">{meta}</div>}
+                      <div className="hp-card-content-row">
+                        {renderLogo(brand, logoUrl)}
+                        <div>
+                          {brand && <div className="hp-card-brand">{brand}</div>}
+                          <div className="hp-display hp-card-title">{title}</div>
+                          {meta && <div className="hp-card-meta">{meta}</div>}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -508,10 +536,10 @@ export default async function HomepagePage() {
 
               return (
                 <>
-                  {featured && renderCard(featured, true, fi)}
+                  {featured && renderCardContent(featured, true, fi)}
                   {rest.length > 0 && (
-                    <div className="hp-campaigns-grid">
-                      {rest.map((item, i) => renderCard(item, false, i))}
+                    <div className="hp-campaigns-masonry">
+                      {rest.map((item, i) => renderCardContent(item, false, i))}
                     </div>
                   )}
                 </>
