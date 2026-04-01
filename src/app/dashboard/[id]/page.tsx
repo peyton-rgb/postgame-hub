@@ -137,6 +137,8 @@ export default function CampaignEditor() {
 
   // Brand logo state
   const [brandLogoUrl, setBrandLogoUrl] = useState("");
+  const [brandKitLogos, setBrandKitLogos] = useState<{ url: string; label: string }[]>([]);
+  const [brandLogoAutoSet, setBrandLogoAutoSet] = useState(false);
 
   // Key takeaways + KPI targets
   const [keyTakeaways, setKeyTakeaways] = useState("");
@@ -201,6 +203,58 @@ export default function CampaignEditor() {
     });
     setMedia(grouped);
     setLoading(false);
+
+    // Fetch brand kit logos if brand_id exists
+    if (camp?.brand_id) {
+      fetchBrandKitLogos(camp.brand_id, camp.settings?.brand_logo_url || "");
+    }
+  }
+
+  async function fetchBrandKitLogos(brandId: string, currentLogoUrl: string) {
+    const logos: { url: string; label: string }[] = [];
+
+    // 1. Get brand table logos
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("logo_url, logo_light_url, logo_dark_url, logo_mark_url")
+      .eq("id", brandId)
+      .single();
+
+    if (brand) {
+      if (brand.logo_url) logos.push({ url: brand.logo_url, label: "Primary" });
+      if (brand.logo_light_url) logos.push({ url: brand.logo_light_url, label: "Light" });
+      if (brand.logo_dark_url) logos.push({ url: brand.logo_dark_url, label: "Dark" });
+      if (brand.logo_mark_url) logos.push({ url: brand.logo_mark_url, label: "Mark" });
+    }
+
+    // 2. List storage files in brand-kits/{brand_id}/
+    const { data: files } = await supabase.storage
+      .from("campaign-media")
+      .list(`brand-kits/${brandId}`, { limit: 20 });
+
+    if (files) {
+      for (const f of files) {
+        if (f.name && /\.(png|jpg|jpeg|svg|webp)$/i.test(f.name)) {
+          const { data: urlData } = supabase.storage
+            .from("campaign-media")
+            .getPublicUrl(`brand-kits/${brandId}/${f.name}`);
+          if (urlData?.publicUrl) {
+            const alreadyInList = logos.some((l) => l.url === urlData.publicUrl);
+            if (!alreadyInList) {
+              logos.push({ url: urlData.publicUrl, label: f.name.replace(/\.[^.]+$/, "") });
+            }
+          }
+        }
+      }
+    }
+
+    setBrandKitLogos(logos);
+
+    // Auto-populate if no logo is set
+    if (!currentLogoUrl && logos.length > 0) {
+      setBrandLogoUrl(logos[0].url);
+      setBrandLogoAutoSet(true);
+    }
   }
 
   async function importFromTracker(trackerId: string) {
@@ -974,7 +1028,7 @@ export default function CampaignEditor() {
                   <div className="relative">
                     <img src={brandLogoUrl} className="h-16 object-contain bg-white/5 rounded-lg p-2" alt="Brand logo" />
                     <button
-                      onClick={() => setBrandLogoUrl("")}
+                      onClick={() => { setBrandLogoUrl(""); setBrandLogoAutoSet(false); }}
                       className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white/20 text-white text-xs flex items-center justify-center hover:bg-red-600">
                       &times;
                     </button>
@@ -990,14 +1044,44 @@ export default function CampaignEditor() {
                       if (!file) return;
                       const path = `${id}/brand-logo-${Date.now()}-${file.name}`;
                       const url = await uploadFile(file, path);
-                      if (url) setBrandLogoUrl(url);
+                      if (url) { setBrandLogoUrl(url); setBrandLogoAutoSet(false); }
                     };
                     input.click();
                   }}
                   className="px-5 py-2.5 border border-gray-700 rounded-lg text-sm font-bold text-gray-400 hover:text-white hover:border-gray-500">
-                  {brandLogoUrl ? "Replace Logo" : "Upload Logo"}
+                  Upload Custom
                 </button>
               </div>
+              {/* Brand Kit Logo Picker */}
+              {brandKitLogos.length > 0 ? (
+                <div className="mt-3">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">Brand Kit</p>
+                  <div className="flex flex-wrap gap-2">
+                    {brandKitLogos.map((logo, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { setBrandLogoUrl(logo.url); setBrandLogoAutoSet(true); }}
+                        className="flex flex-col items-center gap-1 group"
+                        title={logo.label}
+                      >
+                        <div
+                          className="rounded-lg p-2 flex items-center justify-center"
+                          style={{
+                            width: 72, height: 48,
+                            background: "#111",
+                            border: brandLogoUrl === logo.url ? "2px solid #D73F09" : "1px solid rgba(255,255,255,0.08)",
+                          }}
+                        >
+                          <img src={logo.url} alt={logo.label} style={{ maxHeight: 32, maxWidth: 56, objectFit: "contain" }} />
+                        </div>
+                        <span className="text-[9px] text-gray-500 group-hover:text-gray-300 truncate" style={{ maxWidth: 72 }}>{logo.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : campaign?.brand_id ? (
+                <p className="text-[10px] text-gray-600 mt-2">No logos in brand kit — upload manually</p>
+              ) : null}
               <p className="text-[10px] text-gray-600 mt-1">Displayed in the recap header and footer</p>
             </div>
 
