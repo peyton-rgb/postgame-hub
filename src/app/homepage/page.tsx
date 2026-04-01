@@ -156,12 +156,14 @@ const globalStyles = `
   .hp-card {
     border: 1px solid var(--border); border-radius: 12px;
     overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
-    display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 28px; min-height: 220px; position: relative;
+    position: relative;
     break-inside: avoid; margin-bottom: 16px;
   }
   .hp-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
-  .hp-card-portrait { min-height: 360px; }
+  .hp-card-no-media {
+    min-height: 200px; display: flex; flex-direction: column;
+    justify-content: flex-end; padding: 28px;
+  }
   .hp-card-brand { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); margin-bottom: 4px; }
   .hp-card-title { font-size: 24px; line-height: 1.05; margin: 0 0 6px; }
   .hp-card-meta { font-size: 12px; color: var(--text-muted); }
@@ -184,6 +186,7 @@ const globalStyles = `
   .rc-5 { background: linear-gradient(135deg, #1a1a1a 0%, #1a2a2a 50%, #1e3a3a 100%); }
   .hp-card-has-img { background-size: cover; background-position: center; }
   .hp-card-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.75) 100%); border-radius: 16px; }
+  .hp-card-overlay-bottom { position: absolute; bottom: 0; left: 0; right: 0; padding: 28px; z-index: 1; }
 
   /* Athletes */
   .hp-athletes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
@@ -486,12 +489,6 @@ export default async function HomepagePage() {
               const featured = campaigns[fi];
               const rest = campaigns.filter((_, idx) => idx !== fi);
 
-              const renderMedia = (imageUrl: string, isVideo: boolean) => (
-                isVideo
-                  ? <video autoPlay muted loop playsInline preload="auto" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} src={imageUrl} />
-                  : null
-              );
-
               const renderLogo = (brand: string, logoUrl: string, isHero: boolean) => {
                 const resolvedLogo = logoUrl || brandLogos.get(brand.toLowerCase()) || "";
                 if (resolvedLogo) {
@@ -513,33 +510,57 @@ export default async function HomepagePage() {
                 const gradient = String(item.gradient || `rc-${(idx % 5) + 1}`);
                 const imageUrl = String(item.image_url || "");
                 const mediaType = String(item.media_type || "image");
-                const aspect = String(item.aspect_ratio || "landscape");
                 const logoUrl = String(item.brand_logo_url || "");
+                const focalPoint = String(item.focal_point || "center 20%");
                 const hasMedia = !!imageUrl;
                 const isVideo = hasMedia && mediaType === "video";
 
-                const cls = isHero
-                  ? `hp-campaigns-hero ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}`
-                  : `hp-card ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}${aspect === "portrait" ? " hp-card-portrait" : ""}`;
-
-                return (
-                  <div
-                    key={idx}
-                    className={cls}
-                    style={hasMedia && !isVideo ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-                  >
-                    {isVideo && renderMedia(imageUrl, true)}
-                    {hasMedia && <div className="hp-card-overlay" />}
-                    <div style={{ position: "relative", zIndex: 1 }}>
-                      <div className="hp-card-content-row">
-                        {renderLogo(brand, logoUrl, isHero)}
-                        <div>
-                          {brand && <div className="hp-card-brand">{brand}</div>}
-                          <div className="hp-display hp-card-title">{title}</div>
-                          {meta && <div className="hp-card-meta">{meta}</div>}
-                        </div>
-                      </div>
+                const textContent = (
+                  <div className="hp-card-content-row">
+                    {renderLogo(brand, logoUrl, isHero)}
+                    <div>
+                      {brand && <div className="hp-card-brand">{brand}</div>}
+                      <div className="hp-display hp-card-title">{title}</div>
+                      {meta && <div className="hp-card-meta">{meta}</div>}
                     </div>
+                  </div>
+                );
+
+                // ── Hero card (keeps min-height, background-image/video approach) ──
+                if (isHero) {
+                  const cls = `hp-campaigns-hero ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}`;
+                  return (
+                    <div
+                      key={idx}
+                      className={cls}
+                      style={hasMedia && !isVideo ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: focalPoint } : undefined}
+                    >
+                      {isVideo && <video autoPlay muted loop playsInline preload="auto" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: focalPoint }} src={imageUrl} />}
+                      {hasMedia && <div className="hp-card-overlay" />}
+                      <div style={{ position: "relative", zIndex: 1 }}>{textContent}</div>
+                    </div>
+                  );
+                }
+
+                // ── Masonry card WITHOUT media (gradient fallback) ──
+                if (!hasMedia) {
+                  return (
+                    <div key={idx} className={`hp-card hp-card-no-media ${gradient}`}>
+                      {textContent}
+                    </div>
+                  );
+                }
+
+                // ── Masonry card WITH media (natural aspect ratio sizing) ──
+                return (
+                  <div key={idx} className="hp-card">
+                    {isVideo ? (
+                      <video autoPlay muted loop playsInline preload="auto" style={{ width: "100%", height: "auto", display: "block", objectPosition: focalPoint }} src={imageUrl} />
+                    ) : (
+                      <img src={imageUrl} alt={title} style={{ width: "100%", height: "auto", display: "block", objectPosition: focalPoint }} />
+                    )}
+                    <div className="hp-card-overlay" />
+                    <div className="hp-card-overlay-bottom">{textContent}</div>
                   </div>
                 );
               };

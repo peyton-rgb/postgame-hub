@@ -10,7 +10,7 @@ const PAGE_ID = "1e2328e1-26d0-41c5-8876-8af003a22a6a";
 type Tab = "hero" | "sections" | "settings";
 
 interface StatItem { value: string; label: string }
-interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; media_type?: "image" | "video"; aspect_ratio?: "landscape" | "portrait"; campaign_id?: string }
+interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; media_type?: "image" | "video"; aspect_ratio?: "landscape" | "portrait"; campaign_id?: string; focal_point?: string }
 interface AthleteItem { name: string; sport: string; school: string; gradient: string }
 interface BrandItem { name: string; logo_url: string }
 interface ServiceItem { name: string; desc: string; accent: boolean }
@@ -410,6 +410,18 @@ export default function HomepageEditorPage() {
                               style={{ ...S.btnSmall, fontSize: 10, padding: "3px 8px", color: c.aspect_ratio === "portrait" ? "#D73F09" : "rgba(255,255,255,0.4)", borderColor: c.aspect_ratio === "portrait" ? "#D73F09" : "rgba(255,255,255,0.15)" }}
                               title="Toggle landscape/portrait"
                             >{c.aspect_ratio === "portrait" ? "Portrait" : "Landscape"}</button>
+                            <select
+                              value={c.focal_point || "center 20%"}
+                              onChange={(e) => { const items = [...getCampaigns()]; items[i] = { ...items[i], focal_point: e.target.value }; updateSectionItems("featured_campaigns", "campaigns", items); }}
+                              style={{ ...S.gradientSelect, fontSize: 10, padding: "3px 6px" }}
+                              title="Focal point (face positioning)"
+                            >
+                              <option value="center 20%">Top (faces)</option>
+                              <option value="center center">Center</option>
+                              <option value="center 80%">Bottom</option>
+                              <option value="center 30%">Upper third</option>
+                              <option value="center 40%">Mid-upper</option>
+                            </select>
                           </div>
                         </div>
                       </div>
