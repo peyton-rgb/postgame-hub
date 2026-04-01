@@ -208,9 +208,9 @@ const globalStyles = `
     position: absolute; bottom: 0; left: 0; right: 0; padding: 20px;
   }
   .hp-athlete-brand-logo {
-    position: absolute; top: 12px; right: 12px;
+    position: absolute; top: 12px; left: 12px;
     height: 24px; max-width: 60px; object-fit: contain;
-    opacity: 0.7; filter: brightness(2);
+    opacity: 0.7; z-index: 2;
   }
   .hp-athlete-sport {
     font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
