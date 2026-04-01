@@ -210,7 +210,8 @@ const globalStyles = `
   .hp-athlete-brand-logo {
     position: absolute; top: 12px; left: 12px;
     height: 24px; max-width: 60px; object-fit: contain;
-    opacity: 0.7; z-index: 2;
+    opacity: 0.85; z-index: 2;
+    filter: brightness(0) invert(1);
   }
   .hp-athlete-sport {
     font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
@@ -504,9 +505,10 @@ export default async function HomepagePage() {
               const renderLogo = (brand: string, logoUrl: string, isHero: boolean) => {
                 const resolvedLogo = logoUrl || brandLogos.get(brand.toLowerCase()) || "";
                 if (resolvedLogo) {
+                  const logoFilter = { filter: 'brightness(0) invert(1)', opacity: 0.85 } as const;
                   return isHero
-                    ? <img src={resolvedLogo} alt={brand} style={{ height: 44, maxWidth: 120, objectFit: 'contain' as const }} />
-                    : <img src={resolvedLogo} alt={brand} style={{ height: 32, maxWidth: 80, objectFit: 'contain' as const }} />;
+                    ? <img src={resolvedLogo} alt={brand} style={{ height: 44, maxWidth: 120, objectFit: 'contain' as const, ...logoFilter }} />
+                    : <img src={resolvedLogo} alt={brand} style={{ height: 32, maxWidth: 80, objectFit: 'contain' as const, ...logoFilter }} />;
                 }
                 return (
                   <div className="hp-card-logo">
