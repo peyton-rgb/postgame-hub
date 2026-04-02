@@ -12,8 +12,6 @@
    - Display:      Bebas Neue
    ═══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
-
 /* ── Tokens ── */
 :root {
   --orange:       #D73F09;
@@ -67,7 +65,7 @@ a { color: inherit; text-decoration: none; }
 img, video { display: block; max-width: 100%; }
 
 /* ── Display font ── */
-.d { font-family: 'Bebas Neue', Arial, sans-serif; letter-spacing: 0.02em; }
+.d { font-family: var(--font-bebas), var(--font-bebas), 'Bebas Neue', Arial, sans-serif; letter-spacing: 0.02em; }
 
 /* ════════════════════════════════════════════════════════════
    NAV  —  never override these with per-page styles
@@ -90,7 +88,7 @@ img, video { display: block; max-width: 100%; }
 .pg-nav.solid { background: rgba(0, 0, 0, 0.85); }
 
 .pg-nav-logo {
-  font-family: 'Bebas Neue', Arial, sans-serif;
+  font-family: var(--font-bebas), 'Bebas Neue', Arial, sans-serif;
   font-size: 26px;
   letter-spacing: 0.04em;
   color: var(--orange) !important;
@@ -331,7 +329,7 @@ img, video { display: block; max-width: 100%; }
 }
 
 .pg-section-title {
-  font-family: 'Bebas Neue', Arial, sans-serif;
+  font-family: var(--font-bebas), 'Bebas Neue', Arial, sans-serif;
   font-size: clamp(40px, 5vw, 64px);
   line-height: 0.95;
   letter-spacing: 0.02em;

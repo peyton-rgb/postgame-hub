@@ -70,15 +70,15 @@ export default async function HomepagePage() {
   return (
     <div className="pg-page">
       <style>{`
-        .hp-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 24px 80px;position:relative;overflow:hidden;}
+        .hp-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:80px 24px 64px;position:relative;overflow:hidden;}
         .hp-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(215,63,9,0.18) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(215,63,9,0.06) 0%,transparent 50%);pointer-events:none;}
         .hp-hero-inner{position:relative;z-index:1;max-width:860px;}
-        .hp-hero-title{font-size:clamp(72px,12vw,140px);line-height:0.9;letter-spacing:0.01em;margin:16px 0 28px;background:linear-gradient(160deg,#fff 40%,rgba(255,255,255,0.55) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .hp-hero-title{font-size:clamp(72px,12vw,140px);line-height:0.9;letter-spacing:0.01em;margin:16px 0 28px;color:#fff;}
         .hp-hero-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.6);max-width:540px;margin:0 auto;}
         .hp-stats{display:flex;justify-content:center;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);}
         .hp-stat{flex:1;max-width:220px;padding:36px 24px;text-align:center;border-right:1px solid rgba(255,255,255,0.08);}
         .hp-stat:last-child{border-right:none;}
-        .hp-stat-num{font-family:'Bebas Neue',Arial,sans-serif;font-size:52px;line-height:1;color:var(--orange);letter-spacing:0.02em;}
+        .hp-stat-num{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:52px;line-height:1;color:var(--orange);letter-spacing:0.02em;}
         .hp-stat-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.18em;color:rgba(255,255,255,0.4);margin-top:6px;}
         .hp-sec{padding:96px 48px;}
         .hp-sec-alt{padding:96px 48px;background:rgba(255,255,255,0.015);}
@@ -92,7 +92,7 @@ export default async function HomepagePage() {
         .hp-card-body{padding:20px 24px 24px;}
         .hp-card-nm{min-height:180px;display:flex;flex-direction:column;justify-content:flex-end;padding:24px;}
         .hp-card-brand{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--orange);margin-bottom:4px;}
-        .hp-card-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:28px;line-height:1;}
+        .hp-card-title{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:28px;line-height:1;}
         .hp-card-meta{font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px;}
         .hp-athletes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px;}
         .hp-athlete{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:3/4;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);transition:border-color 0.2s,transform 0.25s;}
@@ -101,7 +101,7 @@ export default async function HomepagePage() {
         .hp-athlete-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.82) 0%,transparent 50%);}
         .hp-athlete-info{position:absolute;bottom:0;left:0;right:0;padding:20px;}
         .hp-athlete-sport{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--orange);margin-bottom:4px;}
-        .hp-athlete-name{font-family:'Bebas Neue',Arial,sans-serif;font-size:26px;line-height:1;}
+        .hp-athlete-name{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:26px;line-height:1;}
         .hp-athlete-school{font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;}
         .hp-brands-wrap{padding:64px 48px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);}
         .hp-brands-row{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;margin-top:36px;}
@@ -121,7 +121,7 @@ export default async function HomepagePage() {
         .hp-cta{padding:120px 24px;text-align:center;position:relative;overflow:hidden;}
         .hp-cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 100%,rgba(215,63,9,0.14) 0%,transparent 60%);pointer-events:none;}
         .hp-cta-inner{position:relative;z-index:1;}
-        .hp-cta-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(56px,8vw,96px);line-height:0.92;letter-spacing:0.02em;margin-bottom:20px;}
+        .hp-cta-title{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:clamp(56px,8vw,96px);line-height:0.92;letter-spacing:0.02em;margin-bottom:20px;}
         .hp-cta-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.55);max-width:480px;margin:0 auto 40px;}
         .rc-1{background:linear-gradient(135deg,#1a1a2e,#0f3460);}
         .rc-2{background:linear-gradient(135deg,#1a1a1a,#3d1f14);}
@@ -239,7 +239,7 @@ export default async function HomepagePage() {
                   <div key={i} className="hp-athlete">
                     {item.image_url
                       ? <img src={String(item.image_url)} alt={name}/>
-                      : <div style={{width:"100%",height:"100%",background:"rgba(215,63,9,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48,fontWeight:900,color:"var(--orange)",fontFamily:"'Bebas Neue',Arial,sans-serif"}}>{name.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+                      : <div style={{width:"100%",height:"100%",background:"rgba(215,63,9,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48,fontWeight:900,color:"var(--orange)",fontFamily:"var(--font-bebas),'Bebas Neue',Arial,sans-serif"}}>{name.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
                     }
                     <div className="hp-athlete-overlay"/>
                     <div className="hp-athlete-info">
