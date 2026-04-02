@@ -45,7 +45,7 @@ export default async function BriefPage({ params }: Props) {
         srcDoc={cleanHtml}
         className="w-full border-0"
         style={{ minHeight: "100vh" }}
-        sandbox="allow-same-origin"
+       
       />
     </div>
   );
