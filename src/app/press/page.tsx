@@ -2,13 +2,11 @@ import { createPlainSupabase } from "@/lib/supabase";
 import type { PressArticle } from "@/lib/types";
 import type { Metadata } from "next";
 import PressContent from "./PressContent";
+import SiteFooter from "@/components/SiteFooter";
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: "Press | Postgame",
-};
-
+export const metadata: Metadata = { title: "Press | Postgame" };
 
 export default async function PressPage() {
   const supabase = createPlainSupabase();
@@ -22,14 +20,26 @@ export default async function PressPage() {
   const allArticles = (articles || []) as PressArticle[];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0A0A0A", color: "#fff", fontFamily: "Arial, Helvetica, sans-serif" }}>
-{/* Nav */}
-{/* Hero */}
-      <div className="press-hero">
-        <div className="press-eyebrow">Media & Coverage</div>
-        <h1 className="press-title">Press & News</h1>
-        <p className="press-desc">The latest press coverage and media highlights from Postgame NIL campaigns.</p>
-        <div className="press-divider" />
+    <div style={{ minHeight: "100vh", background: "#000", color: "#fff", fontFamily: "Arial, Helvetica, sans-serif" }}>
+      {/* Hero */}
+      <div style={{
+        paddingTop: 140,
+        paddingBottom: 64,
+        paddingLeft: 48,
+        paddingRight: 48,
+        textAlign: "center",
+        background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(215,63,9,0.15) 0%, transparent 60%)",
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 20, fontFamily: "Arial, sans-serif" }}>
+          Media &amp; Coverage
+        </div>
+        <h1 className="d" style={{ fontSize: "clamp(56px, 8vw, 96px)", lineHeight: 0.92, margin: "0 0 20px", letterSpacing: "0.02em" }}>
+          Press &amp; News
+        </h1>
+        <p style={{ fontSize: 24, lineHeight: 1.4, color: "rgba(255,255,255,0.55)", maxWidth: 540, margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
+          The latest press coverage and media highlights from Postgame NIL campaigns.
+        </p>
+        <div style={{ width: 48, height: 3, background: "#D73F09", margin: "32px auto 0" }} />
       </div>
 
       {/* Content */}
@@ -37,31 +47,7 @@ export default async function PressPage() {
         <PressContent articles={allArticles} />
       </div>
 
-      {/* Footer */}
-      <footer>
-        <div className="pg-footer">
-          <div>
-            <a href="/homepage"><img src="/postgame-logo.png" alt="Postgame" style={{ height: 28, width: "auto" }} /></a>
-            <p className="pg-footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p>
-          </div>
-          <div>
-            <div className="pg-footer-col-title">Company</div>
-            <ul className="pg-footer-links"><li><a href="/about/team">About</a></li><li><a href="/services/elevated">Services</a></li><li><a href="/contact">Contact</a></li></ul>
-          </div>
-          <div>
-            <div className="pg-footer-col-title">Network</div>
-            <ul className="pg-footer-links"><li><a href="/clients">Clients</a></li><li><a href="/campaigns">Campaigns</a></li><li><a href="/deals">Deal Tracker</a></li></ul>
-          </div>
-          <div>
-            <div className="pg-footer-col-title">Connect</div>
-            <ul className="pg-footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul>
-          </div>
-        </div>
-        <div className="pg-footer-bottom">
-          <div className="pg-footer-copy">&copy; {new Date().getFullYear()} Postgame. All rights reserved.</div>
-          <div className="pg-footer-socials"><a href="#">Privacy</a><a href="#">Terms</a><a href="/contact">Contact</a></div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
