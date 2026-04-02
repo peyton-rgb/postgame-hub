@@ -17,192 +17,102 @@ function isWithinRange(dateStr: string, filter: string): boolean {
   const d = new Date(dateStr);
   const now = new Date();
   switch (filter) {
-    case "month": {
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }
-    case "3months": {
-      const cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - 3);
-      return d >= cutoff;
-    }
-    case "6months": {
-      const cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - 6);
-      return d >= cutoff;
-    }
-    case "year": {
-      return d.getFullYear() === now.getFullYear();
-    }
-    default:
-      return true;
+    case "month": return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    case "3months": { const c = new Date(); c.setMonth(c.getMonth() - 3); return d >= c; }
+    case "6months": { const c = new Date(); c.setMonth(c.getMonth() - 6); return d >= c; }
+    case "year": return d.getFullYear() === now.getFullYear();
+    default: return true;
   }
 }
 
 export default function PressContent({ articles }: { articles: PressArticle[] }) {
   const [filter, setFilter] = useState("all");
 
-  // Split into dated and undated
-  const datedArticles = articles
-    .filter((a) => a.published_date)
+  const dated = articles.filter((a) => a.published_date)
     .sort((a, b) => new Date(b.published_date!).getTime() - new Date(a.published_date!).getTime());
-  const undatedArticles = articles.filter((a) => !a.published_date);
-
-  // Apply date filter to dated articles
-  const filteredDated = filter === "all"
-    ? datedArticles
-    : datedArticles.filter((a) => isWithinRange(a.published_date!, filter));
-
-  // Only show undated articles when "All" is selected
-  const filteredUndated = filter === "all" ? undatedArticles : [];
-
-  // Highlighted = most recent dated article (only in "All" view or if it passes filter)
-  const highlightedArticle = filteredDated.length > 0 ? filteredDated[0] : null;
+  const undated = articles.filter((a) => !a.published_date);
+  const filteredDated = filter === "all" ? dated : dated.filter((a) => isWithinRange(a.published_date!, filter));
+  const filteredUndated = filter === "all" ? undated : [];
+  const featured = filteredDated[0] || null;
   const rest = [...filteredDated.slice(1), ...filteredUndated];
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const fmt = (s: string) => new Date(s).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
-  const renderLogoLockup = (article: PressArticle, size: "sm" | "lg") => {
+  const Logo = (article: PressArticle, size: "sm" | "lg") => {
     if (!article.show_logo) return null;
-    const sizeClasses = size === "lg" ? "h-6 md:h-8" : "h-5 md:h-6";
-    const gapClass = size === "lg" ? "gap-2" : "gap-1.5";
-    const xSize = size === "lg" ? "text-xs" : "text-[10px]";
+    const h = size === "lg" ? 28 : 20;
+    const side = article.logo_position === "bottom-right" ? { right: 12 } : { left: 12 };
     return (
-      <div className={`absolute bottom-${size === "lg" ? "3" : "2"} ${article.logo_position === "bottom-right" ? "right-3" : "left-3"} flex items-center ${gapClass} drop-shadow-lg`}>
-        <img src="/postgame-logo-white.png" alt="Postgame" className={`${sizeClasses} object-contain`} />
-        {article.brand_logo_url && (
-          <>
-            <span className={`text-white/60 ${xSize} font-bold`}>&times;</span>
-            <img src={article.brand_logo_url} alt="" className={`${sizeClasses} object-contain`} />
-          </>
-        )}
+      <div style={{ position: "absolute", bottom: 12, ...side, display: "flex", alignItems: "center", gap: 6, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>
+        <img src="/postgame-logo-white.png" alt="Postgame" style={{ height: h, objectFit: "contain" }} />
+        {article.brand_logo_url && <><span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 700 }}>&times;</span><img src={article.brand_logo_url} alt="" style={{ height: h, objectFit: "contain" }} /></>}
       </div>
     );
   };
 
   return (
     <>
-      {/* Filter Bar */}
-      <div className="flex justify-center gap-2 flex-wrap mb-12">
+      {/* Filters */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap", marginBottom: 48 }}>
         {DATE_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === f.value
-                ? "bg-gray-900 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
+          <button key={f.value} onClick={() => setFilter(f.value)} style={{ padding: "8px 20px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, transition: "all 0.15s", background: filter === f.value ? "#D73F09" : "#141414", color: filter === f.value ? "#fff" : "rgba(255,255,255,0.55)" }}>
             {f.label}
           </button>
         ))}
       </div>
 
-      {/* No results */}
-      {!highlightedArticle && rest.length === 0 && (
-        <p className="text-center text-gray-400 py-16">No articles found for this time period.</p>
-      )}
+      {!featured && rest.length === 0 && <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", padding: "64px 0" }}>No articles found for this period.</p>}
 
-      {/* Highlighted Latest Article */}
-      {highlightedArticle && (
-        <section className="mb-16">
-          <span className="inline-block bg-orange-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
-            Latest
-          </span>
-          <Link href={highlightedArticle.url || "#"} target="_blank" className="group grid md:grid-cols-2 gap-8">
-            <div className="relative rounded-xl overflow-hidden">
-              {highlightedArticle.image_url ? (
-                <img
-                  src={highlightedArticle.image_url}
-                  alt={highlightedArticle.title}
-                  className="w-full h-72 md:h-96 object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="w-full h-72 md:h-96 bg-gray-800 flex items-center justify-center">
-                  <span className="text-gray-500 text-sm">No image</span>
-                </div>
-              )}
-              {renderLogoLockup(highlightedArticle, "lg")}
+      {/* Featured */}
+      {featured && (
+        <section style={{ marginBottom: 64 }}>
+          <span style={{ display: "inline-block", background: "#D73F09", color: "#fff", fontSize: 10, fontWeight: 800, padding: "4px 12px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 20 }}>Latest</span>
+          <Link href={featured.url || "#"} target="_blank" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, textDecoration: "none", color: "inherit" }}>
+            <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", background: "#141414" }}>
+              {featured.image_url
+                ? <img src={featured.image_url} alt={featured.title} style={{ width: "100%", height: 360, objectFit: "cover", display: "block" }} />
+                : <div style={{ width: "100%", height: 360, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "rgba(255,255,255,0.2)", fontSize: 14 }}>No image</span></div>
+              }
+              {Logo(featured, "lg")}
             </div>
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-3 mb-3">
-                {highlightedArticle.category && (
-                  <span className="text-orange-600 text-sm font-bold uppercase tracking-wider">
-                    {highlightedArticle.category}
-                  </span>
-                )}
-                {highlightedArticle.published_date && (
-                  <span className="text-gray-400 text-sm">
-                    {formatDate(highlightedArticle.published_date)}
-                  </span>
-                )}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+                {featured.category && <span style={{ color: "#D73F09", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em" }}>{featured.category}</span>}
+                {featured.published_date && <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>{fmt(featured.published_date)}</span>}
               </div>
-              <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors">
-                {highlightedArticle.title}
-              </h2>
-              {highlightedArticle.description && (
-                <p className="text-gray-600 text-base md:text-lg leading-relaxed">
-                  {highlightedArticle.description}
-                </p>
-              )}
+              <h2 style={{ fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, lineHeight: 1.15, margin: "0 0 16px", color: "#fff" }}>{featured.title}</h2>
+              {featured.description && <p style={{ fontSize: 16, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>{featured.description}</p>}
+              <div style={{ marginTop: 24, color: "#D73F09", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" }}>Read Article →</div>
             </div>
           </Link>
         </section>
       )}
 
-      {/* Divider */}
-      {rest.length > 0 && <hr className="border-gray-200 mb-12" />}
+      {rest.length > 0 && <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", marginBottom: 48 }} />}
 
-      {/* Article Grid */}
+      {/* Grid */}
       {rest.length > 0 && (
-        <section>
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {rest.map((article) => (
-              <Link
-                key={article.id}
-                href={article.url || "#"}
-                target="_blank"
-                className="block group break-inside-avoid"
-              >
-                <div className="rounded-xl overflow-hidden bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                  {article.image_url && (
-                    <div className="relative">
-                      <img
-                        src={article.image_url}
-                        alt={article.title}
-                        className="w-full object-cover"
-                      />
-                      {renderLogoLockup(article, "sm")}
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      {article.category && (
-                        <span className="text-orange-600 text-xs font-bold uppercase tracking-wider">
-                          {article.category}
-                        </span>
-                      )}
-                      {article.published_date && (
-                        <span className="text-gray-400 text-xs">
-                          {formatDate(article.published_date)}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors text-sm md:text-base">
-                      {article.title}
-                    </h3>
+        <div style={{ columns: 3, columnGap: 20 }}>
+          {rest.map((a) => (
+            <Link key={a.id} href={a.url || "#"} target="_blank" style={{ display: "block", breakInside: "avoid", marginBottom: 20, textDecoration: "none", color: "inherit" }}>
+              <div style={{ borderRadius: 14, overflow: "hidden", background: "#141414", border: "1px solid rgba(255,255,255,0.08)", transition: "border-color 0.2s, transform 0.2s" }}>
+                {a.image_url && (
+                  <div style={{ position: "relative" }}>
+                    <img src={a.image_url} alt={a.title} style={{ width: "100%", display: "block" }} />
+                    {Logo(a, "sm")}
                   </div>
+                )}
+                <div style={{ padding: "16px 20px 20px" }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                    {a.category && <span style={{ color: "#D73F09", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em" }}>{a.category}</span>}
+                    {a.published_date && <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>{fmt(a.published_date)}</span>}
+                  </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4, color: "#fff", margin: 0 }}>{a.title}</h3>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </section>
+              </div>
+            </Link>
+          ))}
+        </div>
       )}
     </>
   );

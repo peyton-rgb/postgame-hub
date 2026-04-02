@@ -57,32 +57,62 @@ export default function DealsPage() {
     setTypeFilter("");
   }
 
+  const navStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+    .pg-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 rgba(255,255,255,0.08);}
+    .pg-nav-logo{font-size:22px;font-weight:900;color:#D73F09;text-decoration:none;font-family:Arial,sans-serif;}
+    .pg-nav-links{display:flex;align-items:center;gap:32px;}
+    .pg-nav-links a{color:rgba(255,255,255,0.55);font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.05em;transition:color 0.2s;}
+    .pg-nav-links a:hover{color:#fff;}
+    .pg-btn-outline{padding:8px 20px;border:1.5px solid #D73F09;border-radius:8px;color:#D73F09;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;}
+    .pg-btn-solid{padding:10px 28px;background:#D73F09;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;}
+    .pg-footer{border-top:1px solid rgba(255,255,255,0.08);padding:48px;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;}
+    .pg-footer-brand-desc{font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:240px;margin-top:12px;}
+    .pg-footer-col-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.35);margin-bottom:16px;}
+    .pg-footer-links{list-style:none;padding:0;margin:0;}
+    .pg-footer-links li{margin-bottom:10px;}
+    .pg-footer-links a{font-size:14px;color:rgba(255,255,255,0.55);text-decoration:none;}
+    .pg-footer-links a:hover{color:#fff;}
+    .pg-footer-bottom{border-top:1px solid rgba(255,255,255,0.08);padding:24px 48px;display:flex;align-items:center;justify-content:space-between;}
+    .pg-footer-copy{font-size:12px;color:rgba(255,255,255,0.35);}
+    .pg-footer-socials{display:flex;gap:24px;}
+    .pg-footer-socials a{font-size:12px;color:rgba(255,255,255,0.55);text-decoration:none;}
+    @media(max-width:900px){.pg-nav{padding:14px 24px;}.pg-nav-links{display:none;}.pg-footer{grid-template-columns:1fr 1fr;gap:32px;padding:32px 24px;}.pg-footer-bottom{padding:20px 24px;flex-direction:column;gap:12px;}}
+  `;
+
   return (
     <div className="min-h-screen bg-black text-white" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
+      <style dangerouslySetInnerHTML={{ __html: navStyles }} />
+
+      {/* Nav */}
+      <nav className="pg-nav">
+        <a href="/homepage" className="pg-nav-logo">POSTGAME</a>
+        <div className="pg-nav-links">
+          <a href="/clients">Clients</a>
+          <a href="/campaigns">Campaigns</a>
+          <a href="/about/team">About</a>
+          <a href="/contact" className="pg-btn-outline">Contact</a>
+          <a href="/deals" className="pg-btn-solid">Deal Tracker</a>
+        </div>
+      </nav>
 
       {/* Header */}
-      <div className="border-b border-gray-800">
+      <div className="border-b border-gray-800" style={{ paddingTop: 80 }}>
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-12 md:py-20 text-center">
-          <img
-            src="/postgame-logo-white.png"
-            alt="Postgame"
-            className="h-10 md:h-14 object-contain mx-auto mb-5 md:mb-6"
-          />
+          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: 16 }}>Postgame</div>
           <h1
             className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
-            style={{ fontFamily: "'Bebas Neue', sans-serif", color: "#D73F09" }}
+            style={{ fontFamily: "'Bebas Neue', sans-serif", color: "#fff" }}
           >
-            NIL DEAL TRACKER
+            NIL Deal Tracker
           </h1>
           <p
             className="text-gray-400 max-w-3xl mx-auto"
-            style={{ fontSize: "clamp(14px, 2vw, 24px)", lineHeight: 1.4 }}
+            style={{ fontSize: "clamp(14px, 2vw, 18px)", lineHeight: 1.6 }}
           >
             Postgame is known for our large scale NIL campaigns featuring thousands of college athletes
-            with a wide range of social following across all schools and sports. Below is a sample list
-            of Headliner Athletes that we&apos;ve worked with over the years. Use the filters below to
-            search by sport, school, brand, or campaign type.
+            across all schools and sports. Below is a sample of Headliner Athletes we&apos;ve worked with.
+            Filter by sport, school, brand, or campaign type.
           </p>
         </div>
       </div>
@@ -150,20 +180,30 @@ export default function DealsPage() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-800">
-        <div
-          className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-10 text-center text-gray-600"
-          style={{ fontSize: "clamp(11px, 1.5vw, 18px)", lineHeight: 1.2 }}
-        >
-          <p>&copy; {new Date().getFullYear()} Postgame. All rights reserved.</p>
-          <p className="mt-2">
-            To learn more about promoting your brand through college athletes, contact us at{" "}
-            <a href="mailto:info@pstgm.com" className="text-[#D73F09] hover:underline">
-              info@pstgm.com
-            </a>
-          </p>
+      <footer>
+        <div className="pg-footer">
+          <div>
+            <a href="/homepage"><img src="/postgame-logo.png" alt="Postgame" style={{ height: 28, width: "auto" }} /></a>
+            <p className="pg-footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p>
+          </div>
+          <div>
+            <div className="pg-footer-col-title">Company</div>
+            <ul className="pg-footer-links"><li><a href="/about/team">About</a></li><li><a href="/services/elevated">Services</a></li><li><a href="/contact">Contact</a></li></ul>
+          </div>
+          <div>
+            <div className="pg-footer-col-title">Network</div>
+            <ul className="pg-footer-links"><li><a href="/clients">Clients</a></li><li><a href="/campaigns">Campaigns</a></li><li><a href="/deals">Deal Tracker</a></li></ul>
+          </div>
+          <div>
+            <div className="pg-footer-col-title">Connect</div>
+            <ul className="pg-footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul>
+          </div>
         </div>
-      </div>
+        <div className="pg-footer-bottom">
+          <div className="pg-footer-copy">&copy; {new Date().getFullYear()} Postgame. All rights reserved.</div>
+          <div className="pg-footer-socials"><a href="#">Privacy</a><a href="#">Terms</a><a href="/contact">Contact</a></div>
+        </div>
+      </footer>
     </div>
   );
 }
