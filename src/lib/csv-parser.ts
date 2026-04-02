@@ -88,7 +88,16 @@ function detectDelimiter(line: string): string {
 // Module-level delimiter detected from the first line
 let _detectedDelimiter = ",";
 
+function detectDelimiter(firstLine: string): string {
+  const tabCount = (firstLine.match(/\\t/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  return tabCount > commaCount ? "\t" : ",";
+}
+
+let _delimiter = ",";
+
 function parseCSVLine(line: string): string[] {
+  if (_delimiter === "\t") return line.split("\t").map((s) => s.trim());
   const delimiter = _detectedDelimiter;
   const result: string[] = [];
   let current = "";
@@ -151,7 +160,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const iFullName = findCol(headers, "full name", "fullname", "athlete name", "athletename");
   // "name" column — only match if no first/last columns exist to avoid false matches
   const iName = (iFirst === -1 && iLast === -1) ? findCol(headers, "name", "athlete") : -1;
-  const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername");
+  const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername", "ig link", "ig url", "instagram link", "instagram url");
   const iFollowers = findCol(headers, "ig followers", "followers", "ig_followers", "instagram followers");
   const iContentRating = findCol(headers, "content rating", "content_rating", "contentrating", "rating");
   const iReachLevel = findCol(headers, "reach level", "reach_level", "reachlevel");
@@ -237,7 +246,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iFullName = findCol(headers, "full name", "fullname", "athlete name", "athletename");
   // "name" column — only match if no first/last columns exist to avoid false matches
   const iName = (iFirst === -1 && iLast === -1) ? findCol(headers, "name", "athlete") : -1;
-  const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername");
+  const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername", "ig link", "ig url", "instagram link", "instagram url");
   const iFollowers = findCol(headers, "ig followers", "followers", "ig_followers", "instagram followers");
   const iContentRating = findCol(headers, "content rating", "content_rating", "contentrating", "rating");
   const iReachLevel = findCol(headers, "reach level", "reach_level", "reachlevel");
