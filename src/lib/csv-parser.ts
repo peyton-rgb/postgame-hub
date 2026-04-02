@@ -33,8 +33,8 @@ function parseRate(val: string | undefined): number | undefined {
  * rather than the actual column headers. If so, return row 1 as headers and data starting at row 2.
  * Otherwise, return row 0 as headers and data starting at row 1.
  */
-function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: number } {
-  const row0 = parseCSVLine(lines[0]);
+function detectHeaderRow(lines: string[], delimiter = ","): { headers: string[]; dataStartIndex: number } {
+  const row0 = parseCSVLine(lines[0], delimiter);
 
   // Check if row 0 contains platform group labels (IG FEED POSTS, IG STORY, TIKTOK, etc.)
   // If so, it's always a group label row — even if it also has "First"/"Last" in the identity columns
@@ -44,7 +44,7 @@ function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: 
   });
 
   if (hasPlatformGroups && lines.length >= 2) {
-    return { headers: parseCSVLine(lines[1]), dataStartIndex: 2 };
+    return { headers: parseCSVLine(lines[1], delimiter), dataStartIndex: 2 };
   }
 
   // Check if row 0 contains recognizable column headers
@@ -54,15 +54,15 @@ function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: 
   });
 
   if (hasIdentityHeaders) {
-    return { headers: row0, dataStartIndex: 1 };
+    return { headers: row0, dataStartIndex: 1, };
   }
 
   // Row 0 has neither platform groups nor identity headers — try row 1
   if (lines.length >= 2) {
-    return { headers: parseCSVLine(lines[1]), dataStartIndex: 2 };
+    return { headers: parseCSVLine(lines[1], delimiter), dataStartIndex: 2 };
   }
 
-  return { headers: row0, dataStartIndex: 1 };
+  return { headers: row0, dataStartIndex: 1, };
 }
 
 /** Check if a row should be skipped (CALCULATIONS, totals, blank first name, header leak) */
@@ -75,21 +75,7 @@ function isJunkRow(first: string, last: string): boolean {
   return false;
 }
 
-function detectDelimiter(line: string): string {
-  // If line has tabs and splitting by tab gives more columns than comma, use tab
-  if (line.includes("\t")) {
-    const tabCols = line.split("\t").length;
-    const commaCols = line.split(",").length;
-    if (tabCols > commaCols) return "\t";
-  }
-  return ",";
-}
-
-// Module-level delimiter detected from the first line
-let _detectedDelimiter = ",";
-
-function parseCSVLine(line: string): string[] {
-  const delimiter = _detectedDelimiter;
+function parseCSVLine(line: string, delimiter = ","): string[] {
   const result: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -142,9 +128,9 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   if (lines.length < 2) return [];
 
   // Detect delimiter from the first line
-  _detectedDelimiter = detectDelimiter(lines[0]);
+  const _delimiter = lines[0].includes("\t") && lines[0].split("\t").length > lines[0].split(",").length ? "\t" : ",";
 
-  const { headers, dataStartIndex } = detectHeaderRow(lines);
+  const { headers, dataStartIndex } = detectHeaderRow(lines, _delimiter);
 
   const iFirst = findCol(headers, "first", "firstname", "first name", "fname");
   const iLast = findCol(headers, "last", "lastname", "last name", "lname");
@@ -175,7 +161,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const athletes: ParsedAthlete[] = [];
 
   for (const line of lines.slice(dataStartIndex)) {
-    const cols = parseCSVLine(line);
+    const cols = parseCSVLine(line, _delimiter);
 
     let first: string, last: string, fullName: string;
 
@@ -227,9 +213,9 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   if (lines.length < 2) return [];
 
   // Detect delimiter from the first line
-  _detectedDelimiter = detectDelimiter(lines[0]);
+  const _delimiter = lines[0].includes("\t") && lines[0].split("\t").length > lines[0].split(",").length ? "\t" : ",";
 
-  const { headers, dataStartIndex } = detectHeaderRow(lines);
+  const { headers, dataStartIndex } = detectHeaderRow(lines, _delimiter);
 
   // Core identity columns
   const iFirst = findCol(headers, "first", "firstname", "first name", "fname");
@@ -364,7 +350,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const athletes: ParsedAthlete[] = [];
 
   for (const line of dataRows) {
-    const cols = parseCSVLine(line);
+    const cols = parseCSVLine(line, _delimiter);
 
     let first: string, last: string, fullName: string;
 
