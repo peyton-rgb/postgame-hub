@@ -134,21 +134,15 @@ export default function HomepageEditorPage() {
         .eq("tier", "tier_1");
       if (!deals?.length) return;
       const athleteList = deals.map((d: any) => d.athlete_name + " (" + d.athlete_sport + ", " + d.athlete_school + ")").join("\n");
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+const response = await fetch("/api/suggest-athletes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: "Search for college athletes trending in the news right now — NIL deals, viral moments, draft buzz, tournament performances, award winners from the past 2 weeks.\n\nCross-reference against this Postgame Tier 1 athlete list:\n" + athleteList + "\n\nReturn ONLY a JSON array of top 4 matches. No other text:\n[{\"name\": \"Full Name\", \"reason\": \"one sentence why trending\"}]\n\nIf fewer than 4 match return however many. If none return []." }],
-        }),
+        body: JSON.stringify({ athleteList }),
       });
       const data = await response.json();
-      const textBlock = data.content?.find((b: any) => b.type === "text");
-      if (!textBlock) return;
+      if (data.error) { console.error(data.error); return; }
       let parsed: {name: string; reason: string}[] = [];
-      try { parsed = JSON.parse(textBlock.text.replace(/```json|```/g, "").trim()); } catch { return; }
+      try { parsed = JSON.parse(data.result); } catch { return; }
       const matched: AthleteItem[] = [];
       for (const s of parsed) {
         const deal = deals.find((d: any) => d.athlete_name?.toLowerCase().trim() === s.name?.toLowerCase().trim());
