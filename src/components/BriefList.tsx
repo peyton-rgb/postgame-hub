@@ -86,6 +86,7 @@ export default function BriefList() {
   }
 
   const TEMPLATE_ICONS: Record<string, string> = {
+    "Raising Cane's Tunnel Walk": "🍗",
     "Videographer Brief": "🎥",
     "Editor Brief": "✂️",
     "Athlete Brief": "🏅",

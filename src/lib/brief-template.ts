@@ -47,9 +47,37 @@ export interface BriefTemplate {
   badgeText: string;
   coreFields: (keyof BriefFields)[];
   customSections: { title: string; content: string }[];
+  prefillFields?: Partial<Omit<BriefFields, "customSections" | "briefType" | "badgeText">>;
 }
 
 export const SYSTEM_TEMPLATES: BriefTemplate[] = [
+  {
+    name: "Raising Cane's Tunnel Walk",
+    briefType: "Videographer Brief",
+    badgeText: "Videographer Creative Brief",
+    coreFields: ["objective", "deliverables", "creativeDirection", "cameraTechnical", "dos", "donts", "workflow", "fileDelivery"],
+    prefillFields: {
+      clientName: "Raising Cane's",
+      objective: "Athletes stage a pre-game tunnel walk as they arrive for the game. Each athlete walks through the tunnel carrying Raising Cane's product while wearing a Raising Cane's hat, capturing the energy and swagger of a game-day arrival — fueled by Cane's.\n\nSame-Day Delivery of Content Is Mandatory — All photos and video footage must be uploaded and delivered to Postgame the same day as the shoot. There are no exceptions to this policy.",
+      deliverables: "VIDEO (Required)\n- 1x Tunnel Walk Video — athlete walking through tunnel or getting off the bus. Shot in slo-mo or standard rate.\n- Shot in horizontal, framed for vertical (9:16) — keep subjects centered so nothing is lost in the crop\n- Deliver both: raw slow-mo clips + edited final cut\n\nPHOTOGRAPHY (Required)\n- Minimum 15–25 photos\n- Mix of mid-stride action and posed with product",
+      creativeDirection: "Overall Tone: Confident & Game-Ready, Clean & Cinematic, Swagger & Energy\n\n- Think NFL Draft night arrivals or NBA tunnel fits energy\n- Low angle shots to make the athlete look powerful and commanding\n- Shallow depth of field to separate the athlete from the background\n- Use the tunnel environment — lighting, walls, depth — to create atmosphere\n- The Cane's product should feel like a natural extension of the athlete's swagger, not a forced prop\n\nLighting Notes:\n- If the tunnel is dark, bring a portable LED panel for fill light\n- Dramatic lighting is great — use shadows to your advantage\n- Make sure the product (bag/cup) and hat are well-lit and visible",
+      cameraTechnical: "VIDEO\n- Frame Rate: 60fps / 120fps for slow-motion\n- Resolution: 4K preferred, 1080p minimum\n- Orientation: Shot in horizontal, framed for vertical (9:16)\n- Stabilization: Gimbal or tripod — no handheld shake\n- Color Profile: S-Log — all video must be shot in S-Log for maximum flexibility in post\n\nPHOTOGRAPHY\n- Shoot in RAW + JPEG\n- Fast shutter speed to freeze motion — min 1/500\n- Wide aperture (f/1.4 – f/2.8) for cinematic separation\n- Burst mode during the walk to capture peak moments\n- Lens Recommendation: 35mm or 50mm for tight tunnel environments. 70–200mm if you have distance.",
+      workflow: "1. Arrive Early & Scout Location — Get to the tunnel at least 45 minutes early. Walk the path, identify best angles, check lighting, set up additional lights. Call your Postgame contact to verify the location for approval.\n2. Prep the Product — Ensure the Cane's bag is uncreased and pristine. Cup has lid + straw. Have backups ready. Hat should be clean and ready.\n3. Brief the Athlete — Quick 2-minute rundown: walk path, speed (slow and confident), where to look, how to hold product. Show them a reference video. NO OTHER LOGOS on clothing.\n4. Capture the Walk (Video) — Record in slow-mo and standard rate. Run it 2–3 times minimum from different angles. Get at least one take from the front, one from the side, and one from behind.\n5. Capture Photos — Shoot during the walks and grab a few posed shots in the tunnel with the product. Mix candid mid-stride shots with intentional portraits.\n6. Review & Wrap — Quickly review footage on-site to ensure product visibility, hat placement, and overall quality. Reshoot if anything is off.",
+      fileDelivery: "VIDEO FILES\n- Format: .MOV or .MP4 (H.264 or H.265)\n- Resolution: 4K preferred, 1080p minimum\n- Color Profile: Shot in S-Log\n- Deliver both: Raw slow-mo clips + edited final cut\n\nPHOTO FILES\n- Format: High-res JPEG + RAW files\n- Color grading: Clean, natural edit — no heavy filters\n\nDELIVERY METHOD\n- Upload to shared Google Drive link in run of show\n- Organize into subfolders: /Photos and /Video\n- Same-day upload is mandatory — no exceptions\n- A run of show will be provided by Postgame prior to shoot day",
+      dos: "Make the athlete look like a star arriving for the big game\nKeep the Cane's bag uncreased and looking fresh\nEnsure the cup has both straw and lid visible\nUse the tunnel environment for cinematic depth\nShoot multiple takes from multiple angles\nUse backup product if dented or creased\nUse slow motion for the hero video\nMake sure the hat fits well, faces forward, and looks intentional\nGet both wide and tight shots\nShoot in S-Log",
+      donts: "Use a creased, wrinkled, or grease-stained bag\nFilm with a cup that's missing the straw or lid\nLet competing brand logos appear in frame\nShoot handheld without stabilization\nRush — take the time to get it right\nLet the product look like an afterthought\nFilm in poor lighting without supplemental light\nForget to check hat placement before rolling\nDeliver shaky or out-of-focus footage\nDeliver content late — same-day upload is mandatory",
+    },
+    customSections: [
+      {
+        title: "Product Requirements",
+        content: "RAISING CANE'S BAG\n- Bag must be uncreased — fresh out of the box, not wrinkled or folded\n- Bag should be held naturally and CANE'S Logos should be visible and prominent in frame\n- No grease stains, tears, or damage to the bag\n- If needed, stuff the bag lightly so it holds its shape on camera\n\nRAISING CANE'S CUP\n- Cup must have both the straw and lid in place\n- Cup should be full or appear full — no crushed or dented cups\n- Straw should be upright and visible\n- Cup branding should face the camera",
+      },
+      {
+        title: "Athlete Requirements",
+        content: "- Athlete must wear a Raising Cane's hat during the tunnel walk — the hat must be facing forward\n- Athlete must have a Cane's bag or cup in hand (or both)\n- Outfit should be game-day ready — clean, styled, confident\n- No competing brand logos visible (hats, shirts, accessories)\n- Athlete should walk with energy and swagger — this is their moment\n\nHat Check: Make sure the Raising Cane's hat is fitted properly, facing forward, and looks good on camera before rolling. Adjust the angle if needed.",
+      },
+    ],
+  },
   {
     name: "Videographer Brief",
     briefType: "Videographer Brief",
@@ -143,8 +171,9 @@ export const EMPTY_FIELDS: BriefFields = {
 export function applyTemplate(template: BriefTemplate, existingTitle?: string, existingClient?: string): BriefFields {
   return {
     ...EMPTY_FIELDS,
+    ...(template.prefillFields || {}),
     title: existingTitle || "",
-    clientName: existingClient || "",
+    clientName: existingClient || template.prefillFields?.clientName || "",
     briefType: template.briefType,
     badgeText: template.badgeText,
     customSections: template.customSections.map((s, i) => ({
