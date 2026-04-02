@@ -88,16 +88,7 @@ function detectDelimiter(line: string): string {
 // Module-level delimiter detected from the first line
 let _detectedDelimiter = ",";
 
-function detectDelimiter(firstLine: string): string {
-  const tabCount = (firstLine.match(/\\t/g) || []).length;
-  const commaCount = (firstLine.match(/,/g) || []).length;
-  return tabCount > commaCount ? "\t" : ",";
-}
-
-let _delimiter = ",";
-
 function parseCSVLine(line: string): string[] {
-  if (_delimiter === "\t") return line.split("\t").map((s) => s.trim());
   const delimiter = _detectedDelimiter;
   const result: string[] = [];
   let current = "";
