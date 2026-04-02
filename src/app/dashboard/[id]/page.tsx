@@ -13,7 +13,7 @@ import Link from "next/link";
 import heic2any from "heic2any";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
-  { key: "brief", label: "Campaign Brief" },
+  { key: "brief", label: "Campaign Overview" },
   { key: "key_takeaways", label: "Key Takeaways" },
   { key: "kpi_targets", label: "KPI Targets" },
   { key: "metrics", label: "Campaign Metrics" },

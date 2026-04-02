@@ -50,7 +50,7 @@ function detectHeaderRow(lines: string[]): { headers: string[]; dataStartIndex: 
   // Check if row 0 contains recognizable column headers
   const hasIdentityHeaders = row0.some((h) => {
     const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return ["first", "firstname", "last", "lastname", "fname", "lname"].includes(clean);
+    return ["first", "firstname", "last", "lastname", "fname", "lname", "name", "fullname", "athletename", "athlete"].includes(clean);
   });
 
   if (hasIdentityHeaders) {
@@ -75,7 +75,21 @@ function isJunkRow(first: string, last: string): boolean {
   return false;
 }
 
+function detectDelimiter(line: string): string {
+  // If line has tabs and splitting by tab gives more columns than comma, use tab
+  if (line.includes("\t")) {
+    const tabCols = line.split("\t").length;
+    const commaCols = line.split(",").length;
+    if (tabCols > commaCols) return "\t";
+  }
+  return ",";
+}
+
+// Module-level delimiter detected from the first line
+let _detectedDelimiter = ",";
+
 function parseCSVLine(line: string): string[] {
+  const delimiter = _detectedDelimiter;
   const result: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -89,7 +103,7 @@ function parseCSVLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (ch === "," && !inQuotes) {
+    } else if (ch === delimiter && !inQuotes) {
       result.push(current.trim());
       current = "";
     } else {
@@ -127,10 +141,16 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
 
+  // Detect delimiter from the first line
+  _detectedDelimiter = detectDelimiter(lines[0]);
+
   const { headers, dataStartIndex } = detectHeaderRow(lines);
 
   const iFirst = findCol(headers, "first", "firstname", "first name", "fname");
   const iLast = findCol(headers, "last", "lastname", "last name", "lname");
+  const iFullName = findCol(headers, "full name", "fullname", "athlete name", "athletename");
+  // "name" column — only match if no first/last columns exist to avoid false matches
+  const iName = (iFirst === -1 && iLast === -1) ? findCol(headers, "name", "athlete") : -1;
   const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername");
   const iFollowers = findCol(headers, "ig followers", "followers", "ig_followers", "instagram followers");
   const iContentRating = findCol(headers, "content rating", "content_rating", "contentrating", "rating");
@@ -140,6 +160,9 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
   const iGender = findCol(headers, "gender", "sex");
   const iNotes = findCol(headers, "notes", "note", "bio", "insight", "description");
 
+  // Determine if we have a single "Name" column or separate First/Last
+  const hasSingleNameCol = iFullName !== -1 || iName !== -1;
+  const singleNameIdx = iFullName !== -1 ? iFullName : iName;
   const cFirst = iFirst !== -1 ? iFirst : 0;
   const cLast = iLast !== -1 ? iLast : 1;
 
@@ -153,17 +176,33 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
 
   for (const line of lines.slice(dataStartIndex)) {
     const cols = parseCSVLine(line);
-    const first = cols[cFirst]?.trim() || "";
-    if (first.toLowerCase().trim() === "first") continue;
-    const last = cols[cLast]?.trim() || "";
-    if (isJunkRow(first, last) || !last) continue;
+
+    let first: string, last: string, fullName: string;
+
+    if (hasSingleNameCol) {
+      // Single "Name" column — split into first/last
+      const raw = cols[singleNameIdx]?.trim() || "";
+      if (!raw) continue;
+      const parts = raw.split(/\s+/);
+      first = parts[0] || "";
+      last = parts.slice(1).join(" ") || "";
+      fullName = raw;
+    } else {
+      first = cols[cFirst]?.trim() || "";
+      if (first.toLowerCase().trim() === "first") continue;
+      last = cols[cLast]?.trim() || "";
+      if (isJunkRow(first, last) || !last) continue;
+      fullName = `${first} ${last}`;
+    }
+
+    if (!first) continue;
 
     const rawHandle = iHandle !== -1 ? (cols[iHandle]?.trim() || "") : "";
 
     athletes.push({
       first: titleCase(first),
       last: titleCase(last),
-      name: `${titleCase(first)} ${titleCase(last)}`,
+      name: titleCase(fullName),
       ig_handle: rawHandle.replace(/^\s+|\s+$/g, ""),
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
       content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",
@@ -187,11 +226,17 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
 
+  // Detect delimiter from the first line
+  _detectedDelimiter = detectDelimiter(lines[0]);
+
   const { headers, dataStartIndex } = detectHeaderRow(lines);
 
   // Core identity columns
   const iFirst = findCol(headers, "first", "firstname", "first name", "fname");
   const iLast = findCol(headers, "last", "lastname", "last name", "lname");
+  const iFullName = findCol(headers, "full name", "fullname", "athlete name", "athletename");
+  // "name" column — only match if no first/last columns exist to avoid false matches
+  const iName = (iFirst === -1 && iLast === -1) ? findCol(headers, "name", "athlete") : -1;
   const iHandle = findCol(headers, "ig handle", "handle", "instagram handle", "ig_handle", "instagram username", "instagramusername");
   const iFollowers = findCol(headers, "ig followers", "followers", "ig_followers", "instagram followers");
   const iContentRating = findCol(headers, "content rating", "content_rating", "contentrating", "rating");
@@ -303,6 +348,9 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     if (impIndices.length >= 2) storyImpressionsIdx = impIndices[1];
   }
 
+  // Determine if we have a single "Name" column or separate First/Last
+  const hasSingleNameCol = iFullName !== -1 || iName !== -1;
+  const singleNameIdx = iFullName !== -1 ? iFullName : iName;
   const cFirst = iFirst !== -1 ? iFirst : 0;
   const cLast = iLast !== -1 ? iLast : 1;
 
@@ -318,12 +366,25 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   for (const line of dataRows) {
     const cols = parseCSVLine(line);
 
-    const first = cols[cFirst]?.trim() || "";
-    if (first.toLowerCase().trim() === "first") continue;
-    const last = cols[cLast]?.trim() || "";
+    let first: string, last: string, fullName: string;
 
-    // Skip junk rows (CALCULATIONS, totals, blank names)
-    if (isJunkRow(first, last) || !last) continue;
+    if (hasSingleNameCol) {
+      // Single "Name" column — split into first/last
+      const raw = cols[singleNameIdx]?.trim() || "";
+      if (!raw) continue;
+      const parts = raw.split(/\s+/);
+      first = parts[0] || "";
+      last = parts.slice(1).join(" ") || "";
+      fullName = raw;
+    } else {
+      first = cols[cFirst]?.trim() || "";
+      if (first.toLowerCase().trim() === "first") continue;
+      last = cols[cLast]?.trim() || "";
+      if (isJunkRow(first, last) || !last) continue;
+      fullName = `${first} ${last}`;
+    }
+
+    if (!first) continue;
 
     const getVal = (idx: number) => idx !== -1 ? cols[idx] : undefined;
 
@@ -397,7 +458,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     athletes.push({
       first: titleCase(first),
       last: titleCase(last),
-      name: `${titleCase(first)} ${titleCase(last)}`,
+      name: titleCase(fullName),
       ig_handle: iHandle !== -1 ? (cols[iHandle]?.replace(/^\s+|\s+$/g, "") || "") : "",
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
       content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",

@@ -234,7 +234,7 @@ export function CampaignRecap({
   // Build nav tabs dynamically based on visible sections + data availability
   const hasKpi = settings.kpi_targets && (settings.kpi_targets.athlete_quantity || settings.kpi_targets.content_units || settings.kpi_targets.posts || settings.kpi_targets.impressions || settings.kpi_targets.engagements || settings.kpi_targets.engagement_rate || settings.kpi_targets.cpm || settings.kpi_targets.other_kpis);
   const navTabs = [
-    show("brief") && settings.description && { key: "brief", label: "Brief" },
+    show("brief") && settings.description && { key: "brief", label: "Recap" },
     show("key_takeaways") && settings.key_takeaways && { key: "key_takeaways", label: "Takeaways" },
     show("kpi_targets") && hasKpi && { key: "kpi_targets", label: "KPIs" },
     show("metrics") && { key: "metrics", label: "Metrics" },
@@ -396,7 +396,7 @@ export function CampaignRecap({
       {/* ── SECTION 2: CAMPAIGN BRIEF ──────────────────────── */}
       {show("brief") && settings.description && (
         <div ref={(el) => { sectionRefs.current["brief"] = el; }} data-section="brief" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Brief</h2>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
             <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
               {settings.description}
