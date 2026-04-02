@@ -33,7 +33,7 @@ export default function SiteNav() {
   return (
     <>
       <nav className={navClass}>
-        <a href="/homepage" className="pg-nav-logo">POSTGAME</a>
+        <a href="/homepage" className="pg-nav-logo"><img src="/postgame-logo.png" alt="Postgame" style={{ height: 24, width: "auto", display: "block" }} /></a>
 
         <div className="pg-nav-links">
           <div className="pg-nav-item">

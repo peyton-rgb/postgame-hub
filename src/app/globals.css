@@ -88,12 +88,15 @@ img, video { display: block; max-width: 100%; }
 .pg-nav.solid { background: rgba(0, 0, 0, 0.85); }
 
 .pg-nav-logo {
-  font-family: var(--font-bebas), 'Bebas Neue', Arial, sans-serif;
-  font-size: 26px;
-  letter-spacing: 0.04em;
-  color: var(--orange) !important;
   text-decoration: none !important;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.pg-nav-logo img {
+  height: 26px;
+  width: auto;
+  display: block;
 }
 
 .pg-nav-links {

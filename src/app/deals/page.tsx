@@ -20,7 +20,7 @@ export default function DealsPage() {
         .from("deals")
         .select("*")
         .eq("published", true)
-        .order("sort_order", { ascending: true });
+        .order("featured", { ascending: false }).order("sort_order", { ascending: true });
       setDeals((data || []) as Deal[]);
       setLoading(false);
     }
@@ -80,6 +80,27 @@ export default function DealsPage() {
           </p>
         </div>
       </div>
+
+      {/* Featured deals */}
+      {deals.filter((d:any) => d.featured).length > 0 && (
+        <div style={{ borderBottom:"1px solid rgba(255,255,255,0.08)", padding:"32px 48px" }}>
+          <div style={{ maxWidth:1200, margin:"0 auto" }}>
+            <div style={{ fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.18em", color:"#D73F09", marginBottom:20 }}>⭐ Featured</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
+              {deals.filter((d:any) => d.featured).map((deal) => (
+                <Link key={deal.id} href={`/deals/${deal.id}`} style={{ borderRadius:16, overflow:"hidden", border:"1px solid rgba(215,63,9,0.35)", background:"rgba(215,63,9,0.06)", textDecoration:"none", color:"inherit", display:"block", transition:"transform 0.2s" }}>
+                  {deal.image_url && <img src={deal.image_url} alt={deal.athlete_name||""} style={{ width:"100%", aspectRatio:"16/9", objectFit:"cover", display:"block" }} />}
+                  <div style={{ padding:"16px 20px 20px" }}>
+                    <div style={{ fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:"#D73F09", marginBottom:4 }}>{deal.brand_name}</div>
+                    <div style={{ fontFamily:"var(--font-bebas),'Bebas Neue',Arial,sans-serif", fontSize:22, lineHeight:1 }}>{deal.athlete_name}</div>
+                    {deal.athlete_school && <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginTop:4 }}>{deal.athlete_school}</div>}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="border-b border-gray-800">

@@ -82,12 +82,17 @@ const S = {
 
 // ── Pages config ─────────────────────────────────────────────
 const PAGES = [
-  { key: "homepage",  label: "Homepage",     icon: "⌂", url: "/homepage" },
-  { key: "team",      label: "Team",         icon: "👥", url: "/about/team" },
-  { key: "services",  label: "Services",     icon: "⚡", url: "/services/elevated" },
-  { key: "contact",   label: "Contact",      icon: "✉", url: "/contact" },
-  { key: "clients",   label: "Clients",      icon: "🏢", url: "/clients" },
-  { key: "press",     label: "Press",        icon: "📰", url: "/press" },
+  { key: "homepage",       label: "Homepage",        icon: "⌂",  url: "/homepage",              section: "Public Pages" },
+  { key: "team",           label: "Team / About",    icon: "👥", url: "/about/team",             section: "Public Pages" },
+  { key: "clients",        label: "Clients",         icon: "🏢", url: "/clients",                section: "Public Pages" },
+  { key: "campaigns",      label: "Campaigns",       icon: "🎬", url: "/campaigns",              section: "Public Pages" },
+  { key: "deals",          label: "Deal Tracker",    icon: "⭐", url: "/deals",                  section: "Public Pages" },
+  { key: "press",          label: "Press",           icon: "📰", url: "/press",                  section: "Public Pages" },
+  { key: "contact",        label: "Contact",         icon: "✉",  url: "/contact",                section: "Public Pages" },
+  { key: "svc-elevated",   label: "Elevated",        icon: "⚡", url: "/services/elevated",      section: "Services" },
+  { key: "svc-scaled",     label: "Scaled",          icon: "📈", url: "/services/scaled",        section: "Services" },
+  { key: "svc-always-on",  label: "Always On",       icon: "🔄", url: "/services/always-on",     section: "Services" },
+  { key: "svc-experiential",label: "Experiential",   icon: "🎯", url: "/services/experiential",  section: "Services" },
 ];
 
 // ── Shared UI components ──────────────────────────────────────
@@ -483,9 +488,9 @@ function TeamEditor({ onSaved }: { onSaved: () => void }) {
 type ServiceTab = "elevated"|"scaled"|"always-on"|"experiential";
 interface ServicePageData { hero_tag:string; hero_title:string; hero_desc:string; features:{num:string;title:string;desc:string}[]; cta_title:string; cta_sub:string }
 
-function ServicesEditor({ onSaved }: { onSaved: () => void }) {
+function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTab }) {
   const supabase = createBrowserSupabase();
-  const [tab, setTab] = useState<ServiceTab>("elevated");
+  const [tab, setTab] = useState<ServiceTab>(svc || "elevated");
   const [data, setData] = useState<Record<ServiceTab, ServicePageData>>({
     elevated:     { hero_tag:"Elevated NIL", hero_title:"Tier 1 Athletes.\nMaximum Impact.", hero_desc:"", features:[], cta_title:"", cta_sub:"" },
     scaled:       { hero_tag:"Scaled NIL", hero_title:"More Athletes.\nMore Markets.", hero_desc:"", features:[], cta_title:"", cta_sub:"" },
@@ -516,15 +521,6 @@ function ServicesEditor({ onSaved }: { onSaved: () => void }) {
   return (
     <>
       <div style={S.editScroll}>
-        {/* Sub-tab selector */}
-        <div style={{ display:"flex", gap:6, marginBottom:16, flexWrap:"wrap" as const }}>
-          {(["elevated","scaled","always-on","experiential"] as ServiceTab[]).map(t => (
-            <button key={t} onClick={()=>setTab(t)} style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${tab===t ? C.orange : C.border2}`, background: tab===t ? "rgba(215,63,9,0.12)" : "none", color: tab===t ? C.orange : C.text3, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-              {t === "always-on" ? "Always On" : t.charAt(0).toUpperCase()+t.slice(1)}
-            </button>
-          ))}
-        </div>
-
         <SectionCard title="Hero">
           <Field label="Service Tag" value={cur.hero_tag} onChange={v=>upd("hero_tag",v)} />
           <Field label="Title" value={cur.hero_title} onChange={v=>upd("hero_title",v)} textarea hint="Use \\n for line breaks" />
@@ -707,6 +703,133 @@ function PressEditor({ onSaved }: { onSaved: () => void }) {
   );
 }
 
+// ── Campaigns editor ─────────────────────────────────────────
+function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
+  const supabase = createBrowserSupabase();
+  const [campaigns, setCampaigns] = useState<{id:string;name:string;slug:string;status:string;brand_name:string}[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("campaigns").select("id,name,slug,status,brands(name)").order("created_at",{ascending:false}).limit(50).then(({ data }) => {
+      setCampaigns((data||[]).map((c:any) => ({ ...c, brand_name: c.brands?.name || "" })));
+      setLoading(false);
+    });
+  }, []);
+
+  const toggleStatus = async (id: string, current: string) => {
+    const next = current === "published" ? "draft" : "published";
+    await supabase.from("campaigns").update({ status: next }).eq("id", id);
+    setCampaigns(p => p.map(c => c.id===id ? {...c,status:next} : c));
+    onSaved();
+  };
+
+  if (loading) return <div style={{ padding:40, color:C.text3, fontSize:14 }}>Loading campaigns...</div>;
+
+  return (
+    <>
+      <div style={S.editScroll}>
+        <SectionCard title="Campaigns">
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Toggle campaigns to control visibility on the public campaigns page.</div>
+          {campaigns.map(c => (
+            <div key={c.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:700, color: c.status==="published" ? C.text : C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{c.name}</div>
+                <div style={{ fontSize:11, color:C.text3 }}>{c.brand_name}</div>
+              </div>
+              <Toggle on={c.status==="published"} onChange={()=>toggleStatus(c.id,c.status)} />
+            </div>
+          ))}
+        </SectionCard>
+        <div style={{ padding:"16px 20px" }}>
+          <Link href="/dashboard?tab=recaps" style={{ fontSize:13, color:C.orange, textDecoration:"none", fontWeight:700 }}>→ Manage Campaigns in Page Creator</Link>
+        </div>
+      </div>
+      <div style={S.actionsBar}>
+        <a href="/campaigns" target="_blank" style={S.btnPreview}>↗ View Live</a>
+      </div>
+    </>
+  );
+}
+
+// ── Deals editor ──────────────────────────────────────────────
+function DealsEditor({ onSaved }: { onSaved: () => void }) {
+  const supabase = createBrowserSupabase();
+  const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;published:boolean;featured:boolean;sort_order:number;image_url:string}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
+      setDeals((data||[]) as any);
+      setLoading(false);
+    });
+  }, []);
+
+  const togglePublished = async (id: string, val: boolean) => {
+    await supabase.from("deals").update({ published: val }).eq("id", id);
+    setDeals(p => p.map(d => d.id===id ? {...d,published:val} : d));
+    onSaved();
+  };
+
+  const toggleFeatured = async (id: string, val: boolean) => {
+    await supabase.from("deals").update({ featured: val }).eq("id", id);
+    setDeals(p => p.map(d => d.id===id ? {...d,featured:val} : d));
+    onSaved();
+  };
+
+  if (loading) return <div style={{ padding:40, color:C.text3, fontSize:14 }}>Loading deals...</div>;
+
+  const featured = deals.filter(d => d.featured);
+  const rest = deals.filter(d => !d.featured);
+
+  return (
+    <>
+      <div style={S.editScroll}>
+        {/* Featured deals */}
+        <SectionCard title="⭐ Featured / Highlighted">
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Featured deals appear at the top of the Deal Tracker page.</div>
+          {featured.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals yet. Star deals below to feature them.</div>}
+          {featured.map(d => (
+            <div key={d.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", gap:10 }}>
+              {d.image_url && <img src={d.image_url} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" as const }} />}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
+                <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name} · {d.athlete_sport}</div>
+              </div>
+              <button onClick={()=>toggleFeatured(d.id,false)} style={{ ...S.btnSm, color:"#D73F09", borderColor:"rgba(215,63,9,0.3)" }}>★ Unstar</button>
+            </div>
+          ))}
+        </SectionCard>
+
+        {/* All deals */}
+        <SectionCard title="All Deals" defaultOpen={false}>
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Published = visible on public site. Star = featured at top.</div>
+          {rest.map(d => (
+            <div key={d.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", gap:10 }}>
+              {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const }} />}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:700, color: d.published ? C.text : C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
+                <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name}</div>
+              </div>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <button onClick={()=>toggleFeatured(d.id,true)} style={S.btnSm} title="Feature this deal">☆</button>
+                <Toggle on={d.published} onChange={v=>togglePublished(d.id,v)} />
+              </div>
+            </div>
+          ))}
+        </SectionCard>
+
+        <div style={{ padding:"16px 20px" }}>
+          <Link href="/dashboard?tab=deals" style={{ fontSize:13, color:C.orange, textDecoration:"none", fontWeight:700 }}>→ Add / Edit Deals in Main Dashboard</Link>
+        </div>
+      </div>
+      <div style={S.actionsBar}>
+        <a href="/deals" target="_blank" style={S.btnPreview}>↗ View Live</a>
+      </div>
+    </>
+  );
+}
+
 // ── Main Website Editor ───────────────────────────────────────
 function WebsiteEditorInner() {
   const router = useRouter();
@@ -737,11 +860,15 @@ function WebsiteEditorInner() {
         </div>
 
         <div style={{ overflowY:"auto" as const, flex:1 }}>
-          <div style={S.sidebarSection}>Pages</div>
-          {PAGES.map(p => (
-            <div key={p.key} style={S.sidebarItem(activePage === p.key)} onClick={() => setPage(p.key)}>
-              <span style={{ fontSize:16 }}>{p.icon}</span>
-              <span>{p.label}</span>
+          {["Public Pages", "Services"].map(section => (
+            <div key={section}>
+              <div style={S.sidebarSection}>{section}</div>
+              {PAGES.filter(p => p.section === section).map(p => (
+                <div key={p.key} style={S.sidebarItem(activePage === p.key)} onClick={() => setPage(p.key)}>
+                  <span style={{ fontSize:14 }}>{p.icon}</span>
+                  <span>{p.label}</span>
+                </div>
+              ))}
             </div>
           ))}
 
@@ -776,12 +903,17 @@ function WebsiteEditorInner() {
             </div>
           </div>
 
-          {activePage === "homepage"  && <HomepageEditor onSaved={handleSaved} />}
-          {activePage === "team"      && <TeamEditor onSaved={handleSaved} />}
-          {activePage === "services"  && <ServicesEditor onSaved={handleSaved} />}
-          {activePage === "contact"   && <ContactEditor onSaved={handleSaved} />}
-          {activePage === "clients"   && <ClientsEditor onSaved={handleSaved} />}
-          {activePage === "press"     && <PressEditor onSaved={handleSaved} />}
+          {activePage === "homepage"        && <HomepageEditor onSaved={handleSaved} />}
+          {activePage === "team"            && <TeamEditor onSaved={handleSaved} />}
+          {activePage === "contact"         && <ContactEditor onSaved={handleSaved} />}
+          {activePage === "clients"         && <ClientsEditor onSaved={handleSaved} />}
+          {activePage === "campaigns"       && <CampaignsEditor onSaved={handleSaved} />}
+          {activePage === "deals"           && <DealsEditor onSaved={handleSaved} />}
+          {activePage === "press"           && <PressEditor onSaved={handleSaved} />}
+          {activePage === "svc-elevated"    && <ServicesEditor svc="elevated" onSaved={handleSaved} />}
+          {activePage === "svc-scaled"      && <ServicesEditor svc="scaled" onSaved={handleSaved} />}
+          {activePage === "svc-always-on"   && <ServicesEditor svc="always-on" onSaved={handleSaved} />}
+          {activePage === "svc-experiential"&& <ServicesEditor svc="experiential" onSaved={handleSaved} />}
         </div>
 
         {/* Preview pane */}
