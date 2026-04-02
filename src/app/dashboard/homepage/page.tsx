@@ -145,7 +145,11 @@ const response = await fetch("/api/suggest-athletes", {
       try { parsed = JSON.parse(data.result); } catch { return; }
       const matched: AthleteItem[] = [];
       for (const s of parsed) {
-        const deal = deals.find((d: any) => d.athlete_name?.toLowerCase().trim() === s.name?.toLowerCase().trim());
+        const sName = s.name?.toLowerCase().trim() || "";
+        const deal = deals.find((d: any) => {
+          const dName = d.athlete_name?.toLowerCase().trim() || "";
+          return dName === sName || dName.includes(sName) || sName.includes(dName);
+        });
         if (deal) matched.push({ name: deal.athlete_name, sport: deal.athlete_sport, school: deal.athlete_school, image_url: deal.image_url, brand: deal.brand_name, brand_id: deal.brand_id, deal_id: deal.id, gradient: s.reason });
       }
       setSuggestions(matched);
