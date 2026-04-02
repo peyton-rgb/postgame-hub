@@ -17,22 +17,27 @@ export async function POST(req: NextRequest) {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `Search the web for the top trending college athletes right now in April 2026. Look for NIL news, viral social media moments, draft coverage, tournament standouts, award winners, and any major college sports headlines.
+          content: `You are helping a sports media company find which of their contracted athletes are currently in the news.
 
-Here is a list of athletes from our talent roster:
+Search the web for recent news (past 2 weeks) about college athletes in NIL deals, sports tournaments, the NFL/NBA draft, viral moments, or any major college sports coverage.
+
+Here is a list of our contracted athletes:
 ${athleteList}
 
-Search for recent news about athletes on this list. Find which ones have been in the news recently. Return a JSON array of up to 4 athletes from the list who are most currently relevant, with a brief reason. Return ONLY valid JSON, no other text:
-[{"name": "exact name from list", "reason": "why they are trending now"}]`,
+Search for news about athletes on this list. Return a JSON array of UP TO 4 athletes from the list who have recent news coverage. Be generous with matches - if you find any news at all about someone on the list, include them.
+
+Return ONLY this JSON format, nothing else:
+[{"name": "exact name from the list above", "reason": "one sentence describing their recent news"}]
+
+If truly none have any recent news, return [].`,
         }],
       }),
     });
     const data = await response.json();
-    const textBlock = data.content?.find((b: any) => b.type === "text");
-    const text = textBlock?.text || "[]";
-    const jsonMatch = text.match(/\[.*\]/s);
+    const allText = data.content?.map((b: any) => b.type === "text" ? b.text : "").join("") || "[]";
+    const jsonMatch = allText.match(/\[.*?\]/s);
     const clean = jsonMatch ? jsonMatch[0] : "[]";
-    return NextResponse.json({ result: clean });
+    return NextResponse.json({ result: clean, raw: allText.slice(0, 500) });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
