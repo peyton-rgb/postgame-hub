@@ -90,14 +90,14 @@ export default function DealDetailPage() {
               className="deal-hero-media"
               src={deal.image_url}
               autoPlay muted loop playsInline
-              style={{ maxHeight:"70vh" }}
+              style={{ maxHeight:"70vh", objectPosition:(deal as any).focal_point || "center 15%" }}
             />
           ) : (
             <img
               className="deal-hero-media"
               src={deal.image_url}
               alt={deal.athlete_name || ""}
-              style={{ maxHeight:"70vh" }}
+              style={{ maxHeight:"70vh", objectPosition:(deal as any).focal_point || "center 15%" }}
             />
           )}
           <div className="deal-hero-overlay" />

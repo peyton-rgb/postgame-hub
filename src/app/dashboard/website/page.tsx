@@ -754,12 +754,12 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
 // ── Deals editor ──────────────────────────────────────────────
 function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const supabase = createBrowserSupabase();
-  const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;published:boolean;featured:boolean;sort_order:number;image_url:string}[]>([]);
+  const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;published:boolean;featured:boolean;sort_order:number;image_url:string;focal_point:string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
+    supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url,focal_point").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
       setDeals((data||[]) as any);
       setLoading(false);
     });
@@ -775,6 +775,11 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
     await supabase.from("deals").update({ featured: val }).eq("id", id);
     setDeals(p => p.map(d => d.id===id ? {...d,featured:val} : d));
     onSaved();
+  };
+
+  const updateFocalPoint = async (id: string, focal_point: string) => {
+    await supabase.from("deals").update({ focal_point }).eq("id", id);
+    setDeals(p => p.map(d => d.id===id ? {...d,focal_point} : d));
   };
 
   if (loading) return <div style={{ padding:40, color:C.text3, fontSize:14 }}>Loading deals...</div>;
@@ -805,16 +810,35 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
         <SectionCard title="All Deals" defaultOpen={false}>
           <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Published = visible on public site. Star = featured at top.</div>
           {rest.map(d => (
-            <div key={d.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", gap:10 }}>
-              {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const }} />}
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:700, color: d.published ? C.text : C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
-                <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name}</div>
+            <div key={d.id} style={{ ...S.itemCard }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: d.image_url ? 10 : 0 }}>
+                {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const, objectPosition: d.focal_point||"center 15%" }} />}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color: d.published ? C.text : C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
+                  <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name}</div>
+                </div>
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <button onClick={()=>toggleFeatured(d.id,true)} style={S.btnSm} title="Feature this deal">☆</button>
+                  <Toggle on={d.published} onChange={v=>togglePublished(d.id,v)} />
+                </div>
               </div>
-              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                <button onClick={()=>toggleFeatured(d.id,true)} style={S.btnSm} title="Feature this deal">☆</button>
-                <Toggle on={d.published} onChange={v=>togglePublished(d.id,v)} />
-              </div>
+              {d.image_url && (
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <label style={{ ...S.label, marginBottom:0, whiteSpace:"nowrap" as const }}>Face position</label>
+                  <select
+                    value={d.focal_point||"center 15%"}
+                    onChange={e=>updateFocalPoint(d.id,e.target.value)}
+                    style={{ ...S.input, fontSize:11, padding:"4px 8px" }}
+                  >
+                    <option value="center 10%">Top (face near top)</option>
+                    <option value="center 15%">Upper (default)</option>
+                    <option value="center 25%">Upper-mid</option>
+                    <option value="center 35%">Center-upper</option>
+                    <option value="center 50%">Center</option>
+                    <option value="center 65%">Center-lower</option>
+                  </select>
+                </div>
+              )}
             </div>
           ))}
         </SectionCard>
