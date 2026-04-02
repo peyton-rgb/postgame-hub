@@ -43,7 +43,12 @@ function detectHeaderRow(lines: string[], delimiter = ","): { headers: string[];
     return /\b(ig feed|ig story|ig reel|tiktok|tt post)\b/.test(clean);
   });
 
-  if (hasPlatformGroups && lines.length >= 2) {
+  const hasIdentityHeadersInRow0 = row0.some((h) => {
+    const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return ["first", "firstname", "last", "lastname", "fname", "lname", "name", "fullname"].includes(clean);
+  });
+
+  if (hasPlatformGroups && !hasIdentityHeadersInRow0 && lines.length >= 2) {
     return { headers: parseCSVLine(lines[1], delimiter), dataStartIndex: 2 };
   }
 
