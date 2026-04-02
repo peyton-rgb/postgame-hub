@@ -423,30 +423,32 @@ export default async function HomepagePage() {
         <a href="/" className="hp-nav-logo">POSTGAME</a>
         <div className="hp-nav-links">
           <div className="hp-nav-item">
-            <button>Brands</button>
+            <button>Network</button>
             <div className="hp-nav-dropdown">
-              <a href="/deals">Clients</a>
-              <a href="/dashboard">Campaigns</a>
+              <a href="/clients">Clients</a>
+              <a href="/campaigns">Campaigns</a>
+              <a href="/deals">Deal Tracker</a>
             </div>
           </div>
           <div className="hp-nav-item">
             <button>Services</button>
             <div className="hp-nav-dropdown">
-              <a href="#services">Elevated</a>
-              <a href="#services">Scaled</a>
-              <a href="#services">Experiential</a>
+              <a href="/services/elevated">Elevated</a>
+              <a href="/services/scaled">Scaled</a>
+              <a href="/services/always-on">Always On</a>
+              <a href="/services/experiential">Experiential</a>
             </div>
           </div>
           <div className="hp-nav-item">
             <button>About</button>
             <div className="hp-nav-dropdown">
+              <a href="/about/team">Our Team</a>
               <a href="/press">Press</a>
               <a href="/case-studies">Case Studies</a>
-              <a href="#team">Our Team</a>
             </div>
           </div>
-          <a href="/deals" className="hp-btn-outline">Tier 1 Deal Tracker</a>
-          <a href="mailto:hello@postgame.co" className="hp-btn-solid">Work With Us</a>
+          <a href="/contact" className="hp-btn-outline">Contact</a>
+          <a href="/deals" className="hp-btn-solid">Deal Tracker</a>
         </div>
         <button className="hp-nav-mobile-toggle" aria-label="Menu">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -714,9 +716,13 @@ export default async function HomepagePage() {
       <footer className="hp-footer">
         <span>&copy; {new Date().getFullYear()} Postgame. All rights reserved.</span>
         <div>
+          <a href="/about/team">Team</a>
+          <a href="/clients">Clients</a>
+          <a href="/campaigns">Campaigns</a>
           <a href="/press">Press</a>
           <a href="/deals">Deals</a>
           <a href="/case-studies">Case Studies</a>
+          <a href="/contact">Contact</a>
         </div>
       </footer>
 
