@@ -57,46 +57,10 @@ export default function DealsPage() {
     setTypeFilter("");
   }
 
-  const navStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
-    .pg-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 rgba(255,255,255,0.08);}
-    .pg-nav-logo{font-size:22px;font-weight:900;color:#D73F09;text-decoration:none;font-family:Arial,sans-serif;}
-    .pg-nav-links{display:flex;align-items:center;gap:32px;}
-    .pg-nav-links a{color:rgba(255,255,255,0.55);font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.05em;transition:color 0.2s;}
-    .pg-nav-links a:hover{color:#fff;}
-    .pg-btn-outline{padding:8px 20px;border:1.5px solid #D73F09;border-radius:8px;color:#D73F09;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;}
-    .pg-btn-solid{padding:10px 28px;background:#D73F09;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;}
-    .pg-footer{border-top:1px solid rgba(255,255,255,0.08);padding:48px;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;}
-    .pg-footer-brand-desc{font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:240px;margin-top:12px;}
-    .pg-footer-col-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.35);margin-bottom:16px;}
-    .pg-footer-links{list-style:none;padding:0;margin:0;}
-    .pg-footer-links li{margin-bottom:10px;}
-    .pg-footer-links a{font-size:14px;color:rgba(255,255,255,0.55);text-decoration:none;}
-    .pg-footer-links a:hover{color:#fff;}
-    .pg-footer-bottom{border-top:1px solid rgba(255,255,255,0.08);padding:24px 48px;display:flex;align-items:center;justify-content:space-between;}
-    .pg-footer-copy{font-size:12px;color:rgba(255,255,255,0.35);}
-    .pg-footer-socials{display:flex;gap:24px;}
-    .pg-footer-socials a{font-size:12px;color:rgba(255,255,255,0.55);text-decoration:none;}
-    @media(max-width:900px){.pg-nav{padding:14px 24px;}.pg-nav-links{display:none;}.pg-footer{grid-template-columns:1fr 1fr;gap:32px;padding:32px 24px;}.pg-footer-bottom{padding:20px 24px;flex-direction:column;gap:12px;}}
-  `;
-
   return (
     <div className="min-h-screen bg-black text-white" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-      <style dangerouslySetInnerHTML={{ __html: navStyles }} />
-
-      {/* Nav */}
-      <nav className="pg-nav">
-        <a href="/homepage" className="pg-nav-logo">POSTGAME</a>
-        <div className="pg-nav-links">
-          <a href="/clients">Clients</a>
-          <a href="/campaigns">Campaigns</a>
-          <a href="/about/team">About</a>
-          <a href="/contact" className="pg-btn-outline">Contact</a>
-          <a href="/deals" className="pg-btn-solid">Deal Tracker</a>
-        </div>
-      </nav>
-
-      {/* Header */}
+{/* Nav */}
+{/* Header */}
       <div className="border-b border-gray-800" style={{ paddingTop: 80 }}>
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-12 md:py-20 text-center">
           <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: 16 }}>Postgame</div>
