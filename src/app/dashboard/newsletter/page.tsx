@@ -317,7 +317,7 @@ export default function NewsletterPage() {
     updateActive({ blocks });
   };
 
-  const exportHTML = generateMailchimpHTML(active!);
+  const exportHTML = active ? generateMailchimpHTML(active) : "";
 
   const copyHTML = () => {
     navigator.clipboard.writeText(exportHTML);
