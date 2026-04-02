@@ -759,6 +759,35 @@ const response = await fetch("/api/suggest-athletes", {
         </div>
       )}
 
+      {/* Site Pages — quick links to all page editors */}
+      {tab === "settings" && (
+        <div style={{ ...S.card, marginTop: 8 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px" }}>Site Pages</h3>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 20px" }}>Edit content for each public page of the website.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {[
+              { label: "Homepage", href: "/dashboard/homepage", live: "/homepage" },
+              { label: "Team / About", href: "/dashboard/team", live: "/about/team" },
+              { label: "Contact", href: "/dashboard/contact", live: "/contact" },
+              { label: "Services", href: "/dashboard/services", live: "/services/elevated" },
+              { label: "Clients", href: "/clients", live: "/clients" },
+              { label: "Campaigns", href: "/campaigns", live: "/campaigns" },
+              { label: "Deal Tracker", href: "/dashboard?tab=deals", live: "/deals" },
+              { label: "Press", href: "/dashboard?tab=press", live: "/press" },
+              { label: "Case Studies", href: "/dashboard?tab=case-studies", live: "/case-studies" },
+            ].map((p) => (
+              <div key={p.label} style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>{p.label}</span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link href={p.href} style={{ fontSize: 11, fontWeight: 700, color: "#D73F09", textDecoration: "none", padding: "4px 10px", border: "1px solid #D73F09", borderRadius: 6 }}>Edit</Link>
+                  <a href={p.live} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textDecoration: "none", padding: "4px 10px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6 }}>↗</a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Campaign Media Picker */}
       <CampaignMediaPicker
         open={mediaPickerOpen}
