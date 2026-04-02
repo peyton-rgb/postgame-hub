@@ -119,6 +119,45 @@ export default function HomepageEditorPage() {
   const [athletePickerSearch, setAthletePickerSearch] = useState("");
   const [athletePickerSport, setAthletePickerSport] = useState("");
   const [athletePickerBrand, setAthletePickerBrand] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<AthleteItem[]>([]);
+
+  const suggestFromNews = async () => {
+    setSuggesting(true);
+    setSuggestions([]);
+    try {
+      const supabase = createBrowserSupabase();
+      const { data: deals } = await supabase
+        .from("deals")
+        .select("id, athlete_name, athlete_school, athlete_sport, brand_name, image_url, brand_id")
+        .eq("published", true)
+        .eq("tier", "tier_1");
+      if (!deals?.length) return;
+      const athleteList = deals.map((d: any) => d.athlete_name + " (" + d.athlete_sport + ", " + d.athlete_school + ")").join("\n");
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [{ role: "user", content: "Search for college athletes trending in the news right now — NIL deals, viral moments, draft buzz, tournament performances, award winners from the past 2 weeks.\n\nCross-reference against this Postgame Tier 1 athlete list:\n" + athleteList + "\n\nReturn ONLY a JSON array of top 4 matches. No other text:\n[{\"name\": \"Full Name\", \"reason\": \"one sentence why trending\"}]\n\nIf fewer than 4 match return however many. If none return []." }],
+        }),
+      });
+      const data = await response.json();
+      const textBlock = data.content?.find((b: any) => b.type === "text");
+      if (!textBlock) return;
+      let parsed: {name: string; reason: string}[] = [];
+      try { parsed = JSON.parse(textBlock.text.replace(/```json|```/g, "").trim()); } catch { return; }
+      const matched: AthleteItem[] = [];
+      for (const s of parsed) {
+        const deal = deals.find((d: any) => d.athlete_name?.toLowerCase().trim() === s.name?.toLowerCase().trim());
+        if (deal) matched.push({ name: deal.athlete_name, sport: deal.athlete_sport, school: deal.athlete_school, image_url: deal.image_url, brand: deal.brand_name, brand_id: deal.brand_id, deal_id: deal.id, gradient: s.reason });
+      }
+      setSuggestions(matched);
+    } catch (e) { console.error("Suggest error:", e); }
+    finally { setSuggesting(false); }
+  };
 
   const supabase = createBrowserSupabase();
 
@@ -489,6 +528,29 @@ export default function HomepageEditorPage() {
                       </div>
                     ))}
                     <button style={S.btnAdd} onClick={openAthletePicker}>+ Add Athlete</button>
+                    <button style={{ ...S.btnAdd, background: "rgba(215,63,9,0.15)", color: "#D73F09", border: "1px solid rgba(215,63,9,0.3)", marginLeft: 8 }} onClick={suggestFromNews} disabled={suggesting}>
+                      {suggesting ? "Searching news..." : "Suggest from News"}
+                    </button>
+                    {suggestions.length > 0 && (
+                      <div style={{ marginTop: 16, background: "#0d0d0d", border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, padding: 16 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#D73F09", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 12 }}>Trending from your deal tracker</div>
+                        {suggestions.map((a, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < suggestions.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                            <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", background: "#222", flexShrink: 0 }}>
+                              {a.image_url && <img src={a.image_url} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{a.name}</div>
+                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>{a.gradient}</div>
+                            </div>
+                            <button style={{ padding: "5px 12px", background: "#D73F09", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
+                              onClick={() => { updateSectionItems("featured_athletes", "athletes", [...getAthletes(), { ...a, gradient: undefined }]); setSuggestions(suggestions.filter((_, j) => j !== i)); }}>
+                              + Add
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
