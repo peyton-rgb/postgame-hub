@@ -5,6 +5,9 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import CampaignMediaPicker from "@/components/CampaignMediaPicker";
+import DealList from "@/components/DealList";
+import PressList from "@/components/PressList";
+import CaseStudyList from "@/components/CaseStudyList";
 import Link from "next/link";
 
 // ── Design tokens ────────────────────────────────────────────
@@ -692,9 +695,6 @@ function PressEditor({ onSaved }: { onSaved: () => void }) {
             </div>
           ))}
         </SectionCard>
-        <div style={{ padding:"16px 20px" }}>
-          <Link href="/dashboard?tab=press" style={{ fontSize:13, color:C.orange, textDecoration:"none", fontWeight:700 }}>→ Add / Edit Articles in Main Dashboard</Link>
-        </div>
       </div>
       <div style={S.actionsBar}>
         <a href="/press" target="_blank" style={S.btnPreview}>↗ View Live</a>
@@ -806,9 +806,9 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
           ))}
         </SectionCard>
 
-        {/* All deals */}
+        {/* All deals - full management */}
         <SectionCard title="All Deals" defaultOpen={false}>
-          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Published = visible on public site. Star = featured at top.</div>
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Published = visible on public site. Star (☆) = featured at top. Use face position to keep athlete centered in banner.</div>
           {rest.map(d => (
             <div key={d.id} style={{ ...S.itemCard }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: d.image_url ? 10 : 0 }}>
@@ -849,6 +849,56 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
       </div>
       <div style={S.actionsBar}>
         <a href="/deals" target="_blank" style={S.btnPreview}>↗ View Live</a>
+      </div>
+    </>
+  );
+}
+
+// ── Case Studies editor ──────────────────────────────────────
+function CaseStudiesEditor({ onSaved }: { onSaved: () => void }) {
+  return (
+    <>
+      <div style={S.editScroll}>
+        <SectionCard title="Case Studies">
+          <div style={{ fontSize:13, lineHeight:1.4, color:C.text2, marginBottom:16 }}>
+            Manage case studies below. Published case studies appear on the public Case Studies page.
+          </div>
+          <div style={{ margin:"0 -20px", borderTop:`1px solid ${C.border}` }}>
+            <CaseStudyList />
+          </div>
+        </SectionCard>
+      </div>
+      <div style={S.actionsBar}>
+        <a href="/case-studies" target="_blank" style={S.btnPreview}>↗ View Live</a>
+      </div>
+    </>
+  );
+}
+
+// ── Events editor ─────────────────────────────────────────────
+function EventsEditor({ onSaved }: { onSaved: () => void }) {
+  return (
+    <>
+      <div style={S.editScroll}>
+        <div style={S.card}>
+          <div style={S.cardTitle}>Events</div>
+          <div style={{ fontSize:13, lineHeight:1.6, color:C.text2, marginBottom:20 }}>
+            Event pages are built in the Page Creator and published here. Each event page can pull athlete, brand, and campaign data.
+          </div>
+          <div style={{ display:"flex", flexDirection:"column" as const, gap:10 }}>
+            <Link href="/dashboard?tab=ros" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", borderRadius:10, background:"#1a1a1a", border:`1px solid ${C.border}`, textDecoration:"none", color:C.text2, fontSize:13, fontWeight:700 }}>
+              <span>Run of Shows</span>
+              <span style={{ color:C.text3 }}>→</span>
+            </Link>
+            <Link href="/dashboard" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", borderRadius:10, background:"#1a1a1a", border:`1px solid ${C.border}`, textDecoration:"none", color:C.text2, fontSize:13, fontWeight:700 }}>
+              <span>Page Creator</span>
+              <span style={{ color:C.text3 }}>→</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+      <div style={S.actionsBar}>
+        <a href="/dashboard" target="_blank" style={S.btnPreview}>↗ Open Page Creator</a>
       </div>
     </>
   );
@@ -896,23 +946,24 @@ function WebsiteEditorInner() {
             </div>
           ))}
 
-          <div style={S.sidebarSection}>Tools</div>
+          <div style={S.sidebarSection}>Private Tools</div>
           <div style={S.sidebarItem(false)} onClick={() => router.push("/dashboard")}>
-            <span style={{ fontSize:16 }}>📋</span>
+            <span style={{ fontSize:14 }}>📋</span>
             <span>Page Creator</span>
           </div>
           <div style={S.sidebarItem(false)} onClick={() => router.push("/dashboard/brands")}>
-            <span style={{ fontSize:16 }}>🏷️</span>
+            <span style={{ fontSize:14 }}>🏷️</span>
             <span>Brands</span>
           </div>
           <div style={S.sidebarItem(false)} onClick={() => router.push("/media-library")}>
-            <span style={{ fontSize:16 }}>🖼️</span>
+            <span style={{ fontSize:14 }}>🖼️</span>
             <span>Media Library</span>
           </div>
         </div>
 
         <div style={S.sidebarFooter}>
-          <a href="/" style={S.sidebarLink}>← Back to Dashboard</a>
+          <a href="/dashboard" style={S.sidebarLink}>← Page Creator</a>
+          <a href="/dashboard/brands" style={S.sidebarLink}>Brands & Assets</a>
         </div>
       </div>
 
@@ -934,6 +985,8 @@ function WebsiteEditorInner() {
           {activePage === "campaigns"       && <CampaignsEditor onSaved={handleSaved} />}
           {activePage === "deals"           && <DealsEditor onSaved={handleSaved} />}
           {activePage === "press"           && <PressEditor onSaved={handleSaved} />}
+          {activePage === "case-studies"    && <CaseStudiesEditor onSaved={handleSaved} />}
+          {activePage === "events"          && <EventsEditor onSaved={handleSaved} />}
           {activePage === "svc-elevated"    && <ServicesEditor svc="elevated" onSaved={handleSaved} />}
           {activePage === "svc-scaled"      && <ServicesEditor svc="scaled" onSaved={handleSaved} />}
           {activePage === "svc-always-on"   && <ServicesEditor svc="always-on" onSaved={handleSaved} />}
