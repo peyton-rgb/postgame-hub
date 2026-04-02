@@ -1,7 +1,25 @@
+export type BriefType =
+  | "Videographer Brief"
+  | "Editor Brief"
+  | "Athlete Brief"
+  | "Creative Brief"
+  | "Run-of-Show"
+  | "Campaign Overview";
+
+export interface CustomSection {
+  id: string;
+  title: string;
+  content: string;
+}
+
 export interface BriefFields {
   title: string;
   clientName: string;
   badgeText: string;
+  briefType: BriefType;
+  shootDate: string;
+  location: string;
+  athletes: string;
   objective: string;
   deliverables: string;
   creativeDirection: string;
@@ -11,6 +29,130 @@ export interface BriefFields {
   donts: string;
   workflow: string;
   fileDelivery: string;
+  customSections: CustomSection[];
+}
+
+export const BRIEF_TYPES: BriefType[] = [
+  "Videographer Brief",
+  "Editor Brief",
+  "Athlete Brief",
+  "Creative Brief",
+  "Run-of-Show",
+  "Campaign Overview",
+];
+
+export interface BriefTemplate {
+  name: string;
+  briefType: BriefType;
+  badgeText: string;
+  coreFields: (keyof BriefFields)[];
+  customSections: { title: string; content: string }[];
+}
+
+export const SYSTEM_TEMPLATES: BriefTemplate[] = [
+  {
+    name: "Videographer Brief",
+    briefType: "Videographer Brief",
+    badgeText: "Videographer Creative Brief",
+    coreFields: ["objective", "deliverables", "creativeDirection", "cameraTechnical", "workflow", "fileDelivery"],
+    customSections: [],
+  },
+  {
+    name: "Editor Brief",
+    briefType: "Editor Brief",
+    badgeText: "Editor Creative Brief",
+    coreFields: ["objective", "deliverables"],
+    customSections: [
+      { title: "Edit Structure", content: "" },
+      { title: "Music & Tone", content: "" },
+      { title: "Export Specs", content: "" },
+      { title: "Athlete Priority", content: "" },
+    ],
+  },
+  {
+    name: "Athlete Brief",
+    briefType: "Athlete Brief",
+    badgeText: "Athlete Content Brief",
+    coreFields: ["objective", "deliverables"],
+    customSections: [
+      { title: "Campaign Talking Points", content: "" },
+      { title: "Wardrobe & Props", content: "" },
+      { title: "Posting Instructions", content: "" },
+      { title: "Content Restrictions", content: "" },
+    ],
+  },
+  {
+    name: "Creative Brief",
+    briefType: "Creative Brief",
+    badgeText: "Creative Brief",
+    coreFields: ["objective"],
+    customSections: [
+      { title: "Target Audience", content: "" },
+      { title: "Key Message", content: "" },
+      { title: "Visual Direction", content: "" },
+      { title: "Timeline", content: "" },
+    ],
+  },
+  {
+    name: "Run-of-Show",
+    briefType: "Run-of-Show",
+    badgeText: "Run of Show",
+    coreFields: [],
+    customSections: [
+      { title: "Pre-Event", content: "" },
+      { title: "Main Coverage", content: "" },
+      { title: "Athlete Moments", content: "" },
+      { title: "Postgame", content: "" },
+      { title: "Contacts", content: "" },
+    ],
+  },
+  {
+    name: "Campaign Overview",
+    briefType: "Campaign Overview",
+    badgeText: "Campaign Overview",
+    coreFields: ["objective"],
+    customSections: [
+      { title: "Campaign Goals", content: "" },
+      { title: "Deliverables by Phase", content: "" },
+      { title: "Timeline", content: "" },
+      { title: "Brand Guidelines", content: "" },
+    ],
+  },
+];
+
+export const EMPTY_FIELDS: BriefFields = {
+  title: "",
+  clientName: "",
+  badgeText: "Videographer Creative Brief",
+  briefType: "Videographer Brief",
+  shootDate: "",
+  location: "",
+  athletes: "",
+  objective: "",
+  deliverables: "",
+  creativeDirection: "",
+  platformNotes: "",
+  cameraTechnical: "",
+  dos: "",
+  donts: "",
+  workflow: "",
+  fileDelivery: "",
+  customSections: [],
+};
+
+export function applyTemplate(template: BriefTemplate, existingTitle?: string, existingClient?: string): BriefFields {
+  return {
+    ...EMPTY_FIELDS,
+    title: existingTitle || "",
+    clientName: existingClient || "",
+    briefType: template.briefType,
+    badgeText: template.badgeText,
+    customSections: template.customSections.map((s, i) => ({
+      id: `cs-${i}-${Date.now()}`,
+      title: s.title,
+      content: s.content,
+    })),
+  };
 }
 
 export function generateBriefHTML(fields: BriefFields): string {
@@ -36,17 +178,22 @@ export function generateBriefHTML(fields: BriefFields): string {
     sections.push(sectionHTML(num++, "Shoot Workflow", bulletHTML(fields.workflow)));
   }
   if (fields.dos.trim() || fields.donts.trim()) {
-    sections.push(
-      sectionHTML(
-        num++,
-        "Do's & Don'ts",
-        dosAndDontsHTML(fields.dos, fields.donts)
-      )
-    );
+    sections.push(sectionHTML(num++, "Do's & Don'ts", dosAndDontsHTML(fields.dos, fields.donts)));
   }
   if (fields.fileDelivery.trim()) {
     sections.push(sectionHTML(num++, "File Delivery", bulletHTML(fields.fileDelivery)));
   }
+
+  for (const cs of fields.customSections) {
+    if (cs.content.trim() || cs.title.trim()) {
+      sections.push(sectionHTML(num++, cs.title || "Section", smartContentHTML(cs.content)));
+    }
+  }
+
+  const metaItems: string[] = [];
+  if (fields.shootDate) metaItems.push(metaItem("Date", fields.shootDate));
+  if (fields.location) metaItems.push(metaItem("Location", fields.location));
+  if (fields.athletes) metaItems.push(metaItem("Talent", fields.athletes));
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -61,6 +208,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .hero .badge{display:inline-block;background:#D73F09;color:white;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;padding:6px 16px;border-radius:20px;margin-bottom:24px}
 .hero h1{font-size:32px;font-weight:900;margin-bottom:8px}
 .hero .subtitle{color:#999;font-size:14px}
+.meta-bar{background:#222;padding:20px 40px;display:flex;justify-content:center;gap:48px;flex-wrap:wrap}
+.meta-item label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#666;margin-bottom:3px}
+.meta-item p{font-size:14px;color:#ccc;font-weight:500}
 .container{max-width:800px;margin:0 auto;padding:40px 24px}
 .section{background:white;border-radius:16px;padding:32px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .section-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
@@ -77,15 +227,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .donts-col li::before{background:#dc2626}
 .footer{text-align:center;padding:40px;color:#999;font-size:13px}
 .footer span{color:#D73F09;font-weight:700}
-@media(max-width:600px){.hero{padding:40px 20px}.hero h1{font-size:24px}.section{padding:24px}.dos-donts{grid-template-columns:1fr}}
+@media(max-width:600px){.hero{padding:40px 20px}.hero h1{font-size:24px}.section{padding:24px}.dos-donts{grid-template-columns:1fr}.meta-bar{gap:24px}}
 </style>
 </head>
 <body>
 <div class="hero">
-  <div class="badge">${esc(fields.badgeText || "Videographer Creative Brief")}</div>
+  <div class="badge">${esc(fields.badgeText || fields.briefType || "Creative Brief")}</div>
   <h1>${esc(fields.title)}</h1>
   <div class="subtitle">${esc(fields.clientName)} × Postgame</div>
 </div>
+${metaItems.length > 0 ? `<div class="meta-bar">${metaItems.join("\n")}</div>` : ""}
 <div class="container">
 ${sections.join("\n")}
 </div>
@@ -94,8 +245,12 @@ ${sections.join("\n")}
 </html>`;
 }
 
+function metaItem(label: string, value: string): string {
+  return `<div class="meta-item"><label>${esc(label)}</label><p>${esc(value)}</p></div>`;
+}
+
 function esc(s: string): string {
-  return s
+  return (s || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -127,6 +282,12 @@ function bulletHTML(text: string): string {
     .filter(Boolean);
   if (items.length === 0) return "";
   return `<ul>\n${items.map((i) => `    <li>${esc(i)}</li>`).join("\n")}\n  </ul>`;
+}
+
+function smartContentHTML(text: string): string {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const isBullet = lines.some((l) => /^[-•*]/.test(l));
+  return isBullet ? bulletHTML(text) : paraHTML(text);
 }
 
 function dosAndDontsHTML(dos: string, donts: string): string {
