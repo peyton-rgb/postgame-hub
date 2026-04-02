@@ -13,18 +13,25 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
+        max_tokens: 1500,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: `Search for college athletes trending in the news right now — NIL deals, viral moments, draft buzz, tournament performances, award winners from the past 2 weeks.\n\nCross-reference against this Postgame Tier 1 athlete list:\n${athleteList}\n\nReturn ONLY a JSON array of top 4 matches. No other text:\n[{"name": "Full Name", "reason": "one sentence why trending"}]\n\nIf fewer than 4 match return however many. If none return [].`,
+          content: `Search the web for the top trending college athletes right now in April 2026. Look for NIL news, viral social media moments, draft coverage, tournament standouts, award winners, and any major college sports headlines.
+
+Here is a list of athletes from our talent roster:
+${athleteList}
+
+Search for recent news about athletes on this list. Find which ones have been in the news recently. Return a JSON array of up to 4 athletes from the list who are most currently relevant, with a brief reason. Return ONLY valid JSON, no other text:
+[{"name": "exact name from list", "reason": "why they are trending now"}]`,
         }],
       }),
     });
     const data = await response.json();
     const textBlock = data.content?.find((b: any) => b.type === "text");
     const text = textBlock?.text || "[]";
-    const clean = text.replace(/```json|```/g, "").trim();
+    const jsonMatch = text.match(/\[.*\]/s);
+    const clean = jsonMatch ? jsonMatch[0] : "[]";
     return NextResponse.json({ result: clean });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
