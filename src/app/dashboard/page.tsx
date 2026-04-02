@@ -6,7 +6,6 @@ import CampaignList from "@/components/CampaignList";
 import RunOfShowList from "@/components/RunOfShowList";
 import BriefList from "@/components/BriefList";
 import TrackerList from "@/components/TrackerList";
-import Link from "next/link";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import Link from "next/link";
 import { createBrowserSupabase } from "@/lib/supabase";
