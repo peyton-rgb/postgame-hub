@@ -1,354 +1,26 @@
 import { getHomepage, getBrandLogos, type HomepageData, type PageSection } from "@/lib/public-site";
+import SiteFooter from "@/components/SiteFooter";
 
 export const revalidate = 60;
 
-// ── Styles ──────────────────────────────────────────────────
-const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
-
-  :root {
-    --orange: #D73F09;
-    --bg: #0A0A0A;
-    --surface: #141414;
-    --border: rgba(255,255,255,0.08);
-    --text: #FFFFFF;
-    --text-muted: rgba(255,255,255,0.55);
-    --text-dim: rgba(255,255,255,0.35);
-  }
-
-  .hp-body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: Arial, Helvetica, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .hp-display {
-    font-family: 'Bebas Neue', Arial, sans-serif;
-    letter-spacing: 0.02em;
-  }
-
-  /* Nav */
-  .hp-nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 48px;
-    transition: background 0.3s, backdrop-filter 0.3s, box-shadow 0.3s;
-  }
-  .hp-nav.scrolled {
-    background: rgba(10,10,10,0.92);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 1px 0 var(--border);
-  }
-  .hp-nav-logo { font-size: 22px; font-weight: 900; color: var(--orange); text-decoration: none; }
-  .hp-nav-links { display: flex; align-items: center; gap: 32px; }
-  .hp-nav-item { position: relative; }
-  .hp-nav-item::after {
-    content: ''; position: absolute; left: -12px; right: -12px;
-    top: 100%; height: 18px;
-  }
-  .hp-nav-item > button,
-  .hp-nav-item > a {
-    background: none; border: none; color: var(--text-muted); font-size: 13px;
-    font-weight: 700; cursor: pointer; text-decoration: none; padding: 8px 0;
-    transition: color 0.2s; text-transform: uppercase; letter-spacing: 0.05em;
-  }
-  .hp-nav-item:hover > button,
-  .hp-nav-item:hover > a { color: var(--text); }
-  .hp-nav-dropdown {
-    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 8px 0; min-width: 180px; padding-top: 16px; margin-top: 0;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
-    opacity: 0; visibility: hidden; pointer-events: none;
-    transition: opacity 0.15s ease, visibility 0.15s ease;
-  }
-  .hp-nav-dropdown > a:first-child { margin-top: -8px; }
-  .hp-nav-item:hover .hp-nav-dropdown {
-    opacity: 1; visibility: visible; pointer-events: auto;
-    transition-delay: 0s;
-  }
-  .hp-nav-item:not(:hover) .hp-nav-dropdown {
-    transition-delay: 0.2s;
-  }
-  .hp-nav-dropdown a {
-    display: block; padding: 10px 20px; font-size: 13px; color: var(--text-muted);
-    text-decoration: none; font-weight: 600; transition: all 0.15s;
-  }
-  .hp-nav-dropdown a:hover { color: var(--text); background: rgba(255,255,255,0.04); }
-  .hp-btn-outline {
-    padding: 8px 20px; border: 1.5px solid var(--orange); border-radius: 8px;
-    color: var(--orange); font-size: 12px; font-weight: 800; text-decoration: none;
-    text-transform: uppercase; letter-spacing: 0.06em; transition: all 0.2s;
-  }
-  .hp-btn-outline:hover { background: var(--orange); color: white; }
-  .hp-btn-solid {
-    padding: 10px 28px; background: var(--orange); border: none; border-radius: 8px;
-    color: white; font-size: 12px; font-weight: 800; text-decoration: none;
-    text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; transition: background 0.2s;
-  }
-  .hp-btn-solid:hover { background: #c43808; }
-
-  /* Hero */
-  .hp-hero {
-    min-height: 100vh; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; text-align: center;
-    padding: 140px 24px 80px;
-    background: radial-gradient(ellipse at 50% 0%, rgba(215,63,9,0.12) 0%, transparent 60%);
-  }
-  .hp-eyebrow {
-    font-size: 12px; font-weight: 800; text-transform: uppercase;
-    letter-spacing: 0.2em; color: var(--orange); margin-bottom: 20px;
-  }
-  .hp-hero-title {
-    font-size: clamp(48px, 8vw, 96px); line-height: 0.95; margin: 0 0 24px;
-    max-width: 900px;
-  }
-  .hp-hero-desc {
-    font-size: 18px; color: var(--text-muted); max-width: 560px;
-    line-height: 1.6; margin: 0 0 40px;
-  }
-  .hp-hero-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-
-  /* Fade-up animation */
-  .hp-fade-up {
-    opacity: 0; transform: translateY(24px);
-    animation: hpFadeUp 0.7s ease forwards;
-  }
-  .hp-fade-up-d1 { animation-delay: 0.1s; }
-  .hp-fade-up-d2 { animation-delay: 0.25s; }
-  .hp-fade-up-d3 { animation-delay: 0.4s; }
-  @keyframes hpFadeUp {
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Stats bar */
-  .hp-stats {
-    display: flex; justify-content: center; gap: 64px;
-    padding: 48px 24px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-  }
-  .hp-stat-num { font-size: 42px; line-height: 1; color: var(--orange); }
-  .hp-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-top: 6px; }
-
-  /* Sections */
-  .hp-section { padding: 80px 48px; }
-  .hp-section-title { font-size: clamp(36px, 5vw, 56px); margin: 0 0 12px; }
-  .hp-section-sub { font-size: 15px; color: var(--text-muted); margin: 0 0 48px; max-width: 500px; }
-
-  /* Campaign hero (featured) */
-  .hp-campaigns-hero {
-    border: 2px solid #D73F09; border-radius: 16px;
-    overflow: hidden; position: relative; min-height: 400px;
-    display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 48px; margin-bottom: 16px;
-    box-shadow: 0 0 30px rgba(215,63,9,0.3);
-    transition: box-shadow 0.25s;
-  }
-  .hp-campaigns-hero:hover { box-shadow: 0 0 40px rgba(215,63,9,0.4), 0 16px 48px rgba(0,0,0,0.4); }
-  .hp-campaigns-hero .hp-card-brand { font-size: 14px; }
-  .hp-campaigns-hero .hp-card-title { font-size: clamp(28px, 5vw, 44px); }
-  .hp-campaigns-hero .hp-card-meta { font-size: 14px; }
-  .hp-campaigns-hero .hp-card-overlay { background: linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.85) 100%); }
-
-  /* Campaign masonry (non-featured) */
-  .hp-campaigns-masonry { column-count: 3; column-gap: 16px; }
-  .hp-card {
-    border: 1px solid var(--border); border-radius: 12px;
-    overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
-    position: relative;
-    break-inside: avoid; margin-bottom: 16px;
-  }
-  .hp-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
-  .hp-card-no-media {
-    min-height: 200px; display: flex; flex-direction: column;
-    justify-content: flex-end; padding: 28px;
-  }
-  .hp-card-brand { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); margin-bottom: 4px; }
-  .hp-card-title { font-size: 24px; line-height: 1.05; margin: 0 0 6px; }
-  .hp-card-meta { font-size: 12px; color: var(--text-muted); }
-
-  /* Card content row with logo */
-  .hp-card-content-row { display: flex; align-items: center; gap: 12px; }
-  .hp-card-logo {
-    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
-    background: var(--orange); display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 900; color: #fff; overflow: hidden;
-  }
-  .hp-card-logo img { width: 100%; height: 100%; object-fit: cover; }
-
-  /* Legacy grid class kept for other sections */
-  .hp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .rc-1 { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
-  .rc-2 { background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 50%, #3d1f14 100%); }
-  .rc-3 { background: linear-gradient(135deg, #141414 0%, #1a2a1a 50%, #1e3a1e 100%); }
-  .rc-4 { background: linear-gradient(135deg, #1a1a1a 0%, #2a1a2d 50%, #3a1e3d 100%); }
-  .rc-5 { background: linear-gradient(135deg, #1a1a1a 0%, #1a2a2a 50%, #1e3a3a 100%); }
-  .hp-card-has-img { background-size: cover; background-position: center; }
-  .hp-card-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.75) 100%); border-radius: 16px; }
-  .hp-card-overlay-bottom { position: absolute; bottom: 0; left: 0; right: 0; padding: 28px; z-index: 1; }
-
-  /* Athletes */
-  .hp-athletes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-  .hp-athlete {
-    position: relative; border-radius: 16px; overflow: hidden;
-    border: 1px solid var(--border); transition: border-color 0.2s, transform 0.25s;
-    aspect-ratio: 3/4;
-  }
-  .hp-athlete:hover { border-color: var(--orange); transform: translateY(-4px); }
-  .hp-athlete-img {
-    width: 100%; height: 100%; object-fit: cover; object-position: center 20%;
-    display: block;
-  }
-  .hp-athlete-overlay {
-    position: absolute; inset: 0;
-    background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%);
-  }
-  .hp-athlete-info {
-    position: absolute; bottom: 0; left: 0; right: 0; padding: 20px;
-  }
-  .hp-athlete-brand-logo {
-    position: absolute; top: 12px; left: 12px;
-    height: 24px; max-width: 60px; object-fit: contain;
-    opacity: 0.85; z-index: 2;
-    filter: brightness(0) invert(1);
-  }
-  .hp-athlete-sport {
-    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--orange); margin-bottom: 6px;
-  }
-  .hp-athlete-name { font-size: 22px; line-height: 1.05; margin: 0 0 4px; }
-  .hp-athlete-school { font-size: 12px; color: var(--text-muted); }
-
-  /* Brand partners */
-  .hp-brands {
-    display: flex; flex-wrap: wrap; gap: 32px; align-items: center; justify-content: center;
-    padding: 24px 0;
-  }
-  .hp-brand-logo {
-    height: 40px; opacity: 0.5; filter: grayscale(1) brightness(2);
-    transition: opacity 0.2s, filter 0.2s;
-  }
-  .hp-brand-logo:hover { opacity: 1; filter: none; }
-  .hp-brand-placeholder {
-    width: 100px; height: 40px; border-radius: 8px; background: var(--surface);
-    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 800; color: var(--text-dim); text-transform: uppercase;
-    letter-spacing: 0.05em; transition: border-color 0.2s;
-  }
-  .hp-brand-placeholder:hover { border-color: var(--orange); }
-
-  /* Services — 3x2 grid */
-  .hp-services { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .hp-service {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 40px 28px; transition: border-color 0.25s;
-  }
-  .hp-service:hover { border-color: var(--orange); }
-  .hp-service-accent { border-left: 3px solid var(--orange); }
-  .hp-service-num {
-    font-size: 11px; font-weight: 800; color: var(--text-dim); letter-spacing: 0.1em;
-    margin-bottom: 16px;
-  }
-  .hp-service-accent .hp-service-num { color: var(--orange); }
-  .hp-service-title { font-size: 20px; font-weight: 800; margin: 0 0 10px; }
-  .hp-service-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 0; }
-
-  /* CTA */
-  .hp-cta {
-    text-align: center; padding: 100px 24px;
-    background: radial-gradient(ellipse at 50% 100%, rgba(215,63,9,0.1) 0%, transparent 60%);
-  }
-  .hp-cta-title { font-size: clamp(40px, 6vw, 72px); margin: 0 0 16px; }
-  .hp-cta-desc { font-size: 16px; color: var(--text-muted); margin: 0 0 36px; max-width: 480px; display: inline-block; line-height: 1.6; }
-
-  /* Footer */
-  .hp-footer {
-    border-top: 1px solid var(--border); padding: 40px 48px;
-    display: flex; align-items: center; justify-content: space-between;
-    font-size: 12px; color: var(--text-dim);
-  }
-  .hp-footer a { color: var(--text-muted); text-decoration: none; margin-left: 24px; }
-  .hp-footer a:hover { color: var(--text); }
-
-  /* Mobile nav */
-  .hp-nav-mobile-toggle { display: none; background: none; border: none; color: var(--text); cursor: pointer; }
-
-  /* Responsive */
-  @media (max-width: 900px) {
-    .hp-nav { padding: 14px 24px; }
-    .hp-nav-links { display: none; }
-    .hp-nav-mobile-toggle { display: block; }
-    .hp-grid { grid-template-columns: repeat(2, 1fr); }
-    .hp-campaigns-masonry { column-count: 2; }
-    .hp-campaigns-hero { min-height: 280px; padding: 28px; }
-    .hp-athletes { grid-template-columns: repeat(2, 1fr); }
-    .hp-services { grid-template-columns: 1fr; }
-    .hp-stats { gap: 32px; flex-wrap: wrap; }
-    .hp-section { padding: 60px 24px; }
-    .hp-footer { flex-direction: column; gap: 16px; text-align: center; }
-    .hp-footer a { margin-left: 0; margin: 0 12px; }
-  }
-  @media (max-width: 600px) {
-    .hp-grid { grid-template-columns: 1fr; }
-    .hp-campaigns-masonry { column-count: 1; }
-    .hp-athletes { grid-template-columns: 1fr; }
-    .hp-stats { flex-direction: column; align-items: center; gap: 24px; }
-  }
-`;
-
-// ── Scroll script ───────────────────────────────────────────
-function ScrollScript() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-          (function() {
-            var nav = document.querySelector('.hp-nav');
-            if (!nav) return;
-            function onScroll() {
-              if (window.scrollY > 40) nav.classList.add('scrolled');
-              else nav.classList.remove('scrolled');
-            }
-            window.addEventListener('scroll', onScroll, { passive: true });
-            onScroll();
-          })();
-        `,
-      }}
-    />
-  );
+function getSection(sections: PageSection[], type: string) {
+  return sections.find(s => s.type === type && s.visible !== false);
 }
-
-// ── Helpers ─────────────────────────────────────────────────
-function getSection(sections: PageSection[], type: string): PageSection | undefined {
-  return sections.find((s) => s.type === type && s.visible !== false);
-}
-
 function getSetting(page: HomepageData["page"], key: string): unknown {
   return (page.settings as Record<string, unknown>)?.[key];
 }
-
-/** Safely extract a display string from a setting that may be a string or {text, url} object */
 function settingText(val: unknown): string | undefined {
   if (!val) return undefined;
   if (typeof val === "string") return val;
   if (typeof val === "object" && val !== null && "text" in val) return String((val as Record<string, unknown>).text);
-  return undefined;
 }
-
 function settingUrl(val: unknown): string | undefined {
-  if (!val) return undefined;
   if (typeof val === "object" && val !== null && "url" in val) return String((val as Record<string, unknown>).url);
-  return undefined;
 }
-
-/** Get a content field from a section, with fallback */
 function contentArr(section: PageSection, ...keys: string[]): Record<string, unknown>[] {
   const c = section.content;
   if (!c) return [];
-  for (const k of keys) {
-    if (Array.isArray(c[k])) return c[k] as Record<string, unknown>[];
-  }
+  for (const k of keys) { if (Array.isArray(c[k])) return c[k] as Record<string, unknown>[]; }
   if (Array.isArray(c)) return c;
   return [];
 }
@@ -357,376 +29,290 @@ function contentStr(section: PageSection, key: string): string {
   return typeof v === "string" ? v : "";
 }
 
-// ── Fallback ────────────────────────────────────────────────
-function FallbackHomepage() {
+function ScrollScript() {
+  return <script dangerouslySetInnerHTML={{ __html: `(function(){var n=document.querySelector('.pg-nav');if(!n)return;function u(){n.classList.toggle('solid',window.scrollY>40);}window.addEventListener('scroll',u,{passive:true});u();})();` }} />;
+}
+
+function Fallback() {
   return (
-    <div className="hp-body">
-      <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-      <nav className="hp-nav scrolled">
-        <a href="/" className="hp-nav-logo">POSTGAME</a>
-      </nav>
-      <div className="hp-hero">
-        <div className="hp-eyebrow hp-fade-up">NIL Campaign Management</div>
-        <h1 className="hp-display hp-hero-title hp-fade-up hp-fade-up-d1">
-          We Build Athlete-Powered Campaigns
-        </h1>
-        <p className="hp-hero-desc hp-fade-up hp-fade-up-d2">
-          Postgame connects brands with college athletes to create authentic, high-performing social media campaigns.
-        </p>
-        <div className="hp-hero-actions hp-fade-up hp-fade-up-d3">
-          <a href="/deals" className="hp-btn-solid">Tier 1 Deal Tracker</a>
-          <a href="mailto:hello@postgame.co" className="hp-btn-outline">Work With Us</a>
+    <div className="pg-page">
+      <div className="hp-hero"><div className="hp-hero-inner">
+        <div className="pg-eyebrow" style={{marginBottom:20}}>NIL Campaign Management</div>
+        <h1 className="hp-hero-title d">We Build<br/>Athlete-Powered<br/>Campaigns</h1>
+        <p className="hp-hero-desc">Postgame connects brands with college athletes to create authentic, high-performing NIL campaigns at scale.</p>
+        <div className="btn-group" style={{justifyContent:"center",marginTop:40}}>
+          <a href="/deals" className="btn-primary">Deal Tracker</a>
+          <a href="/contact" className="btn-secondary">Work With Us</a>
         </div>
-      </div>
-      <footer className="hp-footer">
-        <span>&copy; {new Date().getFullYear()} Postgame. All rights reserved.</span>
-        <div>
-          <a href="/press">Press</a>
-          <a href="/deals">Deals</a>
-        </div>
-      </footer>
-      <ScrollScript />
+      </div></div>
+      <SiteFooter />
     </div>
   );
 }
 
-// ── Main Page ───────────────────────────────────────────────
 export default async function HomepagePage() {
   let data: HomepageData | null = null;
   let brandLogos = new Map<string, string>();
-  try {
-    [data, brandLogos] = await Promise.all([getHomepage(), getBrandLogos()]);
-  } catch {
-    // Supabase unreachable
-  }
-
-  if (!data) return <FallbackHomepage />;
+  try { [data, brandLogos] = await Promise.all([getHomepage(), getBrandLogos()]); } catch {}
+  if (!data) return <Fallback />;
 
   const { page, sections } = data;
-  const raw = (key: string) => getSetting(page, key);
-  const s = (key: string) => settingText(raw(key));
-  const publicSections = (page.settings as Record<string, unknown>)?.public_sections as Record<string, boolean> | undefined;
-  const showSection = (key: string) => !publicSections || publicSections[key] !== false;
-
-  const stats = (getSetting(page, "stats") as { value: string; label: string }[] | undefined) || [];
-  const featuredCampaigns = getSection(sections, "featured_campaigns");
-  const featuredAthletes = getSection(sections, "featured_athletes");
-  const brandPartners = getSection(sections, "brand_partners");
-  const servicesGrid = getSection(sections, "services_grid");
+  const raw = (k: string) => getSetting(page, k);
+  const s = (k: string) => settingText(raw(k));
+  const ps = (page.settings as Record<string, unknown>)?.public_sections as Record<string, boolean> | undefined;
+  const show = (k: string) => !ps || ps[k] !== false;
+  const stats = (getSetting(page, "stats") as {value:string;label:string}[] | undefined) || [];
+  const fc = getSection(sections, "featured_campaigns");
+  const fa = getSection(sections, "featured_athletes");
+  const bp = getSection(sections, "brand_partners");
+  const sg = getSection(sections, "services_grid");
 
   return (
-    <div className="hp-body">
-      <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-
-      {/* Nav */}
-      <nav className="hp-nav">
-        <a href="/" className="hp-nav-logo">POSTGAME</a>
-        <div className="hp-nav-links">
-          <div className="hp-nav-item">
-            <button>Network</button>
-            <div className="hp-nav-dropdown">
-              <a href="/clients">Clients</a>
-              <a href="/campaigns">Campaigns</a>
-              <a href="/deals">Deal Tracker</a>
-            </div>
-          </div>
-          <div className="hp-nav-item">
-            <button>Services</button>
-            <div className="hp-nav-dropdown">
-              <a href="/services/elevated">Elevated</a>
-              <a href="/services/scaled">Scaled</a>
-              <a href="/services/always-on">Always On</a>
-              <a href="/services/experiential">Experiential</a>
-            </div>
-          </div>
-          <div className="hp-nav-item">
-            <button>About</button>
-            <div className="hp-nav-dropdown">
-              <a href="/about/team">Our Team</a>
-              <a href="/press">Press</a>
-              <a href="/case-studies">Case Studies</a>
-            </div>
-          </div>
-          <a href="/contact" className="hp-btn-outline">Contact</a>
-          <a href="/deals" className="hp-btn-solid">Deal Tracker</a>
-        </div>
-        <button className="hp-nav-mobile-toggle" aria-label="Menu">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-      </nav>
+    <div className="pg-page">
+      <style>{`
+        .hp-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 24px 80px;position:relative;overflow:hidden;}
+        .hp-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(215,63,9,0.18) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(215,63,9,0.06) 0%,transparent 50%);pointer-events:none;}
+        .hp-hero-inner{position:relative;z-index:1;max-width:860px;}
+        .hp-hero-title{font-size:clamp(72px,12vw,140px);line-height:0.9;letter-spacing:0.01em;margin:16px 0 28px;background:linear-gradient(160deg,#fff 40%,rgba(255,255,255,0.55) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .hp-hero-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.6);max-width:540px;margin:0 auto;}
+        .hp-stats{display:flex;justify-content:center;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);}
+        .hp-stat{flex:1;max-width:220px;padding:36px 24px;text-align:center;border-right:1px solid rgba(255,255,255,0.08);}
+        .hp-stat:last-child{border-right:none;}
+        .hp-stat-num{font-family:'Bebas Neue',Arial,sans-serif;font-size:52px;line-height:1;color:var(--orange);letter-spacing:0.02em;}
+        .hp-stat-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.18em;color:rgba(255,255,255,0.4);margin-top:6px;}
+        .hp-sec{padding:96px 48px;}
+        .hp-sec-alt{padding:96px 48px;background:rgba(255,255,255,0.015);}
+        .hp-featured{position:relative;border-radius:24px;overflow:hidden;min-height:440px;display:flex;flex-direction:column;justify-content:flex-end;padding:40px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:border-color 0.25s;}
+        .hp-featured:hover{border-color:rgba(215,63,9,0.5);}
+        .hp-featured-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0.2) 50%,transparent 100%);}
+        .hp-featured-content{position:relative;z-index:1;}
+        .hp-masonry{column-count:3;column-gap:16px;}
+        .hp-card{break-inside:avoid;margin-bottom:16px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);backdrop-filter:blur(12px);transition:border-color 0.2s,transform 0.2s;}
+        .hp-card:hover{border-color:rgba(215,63,9,0.35);transform:translateY(-3px);}
+        .hp-card-body{padding:20px 24px 24px;}
+        .hp-card-nm{min-height:180px;display:flex;flex-direction:column;justify-content:flex-end;padding:24px;}
+        .hp-card-brand{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--orange);margin-bottom:4px;}
+        .hp-card-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:28px;line-height:1;}
+        .hp-card-meta{font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px;}
+        .hp-athletes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px;}
+        .hp-athlete{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:3/4;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);transition:border-color 0.2s,transform 0.25s;}
+        .hp-athlete:hover{border-color:rgba(215,63,9,0.4);transform:translateY(-4px);}
+        .hp-athlete img{width:100%;height:100%;object-fit:cover;object-position:center 15%;}
+        .hp-athlete-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.82) 0%,transparent 50%);}
+        .hp-athlete-info{position:absolute;bottom:0;left:0;right:0;padding:20px;}
+        .hp-athlete-sport{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--orange);margin-bottom:4px;}
+        .hp-athlete-name{font-family:'Bebas Neue',Arial,sans-serif;font-size:26px;line-height:1;}
+        .hp-athlete-school{font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;}
+        .hp-brands-wrap{padding:64px 48px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);}
+        .hp-brands-row{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;margin-top:36px;}
+        .hp-brand-pill{height:48px;min-width:120px;display:flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);transition:all 0.2s;}
+        .hp-brand-pill:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14);}
+        .hp-brand-pill img{max-height:24px;max-width:80px;object-fit:contain;filter:grayscale(1) brightness(2);opacity:0.5;transition:opacity 0.2s,filter 0.2s;}
+        .hp-brand-pill:hover img{opacity:0.9;filter:none;}
+        .hp-brand-txt{font-size:11px;font-weight:800;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:0.06em;}
+        .hp-services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px;}
+        .hp-service{padding:36px 28px;border-radius:20px;background:rgba(255,255,255,0.04);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.08);transition:border-color 0.25s,background 0.25s;}
+        .hp-service:hover{border-color:rgba(215,63,9,0.4);background:rgba(255,255,255,0.065);}
+        .hp-service-accent{border-left:3px solid var(--orange);}
+        .hp-service-num{font-size:11px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:0.12em;margin-bottom:16px;}
+        .hp-service-accent .hp-service-num{color:var(--orange);}
+        .hp-service-title{font-size:20px;font-weight:800;margin-bottom:12px;}
+        .hp-service-desc{font-size:18px;line-height:1.4;color:rgba(255,255,255,0.55);}
+        .hp-cta{padding:120px 24px;text-align:center;position:relative;overflow:hidden;}
+        .hp-cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 100%,rgba(215,63,9,0.14) 0%,transparent 60%);pointer-events:none;}
+        .hp-cta-inner{position:relative;z-index:1;}
+        .hp-cta-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(56px,8vw,96px);line-height:0.92;letter-spacing:0.02em;margin-bottom:20px;}
+        .hp-cta-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.55);max-width:480px;margin:0 auto 40px;}
+        .rc-1{background:linear-gradient(135deg,#1a1a2e,#0f3460);}
+        .rc-2{background:linear-gradient(135deg,#1a1a1a,#3d1f14);}
+        .rc-3{background:linear-gradient(135deg,#141414,#1e3a1e);}
+        .rc-4{background:linear-gradient(135deg,#1a1a1a,#3a1e3d);}
+        .rc-5{background:linear-gradient(135deg,#1a1a1a,#1e3a3a);}
+        @media(max-width:900px){
+          .hp-hero{padding:100px 20px 64px;}
+          .hp-hero-title{font-size:clamp(56px,16vw,80px);}
+          .hp-hero-desc{font-size:14px;}
+          .hp-stat{min-width:50%;flex:none;}
+          .hp-sec,.hp-sec-alt{padding:64px 20px;}
+          .hp-masonry{column-count:2;}
+          .hp-athletes-grid{grid-template-columns:repeat(2,1fr);}
+          .hp-services-grid{grid-template-columns:1fr;}
+          .hp-brands-wrap{padding:48px 20px;}
+          .hp-cta{padding:80px 20px;}
+          .hp-cta-desc,.hp-service-desc{font-size:14px;}
+          .hp-cta-title{font-size:clamp(48px,14vw,72px);}
+        }
+        @media(max-width:600px){
+          .hp-masonry{column-count:1;}
+          .hp-athletes-grid{grid-template-columns:1fr 1fr;}
+        }
+      `}</style>
 
       {/* Hero */}
       <section className="hp-hero">
-        {s("hero_eyebrow") && (
-          <div className="hp-eyebrow hp-fade-up">{s("hero_eyebrow")}</div>
-        )}
-        <h1 className="hp-display hp-hero-title hp-fade-up hp-fade-up-d1">
-          {s("hero_title") || "We Build Athlete-Powered Campaigns"}
-        </h1>
-        {s("hero_desc") && (
-          <p className="hp-hero-desc hp-fade-up hp-fade-up-d2">{s("hero_desc")}</p>
-        )}
-        <div className="hp-hero-actions hp-fade-up hp-fade-up-d3">
-          {s("hero_cta_primary") && (
-            <a href={settingUrl(raw("hero_cta_primary")) || "/deals"} className="hp-btn-solid">{s("hero_cta_primary")}</a>
-          )}
-          {s("hero_cta_secondary") && (
-            <a href={settingUrl(raw("hero_cta_secondary")) || "mailto:hello@postgame.co"} className="hp-btn-outline">{s("hero_cta_secondary")}</a>
-          )}
+        <div className="hp-hero-inner">
+          {s("hero_eyebrow") && <div className="pg-eyebrow" style={{marginBottom:20}}>{s("hero_eyebrow")}</div>}
+          <h1 className="hp-hero-title d">{s("hero_title") || "We Build\nAthlete-Powered\nCampaigns"}</h1>
+          {s("hero_desc") && <p className="hp-hero-desc">{s("hero_desc")}</p>}
+          <div className="btn-group" style={{justifyContent:"center",marginTop:40}}>
+            {s("hero_cta_primary") && <a href={settingUrl(raw("hero_cta_primary"))||"/deals"} className="btn-primary">{s("hero_cta_primary")}</a>}
+            {s("hero_cta_secondary") && <a href={settingUrl(raw("hero_cta_secondary"))||"/contact"} className="btn-secondary">{s("hero_cta_secondary")}</a>}
+          </div>
         </div>
       </section>
 
       {/* Stats */}
-      {showSection("stats") && stats.length > 0 && (
+      {show("stats") && stats.length > 0 && (
         <div className="hp-stats">
-          {stats.map((stat, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <div className="hp-display hp-stat-num">{stat.value}</div>
-              <div className="hp-stat-label">{stat.label}</div>
+          {stats.map((st, i) => (
+            <div key={i} className="hp-stat">
+              <div className="hp-stat-num">{st.value}</div>
+              <div className="hp-stat-label">{st.label}</div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Campaign Highlights */}
-      {showSection("featured_campaigns") && featuredCampaigns && (() => {
-        const campaigns = contentArr(featuredCampaigns, "campaigns", "items");
-        const eyebrow = contentStr(featuredCampaigns, "eyebrow");
-        const description = contentStr(featuredCampaigns, "description");
-        return campaigns.length > 0 ? (
-          <section className="hp-section">
-            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
-            <h2 className="hp-display hp-section-title">{featuredCampaigns.title || "Campaign Highlights"}</h2>
-            {(description || featuredCampaigns.subtitle) && <p className="hp-section-sub">{description || featuredCampaigns.subtitle}</p>}
-            {(() => {
-              const featuredIdx = campaigns.findIndex((c) => c.featured === true);
-              const fi = featuredIdx >= 0 ? featuredIdx : 0;
-              const featured = campaigns[fi];
-              const rest = campaigns.filter((_, idx) => idx !== fi);
-
-              const renderLogo = (brand: string, logoUrl: string, isHero: boolean) => {
-                const resolvedLogo = logoUrl || brandLogos.get(brand.toLowerCase()) || "";
-                if (resolvedLogo) {
-                  const logoFilter = { filter: 'brightness(0) invert(1)', opacity: 0.85 } as const;
-                  return isHero
-                    ? <img src={resolvedLogo} alt={brand} style={{ height: 44, maxWidth: 120, objectFit: 'contain' as const, ...logoFilter }} />
-                    : <img src={resolvedLogo} alt={brand} style={{ height: 32, maxWidth: 80, objectFit: 'contain' as const, ...logoFilter }} />;
-                }
-                return (
-                  <div className="hp-card-logo">
-                    {brand.charAt(0).toUpperCase()}
-                  </div>
-                );
-              };
-
-              const renderCardContent = (item: Record<string, unknown>, isHero: boolean, idx: number) => {
-                const brand = String(item.brand || item.brand_name || "");
-                const title = String(item.name || item.title || "");
-                const meta = String(item.meta || "");
-                const gradient = String(item.gradient || `rc-${(idx % 5) + 1}`);
-                const imageUrl = String(item.image_url || "");
-                const mediaType = String(item.media_type || "image");
-                const logoUrl = String(item.brand_logo_url || "");
-                const focalPoint = String(item.focal_point || "center 20%");
-                const hasMedia = !!imageUrl;
-                const isVideo = hasMedia && mediaType === "video";
-
-                const textContent = (
-                  <div className="hp-card-content-row">
-                    {renderLogo(brand, logoUrl, isHero)}
-                    <div>
-                      {brand && <div className="hp-card-brand">{brand}</div>}
-                      <div className="hp-display hp-card-title">{title}</div>
-                      {meta && <div className="hp-card-meta">{meta}</div>}
-                    </div>
-                  </div>
-                );
-
-                // ── Hero card (keeps min-height, background-image/video approach) ──
-                if (isHero) {
-                  const cls = `hp-campaigns-hero ${hasMedia && !isVideo ? "hp-card-has-img" : !hasMedia ? gradient : ""}`;
-                  return (
-                    <div
-                      key={idx}
-                      className={cls}
-                      style={hasMedia && !isVideo ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: focalPoint } : undefined}
-                    >
-                      {isVideo && <video autoPlay muted loop playsInline preload="auto" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: focalPoint }} src={imageUrl} />}
-                      {hasMedia && <div className="hp-card-overlay" />}
-                      <div style={{ position: "relative", zIndex: 1 }}>{textContent}</div>
-                    </div>
-                  );
-                }
-
-                // ── Masonry card WITHOUT media (gradient fallback) ──
-                if (!hasMedia) {
-                  return (
-                    <div key={idx} className={`hp-card hp-card-no-media ${gradient}`}>
-                      {textContent}
-                    </div>
-                  );
-                }
-
-                // ── Masonry card WITH media (natural aspect ratio sizing) ──
-                return (
-                  <div key={idx} className="hp-card">
-                    {isVideo ? (
-                      <video autoPlay muted loop playsInline preload="auto" style={{ width: "100%", height: "auto", display: "block", objectPosition: focalPoint }} src={imageUrl} />
-                    ) : (
-                      <img src={imageUrl} alt={title} style={{ width: "100%", height: "auto", display: "block", objectPosition: focalPoint }} />
-                    )}
-                    <div className="hp-card-overlay" />
-                    <div className="hp-card-overlay-bottom">{textContent}</div>
-                  </div>
-                );
-              };
-
-              return (
-                <>
-                  {featured && renderCardContent(featured, true, fi)}
-                  {rest.length > 0 && (
-                    <div className="hp-campaigns-masonry">
-                      {rest.map((item, i) => renderCardContent(item, false, i))}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </section>
-        ) : null;
-      })()}
-
-      {/* Featured Athletes */}
-      {showSection("featured_athletes") && featuredAthletes && (() => {
-        const athletes = contentArr(featuredAthletes, "athletes", "items");
-        const eyebrow = contentStr(featuredAthletes, "eyebrow");
-        const description = contentStr(featuredAthletes, "description");
-        return athletes.length > 0 ? (
-          <section className="hp-section">
-            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
-            <h2 className="hp-display hp-section-title">{featuredAthletes.title || "Featured Athletes"}</h2>
-            {(description || featuredAthletes.subtitle) && <p className="hp-section-sub">{description || featuredAthletes.subtitle}</p>}
-            <div className="hp-athletes">
-              {athletes.map((item, i) => {
-                const name = String(item.name || "");
-                const school = String(item.school || "");
-                const sport = String(item.sport || "");
-                const imageUrl = String(item.image_url || "");
-                const brand = String(item.brand || "");
-                const brandLogoUrl = brand ? brandLogos.get(brand.toLowerCase()) || "" : "";
-                return (
-                  <div key={i} className="hp-athlete">
-                    {imageUrl ? (
-                      <img src={imageUrl} alt={name} className="hp-athlete-img" />
-                    ) : (
-                      <div style={{ width: "100%", height: "100%", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: 900, color: "var(--orange)" }}>
-                        {name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                      </div>
-                    )}
-                    <div className="hp-athlete-overlay" />
-                    {brandLogoUrl && <img src={brandLogoUrl} alt={brand} className="hp-athlete-brand-logo" />}
-                    <div className="hp-athlete-info">
-                      {sport && <div className="hp-athlete-sport">{sport}</div>}
-                      <div className="hp-display hp-athlete-name">{name}</div>
-                      {school && <div className="hp-athlete-school">{school}</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ) : null;
-      })()}
-
-      {/* Brand Partners */}
-      {showSection("brand_partners") && brandPartners && (() => {
-        const logos = contentArr(brandPartners, "logos", "items");
-        const eyebrow = contentStr(brandPartners, "eyebrow");
-        const description = contentStr(brandPartners, "description");
+      {/* Campaigns */}
+      {show("featured_campaigns") && fc && (() => {
+        const cps = contentArr(fc, "campaigns", "items");
+        if (!cps.length) return null;
+        const fi = Math.max(0, cps.findIndex(c => c.featured));
+        const feat = cps[fi];
+        const rest = cps.filter((_,i) => i !== fi);
+        const GRADIENTS = ["rc-1","rc-2","rc-3","rc-4","rc-5"];
         return (
-          <section className="hp-section" style={{ textAlign: "center" }}>
-            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
-            <h2 className="hp-display hp-section-title">{brandPartners.title || "Brand Partners"}</h2>
-            {(description || brandPartners.subtitle) && <p className="hp-section-sub" style={{ margin: "0 auto 48px" }}>{description || brandPartners.subtitle}</p>}
-            {logos.length > 0 ? (
-              <div className="hp-brands">
-                {logos.map((item, i) => {
-                  const name = String(item.name || "");
-                  const logoUrl = String(item.logo_url || "");
-                  const href = String(item.href || "#");
-                  return logoUrl ? (
-                    <a key={i} href={href}>
-                      <img src={logoUrl} alt={name} className="hp-brand-logo" />
-                    </a>
-                  ) : (
-                    <div key={i} className="hp-brand-placeholder">{name}</div>
+          <div className="hp-sec">
+            {contentStr(fc,"eyebrow") && <div className="pg-eyebrow">{contentStr(fc,"eyebrow")}</div>}
+            <h2 className="d pg-section-title">{fc.title || "Campaign Highlights"}</h2>
+            {feat && (
+              <div className={`hp-featured${feat.image_url ? "" : " rc-1"}`}>
+                {feat.image_url && (String(feat.media_type||"")==="video"
+                  ? <video autoPlay muted loop playsInline src={String(feat.image_url)} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
+                  : <img src={String(feat.image_url)} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:String(feat.focal_point||"center 20%")}} />
+                )}
+                <div className="hp-featured-overlay"/>
+                <div className="hp-featured-content">
+                  {String(feat.brand||"") && <div className="hp-card-brand">{String(feat.brand||"")}</div>}
+                  <div className="d hp-card-title" style={{fontSize:"clamp(32px,4vw,52px)"}}>{String(feat.name||feat.title||"")}</div>
+                  {String(feat.meta||"") && <div className="hp-card-meta">{String(feat.meta||"")}</div>}
+                </div>
+              </div>
+            )}
+            {rest.length > 0 && (
+              <div className="hp-masonry">
+                {rest.map((item, i) => {
+                  const hasMedia = !!item.image_url;
+                  const isVid = String(item.media_type||"")==="video";
+                  return (
+                    <div key={i} className={`hp-card${!hasMedia?" "+GRADIENTS[i%5]:""}`}>
+                      {hasMedia && (isVid
+                        ? <video autoPlay muted loop playsInline src={String(item.image_url)} style={{width:"100%",display:"block"}}/>
+                        : <img src={String(item.image_url)} alt="" style={{width:"100%",display:"block",objectPosition:String(item.focal_point||"center 20%")}}/>
+                      )}
+                      <div className={hasMedia?"hp-card-body":"hp-card-nm"}>
+                        {String(item.brand||"") && <div className="hp-card-brand">{String(item.brand||"")}</div>}
+                        <div className="d hp-card-title">{String(item.name||item.title||"")}</div>
+                        {String(item.meta||"") && <div className="hp-card-meta">{String(item.meta||"")}</div>}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
-            ) : (
-              <div className="hp-brands">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="hp-brand-placeholder">Brand</div>
-                ))}
-              </div>
             )}
-          </section>
+          </div>
         );
       })()}
 
-      {/* Services Grid */}
-      {showSection("services_grid") && servicesGrid && (() => {
-        const services = contentArr(servicesGrid, "services", "items");
-        const eyebrow = contentStr(servicesGrid, "eyebrow");
-        const description = contentStr(servicesGrid, "description");
-        return services.length > 0 ? (
-          <section className="hp-section" id="services">
-            {eyebrow && <div className="hp-eyebrow">{eyebrow}</div>}
-            <h2 className="hp-display hp-section-title">{servicesGrid.title || "Our Services"}</h2>
-            {(description || servicesGrid.subtitle) && <p className="hp-section-sub">{description || servicesGrid.subtitle}</p>}
-            <div className="hp-services">
-              {services.map((item, i) => {
-                const accent = item.accent === true;
-                const num = String(item.num || String(i + 1).padStart(2, "0"));
+      {/* Athletes */}
+      {show("featured_athletes") && fa && (() => {
+        const aths = contentArr(fa, "athletes", "items");
+        if (!aths.length) return null;
+        return (
+          <div className="hp-sec-alt">
+            {contentStr(fa,"eyebrow") && <div className="pg-eyebrow">{contentStr(fa,"eyebrow")}</div>}
+            <h2 className="d pg-section-title">{fa.title || "Featured Athletes"}</h2>
+            <div className="hp-athletes-grid">
+              {aths.map((item, i) => {
+                const name = String(item.name||"");
                 return (
-                  <div key={i} className={`hp-service${accent ? " hp-service-accent" : ""}`}>
-                    <div className="hp-service-num">{num}</div>
-                    <div className="hp-service-title">{String(item.name || item.title || "")}</div>
-                    {(item.desc || item.description) && <p className="hp-service-desc">{String(item.desc || item.description)}</p>}
+                  <div key={i} className="hp-athlete">
+                    {item.image_url
+                      ? <img src={String(item.image_url)} alt={name}/>
+                      : <div style={{width:"100%",height:"100%",background:"rgba(215,63,9,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48,fontWeight:900,color:"var(--orange)",fontFamily:"'Bebas Neue',Arial,sans-serif"}}>{name.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+                    }
+                    <div className="hp-athlete-overlay"/>
+                    <div className="hp-athlete-info">
+                      {String(item.sport||"") && <div className="hp-athlete-sport">{String(item.sport||"")}</div>}
+                      <div className="d hp-athlete-name">{name}</div>
+                      {String(item.school||"") && <div className="hp-athlete-school">{String(item.school||"")}</div>}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </section>
-        ) : null;
+          </div>
+        );
+      })()}
+
+      {/* Brands */}
+      {show("brand_partners") && bp && (() => {
+        const logos = contentArr(bp, "logos", "items");
+        return (
+          <div className="hp-brands-wrap">
+            {contentStr(bp,"eyebrow") && <div className="pg-eyebrow">{contentStr(bp,"eyebrow")}</div>}
+            <h2 className="d pg-section-title" style={{margin:"12px 0 0"}}>{bp.title||"Brand Partners"}</h2>
+            <div className="hp-brands-row">
+              {(logos.length ? logos : Array.from({length:8},(_,i)=>({name:`Brand ${i+1}`,logo_url:"",href:"#"}))).map((item,i) => (
+                <a key={i} href={String(item.href||"#")} className="hp-brand-pill">
+                  {item.logo_url
+                    ? <img src={String(item.logo_url)} alt={String(item.name||"")}/>
+                    : <span className="hp-brand-txt">{String(item.name||"Brand")}</span>
+                  }
+                </a>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Services */}
+      {show("services_grid") && sg && (() => {
+        const svcs = contentArr(sg, "services", "items");
+        if (!svcs.length) return null;
+        return (
+          <div className="hp-sec" id="services">
+            {contentStr(sg,"eyebrow") && <div className="pg-eyebrow">{contentStr(sg,"eyebrow")}</div>}
+            <h2 className="d pg-section-title">{sg.title||"Our Services"}</h2>
+            <div className="hp-services-grid">
+              {svcs.map((item,i) => (
+                <div key={i} className={`hp-service${item.accent?" hp-service-accent":""}`}>
+                  <div className="hp-service-num">{String(item.num||String(i+1).padStart(2,"0"))}</div>
+                  <div className="hp-service-title">{String(item.name||item.title||"")}</div>
+                  {(item.desc||item.description) && <p className="hp-service-desc">{String(item.desc||item.description||"")}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
       })()}
 
       {/* CTA */}
-      {showSection("cta") && (s("cta_title") || s("cta_desc")) && (
+      {show("cta") && (s("cta_title")||s("cta_desc")) && (
         <section className="hp-cta">
-          {s("cta_title") && <h2 className="hp-display hp-cta-title">{s("cta_title")}</h2>}
-          {s("cta_desc") && <p className="hp-cta-desc">{s("cta_desc")}</p>}
-          <div>
-            <a href="mailto:hello@postgame.co" className="hp-btn-solid">Get In Touch</a>
+          <div className="hp-cta-inner">
+            {s("cta_title") && <h2 className="hp-cta-title">{s("cta_title")}</h2>}
+            {s("cta_desc") && <p className="hp-cta-desc">{s("cta_desc")}</p>}
+            <div className="btn-group" style={{justifyContent:"center"}}>
+              <a href="/contact" className="btn-primary">Get In Touch</a>
+              <a href="/campaigns" className="btn-secondary">See Our Work</a>
+            </div>
           </div>
         </section>
       )}
 
-      {/* Footer */}
-      <footer className="hp-footer">
-        <span>&copy; {new Date().getFullYear()} Postgame. All rights reserved.</span>
-        <div>
-          <a href="/about/team">Team</a>
-          <a href="/clients">Clients</a>
-          <a href="/campaigns">Campaigns</a>
-          <a href="/press">Press</a>
-          <a href="/deals">Deals</a>
-          <a href="/case-studies">Case Studies</a>
-          <a href="/contact">Contact</a>
-        </div>
-      </footer>
-
-      <ScrollScript />
+      <SiteFooter/>
+      <ScrollScript/>
     </div>
   );
 }
