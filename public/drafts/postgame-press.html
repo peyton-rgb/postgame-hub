@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Press · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@400;700;900&display=swap');
+  :root { --orange:#D73F09;--black:#000;--white:#FFF; }
+  *,*::before,*::after { margin:0;padding:0;box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:#FAFAF8;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.5;overflow-x:hidden; }
+
+  /* NAV - dark bar on white page */
+  nav { position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:#000;border-bottom:1px solid rgba(255,255,255,0.06); }
+  .nav-links { display:flex;align-items:center;gap:8px;list-style:none; }
+  .nav-item { position:relative; }
+  .nav-item > a { display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.7);text-decoration:none;font-size:14px;font-weight:500;padding:10px 16px;border-radius:6px;transition:color 0.2s,background 0.2s; }
+  .nav-item > a:hover { color:#fff;background:rgba(255,255,255,0.05); }
+  .nav-chevron { width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;transition:transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform:rotate(180deg); }
+  .nav-dropdown { position:absolute;top:calc(100% + 8px);left:0;min-width:160px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px);transition:all 0.2s;box-shadow:0 16px 40px rgba(0,0,0,0.6);z-index:200; }
+  .nav-item::after { content:"";position:absolute;bottom:-10px;left:0;right:0;height:10px; }
+  .nav-item:hover .nav-dropdown { opacity:1;pointer-events:all;transform:translateY(0); }
+  .nav-drop-item { display:block;padding:12px 18px;font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;transition:all 0.15s;border-bottom:1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom:none; }
+  .nav-drop-item:hover { background:rgba(255,255,255,0.05);color:#fff;padding-left:22px; }
+  .btn-primary { background:var(--orange);color:#fff;border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s,transform 0.15s; }
+  .btn-primary:hover { background:#c03608;transform:translateY(-1px); }
+  .btn-tracker { background:#fff;color:#000;border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s; }
+  .btn-tracker:hover { background:rgba(255,255,255,0.88); }
+
+  /* MASTHEAD */
+  .masthead { padding:120px 48px 0;max-width:1100px;margin:0 auto;text-align:center;border-bottom:3px double #111;padding-bottom:24px; }
+  .masthead-date { font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#999;margin-bottom:8px; }
+  .masthead-title { font-family:'Playfair Display',Georgia,serif;font-size:clamp(48px,8vw,80px);font-weight:900;color:#111;letter-spacing:-0.02em;line-height:0.95;margin-bottom:8px; }
+  .masthead-sub { font-size:15px;color:#888;font-style:italic;letter-spacing:0.02em; }
+  .masthead-rule { display:flex;align-items:center;gap:16px;justify-content:center;margin-top:16px; }
+  .masthead-rule span { font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#aaa;font-weight:700; }
+  .masthead-rule::before,.masthead-rule::after { content:'';flex:1;max-width:120px;height:1px;background:#ccc; }
+
+  /* FEATURED STORY */
+  .featured { max-width:1100px;margin:0 auto;padding:48px 48px 0; }
+  .featured-article { display:grid;grid-template-columns:1fr 1fr;gap:48px;padding-bottom:48px;border-bottom:1px solid #ddd;align-items:start; }
+  .featured-img { aspect-ratio:4/3;background:#e8e6e1;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;overflow:hidden; }
+  .featured-img-label { font-size:11px;letter-spacing:3px;color:#bbb;font-weight:600;text-transform:uppercase; }
+  .featured-tag { display:inline-block;font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--orange);margin-bottom:12px;padding:4px 12px;border:1.5px solid var(--orange);border-radius:3px; }
+  .featured-headline { font-family:'Playfair Display',Georgia,serif;font-size:clamp(28px,4vw,40px);font-weight:900;color:#111;line-height:1.15;margin-bottom:16px;letter-spacing:-0.01em; }
+  .featured-excerpt { font-size:17px;color:#555;line-height:1.7;margin-bottom:20px; }
+  .featured-meta { font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:0.1em; }
+
+  /* ARTICLE GRID */
+  .articles { max-width:1100px;margin:0 auto;padding:48px 48px 0; }
+  .articles-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:12px;border-bottom:2px solid #111; }
+  .articles-section-title { font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:900;color:#111; }
+  .articles-count { font-size:12px;color:#999;letter-spacing:0.1em;text-transform:uppercase; }
+  .article-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-bottom:64px; }
+  .article-card { text-decoration:none;color:inherit;display:block;transition:transform 0.2s; }
+  .article-card:hover { transform:translateY(-3px); }
+  .article-card:hover .article-headline { color:var(--orange); }
+  .article-thumb { aspect-ratio:16/10;background:#e8e6e1;border:1px solid #e0ddd8;margin-bottom:16px;display:flex;align-items:center;justify-content:center;overflow:hidden; }
+  .article-thumb-label { font-size:10px;letter-spacing:3px;color:#c5c0b8;font-weight:600;text-transform:uppercase; }
+  .article-tag { font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--orange);margin-bottom:8px;display:block; }
+  .article-headline { font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700;color:#111;line-height:1.3;margin-bottom:8px;transition:color 0.2s; }
+  .article-excerpt { font-size:14px;color:#777;line-height:1.55;margin-bottom:10px; }
+  .article-meta { font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.08em; }
+  .article-divider { grid-column:1/-1;height:1px;background:#e0ddd8; }
+
+  /* SIDEBAR STYLE FOR BOTTOM */
+  .press-cta { max-width:1100px;margin:0 auto;padding:0 48px 64px;text-align:center; }
+  .press-cta-inner { background:#111;color:#fff;padding:64px 48px;border-radius:4px; }
+  .press-cta-title { font-family:'Playfair Display',Georgia,serif;font-size:clamp(28px,4vw,40px);font-weight:900;margin-bottom:12px; }
+  .press-cta-sub { font-size:16px;color:rgba(255,255,255,0.5);margin-bottom:32px; }
+  .press-cta-btns { display:flex;gap:16px;justify-content:center;flex-wrap:wrap; }
+  .btn-orange { background:var(--orange);color:#fff;border:none;border-radius:6px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s; }
+  .btn-orange:hover { background:#c03608;transform:translateY(-1px); }
+  .btn-outline-light { background:transparent;color:rgba(255,255,255,0.6);border:1.5px solid rgba(255,255,255,0.2);border-radius:6px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s; }
+  .btn-outline-light:hover { border-color:rgba(255,255,255,0.5);color:#fff; }
+
+  /* FOOTER */
+  footer { background:#111;border-top:1px solid rgba(255,255,255,0.06);padding:48px 48px 24px; }
+  .footer-inner { max-width:1100px;margin:0 auto; }
+  .footer-top { display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px; }
+  .footer-brand-desc { font-size:14px;color:rgba(255,255,255,0.35);line-height:1.2;margin-top:12px;max-width:280px; }
+  .footer-col-title { font-size:14px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:20px; }
+  .footer-links { list-style:none;display:flex;flex-direction:column;gap:12px; }
+  .footer-links a { color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;line-height:1.2;transition:color 0.2s; }
+  .footer-links a:hover { color:#fff; }
+  .footer-bottom { border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;display:flex;justify-content:space-between;align-items:center; }
+  .footer-copy { font-size:14px;color:rgba(255,255,255,0.2);line-height:1.2; }
+  .footer-socials { display:flex;gap:20px; }
+  .footer-socials a { font-size:14px;color:rgba(255,255,255,0.3);text-decoration:none;line-height:1.2;transition:color 0.2s; }
+  .footer-socials a:hover { color:var(--orange); }
+
+  @media (max-width:768px) {
+    body { font-size:14px; }
+    nav { padding:14px 20px; }
+    .masthead { padding:100px 20px 0; }
+    .masthead-title { font-size:40px; }
+    .featured { padding:32px 20px 0; }
+    .featured-article { grid-template-columns:1fr;gap:24px; }
+    .articles { padding:32px 20px 0; }
+    .article-grid { grid-template-columns:1fr; }
+    .press-cta { padding:0 20px 48px; }
+    .press-cta-inner { padding:40px 20px; }
+    footer { padding:32px 20px 16px; }
+    .footer-top { grid-template-columns:1fr 1fr;gap:24px; }
+    footer,.footer-links a,.footer-brand-desc,.footer-copy,.footer-socials a,.footer-col-title { font-size:11px !important;line-height:1.2 !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:36px;width:auto;"></a>
+  <ul class="nav-links">
+    <li class="nav-item"><a href="postgame-clients.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-clients.html" class="nav-drop-item">Clients</a><a href="postgame-campaigns.html" class="nav-drop-item">Campaigns</a></div></li>
+    <li class="nav-item"><a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a><a href="postgame-services-always-on.html" class="nav-drop-item">Always On</a></div></li>
+    <li class="nav-item"><a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- NEWSPAPER MASTHEAD -->
+<div class="masthead">
+  <div class="masthead-date">Sarasota, Florida &middot; Est. 2021</div>
+  <h1 class="masthead-title">The Postgame Press</h1>
+  <div class="masthead-sub">The latest news, coverage &amp; media highlights from the #1 NIL agency in college sports</div>
+  <div class="masthead-rule"><span>All the NIL News That's Fit to Print</span></div>
+</div>
+
+<!-- FEATURED / LEAD STORY -->
+<div class="featured">
+  <div class="featured-article">
+    <div class="featured-img"><span class="featured-img-label">Photo</span></div>
+    <div>
+      <span class="featured-tag">Latest</span>
+      <h2 class="featured-headline">Allstate NACDA Kicks off Fourth Year of NIL Programming with Postgame</h2>
+      <p class="featured-excerpt">Iowa State Women's Basketball Center Audi Crooks has been named the captain of the 2025-26 Winter Allstate NACDA Good Works Team for her community leadership.</p>
+      <div class="featured-meta">Postgame Press Release</div>
+    </div>
+  </div>
+</div>
+
+<!-- ALL STORIES -->
+<div class="articles">
+  <div class="articles-header">
+    <div class="articles-section-title">All Stories</div>
+    <div class="articles-count">30+ Articles</div>
+  </div>
+  <div class="article-grid">
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Experiential</span>
+      <div class="article-headline">Postgame Brings College Star Power to Raising Cane's Super Bowl Celebration</div>
+      <div class="article-excerpt">Postgame scores an assist connecting Washington Football to Raising Cane's Seattle event featuring QB Sam Darnold and Cane's CEO Todd Graves.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Experiential</span>
+      <div class="article-headline">CVS to Host National Champion Indiana Hoosiers for Victory Celebration</div>
+      <div class="article-excerpt">Postgame helps bring fans face to face with the Hoosiers for an unforgettable celebratory event at CVS in Bloomington.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Industry</span>
+      <div class="article-headline">Postgame Co-Founder Bill Jula Featured at Gainbridge Partner Summit</div>
+      <div class="article-excerpt">Postgame kicks off the new year dropping knowledge about the current state of college athletics and NIL.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Postgame Activates 3 NIL Campaigns During Women's Volleyball Final Four</div>
+      <div class="article-excerpt">The leading sports marketing agency continues to help brands capitalize during NCAA championship events with top college athletes.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Allstate AFCA Concludes Third Year of NIL Programming with Postgame</div>
+      <div class="article-excerpt">University of Texas Senior Defensive Back Michael Taaffe wins the 2025 Allstate Wuerffel Trophy for leadership in community service.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Creative</span>
+      <div class="article-headline">adidas Taps College Athletes For Latest Blog Feature on Basketball IQ</div>
+      <div class="article-excerpt">Postgame's creative services lead strategy, writing, and content production for new adidas blog.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Award</span>
+      <div class="article-headline">NIL Campaign Powered by Postgame Named to Inc.'s "Best in Business"</div>
+      <div class="article-excerpt">Postgame delivers a groundbreaking campaign for C4 Energy, activating 128+ basketball players just days before March Madness.</div>
+      <div class="article-meta">Inc. Magazine</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Hollister Featured in Glossy for College Athlete Co-Design Collaboration</div>
+      <div class="article-excerpt">Postgame helps Hollister work with 6 headliner college athletes to lead a historic NIL campaign.</div>
+      <div class="article-meta">Glossy</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Industry</span>
+      <div class="article-headline">How Brands Are Tapping the College Content Machine with Postgame</div>
+      <div class="article-excerpt">Brands are creating on-campus experiences to drive sales and loyalty, taking advantage of college influencers' growing power among Gen Z.</div>
+      <div class="article-meta">Business Insider</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Industry</span>
+      <div class="article-headline">Marketers Are Rethinking NIL to Build Long-Term Brand Value</div>
+      <div class="article-excerpt">As the NIL market accelerates, college athletes present new and unique opportunities for brand advertisers.</div>
+      <div class="article-meta">Ad Age</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Draft</span>
+      <div class="article-headline">From NIL to MLB: Postgame Continues to Work With the Best of the Best</div>
+      <div class="article-excerpt">10 players selected in the First Round of the 2025 MLB Draft recently worked with Postgame, including the No. 3 Overall Pick.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Industry</span>
+      <div class="article-headline">Postgame Featured on Recent Activism Summit Panel</div>
+      <div class="article-excerpt">Postgame recently participated in the 5th Annual Athlete Ally Summit.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Draft</span>
+      <div class="article-headline">From NIL to NBA: Postgame Clients Take the Next Step</div>
+      <div class="article-excerpt">12 players selected in the 2025 NBA Draft have worked with Postgame, including the No. 2 Overall Pick.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">adidas Champions Mental Health Awareness With NCAA Baseball Players</div>
+      <div class="article-excerpt">Top college baseball players teamed up with adidas to support Mental Health Awareness Month alongside The Hidden Opponent Foundation.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Draft</span>
+      <div class="article-headline">Postgame Brought NIL Deals to 11 First Round Selections in the 2025 NFL Draft</div>
+      <div class="article-excerpt">47 players chosen in the 2025 NFL Draft have worked with Postgame, including the No. 1 and No. 2 Overall Picks.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">C4 Energy Fuels NCAA Tournament Champions With Liquid Gold</div>
+      <div class="article-excerpt">UConn and Florida stars celebrate with limited-edition champagne-inspired energy drink in a campaign powered by Postgame.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">CVS Supports Women Athletes in Largest NIL Campaign to Date</div>
+      <div class="article-excerpt">All-American basketball stars lead the way in promoting CVS' Epic Beauty Sale during the NCAA Tournament.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Stanley 1913 Keeps March Madness Stars Hydrated in New NIL Campaign</div>
+      <div class="article-excerpt">Drinkware brand collaborates with All-Americans and Sweet 16-bound players to showcase the Quencher ProTour.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Industry</span>
+      <div class="article-headline">Aaron Hackett Speaks at NIL Playbook Session at University of Arkansas</div>
+      <div class="article-excerpt">Postgame's Director of Athlete Relations speaks during the NIL Playbook Session for student athletes.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Bryce Underwood, Tavien St. Claire Among Top HS Recruits to Work With Postgame</div>
+      <div class="article-excerpt">Top high school football prospects highlight college choices with Hollister NIL partnership.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Postgame Makes More NIL History with Athlete-Led Hollister Campaign</div>
+      <div class="article-excerpt">The trending clothing brand leans on Postgame for a second large-scale NIL campaign featuring 300+ college athletes.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Cavinder Twins Highlight Messi's Stanley 1913 Collaboration</div>
+      <div class="article-excerpt">Iconic drinkware brand partners with college athletes to promote two new tumblers in latest Postgame NIL campaign.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Milestone</span>
+      <div class="article-headline">Top NIL Agency Postgame Turns Four</div>
+      <div class="article-excerpt">Founders look back at the impact they've had on sports marketing and college athletics.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Creative</span>
+      <div class="article-headline">Postgame Assists adidas with UW Women's Soccer Blog Post</div>
+      <div class="article-excerpt">Leading NIL Agency recruits, directs, and edits in latest adidas NIL campaign.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Momentec Teams Up With Postgame</div>
+      <div class="article-excerpt">Momentec Brands announces multi-sport brand ambassadors to meet the moment.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Miami Star Cam Ward Smells Like a Heisman Finalist in New Armani NIL Deal</div>
+      <div class="article-excerpt">Hurricanes' quarterback Cam Ward promotes Giorgio Armani Beauty cologne through Postgame.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">College Athletes Showcase Skincare Routines for CeraVe NIL Campaign</div>
+      <div class="article-excerpt">Auburn, Georgia, LSU, Oklahoma and UCLA student-athletes partner with top skincare brand CeraVe.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <div class="article-divider"></div>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Industry</span>
+      <div class="article-headline">Postgame Joins adidas and Texas A&amp;M for Amplify NIL Conference</div>
+      <div class="article-excerpt">4th Annual Texas A&amp;M "Amplify NIL Conference" allows student-athletes to deepen their understanding of NIL.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">Miami Basketball Stars Appear in NIL Campaign with Latest Social Craze</div>
+      <div class="article-excerpt">The Cavinder Twins star in an NIL promotion with Postgame as they prepare to return to the court.</div>
+      <div class="article-meta">Postgame</div>
+    </a>
+
+    <a href="#" class="article-card">
+      <div class="article-thumb"><span class="article-thumb-label">Photo</span></div>
+      <span class="article-tag">Campaign</span>
+      <div class="article-headline">V Foundation for Cancer Research Partners with Postgame and College Athletes</div>
+      <div class="article-excerpt">Over 100 athletes partner with the V Foundation to raise money for pediatric cancer research during Childhood Cancer Awareness Month.</div>
+      <div class="article-meta">SI / FanNation</div>
+    </a>
+
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="press-cta">
+  <div class="press-cta-inner">
+    <h2 class="press-cta-title">Media Inquiries</h2>
+    <p class="press-cta-sub">For press requests, interviews, or media assets, get in touch with our team.</p>
+    <div class="press-cta-btns">
+      <a href="postgame-contact.html" class="btn-orange">Contact Us</a>
+      <a href="postgame-campaigns.html" class="btn-outline-light">View Campaigns</a>
+    </div>
+  </div>
+</div>
+
+<footer><div class="footer-inner">
+  <div class="footer-top">
+    <div><a href="index.html" style="display:inline-flex;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;"></a><p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p></div>
+    <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+    <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-clients.html">Clients</a></li><li><a href="postgame-campaigns.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li></ul></div>
+    <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+  </div>
+  <div class="footer-bottom"><div class="footer-copy">&copy; 2025 Postgame. All rights reserved.</div><div class="footer-socials"><a href="#">Privacy</a><a href="#">Terms</a><a href="postgame-contact.html">Contact</a></div></div>
+</div></footer>
+
+</body>
+</html>

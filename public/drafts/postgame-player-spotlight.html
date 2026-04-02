@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jordan Williams — Player Spotlight · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --orange: #D73F09;
+    --black: #000000;
+    --white: #FFFFFF;
+    --gray: #111111;
+    --gray-mid: #1a1a1a;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--white); font-family: 'DM Sans', Arial, sans-serif; overflow-x: hidden; }
+
+  /* ── NAV ── */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; background: rgba(0,0,0,0); backdrop-filter: blur(0px); border-bottom: 1px solid rgba(255,255,255,0); transition: background 0.4s, border-color 0.4s, backdrop-filter 0.4s; }
+  nav.scrolled { background: rgba(0,0,0,0.92); backdrop-filter: blur(12px); border-bottom-color: rgba(255,255,255,0.06); }
+  .logo { display: flex; align-items: center; gap: 4px; text-decoration: none; }
+  .logo-text { font-weight: 600; font-size: 22px; color: var(--white); letter-spacing: -0.5px; }
+  .logo-plus { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--orange); border-radius: 50%; color: white; font-weight: 700; font-size: 14px; margin: 0 1px; }
+  .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; }
+  .nav-item { position: relative; }
+  .nav-item > a { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .nav-item > a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+  .nav-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform: rotate(180deg); }
+  .nav-dropdown { position: absolute; top: 100%; left: 0; min-width: 160px; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: all 0.2s; z-index: 200; padding-top: 8px; } .nav-dropdown-inner { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+  .nav-item:hover .nav-dropdown { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .nav-drop-item { display: block; padding: 12px 18px; font-size: 13px; color: rgba(255,255,255,0.55); text-decoration: none; transition: all 0.15s; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom: none; }
+  .nav-drop-item:hover { background: rgba(255,255,255,0.05); color: var(--white); padding-left: 22px; }
+  .btn-primary { background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 14px 28px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-primary:hover { background: #c03608; transform: translateY(-1px); }
+  .btn-tracker { background: var(--white); color: var(--black); border: none; border-radius: 8px; padding: 14px 24px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-tracker:hover { background: rgba(255,255,255,0.88); transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    height: 100vh;
+    min-height: 700px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #1a0800 0%, #0d0d0d 50%, #000 100%);
+  }
+
+  /* Subtle grain texture */
+  .hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Big decorative number */
+  .hero-num {
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(280px, 35vw, 480px);
+    color: rgba(255,255,255,0.025);
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: -0.05em;
+  }
+
+  /* Orange accent bar */
+  .hero-accent {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: var(--orange);
+  }
+
+  /* Diagonal grid lines */
+  .hero-lines {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 80px,
+        rgba(255,255,255,0.012) 80px,
+        rgba(255,255,255,0.012) 81px
+      );
+    pointer-events: none;
+  }
+
+  /* Gradient overlay for text legibility */
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(0,0,0,0.95) 0%,
+      rgba(0,0,0,0.5) 40%,
+      rgba(0,0,0,0.1) 70%,
+      transparent 100%
+    );
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 0 48px 72px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 32px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+  }
+  .breadcrumb a { color: rgba(255,255,255,0.35); text-decoration: none; transition: color 0.2s; }
+  .breadcrumb a:hover { color: var(--orange); }
+  .breadcrumb-sep { color: rgba(255,255,255,0.15); }
+
+  .hero-sport-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--orange);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+
+  .hero-name {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(72px, 11vw, 148px);
+    line-height: 0.88;
+    letter-spacing: 0.01em;
+    color: var(--white);
+    margin-bottom: 24px;
+  }
+
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+
+  .hero-meta-item { font-size: 14px; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px; }
+  .hero-meta-item strong { color: var(--white); font-weight: 600; }
+  .hero-meta-dot { width: 4px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 50%; }
+
+  .hero-stats {
+    display: flex;
+    gap: 0;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    display: inline-flex;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+  }
+
+  .hero-stat {
+    padding: 20px 32px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    text-align: center;
+  }
+  .hero-stat:last-child { border-right: none; }
+  .hero-stat-num { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 36px; color: var(--orange); line-height: 1; }
+  .hero-stat-label { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+  /* Scroll hint */
+  .scroll-hint {
+    position: absolute;
+    bottom: 32px;
+    right: 48px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  .scroll-line { width: 40px; height: 1px; background: rgba(255,255,255,0.15); }
+
+  /* ── BRAND SECTIONS ── */
+  .brands-wrap { background: var(--black); }
+
+  .brand-section {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+
+  /* Section header */
+  .brand-header {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 64px 48px 40px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .brand-header-left {}
+
+  .brand-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-section-label::before { content: ''; width: 20px; height: 1px; background: rgba(255,255,255,0.15); }
+
+  .brand-name-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 12px;
+  }
+
+  .brand-logo-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 16px;
+    color: rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+
+  .brand-title {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(36px, 5vw, 56px);
+    color: var(--white);
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  .brand-campaign-name {
+    font-size: 14px;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 8px;
+  }
+
+  .brand-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .brand-tag {
+    padding: 4px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 100px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+  }
+
+  .brand-tag.orange {
+    background: rgba(215,63,9,0.1);
+    border-color: rgba(215,63,9,0.2);
+    color: var(--orange);
+  }
+
+  .brand-header-right {
+    text-align: right;
+  }
+
+  .brand-date {
+    font-size: 12px;
+    color: rgba(255,255,255,0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  .brand-result-num {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 48px;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .brand-result-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 3px;
+  }
+
+  /* Full-width content grid */
+  .brand-content-grid {
+    display: grid;
+    gap: 2px;
+  }
+
+  .brand-content-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .brand-content-grid.cols-2-1 { grid-template-columns: 2fr 1fr; }
+  .brand-content-grid.cols-1-2 { grid-template-columns: 1fr 2fr; }
+  .brand-content-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+  .content-tile {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    background: #0d0d0d;
+  }
+
+  .content-tile-bg {
+    position: absolute;
+    inset: 0;
+    transition: transform 0.6s ease;
+  }
+
+  .content-tile:hover .content-tile-bg { transform: scale(1.04); }
+
+  /* Aspect ratios */
+  .content-tile.ar-landscape { aspect-ratio: 16/9; }
+  .content-tile.ar-portrait { aspect-ratio: 4/5; }
+  .content-tile.ar-square { aspect-ratio: 1/1; }
+  .content-tile.ar-wide { aspect-ratio: 21/9; }
+
+  .tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%);
+    transition: opacity 0.3s;
+  }
+
+  .content-tile:hover .tile-overlay { opacity: 0.6; }
+
+  .tile-play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .content-tile:hover .tile-play { opacity: 1; }
+
+  .play-btn {
+    width: 52px;
+    height: 52px;
+    background: rgba(215,63,9,0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+  }
+
+  .content-tile:hover .play-btn { transform: scale(1.1); }
+
+  .play-tri {
+    width: 0; height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-left: 16px solid white;
+    margin-left: 4px;
+  }
+
+  .tile-type-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: rgba(0,0,0,0.6);
+    color: rgba(255,255,255,0.6);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+  }
+
+  .tile-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+  }
+
+  .tile-platform {
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+
+  .tile-caption {
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.4;
+    font-weight: 500;
+  }
+
+  .tile-metric {
+    margin-top: 8px;
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 20px;
+    color: var(--orange);
+  }
+
+  .tile-metric-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 1px;
+  }
+
+  /* Bottom strip per brand */
+  .brand-footer-strip {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .brand-footer-metrics {
+    display: flex;
+    gap: 40px;
+  }
+
+  .bfm-num {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 28px;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .bfm-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+
+  .brand-footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255,255,255,0.3);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    transition: color 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 2px;
+  }
+
+  .brand-footer-link:hover { color: var(--orange); border-color: var(--orange); }
+
+  /* Section divider */
+  .section-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.04);
+  }
+
+  /* BG color variants per brand */
+  .bg-nike { background: linear-gradient(160deg, #1a0f08 0%, #0d0d0d 60%); }
+  .bg-gatorade { background: linear-gradient(160deg, #0a1a08 0%, #0d0d0d 60%); }
+  .bg-beats { background: linear-gradient(160deg, #1a0808 0%, #0d0d0d 60%); }
+  .bg-ua { background: linear-gradient(160deg, #080f1a 0%, #0d0d0d 60%); }
+
+  /* Content tile bg colors */
+  .ct-1 { background: linear-gradient(135deg, #3a1a08, #0d0d0d); }
+  .ct-2 { background: linear-gradient(135deg, #1a3a08, #0d0d0d); }
+  .ct-3 { background: linear-gradient(135deg, #3a0808, #0d0d0d); }
+  .ct-4 { background: linear-gradient(135deg, #08183a, #0d0d0d); }
+  .ct-5 { background: linear-gradient(135deg, #2a1a3a, #0d0d0d); }
+  .ct-6 { background: linear-gradient(135deg, #3a2808, #0d0d0d); }
+  .ct-7 { background: linear-gradient(135deg, #083a2a, #0d0d0d); }
+  .ct-8 { background: linear-gradient(135deg, #3a3008, #0d0d0d); }
+
+  /* Adaptive content grid */
+  .content-grid { display: grid; gap: 2px; }
+
+  /* Tile aspect ratios by format */
+  .content-tile[data-format="vertical"]   { aspect-ratio: 9/16; }
+  .content-tile[data-format="horizontal"] { aspect-ratio: 16/9; }
+  .content-tile[data-format="square"]     { aspect-ratio: 1/1; }
+
+  /* Format badge color hints */
+  .format-badge {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    opacity: 0.6;
+  }
+  .format-badge.vertical   { background: rgba(215,63,9,0.3);   color: rgba(255,180,140,0.9); }
+  .format-badge.horizontal { background: rgba(60,120,255,0.3); color: rgba(140,180,255,0.9); }
+  .format-badge.square     { background: rgba(80,200,80,0.2);  color: rgba(140,220,140,0.9); }
+
+  /* ── PREVIOUS CAMPAIGNS TOGGLE ── */
+  .prev-campaigns-toggle {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: var(--gray-mid);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .prev-campaigns-toggle:hover { background: #222; }
+  .prev-campaigns-toggle:hover .prev-toggle-btn { gap: 14px; }
+
+  .prev-toggle-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .prev-toggle-left { display: flex; align-items: center; gap: 20px; }
+
+  .prev-toggle-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: rgba(215,63,9,0.1);
+    border: 1px solid rgba(215,63,9,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .prev-toggle-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--orange);
+    fill: none;
+    stroke-width: 2;
+  }
+
+  .prev-toggle-label {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.04em;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .prev-toggle-count {
+    font-size: 13px;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .prev-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--orange);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    border-radius: 8px;
+    white-space: nowrap;
+    transition: gap 0.2s, background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .prev-campaigns-toggle:hover .prev-toggle-btn { background: #c03608; }
+
+  .prev-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2.5;
+    transition: transform 0.35s ease;
+    flex-shrink: 0;
+  }
+
+  .prev-toggle-btn.open svg { transform: rotate(180deg); }
+
+  /* Hidden by default, animate open */
+  .prev-campaigns-wrap {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .prev-campaigns-wrap.open {
+    max-height: 9999px;
+  }
+
+  /* ── BACK TO TRACKER ── */
+  .back-bar {
+    background: var(--gray);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 20px 48px;
+  }
+
+  .back-bar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255,255,255,0.4);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover { color: var(--white); }
+  .back-arrow { font-size: 16px; transition: transform 0.2s; }
+  .back-link:hover .back-arrow { transform: translateX(-3px); }
+
+  .athlete-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .athlete-nav-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.4);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Sans', Arial, sans-serif;
+    letter-spacing: 0.04em;
+  }
+
+  .athlete-nav-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+  /* ── CTA ── */
+  .cta-block { background: var(--orange); padding: 100px 48px; text-align: center; }
+  .cta-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(48px, 6vw, 72px); color: var(--white); line-height: 0.95; letter-spacing: 0.02em; margin-bottom: 20px; }
+  .cta-sub { font-size: 17px; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
+  .cta-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .btn-white { background: var(--white); color: var(--orange); border: none; border-radius: 8px; padding: 16px 36px; font-family: 'DM Sans', Arial, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-white:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); }
+  .btn-outline-white { background: transparent; color: var(--white); border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 16px 36px; font-family: 'DM Sans', Arial, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-outline-white:hover { border-color: var(--white); transform: translateY(-1px); }
+
+  /* ── FOOTER ── */
+  footer { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.06); padding: 64px 48px 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+  .footer-brand-desc { font-size: 14px; color: rgba(255,255,255,0.35); line-height: 1.7; margin-top: 16px; max-width: 280px; }
+  .footer-col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 24px; }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--white); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-copy { font-size: 13px; color: rgba(255,255,255,0.2); }
+  .footer-socials { display: flex; gap: 24px; }
+  .footer-socials a { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
+  .footer-socials a:hover { color: var(--orange); }
+
+  /* Animations */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  .hero-sport-tag { animation: fadeUp 0.5s ease 0.1s both; }
+  .hero-name { animation: fadeUp 0.6s ease 0.2s both; }
+  .hero-meta { animation: fadeUp 0.6s ease 0.35s both; }
+  .hero-stats { animation: fadeUp 0.6s ease 0.45s both; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="postgame-homepage.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:32px;width:auto;display:block;"></a>
+  <ul class="nav-links">
+    <li class="nav-item has-dropdown">
+      <a href="postgame-brand-profile.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-brand-profile.html" class="nav-drop-item">Clients</a><a href="postgame-campaign-recap.html" class="nav-drop-item">Campaigns</a></div></div>
+    </li>
+    <li class="nav-item has-dropdown">
+      <a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a></div></div>
+    </li>
+    <li class="nav-item has-dropdown">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-lines"></div>
+  <div class="hero-accent"></div>
+  <div class="hero-num">1</div>
+  <div class="hero-overlay"></div>
+
+  <div class="hero-content">
+    <div class="breadcrumb">
+      <a href="postgame-tier1-tracker.html">Deal Tracker</a>
+      <span class="breadcrumb-sep">/</span>
+      <span>Jordan Williams</span>
+    </div>
+    <div class="hero-sport-tag">
+      <span>Football</span>
+      <span style="opacity:0.4">·</span>
+      <span>University of Georgia</span>
+    </div>
+    <h1 class="hero-name">Jordan<br>Williams</h1>
+    <div class="hero-meta">
+      <div class="hero-meta-item"><strong>#1</strong> on Deal Tracker</div>
+      <div class="hero-meta-dot"></div>
+      <div class="hero-meta-item">Wide Receiver</div>
+      <div class="hero-meta-dot"></div>
+      <div class="hero-meta-item">Athens, GA</div>
+      <div class="hero-meta-dot"></div>
+      <div class="hero-meta-item"><strong>Sr.</strong> · Class of 2025</div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num">4.2M</div>
+        <div class="hero-stat-label">Followers</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">8</div>
+        <div class="hero-stat-label">Active Brands</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    Scroll to view campaigns
+  </div>
+</div>
+
+<!-- BACK BAR -->
+<div class="back-bar">
+  <div class="back-bar-inner">
+    <a href="postgame-tier1-tracker.html" class="back-link">
+      <span class="back-arrow">←</span> Back to Deal Tracker
+    </a>
+    <div class="athlete-nav">
+      <a href="#" class="athlete-nav-btn">← Prev Athlete</a>
+      <a href="#" class="athlete-nav-btn">Next Athlete →</a>
+    </div>
+  </div>
+</div>
+
+<!-- BRAND SECTIONS -->
+<div class="brands-wrap">
+
+  <!-- NIKE -->
+  <div class="brand-section">
+    <div class="brand-header">
+      <div class="brand-header-left">
+        <div class="brand-section-label">Campaign 01</div>
+        <div class="brand-name-row">
+          <div class="brand-logo-placeholder">NK</div>
+          <div class="brand-title">Nike</div>
+        </div>
+        <div class="brand-campaign-name">Just Do It — Campus Series</div>
+        <div class="brand-tags">
+          <span class="brand-tag orange">Brand Ambassador</span>
+          <span class="brand-tag">Social Campaign</span>
+          <span class="brand-tag">Content Creation</span>
+          <span class="brand-tag">Apparel</span>
+        </div>
+      </div>
+      <div class="brand-header-right">
+        <div class="brand-date">Feb 2025</div>
+      </div>
+    </div>
+
+    <!-- Content: all vertical -->
+    <div class="content-grid" id="grid-nike"></div>
+    <template id="tiles-nike">
+      <div class="content-tile ct-1" data-format="vertical">
+        <div class="content-tile-bg ct-1"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">Reel · 60s</div>
+        <div class="tile-info"><div class="tile-platform">Instagram</div><div class="tile-caption">Lace-up. Show up. Just Do It.</div></div>
+      </div>
+      <div class="content-tile ct-2" data-format="vertical">
+        <div class="content-tile-bg ct-2"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">TikTok · 45s</div>
+        <div class="tile-info"><div class="tile-platform">TikTok</div><div class="tile-caption">Campus fit check with the new drops</div></div>
+      </div>
+      <div class="content-tile ct-3" data-format="vertical">
+        <div class="content-tile-bg ct-3"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">Story</div>
+        <div class="tile-info"><div class="tile-platform">Instagram</div><div class="tile-caption">Behind the drop</div></div>
+      </div>
+      <div class="content-tile ct-6" data-format="vertical">
+        <div class="content-tile-bg ct-6"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">Reel · 30s</div>
+        <div class="tile-info"><div class="tile-platform">Instagram</div><div class="tile-caption">The new campus colorway is here</div></div>
+      </div>
+    </template>
+
+    <div class="brand-footer-strip">
+      <a href="postgame-campaign-recap.html" class="brand-footer-link">View Full Campaign →</a>
+    </div>
+  </div>
+
+  <!-- GATORADE + BEATS = Previous campaigns, collapsed by default -->
+  <div class="prev-campaigns-toggle" id="prev-toggle" onclick="toggleHistory()">
+    <div class="prev-toggle-inner">
+      <div class="prev-toggle-left">
+        <div class="prev-toggle-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </div>
+        <div>
+          <div class="prev-toggle-label">Previous Campaigns</div>
+          <div class="prev-toggle-count">Jordan has 2 more campaigns on record with Postgame</div>
+        </div>
+      </div>
+      <div class="prev-toggle-btn" id="prev-toggle-btn">
+        <span>Show All Campaigns</span>
+        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="prev-campaigns-wrap" id="prev-campaigns">
+
+  <!-- GATORADE -->
+  <div class="brand-section" style="background:linear-gradient(180deg,#040d04 0%,var(--black) 200px)">
+    <div class="brand-header">
+      <div class="brand-header-left">
+        <div class="brand-section-label">Campaign 02</div>
+        <div class="brand-name-row">
+          <div class="brand-logo-placeholder">GT</div>
+          <div class="brand-title">Gatorade</div>
+        </div>
+        <div class="brand-campaign-name">Fuel The Future</div>
+        <div class="brand-tags">
+          <span class="brand-tag orange">Social Campaign</span>
+          <span class="brand-tag">Food & Beverage</span>
+          <span class="brand-tag">UGC</span>
+        </div>
+      </div>
+      <div class="brand-header-right">
+        <div class="brand-date">Nov 2024</div>
+      </div>
+    </div>
+
+    <!-- Content: mixed vertical + horizontal -->
+    <div class="content-grid" id="grid-gatorade"></div>
+    <template id="tiles-gatorade">
+      <div class="content-tile ct-4" data-format="vertical">
+        <div class="content-tile-bg ct-4"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">Reel · 30s</div>
+        <div class="tile-info"><div class="tile-platform">Instagram</div><div class="tile-caption">Pre-game ritual, every time.</div></div>
+      </div>
+      <div class="content-tile ct-5" data-format="horizontal">
+        <div class="content-tile-bg ct-5"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">YouTube · 2min</div>
+        <div class="tile-info"><div class="tile-platform">YouTube</div><div class="tile-caption">A day in the life — game week with Gatorade</div></div>
+      </div>
+      <div class="content-tile ct-6" data-format="vertical">
+        <div class="content-tile-bg ct-6"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">TikTok · 45s</div>
+        <div class="tile-info"><div class="tile-platform">TikTok</div><div class="tile-caption">What I eat before game day</div></div>
+      </div>
+    </template>
+
+    <div class="brand-footer-strip">
+      <a href="postgame-campaign-recap.html" class="brand-footer-link">View Full Campaign →</a>
+    </div>
+  </div>
+
+  <!-- BEATS -->
+  <div class="brand-section" style="background:linear-gradient(180deg,#0d0404 0%,var(--black) 200px)">
+    <div class="brand-header">
+      <div class="brand-header-left">
+        <div class="brand-section-label">Campaign 03</div>
+        <div class="brand-name-row">
+          <div class="brand-logo-placeholder">BT</div>
+          <div class="brand-title">Beats</div>
+        </div>
+        <div class="brand-campaign-name">Hear It First</div>
+        <div class="brand-tags">
+          <span class="brand-tag orange">Brand Ambassador</span>
+          <span class="brand-tag">Technology</span>
+          <span class="brand-tag">Lifestyle</span>
+        </div>
+      </div>
+      <div class="brand-header-right">
+        <div class="brand-date">Sep 2024</div>
+      </div>
+    </div>
+
+    <!-- Content: vertical tiles -->
+    <div class="content-grid" id="grid-beats"></div>
+    <template id="tiles-beats">
+      <div class="content-tile ct-7" data-format="vertical">
+        <div class="content-tile-bg ct-7"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">Reel · 90s</div>
+        <div class="tile-info"><div class="tile-platform">Instagram</div><div class="tile-caption">Tunnel walk. Beats in. World out.</div></div>
+      </div>
+      <div class="content-tile ct-8" data-format="vertical">
+        <div class="content-tile-bg ct-8"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">TikTok · 30s</div>
+        <div class="tile-info"><div class="tile-platform">TikTok</div><div class="tile-caption">My pre-game playlist drops Friday</div></div>
+      </div>
+      <div class="content-tile ct-1" data-format="square">
+        <div class="content-tile-bg ct-1"></div><div class="tile-overlay"></div><div class="tile-play"><div class="play-btn"><div class="play-tri"></div></div></div>
+        <div class="tile-type-badge">Static Post</div>
+        <div class="tile-info"><div class="tile-platform">Instagram</div><div class="tile-caption">New colorway. You ready?</div></div>
+      </div>
+    </template>
+
+    <div class="brand-footer-strip">
+      <a href="postgame-campaign-recap.html" class="brand-footer-link">View Full Campaign →</a>
+    </div>
+  </div>
+
+  </div><!-- /prev-campaigns-wrap -->
+
+</div>
+
+<!-- CTA -->
+<div class="cta-block">
+  <h2 class="cta-title">Activate with<br>Athletes Like Jordan</h2>
+  <p class="cta-sub">Connect your brand with top-tier college athletes.</p>
+  <div class="cta-btns">
+    <a href="postgame-contact.html" class="btn-white">I'm a Brand</a>
+    <a href="postgame-contact.html" class="btn-outline-white">I'm an Athlete</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <a href="postgame-homepage.html" class="logo" style="display:inline-block;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;display:block;"></a>
+        <p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+      </div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-brand-profile.html">Clients</a></li><li><a href="postgame-campaign-recap.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Postgame. All rights reserved.</div>
+      <div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Nav scroll
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 80);
+  });
+
+  // Previous campaigns expand/collapse
+  function toggleHistory() {
+    const wrap = document.getElementById('prev-campaigns');
+    const btn = document.getElementById('prev-toggle-btn');
+    const isOpen = wrap.classList.contains('open');
+    wrap.classList.toggle('open');
+    btn.classList.toggle('open');
+    btn.querySelector('span').textContent = isOpen ? 'Show All Campaigns' : 'Collapse';
+
+    // If opening, build grids that haven't been built yet
+    if (!isOpen) {
+      if (!document.getElementById('grid-gatorade').dataset.built) {
+        buildGrid('grid-gatorade', 'tiles-gatorade');
+        document.getElementById('grid-gatorade').dataset.built = '1';
+      }
+      if (!document.getElementById('grid-beats').dataset.built) {
+        buildGrid('grid-beats', 'tiles-beats');
+        document.getElementById('grid-beats').dataset.built = '1';
+      }
+    }
+  }
+
+  // Adaptive grid engine
+  // Reads data-format on each tile and builds the right column layout
+  function buildGrid(gridId, templateId) {
+    const grid = document.getElementById(gridId);
+    const template = document.getElementById(templateId);
+    if (!grid || !template) return;
+
+    // Clone tiles from template into grid
+    const tiles = Array.from(template.content.children);
+    tiles.forEach(tile => grid.appendChild(tile.cloneNode(true)));
+
+    const formats = tiles.map(t => t.dataset.format);
+    const count = formats.length;
+    const hasH = formats.includes('horizontal');
+    const hasV = formats.includes('vertical');
+    const hasS = formats.includes('square');
+    const allV = formats.every(f => f === 'vertical');
+    const allH = formats.every(f => f === 'horizontal');
+    const allS = formats.every(f => f === 'square');
+
+    let cols;
+
+    if (allV) {
+      // All vertical — pack side by side, max 4 cols
+      cols = Math.min(count, 4) + 'fr '.repeat(Math.min(count, 4)).trim().split(' ').join('fr ') + 'fr';
+      cols = `repeat(${Math.min(count, 4)}, 1fr)`;
+    } else if (allH) {
+      // All horizontal — stack 2 cols
+      cols = `repeat(${Math.min(count, 2)}, 1fr)`;
+    } else if (allS) {
+      cols = `repeat(${Math.min(count, 3)}, 1fr)`;
+    } else if (hasH && hasV && count === 3) {
+      // Mixed: make horizontal take 2 cols, verticals share remaining
+      // Reorder: put horizontal first spanning wide
+      const hIdx = formats.indexOf('horizontal');
+      const vTiles = [];
+      let hTile;
+      Array.from(grid.children).forEach((tile, i) => {
+        if (tile.dataset.format === 'horizontal') hTile = tile;
+        else vTiles.push(tile);
+      });
+      // Clear and rebuild order: horizontals first, then verticals
+      grid.innerHTML = '';
+      if (hTile) grid.appendChild(hTile);
+      vTiles.forEach(t => grid.appendChild(t));
+
+      // 2 col grid: horizontal spans full row, verticals split second row
+      grid.style.gridTemplateColumns = '1fr 1fr';
+      if (hTile) hTile.style.gridColumn = '1 / -1';
+      return;
+    } else {
+      // Generic fallback
+      cols = `repeat(${Math.min(count, 3)}, 1fr)`;
+    }
+
+    grid.style.gridTemplateColumns = cols;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    buildGrid('grid-nike', 'tiles-nike');
+    // Gatorade and Beats built lazily on toggle open
+  });
+</script>
+
+</body>
+</html>

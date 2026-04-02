@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case Studies · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+  :root { --orange:#D73F09;--black:#000;--white:#FFF;--gray:#111;--gray-mid:#1a1a1a; }
+  *,*::before,*::after { margin:0;padding:0;box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--black);color:var(--white);font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.4;overflow-x:hidden; }
+
+  /* NAV */
+  nav { position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 48px;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06); }
+  .nav-links { display:flex;align-items:center;gap:8px;list-style:none; }
+  .nav-item { position:relative; }
+  .nav-item > a { display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.7);text-decoration:none;font-size:14px;font-weight:500;padding:10px 16px;border-radius:6px;transition:color 0.2s,background 0.2s; }
+  .nav-item > a:hover { color:var(--white);background:rgba(255,255,255,0.05); }
+  .nav-chevron { width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;transition:transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform:rotate(180deg); }
+  .nav-dropdown { position:absolute;top:calc(100% + 8px);left:0;min-width:160px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px);transition:all 0.2s;box-shadow:0 16px 40px rgba(0,0,0,0.6);z-index:200; }
+  .nav-item::after { content:"";position:absolute;bottom:-10px;left:0;right:0;height:10px; }
+  .nav-item:hover .nav-dropdown { opacity:1;pointer-events:all;transform:translateY(0); }
+  .nav-drop-item { display:block;padding:12px 18px;font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;transition:all 0.15s;border-bottom:1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom:none; }
+  .nav-drop-item:hover { background:rgba(255,255,255,0.05);color:var(--white);padding-left:22px; }
+  .btn-primary { background:var(--orange);color:var(--white);border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s,transform 0.15s; }
+  .btn-primary:hover { background:#c03608;transform:translateY(-1px); }
+  .btn-tracker { background:var(--white);color:var(--black);border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s; }
+  .btn-tracker:hover { background:rgba(255,255,255,0.88); }
+
+  /* HERO */
+  .hero { padding:140px 48px 64px;text-align:center;position:relative;overflow:hidden; }
+  .hero-glow { position:absolute;top:-120px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(215,63,9,0.06) 0%,transparent 70%);pointer-events:none; }
+  .hero-eyebrow { font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--orange);margin-bottom:16px;display:flex;align-items:center;gap:12px;justify-content:center; }
+  .hero-eyebrow::before,.hero-eyebrow::after { content:'';width:24px;height:1px;background:var(--orange);opacity:0.4; }
+  .hero-title { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(56px,10vw,110px);line-height:0.9;letter-spacing:0.01em;color:var(--white);margin-bottom:20px; }
+  .hero-sub { font-size:18px;color:rgba(255,255,255,0.35);max-width:600px;margin:0 auto;line-height:1.6; }
+
+  /* STATS BAR */
+  .stats-bar { display:flex;justify-content:center;gap:0;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);background:var(--gray); }
+  .stat-item { padding:28px 48px;text-align:center;border-right:1px solid rgba(255,255,255,0.06); }
+  .stat-item:last-child { border-right:none; }
+  .stat-num { font-family:'Bebas Neue',Arial,sans-serif;font-size:36px;color:var(--orange);line-height:1; }
+  .stat-label { font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px; }
+
+  /* FEATURED CASE STUDY */
+  .featured { max-width:1200px;margin:0 auto;padding:64px 48px 0; }
+  .featured-card { display:grid;grid-template-columns:1.2fr 1fr;gap:0;border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;cursor:default;transition:border-color 0.3s;margin-bottom:64px; }
+  .featured-card:hover { border-color:rgba(215,63,9,0.2); }
+  .featured-visual { position:relative;aspect-ratio:16/10;overflow:hidden; }
+  .featured-visual-bg { position:absolute;inset:0;background:linear-gradient(135deg,#1a0a02 0%,#0d0d0d 60%);transition:transform 0.5s; }
+  .featured-card:hover .featured-visual-bg { transform:scale(1.02); }
+  .featured-visual-label { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;letter-spacing:5px;color:rgba(255,255,255,0.05);font-weight:700;text-transform:uppercase; }
+  .featured-badge { position:absolute;top:16px;left:16px;background:var(--orange);color:white;font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:6px 14px;border-radius:4px; }
+  .featured-info { background:var(--gray-mid);padding:48px 40px;display:flex;flex-direction:column;justify-content:center; }
+  .featured-category { font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--orange);margin-bottom:16px; }
+  .featured-brand { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(32px,4vw,48px);color:var(--white);line-height:0.95;letter-spacing:0.02em;margin-bottom:16px; }
+  .featured-desc { font-size:16px;color:rgba(255,255,255,0.35);line-height:1.65;margin-bottom:24px; }
+  .featured-results { display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap; }
+  .featured-result { background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:12px 16px;text-align:center;min-width:80px; }
+  .featured-result-num { font-family:'Bebas Neue',Arial,sans-serif;font-size:20px;color:var(--orange);line-height:1; }
+  .featured-result-label { font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px; }
+
+  /* CASE STUDY GRID */
+  .cases { max-width:1200px;margin:0 auto;padding:0 48px; }
+  .section-eyebrow { font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:10px;display:flex;align-items:center;gap:10px; }
+  .section-eyebrow::before { content:'';width:16px;height:1px;background:rgba(255,255,255,0.15); }
+  .section-title { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(32px,4vw,48px);color:var(--white);letter-spacing:0.02em;line-height:1;margin-bottom:40px; }
+  .case-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin-bottom:64px; }
+  .case-card { background:var(--gray-mid);border:1px solid rgba(255,255,255,0.04);overflow:hidden;cursor:default;transition:background 0.2s,border-color 0.3s;display:grid;grid-template-columns:1fr 1fr; }
+  .case-card:hover { background:#1e1e1e;border-color:rgba(215,63,9,0.15); }
+  .case-card-visual { position:relative;aspect-ratio:4/3;overflow:hidden; }
+  .case-card-bg { position:absolute;inset:0;transition:transform 0.5s; }
+  .case-card:hover .case-card-bg { transform:scale(1.03); }
+  .case-card-label { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;letter-spacing:4px;color:rgba(255,255,255,0.04);font-weight:600;text-transform:uppercase; }
+  .case-card-info { padding:32px 28px;display:flex;flex-direction:column;justify-content:center; }
+  .case-card-cat { font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--orange);margin-bottom:10px; }
+  .case-card-brand { font-family:'Bebas Neue',Arial,sans-serif;font-size:28px;color:var(--white);line-height:1;letter-spacing:0.02em;margin-bottom:12px; }
+  .case-card-desc { font-size:13px;color:rgba(255,255,255,0.3);line-height:1.55; }
+  .case-card-desc { display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden; }
+
+  /* ALTERNATING GRADIENTS */
+  .bg-1 { background:linear-gradient(135deg,#1a0a02,#0d0d0d); }
+  .bg-2 { background:linear-gradient(135deg,#0e1a3a,#080e1a); }
+  .bg-3 { background:linear-gradient(135deg,#0e3a1a,#081a0e); }
+  .bg-4 { background:linear-gradient(135deg,#2d0e3a,#18082d); }
+  .bg-5 { background:linear-gradient(135deg,#3a280a,#140e04); }
+  .bg-6 { background:linear-gradient(135deg,#3a0e1a,#14060a); }
+  .bg-7 { background:linear-gradient(135deg,#0a1a3a,#060a14); }
+  .bg-8 { background:linear-gradient(135deg,#1a3a10,#0a140a); }
+
+  /* COMING SOON STRIP */
+  .coming-soon { max-width:1200px;margin:0 auto;padding:0 48px 64px; }
+  .coming-soon-inner { background:var(--gray-mid);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:40px;text-align:center; }
+  .coming-soon-title { font-family:'Bebas Neue',Arial,sans-serif;font-size:28px;color:var(--white);margin-bottom:12px; }
+  .coming-soon-text { font-size:15px;color:rgba(255,255,255,0.3);line-height:1.6; }
+  .coming-soon-brands { display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:20px; }
+  .cs-pill { font-size:12px;font-weight:700;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:100px;padding:6px 16px; }
+
+  /* CTA */
+  .cta-block { background:var(--orange);padding:80px 48px;text-align:center; }
+  .cta-title { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(40px,6vw,64px);color:var(--white);line-height:0.95;letter-spacing:0.02em;margin-bottom:16px; }
+  .cta-sub { font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:32px; }
+  .cta-btns { display:flex;gap:16px;justify-content:center;flex-wrap:wrap; }
+  .btn-white { background:var(--white);color:var(--orange);border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s; }
+  .btn-white:hover { background:rgba(255,255,255,0.9);transform:translateY(-1px); }
+  .btn-outline-white { background:transparent;color:var(--white);border:2px solid rgba(255,255,255,0.5);border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s; }
+  .btn-outline-white:hover { border-color:var(--white);transform:translateY(-1px); }
+
+  /* FOOTER */
+  footer { background:var(--gray);border-top:1px solid rgba(255,255,255,0.06);padding:48px 48px 24px; }
+  .footer-inner { max-width:1200px;margin:0 auto; }
+  .footer-top { display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px; }
+  .footer-brand-desc { font-size:18px;color:rgba(255,255,255,0.35);line-height:1.2;margin-top:12px;max-width:280px; }
+  .footer-col-title { font-size:18px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:20px; }
+  .footer-links { list-style:none;display:flex;flex-direction:column;gap:12px; }
+  .footer-links a { color:rgba(255,255,255,0.5);text-decoration:none;font-size:18px;line-height:1.2;transition:color 0.2s; }
+  .footer-links a:hover { color:var(--white); }
+  .footer-bottom { border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;display:flex;justify-content:space-between;align-items:center; }
+  .footer-copy { font-size:18px;color:rgba(255,255,255,0.2);line-height:1.2; }
+  .footer-socials { display:flex;gap:20px; }
+  .footer-socials a { font-size:18px;color:rgba(255,255,255,0.3);text-decoration:none;line-height:1.2;transition:color 0.2s; }
+  .footer-socials a:hover { color:var(--orange); }
+
+  @media (max-width:768px) {
+    body { font-size:14px !important;line-height:1.4 !important; }
+    nav { padding:16px 20px; }
+    .hero { padding:110px 20px 40px; }
+    .hero-title { font-size:clamp(40px,12vw,64px); }
+    .stats-bar { flex-wrap:wrap; }
+    .stat-item { flex:1;min-width:100px;padding:20px 12px; }
+    .featured { padding:40px 20px 0; }
+    .featured-card { grid-template-columns:1fr; }
+    .featured-info { padding:24px 20px; }
+    .cases { padding:0 20px; }
+    .case-grid { grid-template-columns:1fr; }
+    .case-card { grid-template-columns:1fr; }
+    .case-card-info { padding:20px; }
+    .coming-soon { padding:0 20px 48px; }
+    .cta-block { padding:48px 20px; }
+    .btn-primary,.btn-tracker,.btn-white,.btn-outline-white { font-size:13px !important;padding:12px 24px !important; }
+    footer { padding:32px 20px 16px; }
+    .footer-top { grid-template-columns:1fr 1fr;gap:24px; }
+    footer,.footer-links a,.footer-brand-desc,.footer-copy,.footer-socials a,.footer-col-title { font-size:11px !important;line-height:1.2 !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:36px;width:auto;"></a>
+  <ul class="nav-links">
+    <li class="nav-item"><a href="postgame-clients.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-clients.html" class="nav-drop-item">Clients</a><a href="postgame-campaigns.html" class="nav-drop-item">Campaigns</a></div></li>
+    <li class="nav-item"><a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a><a href="postgame-services-always-on.html" class="nav-drop-item">Always On</a></div></li>
+    <li class="nav-item"><a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">Results That Speak</div>
+  <h1 class="hero-title">Case Studies</h1>
+  <p class="hero-sub">Deep dives into the campaigns, strategies, and results behind the biggest NIL activations in college sports.</p>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-num">18</div><div class="stat-label">Case Studies</div></div>
+  <div class="stat-item"><div class="stat-num">394</div><div class="stat-label">Campaigns Executed</div></div>
+  <div class="stat-item"><div class="stat-num">69</div><div class="stat-label">Brands Activated</div></div>
+  <div class="stat-item"><div class="stat-num">25K+</div><div class="stat-label">Athletes Impacted</div></div>
+</div>
+
+<!-- FEATURED CASE STUDY -->
+<div class="featured">
+  <div class="section-eyebrow">Featured</div>
+  <div class="featured-card">
+    <div class="featured-visual">
+      <div class="featured-visual-bg bg-1"></div>
+      <div class="featured-visual-label">Case Study Media</div>
+      <div class="featured-badge">Featured</div>
+    </div>
+    <div class="featured-info">
+      <div class="featured-category">Clothing &amp; Retail</div>
+      <div class="featured-brand">Hollister Co.</div>
+      <div class="featured-desc">Hollister teamed up with Postgame to make NIL history with its Collegiate Collection — driving sales and connecting authentically with Gen Z through athlete-led content. From 16M+ impressions to the largest single-day social media campaign in the history of NIL.</div>
+      <div class="featured-results">
+        <div class="featured-result"><div class="featured-result-num">16M+</div><div class="featured-result-label">Impressions</div></div>
+        <div class="featured-result"><div class="featured-result-num">300+</div><div class="featured-result-label">Athletes</div></div>
+        <div class="featured-result"><div class="featured-result-num">#1</div><div class="featured-result-label">NIL Campaign</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALL CASE STUDIES -->
+<div class="cases">
+  <div class="section-eyebrow">All Studies</div>
+  <div class="section-title">By Brand</div>
+
+  <div class="case-grid">
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-2"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Food &amp; Beverage</div>
+        <div class="case-card-brand">C4 Energy</div>
+        <div class="case-card-desc">Learn how Postgame helped C4 Energy pull off what many are calling the biggest marketing coup in the NIL era — activating 128+ basketball players just days before March Madness.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-3"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Food &amp; Beverage</div>
+        <div class="case-card-brand">Siggi's</div>
+        <div class="case-card-desc">How Siggi's leveraged college athletes to build a scalable, performance-driven content and media channel.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-4"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Clothing &amp; Retail</div>
+        <div class="case-card-brand">adidas NIL Program</div>
+        <div class="case-card-desc">How adidas and Postgame revolutionized the NIL space with a groundbreaking Ambassador Program engaging tens of thousands of college athletes at all levels.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-5"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Insurance</div>
+        <div class="case-card-brand">Allstate AFCA</div>
+        <div class="case-card-desc">How Allstate teamed up with Postgame to reimagine its iconic AFCA Good Works Team campaign, amplifying athletes' charitable efforts over two years.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-6"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Luxury &amp; Beauty</div>
+        <div class="case-card-brand">Giorgio Armani Beauty</div>
+        <div class="case-card-desc">Armani partnered with Postgame to bridge luxury and authenticity, connecting their men's fragrance line to Gen Z consumers through college athletes.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-7"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Food &amp; Beverage</div>
+        <div class="case-card-brand">Stanley 1913</div>
+        <div class="case-card-desc">How Stanley collaborated with Postgame to deliver a year-long series of dynamic product launches, fostering authentic connections with Gen Z on campuses nationwide.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-8"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Clothing &amp; Retail</div>
+        <div class="case-card-brand">PSD Underwear</div>
+        <div class="case-card-desc">PSD partnered with Postgame to generate high-volume, cost-effective Instagram &amp; TikTok ad content through college athletes — significantly boosting ROAS and CTR.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-1"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Clothing &amp; Retail</div>
+        <div class="case-card-brand">Crocs</div>
+        <div class="case-card-desc">A partnership that began in 2022 with nearly 1,000 college athletes has since evolved into elevated content, in-store activations, and high-profile athlete collaborations.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-2"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Foundations &amp; Charities</div>
+        <div class="case-card-brand">V Foundation</div>
+        <div class="case-card-desc">How The V Foundation partnered with Postgame to unite college athletes in the fight against pediatric cancer with authentic storytelling and gamified fundraising.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-3"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Healthcare</div>
+        <div class="case-card-brand">CeraVe</div>
+        <div class="case-card-desc">CeraVe partnered with Postgame to leverage student-athletes promoting skincare routines across social media and in-person campus events — achieving 5 million impressions.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-4"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Clothing &amp; Retail</div>
+        <div class="case-card-brand">Urban Outfitters</div>
+        <div class="case-card-desc">Urban Outfitters partnered with Postgame on multiple social media campaigns and in-store activations starting in 2021, driving brand awareness among Gen Z.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-5"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Beauty &amp; Hair</div>
+        <div class="case-card-brand">Sensationnel RUWA</div>
+        <div class="case-card-desc">Sensationnel showcased how RUWA braiding hair supports athlete lifestyles by partnering with diverse female student-athletes across multiple sports.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-6"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Clothing &amp; Retail</div>
+        <div class="case-card-brand">Lulus</div>
+        <div class="case-card-desc">Lulus teamed up with Postgame for a two-year NIL campaign partnering with over 100 female college athletes passionate about fashion, reaching millions.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-7"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Food &amp; Beverage</div>
+        <div class="case-card-brand">YESLY Water</div>
+        <div class="case-card-desc">How YESLY tapped hundreds of college athletes in specific markets to grow brand awareness and drive foot traffic to Sprouts Farmer's Market.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-8"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Gifting &amp; Retail</div>
+        <div class="case-card-brand">1-800-Flowers</div>
+        <div class="case-card-desc">How 1-800-Flowers utilized Postgame to make the most of Mother's Day weekend with a major social media push through college athletes.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-1"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Travel &amp; Hospitality</div>
+        <div class="case-card-brand">BOB Hotels</div>
+        <div class="case-card-desc">How Postgame helped BOB Hotels leverage college athletes to promote their new boutique hotel concept in Tallahassee.</div>
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-visual"><div class="case-card-bg bg-2"></div><span class="case-card-label">Media</span></div>
+      <div class="case-card-info">
+        <div class="case-card-cat">Food &amp; Beverage</div>
+        <div class="case-card-brand">M&amp;M's</div>
+        <div class="case-card-desc">How Postgame maximized graduation season with college athletes to drive brand awareness for personalized M&amp;M's and create repurposable paid content.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- COMING SOON -->
+<div class="coming-soon">
+  <div class="coming-soon-inner">
+    <div class="coming-soon-title">More Case Studies Coming Soon</div>
+    <div class="coming-soon-text">We're adding deep dives on more brands in the coming weeks.</div>
+    <div class="coming-soon-brands">
+      <span class="cs-pill">HEYDUDE</span>
+      <span class="cs-pill">Gillette</span>
+      <span class="cs-pill">Steve Madden</span>
+      <span class="cs-pill">Free People Movement</span>
+      <span class="cs-pill">Ruffles</span>
+      <span class="cs-pill">McDonald's</span>
+      <span class="cs-pill">CAVA</span>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-block">
+  <h2 class="cta-title">Ready to Be<br>the Next Case Study?</h2>
+  <p class="cta-sub">Let Postgame build a campaign that gets results.</p>
+  <div class="cta-btns">
+    <a href="postgame-contact.html" class="btn-white">Start a Campaign</a>
+    <a href="postgame-campaigns.html" class="btn-outline-white">View All Campaigns</a>
+  </div>
+</div>
+
+<footer><div class="footer-inner">
+  <div class="footer-top">
+    <div><a href="index.html" style="display:inline-flex;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;"></a><p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p></div>
+    <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+    <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-clients.html">Clients</a></li><li><a href="postgame-campaigns.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li></ul></div>
+    <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+  </div>
+  <div class="footer-bottom"><div class="footer-copy">&copy; 2025 Postgame. All rights reserved.</div><div class="footer-socials"><a href="#">Privacy</a><a href="#">Terms</a><a href="postgame-contact.html">Contact</a></div></div>
+</div></footer>
+
+</body>
+</html>

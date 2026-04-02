@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaigns · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+  :root { --orange:#D73F09;--black:#000;--white:#FFF;--gray:#111;--gray-mid:#1a1a1a; }
+  *,*::before,*::after { margin:0;padding:0;box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--black);color:var(--white);font-family:Arial,Helvetica,sans-serif;overflow-x:hidden;font-size:24px;line-height:1.4; }
+
+  /* NAV */
+  nav { position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 48px;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06); }
+  .logo { display:flex;align-items:center;gap:4px;text-decoration:none; }
+  .nav-links { display:flex;align-items:center;gap:8px;list-style:none; }
+  .nav-item { position:relative; }
+  .nav-item > a { display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.7);text-decoration:none;font-size:14px;font-weight:500;padding:10px 16px;border-radius:6px;transition:color 0.2s,background 0.2s; }
+  .nav-item > a:hover { color:var(--white);background:rgba(255,255,255,0.05); }
+  .nav-chevron { width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;transition:transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform:rotate(180deg); }
+  .nav-dropdown { position:absolute;top:calc(100% + 8px);left:0;min-width:160px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px);transition:all 0.2s;box-shadow:0 16px 40px rgba(0,0,0,0.6);z-index:200; }
+  .nav-item::after { content:"";position:absolute;bottom:-10px;left:0;right:0;height:10px; }
+  .nav-item:hover .nav-dropdown { opacity:1;pointer-events:all;transform:translateY(0); }
+  .nav-drop-item { display:block;padding:12px 18px;font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;transition:all 0.15s;border-bottom:1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom:none; }
+  .nav-drop-item:hover { background:rgba(255,255,255,0.05);color:var(--white);padding-left:22px; }
+  .btn-primary { background:var(--orange);color:var(--white);border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s,transform 0.15s; }
+  .btn-primary:hover { background:#c03608;transform:translateY(-1px); }
+  .btn-tracker { background:var(--white);color:var(--black);border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s; }
+  .btn-tracker:hover { background:rgba(255,255,255,0.88); }
+
+  /* FEATURED HERO */
+  .featured { padding:120px 48px 0;max-width:1200px;margin:0 auto; }
+  .featured-eyebrow { font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--orange);margin-bottom:16px;display:flex;align-items:center;gap:12px; }
+  .featured-eyebrow::before { content:'';width:32px;height:1px;background:var(--orange); }
+  .featured-hero { display:grid;grid-template-columns:1.4fr 1fr;gap:0;cursor:pointer;margin-bottom:0;overflow:hidden;border:1px solid rgba(255,255,255,0.06);border-radius:12px;transition:border-color 0.3s; }
+  .featured-hero:hover { border-color:rgba(215,63,9,0.3); }
+  .featured-visual { position:relative;aspect-ratio:16/10;overflow:hidden; }
+  .featured-visual-bg { position:absolute;inset:0;background:linear-gradient(135deg,#3a1a08 0%,#0d0d0d 60%);transition:transform 0.6s ease; }
+  .featured-hero:hover .featured-visual-bg { transform:scale(1.03); }
+  .featured-visual-overlay { position:absolute;inset:0;background:linear-gradient(to right,transparent 60%,rgba(0,0,0,0.9) 100%); }
+  .featured-visual-label { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;letter-spacing:6px;color:rgba(255,255,255,0.06);font-weight:700;text-transform:uppercase; }
+  .featured-badge { position:absolute;top:16px;left:16px;background:var(--orange);color:white;font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:6px 14px;border-radius:4px; }
+  .featured-info { background:var(--gray-mid);padding:48px 40px;display:flex;flex-direction:column;justify-content:center; }
+  .featured-brand { font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--orange);margin-bottom:16px; }
+  .featured-name { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(36px,5vw,56px);color:var(--white);letter-spacing:0.02em;line-height:0.95;margin-bottom:16px; }
+  .featured-date { font-size:13px;color:rgba(255,255,255,0.25);font-weight:600;margin-bottom:24px; }
+  .featured-desc { font-size:16px;color:rgba(255,255,255,0.35);line-height:1.6;margin-bottom:32px; }
+  .featured-cta { display:inline-flex;align-items:center;gap:8px;color:var(--orange);font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.04em;transition:gap 0.2s; }
+  .featured-hero:hover .featured-cta { gap:14px; }
+
+  /* HOT CAMPAIGNS GRID */
+  .hot-section { max-width:1200px;margin:0 auto;padding:64px 48px 0; }
+  .section-eyebrow { font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:10px;display:flex;align-items:center;gap:10px; }
+  .section-eyebrow::before { content:'';width:16px;height:1px;background:rgba(255,255,255,0.15); }
+  .section-title { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(32px,4vw,48px);color:var(--white);letter-spacing:0.02em;line-height:1;margin-bottom:32px; }
+  .hot-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:2px; }
+  .hot-card { background:var(--gray-mid);cursor:pointer;overflow:hidden;transition:background 0.2s;border:1px solid rgba(255,255,255,0.04);border-radius:0; }
+  .hot-card:hover { background:#1e1e1e;border-color:rgba(215,63,9,0.15); }
+  .hot-card-visual { position:relative;aspect-ratio:16/10;overflow:hidden; }
+  .hot-card-bg { position:absolute;inset:0;transition:transform 0.5s ease; }
+  .hot-card:hover .hot-card-bg { transform:scale(1.04); }
+  .hot-card-overlay { position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.6) 0%,transparent 50%); }
+  .hot-card-badge { position:absolute;top:10px;left:10px;background:var(--orange);color:white;font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:3px; }
+  .hot-card-info { padding:20px; }
+  .hot-card-brand { font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--orange);margin-bottom:8px; }
+  .hot-card-name { font-family:'Bebas Neue',Arial,sans-serif;font-size:24px;color:var(--white);letter-spacing:0.02em;line-height:1.05;margin-bottom:8px; }
+  .hot-card-date { font-size:12px;color:rgba(255,255,255,0.2);font-weight:600; }
+  .rc-1 { background:linear-gradient(160deg,#3a1a08,#0d0d0d); }
+  .rc-2 { background:linear-gradient(160deg,#0e1a3a,#080e1a); }
+  .rc-3 { background:linear-gradient(160deg,#0e3a1a,#081a0e); }
+  .rc-4 { background:linear-gradient(160deg,#2d0e3a,#18082d); }
+  .rc-5 { background:linear-gradient(160deg,#3a280a,#140e04); }
+  .rc-6 { background:linear-gradient(160deg,#3a0e1a,#14060a); }
+  .rc-7 { background:linear-gradient(160deg,#0a1a3a,#060a14); }
+  .rc-8 { background:linear-gradient(160deg,#1a3a10,#0a140a); }
+
+  /* BROWSE BY BRAND */
+  .browse-section { max-width:1200px;margin:0 auto;padding:64px 48px 0; }
+  .top-brands { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:48px; }
+  .top-brand-pill { display:inline-flex;align-items:center;gap:10px;background:var(--gray-mid);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px 18px;text-decoration:none;transition:all 0.2s; }
+  .top-brand-pill:hover { border-color:rgba(215,63,9,0.3);background:rgba(215,63,9,0.05); }
+  .tbp-name { font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);transition:color 0.2s; }
+  .top-brand-pill:hover .tbp-name { color:var(--white); }
+  .tbp-count { font-size:11px;font-weight:700;color:var(--orange);background:rgba(215,63,9,0.1);padding:2px 8px;border-radius:100px; }
+
+  /* SHOW MORE / ALL CAMPAIGNS */
+  .show-more-wrap { text-align:center;padding:48px 0; }
+  .show-more-btn { background:transparent;color:var(--orange);border:2px solid var(--orange);border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:0.03em; }
+  .show-more-btn:hover { background:var(--orange);color:var(--white); }
+  .all-campaigns { display:none;max-width:1200px;margin:0 auto;padding:0 48px 64px; }
+  .all-campaigns.open { display:block; }
+  .all-campaign-row { display:grid;grid-template-columns:120px 140px 1fr 40px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-decoration:none;cursor:pointer;transition:background 0.15s;gap:16px; }
+  .all-campaign-row:hover { background:rgba(255,255,255,0.02); }
+  .acr-date { font-size:12px;color:rgba(255,255,255,0.25);font-weight:600; }
+  .acr-brand { font-size:12px;font-weight:700;color:var(--orange);letter-spacing:0.04em; }
+  .acr-name { font-size:14px;color:rgba(255,255,255,0.6);font-weight:500;transition:color 0.2s; }
+  .all-campaign-row:hover .acr-name { color:var(--white); }
+  .acr-arrow { font-size:14px;color:rgba(255,255,255,0.1);text-align:right;transition:color 0.2s,transform 0.2s; }
+  .all-campaign-row:hover .acr-arrow { color:var(--orange);transform:translateX(4px); }
+
+  /* STATS STRIP */
+  .stats-strip { display:flex;justify-content:center;gap:0;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);background:var(--gray);margin-top:64px; }
+  .stat-item { padding:28px 48px;text-align:center;border-right:1px solid rgba(255,255,255,0.06); }
+  .stat-item:last-child { border-right:none; }
+  .stat-num { font-family:'Bebas Neue',Arial,sans-serif;font-size:36px;color:var(--orange);line-height:1; }
+  .stat-label { font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px; }
+
+  /* RECAP MODAL */
+  .recap-overlay { display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);overflow-y:auto; }
+  .recap-overlay.open { display:block; }
+  .recap-modal { max-width:900px;margin:80px auto 48px;background:var(--gray);border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;animation:recapIn 0.3s ease; }
+  @keyframes recapIn { from { opacity:0;transform:translateY(24px); } to { opacity:1;transform:translateY(0); } }
+  .recap-close { position:fixed;top:24px;right:32px;z-index:510;width:48px;height:48px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;color:rgba(255,255,255,0.5);font-size:20px; }
+  .recap-close:hover { background:var(--orange);color:var(--white);border-color:var(--orange); }
+  .recap-hero-bar { aspect-ratio:21/9;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden; }
+  .recap-hero-bg { position:absolute;inset:0; }
+  .recap-hero-label { position:relative;z-index:1;font-size:11px;letter-spacing:4px;color:rgba(255,255,255,0.08);font-weight:600;text-transform:uppercase; }
+  .recap-header { padding:36px 40px 0; }
+  .recap-breadcrumb { display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:20px; }
+  .recap-breadcrumb a { color:rgba(255,255,255,0.35);text-decoration:none;transition:color 0.2s; }
+  .recap-breadcrumb a:hover { color:var(--orange); }
+  .recap-breadcrumb-sep { color:rgba(255,255,255,0.15); }
+  .recap-meta { display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap; }
+  .recap-brand-pill { display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:6px 14px;text-decoration:none;font-size:12px;font-weight:700;color:var(--orange);letter-spacing:0.04em;transition:border-color 0.2s; }
+  .recap-brand-pill:hover { border-color:rgba(215,63,9,0.4); }
+  .recap-date-pill { font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.25);padding:6px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:100px; }
+  .recap-title { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(36px,6vw,64px);line-height:0.9;letter-spacing:0.01em;color:var(--white);margin-bottom:8px; }
+  .recap-body-wrap { display:grid;grid-template-columns:2fr 1fr;gap:40px;padding:32px 40px 40px; }
+  .recap-text { font-size:16px;color:rgba(255,255,255,0.4);line-height:1.6; }
+  .recap-text p { margin-bottom:16px; }
+  .recap-text strong { color:rgba(255,255,255,0.7);font-weight:600; }
+  .recap-sidebar { display:flex;flex-direction:column;gap:2px; }
+  .recap-stat { background:rgba(255,255,255,0.03);padding:16px;border:1px solid rgba(255,255,255,0.04); }
+  .recap-stat-label { font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:4px; }
+  .recap-stat-val { font-family:'Bebas Neue',Arial,sans-serif;font-size:20px;color:var(--orange);line-height:1; }
+  .recap-content-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin:0 40px 40px; }
+  .recap-tile { aspect-ratio:1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center; }
+  .recap-tile-label { font-size:10px;letter-spacing:3px;color:rgba(255,255,255,0.06);font-weight:600;text-transform:uppercase; }
+  .recap-cta { padding:32px 40px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px; }
+  .recap-cta-text { font-size:14px;color:rgba(255,255,255,0.4); }
+  .recap-cta-text strong { color:var(--white); }
+  .recap-cta-btns { display:flex;gap:12px; }
+  .btn-sm { padding:10px 20px;border-radius:6px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s;border:none; }
+  .btn-sm-orange { background:var(--orange);color:var(--white); }
+  .btn-sm-orange:hover { background:#c03608; }
+  .btn-sm-outline { background:transparent;color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.15); }
+  .btn-sm-outline:hover { border-color:rgba(255,255,255,0.4);color:var(--white); }
+
+  /* CTA BLOCK */
+  .cta-block { background:var(--orange);padding:80px 48px;text-align:center; }
+  .cta-title { font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(40px,6vw,64px);color:var(--white);line-height:0.95;letter-spacing:0.02em;margin-bottom:16px; }
+  .cta-sub { font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:32px; }
+  .cta-btns { display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:8px; }
+  .btn-white { background:var(--white);color:var(--orange);border:none;border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s; }
+  .btn-white:hover { background:rgba(255,255,255,0.9);transform:translateY(-1px); }
+  .btn-outline-white { background:transparent;color:var(--white);border:2px solid rgba(255,255,255,0.5);border-radius:8px;padding:16px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s; }
+  .btn-outline-white:hover { border-color:var(--white);transform:translateY(-1px); }
+
+  /* FOOTER */
+  footer { background:var(--gray);border-top:1px solid rgba(255,255,255,0.06);padding:48px 48px 24px; }
+  .footer-inner { max-width:1200px;margin:0 auto; }
+  .footer-top { display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px; }
+  .footer-brand-desc { font-size:18px;color:rgba(255,255,255,0.35);line-height:1.2;margin-top:12px;max-width:280px; }
+  .footer-col-title { font-size:18px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:20px; }
+  .footer-links { list-style:none;display:flex;flex-direction:column;gap:12px; }
+  .footer-links a { color:rgba(255,255,255,0.5);text-decoration:none;font-size:18px;line-height:1.2;transition:color 0.2s; }
+  .footer-links a:hover { color:var(--white); }
+  .footer-bottom { border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;display:flex;justify-content:space-between;align-items:center; }
+  .footer-copy { font-size:18px;color:rgba(255,255,255,0.2);line-height:1.2; }
+  .footer-socials { display:flex;gap:20px; }
+  .footer-socials a { font-size:18px;color:rgba(255,255,255,0.3);text-decoration:none;line-height:1.2;transition:color 0.2s; }
+  .footer-socials a:hover { color:var(--orange); }
+
+  @keyframes fadeUp { from { opacity:0;transform:translateY(20px); } to { opacity:1;transform:translateY(0); } }
+  .featured-eyebrow { animation:fadeUp 0.4s ease 0.1s both; }
+  .featured-hero { animation:fadeUp 0.5s ease 0.2s both; }
+
+  /* MOBILE */
+  @media (max-width:768px) {
+    body { font-size:14px !important;line-height:1.4 !important; }
+    nav { padding:16px 20px; }
+    .featured { padding:100px 20px 0; }
+    .featured-hero { grid-template-columns:1fr;border-radius:8px; }
+    .featured-info { padding:24px 20px; }
+    .featured-name { font-size:32px; }
+    .hot-section,.browse-section { padding:40px 20px 0; }
+    .hot-grid { grid-template-columns:1fr; }
+    .stats-strip { flex-wrap:wrap; }
+    .stat-item { flex:1;min-width:100px;padding:20px 12px; }
+    .all-campaigns { padding:0 20px 48px; }
+    .all-campaign-row { grid-template-columns:1fr;gap:4px;padding:16px 12px; }
+    .recap-modal { margin:60px 12px 24px;border-radius:12px; }
+    .recap-header { padding:24px 20px 0; }
+    .recap-body-wrap { grid-template-columns:1fr;padding:20px; }
+    .recap-content-grid { margin:0 20px 24px;grid-template-columns:repeat(2,1fr); }
+    .recap-cta { padding:20px; }
+    .hero-eyebrow,.section-label,.section-eyebrow { font-size:10px !important; }
+    .btn-primary,.btn-tracker,.btn-white,.btn-outline-white { font-size:13px !important;padding:12px 24px !important; }
+    footer,.footer-links a,.footer-brand-desc,.footer-copy,.footer-socials a,.footer-col-title { font-size:11px !important;line-height:1.2 !important; }
+    .section-title { font-size:clamp(28px,8vw,40px) !important; }
+    .cta-title { font-size:clamp(36px,10vw,56px) !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:36px;width:auto;"></a>
+  <ul class="nav-links">
+    <li class="nav-item"><a href="postgame-clients.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-clients.html" class="nav-drop-item">Clients</a><a href="postgame-campaigns.html" class="nav-drop-item">Campaigns</a></div></li>
+    <li class="nav-item"><a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a><a href="postgame-services-always-on.html" class="nav-drop-item">Always On</a></div></li>
+    <li class="nav-item"><a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a><div class="nav-dropdown"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- FEATURED CAMPAIGN SPOTLIGHT -->
+<div class="featured">
+  <div class="featured-eyebrow">Latest Campaign</div>
+  <div class="featured-hero" onclick="openRecap(0)">
+    <div class="featured-visual">
+      <div class="featured-visual-bg"></div>
+      <div class="featured-visual-overlay"></div>
+      <div class="featured-visual-label">Campaign Media</div>
+      <div class="featured-badge">Just Launched</div>
+    </div>
+    <div class="featured-info">
+      <div class="featured-brand">CVS</div>
+      <div class="featured-name">Bloomington CFP Event</div>
+      <div class="featured-date">Feb 2, 2026</div>
+      <div class="featured-desc">Managed end-to-end by Postgame. Athletes across our network creating authentic, platform-native content for CVS.</div>
+      <span class="featured-cta">View Campaign Recap &rarr;</span>
+    </div>
+  </div>
+</div>
+
+<!-- HOT OFF THE PRESS -->
+<div class="hot-section">
+  <div class="section-eyebrow">Hot Off the Press</div>
+  <div class="section-title">Newest Campaigns</div>
+  <div class="hot-grid"><div class="hot-card" onclick="openRecap(1)">
+      <div class="hot-card-visual"><div class="hot-card-bg rc-2"></div><div class="hot-card-overlay"></div>
+        <div class="hot-card-badge">New</div>
+      </div>
+      <div class="hot-card-info">
+        <div class="hot-card-brand">Adidas</div>
+        <div class="hot-card-name">Valentine's Gifting</div>
+        <div class="hot-card-date">Jan 21, 2026</div>
+      </div>
+    </div><div class="hot-card" onclick="openRecap(2)">
+      <div class="hot-card-visual"><div class="hot-card-bg rc-3"></div><div class="hot-card-overlay"></div>
+        <div class="hot-card-badge">New</div>
+      </div>
+      <div class="hot-card-info">
+        <div class="hot-card-brand">Adidas</div>
+        <div class="hot-card-name">affiliate CFP</div>
+        <div class="hot-card-date">Jan 16, 2026</div>
+      </div>
+    </div><div class="hot-card" onclick="openRecap(3)">
+      <div class="hot-card-visual"><div class="hot-card-bg rc-4"></div><div class="hot-card-overlay"></div>
+        <div class="hot-card-badge">New</div>
+      </div>
+      <div class="hot-card-info">
+        <div class="hot-card-brand">CVS</div>
+        <div class="hot-card-name">Valentine's Day</div>
+        <div class="hot-card-date">Jan 14, 2026</div>
+      </div>
+    </div><div class="hot-card" onclick="openRecap(4)">
+      <div class="hot-card-visual"><div class="hot-card-bg rc-5"></div><div class="hot-card-overlay"></div>
+        <div class="hot-card-badge">New</div>
+      </div>
+      <div class="hot-card-info">
+        <div class="hot-card-brand">CVS</div>
+        <div class="hot-card-name">Extra Extra Big Deals - January</div>
+        <div class="hot-card-date">Jan 5, 2026</div>
+      </div>
+    </div><div class="hot-card" onclick="openRecap(5)">
+      <div class="hot-card-visual"><div class="hot-card-bg rc-6"></div><div class="hot-card-overlay"></div>
+        <div class="hot-card-badge">New</div>
+      </div>
+      <div class="hot-card-info">
+        <div class="hot-card-brand">Adidas</div>
+        <div class="hot-card-name">CFB Reactive</div>
+        <div class="hot-card-date">Dec 30, 2025</div>
+      </div>
+    </div><div class="hot-card" onclick="openRecap(6)">
+      <div class="hot-card-visual"><div class="hot-card-bg rc-7"></div><div class="hot-card-overlay"></div>
+        <div class="hot-card-badge">New</div>
+      </div>
+      <div class="hot-card-info">
+        <div class="hot-card-brand">Hydroflask</div>
+        <div class="hot-card-name">January Volume (Opt In's Only)</div>
+        <div class="hot-card-date">Dec 29, 2025</div>
+      </div>
+    </div></div>
+</div>
+
+<!-- BROWSE BY BRAND -->
+<div class="browse-section">
+  <div class="section-eyebrow">Browse by Brand</div>
+  <div class="section-title">Top Partners</div>
+  <div class="top-brands"><a href="brands/brand-adidas.html" class="top-brand-pill"><span class="tbp-name">Adidas</span><span class="tbp-count">88</span></a>
+<a href="brands/brand-hey-dude.html" class="top-brand-pill"><span class="tbp-name">Hey Dude</span><span class="tbp-count">36</span></a>
+<a href="brands/brand-cvs-pharmacy.html" class="top-brand-pill"><span class="tbp-name">CVS</span><span class="tbp-count">35</span></a>
+<a href="brands/brand-iherb.html" class="top-brand-pill"><span class="tbp-name">iHerb</span><span class="tbp-count">19</span></a>
+<a href="brands/brand-crocs.html" class="top-brand-pill"><span class="tbp-name">CROCS</span><span class="tbp-count">15</span></a>
+<a href="brands/brand-hollister.html" class="top-brand-pill"><span class="tbp-name">Hollister</span><span class="tbp-count">15</span></a>
+<a href="brands/brand-mcdonalds.html" class="top-brand-pill"><span class="tbp-name">McDonalds</span><span class="tbp-count">14</span></a>
+<a href="brands/brand-stanley.html" class="top-brand-pill"><span class="tbp-name">Stanley</span><span class="tbp-count">14</span></a>
+</div>
+</div>
+
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="stat-item"><div class="stat-num">394</div><div class="stat-label">Total Campaigns</div></div>
+  <div class="stat-item"><div class="stat-num">69</div><div class="stat-label">Brands Activated</div></div>
+  <div class="stat-item"><div class="stat-num">4+</div><div class="stat-label">Years Running</div></div>
+</div>
+
+<!-- SHOW ALL -->
+<div class="show-more-wrap">
+  <button class="show-more-btn" id="showMoreBtn" onclick="toggleAll()">Show All 394 Campaigns</button>
+</div>
+<div class="all-campaigns" id="all-campaigns"></div>
+
+<!-- CTA -->
+<div class="cta-block">
+  <h2 class="cta-title">Your Brand<br>Could Be Next</h2>
+  <p class="cta-sub">Connect with top-tier college athletes through Postgame.</p>
+  <div class="cta-btns">
+    <a href="postgame-contact.html" class="btn-white">Start a Campaign</a>
+    <a href="postgame-contact.html?type=athlete" class="btn-outline-white">I'm an Athlete</a>
+  </div>
+</div>
+
+<footer><div class="footer-inner">
+  <div class="footer-top">
+    <div><a href="index.html" class="logo" style="display:inline-flex;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;"></a><p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p></div>
+    <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+    <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-clients.html">Clients</a></li><li><a href="postgame-campaigns.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li></ul></div>
+    <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+  </div>
+  <div class="footer-bottom"><div class="footer-copy">&copy; 2025 Postgame. All rights reserved.</div><div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div></div>
+</div></footer>
+
+<!-- RECAP OVERLAY -->
+<div class="recap-overlay" id="recapOverlay" onclick="if(event.target===this)closeRecap()">
+  <div class="recap-close" onclick="closeRecap()">&times;</div>
+  <div class="recap-modal" id="recapModal"></div>
+</div>
+
+<script>
+const C=[
+["Bloomington CFP Event","CVS","cvs-pharmacy","Feb 2, 2026","2026-02-02","bloomington-cfp-event"],
+["Valentine's Gifting","Adidas","adidas","Jan 21, 2026","2026-01-21","valentine-s-gifting"],
+["affiliate CFP","Adidas","adidas","Jan 16, 2026","2026-01-16","affiliate-cfp"],
+["Valentine's Day","CVS","cvs-pharmacy","Jan 14, 2026","2026-01-14","valentine-s-day"],
+["Extra Extra Big Deals - January","CVS","cvs-pharmacy","Jan 5, 2026","2026-01-05","extra-extra-big-deals-january"],
+["CFB Reactive","Adidas","adidas","Dec 30, 2025","2025-12-30","cfb-reactive"],
+["January Volume (Opt In's Only)","Hydroflask","hydroflask","Dec 29, 2025","2025-12-29","january-volume-opt-in-s-only"],
+["College Basketball Retail Shoot","Raising Canes","raising-canes","Dec 29, 2025","2025-12-29","college-basketball-retail-shoot"],
+["ExtraCare - December","CVS","cvs-pharmacy","Dec 19, 2025","2025-12-19","extracare-december"],
+["Gifting Additions","Coach","coach","Nov 25, 2025","2025-11-25","gifting-additions"],
+["Creatine Chews","GAT Sports","gat-sports","Nov 20, 2025","2025-11-20","creatine-chews"],
+["November Leadership Panel Discussion","CVS","cvs-pharmacy","Oct 31, 2025","2025-10-31","november-leadership-panel-discussion"],
+["Crocs Holiday","CROCS","crocs","Oct 28, 2025","2025-10-28","crocs-holiday"],
+["SoccerBible","Adidas","adidas","Oct 21, 2025","2025-10-21","soccerbible"],
+["ZNE + Purechill","Adidas","adidas","Oct 20, 2025","2025-10-20","zne-purechill"],
+["Holiday Gifting","Adidas","adidas","Oct 20, 2025","2025-10-20","holiday-gifting"],
+["Holiday","CVS","cvs-pharmacy","Oct 15, 2025","2025-10-15","holiday"],
+["Black Friday","Hollister","hollister","Oct 6, 2025","2025-10-06","black-friday"],
+["Match Ball OMB","Adidas","adidas","Oct 6, 2025","2025-10-06","match-ball-omb"],
+["UW Training Activation Event","Adidas","adidas","Oct 6, 2025","2025-10-06","uw-training-activation-event"],
+["UW Basketball Blog","Adidas","adidas","Sep 30, 2025","2025-09-30","uw-basketball-blog"],
+["Honor & Support","Adidas","adidas","Sep 30, 2025","2025-09-30","honor-support"],
+["Halloween","CVS","cvs-pharmacy","Sep 25, 2025","2025-09-25","halloween"],
+["TLF October 2025","TLF Apparel","tlf-apparel","Sep 18, 2025","2025-09-18","tlf-october-2025"],
+["Leadership Video","CVS","cvs-pharmacy","Sep 12, 2025","2025-09-12","leadership-video"],
+["Big South Coke","McDonalds","mcdonalds","Sep 10, 2025","2025-09-10","big-south-coke"],
+["Shorts","Thigh Society","thigh-society","Sep 8, 2025","2025-09-08","shorts"],
+["Fall Footwear","Coach","coach","Sep 4, 2025","2025-09-04","fall-footwear"],
+["Hispanic Heritage Dugout","Adidas","adidas","Sep 2, 2025","2025-09-02","hispanic-heritage-dugout"],
+["Texas A&M OG Photoshoot","Adidas","adidas","Aug 29, 2025","2025-08-29","texas-a-m-og-photoshoot"],
+["Fall AFCA Good Works Team","Allstate","allstate","Aug 13, 2025","2025-08-13","fall-afca-good-works-team"],
+["Nets Commercial","Allstate","allstate","Aug 13, 2025","2025-08-13","nets-commercial"],
+["Fall NACDA Good Works Team","Allstate","allstate","Aug 11, 2025","2025-08-11","fall-nacda-good-works-team"],
+["September Anniversary","iHerb","iherb","Aug 8, 2025","2025-08-08","september-anniversary"],
+["adidas EVO Ambassador Campaign","Adidas","adidas","Aug 6, 2025","2025-08-06","adidas-evo-ambassador-campaign"],
+["Protein Packs","Siggis","siggis","Aug 4, 2025","2025-08-04","protein-packs"],
+["Lays Messi","Ruffles","ruffles","Jul 29, 2025","2025-07-29","lays-messi"],
+["Great Plains Breakfast","McDonalds","mcdonalds","Jul 28, 2025","2025-07-28","great-plains-breakfast"],
+["Immunization","CVS","cvs-pharmacy","Jul 28, 2025","2025-07-28","immunization"],
+["PNW Content","CVS","cvs-pharmacy","Jul 28, 2025","2025-07-28","pnw-content"],
+["iHerb - August","iHerb","iherb","Jul 22, 2025","2025-07-22","iherb-august"],
+["Texas Feel Good Fest","Hollister","hollister","Jul 17, 2025","2025-07-17","texas-feel-good-fest"],
+["Haircare Gifting","Monday","monday","Jul 11, 2025","2025-07-11","haircare-gifting"],
+["Apex Athlete Series GPS","STAT Sports","stat-sports","Jul 8, 2025","2025-07-08","apex-athlete-series-gps"],
+["iHerb - July","iHerb","iherb","Jul 8, 2025","2025-07-08","iherb-july"],
+["Bryce Underwood","Hollister","hollister","Jul 8, 2025","2025-07-08","bryce-underwood"],
+["Fall 2025","Dove","dove","Jul 7, 2025","2025-07-07","fall-2025"],
+["Online Ordering","Taco Johns","taco-johns","Jul 7, 2025","2025-07-07","online-ordering"],
+["Back to School 25","CROCS","crocs","Jul 7, 2025","2025-07-07","back-to-school-25"],
+["Epic Sale Fall 2025","CVS","cvs-pharmacy","Jul 7, 2025","2025-07-07","epic-sale-fall-2025"],
+["Back to School","Adidas","adidas","Jul 7, 2025","2025-07-07","back-to-school"],
+["Optime Tights 2","Adidas","adidas","Jul 7, 2025","2025-07-07","optime-tights-2"],
+["Back to Campus","Hollister","hollister","Jul 2, 2025","2025-07-02","back-to-campus"],
+["Traditions","Tostitos","tostitos","Jul 1, 2025","2025-07-01","traditions"],
+["ACC Snack Wraps and McCrispy Strips","McDonalds","mcdonalds","Jun 23, 2025","2025-06-23","acc-snack-wraps-and-mccrispy-strips"],
+["GTVOA Breakfast","McDonalds","mcdonalds","Jun 23, 2025","2025-06-23","gtvoa-breakfast"],
+["Always Open","7-Eleven","7-eleven","Jun 19, 2025","2025-06-19","always-open"],
+["Collegiate Licensed","GOODR","goodr","Jun 19, 2025","2025-06-19","collegiate-licensed"],
+["EVO SL","Adidas","adidas","Jun 18, 2025","2025-06-18","evo-sl"],
+["Louisville Baseball Seeding","Adidas","adidas","Jun 13, 2025","2025-06-13","louisville-baseball-seeding"],
+["Good Hands Receivers","Allstate","allstate","Jun 11, 2025","2025-06-11","good-hands-receivers"],
+["FIFA World Cup","UMG","universal-music-group","Jun 10, 2025","2025-06-10","fifa-world-cup"],
+["Texas Tech Softball Seeding","Adidas","adidas","May 29, 2025","2025-05-29","texas-tech-softball-seeding"],
+["Softball/Baseball","CROCS","crocs","May 12, 2025","2025-05-12","softball-baseball"],
+["Dropset 3","Adidas","adidas","May 5, 2025","2025-05-05","dropset-3"],
+["Summer/SPF","CVS","cvs-pharmacy","Apr 30, 2025","2025-04-30","summer-spf"],
+["Mother's Day","CVS","cvs-pharmacy","Apr 16, 2025","2025-04-16","mother-s-day"],
+["BERO - Brewing","Bero","bero","Apr 16, 2025","2025-04-16","bero-brewing"],
+["Hidden Opponent Dugout","Adidas","adidas","Apr 15, 2025","2025-04-15","hidden-opponent-dugout"],
+["Expanded GWT Spring","Allstate","allstate","Apr 14, 2025","2025-04-14","expanded-gwt-spring"],
+["iHerb April 2025","iHerb","iherb","Apr 14, 2025","2025-04-14","iherb-april-2025"],
+["BOB Hotels - Tallahassee","BOB Hotels","bob-hotels","Apr 11, 2025","2025-04-11","bob-hotels-tallahassee"],
+["C4 Champagne Championship + Gopuff","C4 Energy","c4-energy","Apr 8, 2025","2025-04-08","c4-champagne-championship-gopuff"],
+["Mother's Day","1-800-Flowers","1-800-flowers","Mar 29, 2025","2025-03-29","mother-s-day"],
+["Taco John's Cinco De Mayo","Taco Johns","taco-johns","Mar 29, 2025","2025-03-29","taco-john-s-cinco-de-mayo"],
+["Ryan Williams 2025","Hollister","hollister","Mar 27, 2025","2025-03-27","ryan-williams-2025"],
+["COVERGIRL","Covergirl","covergirl","Mar 25, 2025","2025-03-25","covergirl"],
+["iHerb March - 2025 - iHerb","iHerb","iherb","Mar 13, 2025","2025-03-13","iherb-march-2025-iherb"],
+["Hydroflask - March Madness","Hydroflask","hydroflask","Mar 10, 2025","2025-03-10","hydroflask-march-madness"],
+["Licensed Design Collab & Photoshoot","Hollister","hollister","Mar 10, 2025","2025-03-10","licensed-design-collab-photoshoot"],
+["Jersey Seeding","Adidas","adidas","Mar 8, 2025","2025-03-08","jersey-seeding"],
+["Spring Styles Spon Con","Adidas","adidas","Mar 8, 2025","2025-03-08","spring-styles-spon-con"],
+["adidas BONUS Campaign","Adidas","adidas","Mar 3, 2025","2025-03-03","adidas-bonus-campaign"],
+["DSG Photoshoot March","Adidas","adidas","Mar 2, 2025","2025-03-02","dsg-photoshoot-march"],
+["IWD Neb VB","Adidas","adidas","Mar 2, 2025","2025-03-02","iwd-neb-vb"],
+["Expanded GWT","Allstate","allstate","Feb 20, 2025","2025-02-20","expanded-gwt"],
+["Custom M&M's","M&Ms","mms","Feb 14, 2025","2025-02-14","custom-m-m-s"],
+["Epic Beauty + Unaltered Beauty","CVS","cvs-pharmacy","Feb 11, 2025","2025-02-11","epic-beauty-unaltered-beauty"],
+["March Madness - Laces +1","Adidas","adidas","Feb 10, 2025","2025-02-10","march-madness-laces-1"],
+["Stanley March Madness","Stanley","stanley","Feb 5, 2025","2025-02-05","stanley-march-madness"],
+["C4 Energy March Madness Volume","C4 Energy","c4-energy","Feb 4, 2025","2025-02-04","c4-energy-march-madness-volume"],
+["Hercy Miller - 1 Off extra Hollister","Hollister","hollister","Feb 4, 2025","2025-02-04","hercy-miller-1-off-extra-hollister"],
+["HBCU Basketball","Adidas","adidas","Feb 4, 2025","2025-02-04","hbcu-basketball"],
+["HBCU Legacy Football","Adidas","adidas","Feb 4, 2025","2025-02-04","hbcu-legacy-football"],
+["Thayer engagement","Armani","armani","Feb 3, 2025","2025-02-03","thayer-engagement"],
+["Alec Marsh One-Off","Momentec","momentec","Jan 29, 2025","2025-01-29","alec-marsh-one-off"],
+["Fracture Spring","Fracture","fracture","Jan 28, 2025","2025-01-28","fracture-spring"],
+["McDonald's Texas March","McDonalds","mcdonalds","Jan 28, 2025","2025-01-28","mcdonald-s-texas-march"],
+["Con-Cret Febuary","Con-Cret","con-cret-creatine","Jan 28, 2025","2025-01-28","con-cret-febuary"],
+["Thayers - March Madness","Thayers","thayers","Jan 28, 2025","2025-01-28","thayers-march-madness"],
+["ZNE Basketball SponCon","Adidas","adidas","Jan 22, 2025","2025-01-22","zne-basketball-sponcon"],
+["Hollister Courtside","Hollister","hollister","Jan 22, 2025","2025-01-22","hollister-courtside"],
+["iHerb February - 2025","iHerb","iherb","Jan 13, 2025","2025-01-13","iherb-february-2025"],
+["ZNE Photoshoot","Adidas","adidas","Jan 12, 2025","2025-01-12","zne-photoshoot"],
+["Athletic Dept Gifting","Hollister","hollister","Jan 10, 2025","2025-01-10","athletic-dept-gifting"],
+["Hollister HQ OSU Event","Hollister","hollister","Jan 10, 2025","2025-01-10","hollister-hq-osu-event"],
+["Crocs March","CROCS","crocs","Jan 9, 2025","2025-01-09","crocs-march"],
+["iHerb January- iHerb 2025","iHerb","iherb","Jan 2, 2025","2025-01-02","iherb-january-iherb-2025"],
+["Fear of God","Adidas","adidas","Dec 23, 2024","2024-12-23","fear-of-god"],
+["KU AE 1's","Adidas","adidas","Dec 20, 2024","2024-12-20","ku-ae-1-s"],
+["Con-Cret January","Con-Cret","con-cret-creatine","Dec 18, 2024","2024-12-18","con-cret-january"],
+["CVS Holiday - Phase 3","CVS","cvs-pharmacy","Dec 17, 2024","2024-12-17","cvs-holiday-phase-3"],
+["Stanley - Always On Optin","Stanley","stanley","Dec 17, 2024","2024-12-17","stanley-always-on-optin"],
+["Stanley CFP","Stanley","stanley","Dec 16, 2024","2024-12-16","stanley-cfp"],
+["Amazon Holiday Phase 2","Amazon Music","amazon-music","Dec 12, 2024","2024-12-12","amazon-holiday-phase-2"],
+["CVS Round Table","CVS","cvs-pharmacy","Dec 11, 2024","2024-12-11","cvs-round-table"],
+["Montana Launch","Amazon Music","amazon-music","Dec 11, 2024","2024-12-11","montana-launch"],
+["Amazon Year In Review","Amazon Music","amazon-music","Dec 2, 2024","2024-12-02","amazon-year-in-review"],
+["adidas Black Friday","Adidas","adidas","Nov 27, 2024","2024-11-27","adidas-black-friday"],
+["Silver Cleat","Adidas","adidas","Nov 25, 2024","2024-11-25","silver-cleat"],
+["Amazon Holiday Campaign","Amazon Music","amazon-music","Nov 25, 2024","2024-11-25","amazon-holiday-campaign"],
+["CVS Holiday - Phase 2","CVS","cvs-pharmacy","Nov 25, 2024","2024-11-25","cvs-holiday-phase-2"],
+["Store Brands - Phase 2","CVS","cvs-pharmacy","Nov 25, 2024","2024-11-25","store-brands-phase-2"],
+["Crocs - Holiday","CROCS","crocs","Nov 22, 2024","2024-11-22","crocs-holiday"],
+["High School Commits","Hollister","hollister","Nov 22, 2024","2024-11-22","high-school-commits"],
+["Good Works Receivers","Allstate","allstate","Nov 21, 2024","2024-11-21","good-works-receivers"],
+["Con-Cret December","Con-Cret","con-cret-creatine","Nov 19, 2024","2024-11-19","con-cret-december"],
+["iHerb December","iHerb","iherb","Nov 18, 2024","2024-11-18","iherb-december"],
+["Miami Photoshoot","Adidas","adidas","Nov 18, 2024","2024-11-18","miami-photoshoot"],
+["On the Go Pro Tumbler","Stanley","stanley","Nov 14, 2024","2024-11-14","on-the-go-pro-tumbler"],
+["Messi Pro Tumbler","Stanley","stanley","Nov 14, 2024","2024-11-14","messi-pro-tumbler"],
+["Hollister OSU Event","Hollister","hollister","Nov 14, 2024","2024-11-14","hollister-osu-event"],
+["LOVB Volleyball Jerseys","Adidas","adidas","Nov 13, 2024","2024-11-13","lovb-volleyball-jerseys"],
+["CVS Holiday Affiliate - Phase 1","CVS","cvs-pharmacy","Nov 13, 2024","2024-11-13","cvs-holiday-affiliate-phase-1"],
+["Hollister - Recleisure","Hollister","hollister","Nov 6, 2024","2024-11-06","hollister-recleisure"],
+["Gunna","Amazon Music","amazon-music","Nov 6, 2024","2024-11-06","gunna"],
+["Optime Tights","Adidas","adidas","Nov 6, 2024","2024-11-06","optime-tights"],
+["CU Crocs Campaign","CROCS","crocs","Oct 31, 2024","2024-10-31","cu-crocs-campaign"],
+["J Balvin","Amazon Music","amazon-music","Oct 31, 2024","2024-10-31","j-balvin"],
+["iHerb November","iHerb","iherb","Oct 28, 2024","2024-10-28","iherb-november"],
+["Halsey","Amazon Music","amazon-music","Oct 24, 2024","2024-10-24","halsey"],
+["Con-Cret November","Con-Cret","con-cret-creatine","Oct 22, 2024","2024-10-22","con-cret-november"],
+["Store Brands Gifting - Phase 1","CVS","cvs-pharmacy","Oct 16, 2024","2024-10-16","store-brands-gifting-phase-1"],
+["34 Heritage","34 Heritage","34-heritage","Oct 15, 2024","2024-10-15","34-heritage"],
+["Rapid Release","Tylenol","tylenol","Oct 15, 2024","2024-10-15","rapid-release"],
+["Big Sean","Amazon Music","amazon-music","Oct 14, 2024","2024-10-14","big-sean"],
+["adidas Holiday","Adidas","adidas","Oct 9, 2024","2024-10-09","adidas-holiday"],
+["Jelly Roll","Amazon Music","amazon-music","Oct 8, 2024","2024-10-08","jelly-roll"],
+["Alpha BRAIN","Onnit","onnit","Oct 1, 2024","2024-10-01","alpha-brain"],
+["Momentec Catalog","Momentec","momentec","Sep 30, 2024","2024-09-30","momentec-catalog"],
+["adidas Hispanic Heritage Campaign","Adidas","adidas","Sep 30, 2024","2024-09-30","adidas-hispanic-heritage-campaign"],
+["HEYDUDE TikTok Shop","Hey Dude","hey-dude","Sep 27, 2024","2024-09-27","heydude-tiktok-shop"],
+["HEYDUDE Collegiate 2.5 Holiday Drop","Hey Dude","hey-dude","Sep 27, 2024","2024-09-27","heydude-collegiate-2-5-holiday-drop"],
+["HEYDUDE Collegiate 1.0 & 1.5 & 2.0 Gifting All Sports","Hey Dude","hey-dude","Sep 27, 2024","2024-09-27","heydude-collegiate-1-0-1-5-2-0-gifting-all-sports"],
+["HEYDUDE Football Team Gifting (PSU, OSU, Michigan, UGA","Hey Dude","hey-dude","Sep 27, 2024","2024-09-27","heydude-football-team-gifting-psu-osu-michigan-uga"],
+["Hollister Holiday","Hollister","hollister","Sep 20, 2024","2024-09-20","hollister-holiday"],
+["Con-Cret October","Con-Cret","con-cret-creatine","Sep 16, 2024","2024-09-16","con-cret-october"],
+["iHerb October","iHerb","iherb","Sep 12, 2024","2024-09-12","iherb-october"],
+["Armani Tier 2","Armani","armani","Sep 10, 2024","2024-09-10","armani-tier-2"],
+["CeraVe Acne","CeraVe","cerave","Sep 5, 2024","2024-09-05","cerave-acne"],
+["HEYDUDE - UT Commercial","Hey Dude","hey-dude","Sep 5, 2024","2024-09-05","heydude-ut-commercial"],
+["Armani Volume RD II","Armani","armani","Aug 30, 2024","2024-08-30","armani-volume-rd-ii"],
+["adidas GT ZNE","Adidas","adidas","Aug 28, 2024","2024-08-28","adidas-gt-zne"],
+["adidas Trick Shot","Adidas","adidas","Aug 28, 2024","2024-08-28","adidas-trick-shot"],
+["adidas AlphaBoost","Adidas","adidas","Aug 27, 2024","2024-08-27","adidas-alphaboost"],
+["McDonald's ACC Value","McDonalds","mcdonalds","Aug 19, 2024","2024-08-19","mcdonald-s-acc-value"],
+["iHerb 28th Anniversary","iHerb","iherb","Aug 16, 2024","2024-08-16","iherb-28th-anniversary"],
+["Crocs - Croctober","CROCS","crocs","Aug 16, 2024","2024-08-16","crocs-croctober"],
+["Easton Fastpitch","Rawlings","rawlings","Aug 15, 2024","2024-08-15","easton-fastpitch"],
+["HEYDUDE - Tennessee Event","Hey Dude","hey-dude","Aug 12, 2024","2024-08-12","heydude-tennessee-event"],
+["Verb Dandruff","Verb","verb","Aug 8, 2024","2024-08-08","verb-dandruff"],
+["Champion/Hanes","Quizlet","quizlet","Aug 7, 2024","2024-08-07","champion-hanes"],
+["All-State GWT 2024","Allstate","allstate","Aug 2, 2024","2024-08-02","all-state-gwt-2024"],
+["Ticketmaster","Ticketmaster","ticketmaster","Aug 1, 2024","2024-08-01","ticketmaster"],
+["Steve Madden July 2024","Steve Madden","steve-madden","Aug 1, 2024","2024-08-01","steve-madden-july-2024"],
+["Con-Cret September","Con-Cret","con-cret-creatine","Jul 29, 2024","2024-07-29","con-cret-september"],
+["iHerb Mini Campaign","iHerb","iherb","Jul 26, 2024","2024-07-26","iherb-mini-campaign"],
+["Stanley - Back to School","Stanley","stanley","Jul 25, 2024","2024-07-25","stanley-back-to-school"],
+["HEYDUDE Collegiate - 2.0","Hey Dude","hey-dude","Jul 23, 2024","2024-07-23","heydude-collegiate-2-0"],
+["HOLO August","Holo","holo","Jul 23, 2024","2024-07-23","holo-august"],
+["HEYDUDE New York","Hey Dude","hey-dude","Jul 22, 2024","2024-07-22","heydude-new-york"],
+["Crocs DSG - June","CROCS","crocs","Jul 22, 2024","2024-07-22","crocs-dsg-june"],
+["March Hydro Flask","Hydroflask","hydroflask","Jul 9, 2024","2024-07-09","march-hydro-flask"],
+["Flamin' Hot University","Flamin Hot","flamin-hot","Jul 9, 2024","2024-07-09","flamin-hot-university"],
+["adidas Back to School","Adidas","adidas","Jul 8, 2024","2024-07-08","adidas-back-to-school"],
+["TTU Story","Adidas","adidas","Jul 3, 2024","2024-07-03","ttu-story"],
+["adidas UW Soccer Campaign","Adidas","adidas","Jul 1, 2024","2024-07-01","adidas-uw-soccer-campaign"],
+["Armani Beauty","Armani","armani","Jun 27, 2024","2024-06-27","armani-beauty"],
+["McDonald's GTVOA Bagels","McDonalds","mcdonalds","Jun 21, 2024","2024-06-21","mcdonald-s-gtvoa-bagels"],
+["McDonald's Nebraska Bagels","McDonalds","mcdonalds","Jun 21, 2024","2024-06-21","mcdonald-s-nebraska-bagels"],
+["CVS Survey BOPIS","CVS","cvs-pharmacy","Jun 17, 2024","2024-06-17","cvs-survey-bopis"],
+["CVS Olympics - Well Market","CVS","cvs-pharmacy","Jun 14, 2024","2024-06-14","cvs-olympics-well-market"],
+["HOLO July","Holo","holo","Jun 12, 2024","2024-06-12","holo-july"],
+["Stanley June","Stanley","stanley","Jun 3, 2024","2024-06-03","stanley-june"],
+["CVS June","CVS","cvs-pharmacy","May 28, 2024","2024-05-28","cvs-june"],
+["adidas Festival","Adidas","adidas","May 28, 2024","2024-05-28","adidas-festival"],
+["Crocs BTS","CROCS","crocs","May 26, 2024","2024-05-26","crocs-bts"],
+["YESLY Sprouts","Yesly Water","yesly-water","May 26, 2024","2024-05-26","yesly-sprouts"],
+["iHerb June","iHerb","iherb","May 22, 2024","2024-05-22","iherb-june"],
+["Rawlings Fall","Rawlings","rawlings","May 20, 2024","2024-05-20","rawlings-fall"],
+["Easton Fall Baseball","Rawlings","rawlings","May 20, 2024","2024-05-20","easton-fall-baseball"],
+["CeraVe - Facial Cleanser","CeraVe","cerave","May 20, 2024","2024-05-20","cerave-facial-cleanser"],
+["adidas Affiliate Outreach","Adidas","adidas","May 16, 2024","2024-05-16","adidas-affiliate-outreach"],
+["adidas College World Series","Adidas","adidas","May 16, 2024","2024-05-16","adidas-college-world-series"],
+["Steve Madden June 2024","Steve Madden","steve-madden","May 15, 2024","2024-05-15","steve-madden-june-2024"],
+["CVS Well Market Gifting","CVS","cvs-pharmacy","May 14, 2024","2024-05-14","cvs-well-market-gifting"],
+["7-Eleven Rehydrate","7-Eleven","7-eleven","May 14, 2024","2024-05-14","7-eleven-rehydrate"],
+["Stanley May 2024","Stanley","stanley","May 14, 2024","2024-05-14","stanley-may-2024"],
+["Ruffles Summer 24","Ruffles","ruffles","May 11, 2024","2024-05-11","ruffles-summer-24"],
+["Hollister Licensed","Hollister","hollister","May 11, 2024","2024-05-11","hollister-licensed"],
+["Verb Gifting Summer 2024","Verb","verb","May 11, 2024","2024-05-11","verb-gifting-summer-2024"],
+["Sensationnel Summer 2024","Sensationnel","sensationnel","May 11, 2024","2024-05-11","sensationnel-summer-2024"],
+["Tangle Teezer","Tangle Teezer","tangle-teezer","May 10, 2024","2024-05-10","tangle-teezer"],
+["Steve Madden May 2024","Steve Madden","steve-madden","May 6, 2024","2024-05-06","steve-madden-may-2024"],
+["HOLO Launch (June)","Holo","holo","Apr 30, 2024","2024-04-30","holo-launch-june"],
+["CVS - Spotted at CVS","CVS","cvs-pharmacy","Apr 30, 2024","2024-04-30","cvs-spotted-at-cvs"],
+["adidas grassroots","Adidas","adidas","Apr 29, 2024","2024-04-29","adidas-grassroots"],
+["Stanley - Feb + March","Stanley","stanley","Apr 29, 2024","2024-04-29","stanley-feb-march"],
+["iHerb May 2024","iHerb","iherb","Apr 23, 2024","2024-04-23","iherb-may-2024"],
+["adidas Portland Trip NCAA Partner Summit","Adidas","adidas","Apr 19, 2024","2024-04-19","adidas-portland-trip-ncaa-partner-summit"],
+["CVS Ec Survey","CVS","cvs-pharmacy","Apr 19, 2024","2024-04-19","cvs-ec-survey"],
+["CAVA Spring 2024","CAVA","cava","Apr 17, 2024","2024-04-17","cava-spring-2024"],
+["HEYDUDE - Coastal Apre Team","Hey Dude","hey-dude","Apr 15, 2024","2024-04-15","heydude-coastal-apre-team"],
+["CVS Epic Beauty","CVS","cvs-pharmacy","Apr 11, 2024","2024-04-11","cvs-epic-beauty"],
+["CVS EC+ Survey","CVS","cvs-pharmacy","Apr 10, 2024","2024-04-10","cvs-ec-survey"],
+["HEYDUDE MARCH MADNESS","Hey Dude","hey-dude","Apr 9, 2024","2024-04-09","heydude-march-madness"],
+["adidas March Madness Post Tournament - You Got This","Adidas","adidas","Apr 3, 2024","2024-04-03","adidas-march-madness-post-tournament-you-got-this"],
+["Stanley March + April","Stanley","stanley","Mar 27, 2024","2024-03-27","stanley-march-april"],
+["Gametime App Downloads","Gametime","gametime","Mar 25, 2024","2024-03-25","gametime-app-downloads"],
+["iHerb April 2024","iHerb","iherb","Mar 22, 2024","2024-03-22","iherb-april-2024"],
+["Steve Madden April 2024","Steve Madden","steve-madden","Mar 20, 2024","2024-03-20","steve-madden-april-2024"],
+["adidas Nebraska Volleyball","Adidas","adidas","Mar 20, 2024","2024-03-20","adidas-nebraska-volleyball"],
+["McDonald's Big South Bagels","McDonalds","mcdonalds","Mar 20, 2024","2024-03-20","mcdonald-s-big-south-bagels"],
+["iHerb March 2024","iHerb","iherb","Mar 15, 2024","2024-03-15","iherb-march-2024"],
+["Reebok FloatZig 1","Reebok","reebok","Mar 13, 2024","2024-03-13","reebok-floatzig-1"],
+["YESLY Temp","Yesly Water","yesly-water","Mar 8, 2024","2024-03-08","yesly-temp"],
+["adidas Joy Ride + Top 3 (YGT)","Adidas","adidas","Feb 28, 2024","2024-02-28","adidas-joy-ride-top-3-ygt"],
+["adidas Under Pressure (YGT)","Adidas","adidas","Feb 28, 2024","2024-02-28","adidas-under-pressure-ygt"],
+["McDonald's ACC Breakfast","McDonalds","mcdonalds","Feb 28, 2024","2024-02-28","mcdonald-s-acc-breakfast"],
+["CVS March Madness","CVS","cvs-pharmacy","Feb 27, 2024","2024-02-27","cvs-march-madness"],
+["HEYDUDE Seeding - Collegiate","Hey Dude","hey-dude","Feb 22, 2024","2024-02-22","heydude-seeding-collegiate"],
+["adidas March Madness Affiliate SponCon","Adidas","adidas","Feb 16, 2024","2024-02-16","adidas-march-madness-affiliate-sponcon"],
+["HEYDUDE Collegiate Sweepstakes","Hey Dude","hey-dude","Feb 16, 2024","2024-02-16","heydude-collegiate-sweepstakes"],
+["adidas - fear of god","Adidas","adidas","Feb 15, 2024","2024-02-15","adidas-fear-of-god"],
+["Adidas Contest 2/22 - 3/25","Adidas","adidas","Feb 15, 2024","2024-02-15","adidas-contest-2-22-3-25"],
+["Crocs DSG - March","CROCS","crocs","Feb 13, 2024","2024-02-13","crocs-dsg-march"],
+["adidas Baseball Retro Jersey Seeding","Adidas","adidas","Feb 12, 2024","2024-02-12","adidas-baseball-retro-jersey-seeding"],
+["YESLY 2","Yesly Water","yesly-water","Feb 12, 2024","2024-02-12","yesly-2"],
+["Stanley - March","Stanley","stanley","Feb 7, 2024","2024-02-07","stanley-march"],
+["adidas Spring Style","Adidas","adidas","Feb 6, 2024","2024-02-06","adidas-spring-style"],
+["Raising Canes Test","Raising Canes","raising-canes","Feb 5, 2024","2024-02-05","raising-canes-test"],
+["GAMETIME FEB - MARCH","Gametime","gametime","Feb 5, 2024","2024-02-05","gametime-feb-march"],
+["adidas SuperNova SponCon","Adidas","adidas","Feb 3, 2024","2024-02-03","adidas-supernova-sponcon"],
+["Stanley Jan 2024 Quencher","Stanley","stanley","Jan 26, 2024","2024-01-26","stanley-jan-2024-quencher"],
+["Stanley Jan 2024 IceFlow","Stanley","stanley","Jan 26, 2024","2024-01-26","stanley-jan-2024-iceflow"],
+["HEYDUDE Collegiate - SS24","Hey Dude","hey-dude","Jan 24, 2024","2024-01-24","heydude-collegiate-ss24"],
+["Steve Madden March 2024","Steve Madden","steve-madden","Jan 18, 2024","2024-01-18","steve-madden-march-2024"],
+["Steve Madden Jan/Feb 2024","Steve Madden","steve-madden","Jan 12, 2024","2024-01-12","steve-madden-jan-feb-2024"],
+["adidas UW National Championship - Football Campaign","Adidas","adidas","Jan 10, 2024","2024-01-10","adidas-uw-national-championship-football-campaign"],
+["adidas UW National Championship - Watch Party","Adidas","adidas","Jan 10, 2024","2024-01-10","adidas-uw-national-championship-watch-party"],
+["ATT","Armani","armani","Jan 10, 2024","2024-01-10","att"],
+["YESLY - Jan/Feb","Yesly Water","yesly-water","Jan 4, 2024","2024-01-04","yesly-jan-feb"],
+["HEYDUDE Ecomm Sweepstakes - Jan/Feb","Hey Dude","hey-dude","Dec 30, 2023","2023-12-30","heydude-ecomm-sweepstakes-jan-feb"],
+["Jewlr Nov","Jewler","jewler","Dec 20, 2023","2023-12-20","jewlr-nov"],
+["Jewlr Oct","Jewler","jewler","Dec 20, 2023","2023-12-20","jewlr-oct"],
+["iHerb January - February 2024","iHerb","iherb","Dec 18, 2023","2023-12-18","iherb-january-february-2024"],
+["Steve Madden December 23","Steve Madden","steve-madden","Dec 14, 2023","2023-12-14","steve-madden-december-23"],
+["Crocs DSG - Events","CROCS","crocs","Dec 13, 2023","2023-12-13","crocs-dsg-events"],
+["Gillette Wave 3","Gillette","gillette","Dec 8, 2023","2023-12-08","gillette-wave-3"],
+["Reebok Q4","Reebok","reebok","Dec 5, 2023","2023-12-05","reebok-q4"],
+["Gillette Wave 2","Gillette","gillette","Dec 5, 2023","2023-12-05","gillette-wave-2"],
+["adidas Originals SponCon","Adidas","adidas","Dec 1, 2023","2023-12-01","adidas-originals-sponcon"],
+["CVS ExtraCare Campaign 2","CVS","cvs-pharmacy","Dec 1, 2023","2023-12-01","cvs-extracare-campaign-2"],
+["CVS BOPIS 2","CVS","cvs-pharmacy","Dec 1, 2023","2023-12-01","cvs-bopis-2"],
+["PSD Underwear Campaign #2 Black Friday Promo 2023","PSD Underwear","psd-underwear","Nov 30, 2023","2023-11-30","psd-underwear-campaign-2-black-friday-promo-2023"],
+["HEYDUDE - Collegiate Gifting","Hey Dude","hey-dude","Nov 30, 2023","2023-11-30","heydude-collegiate-gifting"],
+["adidas Basketball","Adidas","adidas","Nov 30, 2023","2023-11-30","adidas-basketball"],
+["PSD Underwear Campaign #3 2023-2024","PSD Underwear","psd-underwear","Nov 29, 2023","2023-11-29","psd-underwear-campaign-3-2023-2024"],
+["HEYDUDE Holi-Dude","Hey Dude","hey-dude","Nov 14, 2023","2023-11-14","heydude-holi-dude"],
+["adidas TERREX - Arizona State","Adidas","adidas","Nov 13, 2023","2023-11-13","adidas-terrex-arizona-state"],
+["ADIDAS Originals TikTok Filter","Adidas","adidas","Nov 10, 2023","2023-11-10","adidas-originals-tiktok-filter"],
+["HEYDUDE Ecomm Oct.","Hey Dude","hey-dude","Oct 26, 2023","2023-10-26","heydude-ecomm-oct"],
+["Adidas Terrex UW","Adidas","adidas","Oct 25, 2023","2023-10-25","adidas-terrex-uw"],
+["Adidas Softball Have Fun","Adidas","adidas","Oct 25, 2023","2023-10-25","adidas-softball-have-fun"],
+["adidas Holiday","Adidas","adidas","Oct 24, 2023","2023-10-24","adidas-holiday"],
+["CVS BOPIS Campaign","CVS","cvs-pharmacy","Oct 20, 2023","2023-10-20","cvs-bopis-campaign"],
+["Steve Madden November","Steve Madden","steve-madden","Oct 20, 2023","2023-10-20","steve-madden-november"],
+["CVS ExtraCare Campaign","CVS","cvs-pharmacy","Oct 18, 2023","2023-10-18","cvs-extracare-campaign"],
+["CVS Event Apprarance & Content","CVS","cvs-pharmacy","Oct 18, 2023","2023-10-18","cvs-event-apprarance-content"],
+["Adidas Back to Campus","Adidas","adidas","Oct 17, 2023","2023-10-17","adidas-back-to-campus"],
+["Stanley December Campaign Iceflow","Stanley","stanley","Oct 10, 2023","2023-10-10","stanley-december-campaign-iceflow"],
+["Adidas Ultraboost Paid","Adidas","adidas","Oct 9, 2023","2023-10-09","adidas-ultraboost-paid"],
+["ADIDAS 50 (Bill)","Adidas","adidas","Oct 5, 2023","2023-10-05","adidas-50-bill"],
+["HEYDUDE E-Comm Nov.","Hey Dude","hey-dude","Oct 4, 2023","2023-10-04","heydude-e-comm-nov"],
+["Easton Baseball","Easton","easton","Oct 2, 2023","2023-10-02","easton-baseball"],
+["adidas TERREX - Washington","Adidas","adidas","Sep 29, 2023","2023-09-29","adidas-terrex-washington"],
+["Capitol Records - Migos","UMG","universal-music-group","Sep 29, 2023","2023-09-29","capitol-records-migos"],
+["Tostitos - OSU","Tostitos","tostitos","Sep 29, 2023","2023-09-29","tostitos-osu"],
+["Tostitos - LSU","Tostitos","tostitos","Sep 29, 2023","2023-09-29","tostitos-lsu"],
+["HEYDUDE Collegiate Sell Thru","Hey Dude","hey-dude","Sep 26, 2023","2023-09-26","heydude-collegiate-sell-thru"],
+["Tostitos October 2023","Tostitos","tostitos","Sep 21, 2023","2023-09-21","tostitos-october-2023"],
+["McDonald's - Coke Zero","McDonalds","mcdonalds","Sep 19, 2023","2023-09-19","mcdonald-s-coke-zero"],
+["HEYDUDE - Aaron","Hey Dude","hey-dude","Sep 13, 2023","2023-09-13","heydude-aaron"],
+["Adidas - Bad Bunny","Adidas","adidas","Sep 8, 2023","2023-09-08","adidas-bad-bunny"],
+["HEYDUDE","Hey Dude","hey-dude","Sep 7, 2023","2023-09-07","heydude"],
+["Adidas - Terrex","Adidas","adidas","Sep 5, 2023","2023-09-05","adidas-terrex"],
+["Gillette Wave 1","Gillette","gillette","Sep 1, 2023","2023-09-01","gillette-wave-1"],
+["Allstate","Allstate","allstate","Aug 31, 2023","2023-08-31","allstate"],
+["Easton Softball November 2023","Easton","easton","Aug 31, 2023","2023-08-31","easton-softball-november-2023"],
+["Cerave - Free Campaign (10 Football)","CeraVe","cerave","Aug 22, 2023","2023-08-22","cerave-free-campaign-10-football"],
+["adidas Hispanic Seeding","Adidas","adidas","Aug 18, 2023","2023-08-18","adidas-hispanic-seeding"],
+["adidas Remember to Have Fun Seeding","Adidas","adidas","Aug 18, 2023","2023-08-18","adidas-remember-to-have-fun-seeding"],
+["CVS Affiliate","CVS","cvs-pharmacy","Aug 17, 2023","2023-08-17","cvs-affiliate"],
+["Hydro Flask","Hydroflask","hydroflask","Aug 16, 2023","2023-08-16","hydro-flask"],
+["HEYDUDE (Bill's / Meta Affiliate Hack)","Hey Dude","hey-dude","Aug 14, 2023","2023-08-14","heydude-bill-s-meta-affiliate-hack"],
+["Clarks - Free Campaign","Clarks","clarks","Aug 4, 2023","2023-08-04","clarks-free-campaign"],
+["Ruffles","Ruffles","ruffles","Aug 4, 2023","2023-08-04","ruffles"],
+["McDonald's","McDonalds","mcdonalds","Aug 4, 2023","2023-08-04","mcdonald-s"],
+["ADIDAS - Liscening Contracts","Adidas","adidas","Aug 1, 2023","2023-08-01","adidas-liscening-contracts"],
+["HEYDUDE Affiliate Test (Bill)","Hey Dude","hey-dude","Jul 31, 2023","2023-07-31","heydude-affiliate-test-bill"],
+["Jewlr","Jewler","jewler","Jul 28, 2023","2023-07-28","jewlr"],
+["iHerb","iHerb","iherb","Jul 27, 2023","2023-07-27","iherb"],
+["UMG - Beach Boys / Aoki","UMG","universal-music-group","Jul 18, 2023","2023-07-18","umg-beach-boys-aoki"],
+["PSD Underwear","PSD Underwear","psd-underwear","Jul 7, 2023","2023-07-07","psd-underwear"],
+["Haggar","Haggar","haggar","Jul 5, 2023","2023-07-05","haggar"],
+["HEYDUDE August 2023","Hey Dude","hey-dude","Jul 3, 2023","2023-07-03","heydude-august-2023"],
+["HEYDUDE September Collegiate Liscening Products","Hey Dude","hey-dude","Jun 23, 2023","2023-06-23","heydude-september-collegiate-liscening-products"],
+["HEYDUDE August Brand Team","Hey Dude","hey-dude","Jun 23, 2023","2023-06-23","heydude-august-brand-team"],
+["HEYDUDE July 2023","Hey Dude","hey-dude","Jun 22, 2023","2023-06-22","heydude-july-2023"],
+["Rawlings Baseball 2023","Rawlings","rawlings","Jun 22, 2023","2023-06-22","rawlings-baseball-2023"],
+["Crocs - Dick's Sporting Goods Holiday","CROCS","crocs","Jun 19, 2023","2023-06-19","crocs-dick-s-sporting-goods-holiday"],
+["adidas - Back To School 2023","Adidas","adidas","Jun 14, 2023","2023-06-14","adidas-back-to-school-2023"],
+["Ruffles","Ruffles","ruffles","Jun 7, 2023","2023-06-07","ruffles"],
+["adidas - Softball Cleat Seeding","Adidas","adidas","Jun 2, 2023","2023-06-02","adidas-softball-cleat-seeding"],
+["HEYDUDE July Ecommerce 2023","Hey Dude","hey-dude","May 24, 2023","2023-05-24","heydude-july-ecommerce-2023"],
+["adidas - Sportswear Z.N.E.","Adidas","adidas","May 22, 2023","2023-05-22","adidas-sportswear-z-n-e"],
+["HEYDUDE - Boston Calling","Hey Dude","hey-dude","May 17, 2023","2023-05-17","heydude-boston-calling"],
+["Urban Outfitters Back to School 2023","Urban Outfitters","urban-outfitters","May 17, 2023","2023-05-17","urban-outfitters-back-to-school-2023"],
+["HEYDUDE June Ecommerce 2023","Hey Dude","hey-dude","May 12, 2023","2023-05-12","heydude-june-ecommerce-2023"],
+["Lulus June 2023","Lulus","lulus","May 11, 2023","2023-05-11","lulus-june-2023"],
+["Lulus May 2023","Lulus","lulus","May 10, 2023","2023-05-10","lulus-may-2023"],
+["HEYDUDE May Ecommerce 2023","Hey Dude","hey-dude","May 9, 2023","2023-05-09","heydude-may-ecommerce-2023"],
+["ADIDAS Licensing Rights","Adidas","adidas","May 5, 2023","2023-05-05","adidas-licensing-rights"],
+["Clarks May 2023","Clarks","clarks","Apr 27, 2023","2023-04-27","clarks-may-2023"],
+["Ruffles June-September 2023","Ruffles","ruffles","Apr 25, 2023","2023-04-25","ruffles-june-september-2023"],
+["HEYDUDE - Michigan LAX","Hey Dude","hey-dude","Apr 24, 2023","2023-04-24","heydude-michigan-lax"],
+["Clarks April 2023","Clarks","clarks","Apr 19, 2023","2023-04-19","clarks-april-2023"],
+["Crocs - Dick's Sporting Goods","CROCS","crocs","Apr 19, 2023","2023-04-19","crocs-dick-s-sporting-goods"],
+["HEYDUDE May Ecommerce 2023 - Coastal","Hey Dude","hey-dude","Apr 18, 2023","2023-04-18","heydude-may-ecommerce-2023-coastal"],
+["HEYDUDE April 2023","Hey Dude","hey-dude","Apr 4, 2023","2023-04-04","heydude-april-2023"],
+["McDonald's","McDonalds","mcdonalds","Apr 4, 2023","2023-04-04","mcdonald-s"],
+["Reebok / Macy's","Reebok","reebok","Mar 30, 2023","2023-03-30","reebok-macy-s"],
+["Lulus Inbound Leads","Lulus","lulus","Mar 29, 2023","2023-03-29","lulus-inbound-leads"],
+["Hey Dude Sirroco - 10 25 OVERALL","Hey Dude","hey-dude","Mar 3, 2023","2023-03-03","hey-dude-sirroco-10-25-overall"],
+["Steve Madden","Steve Madden","steve-madden","Mar 2, 2023","2023-03-02","steve-madden"],
+["Reebok - UCLA Shoe (7-10 MBB/WBB)","Reebok","reebok","Feb 14, 2023","2023-02-14","reebok-ucla-shoe-7-10-mbb-wbb"],
+["Adidas Grambling (Donovan Mitchell - MBB/WBB) Shoe Dop 2-18","Adidas","adidas","Feb 10, 2023","2023-02-10","adidas-grambling-donovan-mitchell-mbb-wbb-shoe-dop-2-18"],
+["Adidas Suit Up Campaign - Tiro Tracksuits - Selections 2-15","Adidas","adidas","Feb 10, 2023","2023-02-10","adidas-suit-up-campaign-tiro-tracksuits-selections-2-15"],
+["McDonald's","McDonalds","mcdonalds","Feb 10, 2023","2023-02-10","mcdonald-s"],
+["Clarks March","Clarks","clarks","Feb 9, 2023","2023-02-09","clarks-march"],
+["Reebok NYC Event","Reebok","reebok","Feb 3, 2023","2023-02-03","reebok-nyc-event"],
+["Lulus Feb Winter to Spring","Lulus","lulus","Feb 3, 2023","2023-02-03","lulus-feb-winter-to-spring"],
+["BioSteel","BioSteel","biosteel","Jan 27, 2023","2023-01-27","biosteel"],
+["iHerb","iHerb","iherb","Jan 24, 2023","2023-01-24","iherb"],
+["Adidas SponCon Winter Shop","Adidas","adidas","Nov 10, 2022","2022-11-10","adidas-sponcon-winter-shop"],
+["CeraVe","CeraVe","cerave","Nov 7, 2022","2022-11-07","cerave"],
+["Reebok Q4 2022","Reebok","reebok","Oct 27, 2022","2022-10-27","reebok-q4-2022"],
+["Hey Dude - Wendy Wally","Hey Dude","hey-dude","Oct 26, 2022","2022-10-26","hey-dude-wendy-wally"],
+["DKNY","DKNY","dkny","Oct 14, 2022","2022-10-14","dkny"],
+["Clarks TikTok","Clarks","clarks","Oct 6, 2022","2022-10-06","clarks-tiktok"],
+["Lulus2","Lulus","lulus","Oct 3, 2022","2022-10-03","lulus2"],
+["Urban Outfitters Texas Appearance","Urban Outfitters","urban-outfitters","Sep 12, 2022","2022-09-12","urban-outfitters-texas-appearance"],
+["Urban Outfitters 2","Urban Outfitters","urban-outfitters","Sep 1, 2022","2022-09-01","urban-outfitters-2"],
+["Crocs - Iowa Football","CROCS","crocs","Aug 30, 2022","2022-08-30","crocs-iowa-football"],
+["Adidas Back to Campus","Adidas","adidas","Aug 16, 2022","2022-08-16","adidas-back-to-campus"],
+["Clarks Instagram","Clarks","clarks","Aug 3, 2022","2022-08-03","clarks-instagram"],
+["Crocs","CROCS","crocs","Jun 20, 2022","2022-06-20","crocs"],
+["Adidas Pre-Launch Users","Adidas","adidas","Jun 9, 2022","2022-06-09","adidas-pre-launch-users"],
+["Lulus","Lulus","lulus","May 19, 2022","2022-05-19","lulus"],
+["Hydroflask","Hydroflask","hydroflask","May 19, 2022","2022-05-19","hydroflask"],
+["Harmless Harvest","Harmless Harvest","harmless-harvest","Apr 25, 2022","2022-04-25","harmless-harvest"],
+["Reebok Cheer","Reebok","reebok","Feb 24, 2022","2022-02-24","reebok-cheer"],
+["York_Whitelist","York Athletics","york-athletics","Feb 17, 2022","2022-02-17","york-whitelist"],
+["Quizlet","Quizlet","quizlet","Feb 2, 2022","2022-02-02","quizlet"],
+["Adidas Louisville","Adidas","adidas","Feb 1, 2022","2022-02-01","adidas-louisville"],
+["Postgame Deny Promo1","York Athletics","york-athletics","Nov 17, 2021","2021-11-17","postgame-deny-promo1"],
+["Free People 2","Free People","free-people-movement","Nov 3, 2021","2021-11-03","free-people-2"],
+["DoorDash","DoorDash","doordash","Oct 20, 2021","2021-10-20","doordash"],
+["Reebok Nano X1 (Trainer)","Reebok","reebok","Sep 28, 2021","2021-09-28","reebok-nano-x1-trainer"],
+["Reebok Question (Basketball)","Reebok","reebok","Sep 28, 2021","2021-09-28","reebok-question-basketball"],
+["York","York Athletics","york-athletics","Sep 27, 2021","2021-09-27","york"],
+["Free People Movement","Free People","free-people-movement","Jul 12, 2021","2021-07-12","free-people-movement"],
+["Knockaround","Knockaround","knockaround","Jun 29, 2021","2021-06-29","knockaround"],
+["Legends Launch Campaign","Armani","armani","Jun 28, 2021","2021-06-28","legends-launch-campaign"]
+];
+
+const rcClasses = ['rc-1','rc-2','rc-3','rc-4','rc-5','rc-6','rc-7','rc-8'];
+
+function toggleAll() {
+  const el = document.getElementById('all-campaigns');
+  const btn = document.getElementById('showMoreBtn');
+  const isOpen = el.classList.contains('open');
+  if (!isOpen && !el.innerHTML) {
+    let html = '<div style="padding:24px 0 16px"><div class="section-eyebrow">Full History</div><div class="section-title">Every Campaign</div></div>';
+    C.forEach((c, i) => {
+      html += '<div class="all-campaign-row" onclick="openRecap(' + i + ')">' +
+        '<span class="acr-date">' + c[3] + '</span>' +
+        '<span class="acr-brand">' + c[1] + '</span>' +
+        '<span class="acr-name">' + c[0] + '</span>' +
+        '<span class="acr-arrow">\u2192</span></div>';
+    });
+    el.innerHTML = html;
+  }
+  el.classList.toggle('open');
+  btn.textContent = isOpen ? 'Show All 394 Campaigns' : 'Collapse';
+  if (!isOpen) el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function openRecap(idx) {
+  const c = C[idx];
+  const rc = rcClasses[idx % 8];
+  const modal = document.getElementById('recapModal');
+  modal.innerHTML = `
+    <div class="recap-hero-bar"><div class="recap-hero-bg ${rc}"></div><span class="recap-hero-label">Campaign Media</span></div>
+    <div class="recap-header">
+      <div class="recap-breadcrumb">
+        <a href="postgame-clients.html">Clients</a><span class="recap-breadcrumb-sep">/</span>
+        <a href="brands/brand-${c[2]}.html">${c[1]}</a><span class="recap-breadcrumb-sep">/</span>
+        <span>${c[0]}</span>
+      </div>
+      <div class="recap-meta">
+        <a href="brands/brand-${c[2]}.html" class="recap-brand-pill">${c[1]}</a>
+        <span class="recap-date-pill">${c[3]}</span>
+      </div>
+      <h2 class="recap-title">${c[0]}</h2>
+    </div>
+    <div class="recap-body-wrap">
+      <div class="recap-text">
+        <p>This campaign was executed by <strong>Postgame</strong> in partnership with <strong>${c[1]}</strong>. Athletes across our network created authentic, platform-native content designed to drive engagement and brand awareness.</p>
+        <p>Content was distributed across <strong>Instagram, TikTok, and YouTube</strong>, with each athlete bringing their own voice and audience to the activation.</p>
+        <p>All deliverables were managed end-to-end by the Postgame team &mdash; from athlete selection and briefing through content review, posting coordination, and performance reporting.</p>
+      </div>
+      <div class="recap-sidebar">
+        <div class="recap-stat"><div class="recap-stat-label">Brand</div><div class="recap-stat-val">${c[1]}</div></div>
+        <div class="recap-stat"><div class="recap-stat-label">Campaign</div><div class="recap-stat-val" style="font-size:16px">${c[0]}</div></div>
+        <div class="recap-stat"><div class="recap-stat-label">Date</div><div class="recap-stat-val" style="font-size:16px">${c[3]}</div></div>
+        <div class="recap-stat"><div class="recap-stat-label">Managed By</div><div class="recap-stat-val" style="font-size:16px">Postgame</div></div>
+      </div>
+    </div>
+    <div class="recap-content-grid">
+      <div class="recap-tile"><span class="recap-tile-label">Content</span></div>
+      <div class="recap-tile"><span class="recap-tile-label">Content</span></div>
+      <div class="recap-tile"><span class="recap-tile-label">Content</span></div>
+      <div class="recap-tile"><span class="recap-tile-label">Content</span></div>
+      <div class="recap-tile"><span class="recap-tile-label">Content</span></div>
+      <div class="recap-tile"><span class="recap-tile-label">Content</span></div>
+    </div>
+    <div class="recap-cta">
+      <div class="recap-cta-text">Run a campaign like this with <strong>Postgame</strong></div>
+      <div class="recap-cta-btns">
+        <a href="postgame-contact.html" class="btn-sm btn-sm-orange">Start a Campaign</a>
+        <a href="brands/brand-${c[2]}.html" class="btn-sm btn-sm-outline">View ${c[1]}</a>
+      </div>
+    </div>`;
+  document.getElementById('recapOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('recapOverlay').scrollTop = 0;
+}
+
+function closeRecap() {
+  document.getElementById('recapOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeRecap();
+});
+
+const params = new URLSearchParams(window.location.search);
+const campIdx = params.get('campaign');
+if (campIdx !== null && C[parseInt(campIdx)]) openRecap(parseInt(campIdx));
+const hash = window.location.hash.replace('#','');
+if (hash) {
+  const hi = C.findIndex(c => c[5] === hash);
+  if (hi >= 0) openRecap(hi);
+}
+</script>
+</body>
+</html>

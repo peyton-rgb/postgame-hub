@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tier 1 Deal Tracker — Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+  :root{--orange:#D73F09;--black:#000;--white:#fff;--gray:#111;--gray-mid:#1a1a1a}
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--black);color:var(--white);font-family:'DM Sans',Arial,sans-serif;overflow-x:hidden}
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 48px;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06)}
+  .logo{display:flex;align-items:center;gap:4px;text-decoration:none}
+  .logo-text{font-weight:600;font-size:22px;color:var(--white);letter-spacing:-0.5px}
+  .logo-plus{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:var(--orange);border-radius:50%;color:white;font-weight:700;font-size:14px;margin:0 1px}
+  .nav-links{display:flex;align-items:center;gap:8px;list-style:none}
+  .nav-item{position:relative}
+  .nav-item>a{display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.7);text-decoration:none;font-size:14px;font-weight:500;padding:10px 16px;border-radius:6px;transition:color 0.2s,background 0.2s}
+  .nav-item>a:hover{color:var(--white);background:rgba(255,255,255,0.05)}
+  .nav-chevron{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;transition:transform 0.2s}
+  .nav-item:hover .nav-chevron{transform:rotate(180deg)}
+  .nav-dropdown{position:absolute;top:100%;left:0;min-width:160px;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all 0.2s;z-index:200;padding-top:8px}.nav-dropdown-inner{background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,0.6)}
+  .nav-item:hover .nav-dropdown{opacity:1;pointer-events:all;transform:translateY(0)}
+  .nav-drop-item{display:block;padding:12px 18px;font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;transition:all 0.15s;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .nav-drop-item:last-child{border-bottom:none}
+  .nav-drop-item:hover{background:rgba(255,255,255,0.05);color:var(--white);padding-left:22px}
+  .btn-primary{background:var(--orange);color:var(--white);border:none;border-radius:8px;padding:14px 28px;font-family:'DM Sans',Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s,transform 0.15s}
+  .btn-primary:hover{background:#c03608;transform:translateY(-1px)}
+  .btn-tracker{background:var(--white);color:var(--black);border:none;border-radius:8px;padding:14px 24px;font-family:'DM Sans',Arial,sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s,transform 0.15s}
+  .btn-tracker:hover{background:rgba(255,255,255,0.88);transform:translateY(-1px)}
+
+  /* HERO */
+  .page-hero{padding:148px 48px 56px;max-width:1200px;margin:0 auto}
+  .hero-top{display:flex;align-items:flex-end;justify-content:space-between;gap:48px;margin-bottom:28px;flex-wrap:wrap}
+  .page-eyebrow{font-size:11px;font-weight:600;letter-spacing:0.15em;color:var(--orange);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .page-eyebrow::before{content:'';width:24px;height:1px;background:var(--orange)}
+  .page-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(52px,7vw,88px);line-height:0.92;letter-spacing:0.01em}
+  .accent{color:var(--orange)}
+  .live-badge{display:flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(255,60,60,0.08);border:1px solid rgba(255,60,60,0.2);border-radius:100px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,100,100,0.9);align-self:flex-start;margin-top:8px;white-space:nowrap}
+  .live-dot{width:7px;height:7px;background:rgba(255,80,80,0.9);border-radius:50%;animation:pulse 1.8s ease infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+  .hero-desc{font-size:16px;color:rgba(255,255,255,0.4);line-height:1.8;max-width:780px;margin-bottom:20px}
+  .hero-links{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:14px;color:rgba(255,255,255,0.3)}
+  .hero-link{color:var(--orange);text-decoration:none;font-weight:600;border-bottom:1px solid rgba(215,63,9,0.3);padding-bottom:1px;transition:border-color 0.2s}
+  .hero-link:hover{border-color:var(--orange)}
+
+  /* FEATURED DEAL */
+  .featured-wrap{background:var(--gray);border-top:1px solid rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.05)}
+  .featured-inner{max-width:1200px;margin:0 auto;padding:0 48px}
+  .featured-label{padding:28px 0 20px;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.25);display:flex;align-items:center;gap:12px}
+  .featured-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.06)}
+  .featured-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+  .featured-content{position:relative;aspect-ratio:16/9;overflow:hidden;background:#0d0d0d;cursor:pointer}
+  .featured-bg{position:absolute;inset:0;transition:transform 0.6s ease}
+  .featured-content:hover .featured-bg{transform:scale(1.03)}
+  .featured-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .play-circle{width:64px;height:64px;background:rgba(215,63,9,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform 0.2s,background 0.2s}
+  .featured-content:hover .play-circle{transform:scale(1.1);background:var(--orange)}
+  .play-icon{width:0;height:0;border-top:12px solid transparent;border-bottom:12px solid transparent;border-left:20px solid white;margin-left:4px}
+  .feat-badge{position:absolute;top:20px;left:20px;background:var(--orange);color:white;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:5px 12px;border-radius:4px}
+  .feat-label{position:absolute;bottom:20px;left:20px;right:20px}
+  .feat-brand{font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px}
+  .feat-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:28px;color:var(--white);letter-spacing:0.02em;line-height:1}
+  .featured-info{background:var(--gray-mid);padding:40px 44px;display:flex;flex-direction:column;justify-content:center}
+  .feat-sport{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--orange);margin-bottom:12px}
+  .feat-name{font-family:'Bebas Neue',Arial,sans-serif;font-size:52px;color:var(--white);letter-spacing:0.02em;line-height:0.95;margin-bottom:6px}
+  .feat-school{font-size:14px;color:rgba(255,255,255,0.3);margin-bottom:28px}
+  .feat-brands{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+  .brand-pill{padding:5px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:100px;font-size:12px;color:rgba(255,255,255,0.4)}
+  .feat-stats{display:flex;gap:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06);margin-bottom:32px}
+  .f-stat-num{font-family:'Bebas Neue',Arial,sans-serif;font-size:36px;color:var(--white);line-height:1}
+  .f-stat-label{font-size:10px;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:0.1em;margin-top:3px}
+  .btn-spotlight{display:inline-flex;align-items:center;gap:10px;color:var(--white);text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.04em;border-bottom:2px solid var(--orange);padding-bottom:4px;transition:gap 0.2s,color 0.2s}
+  .btn-spotlight:hover{gap:16px;color:var(--orange)}
+
+  /* FILTER BAR */
+  .filter-bar-wrap{border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);background:var(--black);padding:24px 0}
+  .filter-bar-inner{max-width:1200px;margin:0 auto;padding:0 48px;display:flex;flex-direction:column;gap:14px}
+  .filter-bar-label{font-size:11px;font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.35)}
+  .filter-dropdowns{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .filter-dropdown{position:relative}
+  .filter-drop-btn{display:flex;align-items:center;gap:10px;padding:11px 18px;background:transparent;border:2px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--white);font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;cursor:pointer;transition:border-color 0.2s;white-space:nowrap}
+  .filter-drop-btn:hover{border-color:rgba(255,255,255,0.4)}
+  .filter-drop-btn.open{border-color:var(--orange);color:var(--orange)}
+  .filter-drop-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;transition:transform 0.2s}
+  .filter-drop-btn.open svg{transform:rotate(180deg)}
+  .filter-drop-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:180px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;display:none;z-index:200;box-shadow:0 16px 40px rgba(0,0,0,0.6)}
+  .filter-drop-menu.open{display:block}
+  .filter-drop-item{padding:11px 18px;font-size:13px;color:rgba(255,255,255,0.5);cursor:pointer;transition:all 0.15s;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .filter-drop-item:last-child{border-bottom:none}
+  .filter-drop-item:hover{background:rgba(255,255,255,0.04);color:var(--white)}
+  .filter-drop-item.active{color:var(--orange);font-weight:600}
+  .filter-reset{padding:11px 18px;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.6);font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;cursor:pointer;transition:all 0.2s}
+  .filter-reset:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.35);color:var(--white)}
+
+  /* TRACKER */
+  .tracker-section{max-width:1200px;margin:0 auto;padding:56px 48px 120px}
+  .tracker-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+  .tracker-count{font-size:13px;color:rgba(255,255,255,0.25)}
+  .tracker-count span{color:rgba(255,255,255,0.7);font-weight:600}
+  .view-toggle{display:flex;gap:2px;background:var(--gray);border-radius:6px;padding:3px}
+  .view-btn{padding:8px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:0.05em;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,0.3);transition:all 0.2s;display:flex;align-items:center;gap:7px;font-family:'DM Sans',Arial,sans-serif}
+  .view-btn svg{width:13px;height:13px;fill:currentColor}
+  .view-btn.active{background:var(--gray-mid);color:var(--white)}
+
+  /* GRID */
+  .tracker-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+  .athlete-card{background:var(--gray-mid);overflow:hidden;cursor:pointer;transition:background 0.2s;text-decoration:none;display:block}
+  .athlete-card:hover{background:#202020}
+  .card-thumb{position:relative;aspect-ratio:16/9;overflow:hidden;background:#0d0d0d}
+  .card-thumb-bg{position:absolute;inset:0;transition:transform 0.5s ease}
+  .athlete-card:hover .card-thumb-bg{transform:scale(1.04)}
+  .card-thumb-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s}
+  .athlete-card:hover .card-thumb-play{opacity:1}
+  .mini-play{width:44px;height:44px;background:rgba(215,63,9,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .mini-play-icon{width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:14px solid white;margin-left:3px}
+  .card-rank-badge{position:absolute;top:12px;left:12px;font-family:'Bebas Neue',Arial,sans-serif;font-size:13px;color:rgba(255,255,255,0.5);background:rgba(0,0,0,0.5);padding:3px 8px;border-radius:4px;letter-spacing:0.06em}
+  .card-rank-badge.top3{background:rgba(215,63,9,0.8);color:var(--white)}
+  .card-content-label{position:absolute;bottom:0;left:0;right:0;padding:20px 16px 14px;background:linear-gradient(transparent,rgba(0,0,0,0.75))}
+  .card-content-brand{font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em}
+  .card-content-name{font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;margin-top:2px}
+  .card-body{padding:20px 18px}
+  .card-sport{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--orange);margin-bottom:6px}
+  .card-name{font-family:'Bebas Neue',Arial,sans-serif;font-size:26px;color:var(--white);letter-spacing:0.02em;line-height:1;margin-bottom:3px}
+  .card-school{font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:14px}
+  .card-row{display:flex;align-items:center;justify-content:space-between}
+  .card-brands{display:flex;gap:5px;flex-wrap:wrap}
+  .card-brand-pill{padding:4px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:100px;font-size:10px;color:rgba(255,255,255,0.35);white-space:nowrap}
+  .card-followers{font-family:'Bebas Neue',Arial,sans-serif;font-size:20px;color:rgba(255,255,255,0.5)}
+  .card-followers-label{font-size:9px;color:rgba(255,255,255,0.2);text-transform:uppercase;letter-spacing:0.08em;text-align:right;margin-top:1px}
+
+  /* LIST */
+  .tracker-table{width:100%;border-collapse:collapse;display:none}
+  .tracker-table thead tr{border-bottom:1px solid rgba(255,255,255,0.06)}
+  .tracker-table th{padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.2)}
+  .tracker-table th.right{text-align:right}
+  .tracker-table tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;cursor:pointer}
+  .tracker-table tbody tr:hover{background:rgba(255,255,255,0.03)}
+  .tracker-table td{padding:18px 16px;vertical-align:middle}
+  .rank-num{font-family:'Bebas Neue',Arial,sans-serif;font-size:22px;color:rgba(255,255,255,0.15);text-align:center}
+  .rank-num.top3{color:var(--orange)}
+  .athlete-cell{display:flex;align-items:center;gap:14px}
+  .athlete-thumb{width:56px;height:36px;border-radius:4px;flex-shrink:0;overflow:hidden;position:relative}
+  .athlete-thumb-bg{position:absolute;inset:0}
+  .athlete-name-big{font-family:'Bebas Neue',Arial,sans-serif;font-size:20px;color:var(--white);letter-spacing:0.02em;line-height:1;margin-bottom:3px}
+  .athlete-meta{font-size:11px;color:rgba(255,255,255,0.3);display:flex;align-items:center;gap:6px}
+  .sport-tag{background:rgba(215,63,9,0.1);color:var(--orange);padding:2px 7px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+  .brands-cell{display:flex;gap:5px;flex-wrap:wrap}
+  .followers-num{font-family:'Bebas Neue',Arial,sans-serif;font-size:20px;color:var(--white);text-align:right}
+  .followers-sub{font-size:9px;color:rgba(255,255,255,0.2);text-transform:uppercase;letter-spacing:0.08em;text-align:right}
+  .table-content-cell{display:flex;align-items:center;gap:10px}
+  .table-thumb{width:64px;height:40px;border-radius:4px;overflow:hidden;position:relative;flex-shrink:0}
+  .table-content-name{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.4}
+  .table-content-brand{font-size:10px;color:var(--orange);margin-bottom:2px;font-weight:600}
+  .view-link{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.35);font-size:12px;font-weight:600;text-decoration:none;transition:all 0.2s}
+  tr:hover .view-link{border-color:var(--orange);color:var(--orange)}
+
+  .load-more{text-align:center;padding:64px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:64px}
+  .btn-load{background:transparent;color:var(--white);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:15px 48px;font-family:'DM Sans',Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s;letter-spacing:0.05em}
+  .btn-load:hover{border-color:var(--orange);color:var(--orange)}
+
+  .cta-block{background:var(--orange);padding:100px 48px;text-align:center}
+  .cta-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(48px,6vw,72px);color:var(--white);line-height:0.95;letter-spacing:0.02em;margin-bottom:20px}
+  .cta-sub{font-size:17px;color:rgba(255,255,255,0.75);margin-bottom:40px}
+  .cta-btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+  .btn-white{background:var(--white);color:var(--orange);border:none;border-radius:8px;padding:16px 36px;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s}
+  .btn-white:hover{background:rgba(255,255,255,0.9);transform:translateY(-1px)}
+  .btn-outline-white{background:transparent;color:var(--white);border:2px solid rgba(255,255,255,0.5);border-radius:8px;padding:16px 36px;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:all 0.2s}
+  .btn-outline-white:hover{border-color:var(--white);transform:translateY(-1px)}
+
+  footer{background:var(--gray);border-top:1px solid rgba(255,255,255,0.06);padding:64px 48px 32px}
+  .footer-inner{max-width:1200px;margin:0 auto}
+  .footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:64px;margin-bottom:64px}
+  .footer-brand-desc{font-size:14px;color:rgba(255,255,255,0.35);line-height:1.7;margin-top:16px;max-width:280px}
+  .footer-col-title{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:24px}
+  .footer-links{list-style:none;display:flex;flex-direction:column;gap:14px}
+  .footer-links a{color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;transition:color 0.2s}
+  .footer-links a:hover{color:var(--white)}
+  .footer-bottom{border-top:1px solid rgba(255,255,255,0.06);padding-top:32px;display:flex;justify-content:space-between;align-items:center}
+  .footer-copy{font-size:13px;color:rgba(255,255,255,0.2)}
+  .footer-socials{display:flex;gap:24px}
+  .footer-socials a{font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s}
+  .footer-socials a:hover{color:var(--orange)}
+
+  .av-1{background:linear-gradient(135deg,#3a1a08,#1a0800)}
+  .av-2{background:linear-gradient(135deg,#0e1a3a,#080e1a)}
+  .av-3{background:linear-gradient(135deg,#0e3a1a,#081a0e)}
+  .av-4{background:linear-gradient(135deg,#2d0e3a,#18082d)}
+  .av-5{background:linear-gradient(135deg,#3a2d0e,#1a1808)}
+  .av-6{background:linear-gradient(135deg,#1a0e3a,#0e0820)}
+  .av-7{background:linear-gradient(135deg,#3a1a1a,#1a0808)}
+  .av-8{background:linear-gradient(135deg,#0e3a3a,#081a1a)}
+  .av-9{background:linear-gradient(135deg,#3a280e,#1a1208)}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .page-eyebrow{animation:fadeUp 0.6s ease 0.1s both}
+  .page-title{animation:fadeUp 0.6s ease 0.2s both}
+  .hero-desc{animation:fadeUp 0.6s ease 0.3s both}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="postgame-homepage.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:32px;width:auto;display:block;"></a>
+  <ul class="nav-links">
+    <li class="nav-item has-dropdown">
+      <a href="postgame-brand-profile.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-brand-profile.html" class="nav-drop-item">Clients</a><a href="postgame-campaign-recap.html" class="nav-drop-item">Campaigns</a></div></div>
+    </li>
+    <li class="nav-item has-dropdown">
+      <a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a></div></div>
+    </li>
+    <li class="nav-item has-dropdown">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<div style="background:var(--black)">
+  <div class="page-hero">
+    <div class="hero-top">
+      <div>
+        <div class="page-eyebrow">Postgame Headliners</div>
+        <h1 class="page-title">Top Athlete<br><span class="accent">NIL Deal</span><br>Tracker</h1>
+      </div>
+      <div class="live-badge"><div class="live-dot"></div>Updated Weekly</div>
+    </div>
+    <p class="hero-desc">A sample list of Headliner Athletes we've worked with — elite within their sport and/or with a significant social following as athlete influencers. Use the filters below to search by sport, brand, content type, and industry vertical. Don't forget to reset your search parameters when creating a new filter.</p>
+    <div class="hero-links">
+      <span>View more:</span>
+      <a href="#" class="hero-link">Client Page</a><span>·</span>
+      <a href="#" class="hero-link">UGC Feed</a><span>·</span>
+      <a href="#" class="hero-link">BTS Footage</a><span>·</span>
+      <a href="#" class="hero-link">Instagram</a>
+    </div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar-wrap">
+  <div class="filter-bar-inner">
+    <div class="filter-bar-label">Filter By</div>
+    <div class="filter-dropdowns">
+      <div class="filter-dropdown">
+        <button class="filter-drop-btn" onclick="toggleDrop(this)"><span>SPORT</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="filter-drop-menu">
+          <div class="filter-drop-item active" onclick="selectDrop(this)">All Sports</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Football</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Basketball</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Baseball</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Track & Field</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Soccer</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Volleyball</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Swimming</div>
+        </div>
+      </div>
+      <div class="filter-dropdown">
+        <button class="filter-drop-btn" onclick="toggleDrop(this)"><span>COLLEGE</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="filter-drop-menu">
+          <div class="filter-drop-item active" onclick="selectDrop(this)">All Colleges</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Alabama</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Duke</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Georgia</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">LSU</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Michigan</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Stanford</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">USC</div>
+        </div>
+      </div>
+      <div class="filter-dropdown">
+        <button class="filter-drop-btn" onclick="toggleDrop(this)"><span>BRAND</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="filter-drop-menu">
+          <div class="filter-drop-item active" onclick="selectDrop(this)">All Brands</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Adidas</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Beats</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">DraftKings</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Gatorade</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">New Balance</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Nike</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Under Armour</div>
+        </div>
+      </div>
+      <div class="filter-dropdown">
+        <button class="filter-drop-btn" onclick="toggleDrop(this)"><span>INDUSTRY</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="filter-drop-menu">
+          <div class="filter-drop-item active" onclick="selectDrop(this)">All Industries</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Apparel</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Food & Beverage</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Gaming</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Sports Equipment</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Technology</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Finance</div>
+        </div>
+      </div>
+      <div class="filter-dropdown">
+        <button class="filter-drop-btn" onclick="toggleDrop(this)"><span>TYPE</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="filter-drop-menu">
+          <div class="filter-drop-item active" onclick="selectDrop(this)">All Types</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Brand Ambassador</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Social Campaign</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Appearance</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Licensing</div>
+          <div class="filter-drop-item" onclick="selectDrop(this)">Content Creation</div>
+        </div>
+      </div>
+      <button class="filter-reset" onclick="resetFilters()">RESET</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRACKER -->
+<div class="tracker-section">
+  <div class="tracker-top">
+    <div class="tracker-count">Showing <span>9</span> of <span>300+</span> headliner athletes</div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-cards" onclick="setView('cards')">
+        <svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg>Grid
+      </button>
+      <button class="view-btn" id="btn-table" onclick="setView('table')">
+        <svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="3"/><rect x="1" y="6" width="14" height="3"/><rect x="1" y="11" width="14" height="3"/></svg>List
+      </button>
+    </div>
+  </div>
+
+  <!-- GRID (default) -->
+  <div id="view-cards">
+    <div class="tracker-grid">
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-1"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge top3">#1</div><div style="position:absolute;top:12px;right:12px;background:var(--orange);color:white;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 9px;border-radius:4px;">Most Recent</div><div class="card-content-label"><div class="card-content-brand">Nike</div><div class="card-content-name">Just Do It — Campus Series</div></div></div>
+        <div class="card-body"><div class="card-sport">Football</div><div class="card-name">Jordan Williams</div><div class="card-school">University of Georgia</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Nike</span><span class="card-brand-pill">Gatorade</span><span class="card-brand-pill">+5</span></div><div><div class="card-followers">4.2M</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-2"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge top3">#2</div><div style="position:absolute;top:12px;right:12px;background:var(--orange);color:white;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 9px;border-radius:4px;">Most Recent</div><div class="card-content-label"><div class="card-content-brand">Gatorade</div><div class="card-content-name">Fuel The Future — March Madness</div></div></div>
+        <div class="card-body"><div class="card-sport">Basketball</div><div class="card-name">Marcus Davis</div><div class="card-school">Duke University</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Gatorade</span><span class="card-brand-pill">Beats</span><span class="card-brand-pill">+3</span></div><div><div class="card-followers">2.1M</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-3"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge top3">#3</div><div style="position:absolute;top:12px;right:12px;background:var(--orange);color:white;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 9px;border-radius:4px;">Most Recent</div><div class="card-content-label"><div class="card-content-brand">Under Armour</div><div class="card-content-name">Protect This House</div></div></div>
+        <div class="card-body"><div class="card-sport">Football</div><div class="card-name">Tre Jackson</div><div class="card-school">Alabama</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Under Armour</span><span class="card-brand-pill">DraftKings</span></div><div><div class="card-followers">1.8M</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-4"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge">#4</div><div class="card-content-label"><div class="card-content-brand">New Balance</div><div class="card-content-name">Fresh Start Track Series</div></div></div>
+        <div class="card-body"><div class="card-sport">Track & Field</div><div class="card-name">Aaliyah Johnson</div><div class="card-school">USC</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">New Balance</span><span class="card-brand-pill">Nike</span></div><div><div class="card-followers">980K</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-5"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge">#5</div><div class="card-content-label"><div class="card-content-brand">Mountain Dew</div><div class="card-content-name">Rise to the Moment</div></div></div>
+        <div class="card-body"><div class="card-sport">Basketball</div><div class="card-name">Cole Adams</div><div class="card-school">Michigan</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Mountain Dew</span><span class="card-brand-pill">+2</span></div><div><div class="card-followers">1.2M</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-6"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge">#6</div><div class="card-content-label"><div class="card-content-brand">Adidas</div><div class="card-content-name">Impossible Is Nothing</div></div></div>
+        <div class="card-body"><div class="card-sport">Soccer</div><div class="card-name">Sofia Reyes</div><div class="card-school">Stanford</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Adidas</span><span class="card-brand-pill">Powerade</span></div><div><div class="card-followers">540K</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-7"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge">#7</div><div class="card-content-label"><div class="card-content-brand">Rawlings</div><div class="card-content-name">Play Ball — Diamond Series</div></div></div>
+        <div class="card-body"><div class="card-sport">Baseball</div><div class="card-name">Tyler Chen</div><div class="card-school">LSU</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Rawlings</span><span class="card-brand-pill">Gatorade</span><span class="card-brand-pill">+1</span></div><div><div class="card-followers">760K</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-8"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge">#8</div><div class="card-content-label"><div class="card-content-brand">Nike</div><div class="card-content-name">Set. Spike. Win.</div></div></div>
+        <div class="card-body"><div class="card-sport">Volleyball</div><div class="card-name">Kayla Thompson</div><div class="card-school">Nebraska</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Nike</span><span class="card-brand-pill">Celsius</span></div><div><div class="card-followers">620K</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="athlete-card">
+        <div class="card-thumb"><div class="card-thumb-bg av-9"></div><div class="card-thumb-play"><div class="mini-play"><div class="mini-play-icon"></div></div></div><div class="card-rank-badge">#9</div><div class="card-content-label"><div class="card-content-brand">Adidas</div><div class="card-content-name">Built Different — Big Ten</div></div></div>
+        <div class="card-body"><div class="card-sport">Football</div><div class="card-name">Devon Wright</div><div class="card-school">Ohio State</div><div class="card-row"><div class="card-brands"><span class="card-brand-pill">Adidas</span><span class="card-brand-pill">+3</span></div><div><div class="card-followers">890K</div><div class="card-followers-label">Followers</div></div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.06em;">Player Spotlight →</span></div></div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- LIST (hidden) -->
+  <table class="tracker-table" id="view-table">
+    <thead><tr><th style="width:48px;text-align:center">#</th><th>Athlete</th><th>Latest Content</th><th>Brand Partners</th><th class="right">Followers</th><th></th></tr></thead>
+    <tbody>
+      <tr onclick="window.location='postgame-player-spotlight.html'"><td><div class="rank-num top3">1</div></td><td><div class="athlete-cell"><div class="athlete-thumb"><div class="athlete-thumb-bg av-1"></div></div><div><div class="athlete-name-big">Jordan Williams</div><div class="athlete-meta"><span class="sport-tag">Football</span>Georgia</div></div></div></td><td><div class="table-content-cell"><div class="table-thumb"><div class="athlete-thumb-bg av-1"></div></div><div><div class="table-content-brand">Nike</div><div class="table-content-name">Just Do It — Campus Series</div></div></div></td><td><div class="brands-cell"><span class="card-brand-pill">Nike</span><span class="card-brand-pill">Gatorade</span><span class="card-brand-pill">+5</span></div></td><td><div class="followers-num">4.2M</div><div class="followers-sub">Followers</div></td><td><a href="postgame-player-spotlight.html" class="view-link">Spotlight →</a></td></tr>
+      <tr onclick="window.location='postgame-player-spotlight.html'"><td><div class="rank-num top3">2</div></td><td><div class="athlete-cell"><div class="athlete-thumb"><div class="athlete-thumb-bg av-2"></div></div><div><div class="athlete-name-big">Marcus Davis</div><div class="athlete-meta"><span class="sport-tag">Basketball</span>Duke</div></div></div></td><td><div class="table-content-cell"><div class="table-thumb"><div class="athlete-thumb-bg av-2"></div></div><div><div class="table-content-brand">Gatorade</div><div class="table-content-name">Fuel The Future</div></div></div></td><td><div class="brands-cell"><span class="card-brand-pill">Gatorade</span><span class="card-brand-pill">Beats</span><span class="card-brand-pill">+3</span></div></td><td><div class="followers-num">2.1M</div><div class="followers-sub">Followers</div></td><td><a href="postgame-player-spotlight.html" class="view-link">Spotlight →</a></td></tr>
+      <tr onclick="window.location='postgame-player-spotlight.html'"><td><div class="rank-num top3">3</div></td><td><div class="athlete-cell"><div class="athlete-thumb"><div class="athlete-thumb-bg av-3"></div></div><div><div class="athlete-name-big">Tre Jackson</div><div class="athlete-meta"><span class="sport-tag">Football</span>Alabama</div></div></div></td><td><div class="table-content-cell"><div class="table-thumb"><div class="athlete-thumb-bg av-3"></div></div><div><div class="table-content-brand">Under Armour</div><div class="table-content-name">Protect This House</div></div></div></td><td><div class="brands-cell"><span class="card-brand-pill">Under Armour</span><span class="card-brand-pill">DraftKings</span></div></td><td><div class="followers-num">1.8M</div><div class="followers-sub">Followers</div></td><td><a href="postgame-player-spotlight.html" class="view-link">Spotlight →</a></td></tr>
+      <tr onclick="window.location='postgame-player-spotlight.html'"><td><div class="rank-num">4</div></td><td><div class="athlete-cell"><div class="athlete-thumb"><div class="athlete-thumb-bg av-4"></div></div><div><div class="athlete-name-big">Aaliyah Johnson</div><div class="athlete-meta"><span class="sport-tag">Track</span>USC</div></div></div></td><td><div class="table-content-cell"><div class="table-thumb"><div class="athlete-thumb-bg av-4"></div></div><div><div class="table-content-brand">New Balance</div><div class="table-content-name">Fresh Start Track Series</div></div></div></td><td><div class="brands-cell"><span class="card-brand-pill">New Balance</span><span class="card-brand-pill">Nike</span></div></td><td><div class="followers-num">980K</div><div class="followers-sub">Followers</div></td><td><a href="postgame-player-spotlight.html" class="view-link">Spotlight →</a></td></tr>
+      <tr onclick="window.location='postgame-player-spotlight.html'"><td><div class="rank-num">5</div></td><td><div class="athlete-cell"><div class="athlete-thumb"><div class="athlete-thumb-bg av-5"></div></div><div><div class="athlete-name-big">Cole Adams</div><div class="athlete-meta"><span class="sport-tag">Basketball</span>Michigan</div></div></div></td><td><div class="table-content-cell"><div class="table-thumb"><div class="athlete-thumb-bg av-5"></div></div><div><div class="table-content-brand">Mountain Dew</div><div class="table-content-name">Rise to the Moment</div></div></div></td><td><div class="brands-cell"><span class="card-brand-pill">Mountain Dew</span><span class="card-brand-pill">+2</span></div></td><td><div class="followers-num">1.2M</div><div class="followers-sub">Followers</div></td><td><a href="postgame-player-spotlight.html" class="view-link">Spotlight →</a></td></tr>
+      <tr onclick="window.location='postgame-player-spotlight.html'"><td><div class="rank-num">6</div></td><td><div class="athlete-cell"><div class="athlete-thumb"><div class="athlete-thumb-bg av-6"></div></div><div><div class="athlete-name-big">Sofia Reyes</div><div class="athlete-meta"><span class="sport-tag">Soccer</span>Stanford</div></div></div></td><td><div class="table-content-cell"><div class="table-thumb"><div class="athlete-thumb-bg av-6"></div></div><div><div class="table-content-brand">Adidas</div><div class="table-content-name">Impossible Is Nothing</div></div></div></td><td><div class="brands-cell"><span class="card-brand-pill">Adidas</span><span class="card-brand-pill">Powerade</span></div></td><td><div class="followers-num">540K</div><div class="followers-sub">Followers</div></td><td><a href="postgame-player-spotlight.html" class="view-link">Spotlight →</a></td></tr>
+    </tbody>
+  </table>
+
+  <div class="load-more"><a href="#" class="btn-load">Load More Athletes</a></div>
+</div>
+
+
+<div class="cta-block">
+  <h2 class="cta-title">Ready to Activate?</h2>
+  <p class="cta-sub">Connect your brand with top-tier college athletes.</p>
+  <div class="cta-btns"><a href="postgame-contact.html" class="btn-white">I'm a Brand</a><a href="postgame-contact.html" class="btn-outline-white">I'm an Athlete</a></div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div><a href="postgame-homepage.html" class="logo" style="display:inline-block;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;display:block;"></a><p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p></div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-brand-profile.html">Clients</a></li><li><a href="postgame-campaign-recap.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom"><div class="footer-copy">© 2025 Postgame. All rights reserved.</div><div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div></div>
+  </div>
+</footer>
+
+<script>
+function toggleDrop(btn){const allBtns=document.querySelectorAll('.filter-drop-btn');const allMenus=document.querySelectorAll('.filter-drop-menu');const menu=btn.nextElementSibling;const isOpen=menu.classList.contains('open');allBtns.forEach(b=>b.classList.remove('open'));allMenus.forEach(m=>m.classList.remove('open'));if(!isOpen){btn.classList.add('open');menu.classList.add('open')}}
+function selectDrop(item){const menu=item.closest('.filter-drop-menu');const btn=menu.previousElementSibling;menu.querySelectorAll('.filter-drop-item').forEach(i=>i.classList.remove('active'));item.classList.add('active');const label=btn.querySelector('span');if(!btn.dataset.original)btn.dataset.original=label.textContent;if(!item.textContent.startsWith('All')){label.textContent=item.textContent.toUpperCase();btn.style.borderColor='var(--orange)';btn.style.color='var(--orange)'}else{label.textContent=btn.dataset.original;btn.style.borderColor='';btn.style.color=''};menu.classList.remove('open');btn.classList.remove('open')}
+function resetFilters(){document.querySelectorAll('.filter-drop-item').forEach(i=>i.classList.remove('active'));document.querySelectorAll('.filter-drop-menu').forEach(menu=>{const first=menu.querySelector('.filter-drop-item');if(first)first.classList.add('active')});document.querySelectorAll('.filter-drop-btn').forEach(btn=>{btn.style.borderColor='';btn.style.color='';if(btn.dataset.original)btn.querySelector('span').textContent=btn.dataset.original})}
+function setView(view){document.getElementById('view-cards').style.display=view==='cards'?'block':'none';document.getElementById('view-table').style.display=view==='table'?'table':'none';document.getElementById('btn-cards').classList.toggle('active',view==='cards');document.getElementById('btn-table').classList.toggle('active',view==='table')}
+document.addEventListener('click',function(e){if(!e.target.closest('.filter-dropdown')){document.querySelectorAll('.filter-drop-btn').forEach(b=>b.classList.remove('open'));document.querySelectorAll('.filter-drop-menu').forEach(m=>m.classList.remove('open'))}})
+</script>
+</body>
+</html>

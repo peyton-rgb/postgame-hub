@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Always On — Services · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+
+  :root {
+    --orange: #D73F09;
+    --black: #000000;
+    --white: #FFFFFF;
+    --gray: #111111;
+    --gray-mid: #1a1a1a;
+    --accent: #00859B;
+    --accent-dim: rgba(0,133,155,0.1);
+    --accent-border: rgba(0,133,155,0.2);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: #080808; color: var(--white); font-family: Arial, Helvetica, sans-serif; overflow-x: hidden;  font-size:24px; line-height:1.4;}
+
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; background: rgba(8,8,8,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .logo { display: flex; align-items: center; gap: 4px; text-decoration: none; }
+  .logo-text { font-weight: 600; font-size: 22px; color: var(--white); letter-spacing: -0.5px; }
+  .logo-plus { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--orange); border-radius: 50%; color: white; font-weight: 700; font-size: 14px; margin: 0 1px; }
+  .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; }
+  .nav-item { position: relative; }
+  .nav-item > a { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .nav-item > a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+  .nav-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform: rotate(180deg); }
+  .nav-dropdown { position: absolute; top: calc(100% + 8px); left: 0; min-width: 160px; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; opacity: 0; pointer-events: none; transform: translateY(-8px); transition: all 0.2s; box-shadow: 0 16px 40px rgba(0,0,0,0.6); z-index: 200; }
+  .nav-item::after { content: ""; position: absolute; bottom: -10px; left: 0; right: 0; height: 10px; } .nav-item:hover .nav-dropdown { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .nav-drop-item { display: block; padding: 12px 18px; font-size: 13px; color: rgba(255,255,255,0.55); text-decoration: none; transition: all 0.15s; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom: none; }
+  .nav-drop-item:hover { background: rgba(255,255,255,0.05); color: var(--white); padding-left: 22px; }
+  .nav-drop-item.active { color: var(--accent); }
+  .btn-primary { background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 16px 32px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-primary:hover { background: #c03608; transform: translateY(-1px); }
+  .btn-tracker { background: var(--white); color: var(--black); border: none; border-radius: 8px; padding: 16px 32px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s; }
+  .btn-tracker:hover { background: rgba(255,255,255,0.88); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 140px 48px 100px;
+  }
+
+  /* Pulse ring pattern */
+  .hero-pulse-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 70% 50%, rgba(0,133,155,0.03) 0%, transparent 50%),
+      radial-gradient(circle at 70% 50%, rgba(0,133,155,0.015) 25%, transparent 55%);
+  }
+
+  .hero-bg-word {
+    position: absolute;
+    right: -80px;
+    bottom: -30px;
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(200px, 30vw, 420px);
+    color: rgba(0,133,155,0.03);
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: -0.04em;
+  }
+
+  .hero-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 80px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .services-nav { display: flex; gap: 4px; margin-bottom: 48px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 100px; padding: 4px; width: fit-content; }
+  .snav-pill { padding: 8px 20px; border-radius: 100px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; transition: all 0.2s; color: rgba(255,255,255,0.3); }
+  .snav-pill:hover { color: rgba(255,255,255,0.7); }
+  .snav-pill.active { background: var(--accent); color: #000; }
+
+  .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+  .hero-eyebrow::before { content: ''; width: 32px; height: 1px; background: var(--accent); }
+
+  .hero-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(72px, 11vw, 144px); line-height: 0.88; letter-spacing: 0.01em; color: var(--white); margin-bottom: 28px; }
+
+  .hero-positioning { font-size: 24px; color: rgba(255,255,255,0.45); line-height: 1.5; font-weight: 300; max-width: 540px; margin-bottom: 44px; }
+  .hero-positioning strong { color: rgba(255,255,255,0.85); font-weight: 600; }
+
+  .hero-ctas { margin-top: 32px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .btn-accent { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 16px 32px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; letter-spacing: 0.02em; }
+  .btn-accent:hover { background: #006f82; transform: translateY(-1px); }
+
+  .btn-ghost { background: transparent; color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 16px 32px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.35); color: var(--white); }
+
+  .hero-stats { display: flex; flex-direction: column; gap: 2px; }
+  .hero-stat-row { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: border-color 0.2s, background 0.2s; }
+  .hero-stat-row:first-child { border-radius: 8px 8px 0 0; }
+  .hero-stat-row:last-child { border-radius: 0 0 8px 8px; }
+  .hero-stat-row:hover { border-color: rgba(0,133,155,0.2); background: rgba(0,133,155,0.04); }
+  .hsr-label { font-size: 12px; color: rgba(255,255,255,0.3); }
+  .hsr-val { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 30px; color: var(--accent); letter-spacing: 0.02em; line-height: 1; }
+
+  /* WHAT IT IS */
+  .what-wrap { background: #0d0d0d; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .what-inner { max-width: 1200px; margin: 0 auto; padding: 96px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 96px; align-items: start; }
+
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+  .section-label::before { content: ''; width: 20px; height: 1px; background: var(--accent); }
+  .section-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(36px, 4vw, 52px); color: var(--white); letter-spacing: 0.02em; line-height: 1; margin-bottom: 28px; }
+  .body-text { font-size: 24px; color: rgba(255,255,255,0.45); line-height: 1.4; }
+  .body-text strong { color: rgba(255,255,255,0.8); font-weight: 600; }
+  .body-text p + p { margin-top: 20px; }
+
+  .feature-list { display: flex; flex-direction: column; gap: 2px; }
+  .feature-item { display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; transition: border-color 0.2s, background 0.2s; }
+  .feature-item:hover { background: rgba(0,133,155,0.04); border-color: rgba(0,133,155,0.15); }
+  .feature-icon { width: 36px; height: 36px; background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .feature-text-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 4px; }
+  .feature-text-body { font-size: 13px; color: rgba(255,255,255,0.3); line-height: 1.5; }
+
+  /* HOW IT WORKS */
+  .how-wrap { background: #080808; padding: 96px 0; }
+  .how-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .how-header { margin-bottom: 56px; }
+  .how-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+  .how-step { background: #0d0d0d; border: 1px solid rgba(255,255,255,0.05); padding: 36px 28px; transition: border-color 0.2s, background 0.2s; position: relative; }
+  .how-step:hover { border-color: rgba(0,133,155,0.2); background: rgba(0,133,155,0.02); }
+  .how-step::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0; transition: opacity 0.2s; }
+  .how-step:hover::before { opacity: 1; }
+  .how-num { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 48px; color: var(--accent); line-height: 1; margin-bottom: 16px; opacity: 0.6; }
+  .how-step-title { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 10px; }
+  .how-step-body { font-size: 13px; color: rgba(255,255,255,0.3); line-height: 1.6; }
+
+  /* BRANDS */
+  .brands-wrap { background: #0d0d0d; border-top: 1px solid rgba(255,255,255,0.05); padding: 96px 0; }
+  .brands-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .brands-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
+  .brand-logos { display: flex; gap: 2px; flex-wrap: wrap; }
+  .brand-logo-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 28px 36px; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s; text-decoration: none; }
+  .brand-logo-card:hover { border-color: rgba(0,133,155,0.2); }
+  .brand-logo-name { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 20px; color: rgba(255,255,255,0.2); letter-spacing: 0.04em; transition: color 0.2s; }
+  .brand-logo-card:hover .brand-logo-name { color: rgba(255,255,255,0.5); }
+
+  /* CTA */
+  .cta-wrap { background: var(--accent); padding: 120px 48px; text-align: center; position: relative; overflow: hidden; }
+  .cta-bg-word { position: absolute; right: -40px; bottom: -60px; font-family: 'Bebas Neue', Arial, sans-serif; font-size: 400px; color: rgba(0,0,0,0.08); line-height: 1; user-select: none; pointer-events: none; }
+  .cta-inner { position: relative; z-index: 2; }
+  .cta-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; color: rgba(0,0,0,0.4); text-transform: uppercase; margin-bottom: 20px; }
+  .cta-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(52px, 7vw, 88px); color: #000; line-height: 0.92; letter-spacing: 0.01em; margin-bottom: 20px; }
+  .cta-sub { font-size: 17px; color: rgba(0,0,0,0.55); margin-bottom: 48px; max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+  .cta-btns { margin-top: 8px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn-dark { background: #000; color: var(--accent); border: none; border-radius: 8px; padding: 16px 36px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-dark:hover { background: #111; transform: translateY(-1px); }
+  .btn-outline-dark { background: transparent; color: #000; border: 2px solid rgba(0,0,0,0.3); border-radius: 8px; padding: 16px 36px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-outline-dark:hover { border-color: #000; transform: translateY(-1px); }
+
+  footer { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.06); padding: 64px 48px 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+  .footer-brand-desc { font-size: 18px; color: rgba(255,255,255,0.35); line-height: 1.2; margin-top: 16px; max-width: 280px; }
+  .footer-col-title { font-size: 18px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 24px; }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 18px; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--white); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-copy { font-size: 18px; color: rgba(255,255,255,0.2); }
+  .footer-socials { display: flex; gap: 24px; }
+  .footer-socials a { font-size: 18px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
+  .footer-socials a:hover { color: var(--orange); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .services-nav { animation: fadeUp 0.4s ease 0.05s both; }
+  .hero-eyebrow { animation: fadeUp 0.5s ease 0.1s both; }
+  .hero-title { animation: fadeUp 0.6s ease 0.2s both; }
+  .hero-positioning { animation: fadeUp 0.5s ease 0.3s both; }
+  .hero-ctas { margin-top: 32px; animation: fadeUp 0.5s ease 0.4s both; }
+  .hero-stats { animation: fadeUp 0.6s ease 0.25s both; }
+
+  @media (max-width: 768px) {
+    nav { padding: 16px 20px; }
+    .hero { padding: 140px 20px 80px; }
+    .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+    .what-inner { grid-template-columns: 1fr; gap: 48px; padding: 64px 20px; }
+    .how-grid { grid-template-columns: 1fr 1fr; }
+    .brand-logos { justify-content: center; }
+    .footer-top { grid-template-columns: 1fr 1fr; gap: 24px; }
+  }
+
+  /* ── MOBILE TYPOGRAPHY ── */
+  @media (max-width: 768px) {
+    body { font-size: 14px !important; line-height: 1.4 !important; }
+    .hero-positioning, .hero-sub, .body-text, .recap-text,
+    .feature-text-body, .how-step-body, .case-desc,
+    .cta-sub { font-size: 14px !important; line-height: 1.4 !important; }
+    .hero-eyebrow, .section-label, .section-eyebrow { font-size: 10px !important; }
+    .nav-item > a, .nav-drop-item { font-size: 12px !important; }
+    .btn-primary, .btn-tracker, .btn-accent, .btn-ghost,
+    .btn-white, .btn-outline-white, .btn-dark, .btn-outline-dark,
+    .btn-sm { font-size: 13px !important; padding: 12px 24px !important; }
+    footer, .footer-links a, .footer-brand-desc, .footer-copy,
+    .footer-socials a, .footer-col-title { font-size: 11px !important; line-height: 1.2 !important; }
+    .hero-title { font-size: clamp(36px, 12vw, 64px) !important; }
+    .section-title { font-size: clamp(28px, 8vw, 40px) !important; }
+    .cta-title { font-size: clamp(36px, 10vw, 56px) !important; }
+    .campaign-card-title { font-size: 18px !important; }
+    .campaign-card-brand { font-size: 9px !important; }
+    .all-campaign-row { font-size: 13px !important; }
+    .acr-date, .acr-brand { font-size: 11px !important; }
+    .acr-name { font-size: 13px !important; }
+  }
+
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:36px;width:auto;"></a>
+  <ul class="nav-links">
+    <li class="nav-item">
+      <a href="postgame-clients.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><a href="postgame-clients.html" class="nav-drop-item">Clients</a><a href="postgame-campaigns.html" class="nav-drop-item">Campaigns</a></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-services-always-on.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown">
+        <a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a>
+        <a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a>
+        <a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a>
+        <a href="postgame-services-always-on.html" class="nav-drop-item active">Always On</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-pulse-bg"></div>
+  <div class="hero-bg-word">24/7</div>
+
+  <div class="hero-inner">
+    <div>
+      <div class="services-nav">
+        <a href="postgame-services-elevated.html" class="snav-pill">Elevated</a>
+        <a href="postgame-services-scaled.html" class="snav-pill">Scaled</a>
+        <a href="postgame-services-experiential.html" class="snav-pill">Experiential</a>
+        <a href="postgame-services-always-on.html" class="snav-pill active">Always On</a>
+      </div>
+      <div class="hero-eyebrow">Services</div>
+      <h1 class="hero-title">Always On</h1>
+      <p class="hero-positioning">
+        <strong>Continuous NIL presence</strong> that keeps your brand embedded in athlete culture year-round. Not a campaign — a program.
+      </p>
+      <div class="hero-ctas">
+        <a href="postgame-contact.html" class="btn-accent">Build Your Program →</a>
+        <a href="#what-it-is" class="btn-ghost">How It Works</a>
+      </div>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat-row">
+        <span class="hsr-label">Duration</span>
+        <span class="hsr-val">12+ Mo</span>
+      </div>
+      <div class="hero-stat-row">
+        <span class="hsr-label">Content cadence</span>
+        <span class="hsr-val">Weekly</span>
+      </div>
+      <div class="hero-stat-row">
+        <span class="hsr-label">Athlete retention</span>
+        <span class="hsr-val">95%+</span>
+      </div>
+      <div class="hero-stat-row">
+        <span class="hsr-label">Program model</span>
+        <span class="hsr-val" style="color:rgba(255,255,255,0.7);font-size:20px;font-family:Arial,Helvetica,sans-serif;font-weight:600;">Retainer-based</span>
+      </div>
+      <div class="hero-stat-row">
+        <span class="hsr-label">Best for</span>
+        <span class="hsr-val" style="color:rgba(255,255,255,0.7);font-size:20px;font-family:Arial,Helvetica,sans-serif;font-weight:600;">Brand building</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="what-wrap" id="what-it-is">
+  <div class="what-inner">
+    <div>
+      <div class="section-label">What It Is</div>
+      <h2 class="section-title">Your Brand, Embedded in Athlete Culture</h2>
+      <div class="body-text">
+        <p>Always On is for brands that want more than a moment. It's a <strong>continuous NIL program</strong> designed to build sustained athlete relationships, recurring content, and compounding brand equity across semesters, seasons, and years.</p>
+        <p>Instead of running one-off campaigns, you maintain a <strong>standing roster of athlete ambassadors</strong> who represent your brand consistently. We manage the relationship, the content calendar, the deliverables, and the reporting on an ongoing basis.</p>
+        <p>The result is deeper audience trust, better content (because athletes actually know and use the product), and a cost structure that gets more efficient over time.</p>
+      </div>
+    </div>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">🔄</div>
+        <div>
+          <div class="feature-text-title">Recurring Content Calendar</div>
+          <div class="feature-text-body">Monthly or bi-weekly content drops planned and executed by Postgame. Your brand stays visible without constant internal lift.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🤝</div>
+        <div>
+          <div class="feature-text-title">Ambassador Management</div>
+          <div class="feature-text-body">We recruit, onboard, and manage your standing athlete roster. Contract renewals, replacements, and upgrades handled end-to-end.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📈</div>
+        <div>
+          <div class="feature-text-title">Compounding Performance</div>
+          <div class="feature-text-body">Audiences grow. Engagement deepens. Athletes become genuine advocates. The longer you run, the better it performs.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🗓️</div>
+        <div>
+          <div class="feature-text-title">Seasonal Flexibility</div>
+          <div class="feature-text-body">Scale up for back-to-school, playoffs, or product launches. Scale down during off-season. The program adapts to your calendar.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📊</div>
+        <div>
+          <div class="feature-text-title">Quarterly Business Reviews</div>
+          <div class="feature-text-body">Aggregated reporting, performance benchmarks, and strategic recommendations delivered every quarter.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="how-wrap">
+  <div class="how-inner">
+    <div class="how-header">
+      <div class="section-label">Process</div>
+      <h2 class="section-title">How Always On Works</h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num">01</div>
+        <div class="how-step-title">Program Design</div>
+        <div class="how-step-body">We define the goals, athlete profile, content cadence, and budget structure for a 6-12+ month engagement.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">02</div>
+        <div class="how-step-title">Roster Build</div>
+        <div class="how-step-body">We source and sign ambassador athletes who authentically align with your brand. You approve the final roster.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">03</div>
+        <div class="how-step-title">Ongoing Execution</div>
+        <div class="how-step-body">Monthly content planning, athlete briefing, content review, and posting coordination — managed entirely by Postgame.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">04</div>
+        <div class="how-step-title">Optimize & Scale</div>
+        <div class="how-step-body">Quarterly reviews surface what's working. We refine the roster, adjust the strategy, and scale what performs.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="brands-wrap">
+  <div class="brands-inner">
+    <div class="brands-header">
+      <div>
+        <div class="section-label">Always On Partners</div>
+        <h2 class="section-title">Brands Running Year-Round</h2>
+      </div>
+      <a href="postgame-clients.html" style="font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;font-weight:600;letter-spacing:0.06em;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:2px;transition:color 0.2s;" onmouseover="this.style.color='#00859B'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">View All Clients →</a>
+    </div>
+    <div class="brand-logos">
+      <a href="brands/brand-adidas.html" class="brand-logo-card"><span class="brand-logo-name">Adidas</span></a>
+      <a href="brands/brand-hey-dude.html" class="brand-logo-card"><span class="brand-logo-name">Hey Dude</span></a>
+      <a href="brands/brand-cvs-pharmacy.html" class="brand-logo-card"><span class="brand-logo-name">CVS</span></a>
+      <a href="brands/brand-iherb.html" class="brand-logo-card"><span class="brand-logo-name">iHerb</span></a>
+      <a href="brands/brand-crocs.html" class="brand-logo-card"><span class="brand-logo-name">CROCS</span></a>
+      <a href="brands/brand-hollister.html" class="brand-logo-card"><span class="brand-logo-name">Hollister</span></a>
+      <a href="brands/brand-stanley.html" class="brand-logo-card"><span class="brand-logo-name">Stanley</span></a>
+      <a href="brands/brand-mcdonalds.html" class="brand-logo-card"><span class="brand-logo-name">McDonald's</span></a>
+    </div>
+  </div>
+</div>
+
+<div class="cta-wrap">
+  <div class="cta-bg-word">365</div>
+  <div class="cta-inner">
+    <div class="cta-eyebrow">Always On · Postgame</div>
+    <h2 class="cta-title">Stop Running<br>Campaigns.<br>Start Building<br>Presence.</h2>
+    <p class="cta-sub">A standing NIL program that compounds over time. Let's design yours.</p>
+    <div class="cta-btns">
+      <a href="postgame-contact.html" class="btn-dark">Build Your Program →</a>
+      <a href="postgame-services-elevated.html" class="btn-outline-dark">Explore Elevated</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <a href="index.html" class="logo" style="display:inline-flex;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;"></a>
+        <p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+      </div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-clients.html">Clients</a></li><li><a href="postgame-campaigns.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Postgame. All rights reserved.</div>
+      <div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

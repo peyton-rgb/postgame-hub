@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elevated — Services · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --orange: #D73F09;
+    --black: #000000;
+    --white: #FFFFFF;
+    --gray: #111111;
+    --gray-mid: #1a1a1a;
+    --accent: #C9A84C; /* gold — Elevated's signature */
+    --accent-dim: rgba(201,168,76,0.12);
+    --accent-border: rgba(201,168,76,0.2);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: #0a0a0a; color: var(--white); font-family: 'DM Sans', Arial, sans-serif; overflow-x: hidden; }
+
+  /* ── NAV ── */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; background: rgba(10,10,10,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .logo { display: flex; align-items: center; gap: 4px; text-decoration: none; }
+  .logo-text { font-weight: 600; font-size: 22px; color: var(--white); letter-spacing: -0.5px; }
+  .logo-plus { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--orange); border-radius: 50%; color: white; font-weight: 700; font-size: 14px; margin: 0 1px; }
+  .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; }
+  .nav-item { position: relative; }
+  .nav-item > a { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .nav-item > a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+  .nav-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform: rotate(180deg); }
+  .nav-dropdown { position: absolute; top: 100%; left: 0; min-width: 160px; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: all 0.2s; z-index: 200; padding-top: 8px; } .nav-dropdown-inner { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+  .nav-item:hover .nav-dropdown { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .nav-drop-item { display: block; padding: 12px 18px; font-size: 13px; color: rgba(255,255,255,0.55); text-decoration: none; transition: all 0.15s; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom: none; }
+  .nav-drop-item:hover { background: rgba(255,255,255,0.05); color: var(--white); padding-left: 22px; }
+  .nav-drop-item.active { color: var(--accent); }
+  .btn-primary { background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 14px 28px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-primary:hover { background: #c03608; transform: translateY(-1px); }
+  .btn-tracker { background: var(--white); color: var(--black); border: none; border-radius: 8px; padding: 14px 24px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s; }
+  .btn-tracker:hover { background: rgba(255,255,255,0.88); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 140px 48px 100px;
+  }
+
+  /* Fine grid pattern */
+  .hero-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* Radial glow from bottom left */
+  .hero-glow {
+    position: absolute;
+    bottom: -200px;
+    left: -100px;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Right decorative vertical text */
+  .hero-vert-text {
+    position: absolute;
+    right: 48px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: rgba(201,168,76,0.2);
+    text-transform: uppercase;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .hero-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 80px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Services nav pill */
+  .services-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 48px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 100px;
+    padding: 4px;
+    width: fit-content;
+  }
+
+  .snav-pill {
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.2s;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .snav-pill:hover { color: rgba(255,255,255,0.7); }
+  .snav-pill.active { background: var(--accent); color: #000; }
+
+  .hero-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .hero-eyebrow::before { content: ''; width: 32px; height: 1px; background: var(--accent); }
+
+  .hero-title {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(72px, 11vw, 144px);
+    line-height: 0.88;
+    letter-spacing: 0.01em;
+    color: var(--white);
+    margin-bottom: 28px;
+  }
+
+  .hero-positioning {
+    font-size: 22px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.5;
+    font-weight: 300;
+    max-width: 540px;
+    margin-bottom: 44px;
+  }
+
+  .hero-positioning strong { color: rgba(255,255,255,0.85); font-weight: 600; }
+
+  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 16px 32px;
+    font-family: 'DM Sans', Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .btn-accent:hover { background: #d4b050; transform: translateY(-1px); }
+
+  .btn-ghost {
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 16px 32px;
+    font-family: 'DM Sans', Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.35); color: var(--white); }
+
+  /* Right side — service card */
+  .hero-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 16px;
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .hero-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    opacity: 0.7;
+  }
+
+  .hero-card-stat {
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .hero-card-stat:last-of-type { border-bottom: none; }
+
+  .hcs-label { font-size: 13px; color: rgba(255,255,255,0.35); }
+  .hcs-val { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 26px; color: var(--white); letter-spacing: 0.02em; }
+  .hcs-val.gold { color: var(--accent); }
+
+  /* ── WHAT IT IS ── */
+  .what-wrap {
+    background: #0d0d0d;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .what-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 96px 48px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 96px;
+    align-items: start;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.7;
+  }
+  .section-label::before { content: ''; width: 20px; height: 1px; background: var(--accent); }
+
+  .section-title {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(36px, 4vw, 52px);
+    color: var(--white);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    margin-bottom: 28px;
+  }
+
+  .body-text {
+    font-size: 17px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.85;
+  }
+  .body-text strong { color: rgba(255,255,255,0.8); font-weight: 600; }
+  .body-text p + p { margin-top: 20px; }
+
+  /* Feature list */
+  .feature-list { display: flex; flex-direction: column; gap: 2px; }
+
+  .feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .feature-item:hover {
+    background: rgba(201,168,76,0.04);
+    border-color: rgba(201,168,76,0.15);
+  }
+
+  .feature-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+
+  .feature-text-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 4px;
+  }
+
+  .feature-text-body {
+    font-size: 13px;
+    color: rgba(255,255,255,0.3);
+    line-height: 1.5;
+  }
+
+  /* ── CASE STUDIES ── */
+  .cases-wrap {
+    background: #0a0a0a;
+    padding: 96px 0;
+  }
+
+  .cases-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+
+  .cases-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .cases-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .case-card {
+    background: #0d0d0d;
+    border: 1px solid rgba(255,255,255,0.05);
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .case-card:hover {
+    border-color: rgba(201,168,76,0.2);
+    background: rgba(201,168,76,0.02);
+  }
+
+  .case-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .case-card:hover::before { opacity: 1; }
+
+  .case-thumb {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+  }
+
+  .case-thumb-bg { position: absolute; inset: 0; transition: transform 0.5s ease; }
+  .case-card:hover .case-thumb-bg { transform: scale(1.04); }
+  .case-thumb-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%); }
+
+  .case-brand-tag {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(0,0,0,0.6);
+    color: rgba(255,255,255,0.6);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+  }
+
+  .case-body { padding: 24px; }
+
+  .case-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 100px;
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+
+  .case-title {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 26px;
+    color: var(--white);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+
+  .case-desc {
+    font-size: 13px;
+    color: rgba(255,255,255,0.35);
+    line-height: 1.55;
+  }
+
+  .case-footer {
+    padding: 14px 24px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .case-athletes { font-size: 11px; color: rgba(255,255,255,0.2); }
+  .case-link { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.2); letter-spacing: 0.06em; transition: color 0.2s; }
+  .case-card:hover .case-link { color: var(--accent); }
+
+  /* ── ATHLETE TEASER ── */
+  .teaser-wrap {
+    background: #0d0d0d;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 96px 0;
+  }
+
+  .teaser-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+
+  .teaser-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: start;
+    margin-bottom: 56px;
+  }
+
+  .teaser-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+  }
+
+  .teaser-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    text-decoration: none;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .teaser-card:hover { border-color: rgba(201,168,76,0.2); }
+
+  .teaser-thumb {
+    position: relative;
+    aspect-ratio: 3/4;
+    overflow: hidden;
+  }
+
+  .teaser-thumb-bg { position: absolute; inset: 0; transition: transform 0.5s; }
+  .teaser-card:hover .teaser-thumb-bg { transform: scale(1.04); }
+  .teaser-thumb-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 55%); }
+  .teaser-sport { position: absolute; top: 10px; left: 10px; background: var(--accent); color: #000; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+
+  .teaser-body { padding: 16px; }
+  .teaser-name { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 20px; color: var(--white); letter-spacing: 0.02em; margin-bottom: 2px; line-height: 1; }
+  .teaser-school { font-size: 11px; color: rgba(255,255,255,0.25); margin-bottom: 8px; }
+  .teaser-followers { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 18px; color: rgba(255,255,255,0.4); }
+  .teaser-followers-label { font-size: 9px; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── CTA ── */
+  .cta-wrap {
+    background: linear-gradient(135deg, #0a0800 0%, #0a0a0a 50%);
+    border-top: 1px solid rgba(201,168,76,0.1);
+    padding: 120px 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-glow {
+    position: absolute;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(201,168,76,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-inner { position: relative; z-index: 2; }
+  .cta-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; margin-bottom: 20px; opacity: 0.7; }
+  .cta-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(52px, 7vw, 88px); color: var(--white); line-height: 0.92; letter-spacing: 0.01em; margin-bottom: 20px; }
+  .cta-sub { font-size: 17px; color: rgba(255,255,255,0.35); margin-bottom: 48px; max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+  .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* ── FOOTER ── */
+  footer { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.06); padding: 64px 48px 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+  .footer-brand-desc { font-size: 14px; color: rgba(255,255,255,0.35); line-height: 1.7; margin-top: 16px; max-width: 280px; }
+  .footer-col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 24px; }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--white); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-copy { font-size: 13px; color: rgba(255,255,255,0.2); }
+  .footer-socials { display: flex; gap: 24px; }
+  .footer-socials a { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
+  .footer-socials a:hover { color: var(--orange); }
+
+  /* bg swatches */
+  .bg-1 { background: linear-gradient(135deg, #3a1a08, #0d0d0d); }
+  .bg-2 { background: linear-gradient(135deg, #0e1a3a, #080e1a); }
+  .bg-3 { background: linear-gradient(135deg, #0e3a1a, #081a0e); }
+  .bg-4 { background: linear-gradient(135deg, #2d0e3a, #18082d); }
+  .bg-5 { background: linear-gradient(135deg, #3a280a, #140e04); }
+  .bg-6 { background: linear-gradient(135deg, #1a1a3a, #0808140); }
+  .bg-7 { background: linear-gradient(135deg, #2a3a0e, #0e140a); }
+  .bg-8 { background: linear-gradient(135deg, #3a0e1a, #14060a); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .services-nav { animation: fadeUp 0.4s ease 0.05s both; }
+  .hero-eyebrow { animation: fadeUp 0.5s ease 0.1s both; }
+  .hero-title { animation: fadeUp 0.6s ease 0.2s both; }
+  .hero-positioning { animation: fadeUp 0.5s ease 0.3s both; }
+  .hero-ctas { animation: fadeUp 0.5s ease 0.4s both; }
+  .hero-card { animation: fadeUp 0.6s ease 0.25s both; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="postgame-homepage.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:32px;width:auto;display:block;"></a>
+  <ul class="nav-links">
+    <li class="nav-item">
+      <a href="postgame-brand-profile.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-brand-profile.html" class="nav-drop-item">Clients</a><a href="postgame-campaign-recap.html" class="nav-drop-item">Campaigns</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown">
+        <a href="postgame-services-elevated.html" class="nav-drop-item active">Elevated</a>
+        <a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a>
+        <a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-grid-bg"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-vert-text">Postgame Elevated · Premium NIL</div>
+
+  <div class="hero-inner">
+    <div>
+      <!-- Service switcher -->
+      <div class="services-nav">
+        <a href="postgame-services-elevated.html" class="snav-pill active">Elevated</a>
+        <a href="postgame-services-scaled.html" class="snav-pill">Scaled</a>
+        <a href="postgame-services-experiential.html" class="snav-pill">Experiential</a>
+      </div>
+
+      <div class="hero-eyebrow">Services</div>
+      <h1 class="hero-title">Elevated</h1>
+      <p class="hero-positioning">
+        <strong>Bespoke NIL partnerships</strong> for brands that want more than a post. Deep, strategic relationships between your brand and a carefully selected athlete.
+      </p>
+      <div class="hero-ctas">
+        <a href="postgame-contact.html" class="btn-accent">Start a Conversation →</a>
+        <a href="#what-it-is" class="btn-ghost">Learn More</a>
+      </div>
+    </div>
+
+    <!-- Right card -->
+    <div class="hero-card">
+      <div class="hero-card-label">What to expect</div>
+      <div class="hero-card-stat">
+        <span class="hcs-label">Athletes per campaign</span>
+        <span class="hcs-val gold">1 – 5</span>
+      </div>
+      <div class="hero-card-stat">
+        <span class="hcs-label">Relationship depth</span>
+        <span class="hcs-val">Long-term</span>
+      </div>
+      <div class="hero-card-stat">
+        <span class="hcs-label">Content approach</span>
+        <span class="hcs-val">Bespoke</span>
+      </div>
+      <div class="hero-card-stat">
+        <span class="hcs-label">Brand involvement</span>
+        <span class="hcs-val">High</span>
+      </div>
+      <div class="hero-card-stat">
+        <span class="hcs-label">Best for</span>
+        <span class="hcs-val gold">Prestige brands</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WHAT IT IS -->
+<div class="what-wrap" id="what-it-is">
+  <div class="what-inner">
+    <div>
+      <div class="section-label">What It Is</div>
+      <h2 class="section-title">NIL Done at the Highest Level</h2>
+      <div class="body-text">
+        <p>Elevated is Postgame's premium tier. It's designed for brands that understand <strong>the right athlete relationship is worth more than a hundred random posts</strong>. We identify one to five athletes whose identity, audience, and values are a genuine fit for your brand — not just a numbers match.</p>
+        <p>We manage everything end to end: athlete vetting, contract negotiation, creative brief development, content strategy, shoot coordination, and ongoing relationship management. Your team gets a single point of contact and a partner who cares about the outcome as much as you do.</p>
+        <p>The result is content that doesn't look like an ad — because it isn't. It's an authentic relationship that an athlete's audience can feel.</p>
+      </div>
+    </div>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">🎯</div>
+        <div>
+          <div class="feature-text-title">Strategic Athlete Matching</div>
+          <div class="feature-text-body">We vet every athlete for brand alignment, audience quality, and long-term fit — not just follower count.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📋</div>
+        <div>
+          <div class="feature-text-title">Full Creative Direction</div>
+          <div class="feature-text-body">Custom briefs, shot lists, and content strategy developed specifically for your campaign goals.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🤝</div>
+        <div>
+          <div class="feature-text-title">Contract & Legal Management</div>
+          <div class="feature-text-body">We handle every NIL agreement, usage rights, and compliance requirement so you don't have to.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📈</div>
+        <div>
+          <div class="feature-text-title">Ongoing Relationship Management</div>
+          <div class="feature-text-body">We maintain the athlete relationship across multiple campaigns, keeping alignment strong over time.</div>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🔒</div>
+        <div>
+          <div class="feature-text-title">Exclusivity Options</div>
+          <div class="feature-text-body">Category exclusivity available — your athlete won't be activating for a competitor on the side.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CASE STUDIES -->
+<div class="cases-wrap">
+  <div class="cases-inner">
+    <div class="cases-header">
+      <div>
+        <div class="section-label">Case Studies</div>
+        <h2 class="section-title">Elevated in Action</h2>
+      </div>
+      <a href="postgame-campaign-recap.html" style="font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;font-weight:600;letter-spacing:0.06em;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:2px;transition:color 0.2s;" onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">View All Campaign Recaps →</a>
+    </div>
+
+    <div class="cases-grid">
+      <a href="postgame-campaign-recap.html" class="case-card">
+        <div class="case-thumb"><div class="case-thumb-bg bg-1"></div><div class="case-thumb-overlay"></div><div class="case-brand-tag">Nike</div></div>
+        <div class="case-body">
+          <span class="case-tag">Brand Ambassador</span>
+          <div class="case-title">Just Do It — Campus Series</div>
+          <div class="case-desc">A season-long ambassador relationship turning a 4M-follower WR into Nike's authentic campus voice.</div>
+        </div>
+        <div class="case-footer"><span class="case-athletes">1 athlete · 12 weeks</span><span class="case-link">View Recap →</span></div>
+      </a>
+      <a href="postgame-campaign-recap.html" class="case-card">
+        <div class="case-thumb"><div class="case-thumb-bg bg-5"></div><div class="case-thumb-overlay"></div><div class="case-brand-tag">Beats</div></div>
+        <div class="case-body">
+          <span class="case-tag">Lifestyle Campaign</span>
+          <div class="case-title">Hear It First</div>
+          <div class="case-desc">Three carefully selected athletes whose tunnel walk content became the campaign's most-shared assets.</div>
+        </div>
+        <div class="case-footer"><span class="case-athletes">3 athletes · 8 weeks</span><span class="case-link">View Recap →</span></div>
+      </a>
+      <a href="postgame-campaign-recap.html" class="case-card">
+        <div class="case-thumb"><div class="case-thumb-bg bg-2"></div><div class="case-thumb-overlay"></div><div class="case-brand-tag">Rolex</div></div>
+        <div class="case-body">
+          <span class="case-tag">Prestige Partnership</span>
+          <div class="case-title">Defining Moments</div>
+          <div class="case-desc">A single athlete, a single watch, an editorial campaign that ran in three national outlets.</div>
+        </div>
+        <div class="case-footer"><span class="case-athletes">1 athlete · 6 weeks</span><span class="case-link">View Recap →</span></div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ATHLETE TEASER -->
+<div class="teaser-wrap">
+  <div class="teaser-inner">
+    <div class="teaser-header">
+      <div>
+        <div class="section-label">The Network</div>
+        <h2 class="section-title">Tier 1 Athletes Available for Elevated</h2>
+      </div>
+      <div>
+        <p style="font-size:16px;color:rgba(255,255,255,0.35);line-height:1.7;margin-bottom:24px;">Every Elevated campaign starts with a conversation about fit. We don't pitch you a roster — we identify two or three athletes who are right for your specific brief and present them with context.</p>
+        <a href="postgame-tier1-tracker.html" class="btn-ghost" style="font-size:13px;padding:12px 24px;">Browse the Tracker →</a>
+      </div>
+    </div>
+
+    <div class="teaser-grid">
+      <a href="postgame-player-spotlight.html" class="teaser-card">
+        <div class="teaser-thumb"><div class="teaser-thumb-bg bg-1"></div><div class="teaser-thumb-overlay"></div><div class="teaser-sport">Football</div></div>
+        <div class="teaser-body"><div class="teaser-name">Jordan Williams</div><div class="teaser-school">University of Georgia</div><div class="teaser-followers">4.2M</div><div class="teaser-followers-label">Followers</div></div>
+      </a>
+      <a href="postgame-player-spotlight.html" class="teaser-card">
+        <div class="teaser-thumb"><div class="teaser-thumb-bg bg-2"></div><div class="teaser-thumb-overlay"></div><div class="teaser-sport">Basketball</div></div>
+        <div class="teaser-body"><div class="teaser-name">Marcus Davis</div><div class="teaser-school">Duke University</div><div class="teaser-followers">2.1M</div><div class="teaser-followers-label">Followers</div></div>
+      </a>
+      <a href="postgame-player-spotlight.html" class="teaser-card">
+        <div class="teaser-thumb"><div class="teaser-thumb-bg bg-3"></div><div class="teaser-thumb-overlay"></div><div class="teaser-sport">Track</div></div>
+        <div class="teaser-body"><div class="teaser-name">Aaliyah Johnson</div><div class="teaser-school">USC</div><div class="teaser-followers">980K</div><div class="teaser-followers-label">Followers</div></div>
+      </a>
+      <a href="postgame-player-spotlight.html" class="teaser-card">
+        <div class="teaser-thumb"><div class="teaser-thumb-bg bg-4"></div><div class="teaser-thumb-overlay"></div><div class="teaser-sport">Volleyball</div></div>
+        <div class="teaser-body"><div class="teaser-name">Kayla Thompson</div><div class="teaser-school">Nebraska</div><div class="teaser-followers">620K</div><div class="teaser-followers-label">Followers</div></div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-wrap">
+  <div class="cta-glow"></div>
+  <div class="cta-inner">
+    <div class="cta-eyebrow">Elevated · Postgame</div>
+    <h2 class="cta-title">Ready to Build<br>Something Real?</h2>
+    <p class="cta-sub">Tell us about your brand and what you're trying to achieve. We'll come back with a shortlist and a strategy.</p>
+    <div class="cta-btns">
+      <a href="postgame-contact.html" class="btn-accent">Start the Conversation →</a>
+      <a href="postgame-services-scaled.html" class="btn-ghost">Explore Scaled Instead</a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <a href="postgame-homepage.html" class="logo" style="display:inline-block;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;display:block;"></a>
+        <p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+      </div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-brand-profile.html">Clients</a></li><li><a href="postgame-campaign-recap.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Postgame. All rights reserved.</div>
+      <div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

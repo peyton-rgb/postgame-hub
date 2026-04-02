@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just Do It — Campus Series · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --orange: #D73F09;
+    --black: #000000;
+    --white: #FFFFFF;
+    --gray: #111111;
+    --gray-mid: #1a1a1a;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--white); font-family: 'DM Sans', Arial, sans-serif; overflow-x: hidden; }
+
+  /* ── NAV ── */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; background: rgba(0,0,0,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .logo { display: flex; align-items: center; gap: 4px; text-decoration: none; }
+  .logo-text { font-weight: 600; font-size: 22px; color: var(--white); letter-spacing: -0.5px; }
+  .logo-plus { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--orange); border-radius: 50%; color: white; font-weight: 700; font-size: 14px; margin: 0 1px; }
+  .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; }
+  .nav-item { position: relative; }
+  .nav-item > a { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .nav-item > a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+  .nav-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform: rotate(180deg); }
+  .nav-dropdown { position: absolute; top: 100%; left: 0; min-width: 160px; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: all 0.2s; z-index: 200; padding-top: 8px; } .nav-dropdown-inner { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+  .nav-item:hover .nav-dropdown { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .nav-drop-item { display: block; padding: 12px 18px; font-size: 13px; color: rgba(255,255,255,0.55); text-decoration: none; transition: all 0.15s; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom: none; }
+  .nav-drop-item:hover { background: rgba(255,255,255,0.05); color: var(--white); padding-left: 22px; }
+  .btn-primary { background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 14px 28px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-primary:hover { background: #c03608; transform: translateY(-1px); }
+  .btn-tracker { background: var(--white); color: var(--black); border: none; border-radius: 8px; padding: 14px 24px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-tracker:hover { background: rgba(255,255,255,0.88); transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 160px 48px 96px;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* Big decorative background word */
+  .hero-bg-word {
+    position: absolute;
+    right: -40px;
+    top: 80px;
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(180px, 24vw, 340px);
+    color: rgba(255,255,255,0.018);
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  .breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 40px; font-size: 12px; color: rgba(255,255,255,0.35); }
+  .breadcrumb a { color: rgba(255,255,255,0.35); text-decoration: none; transition: color 0.2s; }
+  .breadcrumb a:hover { color: var(--orange); }
+  .breadcrumb-sep { color: rgba(255,255,255,0.15); }
+
+  .hero-top { display: grid; grid-template-columns: 1fr auto; gap: 64px; align-items: start; }
+
+  .hero-left {}
+
+  .hero-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .hero-brand-pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; padding: 6px 14px 6px 8px; text-decoration: none; transition: border-color 0.2s; }
+  .hero-brand-pill:hover { border-color: rgba(255,255,255,0.25); }
+  .hero-brand-icon { width: 24px; height: 24px; background: rgba(255,255,255,0.06); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', Arial, sans-serif; font-size: 10px; color: rgba(255,255,255,0.4); }
+  .hero-brand-name { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 0.04em; }
+  .hero-date-pill { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.25); padding: 6px 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 100px; }
+
+  .campaign-title {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: clamp(56px, 9vw, 120px);
+    line-height: 0.9;
+    letter-spacing: 0.01em;
+    color: var(--white);
+    margin-bottom: 32px;
+  }
+
+  .campaign-title .accent { color: var(--orange); }
+
+  .hero-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hero-tag { padding: 6px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px; font-size: 12px; color: rgba(255,255,255,0.4); }
+  .hero-tag.orange { background: rgba(215,63,9,0.1); border-color: rgba(215,63,9,0.2); color: var(--orange); font-weight: 600; }
+
+  /* Right side quick stats */
+  .hero-right { padding-top: 80px; display: flex; flex-direction: column; gap: 2px; min-width: 180px; }
+
+  .hero-quick-stat { background: var(--gray-mid); padding: 20px 24px; }
+  .hero-quick-stat:first-child { border-radius: 8px 8px 0 0; }
+  .hero-quick-stat:last-child { border-radius: 0 0 8px 8px; }
+  .hqs-num { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 36px; color: var(--white); line-height: 1; }
+  .hqs-label { font-size: 10px; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
+
+  /* ── DIVIDER ── */
+  .section-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 0; }
+
+  /* ── OVERVIEW BRIEF ── */
+  .overview-wrap { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .overview-inner { max-width: 1200px; margin: 0 auto; padding: 64px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
+
+  .overview-label { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.2); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .overview-label::before { content: ''; width: 16px; height: 1px; background: rgba(255,255,255,0.15); }
+
+  .overview-text { font-size: 17px; color: rgba(255,255,255,0.55); line-height: 1.85; }
+  .overview-text strong { color: rgba(255,255,255,0.85); font-weight: 600; }
+
+  .overview-details { display: flex; flex-direction: column; gap: 2px; margin-top: 0; }
+
+  .detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--gray-mid);
+    gap: 16px;
+  }
+
+  .detail-row:first-child { border-radius: 8px 8px 0 0; }
+  .detail-row:last-child { border-radius: 0 0 8px 8px; }
+
+  .detail-key { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.25); }
+  .detail-val { font-size: 14px; color: rgba(255,255,255,0.65); font-weight: 500; text-align: right; }
+  .detail-val.orange { color: var(--orange); font-weight: 700; }
+
+  /* ── CONTENT GALLERY ── */
+  .gallery-wrap { max-width: 1200px; margin: 0 auto; padding: 72px 48px 80px; }
+
+  .section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; gap: 24px; flex-wrap: wrap; }
+  .section-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.2); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section-eyebrow::before { content: ''; width: 16px; height: 1px; background: rgba(255,255,255,0.15); }
+  .section-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(32px, 4vw, 48px); color: var(--white); letter-spacing: 0.02em; line-height: 1; }
+
+  /* Adaptive content grid — same system as player spotlight */
+  .content-grid { display: grid; gap: 2px; }
+  .content-tile[data-format="vertical"]   { aspect-ratio: 9/16; }
+  .content-tile[data-format="horizontal"] { aspect-ratio: 16/9; }
+  .content-tile[data-format="square"]     { aspect-ratio: 1/1; }
+
+  .content-tile { position: relative; overflow: hidden; cursor: pointer; background: #0d0d0d; }
+  .content-tile-bg { position: absolute; inset: 0; transition: transform 0.5s ease; }
+  .content-tile:hover .content-tile-bg { transform: scale(1.04); }
+  .tile-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 55%); transition: opacity 0.3s; }
+  .content-tile:hover .tile-overlay { opacity: 0.6; }
+  .tile-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
+  .content-tile:hover .tile-play { opacity: 1; }
+  .play-btn { width: 52px; height: 52px; background: rgba(215,63,9,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
+  .content-tile:hover .play-btn { transform: scale(1.1); }
+  .play-tri { width: 0; height: 0; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 16px solid white; margin-left: 4px; }
+  .tile-type-badge { position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.6); color: rgba(255,255,255,0.6); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; backdrop-filter: blur(4px); }
+  .tile-info { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px; }
+  .tile-platform { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .tile-caption { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4; font-weight: 500; }
+  .tile-athlete { font-size: 11px; color: var(--orange); font-weight: 700; margin-top: 6px; letter-spacing: 0.04em; }
+
+  /* ── CAROUSEL GALLERY ── */
+  .carousel-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+  }
+
+  .c-card {
+    background: var(--gray-mid);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Athlete header */
+  .c-card-athlete {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .c-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .c-athlete-name {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 17px;
+    color: var(--white);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    display: block;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .c-athlete-name:hover { color: var(--orange); }
+
+  .c-athlete-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.25);
+    margin-top: 3px;
+  }
+
+  /* Stage — clips slides */
+  .c-stage {
+    position: relative;
+    aspect-ratio: 9/16;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .c-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+  }
+
+  .c-slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .c-slide-bg {
+    position: absolute;
+    inset: 0;
+  }
+
+  .c-slide-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 55%);
+  }
+
+  /* Play button — only on video slides */
+  .c-play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    background: rgba(215,63,9,0.85);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background 0.2s;
+    cursor: pointer;
+  }
+
+  .c-slide:hover .c-play-btn { transform: translate(-50%,-50%) scale(1.1); background: var(--orange); }
+
+  .play-tri {
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 14px solid white;
+    margin-left: 4px;
+  }
+
+  /* Content badge + info */
+  .c-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(0,0,0,0.6);
+    color: rgba(255,255,255,0.55);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 3px;
+    backdrop-filter: blur(4px);
+  }
+
+  .c-slide-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+  }
+
+  .c-platform {
+    font-size: 9px;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 3px;
+  }
+
+  .c-caption {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.4;
+    font-weight: 500;
+  }
+
+  /* Controls bar */
+  .c-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .c-arrow {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.3);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+    font-family: inherit;
+    line-height: 1;
+  }
+
+  .c-arrow:hover { color: var(--white); background: rgba(255,255,255,0.06); }
+
+  .c-dots {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .c-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  .c-dot.active {
+    background: var(--orange);
+    transform: scale(1.3);
+  }
+  .ct-1 { background: linear-gradient(135deg, #3a1a08, #0d0d0d); }
+  .ct-2 { background: linear-gradient(135deg, #1a3a08, #0d0d0d); }
+  .ct-3 { background: linear-gradient(135deg, #3a0808, #0d0d0d); }
+  .ct-4 { background: linear-gradient(135deg, #08183a, #0d0d0d); }
+  .ct-5 { background: linear-gradient(135deg, #2a1a3a, #0d0d0d); }
+  .ct-6 { background: linear-gradient(135deg, #3a2808, #0d0d0d); }
+  .ct-7 { background: linear-gradient(135deg, #083a2a, #0d0d0d); }
+  .ct-8 { background: linear-gradient(135deg, #3a3008, #0d0d0d); }
+
+  /* ── TIER 2/3 CONTENT STRIP ── */
+  .t23-wrap {
+    background: var(--black);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 56px 0 64px;
+  }
+
+  .t23-header {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 48px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .t23-header-left {}
+
+  /* Score pill explanation tooltip */
+  .t23-score-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .t23-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+  }
+
+  .t23-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Horizontal scroll container */
+  .t23-scroll-outer {
+    padding: 0 48px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Fade edges */
+  .t23-scroll-outer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 120px;
+    background: linear-gradient(to left, var(--black), transparent);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .t23-scroll-track {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
+    cursor: grab;
+  }
+
+  .t23-scroll-track:active { cursor: grabbing; }
+  .t23-scroll-track::-webkit-scrollbar { display: none; }
+
+  /* Each content tile in the strip */
+  .t23-tile {
+    position: relative;
+    flex-shrink: 0;
+    width: 160px;
+    aspect-ratio: 9/16;
+    overflow: hidden;
+    background: #0d0d0d;
+    scroll-snap-align: start;
+    cursor: pointer;
+  }
+
+  /* Horizontal tiles are wider */
+  .t23-tile[data-format="horizontal"] {
+    width: 320px;
+    aspect-ratio: 16/9;
+  }
+
+  .t23-tile[data-format="square"] {
+    width: 180px;
+    aspect-ratio: 1/1;
+  }
+
+  .t23-tile-bg {
+    position: absolute;
+    inset: 0;
+    transition: transform 0.5s ease;
+  }
+
+  .t23-tile:hover .t23-tile-bg { transform: scale(1.04); }
+
+  .t23-tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 55%);
+  }
+
+  /* Play indicator for video */
+  .t23-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -60%);
+    width: 36px;
+    height: 36px;
+    background: rgba(215,63,9,0.8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+
+  .t23-tile:hover .t23-play { opacity: 1; transform: translate(-50%,-50%); }
+
+  .t23-play-tri {
+    width: 0; height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 11px solid white;
+    margin-left: 3px;
+  }
+
+  /* Score badge — top right */
+  .t23-score {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .t23-score.high   { background: rgba(215,63,9,0.9); color: white; }
+  .t23-score.mid    { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); }
+  .t23-score.low    { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.35); }
+
+  /* Type badge */
+  .t23-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.6);
+    color: rgba(255,255,255,0.5);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Bottom info */
+  .t23-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+  }
+
+  .t23-athlete {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 14px;
+    color: var(--orange);
+    letter-spacing: 0.02em;
+    margin-bottom: 2px;
+  }
+
+  .t23-caption {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.35;
+  }
+
+  .t23-school {
+    font-size: 9px;
+    color: rgba(255,255,255,0.2);
+    margin-top: 3px;
+  }
+
+  /* Scroll nav buttons */
+  .t23-nav {
+    max-width: 1200px;
+    margin: 20px auto 0;
+    padding: 0 48px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .t23-nav-btn {
+    background: var(--gray-mid);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.4);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+
+  .t23-nav-btn:hover { background: #222; color: var(--white); border-color: rgba(255,255,255,0.2); }
+
+  .t23-count {
+    font-size: 12px;
+    color: rgba(255,255,255,0.2);
+    margin-left: 8px;
+  }
+
+  /* ── ATHLETE ROSTER (compact list) ── */
+  .roster-wrap { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.05); }
+  .roster-inner { max-width: 1200px; margin: 0 auto; padding: 72px 48px 80px; }
+
+  .roster-list { display: flex; flex-direction: column; gap: 2px; margin-top: 32px; }
+
+  .roster-row {
+    display: grid;
+    grid-template-columns: 48px 1fr auto auto;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 24px;
+    background: var(--gray-mid);
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+
+  .roster-row:first-child { border-radius: 8px 8px 0 0; }
+  .roster-row:last-child { border-radius: 0 0 8px 8px; }
+  .roster-row:hover { background: #222; }
+
+  .roster-num { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 20px; color: rgba(255,255,255,0.12); text-align: center; }
+  .roster-num.top { color: var(--orange); }
+
+  .roster-athlete-info { display: flex; align-items: center; gap: 14px; }
+  .roster-avatar { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; overflow: hidden; position: relative; }
+  .roster-avatar-bg { position: absolute; inset: 0; }
+  .roster-athlete-name { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 20px; color: var(--white); letter-spacing: 0.02em; line-height: 1; margin-bottom: 3px; }
+  .roster-athlete-meta { display: flex; align-items: center; gap: 7px; font-size: 11px; color: rgba(255,255,255,0.3); }
+  .sport-tag { background: rgba(215,63,9,0.1); color: var(--orange); padding: 2px 7px; border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .roster-followers { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 20px; color: rgba(255,255,255,0.4); text-align: right; white-space: nowrap; }
+  .roster-followers-label { font-size: 9px; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.08em; text-align: right; }
+
+  .roster-spotlight-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid rgba(255,255,255,0.08); border-radius: 5px; color: rgba(255,255,255,0.25); font-size: 12px; font-weight: 700; text-decoration: none; transition: all 0.2s; letter-spacing: 0.04em; white-space: nowrap; }
+  .roster-row:hover .roster-spotlight-link { border-color: var(--orange); color: var(--orange); }
+
+  /* ── CTA ── */
+  .cta-block { background: var(--orange); padding: 100px 48px; text-align: center; }
+  .cta-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(48px, 6vw, 72px); color: var(--white); line-height: 0.95; letter-spacing: 0.02em; margin-bottom: 20px; }
+  .cta-sub { font-size: 17px; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
+  .cta-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .btn-white { background: var(--white); color: var(--orange); border: none; border-radius: 8px; padding: 16px 36px; font-family: 'DM Sans', Arial, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-white:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); }
+  .btn-outline-white { background: transparent; color: var(--white); border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 16px 36px; font-family: 'DM Sans', Arial, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-outline-white:hover { border-color: var(--white); transform: translateY(-1px); }
+
+  /* ── FOOTER ── */
+  footer { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.06); padding: 64px 48px 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+  .footer-brand-desc { font-size: 14px; color: rgba(255,255,255,0.35); line-height: 1.7; margin-top: 16px; max-width: 280px; }
+  .footer-col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 24px; }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--white); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-copy { font-size: 13px; color: rgba(255,255,255,0.2); }
+  .footer-socials { display: flex; gap: 24px; }
+  .footer-socials a { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
+  .footer-socials a:hover { color: var(--orange); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  .hero-meta-row { animation: fadeUp 0.5s ease 0.1s both; }
+  .campaign-title { animation: fadeUp 0.6s ease 0.2s both; }
+  .hero-tags { animation: fadeUp 0.5s ease 0.3s both; }
+  .hero-right { animation: fadeUp 0.6s ease 0.25s both; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="postgame-homepage.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:32px;width:auto;display:block;"></a>
+  <ul class="nav-links">
+    <li class="nav-item">
+      <a href="postgame-brand-profile.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-brand-profile.html" class="nav-drop-item">Clients</a><a href="postgame-campaign-recap.html" class="nav-drop-item">Campaigns</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div style="background:var(--black);border-bottom:1px solid rgba(255,255,255,0.05);">
+  <div class="hero">
+    <div class="hero-bg-word">CAMPUS</div>
+
+    <div class="breadcrumb">
+      <a href="postgame-brand-profile.html">Brands</a>
+      <span class="breadcrumb-sep">/</span>
+      <a href="postgame-brand-profile.html">Nike</a>
+      <span class="breadcrumb-sep">/</span>
+      <span>Just Do It — Campus Series</span>
+    </div>
+
+    <div class="hero-top">
+      <div class="hero-left">
+        <div class="hero-meta-row">
+          <a href="postgame-brand-profile.html" class="hero-brand-pill">
+            <div class="hero-brand-icon">NK</div>
+            <span class="hero-brand-name">Nike</span>
+          </a>
+          <div class="hero-date-pill">Feb 2025</div>
+        </div>
+
+        <h1 class="campaign-title">Just Do It<br><span class="accent">Campus</span><br>Series</h1>
+
+        <div class="hero-tags">
+          <span class="hero-tag orange">Brand Ambassador</span>
+          <span class="hero-tag">Social Campaign</span>
+          <span class="hero-tag">Content Creation</span>
+          <span class="hero-tag">Apparel</span>
+          <span class="hero-tag">Multi-Sport</span>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="hero-quick-stat">
+          <div class="hqs-num">48</div>
+          <div class="hqs-label">Athletes</div>
+        </div>
+        <div class="hero-quick-stat">
+          <div class="hqs-num">12</div>
+          <div class="hqs-label">Schools</div>
+        </div>
+        <div class="hero-quick-stat">
+          <div class="hqs-num">6</div>
+          <div class="hqs-label">Sports</div>
+        </div>
+        <div class="hero-quick-stat">
+          <div class="hqs-num">3 Wks</div>
+          <div class="hqs-label">Duration</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERVIEW BRIEF -->
+<div class="overview-wrap">
+  <div class="overview-inner">
+    <div>
+      <div class="overview-label">Campaign Brief</div>
+      <p class="overview-text">
+        Nike's <strong>Just Do It — Campus Series</strong> was a large-scale NIL activation designed to reach college students authentically across six sports. Postgame selected and coordinated <strong>48 athlete creators</strong> across 12 universities, each producing platform-native content in their own voice — no scripts, no stiff endorsements.
+        <br><br>
+        Athletes delivered content across Instagram Reels, TikTok, and Stories, showcasing Nike apparel and footwear as part of their actual daily routines — training, campus life, and game day. The brief prioritized <strong>authenticity over polish</strong> and leaned into each athlete's individual audience and style.
+      </p>
+    </div>
+
+    <div>
+      <div class="overview-label">Campaign Details</div>
+      <div class="overview-details">
+        <div class="detail-row">
+          <span class="detail-key">Brand</span>
+          <span class="detail-val">Nike</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Campaign</span>
+          <span class="detail-val">Just Do It — Campus Series</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Executed</span>
+          <span class="detail-val">February 2025</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Athletes</span>
+          <span class="detail-val">48 across 12 schools</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Sports</span>
+          <span class="detail-val">Football, Basketball, Track, Soccer, Volleyball, Baseball</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Platforms</span>
+          <span class="detail-val">Instagram, TikTok</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Content Type</span>
+          <span class="detail-val">Reels, Stories, Static Posts</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">Service Type</span>
+          <span class="detail-val orange">Scaled NIL</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT GALLERY -->
+<div class="gallery-wrap">
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">Content Gallery</div>
+      <div class="section-title">Campaign Content</div>
+    </div>
+  </div>
+
+  <!-- Carousel grid: 4 columns of athlete cards -->
+  <div class="carousel-grid">
+
+    <!-- Jordan Williams — video + 2 photos -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#3a1a08,#0d0d0d)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Jordan Williams</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Football</span> Georgia</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <!-- Slide 0: Video -->
+        <div class="c-slide active" data-type="video">
+          <div class="c-slide-bg ct-1"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-play-btn"><div class="play-tri"></div></div>
+          <div class="c-badge">Reel · 60s</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Lace-up. Show up. Just Do It.</div>
+          </div>
+        </div>
+        <!-- Slide 1: Photo -->
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-6"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">The new campus colorway.</div>
+          </div>
+        </div>
+        <!-- Slide 2: Photo -->
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-8"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Just Do It. Every day.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+          <span class="c-dot"></span>
+          <span class="c-dot"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Marcus Davis — video + 1 photo -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#0e1a3a,#080e1a)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Marcus Davis</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Basketball</span> Duke</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <div class="c-slide active" data-type="video">
+          <div class="c-slide-bg ct-2"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-play-btn"><div class="play-tri"></div></div>
+          <div class="c-badge">TikTok · 45s</div>
+          <div class="c-slide-info">
+            <div class="c-platform">TikTok</div>
+            <div class="c-caption">Campus fit check with the new drops.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-4"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Court to campus in the same pair.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+          <span class="c-dot"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Aaliyah Johnson — video + 2 photos -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#2a1a3a,#0d0d0d)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Aaliyah Johnson</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Track</span> USC</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <div class="c-slide active" data-type="video">
+          <div class="c-slide-bg ct-3"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-play-btn"><div class="play-tri"></div></div>
+          <div class="c-badge">Reel · 30s</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Game day starts with the right pair.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-5"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Speed looks like this.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-7"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Training day never stops.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+          <span class="c-dot"></span>
+          <span class="c-dot"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Kayla Thompson — photos only (no video) -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#083a2a,#0d0d0d)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Kayla Thompson</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Volleyball</span> Nebraska</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <div class="c-slide active" data-type="photo">
+          <div class="c-slide-bg ct-7"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Behind the drop.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-2"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">New season, new gear.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-5"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Story</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Just Do It means everything to me.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+          <span class="c-dot"></span>
+          <span class="c-dot"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Devon Wright — video + 1 photo -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#3a280a,#140e04)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Devon Wright</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Football</span> Ohio State</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <div class="c-slide active" data-type="video">
+          <div class="c-slide-bg ct-6"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-play-btn"><div class="play-tri"></div></div>
+          <div class="c-badge">YouTube · 2min</div>
+          <div class="c-slide-info">
+            <div class="c-platform">YouTube</div>
+            <div class="c-caption">A day in the life — game week with Nike.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-1"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">The fit hits different on game day.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+          <span class="c-dot"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Sofia Reyes — photos only -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#3a0e1a,#14060a)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Sofia Reyes</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Soccer</span> Stanford</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <div class="c-slide active" data-type="photo">
+          <div class="c-slide-bg ct-8"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Just Do It. Every single day.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-3"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Story</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">Pre-match ritual, always.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+          <span class="c-dot"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Tre Jackson — video only -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#0a1a3a,#060a14)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Tre Jackson</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Baseball</span> Vanderbilt</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <div class="c-slide active" data-type="video">
+          <div class="c-slide-bg ct-4"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-play-btn"><div class="play-tri"></div></div>
+          <div class="c-badge">TikTok · 60s</div>
+          <div class="c-slide-info">
+            <div class="c-platform">TikTok</div>
+            <div class="c-caption">Practice looks different in these.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)" style="opacity:0.2;pointer-events:none">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)" style="opacity:0.2;pointer-events:none">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Tyler Chen — video + 1 photo -->
+    <div class="c-card">
+      <div class="c-card-athlete">
+        <div class="c-avatar" style="background:linear-gradient(135deg,#1a3a10,#0a140a)"></div>
+        <div>
+          <a href="postgame-player-spotlight.html" class="c-athlete-name">Tyler Chen</a>
+          <div class="c-athlete-meta"><span class="sport-tag">Soccer</span> UCLA</div>
+        </div>
+      </div>
+      <div class="c-stage" data-index="0">
+        <div class="c-slide active" data-type="video">
+          <div class="c-slide-bg ct-5"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-play-btn"><div class="play-tri"></div></div>
+          <div class="c-badge">TikTok · 30s</div>
+          <div class="c-slide-info">
+            <div class="c-platform">TikTok</div>
+            <div class="c-caption">New colorway just dropped.</div>
+          </div>
+        </div>
+        <div class="c-slide" data-type="photo">
+          <div class="c-slide-bg ct-7"></div>
+          <div class="c-slide-overlay"></div>
+          <div class="c-badge">Static Post</div>
+          <div class="c-slide-info">
+            <div class="c-platform">Instagram</div>
+            <div class="c-caption">The boots that started it all.</div>
+          </div>
+        </div>
+      </div>
+      <div class="c-controls">
+        <button class="c-arrow c-prev" onclick="slide(this,-1)">&#8592;</button>
+        <div class="c-dots">
+          <span class="c-dot active"></span>
+          <span class="c-dot"></span>
+        </div>
+        <button class="c-arrow c-next" onclick="slide(this,1)">&#8594;</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TIER 2/3 CONTENT STRIP -->
+<div class="t23-wrap">
+  <div class="t23-header">
+    <div class="t23-header-left">
+      <div class="section-eyebrow">Tier 2 &amp; 3 Athletes</div>
+      <div class="section-title">More From This Campaign</div>
+    </div>
+    <div>
+      <div class="t23-score-legend">
+        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-bottom:10px;">Content scored by platform, format &amp; reach</div>
+      </div>
+      <div class="t23-score-legend">
+        <div class="t23-legend-item"><div class="t23-legend-dot" style="background:rgba(215,63,9,0.9)"></div>Top scored</div>
+        <div class="t23-legend-item"><div class="t23-legend-dot" style="background:rgba(255,255,255,0.15)"></div>Mid scored</div>
+        <div class="t23-legend-item"><div class="t23-legend-dot" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)"></div>Lower scored</div>
+        <div class="t23-legend-item" style="margin-left:8px;padding-left:16px;border-left:1px solid rgba(255,255,255,0.08)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Score = (Video×3) + (Platform score) + (Reach tier)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="t23-scroll-outer">
+    <div class="t23-scroll-track" id="t23-track">
+
+      <!-- Score 94 — Reel, high reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-2"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">Reel · 45s</div>
+        <div class="t23-score high">94</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Chris Moore</div>
+          <div class="t23-caption">Early morning grind never stops.</div>
+          <div class="t23-school">Alabama · Football</div>
+        </div>
+      </div>
+
+      <!-- Score 91 — TikTok, high reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-5"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">TikTok · 30s</div>
+        <div class="t23-score high">91</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Destiny Hall</div>
+          <div class="t23-caption">New kicks for the new season.</div>
+          <div class="t23-school">Florida State · Track</div>
+        </div>
+      </div>
+
+      <!-- Score 88 — YouTube, horizontal -->
+      <div class="t23-tile" data-format="horizontal">
+        <div class="t23-tile-bg ct-4"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">YouTube · 3min</div>
+        <div class="t23-score high">88</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Marcus Bell</div>
+          <div class="t23-caption">What I wear to every practice — Nike haul.</div>
+          <div class="t23-school">Michigan · Basketball</div>
+        </div>
+      </div>
+
+      <!-- Score 82 — Reel, mid reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-7"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">Reel · 30s</div>
+        <div class="t23-score mid">82</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Priya Nair</div>
+          <div class="t23-caption">Tunnel walk energy all week.</div>
+          <div class="t23-school">Texas · Soccer</div>
+        </div>
+      </div>
+
+      <!-- Score 79 — TikTok, mid reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-1"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">TikTok · 60s</div>
+        <div class="t23-score mid">79</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Elijah Ross</div>
+          <div class="t23-caption">The fit that does it all.</div>
+          <div class="t23-school">Penn State · Baseball</div>
+        </div>
+      </div>
+
+      <!-- Score 74 — Static, mid reach -->
+      <div class="t23-tile" data-format="square">
+        <div class="t23-tile-bg ct-3"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-badge">Static Post</div>
+        <div class="t23-score mid">74</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Jada Williams</div>
+          <div class="t23-caption">Game ready. Always.</div>
+          <div class="t23-school">LSU · Volleyball</div>
+        </div>
+      </div>
+
+      <!-- Score 71 — Reel, mid reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-6"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">Reel · 45s</div>
+        <div class="t23-score mid">71</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Noah Park</div>
+          <div class="t23-caption">Just Do It was made for days like this.</div>
+          <div class="t23-school">Oregon · Football</div>
+        </div>
+      </div>
+
+      <!-- Score 65 — Story, lower reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-8"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">Story</div>
+        <div class="t23-score low">65</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Mia Torres</div>
+          <div class="t23-caption">First day back. These laces never miss.</div>
+          <div class="t23-school">Arizona · Swimming</div>
+        </div>
+      </div>
+
+      <!-- Score 61 — Static, lower reach -->
+      <div class="t23-tile" data-format="square">
+        <div class="t23-tile-bg ct-2"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-badge">Static Post</div>
+        <div class="t23-score low">61</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Ben Okafor</div>
+          <div class="t23-caption">Wearing my confidence today.</div>
+          <div class="t23-school">Iowa · Wrestling</div>
+        </div>
+      </div>
+
+      <!-- Score 58 — TikTok, lower reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-5"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-play"><div class="t23-play-tri"></div></div>
+        <div class="t23-badge">TikTok · 20s</div>
+        <div class="t23-score low">58</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Riley Chang</div>
+          <div class="t23-caption">Campus season is back.</div>
+          <div class="t23-school">Wisconsin · Track</div>
+        </div>
+      </div>
+
+      <!-- Score 54 — Static, lower reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-3"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-badge">Static Post</div>
+        <div class="t23-score low">54</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Amara Davis</div>
+          <div class="t23-caption">No days off. Just Do It.</div>
+          <div class="t23-school">Clemson · Soccer</div>
+        </div>
+      </div>
+
+      <!-- Score 50 — Story, lower reach -->
+      <div class="t23-tile" data-format="vertical">
+        <div class="t23-tile-bg ct-7"></div>
+        <div class="t23-tile-overlay"></div>
+        <div class="t23-badge">Story</div>
+        <div class="t23-score low">50</div>
+        <div class="t23-info">
+          <div class="t23-athlete">Sam Rivera</div>
+          <div class="t23-caption">Love this colorway.</div>
+          <div class="t23-school">Notre Dame · Baseball</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="t23-nav">
+    <button class="t23-nav-btn" id="t23-prev" onclick="scrollStrip(-1)">←</button>
+    <button class="t23-nav-btn" id="t23-next" onclick="scrollStrip(1)">→</button>
+    <span class="t23-count">Showing top 12 of 492 pieces · sorted by content score</span>
+  </div>
+</div>
+
+<!-- ATHLETE ROSTER (compact list) -->
+<div class="roster-wrap">
+  <div class="roster-inner">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow">Athletes</div>
+        <div class="section-title">Campaign Roster</div>
+      </div>
+      <a href="postgame-tier1-tracker.html" style="font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;font-weight:600;letter-spacing:0.06em;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:2px;transition:color 0.2s,border-color 0.2s;" onmouseover="this.style.color='#D73F09';this.style.borderColor='#D73F09'" onmouseout="this.style.color='rgba(255,255,255,0.3)';this.style.borderColor='rgba(255,255,255,0.1)'">View Full Tracker →</a>
+    </div>
+
+    <div class="roster-list">
+
+      <a href="postgame-player-spotlight.html" class="roster-row">
+        <div class="roster-num top">1</div>
+        <div class="roster-athlete-info">
+          <div class="roster-avatar"><div class="roster-avatar-bg" style="background:linear-gradient(135deg,#3a1a08,#0d0d0d)"></div></div>
+          <div>
+            <div class="roster-athlete-name">Jordan Williams</div>
+            <div class="roster-athlete-meta"><span class="sport-tag">Football</span>University of Georgia</div>
+          </div>
+        </div>
+        <div>
+          <div class="roster-followers">4.2M</div>
+          <div class="roster-followers-label">Followers</div>
+        </div>
+        <a href="postgame-player-spotlight.html" class="roster-spotlight-link">Player Spotlight →</a>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-row">
+        <div class="roster-num top">2</div>
+        <div class="roster-athlete-info">
+          <div class="roster-avatar"><div class="roster-avatar-bg" style="background:linear-gradient(135deg,#0e1a3a,#080e1a)"></div></div>
+          <div>
+            <div class="roster-athlete-name">Marcus Davis</div>
+            <div class="roster-athlete-meta"><span class="sport-tag">Basketball</span>Duke University</div>
+          </div>
+        </div>
+        <div>
+          <div class="roster-followers">2.1M</div>
+          <div class="roster-followers-label">Followers</div>
+        </div>
+        <a href="postgame-player-spotlight.html" class="roster-spotlight-link">Player Spotlight →</a>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-row">
+        <div class="roster-num top">3</div>
+        <div class="roster-athlete-info">
+          <div class="roster-avatar"><div class="roster-avatar-bg" style="background:linear-gradient(135deg,#2d0e3a,#18082d)"></div></div>
+          <div>
+            <div class="roster-athlete-name">Aaliyah Johnson</div>
+            <div class="roster-athlete-meta"><span class="sport-tag">Track & Field</span>USC</div>
+          </div>
+        </div>
+        <div>
+          <div class="roster-followers">980K</div>
+          <div class="roster-followers-label">Followers</div>
+        </div>
+        <a href="postgame-player-spotlight.html" class="roster-spotlight-link">Player Spotlight →</a>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-row">
+        <div class="roster-num">4</div>
+        <div class="roster-athlete-info">
+          <div class="roster-avatar"><div class="roster-avatar-bg" style="background:linear-gradient(135deg,#0e3a1a,#081a0e)"></div></div>
+          <div>
+            <div class="roster-athlete-name">Kayla Thompson</div>
+            <div class="roster-athlete-meta"><span class="sport-tag">Volleyball</span>Nebraska</div>
+          </div>
+        </div>
+        <div>
+          <div class="roster-followers">620K</div>
+          <div class="roster-followers-label">Followers</div>
+        </div>
+        <a href="postgame-player-spotlight.html" class="roster-spotlight-link">Player Spotlight →</a>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-row">
+        <div class="roster-num">5</div>
+        <div class="roster-athlete-info">
+          <div class="roster-avatar"><div class="roster-avatar-bg" style="background:linear-gradient(135deg,#3a280a,#140e04)"></div></div>
+          <div>
+            <div class="roster-athlete-name">Devon Wright</div>
+            <div class="roster-athlete-meta"><span class="sport-tag">Football</span>Ohio State</div>
+          </div>
+        </div>
+        <div>
+          <div class="roster-followers">890K</div>
+          <div class="roster-followers-label">Followers</div>
+        </div>
+        <a href="postgame-player-spotlight.html" class="roster-spotlight-link">Player Spotlight →</a>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-row">
+        <div class="roster-num">6</div>
+        <div class="roster-athlete-info">
+          <div class="roster-avatar"><div class="roster-avatar-bg" style="background:linear-gradient(135deg,#3a1a1a,#1a0808)"></div></div>
+          <div>
+            <div class="roster-athlete-name">Sofia Reyes</div>
+            <div class="roster-athlete-meta"><span class="sport-tag">Soccer</span>Stanford</div>
+          </div>
+        </div>
+        <div>
+          <div class="roster-followers">540K</div>
+          <div class="roster-followers-label">Followers</div>
+        </div>
+        <a href="postgame-player-spotlight.html" class="roster-spotlight-link">Player Spotlight →</a>
+      </a>
+
+      <!-- Collapsed row showing remaining count -->
+      <div style="background:var(--gray);padding:16px 24px;border-radius:0 0 8px 8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="this.style.display='none';document.getElementById('full-roster').style.display='flex'">
+        <span style="font-size:13px;color:rgba(255,255,255,0.3);">+ 42 more athletes on this campaign</span>
+        <span style="font-size:12px;font-weight:700;color:var(--orange);letter-spacing:0.06em;">Show All →</span>
+      </div>
+      <div id="full-roster" style="display:none;flex-direction:column;gap:2px;">
+        <!-- Additional athletes would populate here from CMS -->
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-block">
+  <h2 class="cta-title">Run a Campaign<br>Like This</h2>
+  <p class="cta-sub">Scaled NIL activations across every sport and school.</p>
+  <div class="cta-btns">
+    <a href="postgame-contact.html" class="btn-white">I'm a Brand</a>
+    <a href="postgame-contact.html" class="btn-outline-white">I'm an Athlete</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <a href="postgame-homepage.html" class="logo" style="display:inline-block;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;display:block;"></a>
+        <p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+      </div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-brand-profile.html">Clients</a></li><li><a href="postgame-campaign-recap.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Postgame. All rights reserved.</div>
+      <div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function slide(btn, dir) {
+    const controls = btn.closest('.c-controls');
+    const stage = controls.previousElementSibling;
+    const slides = Array.from(stage.querySelectorAll('.c-slide'));
+    const dots = Array.from(controls.querySelectorAll('.c-dot'));
+    const arrows = Array.from(controls.querySelectorAll('.c-arrow'));
+
+    let current = slides.findIndex(s => s.classList.contains('active'));
+    let next = current + dir;
+
+    // Clamp — no wrap
+    if (next < 0 || next >= slides.length) return;
+
+    slides[current].classList.remove('active');
+    slides[next].classList.add('active');
+    dots[current].classList.remove('active');
+    dots[next].classList.add('active');
+
+    // Disable arrows at edges
+    arrows[0].style.opacity = next === 0 ? '0.2' : '1';
+    arrows[0].style.pointerEvents = next === 0 ? 'none' : 'all';
+    arrows[1].style.opacity = next === slides.length - 1 ? '0.2' : '1';
+    arrows[1].style.pointerEvents = next === slides.length - 1 ? 'none' : 'all';
+  }
+
+  function scrollStrip(dir) {
+    const track = document.getElementById('t23-track');
+    const amount = 340;
+    track.scrollBy({ left: dir * amount, behavior: 'smooth' });
+  }
+
+  // Drag to scroll on the strip
+  const track = document.getElementById('t23-track');
+  let isDragging = false, startX, scrollStart;
+  track.addEventListener('mousedown', e => {
+    isDragging = true;
+    startX = e.pageX;
+    scrollStart = track.scrollLeft;
+    track.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    track.scrollLeft = scrollStart - (e.pageX - startX);
+  });
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    track.style.userSelect = '';
+  });
+  document.querySelectorAll('.c-card').forEach(card => {
+    const slides = card.querySelectorAll('.c-slide');
+    const arrows = card.querySelectorAll('.c-arrow');
+    if (slides.length <= 1) {
+      arrows.forEach(a => { a.style.opacity = '0.2'; a.style.pointerEvents = 'none'; });
+    } else {
+      arrows[0].style.opacity = '0.2';
+      arrows[0].style.pointerEvents = 'none';
+    }
+  });
+</script>
+
+</body>
+</html>

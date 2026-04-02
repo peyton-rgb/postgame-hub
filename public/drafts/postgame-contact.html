@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --orange: #D73F09;
+    --black: #000000;
+    --white: #FFFFFF;
+    --gray: #111111;
+    --gray-mid: #1a1a1a;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--white); font-family: 'DM Sans', Arial, sans-serif; overflow-x: hidden; }
+
+  /* NAV */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; background: rgba(0,0,0,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .logo { display: flex; align-items: center; gap: 4px; text-decoration: none; }
+  .logo-text { font-weight: 600; font-size: 22px; color: var(--white); letter-spacing: -0.5px; }
+  .logo-plus { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--orange); border-radius: 50%; color: white; font-weight: 700; font-size: 14px; margin: 0 1px; }
+  .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; }
+  .nav-item { position: relative; }
+  .nav-item > a { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .nav-item > a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+  .nav-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform: rotate(180deg); }
+  .nav-dropdown { position: absolute; top: 100%; left: 0; min-width: 160px; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: all 0.2s; z-index: 200; padding-top: 8px; } .nav-dropdown-inner { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+  .nav-item:hover .nav-dropdown { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .nav-drop-item { display: block; padding: 12px 18px; font-size: 13px; color: rgba(255,255,255,0.55); text-decoration: none; transition: all 0.15s; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom: none; }
+  .nav-drop-item:hover { background: rgba(255,255,255,0.05); color: var(--white); padding-left: 22px; }
+  .btn-primary { background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 14px 28px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-primary:hover { background: #c03608; transform: translateY(-1px); }
+  .btn-tracker { background: var(--white); color: var(--black); border: none; border-radius: 8px; padding: 14px 24px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s; }
+  .btn-tracker:hover { background: rgba(255,255,255,0.88); }
+
+  /* HERO */
+  .hero { padding: 160px 48px 100px; text-align: center; position: relative; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 800px; height: 800px; background: radial-gradient(circle, rgba(215,63,9,0.07) 0%, transparent 65%); pointer-events: none; }
+  .hero-line { position: absolute; top: 0; bottom: 0; width: 1px; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0.04) 70%, transparent); }
+  .hero-line:nth-child(2) { left: 20%; }
+  .hero-line:nth-child(3) { left: 40%; }
+  .hero-line:nth-child(4) { left: 60%; }
+  .hero-line:nth-child(5) { left: 80%; }
+  .hero-inner { position: relative; z-index: 2; max-width: 800px; margin: 0 auto; }
+  .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--orange); margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .hero-eyebrow::before, .hero-eyebrow::after { content: ''; width: 32px; height: 1px; background: var(--orange); }
+  .hero-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(64px, 10vw, 120px); line-height: 0.9; letter-spacing: 0.01em; color: var(--white); margin-bottom: 24px; }
+  .hero-sub { font-size: 18px; color: rgba(255,255,255,0.4); line-height: 1.6; max-width: 560px; margin: 0 auto 48px; font-weight: 300; }
+  .hero-sub strong { color: rgba(255,255,255,0.75); font-weight: 600; }
+
+  /* THREE-WAY TOGGLE */
+  .who-toggle { display: inline-flex; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px; padding: 4px; gap: 4px; }
+  .who-btn { padding: 12px 26px; border-radius: 100px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; border: none; background: transparent; color: rgba(255,255,255,0.35); font-family: 'DM Sans', Arial, sans-serif; transition: all 0.25s; white-space: nowrap; }
+  .who-btn.active { background: var(--orange); color: var(--white); box-shadow: 0 4px 20px rgba(215,63,9,0.3); }
+  .who-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+
+  /* PANELS */
+  .panels-wrap { max-width: 1100px; margin: 0 auto; padding: 80px 48px 100px; }
+  .form-panel { display: none; }
+  .form-panel.active { display: grid !important; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
+
+  /* PANEL LEFT */
+  .panel-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--orange); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .panel-eyebrow::before { content: ''; width: 16px; height: 1px; background: var(--orange); }
+  .panel-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(40px, 5vw, 64px); line-height: 0.92; color: var(--white); letter-spacing: 0.01em; margin-bottom: 24px; }
+  .panel-desc { font-size: 16px; color: rgba(255,255,255,0.4); line-height: 1.75; margin-bottom: 36px; }
+  .panel-desc strong { color: rgba(255,255,255,0.75); font-weight: 600; }
+
+  .contact-details { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .contact-row { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--gray); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; text-decoration: none; transition: border-color 0.2s, background 0.2s; }
+  .contact-row:hover { border-color: rgba(215,63,9,0.2); background: rgba(215,63,9,0.04); }
+  .cr-icon { width: 32px; height: 32px; background: rgba(215,63,9,0.1); border: 1px solid rgba(215,63,9,0.15); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .cr-label { font-size: 10px; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .cr-val { font-size: 14px; color: rgba(255,255,255,0.65); font-weight: 500; }
+
+  .social-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 36px; }
+  .social-pill { display: inline-flex; align-items: center; padding: 9px 16px; background: var(--gray); border: 1px solid rgba(255,255,255,0.06); border-radius: 100px; text-decoration: none; font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 600; transition: all 0.2s; }
+  .social-pill:hover { border-color: rgba(215,63,9,0.25); color: var(--white); background: rgba(215,63,9,0.06); }
+
+  .proof-strip { padding-top: 28px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .proof-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.15); margin-bottom: 14px; }
+  .proof-items { display: flex; gap: 8px; flex-wrap: wrap; }
+  .proof-item { padding: 5px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 100px; font-size: 12px; color: rgba(255,255,255,0.25); font-weight: 600; }
+
+  /* APP DOWNLOAD (athlete panel right side) */
+  .app-mockup {
+    width: 100%;
+    max-width: 260px;
+    aspect-ratio: 9/18;
+    background: linear-gradient(160deg, #1a1208 0%, #0d0d0d 100%);
+    border-radius: 36px;
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .app-mockup::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--orange), transparent); }
+  .app-mockup-notch { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 72px; height: 18px; background: rgba(0,0,0,0.9); border-radius: 100px; }
+  .app-mockup-inner { text-align: center; padding: 32px 24px; }
+  .app-mockup-logo { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 42px; color: var(--white); letter-spacing: -1px; margin-bottom: 10px; line-height: 1; }
+  .app-mockup-plus { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: var(--orange); border-radius: 50%; color: white; font-weight: 700; font-size: 12px; vertical-align: middle; margin: 0 1px; }
+  .app-mockup-tagline { font-size: 12px; color: rgba(255,255,255,0.3); line-height: 1.6; margin-top: 8px; }
+  .app-mockup-stat-row { display: flex; gap: 12px; margin-top: 20px; justify-content: center; }
+  .ams { text-align: center; }
+  .ams-val { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 22px; color: var(--orange); }
+  .ams-label { font-size: 9px; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .app-store-btns { display: flex; flex-direction: column; gap: 10px; }
+  .app-store-btn { display: inline-flex; align-items: center; gap: 14px; padding: 14px 22px; border-radius: 12px; text-decoration: none; transition: all 0.2s; width: fit-content; }
+  .app-store-btn.light { background: var(--white); }
+  .app-store-btn.light:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); }
+  .app-store-btn.dark-btn { background: var(--gray-mid); border: 1px solid rgba(255,255,255,0.1); }
+  .app-store-btn.dark-btn:hover { background: #222; transform: translateY(-1px); }
+  .asb-icon { font-size: 24px; line-height: 1; flex-shrink: 0; }
+  .asb-small { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 2px; }
+  .asb-big { font-size: 16px; font-weight: 700; line-height: 1; }
+  .app-store-btn.light .asb-small { color: rgba(0,0,0,0.4); }
+  .app-store-btn.light .asb-big { color: var(--black); }
+  .app-store-btn.dark-btn .asb-small { color: rgba(255,255,255,0.3); }
+  .app-store-btn.dark-btn .asb-big { color: var(--white); }
+
+  /* FORM */
+  .contact-form { background: var(--gray); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 40px; position: relative; overflow: hidden; }
+  .contact-form::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--orange), transparent); }
+  .form-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 28px; color: var(--white); letter-spacing: 0.02em; margin-bottom: 28px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+  .form-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+  .form-label .opt { color: rgba(255,255,255,0.18); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .form-input, .form-select, .form-textarea { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 13px 16px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: var(--white); outline: none; transition: border-color 0.2s, background 0.2s; width: 100%; -webkit-appearance: none; }
+  .form-input::placeholder, .form-textarea::placeholder { color: rgba(255,255,255,0.2); }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: rgba(215,63,9,0.4); background: rgba(215,63,9,0.03); }
+  .form-select { cursor: pointer; }
+  .form-select option { background: #1a1a1a; color: var(--white); }
+  .form-textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+  .form-submit { width: 100%; background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 16px; font-family: 'DM Sans', Arial, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background 0.2s, transform 0.15s; letter-spacing: 0.03em; }
+  .form-submit:hover { background: #c03608; transform: translateY(-1px); }
+  .form-disclaimer { font-size: 11px; color: rgba(255,255,255,0.2); text-align: center; margin-top: 14px; line-height: 1.5; }
+
+  .form-success { display: none; text-align: center; padding: 48px 20px; }
+  .success-icon { width: 64px; height: 64px; background: rgba(215,63,9,0.1); border: 2px solid rgba(215,63,9,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 20px; }
+  .success-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 36px; color: var(--white); margin-bottom: 10px; }
+  .success-desc { font-size: 15px; color: rgba(255,255,255,0.4); line-height: 1.6; }
+
+  /* FOOTER */
+  footer { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.06); padding: 64px 48px 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+  .footer-brand-desc { font-size: 14px; color: rgba(255,255,255,0.35); line-height: 1.7; margin-top: 16px; max-width: 280px; }
+  .footer-col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 24px; }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--white); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-copy { font-size: 13px; color: rgba(255,255,255,0.2); }
+  .footer-socials { display: flex; gap: 24px; }
+  .footer-socials a { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
+  .footer-socials a:hover { color: var(--orange); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .hero-eyebrow { animation: fadeUp 0.5s ease 0.1s both; }
+  .hero-title { animation: fadeUp 0.6s ease 0.2s both; }
+  .hero-sub { animation: fadeUp 0.5s ease 0.3s both; }
+  .who-toggle { animation: fadeUp 0.5s ease 0.4s both; }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .form-panel.active { animation: panelIn 0.35s ease both; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="postgame-homepage.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:32px;width:auto;display:block;"></a>
+  <ul class="nav-links">
+    <li class="nav-item">
+      <a href="postgame-brand-profile.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-brand-profile.html" class="nav-drop-item">Clients</a><a href="postgame-campaign-recap.html" class="nav-drop-item">Campaigns</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown">
+        <a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a>
+        <a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a>
+        <a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-line"></div><div class="hero-line"></div><div class="hero-line"></div><div class="hero-line"></div><div class="hero-line"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Get In Touch</div>
+    <h1 class="hero-title">Who Are<br>You?</h1>
+    <p class="hero-sub">
+      <strong>Brands</strong> start a campaign. <strong>Creators</strong> join our production network. <strong>Athletes</strong> download the app.
+    </p>
+    <div class="who-toggle">
+      <button class="who-btn active" data-panel="brand">I'm a Brand</button>
+      <button class="who-btn" data-panel="creator">I'm a Creator</button>
+      <button class="who-btn" data-panel="athlete">I'm an Athlete</button>
+    </div>
+  </div>
+</div>
+
+<div class="panels-wrap">
+
+  <!-- BRAND PANEL -->
+  <div class="form-panel active" id="panel-brand">
+    <div>
+      <div class="panel-eyebrow">Brands</div>
+      <h2 class="panel-title">Start a Campaign</h2>
+      <p class="panel-desc">Tell us about your brand and what you're trying to achieve. We'll come back within <strong>24 hours</strong> with a real read on whether we're the right fit. No RFP required — just a conversation.</p>
+      <div class="social-row">
+        <a href="#" class="social-pill">Instagram</a>
+        <a href="#" class="social-pill">LinkedIn</a>
+        <a href="#" class="social-pill">Twitter / X</a>
+      </div>
+      <div class="proof-strip">
+        <div class="proof-label">Brands we've activated with</div>
+        <div class="proof-items">
+          <span class="proof-item">Nike</span><span class="proof-item">Gatorade</span><span class="proof-item">Beats</span><span class="proof-item">Amazon</span><span class="proof-item">Red Bull</span><span class="proof-item">New Balance</span><span class="proof-item">Rolex</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-form" id="brand-form-wrap">
+      <div class="form-title">Brand Inquiry</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">First Name</label><input type="text" class="form-input" placeholder="Jordan"></div>
+        <div class="form-group"><label class="form-label">Last Name</label><input type="text" class="form-input" placeholder="Smith"></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Brand / Company</label><input type="text" class="form-input" placeholder="Nike, Inc."></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Work Email</label><input type="email" class="form-input" placeholder="jordan@brand.com"></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Service Interest</label>
+          <select class="form-select">
+            <option value="" disabled selected>Select a service</option>
+            <option>Elevated — Bespoke Partnership</option>
+            <option>Scaled — Volume Activation</option>
+            <option>Experiential — Live Events</option>
+            <option>Not sure yet</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Approximate Budget</label>
+          <select class="form-select">
+            <option value="" disabled selected>Select a range</option>
+            <option>Under $25K</option>
+            <option>$25K – $100K</option>
+            <option>$100K – $500K</option>
+            <option>$500K+</option>
+            <option>Prefer to discuss</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Tell Us About Your Campaign</label><textarea class="form-textarea" placeholder="What are you trying to achieve? Who are you trying to reach? Any athletes or sports in mind?"></textarea></div>
+      </div>
+      <button class="form-submit" data-submit="brand">Send Inquiry →</button>
+      <p class="form-disclaimer">We respond within 24 hours. No commitment required.</p>
+      <div class="form-success" id="brand-success">
+        <div class="success-icon">✓</div>
+        <div class="success-title">We Got It</div>
+        <p class="success-desc">Expect a reply within 24 hours with a real recommendation for your brand.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATOR PANEL -->
+  <div class="form-panel" id="panel-creator">
+    <div>
+      <div class="panel-eyebrow">Creators</div>
+      <h2 class="panel-title">Join Our Production Network</h2>
+      <p class="panel-desc">We hire <strong>videographers, photographers, and editors</strong> from our network for campaign shoots, content days, and experiential activations. If you know how to create content that performs on social — and you can work with athletes — we want to know you.</p>
+      <div class="social-row">
+        <a href="#" class="social-pill">Instagram</a>
+        <a href="#" class="social-pill">TikTok</a>
+      </div>
+      <div class="proof-strip">
+        <div class="proof-label">Roles in our network</div>
+        <div class="proof-items">
+          <span class="proof-item">Videographer</span><span class="proof-item">Photographer</span><span class="proof-item">Editor</span><span class="proof-item">DP</span><span class="proof-item">Motion Designer</span><span class="proof-item">Content Strategist</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-form" id="creator-form-wrap">
+      <div class="form-title">Creator Application</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">First Name</label><input type="text" class="form-input" placeholder="Alex"></div>
+        <div class="form-group"><label class="form-label">Last Name</label><input type="text" class="form-input" placeholder="Rivera"></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" placeholder="alex@studio.com"></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Primary Role</label>
+          <select class="form-select">
+            <option value="" disabled selected>What do you do?</option>
+            <option>Videographer</option>
+            <option>Photographer</option>
+            <option>Video Editor</option>
+            <option>Photo Editor</option>
+            <option>DP / Cinematographer</option>
+            <option>Motion Designer</option>
+            <option>Content Strategist</option>
+            <option>Multiple</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Location</label><input type="text" class="form-input" placeholder="Nashville, TN"></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Portfolio / Instagram / Website</label><input type="text" class="form-input" placeholder="yoursite.com or @handle"></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Experience with Athletes <span class="opt">(optional)</span></label>
+          <textarea class="form-textarea" placeholder="Have you shot athletes or sports content before? Tell us about your work and what platforms you create for."></textarea>
+        </div>
+      </div>
+      <button class="form-submit" data-submit="creator">Submit Application →</button>
+      <p class="form-disclaimer">All applications reviewed within 5 business days.</p>
+      <div class="form-success" id="creator-success">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Application Received</div>
+        <p class="success-desc">We'll review your work and reach out when there's a production fit.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ATHLETE PANEL — NO FORM, APP DOWNLOAD ONLY -->
+  <div class="form-panel" id="panel-athlete">
+    <div>
+      <div class="panel-eyebrow">Athletes</div>
+      <h2 class="panel-title">Build Your Brand on the App</h2>
+      <p class="panel-desc">The Postgame app is where athletes <strong>build their profile, showcase their content, and connect with brands looking to activate</strong>. Create your page, set your rates, and let deals come to you.</p>
+      <div class="proof-strip" style="border-top:none;padding-top:0;">
+        <div class="proof-label">Sports on the platform</div>
+        <div class="proof-items">
+          <span class="proof-item">Football</span><span class="proof-item">Basketball</span><span class="proof-item">Track & Field</span><span class="proof-item">Volleyball</span><span class="proof-item">Soccer</span><span class="proof-item">Baseball</span><span class="proof-item">Swimming</span><span class="proof-item">+ More</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- App download right -->
+    <div>
+      <div class="app-mockup">
+        <div class="app-mockup-notch"></div>
+        <div class="app-mockup-inner">
+          <div class="app-mockup-logo">p<span class="app-mockup-plus">+</span>stgame</div>
+          <div class="app-mockup-tagline">Build your brand.<br>Find your deals.<br>Own your future.</div>
+          <div class="app-mockup-stat-row">
+            <div class="ams"><div class="ams-val">2K+</div><div class="ams-label">Athletes</div></div>
+            <div class="ams"><div class="ams-val">340+</div><div class="ams-label">Deals Closed</div></div>
+            <div class="ams"><div class="ams-val">24</div><div class="ams-label">Sports</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.12em;text-transform:uppercase;">Download the App</div>
+      <div class="app-store-btns">
+        <a href="#" class="app-store-btn light">
+          <div class="asb-icon"></div>
+          <div><div class="asb-small">Download on the</div><div class="asb-big">App Store</div></div>
+        </a>
+        <a href="#" class="app-store-btn dark-btn">
+          <div class="asb-icon">▶</div>
+          <div><div class="asb-small">Get it on</div><div class="asb-big">Google Play</div></div>
+        </a>
+      </div>
+
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.25);line-height:1.6;">
+        Already on the app? Questions about your account?<br>
+        <a href="/cdn-cgi/l/email-protection#99f8edf1f5fcedfcead9e9f6eaedfef8f4fcb7faf6f4" style="color:var(--orange);text-decoration:none;font-weight:600;"><span class="__cf_email__" data-cfemail="bcddc8d4d0d9c8d9cffcccd3cfc8dbddd1d992dfd3d1">[email&#160;protected]</span></a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <a href="postgame-homepage.html" class="logo" style="display:inline-block;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;display:block;"></a>
+        <p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+      </div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-brand-profile.html">Clients</a></li><li><a href="postgame-campaign-recap.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Postgame. All rights reserved.</div>
+      <div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+<script>
+(function() {
+  function switchPanel(type) {
+    var btns = document.querySelectorAll('.who-btn');
+    btns.forEach(function(b) { b.classList.remove('active'); });
+    var activeBtn = document.querySelector('[data-panel="' + type + '"]');
+    if (activeBtn) activeBtn.classList.add('active');
+
+    var panels = document.querySelectorAll('.form-panel');
+    panels.forEach(function(p) {
+      p.classList.remove('active');
+      p.style.display = 'none';
+    });
+    var target = document.getElementById('panel-' + type);
+    if (target) {
+      target.classList.add('active');
+      target.style.display = 'grid';
+    }
+    var wrap = document.querySelector('.panels-wrap');
+    if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function submitForm(type) {
+    var wrap = document.getElementById(type + '-form-wrap');
+    var success = document.getElementById(type + '-success');
+    if (!wrap || !success) return;
+    var els = wrap.querySelectorAll('.form-row, .form-group, .form-title, .form-submit, .form-disclaimer');
+    els.forEach(function(el) { el.style.display = 'none'; });
+    success.style.display = 'block';
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wire toggle buttons
+    document.querySelectorAll('[data-panel]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        switchPanel(btn.getAttribute('data-panel'));
+      });
+    });
+
+    // Wire submit buttons
+    document.querySelectorAll('[data-submit]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        submitForm(btn.getAttribute('data-submit'));
+      });
+    });
+
+    // URL param pre-selection
+    var t = new URLSearchParams(window.location.search).get('type');
+    if (t === 'creator' || t === 'athlete') {
+      switchPanel(t);
+    }
+  });
+})();
+</script>
+</body>
+</html>

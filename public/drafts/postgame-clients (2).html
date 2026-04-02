@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Our Clients · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap');
+  :root{--orange:#D73F09;--black:#000;--white:#FFF;--gray:#111;--gray-mid:#1a1a1a;}
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--black);color:var(--white);font-family:'DM Sans',Arial,sans-serif;overflow-x:hidden;}
+
+  /* NAV */
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 48px;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);}
+  .logo{display:flex;align-items:center;text-decoration:none;}
+  .nav-links{display:flex;align-items:center;gap:8px;list-style:none;}
+  .nav-item{position:relative;}
+  .nav-item>a{display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.7);text-decoration:none;font-size:14px;font-weight:500;padding:10px 16px;border-radius:6px;transition:color 0.2s,background 0.2s;}
+  .nav-item>a:hover{color:var(--white);background:rgba(255,255,255,0.05);}
+  .nav-chevron{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;transition:transform 0.2s;}
+  .nav-item:hover .nav-chevron{transform:rotate(180deg);}
+  .nav-dropdown{position:absolute;top:100%;left:0;min-width:160px;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all 0.2s;z-index:200;padding-top:8px;}
+  .nav-dropdown-inner{background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,0.6);}
+  .nav-item:hover .nav-dropdown{opacity:1;pointer-events:all;transform:translateY(0);}
+  .nav-drop-item{display:block;padding:12px 18px;font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;transition:all 0.15s;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .nav-drop-item:last-child{border-bottom:none;}
+  .nav-drop-item:hover{background:rgba(255,255,255,0.05);color:var(--white);padding-left:22px;}
+  .nav-drop-item.active{color:var(--orange);}
+  .btn-primary{background:var(--orange);color:var(--white);border:none;border-radius:8px;padding:14px 28px;font-family:'DM Sans',Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s,transform 0.15s;}
+  .btn-primary:hover{background:#c03608;transform:translateY(-1px);}
+  .btn-tracker{background:var(--white);color:var(--black);border:none;border-radius:8px;padding:14px 24px;font-family:'DM Sans',Arial,sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.2s;}
+  .btn-tracker:hover{background:rgba(255,255,255,0.88);}
+
+  /* HERO */
+  .hero{padding:140px 48px 64px;text-align:center;position:relative;border-bottom:1px solid rgba(255,255,255,0.05);}
+  .hero-glow{position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:700px;height:500px;background:radial-gradient(circle,rgba(215,63,9,0.07) 0%,transparent 70%);pointer-events:none;}
+  .hero-eyebrow{font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--orange);margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:12px;}
+  .hero-eyebrow::before,.hero-eyebrow::after{content:'';width:32px;height:1px;background:var(--orange);}
+  .hero-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(56px,10vw,110px);line-height:0.9;color:var(--white);margin-bottom:20px;}
+  .hero-sub{font-size:18px;color:rgba(255,255,255,0.35);max-width:520px;margin:0 auto 48px;line-height:1.6;}
+  .hero-sub strong{color:rgba(255,255,255,0.7);font-weight:600;}
+
+  .stats-row{display:flex;gap:0;justify-content:center;border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;max-width:600px;margin:0 auto;}
+  .stat-cell{flex:1;background:rgba(255,255,255,0.02);padding:20px 16px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);}
+  .stat-cell:last-child{border-right:none;}
+  .stat-val{font-family:'Bebas Neue',Arial,sans-serif;font-size:40px;color:var(--white);line-height:1;margin-bottom:4px;}
+  .stat-val .unit{color:var(--orange);}
+  .stat-label{font-size:10px;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;}
+
+  /* FILTER BAR */
+  .filter-wrap{border-bottom:1px solid rgba(255,255,255,0.06);background:var(--black);padding:24px 0;position:sticky;top:72px;z-index:50;}
+  .filter-inner{max-width:1200px;margin:0 auto;padding:0 48px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .filter-btn{padding:9px 20px;border-radius:100px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.45);font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+  .filter-btn:hover{border-color:rgba(255,255,255,0.3);color:var(--white);}
+  .filter-btn.active{background:var(--orange);border-color:var(--orange);color:var(--white);}
+
+  /* GRID */
+  .grid-wrap{max-width:1400px;margin:0 auto;padding:48px 48px 80px;}
+  .brand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:2px;}
+
+  .brand-card{background:var(--gray);border:1px solid rgba(255,255,255,0.04);padding:28px 20px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;cursor:pointer;position:relative;overflow:hidden;min-height:90px;text-decoration:none;}
+  .brand-card::before{content:'';position:absolute;inset:0;background:rgba(215,63,9,0.05);opacity:0;transition:opacity 0.2s;}
+  .brand-card:hover::before{opacity:1;}
+  .brand-card:hover{border-color:rgba(215,63,9,0.2);}
+
+  .brand-name{font-family:'Bebas Neue',Arial,sans-serif;font-size:20px;color:rgba(255,255,255,0.45);text-align:center;letter-spacing:0.04em;line-height:1.15;transition:color 0.2s;}
+  .brand-card:hover .brand-name{color:rgba(255,255,255,0.9);}
+
+  .coming-soon-badge{position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(215,63,9,0.7);background:rgba(215,63,9,0.08);border:1px solid rgba(215,63,9,0.15);border-radius:4px;padding:2px 6px;}
+
+  /* hidden state for filtering */
+  .brand-card.hidden{display:none;}
+
+  /* CTA */
+  .cta-wrap{background:var(--gray);border-top:1px solid rgba(255,255,255,0.05);}
+  .cta-inner{max-width:1200px;margin:0 auto;padding:80px 48px;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;}
+  .cta-label{font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--orange);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+  .cta-label::before{content:'';width:16px;height:1px;background:var(--orange);}
+  .cta-title{font-family:'Bebas Neue',Arial,sans-serif;font-size:clamp(40px,5vw,68px);color:var(--white);line-height:0.92;letter-spacing:0.01em;margin-bottom:20px;}
+  .cta-sub{font-size:16px;color:rgba(255,255,255,0.35);line-height:1.7;}
+  .cta-sub strong{color:rgba(255,255,255,0.7);font-weight:600;}
+  .cta-btns{display:flex;flex-direction:column;gap:12px;justify-content:center;}
+  .btn-cta-main{background:var(--orange);color:var(--white);border:none;border-radius:10px;padding:18px 36px;font-family:'DM Sans',Arial,sans-serif;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;display:block;text-align:center;transition:all 0.2s;}
+  .btn-cta-main:hover{background:#c03608;transform:translateY(-1px);}
+  .btn-cta-sec{background:transparent;color:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:18px 36px;font-family:'DM Sans',Arial,sans-serif;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;display:block;text-align:center;transition:all 0.2s;}
+  .btn-cta-sec:hover{border-color:rgba(255,255,255,0.3);color:var(--white);}
+
+  /* FOOTER */
+  footer{background:var(--gray);border-top:1px solid rgba(255,255,255,0.06);padding:64px 48px 32px;}
+  .footer-inner{max-width:1200px;margin:0 auto;}
+  .footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:64px;margin-bottom:64px;}
+  .footer-brand-desc{font-size:14px;color:rgba(255,255,255,0.35);line-height:1.7;margin-top:16px;max-width:280px;}
+  .footer-col-title{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:24px;}
+  .footer-links{list-style:none;display:flex;flex-direction:column;gap:14px;}
+  .footer-links a{color:rgba(255,255,255,0.5);text-decoration:none;font-size:14px;transition:color 0.2s;}
+  .footer-links a:hover{color:var(--white);}
+  .footer-bottom{border-top:1px solid rgba(255,255,255,0.06);padding-top:32px;display:flex;justify-content:space-between;align-items:center;}
+  .footer-copy{font-size:13px;color:rgba(255,255,255,0.2);}
+  .footer-socials{display:flex;gap:24px;}
+  .footer-socials a{font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;transition:color 0.2s;}
+  .footer-socials a:hover{color:var(--orange);}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="postgame-homepage.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:32px;width:auto;display:block;"></a>
+  <ul class="nav-links">
+    <li class="nav-item">
+      <a href="postgame-clients.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-clients.html" class="nav-drop-item active">Clients</a><a href="postgame-campaigns.html" class="nav-drop-item">Campaigns</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a><a href="postgame-services-always-on.html" class="nav-drop-item">Always On</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">Brand Partners</div>
+  <h1 class="hero-title">Our Clients</h1>
+  <p class="hero-sub">We've activated campaigns with <strong>80+ brands</strong> across every major industry — from global powerhouses to emerging challengers.</p>
+  <div class="stats-row">
+    <div class="stat-cell"><div class="stat-val">80<span class="unit">+</span></div><div class="stat-label">Brand Partners</div></div>
+    <div class="stat-cell"><div class="stat-val">340<span class="unit">+</span></div><div class="stat-label">Athletes Activated</div></div>
+    <div class="stat-cell"><div class="stat-val">200<span class="unit">+</span></div><div class="stat-label">Campaigns</div></div>
+    <div class="stat-cell"><div class="stat-val">24</div><div class="stat-label">Sports</div></div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-wrap">
+  <div class="filter-inner">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="apparel">Apparel &amp; Footwear</button>
+    <button class="filter-btn" data-filter="food">Food &amp; Beverage</button>
+    <button class="filter-btn" data-filter="beauty">Beauty &amp; Wellness</button>
+    <button class="filter-btn" data-filter="tech">Tech &amp; Entertainment</button>
+    <button class="filter-btn" data-filter="sports">Sports &amp; Fitness</button>
+    <button class="filter-btn" data-filter="retail">Retail &amp; Lifestyle</button>
+  </div>
+</div>
+
+<!-- BRAND GRID -->
+<div class="grid-wrap">
+  <div class="brand-grid" id="brandGrid">
+
+    <!-- FOOD & BEVERAGE -->
+    <a class="brand-card" href="brand-1-800-flowers.html" data-category="food"><div class="brand-name">1-800-Flowers</div></a>
+    <a class="brand-card" href="brand-7-eleven.html" data-category="food"><div class="brand-name">7-Eleven</div></a>
+    <a class="brand-card" href="brand-biosteel.html" data-category="food"><div class="brand-name">BioSteel</div></a>
+    <a class="brand-card" href="brand-c4-energy.html" data-category="food"><div class="brand-name">C4 Energy</div></a>
+    <a class="brand-card" href="brand-cava.html" data-category="food"><div class="brand-name">CAVA</div></a>
+    <a class="brand-card" href="brand-bero.html" data-category="food"><div class="brand-name">Bero</div></a>
+    <a class="brand-card" href="brand-doordash.html" data-category="food"><div class="brand-name">DoorDash</div></a>
+    <a class="brand-card" href="brand-frito-lay.html" data-category="food"><div class="brand-name">Frito-Lay</div></a>
+    <a class="brand-card" href="brand-harmless-harvest.html" data-category="food"><div class="brand-name">Harmless Harvest</div></a>
+    <a class="brand-card" href="brand-mms.html" data-category="food"><div class="brand-name">M&amp;M's</div></a>
+    <a class="brand-card" href="brand-mcdonalds.html" data-category="food"><div class="brand-name">McDonald's</div></a>
+    <a class="brand-card" href="brand-onnit.html" data-category="food"><div class="brand-name">Onnit</div></a>
+    <a class="brand-card" href="brand-raising-canes.html" data-category="food"><div class="brand-name">Raising Cane's</div></a>
+    <a class="brand-card" href="brand-ruffles.html" data-category="food"><div class="brand-name">Ruffles</div></a>
+    <a class="brand-card" href="brand-siggis.html" data-category="food"><div class="brand-name">Siggi's</div></a>
+    <a class="brand-card" href="brand-taco-johns.html" data-category="food"><div class="brand-name">Taco John's</div></a>
+    <a class="brand-card" href="brand-tostitos.html" data-category="food"><div class="brand-name">Tostitos</div></a>
+    <a class="brand-card" href="brand-yesly-water.html" data-category="food"><div class="brand-name">Yesly Water</div></a>
+
+    <!-- APPAREL & FOOTWEAR -->
+    <a class="brand-card" href="brand-adidas.html" data-category="apparel"><div class="brand-name">adidas</div></a>
+    <a class="brand-card" href="brand-armani.html" data-category="apparel"><div class="brand-name">Armani</div></a>
+    <a class="brand-card" href="brand-brooks.html" data-category="apparel"><div class="brand-name">Brooks</div></a>
+    <a class="brand-card" href="brand-clarks.html" data-category="apparel"><div class="brand-name">Clarks</div></a>
+    <a class="brand-card" href="brand-coach.html" data-category="apparel"><div class="brand-name">Coach</div></a>
+    <a class="brand-card" href="brand-crocs.html" data-category="apparel"><div class="brand-name">CROCS</div></a>
+    <a class="brand-card" href="brand-dkny.html" data-category="apparel"><div class="brand-name">DKNY</div></a>
+    <a class="brand-card" href="brand-free-people.html" data-category="apparel"><div class="brand-name">Free People Movement</div></a>
+    <a class="brand-card" href="brand-goodr.html" data-category="apparel"><div class="brand-name">GOODR</div></a>
+    <a class="brand-card" href="brand-haggar.html" data-category="apparel"><div class="brand-name">Haggar</div></a>
+    <a class="brand-card" href="brand-hey-dude.html" data-category="apparel"><div class="brand-name">Hey Dude</div></a>
+    <a class="brand-card" href="brand-hollister.html" data-category="apparel"><div class="brand-name">Hollister</div></a>
+    <a class="brand-card" href="brand-knockaround.html" data-category="apparel"><div class="brand-name">Knockaround</div></a>
+    <a class="brand-card" href="brand-lulus.html" data-category="apparel"><div class="brand-name">Lulus</div></a>
+    <a class="brand-card" href="brand-psd-underwear.html" data-category="apparel"><div class="brand-name">PSD Underwear</div></a>
+    <a class="brand-card" href="brand-reebok.html" data-category="apparel"><div class="brand-name">Reebok</div></a>
+    <a class="brand-card" href="brand-steve-madden.html" data-category="apparel"><div class="brand-name">Steve Madden</div></a>
+    <a class="brand-card" href="brand-thigh-society.html" data-category="apparel"><div class="brand-name">Thigh Society</div></a>
+    <a class="brand-card" href="brand-tlf-apparel.html" data-category="apparel"><div class="brand-name">TLF Apparel</div></a>
+    <a class="brand-card" href="brand-urban-outfitters.html" data-category="apparel"><div class="brand-name">Urban Outfitters</div></a>
+    <a class="brand-card" href="brand-york-athletics.html" data-category="apparel"><div class="brand-name">York Athletics</div></a>
+    <a class="brand-card" href="brand-34-heritage.html" data-category="apparel"><div class="brand-name">34 Heritage</div></a>
+
+    <!-- BEAUTY & WELLNESS -->
+    <a class="brand-card" href="brand-cerave.html" data-category="beauty"><div class="brand-name">CeraVe</div></a>
+    <a class="brand-card" href="brand-covergirl.html" data-category="beauty"><div class="brand-name">CoverGirl</div></a>
+    <a class="brand-card" href="brand-dove.html" data-category="beauty"><div class="brand-name">Dove</div></a>
+    <a class="brand-card" href="brand-gillette.html" data-category="beauty"><div class="brand-name">Gillette</div></a>
+    <a class="brand-card" href="brand-hydro-flask.html" data-category="beauty"><div class="brand-name">Hydro Flask</div></a>
+    <a class="brand-card" href="brand-iherb.html" data-category="beauty"><div class="brand-name">iHerb</div></a>
+    <a class="brand-card" href="brand-sensationnel.html" data-category="beauty"><div class="brand-name">Sensationnel</div></a>
+    <a class="brand-card" href="brand-stanley.html" data-category="beauty"><div class="brand-name">Stanley</div></a>
+    <a class="brand-card" href="brand-tangle-teezer.html" data-category="beauty"><div class="brand-name">Tangle Teezer</div></a>
+    <a class="brand-card" href="brand-thayers.html" data-category="beauty"><div class="brand-name">Thayers</div></a>
+    <a class="brand-card" href="brand-tylenol.html" data-category="beauty"><div class="brand-name">Tylenol</div></a>
+    <a class="brand-card" href="brand-verb.html" data-category="beauty"><div class="brand-name">Verb</div></a>
+
+    <!-- TECH & ENTERTAINMENT -->
+    <a class="brand-card" href="brand-amazon-music.html" data-category="tech"><div class="brand-name">Amazon Music</div></a>
+    <a class="brand-card" href="brand-capitol-records.html" data-category="tech"><div class="brand-name">Capitol Records</div></a>
+    <a class="brand-card" href="brand-focus-features.html" data-category="tech"><div class="brand-name">Focus Features</div></a>
+    <a class="brand-card" href="brand-fracture.html" data-category="tech"><div class="brand-name">Fracture</div></a>
+    <a class="brand-card" href="brand-gametime.html" data-category="tech"><div class="brand-name">Gametime</div></a>
+    <a class="brand-card" href="brand-monday.html" data-category="tech"><div class="brand-name">Monday</div></a>
+    <a class="brand-card" href="brand-quizlet.html" data-category="tech"><div class="brand-name">Quizlet (Microsoft)</div></a>
+    <a class="brand-card" href="brand-ticketmaster.html" data-category="tech"><div class="brand-name">Ticketmaster</div></a>
+    <a class="brand-card" href="brand-universal-music.html" data-category="tech"><div class="brand-name">Universal Music Group</div></a>
+
+    <!-- SPORTS & FITNESS -->
+    <a class="brand-card" href="brand-con-cret.html" data-category="sports"><div class="brand-name">Con-Cret Creatine</div></a>
+    <a class="brand-card" href="brand-easton.html" data-category="sports"><div class="brand-name">Easton</div></a>
+    <a class="brand-card" href="brand-rawlings.html" data-category="sports"><div class="brand-name">Rawlings</div></a>
+    <a class="brand-card" href="brand-stat-sports.html" data-category="sports"><div class="brand-name">STAT Sports</div></a>
+    <a class="brand-card" href="brand-v-foundation.html" data-category="sports"><div class="brand-name">V Foundation</div></a>
+    <a class="brand-card" href="brand-gat-sports.html" data-category="sports">
+      <div class="coming-soon-badge">Coming Soon</div>
+      <div class="brand-name">GAT Sports</div>
+    </a>
+
+    <!-- RETAIL & LIFESTYLE -->
+    <a class="brand-card" href="brand-allstate.html" data-category="retail"><div class="brand-name">Allstate</div></a>
+    <a class="brand-card" href="brand-bob-hotels.html" data-category="retail"><div class="brand-name">BOB Hotels</div></a>
+    <a class="brand-card" href="brand-cvs.html" data-category="retail"><div class="brand-name">CVS Pharmacy</div></a>
+    <a class="brand-card" href="brand-dicks.html" data-category="retail"><div class="brand-name">Dick's Sporting Goods</div></a>
+    <a class="brand-card" href="brand-flamin-hot.html" data-category="retail"><div class="brand-name">Flamin' Hot</div></a>
+    <a class="brand-card" href="brand-jewlr.html" data-category="retail"><div class="brand-name">Jewlr</div></a>
+    <a class="brand-card" href="brand-momentec.html" data-category="retail"><div class="brand-name">Momentec</div></a>
+    <a class="brand-card" href="brand-3h.html" data-category="retail"><div class="brand-name">3H</div></a>
+    <a class="brand-card" href="brand-bh.html" data-category="retail"><div class="brand-name">BH</div></a>
+    <a class="brand-card" href="brand-holo.html" data-category="retail"><div class="brand-name">Holo</div></a>
+    <a class="brand-card" href="brand-ce.html" data-category="retail">
+      <div class="coming-soon-badge">Coming Soon</div>
+      <div class="brand-name">CE</div>
+    </a>
+
+  </div>
+</div>
+<!-- CTA -->
+<div class="cta-wrap">
+  <div class="cta-inner">
+    <div>
+      <div class="cta-label">Work With Us</div>
+      <h2 class="cta-title">Want Your Brand On This List?</h2>
+      <p class="cta-sub">Connect with top-tier college athletes through Postgame. <strong>We'll build the right campaign for your brand.</strong></p>
+    </div>
+    <div class="cta-btns">
+      <a href="postgame-contact.html" class="btn-cta-main">Start a Campaign →</a>
+      <a href="postgame-contact.html?type=athlete" class="btn-cta-sec">I'm an Athlete</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <a href="postgame-homepage.html" class="logo" style="display:inline-block;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;display:block;"></a>
+        <p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+      </div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-clients.html">Clients</a></li><li><a href="postgame-campaigns.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Postgame. All rights reserved.</div>
+      <div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Filter functionality
+  const btns = document.querySelectorAll('.filter-btn');
+  const cards = document.querySelectorAll('.brand-card');
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filter = btn.dataset.filter;
+      cards.forEach(card => {
+        if (filter === 'all' || card.dataset.category.includes(filter)) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    });
+  });
+
+
+</script>
+</body>
+</html>

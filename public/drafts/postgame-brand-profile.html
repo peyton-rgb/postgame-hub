@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nike — Brand Profile · Postgame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --orange: #D73F09;
+    --black: #000000;
+    --white: #FFFFFF;
+    --gray: #111111;
+    --gray-mid: #1a1a1a;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--white); font-family: 'DM Sans', Arial, sans-serif; overflow-x: hidden; }
+
+  /* ── NAV ── */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; background: rgba(0,0,0,0); backdrop-filter: blur(0px); border-bottom: 1px solid rgba(255,255,255,0); transition: background 0.4s, border-color 0.4s, backdrop-filter 0.4s; }
+  nav.scrolled { background: rgba(0,0,0,0.92); backdrop-filter: blur(12px); border-bottom-color: rgba(255,255,255,0.06); }
+  .logo { display: flex; align-items: center; gap: 4px; text-decoration: none; }
+  .logo-text { font-weight: 600; font-size: 22px; color: var(--white); letter-spacing: -0.5px; }
+  .logo-plus { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--orange); border-radius: 50%; color: white; font-weight: 700; font-size: 14px; margin: 0 1px; }
+  .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; }
+  .nav-item { position: relative; }
+  .nav-item > a { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .nav-item > a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+  .nav-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.2s; }
+  .nav-item:hover .nav-chevron { transform: rotate(180deg); }
+  .nav-dropdown { position: absolute; top: 100%; left: 0; min-width: 160px; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: all 0.2s; z-index: 200; padding-top: 8px; } .nav-dropdown-inner { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+  .nav-item:hover .nav-dropdown { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .nav-drop-item { display: block; padding: 12px 18px; font-size: 13px; color: rgba(255,255,255,0.55); text-decoration: none; transition: all 0.15s; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .nav-drop-item:last-child { border-bottom: none; }
+  .nav-drop-item:hover { background: rgba(255,255,255,0.05); color: var(--white); padding-left: 22px; }
+  .btn-primary { background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 14px 28px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-primary:hover { background: #c03608; transform: translateY(-1px); }
+  .btn-tracker { background: var(--white); color: var(--black); border: none; border-radius: 8px; padding: 14px 24px; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s, transform 0.15s; }
+  .btn-tracker:hover { background: rgba(255,255,255,0.88); transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    height: 100vh;
+    min-height: 680px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  /* Campaign imagery bg — collage of tiles */
+  .hero-collage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    opacity: 0.35;
+    transform: scale(1.04);
+  }
+
+  .collage-tile {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .collage-tile-bg {
+    position: absolute;
+    inset: 0;
+    transition: transform 8s ease;
+  }
+
+  .collage-tile:nth-child(odd) .collage-tile-bg { animation: slowZoom 12s ease-in-out infinite alternate; }
+  .collage-tile:nth-child(even) .collage-tile-bg { animation: slowZoom 14s ease-in-out infinite alternate-reverse; }
+
+  @keyframes slowZoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+  .ct-a { background: linear-gradient(160deg, #3a1a08, #0d0d0d); }
+  .ct-b { background: linear-gradient(160deg, #1a0e3a, #0a0814); }
+  .ct-c { background: linear-gradient(160deg, #0e3a1a, #080d0a); }
+  .ct-d { background: linear-gradient(160deg, #3a280a, #140e04); }
+  .ct-e { background: linear-gradient(160deg, #3a0e1a, #14060a); }
+  .ct-f { background: linear-gradient(160deg, #0e1a3a, #060a14); }
+  .ct-g { background: linear-gradient(160deg, #2a3a0e, #0e140a); }
+
+  /* Gradient overlay */
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0.5) 100%),
+      linear-gradient(to right, rgba(0,0,0,0.6) 0%, transparent 60%);
+  }
+
+  /* Orange accent line */
+  .hero-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--orange); }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 0 48px 72px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 32px; font-size: 12px; color: rgba(255,255,255,0.35); }
+  .breadcrumb a { color: rgba(255,255,255,0.35); text-decoration: none; transition: color 0.2s; }
+  .breadcrumb a:hover { color: var(--orange); }
+  .breadcrumb-sep { color: rgba(255,255,255,0.15); }
+
+  .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; color: var(--orange); text-transform: uppercase; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+  .hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--orange); }
+
+  /* Brand logo area */
+  .brand-identity { display: flex; align-items: flex-end; gap: 32px; margin-bottom: 28px; flex-wrap: wrap; }
+
+  .brand-logo-box {
+    width: 100px;
+    height: 100px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    font-size: 32px;
+    color: rgba(255,255,255,0.5);
+    flex-shrink: 0;
+    backdrop-filter: blur(8px);
+  }
+
+  .brand-name-block {}
+  .brand-name { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(64px, 10vw, 128px); line-height: 0.88; letter-spacing: 0.01em; color: var(--white); }
+  .brand-industry { font-size: 14px; color: rgba(255,255,255,0.35); margin-top: 10px; display: flex; align-items: center; gap: 10px; }
+  .brand-industry-dot { width: 4px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 50%; }
+
+  .hero-stats {
+    display: inline-flex;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .hero-stat { padding: 18px 32px; border-right: 1px solid rgba(255,255,255,0.08); text-align: center; }
+  .hero-stat:last-child { border-right: none; }
+  .hero-stat-num { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 32px; color: var(--orange); line-height: 1; }
+  .hero-stat-label { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+  /* ── BACK BAR ── */
+  .back-bar { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 20px 48px; }
+  .back-bar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+  .back-link { display: inline-flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; transition: color 0.2s; }
+  .back-link:hover { color: var(--white); }
+  .back-arrow { transition: transform 0.2s; }
+  .back-link:hover .back-arrow { transform: translateX(-3px); }
+  .btn-contact { display: inline-flex; align-items: center; gap: 8px; background: var(--orange); color: var(--white); text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 20px; border-radius: 6px; transition: background 0.2s; letter-spacing: 0.04em; }
+  .btn-contact:hover { background: #c03608; }
+
+  /* ── CAMPAIGN SECTION ── */
+  .section-wrap { max-width: 1200px; margin: 0 auto; padding: 72px 48px 0; }
+
+  .section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; gap: 24px; flex-wrap: wrap; }
+  .section-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.2); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .section-eyebrow::before { content: ''; width: 16px; height: 1px; background: rgba(255,255,255,0.15); }
+  .section-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(32px, 4vw, 48px); color: var(--white); letter-spacing: 0.02em; line-height: 1; }
+  .section-link { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; font-weight: 600; letter-spacing: 0.06em; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; transition: color 0.2s, border-color 0.2s; white-space: nowrap; }
+  .section-link:hover { color: var(--orange); border-color: var(--orange); }
+
+  /* Campaign grid */
+  .campaign-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-bottom: 80px; }
+
+  .campaign-card { background: var(--gray-mid); text-decoration: none; display: block; overflow: hidden; transition: background 0.2s; position: relative; }
+  .campaign-card:hover { background: #222; }
+
+  .campaign-card-thumb { position: relative; aspect-ratio: 16/9; overflow: hidden; background: #0d0d0d; }
+  .campaign-card-bg { position: absolute; inset: 0; transition: transform 0.5s ease; }
+  .campaign-card:hover .campaign-card-bg { transform: scale(1.04); }
+  .campaign-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%); }
+
+  .campaign-card-date {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.5);
+    padding: 4px 10px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+  }
+
+  .campaign-card-body { padding: 20px; }
+  .campaign-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .campaign-tag { padding: 3px 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 100px; font-size: 10px; color: rgba(255,255,255,0.3); }
+  .campaign-tag.active { background: rgba(215,63,9,0.1); border-color: rgba(215,63,9,0.2); color: var(--orange); }
+  .campaign-card-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 24px; color: var(--white); letter-spacing: 0.02em; line-height: 1; margin-bottom: 8px; }
+  .campaign-card-athletes { font-size: 12px; color: rgba(255,255,255,0.3); display: flex; align-items: center; gap: 6px; }
+  .campaign-card-athletes-num { color: var(--white); font-weight: 600; }
+
+  .campaign-card-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; }
+  .campaign-view-link { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.25); letter-spacing: 0.06em; transition: color 0.2s; }
+  .campaign-card:hover .campaign-view-link { color: var(--orange); }
+  .campaign-arrow { font-size: 14px; color: rgba(255,255,255,0.15); transition: color 0.2s, transform 0.2s; }
+  .campaign-card:hover .campaign-arrow { color: var(--orange); transform: translateX(4px); }
+
+  /* ── ATHLETE ROSTER ── */
+  .roster-section { border-top: 1px solid rgba(255,255,255,0.05); padding: 72px 0 80px; }
+  .roster-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+
+  .roster-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 32px; }
+
+  .roster-card { background: var(--gray-mid); text-decoration: none; display: block; overflow: hidden; transition: background 0.2s; }
+  .roster-card:hover { background: #222; }
+
+  .roster-card-thumb { position: relative; aspect-ratio: 3/4; overflow: hidden; background: #0d0d0d; }
+  .roster-card-bg { position: absolute; inset: 0; transition: transform 0.5s ease; }
+  .roster-card:hover .roster-card-bg { transform: scale(1.04); }
+  .roster-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 55%); }
+
+  .roster-sport-tag { position: absolute; top: 12px; left: 12px; background: var(--orange); color: white; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 9px; border-radius: 3px; }
+
+  .roster-card-body { padding: 18px 16px; }
+  .roster-card-name { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 22px; color: var(--white); letter-spacing: 0.02em; line-height: 1; margin-bottom: 3px; }
+  .roster-card-school { font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 10px; }
+  .roster-card-row { display: flex; align-items: center; justify-content: space-between; }
+  .roster-followers { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 18px; color: rgba(255,255,255,0.5); }
+  .roster-followers-label { font-size: 9px; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.08em; }
+  .roster-spotlight { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.2); letter-spacing: 0.06em; transition: color 0.2s; }
+  .roster-card:hover .roster-spotlight { color: var(--orange); }
+
+  /* bg color helpers */
+  .rc-1 { background: linear-gradient(160deg, #3a1a08, #0d0d0d); }
+  .rc-2 { background: linear-gradient(160deg, #0e1a3a, #080e1a); }
+  .rc-3 { background: linear-gradient(160deg, #0e3a1a, #081a0e); }
+  .rc-4 { background: linear-gradient(160deg, #2d0e3a, #18082d); }
+  .rc-5 { background: linear-gradient(160deg, #3a280a, #140e04); }
+  .rc-6 { background: linear-gradient(160deg, #3a0e1a, #14060a); }
+  .rc-7 { background: linear-gradient(160deg, #0a1a3a, #060a14); }
+  .rc-8 { background: linear-gradient(160deg, #1a3a10, #0a140a); }
+
+  /* ── CTA ── */
+  .cta-block { background: var(--orange); padding: 100px 48px; text-align: center; }
+  .cta-title { font-family: 'Bebas Neue', Arial, sans-serif; font-size: clamp(48px, 6vw, 72px); color: var(--white); line-height: 0.95; letter-spacing: 0.02em; margin-bottom: 20px; }
+  .cta-sub { font-size: 17px; color: rgba(255,255,255,0.75); margin-bottom: 40px; }
+  .cta-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .btn-white { background: var(--white); color: var(--orange); border: none; border-radius: 8px; padding: 16px 36px; font-family: 'DM Sans', Arial, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-white:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); }
+  .btn-outline-white { background: transparent; color: var(--white); border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 16px 36px; font-family: 'DM Sans', Arial, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.2s; }
+  .btn-outline-white:hover { border-color: var(--white); transform: translateY(-1px); }
+
+  /* ── FOOTER ── */
+  footer { background: var(--gray); border-top: 1px solid rgba(255,255,255,0.06); padding: 64px 48px 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+  .footer-brand-desc { font-size: 14px; color: rgba(255,255,255,0.35); line-height: 1.7; margin-top: 16px; max-width: 280px; }
+  .footer-col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 24px; }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--white); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-copy { font-size: 13px; color: rgba(255,255,255,0.2); }
+  .footer-socials { display: flex; gap: 24px; }
+  .footer-socials a { font-size: 13px; color: rgba(255,255,255,0.3); text-decoration: none; transition: color 0.2s; }
+  .footer-socials a:hover { color: var(--orange); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  .hero-eyebrow { animation: fadeUp 0.5s ease 0.1s both; }
+  .brand-identity { animation: fadeUp 0.6s ease 0.2s both; }
+  .hero-stats { animation: fadeUp 0.6s ease 0.35s both; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="postgame-homepage.html" class="logo"><img src="postgame-logo.png" alt="Postgame" style="height:32px;width:auto;display:block;"></a>
+  <ul class="nav-links">
+    <li class="nav-item">
+      <a href="postgame-brand-profile.html">Brands <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-brand-profile.html" class="nav-drop-item">Clients</a><a href="postgame-campaign-recap.html" class="nav-drop-item">Campaigns</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-services-elevated.html">Services <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-services-elevated.html" class="nav-drop-item">Elevated</a><a href="postgame-services-scaled.html" class="nav-drop-item">Scaled</a><a href="postgame-services-experiential.html" class="nav-drop-item">Experiential</a></div></div>
+    </li>
+    <li class="nav-item">
+      <a href="postgame-team.html">About <svg class="nav-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner"><a href="postgame-press.html" class="nav-drop-item">Press</a><a href="postgame-case-studies.html" class="nav-drop-item">Case Studies</a><a href="postgame-team.html" class="nav-drop-item">Our Team</a></div></div>
+    </li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="postgame-tier1-tracker.html" class="btn-tracker">Tier 1 Deal Tracker</a>
+    <a href="postgame-contact.html" class="btn-primary">Work With Us</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <!-- Campaign imagery collage -->
+  <div class="hero-collage">
+    <div class="collage-tile"><div class="collage-tile-bg ct-a"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-b"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-c"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-d"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-e"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-f"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-g"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-a"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-b"></div></div>
+    <div class="collage-tile"><div class="collage-tile-bg ct-c"></div></div>
+  </div>
+
+  <div class="hero-accent"></div>
+  <div class="hero-overlay"></div>
+
+  <div class="hero-content">
+    <div class="breadcrumb">
+      <a href="postgame-brand-profile.html">Clients</a>
+      <span class="breadcrumb-sep">/</span>
+      <span>Nike</span>
+    </div>
+    <div class="hero-eyebrow">Brand Profile</div>
+    <div class="brand-identity">
+      <div class="brand-logo-box">NK</div>
+      <div class="brand-name-block">
+        <div class="brand-name">Nike</div>
+        <div class="brand-industry">
+          <span>Apparel</span>
+          <span class="brand-industry-dot"></span>
+          <span>Footwear</span>
+          <span class="brand-industry-dot"></span>
+          <span>Sports Equipment</span>
+          <span class="brand-industry-dot"></span>
+          <span>Partner since 2022</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num">12</div>
+        <div class="hero-stat-label">Campaigns</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">340+</div>
+        <div class="hero-stat-label">Athletes Activated</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">24</div>
+        <div class="hero-stat-label">Sports</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">3 Yrs</div>
+        <div class="hero-stat-label">Partnership</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BACK BAR -->
+<div class="back-bar">
+  <div class="back-bar-inner">
+    <a href="postgame-brand-profile.html" class="back-link"><span class="back-arrow">←</span> Back to Clients</a>
+    <a href="postgame-contact.html" class="btn-contact">Activate with Nike →</a>
+  </div>
+</div>
+
+<!-- CAMPAIGNS -->
+<div class="section-wrap">
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">Campaign History</div>
+      <div class="section-title">Postgame × Nike</div>
+    </div>
+    <a href="postgame-campaign-recap.html" class="section-link">View All Campaigns →</a>
+  </div>
+
+  <div class="campaign-grid">
+
+    <!-- Campaign 1 -->
+    <a href="postgame-campaign.html" class="campaign-card">
+      <div class="campaign-card-thumb">
+        <div class="campaign-card-bg rc-1"></div>
+        <div class="campaign-card-overlay"></div>
+        <div class="campaign-card-date">Feb 2025</div>
+      </div>
+      <div class="campaign-card-body">
+        <div class="campaign-card-tags">
+          <span class="campaign-tag active">Brand Ambassador</span>
+          <span class="campaign-tag">Social</span>
+          <span class="campaign-tag">Apparel</span>
+        </div>
+        <div class="campaign-card-title">Just Do It — Campus Series</div>
+        <div class="campaign-card-athletes"><span class="campaign-card-athletes-num">48</span> athletes across 12 schools</div>
+      </div>
+      <div class="campaign-card-footer">
+        <span class="campaign-view-link">View Campaign Recap</span>
+        <span class="campaign-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Campaign 2 -->
+    <a href="postgame-campaign.html" class="campaign-card">
+      <div class="campaign-card-thumb">
+        <div class="campaign-card-bg rc-2"></div>
+        <div class="campaign-card-overlay"></div>
+        <div class="campaign-card-date">Oct 2024</div>
+      </div>
+      <div class="campaign-card-body">
+        <div class="campaign-card-tags">
+          <span class="campaign-tag active">Content Creation</span>
+          <span class="campaign-tag">Football</span>
+          <span class="campaign-tag">Footwear</span>
+        </div>
+        <div class="campaign-card-title">Air Max — Game Day Drop</div>
+        <div class="campaign-card-athletes"><span class="campaign-card-athletes-num">22</span> athletes across 8 schools</div>
+      </div>
+      <div class="campaign-card-footer">
+        <span class="campaign-view-link">View Campaign Recap</span>
+        <span class="campaign-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Campaign 3 -->
+    <a href="postgame-campaign.html" class="campaign-card">
+      <div class="campaign-card-thumb">
+        <div class="campaign-card-bg rc-3"></div>
+        <div class="campaign-card-overlay"></div>
+        <div class="campaign-card-date">Aug 2024</div>
+      </div>
+      <div class="campaign-card-body">
+        <div class="campaign-card-tags">
+          <span class="campaign-tag active">Scaled</span>
+          <span class="campaign-tag">Multi-Sport</span>
+          <span class="campaign-tag">UGC</span>
+        </div>
+        <div class="campaign-card-title">Back to School — All Sport Push</div>
+        <div class="campaign-card-athletes"><span class="campaign-card-athletes-num">120</span> athletes across 30 schools</div>
+      </div>
+      <div class="campaign-card-footer">
+        <span class="campaign-view-link">View Campaign Recap</span>
+        <span class="campaign-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Campaign 4 -->
+    <a href="postgame-campaign.html" class="campaign-card">
+      <div class="campaign-card-thumb">
+        <div class="campaign-card-bg rc-4"></div>
+        <div class="campaign-card-overlay"></div>
+        <div class="campaign-card-date">Mar 2024</div>
+      </div>
+      <div class="campaign-card-body">
+        <div class="campaign-card-tags">
+          <span class="campaign-tag active">Social Campaign</span>
+          <span class="campaign-tag">Basketball</span>
+        </div>
+        <div class="campaign-card-title">March Madness — Court Culture</div>
+        <div class="campaign-card-athletes"><span class="campaign-card-athletes-num">36</span> athletes across 16 schools</div>
+      </div>
+      <div class="campaign-card-footer">
+        <span class="campaign-view-link">View Campaign Recap</span>
+        <span class="campaign-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Campaign 5 -->
+    <a href="postgame-campaign.html" class="campaign-card">
+      <div class="campaign-card-thumb">
+        <div class="campaign-card-bg rc-5"></div>
+        <div class="campaign-card-overlay"></div>
+        <div class="campaign-card-date">Sep 2023</div>
+      </div>
+      <div class="campaign-card-body">
+        <div class="campaign-card-tags">
+          <span class="campaign-tag active">Experiential</span>
+          <span class="campaign-tag">Appearance</span>
+        </div>
+        <div class="campaign-card-title">Set. Spike. Win. — Volleyball Series</div>
+        <div class="campaign-card-athletes"><span class="campaign-card-athletes-num">18</span> athletes across 6 schools</div>
+      </div>
+      <div class="campaign-card-footer">
+        <span class="campaign-view-link">View Campaign Recap</span>
+        <span class="campaign-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Campaign 6 -->
+    <a href="postgame-campaign.html" class="campaign-card">
+      <div class="campaign-card-thumb">
+        <div class="campaign-card-bg rc-6"></div>
+        <div class="campaign-card-overlay"></div>
+        <div class="campaign-card-date">Jan 2023</div>
+      </div>
+      <div class="campaign-card-body">
+        <div class="campaign-card-tags">
+          <span class="campaign-tag active">Brand Ambassador</span>
+          <span class="campaign-tag">Track & Field</span>
+          <span class="campaign-tag">Elevated</span>
+        </div>
+        <div class="campaign-card-title">Fastest on Campus — Track Series</div>
+        <div class="campaign-card-athletes"><span class="campaign-card-athletes-num">14</span> athletes across 5 schools</div>
+      </div>
+      <div class="campaign-card-footer">
+        <span class="campaign-view-link">View Campaign Recap</span>
+        <span class="campaign-arrow">→</span>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<!-- ATHLETE ROSTER -->
+<div class="roster-section">
+  <div class="roster-inner">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow">Active Roster</div>
+        <div class="section-title">Athletes We've Activated</div>
+      </div>
+      <a href="postgame-tier1-tracker.html" class="section-link">View Full Tracker →</a>
+    </div>
+
+    <div class="roster-grid">
+
+      <a href="postgame-player-spotlight.html" class="roster-card">
+        <div class="roster-card-thumb">
+          <div class="roster-card-bg rc-1"></div>
+          <div class="roster-card-overlay"></div>
+          <div class="roster-sport-tag">Football</div>
+        </div>
+        <div class="roster-card-body">
+          <div class="roster-card-name">Jordan Williams</div>
+          <div class="roster-card-school">University of Georgia</div>
+          <div class="roster-card-row">
+            <div><div class="roster-followers">4.2M</div><div class="roster-followers-label">Followers</div></div>
+            <div class="roster-spotlight">Spotlight →</div>
+          </div>
+        </div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-card">
+        <div class="roster-card-thumb">
+          <div class="roster-card-bg rc-3"></div>
+          <div class="roster-card-overlay"></div>
+          <div class="roster-sport-tag">Volleyball</div>
+        </div>
+        <div class="roster-card-body">
+          <div class="roster-card-name">Kayla Thompson</div>
+          <div class="roster-card-school">Nebraska</div>
+          <div class="roster-card-row">
+            <div><div class="roster-followers">620K</div><div class="roster-followers-label">Followers</div></div>
+            <div class="roster-spotlight">Spotlight →</div>
+          </div>
+        </div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-card">
+        <div class="roster-card-thumb">
+          <div class="roster-card-bg rc-5"></div>
+          <div class="roster-card-overlay"></div>
+          <div class="roster-sport-tag">Track & Field</div>
+        </div>
+        <div class="roster-card-body">
+          <div class="roster-card-name">Aaliyah Johnson</div>
+          <div class="roster-card-school">USC</div>
+          <div class="roster-card-row">
+            <div><div class="roster-followers">980K</div><div class="roster-followers-label">Followers</div></div>
+            <div class="roster-spotlight">Spotlight →</div>
+          </div>
+        </div>
+      </a>
+
+      <a href="postgame-player-spotlight.html" class="roster-card">
+        <div class="roster-card-thumb">
+          <div class="roster-card-bg rc-7"></div>
+          <div class="roster-card-overlay"></div>
+          <div class="roster-sport-tag">Basketball</div>
+        </div>
+        <div class="roster-card-body">
+          <div class="roster-card-name">Marcus Davis</div>
+          <div class="roster-card-school">Duke University</div>
+          <div class="roster-card-row">
+            <div><div class="roster-followers">2.1M</div><div class="roster-followers-label">Followers</div></div>
+            <div class="roster-spotlight">Spotlight →</div>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-block">
+  <h2 class="cta-title">Activate with<br>Athletes Like These</h2>
+  <p class="cta-sub">Connect your brand with top-tier college athletes.</p>
+  <div class="cta-btns">
+    <a href="postgame-contact.html" class="btn-white">I'm a Brand</a>
+    <a href="postgame-contact.html" class="btn-outline-white">I'm an Athlete</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <a href="postgame-homepage.html" class="logo" style="display:inline-block;margin-bottom:16px"><img src="postgame-logo.png" alt="Postgame" style="height:28px;width:auto;display:block;"></a>
+        <p class="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+      </div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="postgame-team.html">About</a></li><li><a href="postgame-services-elevated.html">Services</a></li><li><a href="postgame-team.html">Our Team</a></li><li><a href="postgame-contact.html">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Network</div><ul class="footer-links"><li><a href="postgame-brand-profile.html">Clients</a></li><li><a href="postgame-campaign-recap.html">Campaigns</a></li><li><a href="postgame-tier1-tracker.html">Deal Tracker</a></li><li><a href="postgame-player-spotlight.html">Player Spotlight</a></li></ul></div>
+      <div><div class="footer-col-title">Connect</div><ul class="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Postgame. All rights reserved.</div>
+      <div class="footer-socials"><a href="postgame-privacy.html">Privacy</a><a href="postgame-terms.html">Terms</a><a href="postgame-contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 80);
+  });
+</script>
+
+</body>
+</html>
