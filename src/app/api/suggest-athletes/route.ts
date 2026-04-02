@@ -16,15 +16,16 @@ export async function POST(req: NextRequest) {
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
           role: "user",
-          content: "Search the web for college athletes who are in the news right now in April 2026. Look for NIL deals, NCAA tournament, NFL draft prospects, viral moments, award winners. Give me a list of 20 college athlete full names who are currently trending. Return ONLY a JSON array of names, nothing else: [\"Name One\", \"Name Two\", ...]",
+          content: "Search the web right now for college athletes trending in April 2026. List 10 full names as a JSON array: [\"Name One\", \"Name Two\"]",
         }],
       }),
     });
     const data = await response.json();
-    const allText = data.content?.map((b: any) => b.type === "text" ? b.text : "").join("") || "[]";
-    const jsonMatch = allText.match(/\[.*?\]/s);
-    const names: string[] = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-    return NextResponse.json({ names, raw: allText.slice(0, 800) });
+    return NextResponse.json({ 
+      status: response.status,
+      contentTypes: data.content?.map((b: any) => b.type),
+      fullData: JSON.stringify(data).slice(0, 1000),
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
