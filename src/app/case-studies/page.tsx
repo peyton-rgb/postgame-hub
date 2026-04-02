@@ -5,9 +5,65 @@ import Link from "next/link";
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: "Case Studies | Postgame",
-};
+export const metadata: Metadata = { title: "Case Studies | Postgame" };
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+  :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,0.08);--text:#fff;--text-muted:rgba(255,255,255,0.55);--text-dim:rgba(255,255,255,0.35);}
+  *{box-sizing:border-box;}
+  .pg-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border);}
+  .pg-nav-logo{font-size:22px;font-weight:900;color:var(--orange);text-decoration:none;font-family:Arial,sans-serif;}
+  .pg-nav-links{display:flex;align-items:center;gap:32px;}
+  .pg-nav-links a{color:var(--text-muted);font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.05em;transition:color 0.2s;}
+  .pg-nav-links a:hover{color:var(--text);}
+  .pg-btn-outline{padding:8px 20px;border:1.5px solid var(--orange);border-radius:8px;color:var(--orange);font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;}
+  .pg-btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;}
+  .hero{padding:140px 48px 64px;text-align:center;background:radial-gradient(ellipse at 50% 0%,rgba(215,63,9,0.1) 0%,transparent 60%);}
+  .hero-eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:20px;}
+  .hero-title{font-size:clamp(48px,8vw,80px);line-height:0.95;margin:0;font-family:'Bebas Neue',Arial,sans-serif;color:var(--text);}
+  .hero-divider{width:48px;height:3px;background:var(--orange);margin:32px auto 0;}
+  .section{max-width:1100px;margin:0 auto;padding:0 48px 80px;}
+  .featured-card{display:grid;grid-template-columns:1fr 1fr;border-radius:20px;overflow:hidden;border:1px solid var(--border);background:var(--surface);text-decoration:none;color:inherit;transition:border-color 0.2s;}
+  .featured-card:hover{border-color:rgba(215,63,9,0.5);}
+  .featured-img{aspect-ratio:16/10;overflow:hidden;}
+  .featured-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+  .featured-card:hover .featured-img img{transform:scale(1.05);}
+  .featured-info{padding:40px;}
+  .featured-tag{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);margin-bottom:8px;}
+  .featured-category{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-left:12px;}
+  .featured-title{font-size:clamp(22px,2.5vw,32px);font-weight:900;line-height:1.2;margin:12px 0 6px;color:var(--text);font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:0.02em;}
+  .featured-brand{font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:16px;}
+  .featured-stat{font-size:40px;font-family:'Bebas Neue',Arial,sans-serif;color:var(--orange);line-height:1;}
+  .featured-stat-label{font-size:13px;color:var(--text-muted);margin-left:8px;}
+  .featured-overview{font-size:15px;color:var(--text-muted);line-height:1.7;margin-top:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px;}
+  .card{border-radius:16px;overflow:hidden;border:1px solid var(--border);background:var(--surface);text-decoration:none;color:inherit;display:block;transition:border-color 0.2s,transform 0.25s;}
+  .card:hover{border-color:rgba(215,63,9,0.4);transform:translateY(-4px);}
+  .card-img{aspect-ratio:16/10;overflow:hidden;}
+  .card-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+  .card:hover .card-img img{transform:scale(1.05);}
+  .card-info{padding:20px 24px 24px;}
+  .card-cat{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--orange);margin-bottom:6px;}
+  .card-title{font-size:20px;font-weight:900;line-height:1.2;margin:0 0 4px;font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:0.02em;}
+  .card-brand{font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:12px;}
+  .card-stat{font-size:28px;font-family:'Bebas Neue',Arial,sans-serif;color:var(--orange);line-height:1;}
+  .card-stat-label{font-size:11px;color:var(--text-muted);margin-left:6px;}
+  .card-overview{font-size:13px;color:var(--text-muted);line-height:1.6;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .empty{text-align:center;padding:80px 24px;color:var(--text-muted);}
+  .pg-footer{border-top:1px solid var(--border);padding:48px;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;}
+  .pg-footer-brand-desc{font-size:13px;color:var(--text-muted);line-height:1.6;max-width:240px;margin-top:12px;}
+  .pg-footer-col-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:16px;}
+  .pg-footer-links{list-style:none;padding:0;margin:0;}
+  .pg-footer-links li{margin-bottom:10px;}
+  .pg-footer-links a{font-size:14px;color:var(--text-muted);text-decoration:none;}
+  .pg-footer-links a:hover{color:var(--text);}
+  .pg-footer-bottom{border-top:1px solid var(--border);padding:24px 48px;display:flex;align-items:center;justify-content:space-between;}
+  .pg-footer-copy{font-size:12px;color:var(--text-dim);}
+  .pg-footer-socials{display:flex;gap:24px;}
+  .pg-footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;}
+  @media(max-width:900px){.pg-nav{padding:14px 24px;}.pg-nav-links{display:none;}.hero{padding:110px 24px 48px;}.section{padding:0 24px 60px;}.featured-card{grid-template-columns:1fr;}.grid{grid-template-columns:repeat(2,1fr);}.pg-footer{grid-template-columns:1fr 1fr;gap:32px;padding:32px 24px;}.pg-footer-bottom{padding:20px 24px;flex-direction:column;gap:12px;}}
+  @media(max-width:600px){.grid{grid-template-columns:1fr;}}
+`;
 
 export default async function CaseStudiesPage() {
   const supabase = createPlainSupabase();
@@ -18,125 +74,95 @@ export default async function CaseStudiesPage() {
     .order("sort_order", { ascending: true })
     .order("published_date", { ascending: false });
 
-  const allStudies = (studies || []) as CaseStudy[];
-  const featuredStudy = allStudies.find((s) => s.featured);
-  const rest = allStudies.filter((s) => s.id !== featuredStudy?.id);
+  const all = (studies || []) as CaseStudy[];
+  const featured = all.find((s) => s.featured);
+  const rest = all.filter((s) => s.id !== featured?.id);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FAFAF8", fontFamily: "'DM Sans', sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+    <div style={{ minHeight: "100vh", background: "#0A0A0A", color: "#fff", fontFamily: "Arial, Helvetica, sans-serif" }}>
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
 
-      {/* Header */}
-      <div className="border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 py-16 text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-[#D73F09] mb-4">Postgame</p>
-          <h1 className="text-5xl md:text-7xl font-black text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Case Studies
-          </h1>
-          <div className="w-16 h-0.5 bg-[#D73F09] mx-auto mt-6" />
+      <nav className="pg-nav">
+        <a href="/homepage" className="pg-nav-logo">POSTGAME</a>
+        <div className="pg-nav-links">
+          <a href="/clients">Clients</a>
+          <a href="/campaigns">Campaigns</a>
+          <a href="/about/team">About</a>
+          <a href="/contact" className="pg-btn-outline">Contact</a>
+          <a href="/deals" className="pg-btn-solid">Deal Tracker</a>
         </div>
+      </nav>
+
+      <div className="hero">
+        <div className="hero-eyebrow">Postgame</div>
+        <h1 className="hero-title">Case Studies</h1>
+        <div className="hero-divider" />
       </div>
 
-      {/* Featured */}
-      {featuredStudy && (
-        <section className="max-w-6xl mx-auto px-6 py-16">
-          <Link href={`/case-studies/${featuredStudy.slug}`} className="block group">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              {featuredStudy.image_url && (
-                <div className="aspect-[16/10] overflow-hidden">
-                  <img
-                    src={featuredStudy.image_url}
-                    alt={featuredStudy.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+      <div className="section">
+        {featured && (
+          <Link href={`/case-studies/${featured.slug}`} className="featured-card">
+            {featured.image_url && (
+              <div className="featured-img"><img src={featured.image_url} alt={featured.title} /></div>
+            )}
+            <div className="featured-info">
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <span className="featured-tag">Featured</span>
+                {featured.category && <span className="featured-category">{featured.category}</span>}
+              </div>
+              <h2 className="featured-title">{featured.title}</h2>
+              <p className="featured-brand">{featured.brand_name}</p>
+              {featured.hero_stat && (
+                <div>
+                  <span className="featured-stat">{featured.hero_stat}</span>
+                  {featured.hero_stat_label && <span className="featured-stat-label">{featured.hero_stat_label}</span>}
                 </div>
               )}
-              <div className={`p-8 ${featuredStudy.image_url ? "" : "md:col-span-2"}`}>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">Featured</span>
-                  {featuredStudy.category && (
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                      {featuredStudy.category}
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-3xl font-black text-gray-900 mb-2 group-hover:text-[#D73F09] transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  {featuredStudy.title}
-                </h2>
-                <p className="text-sm font-bold text-gray-500 mb-4">{featuredStudy.brand_name}</p>
-                {featuredStudy.hero_stat && (
-                  <div className="mb-4">
-                    <span className="text-4xl font-black text-[#D73F09]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                      {featuredStudy.hero_stat}
-                    </span>
-                    {featuredStudy.hero_stat_label && (
-                      <span className="text-sm text-gray-500 ml-2">{featuredStudy.hero_stat_label}</span>
-                    )}
-                  </div>
-                )}
-                {featuredStudy.overview && (
-                  <p className="text-gray-600 leading-relaxed line-clamp-3">{featuredStudy.overview}</p>
-                )}
-              </div>
+              {featured.overview && <p className="featured-overview">{featured.overview}</p>}
             </div>
           </Link>
-        </section>
-      )}
+        )}
 
-      {/* Grid */}
-      {rest.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pb-20">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {rest.map((study) => (
-              <Link
-                key={study.id}
-                href={`/case-studies/${study.slug}`}
-                className="block group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-              >
-                {study.image_url && (
-                  <div className="aspect-[16/10] overflow-hidden">
-                    <img
-                      src={study.image_url}
-                      alt={study.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                )}
-                <div className="p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    {study.category && (
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">
-                        {study.category}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="text-xl font-black text-gray-900 mb-1 group-hover:text-[#D73F09] transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    {study.title}
-                  </h3>
-                  <p className="text-sm font-bold text-gray-500 mb-3">{study.brand_name}</p>
-                  {study.hero_stat && (
-                    <div className="mb-3">
-                      <span className="text-2xl font-black text-[#D73F09]">{study.hero_stat}</span>
-                      {study.hero_stat_label && (
-                        <span className="text-xs text-gray-500 ml-2">{study.hero_stat_label}</span>
-                      )}
+        {rest.length > 0 && (
+          <div className="grid">
+            {rest.map((s) => (
+              <Link key={s.id} href={`/case-studies/${s.slug}`} className="card">
+                {s.image_url && <div className="card-img"><img src={s.image_url} alt={s.title} /></div>}
+                <div className="card-info">
+                  {s.category && <div className="card-cat">{s.category}</div>}
+                  <h3 className="card-title">{s.title}</h3>
+                  <p className="card-brand">{s.brand_name}</p>
+                  {s.hero_stat && (
+                    <div>
+                      <span className="card-stat">{s.hero_stat}</span>
+                      {s.hero_stat_label && <span className="card-stat-label">{s.hero_stat_label}</span>}
                     </div>
                   )}
-                  {study.overview && (
-                    <p className="text-gray-600 text-sm line-clamp-2">{study.overview}</p>
-                  )}
+                  {s.overview && <p className="card-overview">{s.overview}</p>}
                 </div>
               </Link>
             ))}
           </div>
-        </section>
-      )}
+        )}
 
-      {allStudies.length === 0 && (
-        <div className="text-center py-32 text-gray-400">
-          <p className="text-lg">No case studies published yet.</p>
+        {all.length === 0 && <div className="empty">No case studies published yet.</div>}
+      </div>
+
+      <footer>
+        <div className="pg-footer">
+          <div>
+            <a href="/homepage"><img src="/postgame-logo.png" alt="Postgame" style={{ height: 28, width: "auto" }} /></a>
+            <p className="pg-footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world's most ambitious brands.</p>
+          </div>
+          <div><div className="pg-footer-col-title">Company</div><ul className="pg-footer-links"><li><a href="/about/team">About</a></li><li><a href="/services/elevated">Services</a></li><li><a href="/contact">Contact</a></li></ul></div>
+          <div><div className="pg-footer-col-title">Network</div><ul className="pg-footer-links"><li><a href="/clients">Clients</a></li><li><a href="/campaigns">Campaigns</a></li><li><a href="/deals">Deal Tracker</a></li></ul></div>
+          <div><div className="pg-footer-col-title">Connect</div><ul className="pg-footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
         </div>
-      )}
+        <div className="pg-footer-bottom">
+          <div className="pg-footer-copy">&copy; {new Date().getFullYear()} Postgame. All rights reserved.</div>
+          <div className="pg-footer-socials"><a href="#">Privacy</a><a href="#">Terms</a><a href="/contact">Contact</a></div>
+        </div>
+      </footer>
     </div>
   );
 }
