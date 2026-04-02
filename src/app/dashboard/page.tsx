@@ -6,18 +6,39 @@ import CampaignList from "@/components/CampaignList";
 import RunOfShowList from "@/components/RunOfShowList";
 import BriefList from "@/components/BriefList";
 import TrackerList from "@/components/TrackerList";
+import Link from "next/link";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import Link from "next/link";
 import { createBrowserSupabase } from "@/lib/supabase";
 
 const TABS = [
-  { key: "recaps", label: "Recaps" },
-  { key: "trackers", label: "Performance Trackers" },
-  { key: "ros", label: "Run of Shows" },
-  { key: "briefs", label: "Briefs" },
+  { key: "recaps",       label: "Recaps" },
+  { key: "trackers",     label: "Performance Trackers" },
+  { key: "ros",          label: "Run of Shows" },
+  { key: "briefs",       label: "Briefs" },
+  { key: "newsletter",   label: "Newsletter" },
+  { key: "instructions", label: "Campaign Instructions" },
+  { key: "optin",        label: "Campaign Opt-In" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+function RedirectTab({ href, label, desc }: { href: string; label: string; desc: string }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:400 }}>
+      <div style={{ textAlign:"center", maxWidth:480 }}>
+        <div style={{ fontSize:32, marginBottom:16 }}>
+          {label === "Newsletter Creator" ? "📧" : label === "Campaign Instructions" ? "📋" : "✅"}
+        </div>
+        <h2 style={{ fontSize:22, fontWeight:900, marginBottom:12, color:"#fff" }}>{label}</h2>
+        <p style={{ fontSize:15, color:"rgba(255,255,255,0.5)", lineHeight:1.6, marginBottom:28 }}>{desc}</p>
+        <Link href={href} style={{ display:"inline-block", padding:"12px 28px", background:"#D73F09", borderRadius:8, color:"#fff", fontWeight:800, fontSize:13, textDecoration:"none", textTransform:"uppercase", letterSpacing:"0.07em" }}>
+          Open {label} →
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -102,6 +123,9 @@ function DashboardContent() {
         {activeTab === "trackers" && <TrackerList />}
         {activeTab === "ros" && <RunOfShowList />}
         {activeTab === "briefs" && <BriefList />}
+        {activeTab === "newsletter"   && <RedirectTab href="/dashboard/newsletter" label="Newsletter Creator" desc="Build exportable Mailchimp newsletters tied to brand campaigns." />}
+        {activeTab === "instructions" && <RedirectTab href="/dashboard/campaign-instructions" label="Campaign Instructions" desc="Create athlete + crew instruction pages with deliverables, dos/don'ts, and contact info." />}
+        {activeTab === "optin"        && <RedirectTab href="/dashboard/campaign-optin" label="Campaign Opt-In" desc="Build confirmation pages for athletes to officially opt in to campaigns." />}
 
       </div>
     </div>
