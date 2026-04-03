@@ -92,13 +92,14 @@ export default async function ServicesElevatedPage() {
         document.addEventListener('DOMContentLoaded', function() {
           var slides = document.querySelectorAll('.carousel-slide');
           var dots = document.querySelectorAll('.dot');
+          if (!slides.length) return;
           var current = 0;
           function go(n) {
-            slides[current].classList.remove('active');
-            dots[current].classList.remove('active');
+            if (slides[current]) slides[current].classList.remove('active');
+            if (dots[current]) dots[current].classList.remove('active');
             current = (n + slides.length) % slides.length;
-            slides[current].classList.add('active');
-            dots[current].classList.add('active');
+            if (slides[current]) slides[current].classList.add('active');
+            if (dots[current]) dots[current].classList.add('active');
           }
           dots.forEach(function(d, i) { d.addEventListener('click', function() { go(i); }); });
           setInterval(function() { go(current + 1); }, 4000);
