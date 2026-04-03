@@ -49,6 +49,7 @@ export default function BriefEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isCustomHtml, setIsCustomHtml] = useState(false);
   const [activeTab, setActiveTab] = useState<"fields" | "sections" | "preview">("fields");
   const [showRawHtml, setShowRawHtml] = useState(false);
   const [rawHtml, setRawHtml] = useState("");
@@ -113,6 +114,8 @@ export default function BriefEditor() {
         setFields(storedFields);
       }
       setRawHtml(data.html_content || "");
+      const hasFields = data.html_content?.includes("<!--BRIEF_FIELDS:");
+      setIsCustomHtml(!!data.html_content && !hasFields);
     }
     setLoading(false);
   }
@@ -129,10 +132,10 @@ export default function BriefEditor() {
   }
 
   const previewHtml = useCallback(() => {
-    if (showRawHtml) return rawHtml;
+    if (showRawHtml || isCustomHtml) return rawHtml;
     const html = generateBriefHTML(fields);
     return html.replace("</head>", `<!--BRIEF_FIELDS:${JSON.stringify(fields)}-->\n</head>`);
-  }, [fields, showRawHtml, rawHtml]);
+  }, [fields, showRawHtml, rawHtml, isCustomHtml]);
 
   function updateField(key: keyof BriefFields, value: string) {
     setFields((prev) => ({ ...prev, [key]: value }));
