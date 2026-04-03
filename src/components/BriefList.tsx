@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+interface Brand { id: string; name: string; logo_primary_url: string | null; logo_light_url: string | null; }
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Brief } from "@/lib/types";
 import { SYSTEM_TEMPLATES, type BriefTemplate } from "@/lib/brief-template";
@@ -14,6 +16,8 @@ export default function BriefList() {
   const [selectedTemplate, setSelectedTemplate] = useState<BriefTemplate | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newClient, setNewClient] = useState("");
+  const [selectedBrandId, setSelectedBrandId] = useState<string>("");
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Brief | null>(null);
@@ -21,6 +25,7 @@ export default function BriefList() {
 
   useEffect(() => {
     loadBriefs();
+    loadBrands();
   }, []);
 
   async function loadBriefs() {
@@ -37,6 +42,7 @@ export default function BriefList() {
     setSelectedTemplate(null);
     setNewTitle("");
     setNewClient("");
+    setSelectedBrandId("");
     setShowCreate(true);
   }
 
@@ -58,7 +64,8 @@ export default function BriefList() {
       .insert({
         title: newTitle,
         slug,
-        client_name: newClient,
+        client_name: selectedBrand?.name || "",
+        brand_id: selectedBrandId,
         html_content: "",
         published: false,
       })
