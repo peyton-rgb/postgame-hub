@@ -38,7 +38,14 @@ Postgame Logo (always use): ${POSTGAME_LOGO}
 RULES:
 1. When generating or updating the brief, output ONLY the complete raw HTML — no explanation, no markdown fences, nothing else.
 2. Always follow the Postgame orange theme: #D73F09 orange, black header gradient (#1A1A1A to #000), DM Sans font, all CSS in a style tag.
-3. Always show both the Postgame logo and brand logo in the header using .logo-pill img tags.
+3. MANDATORY HEADER LOCKUP — every brief must use this exact header logo structure, no exceptions:
+   <div class="header-logos">
+     <div class="logo-pill"><img src="POSTGAME_LOGO_URL" alt="Postgame" /></div>
+     <div class="logo-sep"></div>
+     <div class="logo-pill brand"><img src="BRAND_LOGO_URL" alt="BRAND_NAME" /></div>
+   </div>
+   Postgame logo always on the LEFT. Brand logo always on the RIGHT. Both inside .logo-pill divs. Separated by .logo-sep. Never deviate from this structure.
+
 4. For plain conversation, respond normally in text.
 5. Make briefs detailed, cinematic, and production-ready.
 
