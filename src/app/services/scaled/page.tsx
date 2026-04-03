@@ -21,7 +21,7 @@ const SHARED_STYLES = `
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;}
   .d{font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:0.02em;}
-  .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border);}
+  .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border);animation:navDrop 0.6s ease 0.2s both;}  @keyframes navDrop{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:translateY(0)}}
   .nav-logo{font-size:22px;font-weight:900;color:var(--orange);text-decoration:none;}
   .nav-links{display:flex;align-items:center;gap:32px;}
   .nav-links a{color:var(--text-muted);font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.05em;transition:color 0.2s;}
