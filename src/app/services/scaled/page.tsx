@@ -1,5 +1,41 @@
 export const revalidate = 60;
 
+const BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/";
+
+const PHOTOS = [
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/85055a34-72d5-4602-b98a-e5d370403e58/1775098564683-160A3009.jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/85055a34-72d5-4602-b98a-e5d370403e58/1775098558696-160A2989.jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/85055a34-72d5-4602-b98a-e5d370403e58/1775098553880-160A2983.jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/85055a34-72d5-4602-b98a-e5d370403e58/1775098549313-160A2975.jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/85055a34-72d5-4602-b98a-e5d370403e58/1775098545639-160A2969.jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/fb95ca44-e29f-49b8-b636-153cad3e8fe8/1775098381580-DSC09853.jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/fb95ca44-e29f-49b8-b636-153cad3e8fe8/1775098376043-DSC09858.jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/ee8357de-5bbe-40ac-b140-3da951139a8c/1775098150024-DSC04010 (1).jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/ee8357de-5bbe-40ac-b140-3da951139a8c/1775098141070-DSC03998 (1).jpg",
+  "15ed2d87-731f-4bf6-a5d9-8e6fab5b3462/homepage/1775097916450-DSC09875.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/2d3cbb81-f4fb-4fc6-a53f-4830f3de9518/1775083807532-Labaron_Philon_Jr._EDIT-1.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/2d3cbb81-f4fb-4fc6-a53f-4830f3de9518/1775083804689-Labaron_Philon_Jr._Edit-4.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/4ba4c57e-8d0e-4eda-a465-187e2563ec83/1775083787811-Sayvia_Seller_DSC05093.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/4ba4c57e-8d0e-4eda-a465-187e2563ec83/1775083787138-Sayvia_Seller_DSC05015.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/4ba4c57e-8d0e-4eda-a465-187e2563ec83/1775083786230-Sayvia_Seller_DSC04959.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/692bc58f-7279-4721-8b98-9ba0e287d45d/1775083783182-Saylor_Poffenbarger_IMG_4215.JPG",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/692bc58f-7279-4721-8b98-9ba0e287d45d/1775083782072-Saylor_Poffenbarger_IMG_4214.JPG",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/692bc58f-7279-4721-8b98-9ba0e287d45d/1775083781160-Saylor_Poffenbarger_IMG_4213.JPG",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/692bc58f-7279-4721-8b98-9ba0e287d45d/1775083779011-Saylor_Poffenbarger_IMG_4211.JPG",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/bc97373a-dfdc-465b-bd48-3bcd2df287a5/1775083711221-Dailyn_Swain_Postgame x Dailyn Swain Selects-4.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/bc97373a-dfdc-465b-bd48-3bcd2df287a5/1775083711956-Dailyn_Swain_Postgame x Dailyn Swain Selects-22.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/bc97373a-dfdc-465b-bd48-3bcd2df287a5/1775083713038-Dailyn_Swain_Postgame x Dailyn Swain Selects-31.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/2b58fc76-e2b8-4d26-a3de-b3b8f9bdd5d5/1775081246786-Joyce_Edwards_03.27 - POSTGAME - JOYCE EDWARDS-03215.jpg",
+  "5b035be0-7d17-499d-b512-ddb3f900b68f/2b58fc76-e2b8-4d26-a3de-b3b8f9bdd5d5/1775081250632-Joyce_Edwards_03.27 - POSTGAME - JOYCE EDWARDS-03241.jpg",
+];
+// Split into 4 columns
+function chunk(arr, n) {
+  return Array.from({ length: n }, (_, i) => arr.filter((_, j) => j % n === i));
+}
+const cols = chunk(PHOTOS, 4);
+const SPEEDS = ["32s", "24s", "40s", "28s"];
+const DIRS = ["up", "down", "up", "down"];
+
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
   :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,0.08);--text:#fff;--text-muted:rgba(255,255,255,0.55);--text-dim:rgba(255,255,255,0.35);}
@@ -15,11 +51,22 @@ const styles = `
   .btn-outline:hover{background:var(--orange);color:#fff;}
   .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:background 0.2s;}
   .btn-solid:hover{background:#c43808;}
-  .hero{padding:160px 48px 80px;background:radial-gradient(ellipse at 50% 0%,rgba(215,63,9,0.12) 0%,transparent 60%);max-width:900px;margin:0 auto;}
+  .hero-wrap{position:relative;height:100vh;min-height:640px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  .mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px;pointer-events:none;}
+  .mosaic-col{display:flex;flex-direction:column;gap:6px;}
+  .mosaic-track{display:flex;flex-direction:column;gap:6px;will-change:transform;}
+  .mosaic-track.up{animation:scrollUp var(--dur,28s) linear infinite;}
+  .mosaic-track.down{animation:scrollDown var(--dur,28s) linear infinite;}
+  .mosaic-img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;flex-shrink:0;}
+  @keyframes scrollUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+  @keyframes scrollDown{from{transform:translateY(-50%)}to{transform:translateY(0)}}
+  .mosaic-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.55) 0%,rgba(10,10,10,0.45) 40%,rgba(10,10,10,0.75) 85%,rgba(10,10,10,1) 100%);}
+  .mosaic-overlay-left{position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.6) 0%,transparent 30%,transparent 70%,rgba(10,10,10,0.6) 100%);}
+  .hero-content{position:relative;z-index:10;text-align:center;padding:0 24px;max-width:860px;}
   .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:24px;}
-  .hero-title{font-size:clamp(52px,8vw,88px);line-height:0.95;margin:0 0 24px;}
-  .hero-desc{font-size:18px;color:var(--text-muted);max-width:560px;line-height:1.6;margin:0 0 40px;}
-  .hero-actions{display:flex;gap:16px;flex-wrap:wrap;}
+  .hero-title{font-size:clamp(60px,9vw,110px);line-height:0.92;margin:0 0 24px;text-shadow:0 2px 20px rgba(0,0,0,0.5);}
+  .hero-desc{font-size:18px;color:rgba(255,255,255,0.8);max-width:520px;line-height:1.6;margin:0 auto 40px;text-shadow:0 1px 8px rgba(0,0,0,0.6);}
+  .hero-actions{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
   .section{padding:80px 48px;}
   .section-eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:12px;}
   .section-title{font-size:clamp(32px,4vw,48px);line-height:1;margin:0 0 48px;}
@@ -49,7 +96,7 @@ const styles = `
   .footer-socials{display:flex;gap:24px;}
   .footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;}
   .footer-socials a:hover{color:var(--text);}
-  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.hero{padding:120px 24px 60px;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}}
+  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.mosaic{grid-template-columns:repeat(2,1fr);}}
 `;
 
 export default function ServicesScaledPage() {
@@ -65,13 +112,28 @@ export default function ServicesScaledPage() {
         </div>
       </nav>
 
-      <div className="hero">
-        <div className="service-tag">Scaled NIL</div>
-        <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
-        <p className="hero-desc">Scaled campaigns activate 10–500+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
-        <div className="hero-actions">
-          <a href="/contact" className="btn-solid">Start a Campaign</a>
-          <a href="/campaigns" className="btn-outline">See Examples</a>
+      <div className="hero-wrap">
+        <div className="mosaic" aria-hidden="true">
+          {cols.map((col, ci) => (
+            <div key={ci} className="mosaic-col">
+              <div className={"mosaic-track " + DIRS[ci]} style={{ "--dur": SPEEDS[ci] }}>
+                {[...col, ...col].map((src, i) => (
+                  <img key={i} src={BASE + encodeURIComponent(src)} alt="" className="mosaic-img" loading={i < 4 ? "eager" : "lazy"} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mosaic-overlay" />
+        <div className="mosaic-overlay-left" />
+        <div className="hero-content">
+          <div className="service-tag">Scaled NIL</div>
+          <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
+          <p className="hero-desc">Scaled campaigns activate 10–50+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
+          <div className="hero-actions">
+            <a href="/contact" className="btn-solid">Start a Campaign</a>
+            <a href="/campaigns" className="btn-outline">See Examples</a>
+          </div>
         </div>
       </div>
 
