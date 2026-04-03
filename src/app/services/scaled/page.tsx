@@ -84,12 +84,10 @@ const SHARED_STYLES = `
 `;
 
 export default async function ServicesScaledPage() {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/pages?slug=eq.services&select=settings`,
-    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }, next: { revalidate: 60 } }
-  );
-  const rows = await res.json().catch(() => []);
-  const raw: unknown[] = rows?.[0]?.settings?.["scaled"]?.carousel_photos ?? DEFAULT_PHOTOS;
+  const { createClient } = await import("@supabase/supabase-js");
+  const sb = createClient(SUPABASE_URL, ANON_KEY);
+  const { data: row } = await sb.from("pages").select("settings").eq("slug","services").single();
+  const raw: unknown[] = (row?.settings as Record<string,{carousel_photos?:unknown[]}>)?.["scaled"]?.carousel_photos ?? DEFAULT_PHOTOS;
   const photos = toPhotos(raw);
 
   return (
