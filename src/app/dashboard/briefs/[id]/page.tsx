@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Brief } from "@/lib/types";
 import Link from "next/link";
@@ -51,6 +51,7 @@ const CHIPS = ["Generate the brief","Add shot list","Write athlete dialogue","Ad
 export default function BriefEditor() {
   const { id } = useParams<{ id: string }>();
   const supabase = createBrowserSupabase();
+  const router = useRouter();
   const [brief, setBrief] = useState<Brief | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -129,7 +130,8 @@ export default function BriefEditor() {
   return (
     <div className="flex h-screen bg-black overflow-hidden">
       <div className="w-[400px] flex-shrink-0 flex flex-col border-r border-gray-800">
-        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-gray-800 flex items-center gap-3">
+          <button onClick={() => router.push("/dashboard")} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-700 text-gray-400 hover:text-white transition-colors flex-shrink-0">←</button>
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">Brief Builder</div>
             <div className="text-sm font-semibold text-white mt-0.5 truncate max-w-[240px]">{brief.title}</div>
