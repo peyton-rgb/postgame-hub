@@ -489,18 +489,19 @@ function TeamEditor({ onSaved }: { onSaved: () => void }) {
 
 // ── Services editor ───────────────────────────────────────────
 type ServiceTab = "elevated"|"scaled"|"always-on"|"experiential";
-interface ServicePageData { hero_tag:string; hero_title:string; hero_desc:string; features:{num:string;title:string;desc:string}[]; cta_title:string; cta_sub:string }
+interface ServicePageData { hero_tag:string; hero_title:string; hero_desc:string; features:{num:string;title:string;desc:string}[]; cta_title:string; cta_sub:string; carousel_photos:string[] }
 
 function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTab }) {
   const supabase = createBrowserSupabase();
   const [tab, setTab] = useState<ServiceTab>(svc || "elevated");
   const [data, setData] = useState<Record<ServiceTab, ServicePageData>>({
-    elevated:     { hero_tag:"Elevated NIL", hero_title:"Tier 1 Athletes.\nMaximum Impact.", hero_desc:"", features:[], cta_title:"", cta_sub:"" },
-    scaled:       { hero_tag:"Scaled NIL", hero_title:"More Athletes.\nMore Markets.", hero_desc:"", features:[], cta_title:"", cta_sub:"" },
-    "always-on":  { hero_tag:"Always On", hero_title:"Year-Round\nAthlete Coverage.", hero_desc:"", features:[], cta_title:"", cta_sub:"" },
-    experiential: { hero_tag:"Experiential", hero_title:"In-Person.\nUnforgettable.", hero_desc:"", features:[], cta_title:"", cta_sub:"" },
+    elevated:     { hero_tag:"Elevated NIL", hero_title:"Tier 1 Athletes.\nMaximum Impact.", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
+    scaled:       { hero_tag:"Scaled NIL", hero_title:"More Athletes.\nMore Markets.", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
+    "always-on":  { hero_tag:"Always On", hero_title:"Year-Round\nAthlete Coverage.", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
+    experiential: { hero_tag:"Experiential", hero_title:"In-Person.\nUnforgettable.", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
   });
   const [saving, setSaving] = useState(false);
+  const [carouselPickerOpen, setCarouselPickerOpen] = useState(false);
 
   useEffect(() => {
     supabase.from("pages").select("settings").eq("slug","services").single().then(({ data: row }) => {
@@ -566,12 +567,41 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
           <Field label="CTA Title" value={cur.cta_title} onChange={v=>upd("cta_title",v)} />
           <Field label="CTA Subtitle" value={cur.cta_sub} onChange={v=>upd("cta_sub",v)} textarea />
         </SectionCard>
+
+        <SectionCard title="Carousel Photos">
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+            {(cur.carousel_photos||[]).map((url, i) => (
+              <div key={i} style={{ position:"relative", width:72, height:72 }}>
+                <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent(url)}`} style={{ width:72, height:72, objectFit:"cover", borderRadius:8, border:"1px solid rgba(255,255,255,0.1)" }} alt="" />
+                <button onClick={()=>upd("carousel_photos",(cur.carousel_photos||[]).filter((_,j)=>j!==i))} style={{ position:"absolute", top:-6, right:-6, width:18, height:18, borderRadius:"50%", background:"#D73F09", border:"none", color:"#fff", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>×</button>
+              </div>
+            ))}
+          </div>
+          <button style={S.btnAdd} onClick={()=>setCarouselPickerOpen(true)}>+ Add Photo from Media Library</button>
+          <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:6 }}>{(cur.carousel_photos||[]).length} photos · changes live after Save</div>
+        </SectionCard>
       </div>
 
       <div style={S.actionsBar}>
         <a href={SVC_URLS[tab]} target="_blank" style={S.btnPreview}>↗ View Live</a>
         <button style={S.btnSave} onClick={save} disabled={saving}>{saving?"Saving...":"Save Changes"}</button>
       </div>
+
+      {carouselPickerOpen && (
+        <CampaignMediaPicker
+          open={carouselPickerOpen}
+          mode="full"
+          onClose={() => setCarouselPickerOpen(false)}
+          onSelect={(item) => {
+            if (item.type === "image") {
+              const path = item.url.replace("https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/","").split("?")[0];
+              const decoded = decodeURIComponent(path);
+              upd("carousel_photos", [...(cur.carousel_photos||[]), decoded]);
+            }
+            setCarouselPickerOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }
