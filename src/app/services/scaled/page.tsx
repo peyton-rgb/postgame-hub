@@ -39,13 +39,6 @@ const PHOTOS = [
   "cc84b3b9-aef5-48bf-882c-24782a8432bf/d3d4538b-fcba-4b29-b0a4-d6f03356c891/1774483466467-Maria_Pena_1.jpeg",
   "cc84b3b9-aef5-48bf-882c-24782a8432bf/c5556bb1-67e7-4e0c-9fc4-b14fad41aa09/1774483477347-Liron_Thomas_1.jpg",
 ];
-// Split into 4 columns
-function chunk<T>(arr: T[], n: number): T[][] {
-  return Array.from({ length: n }, (_, i) => arr.filter((_, j) => j % n === i));
-}
-const cols = chunk(PHOTOS, 4);
-const SPEEDS = ["18s", "13s", "22s", "16s"];
-const DIRS = ["up", "down", "up", "down"];
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
@@ -62,41 +55,40 @@ const styles = `
   .btn-outline:hover{background:var(--orange);color:#fff;}
   .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:background 0.2s;}
   .btn-solid:hover{background:#c43808;}
-  .hero-wrap{position:relative;height:100vh;min-height:640px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-  .mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1.4fr 1fr 1.2fr;gap:5px;padding:5px;pointer-events:none;}
-  .mosaic-col{display:flex;flex-direction:column;gap:5px;}
-  .mosaic-track{display:flex;flex-direction:column;gap:5px;will-change:transform;}
-  .mosaic-track.up{animation:scrollUp var(--dur,20s) linear infinite;}
-  .mosaic-track.down{animation:scrollDown var(--dur,20s) linear infinite;}
-  .mosaic-img{width:100%;object-fit:cover;border-radius:6px;flex-shrink:0;}
-  .mosaic-img.tall{aspect-ratio:2/3;}
-  .mosaic-img.med{aspect-ratio:1/1;}
-  .mosaic-img.short{aspect-ratio:4/3;}
-  @keyframes scrollUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
-  @keyframes scrollDown{from{transform:translateY(-50%)}to{transform:translateY(0)}}
-  .mosaic-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.2) 0%,rgba(10,10,10,0.05) 35%,rgba(10,10,10,0.05) 65%,rgba(10,10,10,1) 100%);}
-  .mosaic-overlay-left{position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.8) 0%,transparent 25%,transparent 75%,rgba(10,10,10,0.8) 100%);}
-  .hero-glass{position:absolute;z-index:5;width:min(900px,90vw);height:500px;border-radius:60px;
-    background:radial-gradient(ellipse at center,rgba(5,5,5,0.82) 0%,rgba(5,5,5,0.65) 35%,rgba(5,5,5,0.2) 65%,transparent 80%);
-    backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);
-    -webkit-mask-image:radial-gradient(ellipse at center,black 35%,rgba(0,0,0,0.8) 50%,rgba(0,0,0,0.3) 65%,transparent 80%);
-    mask-image:radial-gradient(ellipse at center,black 35%,rgba(0,0,0,0.8) 50%,rgba(0,0,0,0.3) 65%,transparent 80%);
-    animation:fadeScale 0.9s ease 0.5s both;}
-  .hero-content{position:relative;z-index:10;text-align:center;padding:0 40px;max-width:700px;animation:fadeScale 0.9s ease 0.6s both;}
-  .service-tag{animation:fadeUp 0.6s ease 1.2s both;}
-  .hero-title{animation:fadeUp 0.7s ease 1.4s both;}
-  .hero-desc{animation:fadeUp 0.6s ease 1.6s both;}
-  .hero-actions{animation:fadeUp 0.6s ease 1.8s both;}
-  @keyframes fadeScale{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-  .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:24px;}
-  .hero-title{font-size:clamp(60px,9vw,110px);line-height:0.92;margin:0 0 24px;text-shadow:0 2px 20px rgba(0,0,0,0.5);}
-  .hero-desc{font-size:18px;color:rgba(255,255,255,0.8);max-width:520px;line-height:1.6;margin:0 auto 40px;text-shadow:0 1px 8px rgba(0,0,0,0.6);}
-  .hero-actions{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+
+  /* HERO */
+  .hero-wrap{position:relative;min-height:100vh;display:flex;align-items:center;padding:100px 48px 80px;overflow:hidden;}
+
+  /* Carousel background */
+  .carousel-bg{position:absolute;inset:0;z-index:0;}
+  .carousel-track{display:flex;height:100%;transition:opacity 0.8s ease;}
+  .carousel-slide{position:absolute;inset:0;opacity:0;transition:opacity 1.2s ease;}
+  .carousel-slide.active{opacity:1;}
+  .carousel-slide img{width:100%;height:100%;object-fit:cover;}
+  .carousel-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(5,5,5,0.92) 0%,rgba(5,5,5,0.7) 45%,rgba(5,5,5,0.2) 75%,rgba(5,5,5,0.05) 100%);}
+  .carousel-overlay-top{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.5) 0%,transparent 20%,transparent 80%,rgba(10,10,10,1) 100%);}
+
+  /* Dots */
+  .carousel-dots{position:absolute;bottom:32px;left:48px;display:flex;gap:8px;z-index:10;}
+  .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);transition:all 0.3s;cursor:pointer;border:none;padding:0;}
+  .dot.active{width:24px;border-radius:3px;background:var(--orange);}
+
+  /* Glass card */
+  .hero-glass-card{position:relative;z-index:10;max-width:620px;background:rgba(10,10,10,0.45);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:52px 56px;box-shadow:0 24px 80px rgba(0,0,0,0.5);animation:fadeUp 0.8s ease 0.3s both;}
+  .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);background:#fff;border:1.5px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:20px;}
+  .hero-title{font-size:clamp(44px,6vw,76px);line-height:0.95;margin:0 0 20px;animation:fadeUp 0.7s ease 0.5s both;}
+  .hero-desc{font-size:17px;color:rgba(255,255,255,0.75);line-height:1.65;margin:0 0 36px;animation:fadeUp 0.7s ease 0.7s both;}
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;animation:fadeUp 0.7s ease 0.9s both;}
+  .hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:20px 32px;margin-top:40px;padding-top:32px;border-top:1px solid rgba(255,255,255,0.1);animation:fadeUp 0.7s ease 1.1s both;}
+  .stat-num{font-family:'Bebas Neue',Arial,sans-serif;font-size:42px;color:#fff;line-height:1;}
+  .stat-num span{color:var(--orange);}
+  .stat-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
   .section{padding:80px 48px;}
   .section-eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:12px;}
   .section-title{font-size:clamp(32px,4vw,48px);line-height:1;margin:0 0 48px;}
-  .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:64px;}
+  .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
   .feature{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;transition:border-color 0.25s;}
   .feature:hover{border-color:var(--orange);}
   .feature-num{font-size:11px;font-weight:800;color:var(--text-dim);letter-spacing:0.1em;margin-bottom:16px;}
@@ -122,13 +114,32 @@ const styles = `
   .footer-socials{display:flex;gap:24px;}
   .footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;}
   .footer-socials a:hover{color:var(--text);}
-  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.mosaic{grid-template-columns:1fr 1.4fr;}}
+  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.hero-wrap{padding:100px 24px 60px;}.hero-glass-card{padding:36px 28px;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.carousel-dots{left:24px;}.hero-stats{grid-template-columns:1fr 1fr;}}
 `;
+
+const CAROUSEL = PHOTOS.slice(0, 8);
 
 export default function ServicesScaledPage() {
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
       <style dangerouslySetInnerHTML={{ __html: styles }} />
+      <script dangerouslySetInnerHTML={{ __html: `
+        document.addEventListener('DOMContentLoaded', function() {
+          var slides = document.querySelectorAll('.carousel-slide');
+          var dots = document.querySelectorAll('.dot');
+          var current = 0;
+          function go(n) {
+            slides[current].classList.remove('active');
+            dots[current].classList.remove('active');
+            current = (n + slides.length) % slides.length;
+            slides[current].classList.add('active');
+            dots[current].classList.add('active');
+          }
+          dots.forEach(function(d, i) { d.addEventListener('click', function() { go(i); }); });
+          setInterval(function() { go(current + 1); }, 4000);
+        });
+      `}} />
+
       <nav className="nav">
         <a href="/homepage" className="nav-logo">POSTGAME</a>
         <div className="nav-links">
@@ -139,30 +150,39 @@ export default function ServicesScaledPage() {
       </nav>
 
       <div className="hero-wrap">
-        <div className="mosaic" aria-hidden="true">
-          {cols.map((col, ci) => (
-            <div key={ci} className="mosaic-col">
-              <div className={"mosaic-track " + DIRS[ci]} style={{ "--dur": SPEEDS[ci] } as React.CSSProperties}>
-                {[...col, ...col].map((src, i) => {
-                  const sizes = ["tall","med","short","tall","med","tall","short","med"];
-                  const sz = sizes[i % sizes.length];
-                  return <img key={i} src={BASE + encodeURIComponent(src)} alt="" className={"mosaic-img " + sz} loading={i < 4 ? "eager" : "lazy"} />;
-                })}
-              </div>
+        {/* Carousel background */}
+        <div className="carousel-bg">
+          {CAROUSEL.map((src, i) => (
+            <div key={i} className={"carousel-slide" + (i === 0 ? " active" : "")}>
+              <img src={BASE + encodeURIComponent(src)} alt="" />
             </div>
           ))}
+          <div className="carousel-overlay" />
+          <div className="carousel-overlay-top" />
         </div>
-        <div className="mosaic-overlay" />
-        <div className="mosaic-overlay-left" />
-        <div className="hero-glass" />
-        <div className="hero-content">
-          <div className="service-tag" style={{background:"#fff",color:"#D73F09",border:"1.5px solid #D73F09"}}>Scaled NIL</div>
+
+        {/* Glass card */}
+        <div className="hero-glass-card">
+          <div className="service-tag">Scaled NIL</div>
           <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
-          <p className="hero-desc">Scaled campaigns activate 10–50+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
+          <p className="hero-desc">Scaled campaigns activate 10–500+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
           <div className="hero-actions">
             <a href="/contact" className="btn-solid">Start a Campaign</a>
             <a href="/campaigns" className="btn-outline">See Examples</a>
           </div>
+          <div className="hero-stats">
+            <div><div className="stat-num">500<span>+</span></div><div className="stat-label">Athletes Per Campaign</div></div>
+            <div><div className="stat-num">100<span>+</span></div><div className="stat-label">Brand Partners</div></div>
+            <div><div className="stat-num">4<span>yrs</span></div><div className="stat-label">In The NIL Space</div></div>
+            <div><div className="stat-num">70K<span>+</span></div><div className="stat-label">Athlete Network</div></div>
+          </div>
+        </div>
+
+        {/* Carousel dots */}
+        <div className="carousel-dots">
+          {CAROUSEL.map((_, i) => (
+            <button key={i} className={"dot" + (i === 0 ? " active" : "")} aria-label={"Slide " + (i+1)} />
+          ))}
         </div>
       </div>
 
@@ -206,7 +226,7 @@ export default function ServicesScaledPage() {
       <footer className="footer">
         <div className="footer-inner">
           <div className="footer-top">
-            <div><a href="/homepage" style={{ display: "inline-block", marginBottom: 16 }}><img src="/postgame-logo.png" alt="Postgame" style={{ height: 28, width: "auto" }} /></a><p className="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p></div>
+            <div><p className="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p></div>
             <div><div className="footer-col-title">Company</div><ul className="footer-links"><li><a href="/about/team">About</a></li><li><a href="/services/elevated">Services</a></li><li><a href="/contact">Contact</a></li></ul></div>
             <div><div className="footer-col-title">Network</div><ul className="footer-links"><li><a href="/clients">Clients</a></li><li><a href="/campaigns">Campaigns</a></li><li><a href="/deals">Deal Tracker</a></li></ul></div>
             <div><div className="footer-col-title">Connect</div><ul className="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
