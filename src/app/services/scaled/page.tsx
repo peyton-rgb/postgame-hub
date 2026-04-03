@@ -40,7 +40,7 @@ const PHOTOS = [
   "cc84b3b9-aef5-48bf-882c-24782a8432bf/c5556bb1-67e7-4e0c-9fc4-b14fad41aa09/1774483477347-Liron_Thomas_1.jpg",
 ];
 // Split into 4 columns
-function chunk(arr, n) {
+function chunk<T>(arr: T[], n: number): T[][] {
   return Array.from({ length: n }, (_, i) => arr.filter((_, j) => j % n === i));
 }
 const cols = chunk(PHOTOS, 4);
@@ -141,7 +141,7 @@ export default function ServicesScaledPage() {
         <div className="mosaic" aria-hidden="true">
           {cols.map((col, ci) => (
             <div key={ci} className="mosaic-col">
-              <div className={"mosaic-track " + DIRS[ci]} style={{ "--dur": SPEEDS[ci] }}>
+              <div className={"mosaic-track " + DIRS[ci]} style={{ "--dur": SPEEDS[ci] } as React.CSSProperties}>
                 {[...col, ...col].map((src, i) => {
                   const sizes = ["tall","med","short","tall","med","tall","short","med"];
                   const sz = sizes[i % sizes.length];
