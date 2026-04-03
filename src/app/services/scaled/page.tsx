@@ -156,7 +156,7 @@ export default function ServicesScaledPage() {
         <div className="mosaic-overlay-left" />
         <div className="hero-glass" />
         <div className="hero-content">
-          <div className="service-tag">Scaled NIL</div>
+          <div className="service-tag" style={{background:"#fff",color:"#D73F09",border:"1.5px solid #D73F09"}}>Scaled NIL</div>
           <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
           <p className="hero-desc">Scaled campaigns activate 10–50+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
           <div className="hero-actions">
