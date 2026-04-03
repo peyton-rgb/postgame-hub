@@ -97,6 +97,7 @@ export default function CampaignList() {
         slug: `${slug}-${Date.now().toString(36)}`,
         client_name: newClient,
         brand_id: selectedBrandId || null,
+        type: "recap",
         published: false,
         settings: { primary_color: "#D73F09", layout: "masonry", columns: 4 },
       })
