@@ -15,11 +15,26 @@ const styles = `
   .btn-outline:hover{background:var(--orange);color:#fff;}
   .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:background 0.2s;}
   .btn-solid:hover{background:#c43808;}
-  .hero{padding:160px 48px 80px;background:radial-gradient(ellipse at 50% 0%,rgba(215,63,9,0.12) 0%,transparent 60%);max-width:900px;margin:0 auto;}
-  .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:24px;}
-  .hero-title{font-size:clamp(52px,8vw,88px);line-height:0.95;margin:0 0 24px;}
-  .hero-desc{font-size:18px;color:var(--text-muted);max-width:560px;line-height:1.6;margin:0 0 40px;}
-  .hero-actions{display:flex;gap:16px;flex-wrap:wrap;}
+  .hero-wrap{position:relative;min-height:100vh;display:flex;align-items:center;padding:100px 48px 80px;overflow:hidden;}
+  .carousel-bg{position:absolute;inset:0;z-index:0;}
+  .carousel-slide{position:absolute;inset:0;opacity:0;transition:opacity 1.2s ease;}
+  .carousel-slide.active{opacity:1;}
+  .carousel-slide img{width:100%;height:100%;object-fit:cover;}
+  .carousel-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(5,5,5,0.92) 0%,rgba(5,5,5,0.7) 45%,rgba(5,5,5,0.2) 75%,rgba(5,5,5,0.05) 100%);}
+  .carousel-overlay-top{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.5) 0%,transparent 20%,transparent 80%,rgba(10,10,10,1) 100%);}
+  .carousel-dots{position:absolute;bottom:32px;left:48px;display:flex;gap:8px;z-index:10;}
+  .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);transition:all 0.3s;cursor:pointer;border:none;padding:0;}
+  .dot.active{width:24px;border-radius:3px;background:var(--orange);}
+  .hero-glass-card{position:relative;z-index:10;max-width:620px;background:rgba(10,10,10,0.45);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:52px 56px;box-shadow:0 24px 80px rgba(0,0,0,0.5);animation:fadeUp 0.8s ease 0.3s both;}
+  .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);background:#fff;border:1.5px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:20px;}
+  .hero-title{font-size:clamp(44px,6vw,76px);line-height:0.95;margin:0 0 20px;animation:fadeUp 0.7s ease 0.5s both;}
+  .hero-desc{font-size:17px;color:rgba(255,255,255,0.75);line-height:1.65;margin:0 0 36px;animation:fadeUp 0.7s ease 0.7s both;}
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;animation:fadeUp 0.7s ease 0.9s both;}
+  .hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:20px 32px;margin-top:40px;padding-top:32px;border-top:1px solid rgba(255,255,255,0.1);animation:fadeUp 0.7s ease 1.1s both;}
+  .stat-num{font-family:'Bebas Neue',Arial,sans-serif;font-size:42px;color:#fff;line-height:1;}
+  .stat-num span{color:var(--orange);}
+  .stat-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   .section{padding:80px 48px;}
   .section-eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:12px;}
   .section-title{font-size:clamp(32px,4vw,48px);line-height:1;margin:0 0 48px;}
@@ -42,18 +57,36 @@ const styles = `
   .footer-brand-desc{font-size:13px;color:var(--text-muted);line-height:1.6;max-width:240px;}
   .footer-col-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:16px;}
   .footer-links{list-style:none;} .footer-links li{margin-bottom:10px;}
-  .footer-links a{font-size:14px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;} .footer-links a:hover{color:var(--text);}
+  .footer-links a{font-size:14px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;}
+  .footer-links a:hover{color:var(--text);}
   .footer-bottom{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:24px;}
   .footer-copy{font-size:12px;color:var(--text-dim);}
   .footer-socials{display:flex;gap:24px;}
-  .footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;} .footer-socials a:hover{color:var(--text);}
-  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.hero{padding:120px 24px 60px;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}}
+  .footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;}
+  .footer-socials a:hover{color:var(--text);}
+  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.hero-wrap{padding:100px 24px 60px;}.hero-glass-card{padding:36px 28px;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.carousel-dots{left:24px;}.hero-stats{grid-template-columns:1fr 1fr;}}
 `;
 
 export default function ServicesAlwaysOnPage() {
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
       <style dangerouslySetInnerHTML={{ __html: styles }} />
+      <script dangerouslySetInnerHTML={{ __html: `
+        document.addEventListener('DOMContentLoaded', function() {
+          var slides = document.querySelectorAll('.carousel-slide');
+          var dots = document.querySelectorAll('.dot');
+          var current = 0;
+          function go(n) {
+            slides[current].classList.remove('active');
+            dots[current].classList.remove('active');
+            current = (n + slides.length) % slides.length;
+            slides[current].classList.add('active');
+            dots[current].classList.add('active');
+          }
+          dots.forEach(function(d, i) { d.addEventListener('click', function() { go(i); }); });
+          setInterval(function() { go(current + 1); }, 4000);
+        });
+` }} />
       <nav className="nav">
         <a href="/homepage" className="nav-logo">POSTGAME</a>
         <div className="nav-links">
@@ -62,32 +95,81 @@ export default function ServicesAlwaysOnPage() {
           <a href="/deals" className="btn-solid">Deal Tracker</a>
         </div>
       </nav>
-      <div className="hero">
-        <div className="service-tag">Always On</div>
-        <h1 className="d hero-title">Year-Round<br />Athlete Coverage.</h1>
-        <p className="hero-desc">Always On keeps your brand in the athlete content cycle every single week — no gaps, no cold starts. A retainer model built for brands that want to stay top of mind all season long.</p>
-        <div className="hero-actions">
-          <a href="/contact" className="btn-solid">Get Started</a>
-          <a href="/campaigns" className="btn-outline">See Examples</a>
+
+      <div className="hero-wrap">
+        <div className="carousel-bg">
+          <div className="carousel-slide active">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("558aee46-8516-47ac-87d9-d959c4ccaedb/2c9f7a9e-460c-4846-b877-906a7e6a855e/1775073479874-DSC05557.jpg")}`} alt="" />
+          </div>
+          <div className="carousel-slide">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("4abbddb5-9635-4db4-9892-e8e85b1c3631/8cc333d8-df36-435d-a39b-6809b8d475c1/1772603819513-IND05834.jpg")}`} alt="" />
+          </div>
+          <div className="carousel-slide">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("0575994d-2d89-4122-915e-623de201d00f/ae03b6f2-3584-4765-ae73-14c63cff4123/1772646016393-StellaAllen_Adidas-10 - Stella Allen.jpg")}`} alt="" />
+          </div>
+          <div className="carousel-slide">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("5b035be0-7d17-499d-b512-ddb3f900b68f/d5b449d2-ed5e-4d19-915d-a319a7aa7daa/1775083675731-Braden_Smith_-_Purdue_7B3A0113.jpg")}`} alt="" />
+          </div>
+          <div className="carousel-slide">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("cc84b3b9-aef5-48bf-882c-24782a8432bf/02d49608-c9a1-47de-bbc9-62248efe270a/1774482933543-Jaala_Thymes_3.jpg")}`} alt="" />
+          </div>
+          <div className="carousel-slide">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/8423a2ff-e7cc-47ed-b714-0448c3732b03/1775061177515-Nimari_Burnette_DSC03969.jpg")}`} alt="" />
+          </div>
+          <div className="carousel-slide">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("64a31cb4-1bee-4456-b3fc-3d7d0f81b077/c5c17d0c-ca40-496a-a81f-fa40fa8f5354/1773871398391-Eliza LaBelle.jpeg")}`} alt="" />
+          </div>
+          <div className="carousel-slide">
+            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("fb31741a-195c-4308-82f5-26fed242b39e/86cc00d4-e6a9-495a-8cca-88e0e02cc8d9/1774382093716-DSC09290.jpg")}`} alt="" />
+          </div>
+          <div className="carousel-overlay" />
+          <div className="carousel-overlay-top" />
+        </div>
+        <div className="carousel-dots">
+          <button className="dot active" aria-label="Slide 1" />
+          <button className="dot" aria-label="Slide 2" />
+          <button className="dot" aria-label="Slide 3" />
+          <button className="dot" aria-label="Slide 4" />
+          <button className="dot" aria-label="Slide 5" />
+          <button className="dot" aria-label="Slide 6" />
+          <button className="dot" aria-label="Slide 7" />
+          <button className="dot" aria-label="Slide 8" />
+        </div>
+        <div className="hero-glass-card">
+          <div className="service-tag">Always On</div>
+          <h1 className="d hero-title">Consistent.<br />Recurring.<br />Always Live.</h1>
+          <p className="hero-desc">Always On programs keep your brand in front of college audiences year-round with a rotating roster of athletes posting on a recurring schedule.</p>
+          <div className="hero-actions">
+            <a href="/contact" className="btn-solid">Start a Program</a>
+            <a href="/campaigns" className="btn-outline">See Examples</a>
+          </div>
+          <div className="hero-stats">
+            <div><div className="stat-num">12<span>mo</span></div><div className="stat-label">Annual Programs</div></div>
+            <div><div className="stat-num">4<span>x</span></div><div className="stat-label">More Touchpoints</div></div>
+            <div><div className="stat-num">200<span>+</span></div><div className="stat-label">Recurring Athletes</div></div>
+            <div><div className="stat-num">30<span>%</span></div><div className="stat-label">Lower CPM</div></div>
+          </div>
         </div>
       </div>
+
       <div className="services-nav">
         <a href="/services/elevated" className="svc-link">Elevated</a>
         <a href="/services/scaled" className="svc-link">Scaled</a>
         <a href="/services/always-on" className="svc-link active">Always On</a>
         <a href="/services/experiential" className="svc-link">Experiential</a>
       </div>
+
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="section-eyebrow">What&apos;s Included</div>
-        <h2 className="d section-title">The Always On Package</h2>
+        <h2 className="d section-title">The Always On Program</h2>
         <div className="features-grid">
           {[
-            { num: "01", title: "Monthly Content Cadence", desc: "A guaranteed number of athlete posts per month — planned in advance, executed on schedule, reported weekly." },
-            { num: "02", title: "Rotating Athlete Roster", desc: "We rotate athletes through your campaigns to keep content fresh, reach new audiences, and avoid fatigue." },
-            { num: "03", title: "Seasonal & Cultural Moments", desc: "We align your content with the sports calendar — signing day, bowl season, tournament time, draft coverage. Always relevant." },
-            { num: "04", title: "Dedicated Strategy Lead", desc: "One Postgame strategist owns your account and plans content 30 days out. You always know what&apos;s coming." },
-            { num: "05", title: "Monthly Reporting", desc: "A full performance recap every month — reach, engagement, top posts, and recommendations for the next cycle." },
-            { num: "06", title: "Retainer Pricing", desc: "Predictable monthly cost. No surprises. We handle everything from athlete selection to posting to reporting." },
+            { num: "01", title: "Recurring Roster", desc: "A dedicated group of athletes post for your brand on a consistent schedule — weekly, bi-weekly, or monthly." },
+            { num: "02", title: "Content Calendar", desc: "We plan and brief every post in advance, aligned to your marketing calendar, product launches, and key moments." },
+            { num: "03", title: "Athlete Relationships", desc: "Long-term partnerships build authentic brand affinity. Athletes become genuine advocates, not one-off posters." },
+            { num: "04", title: "Performance Reporting", desc: "Monthly reports showing reach, engagement, and growth trends across your full athlete roster." },
+            { num: "05", title: "Roster Refresh", desc: "We rotate in new athletes quarterly to keep content fresh and reach new audiences." },
+            { num: "06", title: "Priority Pricing", desc: "Annual programs get preferred rates and priority access to top athletes before they&apos;re available to other brands." },
           ].map((f) => (
             <div key={f.num} className="feature">
               <div className="feature-num">{f.num}</div>
@@ -97,18 +179,20 @@ export default function ServicesAlwaysOnPage() {
           ))}
         </div>
       </section>
+
       <section className="cta">
-        <h2 className="d cta-title">Stay In the Game<br />All Year Long.</h2>
-        <p className="cta-sub">The brands that win with NIL are the ones that show up consistently. Let&apos;s build your retainer.</p>
+        <h2 className="d cta-title">Stay In Front<br />All Year Long.</h2>
+        <p className="cta-sub">The brands winning with NIL aren&apos;t doing one campaign. They&apos;re always on.</p>
         <div className="cta-btns">
           <a href="/contact" className="btn-solid">Get In Touch</a>
           <a href="/campaigns" className="btn-outline">See Our Work</a>
         </div>
       </section>
+
       <footer className="footer">
         <div className="footer-inner">
           <div className="footer-top">
-            <div><a href="/homepage" style={{ display: "inline-block", marginBottom: 16 }}><img src="/postgame-logo.png" alt="Postgame" style={{ height: 28, width: "auto" }} /></a><p className="footer-brand-desc">The #1 NIL agency in the country.</p></div>
+            <div><p className="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p></div>
             <div><div className="footer-col-title">Company</div><ul className="footer-links"><li><a href="/about/team">About</a></li><li><a href="/services/elevated">Services</a></li><li><a href="/contact">Contact</a></li></ul></div>
             <div><div className="footer-col-title">Network</div><ul className="footer-links"><li><a href="/clients">Clients</a></li><li><a href="/campaigns">Campaigns</a></li><li><a href="/deals">Deal Tracker</a></li></ul></div>
             <div><div className="footer-col-title">Connect</div><ul className="footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul></div>
