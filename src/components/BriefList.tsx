@@ -231,7 +231,7 @@ export default function BriefList() {
                   {brands.map((b) => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
-                </select
+                </select>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowCreate(false)}
