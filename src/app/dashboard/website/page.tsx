@@ -856,13 +856,28 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const [newSchool, setNewSchool] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [brands, setBrands] = useState<{id:string;name:string}[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState("");
+  const [brandCampaigns, setBrandCampaigns] = useState<{id:string;name:string}[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
 
   useEffect(() => {
     supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url,focal_point").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
       setDeals((data||[]) as any);
       setLoading(false);
     });
+    supabase.from("brands").select("id,name").eq("archived",false).order("name").then(({ data }) => {
+      setBrands((data||[]) as any);
+    });
   }, []);
+
+  useEffect(() => {
+    if(!selectedBrandId){ setBrandCampaigns([]); setSelectedCampaignId(""); return; }
+    supabase.from("brand_campaigns").select("id,name").eq("brand_id",selectedBrandId).order("name").then(({ data }) => {
+      setBrandCampaigns((data||[]) as any);
+      setSelectedCampaignId("");
+    });
+  }, [selectedBrandId]);
 
   const togglePublished = async (id: string, val: boolean) => {
     await supabase.from("deals").update({ published: val }).eq("id", id);
@@ -953,8 +968,18 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
               <h3 style={{ margin:"0 0 18px", fontSize:16, fontWeight:800 }}>New Deal</h3>
               {createError && <div style={{ color:"#ff6b6b", fontSize:12, marginBottom:12 }}>{createError}</div>}
               <div style={{ marginBottom:12 }}>
-                <label style={S.label}>Brand Name *</label>
-                <input style={S.input} value={newBrand} onChange={e=>setNewBrand(e.target.value)} placeholder="e.g. Nike" />
+                <label style={S.label}>Brand *</label>
+                <select style={S.input} value={selectedBrandId} onChange={e=>setSelectedBrandId(e.target.value)}>
+                  <option value="">Select a brand...</option>
+                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom:12 }}>
+                <label style={S.label}>Campaign</label>
+                <select style={{ ...S.input, opacity: selectedBrandId ? 1 : 0.5 }} value={selectedCampaignId} onChange={e=>setSelectedCampaignId(e.target.value)} disabled={!selectedBrandId}>
+                  <option value="">{selectedBrandId ? "Select a campaign (optional)..." : "Select a brand first"}</option>
+                  {brandCampaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
               <div style={{ marginBottom:12 }}>
                 <label style={S.label}>Athlete Name *</label>
@@ -971,14 +996,17 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                 </div>
               </div>
               <div style={{ display:"flex", gap:10, marginTop:18 }}>
-                <button onClick={()=>setShowCreate(false)} style={{ ...S.btnPreview, flex:1 }}>Cancel</button>
+                <button onClick={()=>{ setShowCreate(false); setSelectedBrandId(""); setSelectedCampaignId(""); }} style={{ ...S.btnPreview, flex:1 }}>Cancel</button>
                 <button
                   disabled={creating}
                   onClick={async ()=>{
-                    if(!newBrand.trim()||!newAthlete.trim()){ setCreateError("Brand and athlete name are required."); return; }
+                    if(!selectedBrandId||!newAthlete.trim()){ setCreateError("Brand and athlete name are required."); return; }
+                    const selectedBrand = brands.find(b=>b.id===selectedBrandId);
                     setCreating(true); setCreateError("");
                     const { data, error } = await supabase.from("deals").insert({
-                      brand_name: newBrand.trim(),
+                      brand_name: selectedBrand?.name||"",
+                      brand_id: selectedBrandId,
+                      source_campaign_id: selectedCampaignId||null,
                       athlete_name: newAthlete.trim(),
                       athlete_sport: newSport.trim()||null,
                       athlete_school: newSchool.trim()||null,
@@ -987,6 +1015,7 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                     }).select("id").single();
                     if(error||!data){ setCreateError(error?.message||"Failed to create deal."); setCreating(false); return; }
                     setCreating(false); setShowCreate(false);
+                    setSelectedBrandId(""); setSelectedCampaignId("");
                     setNewBrand(""); setNewAthlete(""); setNewSport(""); setNewSchool("");
                     router.push(`/dashboard/deals/${data.id}`);
                   }}
