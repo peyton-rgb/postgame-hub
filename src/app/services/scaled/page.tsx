@@ -1,4 +1,4 @@
-import { createPlainSupabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
 export const revalidate = 60;
 
@@ -6,7 +6,15 @@ const BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/
 const SUPABASE_URL = "https://xqaybwhpgxillpbbqtks.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxYXlid2hwZ3hpbGxwYmJxdGtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE2NTcxNTMsImV4cCI6MjAyNzIzMzE1M30.G_-BO7iBKBI0K4kLzXKzN4QRTZ1lAqNiXb8nNwqRv5s";
 
-const DEFAULT_PHOTOS = ['558aee46-8516-47ac-87d9-d959c4ccaedb/2c9f7a9e-460c-4846-b877-906a7e6a855e/1775073479874-DSC05557.jpg', '4abbddb5-9635-4db4-9892-e8e85b1c3631/8cc333d8-df36-435d-a39b-6809b8d475c1/1772603819513-IND05834.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/02d49608-c9a1-47de-bbc9-62248efe270a/1774482933543-Jaala_Thymes_3.jpg', '17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/8423a2ff-e7cc-47ed-b714-0448c3732b03/1775061177515-Nimari_Burnette_DSC03969.jpg', '64a31cb4-1bee-4456-b3fc-3d7d0f81b077/c5c17d0c-ca40-496a-a81f-fa40fa8f5354/1773871398391-Eliza LaBelle.jpeg', 'fb31741a-195c-4308-82f5-26fed242b39e/86cc00d4-e6a9-495a-8cca-88e0e02cc8d9/1774382093716-DSC09290.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/f84806a8-2e1e-44a3-a577-21f0a6a26ed5/1774483281049-Paris_Clark_5.jpg', '5b035be0-7d17-499d-b512-ddb3f900b68f/d5b449d2-ed5e-4d19-915d-a319a7aa7daa/1775083675731-Braden_Smith_-_Purdue_7B3A0113.jpg'];
+const DEFAULT_PHOTOS = [
+
+];
+
+type CarouselPhoto = { path: string; brand_logo_url?: string };
+
+function toPhotos(raw: unknown[]): CarouselPhoto[] {
+  return raw.map(p => typeof p === "string" ? { path: p } : p as CarouselPhoto);
+}
 
 const SHARED_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
@@ -33,6 +41,7 @@ const SHARED_STYLES = `
   .carousel-dots{position:absolute;bottom:32px;left:48px;display:flex;gap:8px;z-index:10;}
   .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);transition:all 0.3s;cursor:pointer;border:none;padding:0;}
   .dot.active{width:24px;border-radius:3px;background:var(--orange);}
+  .slide-brand-logo{position:absolute;bottom:16px;right:16px;height:32px;width:auto;max-width:80px;object-fit:contain;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.6));}
   .hero-glass-card{position:relative;z-index:10;max-width:620px;background:rgba(10,10,10,0.45);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:52px 56px;box-shadow:0 24px 80px rgba(0,0,0,0.5);animation:fadeUp 0.8s ease 0.3s both;}
   .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);background:#fff;border:1.5px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:20px;}
   .hero-title{font-size:clamp(44px,6vw,76px);line-height:0.95;margin:0 0 20px;animation:fadeUp 0.7s ease 0.5s both;}
@@ -76,14 +85,13 @@ const SHARED_STYLES = `
 `;
 
 export default async function ServicesScaledPage() {
-  // Fetch carousel photos from Supabase
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/pages?slug=eq.services&select=settings`,
     { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }, next: { revalidate: 60 } }
   );
-  const rows = await res.json();
-  const settings = rows?.[0]?.settings ?? {};
-  const photos: string[] = settings?.["scaled"]?.carousel_photos ?? DEFAULT_PHOTOS;
+  const rows = await res.json().catch(() => []);
+  const raw: unknown[] = rows?.[0]?.settings?.["scaled"]?.carousel_photos ?? DEFAULT_PHOTOS;
+  const photos = toPhotos(raw);
 
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
@@ -116,9 +124,12 @@ export default async function ServicesScaledPage() {
 
       <div className="hero-wrap">
         <div className="carousel-bg">
-          {photos.map((src, i) => (
-            <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`}>
-              <img src={`${BASE}${encodeURIComponent(src)}`} alt="" />
+          {photos.map((photo, i) => (
+            <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`} style={{ position:"absolute", inset:0 }}>
+              <img src={`${BASE}${encodeURIComponent(photo.path)}`} alt="" />
+              {photo.brand_logo_url && (
+                <img src={photo.brand_logo_url} className="slide-brand-logo" alt="" />
+              )}
             </div>
           ))}
           <div className="carousel-overlay" />
@@ -128,16 +139,16 @@ export default async function ServicesScaledPage() {
         <div className="hero-glass-card">
           <div className="service-tag">Scaled NIL</div>
           <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
-          <p className="hero-desc">Scaled campaigns activate 10–500+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters.</p>
+          <p className="hero-desc">Scaled campaigns activate 10–500+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
           <div className="hero-actions">
             <a href="/contact" className="btn-solid">Start a Campaign</a>
             <a href="/campaigns" className="btn-outline">See Examples</a>
           </div>
           <div className="hero-stats">
-            <div><div className="stat-num">500+<span></span></div><div className="stat-label">Athletes Per Campaign</div></div>
-            <div><div className="stat-num">100+<span></span></div><div className="stat-label">Brand Partners</div></div>
+            <div><div className="stat-num">500<span>+</span></div><div className="stat-label">Athletes Per Campaign</div></div>
+            <div><div className="stat-num">100<span>+</span></div><div className="stat-label">Brand Partners</div></div>
             <div><div className="stat-num">4<span>yrs</span></div><div className="stat-label">In The NIL Space</div></div>
-            <div><div className="stat-num">70K+<span></span></div><div className="stat-label">Athlete Network</div></div>
+            <div><div className="stat-num">70K<span>+</span></div><div className="stat-label">Athlete Network</div></div>
           </div>
         </div>
 
@@ -150,22 +161,22 @@ export default async function ServicesScaledPage() {
 
       <div className="services-nav">
         <a href="/services/elevated" className="svc-link">Elevated</a>
-        <a href="/services/scaled" className="svc-link">Scaled</a>
+        <a href="/services/scaled" className="svc-link active">Scaled</a>
         <a href="/services/always-on" className="svc-link">Always On</a>
         <a href="/services/experiential" className="svc-link">Experiential</a>
       </div>
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="section-eyebrow">What&apos;s Included</div>
-        <h2 className="d section-title">The Scaled NIL Package</h2>
+        <h2 className="d section-title">The Scaled Package</h2>
         <div className="features-grid">
           {[
-            { num: "01", title: "Multi-School Activation", desc: "We simultaneously activate athletes across 5 to 500+ schools — Power 4, G5, or any combination that matches your distribution goals." },
-            { num: "02", title: "Centralized Creative", desc: "One brief, one approval cycle, deployed across every athlete. Consistent brand messaging at any volume." },
-            { num: "03", title: "Automated Athlete Coordination", desc: "Our platform handles contracting, payments, briefs, and deadline tracking for every single athlete. No manual chasing." },
-            { num: "04", title: "Geographic Targeting", desc: "Want to hit every market in the SEC? Every school in Ohio? Every Power 4 basketball program? We can build that roster." },
-            { num: "05", title: "Aggregated Reporting", desc: "One unified dashboard showing total reach, impressions, and engagement across all athletes and posts." },
-            { num: "06", title: "Volume Pricing", desc: "The more athletes you activate, the lower your cost per post. Scaled is built for efficiency without sacrificing quality." },
+            { num:"01", title:"Multi-School Activation", desc:"We simultaneously activate athletes across 5 to 500+ schools — Power 4, G5, or any combination that matches your distribution goals." },
+            { num:"02", title:"Centralized Creative", desc:"One brief, one approval cycle, deployed across every athlete. Consistent brand messaging at any volume." },
+            { num:"03", title:"Automated Athlete Coordination", desc:"Our platform handles contracting, payments, briefs, and deadline tracking for every single athlete. No manual chasing." },
+            { num:"04", title:"Geographic Targeting", desc:"Want to hit every market in the SEC? Every school in Ohio? Every Power 4 basketball program? We can build that roster." },
+            { num:"05", title:"Aggregated Reporting", desc:"One unified dashboard showing total reach, impressions, and engagement across all athletes and posts." },
+            { num:"06", title:"Volume Pricing", desc:"The more athletes you activate, the lower your cost per post. Scaled is built for efficiency without sacrificing quality." },
           ].map((f) => (
             <div key={f.num} className="feature">
               <div className="feature-num">{f.num}</div>
