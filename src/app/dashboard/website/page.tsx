@@ -845,9 +845,17 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
 // ── Deals editor ──────────────────────────────────────────────
 function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const supabase = createBrowserSupabase();
+  const router = useRouter();
   const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;published:boolean;featured:boolean;sort_order:number;image_url:string;focal_point:string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newBrand, setNewBrand] = useState("");
+  const [newAthlete, setNewAthlete] = useState("");
+  const [newSport, setNewSport] = useState("");
+  const [newSchool, setNewSchool] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   useEffect(() => {
     supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url,focal_point").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
@@ -935,8 +943,59 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
         </SectionCard>
 
         <div style={{ padding:"16px 20px" }}>
-          <Link href="/dashboard?tab=deals" style={{ fontSize:13, color:C.orange, textDecoration:"none", fontWeight:700 }}>→ Add / Edit Deals in Main Dashboard</Link>
+          <button onClick={()=>{ setShowCreate(true); setCreateError(""); }} style={{ ...S.btnSave, width:"100%" }}>+ New Deal</button>
         </div>
+
+        {/* Create deal modal */}
+        {showCreate && (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:99999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>setShowCreate(false)}>
+            <div style={{ background:C.surface, border:`1px solid ${C.border2}`, borderRadius:14, padding:28, width:380, maxWidth:"90vw" }} onClick={e=>e.stopPropagation()}>
+              <h3 style={{ margin:"0 0 18px", fontSize:16, fontWeight:800 }}>New Deal</h3>
+              {createError && <div style={{ color:"#ff6b6b", fontSize:12, marginBottom:12 }}>{createError}</div>}
+              <div style={{ marginBottom:12 }}>
+                <label style={S.label}>Brand Name *</label>
+                <input style={S.input} value={newBrand} onChange={e=>setNewBrand(e.target.value)} placeholder="e.g. Nike" />
+              </div>
+              <div style={{ marginBottom:12 }}>
+                <label style={S.label}>Athlete Name *</label>
+                <input style={S.input} value={newAthlete} onChange={e=>setNewAthlete(e.target.value)} placeholder="e.g. John Doe" />
+              </div>
+              <div style={S.row2}>
+                <div>
+                  <label style={S.label}>Sport</label>
+                  <input style={S.input} value={newSport} onChange={e=>setNewSport(e.target.value)} placeholder="e.g. Football" />
+                </div>
+                <div>
+                  <label style={S.label}>School</label>
+                  <input style={S.input} value={newSchool} onChange={e=>setNewSchool(e.target.value)} placeholder="e.g. Oregon State" />
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:10, marginTop:18 }}>
+                <button onClick={()=>setShowCreate(false)} style={{ ...S.btnPreview, flex:1 }}>Cancel</button>
+                <button
+                  disabled={creating}
+                  onClick={async ()=>{
+                    if(!newBrand.trim()||!newAthlete.trim()){ setCreateError("Brand and athlete name are required."); return; }
+                    setCreating(true); setCreateError("");
+                    const { data, error } = await supabase.from("deals").insert({
+                      brand_name: newBrand.trim(),
+                      athlete_name: newAthlete.trim(),
+                      athlete_sport: newSport.trim()||null,
+                      athlete_school: newSchool.trim()||null,
+                      published: false,
+                      featured: false,
+                    }).select("id").single();
+                    if(error||!data){ setCreateError(error?.message||"Failed to create deal."); setCreating(false); return; }
+                    setCreating(false); setShowCreate(false);
+                    setNewBrand(""); setNewAthlete(""); setNewSport(""); setNewSchool("");
+                    router.push(`/dashboard/deals/${data.id}`);
+                  }}
+                  style={{ ...S.btnSave, flex:1, opacity: creating ? 0.6 : 1 }}
+                >{creating ? "Creating..." : "Create Deal"}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div style={S.actionsBar}>
         <a href="/deals" target="_blank" style={S.btnPreview}>↗ View Live</a>
