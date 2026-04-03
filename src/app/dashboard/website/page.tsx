@@ -504,7 +504,22 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
 
   useEffect(() => {
     supabase.from("pages").select("settings").eq("slug","services").single().then(({ data: row }) => {
-      if (row?.settings) setData(row.settings as Record<ServiceTab, ServicePageData>);
+      if (row?.settings) {
+        const loaded = row.settings as Record<string, unknown>;
+        const defaults: Record<ServiceTab, ServicePageData> = {
+          elevated:     { hero_tag:"Elevated NIL", hero_title:"", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
+          scaled:       { hero_tag:"Scaled NIL", hero_title:"", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
+          "always-on":  { hero_tag:"Always On", hero_title:"", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
+          experiential: { hero_tag:"Experiential", hero_title:"", hero_desc:"", features:[], cta_title:"", cta_sub:"", carousel_photos:[] },
+        };
+        const merged: Record<ServiceTab, ServicePageData> = {} as Record<ServiceTab, ServicePageData>;
+        (["elevated","scaled","always-on","experiential"] as ServiceTab[]).forEach(k => {
+          merged[k] = { ...defaults[k], ...((loaded[k] as object) || {}) };
+          if (!Array.isArray(merged[k].features)) merged[k].features = [];
+          if (!Array.isArray((merged[k] as unknown as {carousel_photos:string[]}).carousel_photos)) (merged[k] as unknown as {carousel_photos:string[]}).carousel_photos = [];
+        });
+        setData(merged);
+      }
     });
   }, []);
 
