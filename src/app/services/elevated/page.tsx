@@ -19,7 +19,7 @@ const styles = `
   .carousel-bg{position:absolute;inset:0;z-index:0;}
   .carousel-slide{position:absolute;inset:0;opacity:0;transition:opacity 1.2s ease;}
   .carousel-slide.active{opacity:1;}
-  .carousel-slide img{width:100%;height:100%;object-fit:cover;}
+  .carousel-slide img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;}
   .carousel-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(5,5,5,0.92) 0%,rgba(5,5,5,0.7) 45%,rgba(5,5,5,0.2) 75%,rgba(5,5,5,0.05) 100%);}
   .carousel-overlay-top{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.5) 0%,transparent 20%,transparent 80%,rgba(10,10,10,1) 100%);}
   .carousel-dots{position:absolute;bottom:32px;left:48px;display:flex;gap:8px;z-index:10;}
