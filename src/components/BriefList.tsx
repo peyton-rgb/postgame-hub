@@ -28,6 +28,16 @@ export default function BriefList() {
     loadBrands();
   }, []);
 
+  async function loadBrands() {
+    const { data } = await supabase.from("brands").select("id, name, logo_primary_url, logo_light_url").order("name", { ascending: true });
+    setBrands(data || []);
+  }
+
+  async function loadBrands() {
+    const { data } = await supabase.from("brands").select("id, name, logo_primary_url, logo_light_url").order("name", { ascending: true });
+    setBrands(data || []);
+  }
+
   async function loadBriefs() {
     const { data } = await supabase
       .from("briefs")
@@ -212,15 +222,18 @@ export default function BriefList() {
                   autoFocus
                 />
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                  Brand / Client
+                  Brand
                 </label>
-                <input
-                  value={newClient}
-                  onChange={(e) => setNewClient(e.target.value)}
-                  placeholder="e.g. Raising Cane's"
-                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-6 focus:border-[#D73F09] outline-none"
-                  onKeyDown={(e) => e.key === "Enter" && createBrief()}
-                />
+                <select
+                  value={selectedBrandId}
+                  onChange={(e) => setSelectedBrandId(e.target.value)}
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-6 focus:border-[#D73F09] outline-none appearance-none"
+                >
+                  <option value="">Select a brand...</option>
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowCreate(false)}
