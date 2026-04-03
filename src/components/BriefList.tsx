@@ -60,7 +60,7 @@ export default function BriefList() {
   }
 
   async function createBrief() {
-    if (!newTitle.trim() || !newClient.trim() || !selectedTemplate) return;
+    if (!newTitle.trim() || !selectedBrandId || !selectedTemplate) return;
     setCreating(true);
     const slug =
       newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") +
@@ -241,7 +241,7 @@ export default function BriefList() {
                   </button>
                   <button
                     onClick={createBrief}
-                    disabled={creating || !newTitle.trim() || !newClient.trim()}
+                    disabled={creating || !newTitle.trim() || !selectedBrandId}
                     className="flex-1 px-4 py-3 bg-[#D73F09] rounded-lg text-white font-bold text-sm hover:bg-[#B33407] disabled:opacity-50"
                   >
                     {creating ? "Creating..." : "Create Brief →"}
