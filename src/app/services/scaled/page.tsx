@@ -1,5 +1,5 @@
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 const BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/";
 const SUPABASE_URL = "https://xqaybwhpgxillpbbqtks.supabase.co";
