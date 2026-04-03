@@ -1,3 +1,4 @@
+import IntroAnimation from "@/components/IntroAnimation";
 import { getHomepage, getBrandLogos, type HomepageData, type PageSection } from "@/lib/public-site";
 import SiteFooter from "@/components/SiteFooter";
 
@@ -36,6 +37,7 @@ function ScrollScript() {
 function Fallback() {
   return (
     <div className="pg-page">
+      <IntroAnimation />
       <div className="hp-hero"><div className="hp-hero-inner">
         <div className="pg-eyebrow" style={{marginBottom:20}}>NIL Campaign Management</div>
         <h1 className="hp-hero-title d hp-title-anim">We Build<br/>Athlete-Powered<br/>Campaigns</h1>
@@ -69,6 +71,7 @@ export default async function HomepagePage() {
 
   return (
     <div className="pg-page">
+      <IntroAnimation />
       <style>{`
         .hp-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:80px 24px 64px;position:relative;overflow:hidden;}
         .hp-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(215,63,9,0.18) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(215,63,9,0.06) 0%,transparent 50%);pointer-events:none;}
