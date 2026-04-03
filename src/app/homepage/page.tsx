@@ -38,8 +38,8 @@ function Fallback() {
     <div className="pg-page">
       <div className="hp-hero"><div className="hp-hero-inner">
         <div className="pg-eyebrow" style={{marginBottom:20}}>NIL Campaign Management</div>
-        <h1 className="hp-hero-title d">We Build<br/>Athlete-Powered<br/>Campaigns</h1>
-        <p className="hp-hero-desc">Postgame connects brands with college athletes to create authentic, high-performing NIL campaigns at scale.</p>
+        <h1 className="hp-hero-title d hp-title-anim">We Build<br/>Athlete-Powered<br/>Campaigns</h1>
+        <p className="hp-hero-desc hp-desc-anim">Postgame connects brands with college athletes to create authentic, high-performing NIL campaigns at scale.</p>
         <div className="btn-group" style={{justifyContent:"center",marginTop:40}}>
           <a href="/deals" className="btn-primary">Deal Tracker</a>
           <a href="/contact" className="btn-secondary">Work With Us</a>
@@ -73,6 +73,12 @@ export default async function HomepagePage() {
         .hp-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:80px 24px 64px;position:relative;overflow:hidden;}
         .hp-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(215,63,9,0.18) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(215,63,9,0.06) 0%,transparent 50%);pointer-events:none;}
         .hp-hero-inner{position:relative;z-index:1;max-width:860px;}
+  .hp-eyebrow-anim{animation:hpFadeUp 0.6s ease 0.3s both;}
+  .hp-title-anim{animation:hpFadeUp 0.7s ease 0.5s both;}
+  .hp-desc-anim{animation:hpFadeUp 0.6s ease 0.7s both;}
+  .hp-btns-anim{animation:hpFadeUp 0.6s ease 0.9s both;}
+  .hp-stats-anim{animation:hpFadeUp 0.6s ease 1.1s both;}
+  @keyframes hpFadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
         .hp-hero-title{font-size:clamp(72px,12vw,140px);line-height:0.9;letter-spacing:0.01em;margin:16px 0 28px;color:#fff;}
         .hp-hero-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.6);max-width:540px;margin:0 auto;}
         .hp-stats{display:flex;justify-content:center;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);}
@@ -152,8 +158,8 @@ export default async function HomepagePage() {
       <section className="hp-hero">
         <div className="hp-hero-inner">
           {s("hero_eyebrow") && <div className="pg-eyebrow" style={{marginBottom:20}}>{s("hero_eyebrow")}</div>}
-          <h1 className="hp-hero-title d">{s("hero_title") || "We Build\nAthlete-Powered\nCampaigns"}</h1>
-          {s("hero_desc") && <p className="hp-hero-desc">{s("hero_desc")}</p>}
+          <h1 className="hp-hero-title d hp-title-anim">{s("hero_title") || "We Build\nAthlete-Powered\nCampaigns"}</h1>
+          {s("hero_desc") && <p className="hp-hero-desc hp-desc-anim">{s("hero_desc")}</p>}
           <div className="btn-group" style={{justifyContent:"center",marginTop:40}}>
             {s("hero_cta_primary") && <a href={settingUrl(raw("hero_cta_primary"))||"/deals"} className="btn-primary">{s("hero_cta_primary")}</a>}
             {s("hero_cta_secondary") && <a href={settingUrl(raw("hero_cta_secondary"))||"/contact"} className="btn-secondary">{s("hero_cta_secondary")}</a>}
@@ -163,7 +169,7 @@ export default async function HomepagePage() {
 
       {/* Stats */}
       {show("stats") && stats.length > 0 && (
-        <div className="hp-stats">
+        <div className="hp-stats hp-stats-anim">
           {stats.map((st, i) => (
             <div key={i} className="hp-stat">
               <div className="hp-stat-num">{st.value}</div>
