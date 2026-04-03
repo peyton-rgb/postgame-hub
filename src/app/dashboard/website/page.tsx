@@ -489,7 +489,8 @@ function TeamEditor({ onSaved }: { onSaved: () => void }) {
 
 // ── Services editor ───────────────────────────────────────────
 type ServiceTab = "elevated"|"scaled"|"always-on"|"experiential";
-interface ServicePageData { hero_tag:string; hero_title:string; hero_desc:string; features:{num:string;title:string;desc:string}[]; cta_title:string; cta_sub:string; carousel_photos:string[] }
+interface CarouselPhoto { path:string; brand_logo_url?:string; }
+interface ServicePageData { hero_tag:string; hero_title:string; hero_desc:string; features:{num:string;title:string;desc:string}[]; cta_title:string; cta_sub:string; carousel_photos:CarouselPhoto[] }
 
 function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTab }) {
   const supabase = createBrowserSupabase();
@@ -502,6 +503,12 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
   });
   const [saving, setSaving] = useState(false);
   const [carouselPickerOpen, setCarouselPickerOpen] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<{path:string;brand_logo_url?:string}|null>(null);
+  const [carouselBrands, setCarouselBrands] = useState<{id:string;name:string;logo_primary_url:string|null}[]>([]);
+
+  useEffect(() => {
+    supabase.from("brands").select("id,name,logo_primary_url").order("name").then(({data})=>setCarouselBrands(data||[]));
+  }, []);
 
   useEffect(() => {
     supabase.from("pages").select("settings").eq("slug","services").single().then(({ data: row }) => {
@@ -570,12 +577,20 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
 
         <SectionCard title="Carousel Photos">
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
-            {(cur.carousel_photos||[]).map((url, i) => (
-              <div key={i} style={{ position:"relative", width:72, height:72 }}>
-                <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent(url)}`} style={{ width:72, height:72, objectFit:"cover", borderRadius:8, border:"1px solid rgba(255,255,255,0.1)" }} alt="" />
-                <button onClick={()=>upd("carousel_photos",(cur.carousel_photos||[]).filter((_,j)=>j!==i))} style={{ position:"absolute", top:-6, right:-6, width:18, height:18, borderRadius:"50%", background:"#D73F09", border:"none", color:"#fff", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>×</button>
-              </div>
-            ))}
+            {(cur.carousel_photos||[]).map((photo, i) => {
+              const p = typeof photo === "string" ? {path: photo} : photo;
+              return (
+                <div key={i} style={{ position:"relative", width:72, height:72, borderRadius:8, overflow:"hidden", border:"1px solid rgba(255,255,255,0.1)" }}>
+                  <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent(p.path)}`} style={{ width:72, height:72, objectFit:"cover", objectPosition:"50% 15%" }} alt="" />
+                  {p.brand_logo_url && (
+                    <div style={{ position:"absolute", bottom:3, right:3, width:22, height:22, borderRadius:4, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <img src={p.brand_logo_url} style={{ width:18, height:18, objectFit:"contain" }} alt="" />
+                    </div>
+                  )}
+                  <button onClick={()=>upd("carousel_photos",(cur.carousel_photos||[]).filter((_,j)=>j!==i))} style={{ position:"absolute", top:-1, right:-1, width:18, height:18, borderRadius:"50%", background:"#D73F09", border:"none", color:"#fff", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+                </div>
+              );
+            })}
           </div>
           <button style={S.btnAdd} onClick={()=>setCarouselPickerOpen(true)}>+ Add Photo from Media Library</button>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:6 }}>{(cur.carousel_photos||[]).length} photos · changes live after Save</div>
@@ -594,13 +609,40 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
           onClose={() => setCarouselPickerOpen(false)}
           onSelect={(item) => {
             if (item.type === "image") {
-              const path = item.url.replace("https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/","").split("?")[0];
-              const decoded = decodeURIComponent(path);
-              upd("carousel_photos", [...(cur.carousel_photos||[]), decoded]);
+              const raw = item.url.replace("https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/","").split("?")[0];
+              setPendingPhoto({ path: decodeURIComponent(raw) });
             }
             setCarouselPickerOpen(false);
           }}
         />
+      )}
+
+      {pendingPhoto && (
+        <div style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.88)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:"#141414", border:"1px solid rgba(255,255,255,0.1)", borderRadius:20, padding:32, width:480, maxWidth:"90vw" }}>
+            <div style={{ fontSize:16, fontWeight:800, color:"#fff", marginBottom:4 }}>Add Brand Logo?</div>
+            <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginBottom:20 }}>Optionally overlay a brand logo on the bottom-right of this photo.</div>
+            <div style={{ display:"flex", gap:12, marginBottom:20, alignItems:"center" }}>
+              <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent(pendingPhoto.path)}`} style={{ width:80, height:80, objectFit:"cover", objectPosition:"50% 15%", borderRadius:10, flexShrink:0 }} alt="" />
+              <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)", wordBreak:"break-all" }}>{pendingPhoto.path.split("/").pop()}</div>
+            </div>
+            <div style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Select Brand</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8, maxHeight:200, overflowY:"auto", marginBottom:20 }}>
+              <button onClick={()=>setPendingPhoto(p=>p?{...p,brand_logo_url:undefined}:p)} style={{ padding:"6px 14px", borderRadius:8, border:`1.5px solid ${!pendingPhoto.brand_logo_url?"#D73F09":"rgba(255,255,255,0.15)"}`, background:"transparent", color:!pendingPhoto.brand_logo_url?"#D73F09":"rgba(255,255,255,0.5)", fontSize:12, fontWeight:700, cursor:"pointer" }}>No Logo</button>
+              {carouselBrands.filter(b=>b.logo_primary_url).map(b=>(
+                <button key={b.id} onClick={()=>setPendingPhoto(p=>p?{...p,brand_logo_url:b.logo_primary_url||undefined}:p)}
+                  title={b.name}
+                  style={{ padding:"4px 10px", borderRadius:8, border:`1.5px solid ${pendingPhoto.brand_logo_url===b.logo_primary_url?"#D73F09":"rgba(255,255,255,0.15)"}`, background:"rgba(0,0,0,0.4)", cursor:"pointer", display:"flex", alignItems:"center" }}>
+                  <img src={b.logo_primary_url!} style={{ height:22, width:"auto", maxWidth:60, objectFit:"contain" }} alt={b.name} />
+                </button>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>setPendingPhoto(null)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:13, fontWeight:700, cursor:"pointer" }}>Cancel</button>
+              <button onClick={()=>{ upd("carousel_photos",[...(cur.carousel_photos||[]),pendingPhoto]); setPendingPhoto(null); }} style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", background:"#D73F09", color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer" }}>Add to Carousel</button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
