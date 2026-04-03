@@ -76,11 +76,11 @@ const styles = `
   @keyframes scrollDown{from{transform:translateY(-50%)}to{transform:translateY(0)}}
   .mosaic-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.2) 0%,rgba(10,10,10,0.05) 35%,rgba(10,10,10,0.05) 65%,rgba(10,10,10,1) 100%);}
   .mosaic-overlay-left{position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.8) 0%,transparent 25%,transparent 75%,rgba(10,10,10,0.8) 100%);}
-  .hero-glass{position:absolute;z-index:5;width:680px;height:420px;border-radius:48px;
-    background:rgba(10,10,10,0.45);
-    backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
-    -webkit-mask-image:radial-gradient(ellipse at center,black 30%,rgba(0,0,0,0.6) 55%,transparent 75%);
-    mask-image:radial-gradient(ellipse at center,black 30%,rgba(0,0,0,0.6) 55%,transparent 75%);
+  .hero-glass{position:absolute;z-index:5;width:min(900px,90vw);height:500px;border-radius:60px;
+    background:radial-gradient(ellipse at center,rgba(5,5,5,0.82) 0%,rgba(5,5,5,0.65) 35%,rgba(5,5,5,0.2) 65%,transparent 80%);
+    backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);
+    -webkit-mask-image:radial-gradient(ellipse at center,black 35%,rgba(0,0,0,0.8) 50%,rgba(0,0,0,0.3) 65%,transparent 80%);
+    mask-image:radial-gradient(ellipse at center,black 35%,rgba(0,0,0,0.8) 50%,rgba(0,0,0,0.3) 65%,transparent 80%);
     animation:fadeScale 0.9s ease 0.5s both;}
   .hero-content{position:relative;z-index:10;text-align:center;padding:0 40px;max-width:700px;animation:fadeScale 0.9s ease 0.6s both;}
   .service-tag{animation:fadeUp 0.6s ease 1.2s both;}
