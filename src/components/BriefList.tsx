@@ -62,6 +62,7 @@ export default function BriefList() {
   async function createBrief() {
     if (!newTitle.trim() || !selectedBrandId || !selectedTemplate) return;
     setCreating(true);
+    const selectedBrand = brands.find((b) => b.id === selectedBrandId);
     const slug =
       newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") +
       "-" +
