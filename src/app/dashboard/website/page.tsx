@@ -525,6 +525,10 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
           merged[k] = { ...defaults[k], ...((loaded[k] as object) || {}) };
           if (!Array.isArray(merged[k].features)) merged[k].features = [];
           if (!Array.isArray(merged[k].carousel_photos)) merged[k].carousel_photos = [];
+          // Convert legacy string format to CarouselPhoto objects
+          merged[k].carousel_photos = merged[k].carousel_photos.map((p: unknown) =>
+            typeof p === "string" ? { path: p } : p
+          ) as CarouselPhoto[];
         });
         setData(merged);
       }
