@@ -517,7 +517,7 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
         (["elevated","scaled","always-on","experiential"] as ServiceTab[]).forEach(k => {
           merged[k] = { ...defaults[k], ...((loaded[k] as object) || {}) };
           if (!Array.isArray(merged[k].features)) merged[k].features = [];
-          if (!Array.isArray((merged[k] as unknown as {carousel_photos:string[]}).carousel_photos)) (merged[k] as unknown as {carousel_photos:string[]}).carousel_photos = [];
+          if (!Array.isArray(merged[k].carousel_photos)) merged[k].carousel_photos = [];
         });
         setData(merged);
       }
