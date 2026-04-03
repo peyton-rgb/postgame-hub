@@ -44,7 +44,7 @@ function chunk(arr, n) {
   return Array.from({ length: n }, (_, i) => arr.filter((_, j) => j % n === i));
 }
 const cols = chunk(PHOTOS, 4);
-const SPEEDS = ["32s", "24s", "40s", "28s"];
+const SPEEDS = ["18s", "13s", "22s", "16s"];
 const DIRS = ["up", "down", "up", "down"];
 
 const styles = `
@@ -63,12 +63,15 @@ const styles = `
   .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:background 0.2s;}
   .btn-solid:hover{background:#c43808;}
   .hero-wrap{position:relative;height:100vh;min-height:640px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-  .mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px;pointer-events:none;}
-  .mosaic-col{display:flex;flex-direction:column;gap:6px;}
-  .mosaic-track{display:flex;flex-direction:column;gap:6px;will-change:transform;}
-  .mosaic-track.up{animation:scrollUp var(--dur,28s) linear infinite;}
-  .mosaic-track.down{animation:scrollDown var(--dur,28s) linear infinite;}
-  .mosaic-img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;flex-shrink:0;}
+  .mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1.4fr 1fr 1.2fr;gap:5px;padding:5px;pointer-events:none;}
+  .mosaic-col{display:flex;flex-direction:column;gap:5px;}
+  .mosaic-track{display:flex;flex-direction:column;gap:5px;will-change:transform;}
+  .mosaic-track.up{animation:scrollUp var(--dur,20s) linear infinite;}
+  .mosaic-track.down{animation:scrollDown var(--dur,20s) linear infinite;}
+  .mosaic-img{width:100%;object-fit:cover;border-radius:6px;flex-shrink:0;}
+  .mosaic-img.tall{aspect-ratio:2/3;}
+  .mosaic-img.med{aspect-ratio:1/1;}
+  .mosaic-img.short{aspect-ratio:4/3;}
   @keyframes scrollUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
   @keyframes scrollDown{from{transform:translateY(-50%)}to{transform:translateY(0)}}
   .mosaic-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.55) 0%,rgba(10,10,10,0.45) 40%,rgba(10,10,10,0.75) 85%,rgba(10,10,10,1) 100%);}
@@ -107,7 +110,7 @@ const styles = `
   .footer-socials{display:flex;gap:24px;}
   .footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;}
   .footer-socials a:hover{color:var(--text);}
-  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.mosaic{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.mosaic{grid-template-columns:1fr 1.4fr;}}
 `;
 
 export default function ServicesScaledPage() {
@@ -128,9 +131,11 @@ export default function ServicesScaledPage() {
           {cols.map((col, ci) => (
             <div key={ci} className="mosaic-col">
               <div className={"mosaic-track " + DIRS[ci]} style={{ "--dur": SPEEDS[ci] }}>
-                {[...col, ...col].map((src, i) => (
-                  <img key={i} src={BASE + encodeURIComponent(src)} alt="" className="mosaic-img" loading={i < 4 ? "eager" : "lazy"} />
-                ))}
+                {[...col, ...col].map((src, i) => {
+                  const sizes = ["tall","med","short","tall","med","tall","short","med"];
+                  const sz = sizes[i % sizes.length];
+                  return <img key={i} src={BASE + encodeURIComponent(src)} alt="" className={"mosaic-img " + sz} loading={i < 4 ? "eager" : "lazy"} />;
+                })}
               </div>
             </div>
           ))}
