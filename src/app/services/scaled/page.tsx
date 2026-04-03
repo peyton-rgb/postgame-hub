@@ -76,17 +76,18 @@ const styles = `
   @keyframes scrollDown{from{transform:translateY(-50%)}to{transform:translateY(0)}}
   .mosaic-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.2) 0%,rgba(10,10,10,0.05) 35%,rgba(10,10,10,0.05) 65%,rgba(10,10,10,1) 100%);}
   .mosaic-overlay-left{position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.8) 0%,transparent 25%,transparent 75%,rgba(10,10,10,0.8) 100%);}
-  .hero-content{position:relative;z-index:10;text-align:center;padding:56px 72px;max-width:800px;
-    background:radial-gradient(ellipse at center,rgba(10,10,10,0.72) 0%,rgba(10,10,10,0.55) 55%,rgba(10,10,10,0) 100%);
-    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:40px;
-    -webkit-mask-image:radial-gradient(ellipse at center,black 40%,transparent 75%);
-    mask-image:radial-gradient(ellipse at center,black 40%,transparent 75%);
-    animation:fadeScale 0.9s ease 0.6s both;}
+  .hero-glass{position:absolute;z-index:5;width:680px;height:420px;border-radius:48px;
+    background:rgba(10,10,10,0.45);
+    backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+    -webkit-mask-image:radial-gradient(ellipse at center,black 30%,rgba(0,0,0,0.6) 55%,transparent 75%);
+    mask-image:radial-gradient(ellipse at center,black 30%,rgba(0,0,0,0.6) 55%,transparent 75%);
+    animation:fadeScale 0.9s ease 0.5s both;}
+  .hero-content{position:relative;z-index:10;text-align:center;padding:0 40px;max-width:700px;animation:fadeScale 0.9s ease 0.6s both;}
   .service-tag{animation:fadeUp 0.6s ease 1.2s both;}
   .hero-title{animation:fadeUp 0.7s ease 1.4s both;}
   .hero-desc{animation:fadeUp 0.6s ease 1.6s both;}
   .hero-actions{animation:fadeUp 0.6s ease 1.8s both;}
-  @keyframes fadeScale{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+  @keyframes fadeScale{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:24px;}
   .hero-title{font-size:clamp(60px,9vw,110px);line-height:0.92;margin:0 0 24px;text-shadow:0 2px 20px rgba(0,0,0,0.5);}
@@ -153,6 +154,7 @@ export default function ServicesScaledPage() {
         </div>
         <div className="mosaic-overlay" />
         <div className="mosaic-overlay-left" />
+        <div className="hero-glass" />
         <div className="hero-content">
           <div className="service-tag">Scaled NIL</div>
           <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
