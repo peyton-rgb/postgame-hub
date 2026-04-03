@@ -1,6 +1,14 @@
+import { createPlainSupabase } from "@/lib/supabase";
+
 export const revalidate = 60;
 
-const styles = `
+const BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/";
+const SUPABASE_URL = "https://xqaybwhpgxillpbbqtks.supabase.co";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxYXlid2hwZ3hpbGxwYmJxdGtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE2NTcxNTMsImV4cCI6MjAyNzIzMzE1M30.G_-BO7iBKBI0K4kLzXKzN4QRTZ1lAqNiXb8nNwqRv5s";
+
+const DEFAULT_PHOTOS = ['558aee46-8516-47ac-87d9-d959c4ccaedb/2c9f7a9e-460c-4846-b877-906a7e6a855e/1775073479874-DSC05557.jpg', '4abbddb5-9635-4db4-9892-e8e85b1c3631/8cc333d8-df36-435d-a39b-6809b8d475c1/1772603819513-IND05834.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/02d49608-c9a1-47de-bbc9-62248efe270a/1774482933543-Jaala_Thymes_3.jpg', '17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/8423a2ff-e7cc-47ed-b714-0448c3732b03/1775061177515-Nimari_Burnette_DSC03969.jpg', '64a31cb4-1bee-4456-b3fc-3d7d0f81b077/c5c17d0c-ca40-496a-a81f-fa40fa8f5354/1773871398391-Eliza LaBelle.jpeg', 'fb31741a-195c-4308-82f5-26fed242b39e/86cc00d4-e6a9-495a-8cca-88e0e02cc8d9/1774382093716-DSC09290.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/f84806a8-2e1e-44a3-a577-21f0a6a26ed5/1774483281049-Paris_Clark_5.jpg', '5b035be0-7d17-499d-b512-ddb3f900b68f/d5b449d2-ed5e-4d19-915d-a319a7aa7daa/1775083675731-Braden_Smith_-_Purdue_7B3A0113.jpg'];
+
+const SHARED_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
   :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,0.08);--text:#fff;--text-muted:rgba(255,255,255,0.55);--text-dim:rgba(255,255,255,0.35);}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -67,10 +75,19 @@ const styles = `
   @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.hero-wrap{padding:100px 24px 60px;}.hero-glass-card{padding:36px 28px;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.carousel-dots{left:24px;}.hero-stats{grid-template-columns:1fr 1fr;}}
 `;
 
-export default function ServicesElevatedPage() {
+export default async function ServicesElevatedPage() {
+  // Fetch carousel photos from Supabase
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/pages?slug=eq.services&select=settings`,
+    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }, next: { revalidate: 60 } }
+  );
+  const rows = await res.json();
+  const settings = rows?.[0]?.settings ?? {};
+  const photos: string[] = settings?.["elevated"]?.carousel_photos ?? DEFAULT_PHOTOS;
+
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
+      <style dangerouslySetInnerHTML={{ __html: SHARED_STYLES }} />
       <script dangerouslySetInnerHTML={{ __html: `
         document.addEventListener('DOMContentLoaded', function() {
           var slides = document.querySelectorAll('.carousel-slide');
@@ -86,7 +103,8 @@ export default function ServicesElevatedPage() {
           dots.forEach(function(d, i) { d.addEventListener('click', function() { go(i); }); });
           setInterval(function() { go(current + 1); }, 4000);
         });
-` }} />
+      ` }} />
+
       <nav className="nav">
         <a href="/homepage" className="nav-logo">POSTGAME</a>
         <div className="nav-links">
@@ -98,43 +116,15 @@ export default function ServicesElevatedPage() {
 
       <div className="hero-wrap">
         <div className="carousel-bg">
-          <div className="carousel-slide active">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("558aee46-8516-47ac-87d9-d959c4ccaedb/2c9f7a9e-460c-4846-b877-906a7e6a855e/1775073479874-DSC05557.jpg")}`} alt="" />
-          </div>
-          <div className="carousel-slide">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("4abbddb5-9635-4db4-9892-e8e85b1c3631/8cc333d8-df36-435d-a39b-6809b8d475c1/1772603819513-IND05834.jpg")}`} alt="" />
-          </div>
-          <div className="carousel-slide">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("0575994d-2d89-4122-915e-623de201d00f/ae03b6f2-3584-4765-ae73-14c63cff4123/1772646016393-StellaAllen_Adidas-10 - Stella Allen.jpg")}`} alt="" />
-          </div>
-          <div className="carousel-slide">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("5b035be0-7d17-499d-b512-ddb3f900b68f/d5b449d2-ed5e-4d19-915d-a319a7aa7daa/1775083675731-Braden_Smith_-_Purdue_7B3A0113.jpg")}`} alt="" />
-          </div>
-          <div className="carousel-slide">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("cc84b3b9-aef5-48bf-882c-24782a8432bf/02d49608-c9a1-47de-bbc9-62248efe270a/1774482933543-Jaala_Thymes_3.jpg")}`} alt="" />
-          </div>
-          <div className="carousel-slide">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/8423a2ff-e7cc-47ed-b714-0448c3732b03/1775061177515-Nimari_Burnette_DSC03969.jpg")}`} alt="" />
-          </div>
-          <div className="carousel-slide">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("64a31cb4-1bee-4456-b3fc-3d7d0f81b077/c5c17d0c-ca40-496a-a81f-fa40fa8f5354/1773871398391-Eliza LaBelle.jpeg")}`} alt="" />
-          </div>
-          <div className="carousel-slide">
-            <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent("fb31741a-195c-4308-82f5-26fed242b39e/86cc00d4-e6a9-495a-8cca-88e0e02cc8d9/1774382093716-DSC09290.jpg")}`} alt="" />
-          </div>
+          {photos.map((src, i) => (
+            <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`}>
+              <img src={`${BASE}${encodeURIComponent(src)}`} alt="" />
+            </div>
+          ))}
           <div className="carousel-overlay" />
           <div className="carousel-overlay-top" />
         </div>
-        <div className="carousel-dots">
-          <button className="dot active" aria-label="Slide 1" />
-          <button className="dot" aria-label="Slide 2" />
-          <button className="dot" aria-label="Slide 3" />
-          <button className="dot" aria-label="Slide 4" />
-          <button className="dot" aria-label="Slide 5" />
-          <button className="dot" aria-label="Slide 6" />
-          <button className="dot" aria-label="Slide 7" />
-          <button className="dot" aria-label="Slide 8" />
-        </div>
+
         <div className="hero-glass-card">
           <div className="service-tag">Elevated NIL</div>
           <h1 className="d hero-title">Premium.<br />Cinematic.<br />Unforgettable.</h1>
@@ -144,11 +134,17 @@ export default function ServicesElevatedPage() {
             <a href="/campaigns" className="btn-outline">See Examples</a>
           </div>
           <div className="hero-stats">
-            <div><div className="stat-num">50<span>+</span></div><div className="stat-label">Headliner Athletes</div></div>
-            <div><div className="stat-num">4K</div><div className="stat-label">Production Standard</div></div>
+            <div><div className="stat-num">50+<span></span></div><div className="stat-label">Headliner Athletes</div></div>
+            <div><div className="stat-num">4K<span></span></div><div className="stat-label">Production Standard</div></div>
             <div><div className="stat-num">48<span>hr</span></div><div className="stat-label">Turnaround</div></div>
             <div><div className="stat-num">100<span>%</span></div><div className="stat-label">Brand Approved</div></div>
           </div>
+        </div>
+
+        <div className="carousel-dots">
+          {photos.map((_, i) => (
+            <button key={i} className={`dot${i === 0 ? " active" : ""}`} aria-label={`Slide ${i + 1}`} />
+          ))}
         </div>
       </div>
 
@@ -161,7 +157,7 @@ export default function ServicesElevatedPage() {
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="section-eyebrow">What&apos;s Included</div>
-        <h2 className="d section-title">The Elevated Package</h2>
+        <h2 className="d section-title">The Elevated NIL Package</h2>
         <div className="features-grid">
           {[
             { num: "01", title: "Headliner Athletes", desc: "We match your brand with the most recognizable names in college sports — athletes with massive followings and authentic audiences." },

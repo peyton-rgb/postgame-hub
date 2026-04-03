@@ -1,46 +1,14 @@
+import { createPlainSupabase } from "@/lib/supabase";
+
 export const revalidate = 60;
 
 const BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/";
+const SUPABASE_URL = "https://xqaybwhpgxillpbbqtks.supabase.co";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxYXlid2hwZ3hpbGxwYmJxdGtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE2NTcxNTMsImV4cCI6MjAyNzIzMzE1M30.G_-BO7iBKBI0K4kLzXKzN4QRTZ1lAqNiXb8nNwqRv5s";
 
-const PHOTOS = [
-  "558aee46-8516-47ac-87d9-d959c4ccaedb/2c9f7a9e-460c-4846-b877-906a7e6a855e/1775073479874-DSC05557.jpg",
-  "4abbddb5-9635-4db4-9892-e8e85b1c3631/8cc333d8-df36-435d-a39b-6809b8d475c1/1772603819513-IND05834.jpg",
-  "4abbddb5-9635-4db4-9892-e8e85b1c3631/0ab2f8b5-9b46-40ed-88a7-3a8e50579950/1772603338971-_DSC3513.jpg",
-  "4abbddb5-9635-4db4-9892-e8e85b1c3631/b3581698-d4eb-40b1-8e71-afb1d960ca1f/1774033863405-DSC05627-Enhanced-NR.jpg",
-  "5b035be0-7d17-499d-b512-ddb3f900b68f/d5b449d2-ed5e-4d19-915d-a319a7aa7daa/1775083675731-Braden_Smith_-_Purdue_7B3A0113.jpg",
-  "558aee46-8516-47ac-87d9-d959c4ccaedb/e23e7217-a077-457d-a80a-256452927a4f/1775073000950-Sam_Hoiberg_Sam Hoiberg Papatui.jpeg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/02d49608-c9a1-47de-bbc9-62248efe270a/1774482933543-Jaala_Thymes_3.jpg",
-  "0575994d-2d89-4122-915e-623de201d00f/ae03b6f2-3584-4765-ae73-14c63cff4123/1772646016393-StellaAllen_Adidas-10 - Stella Allen.jpg",
-  "5b035be0-7d17-499d-b512-ddb3f900b68f/2b58fc76-e2b8-4d26-a3de-b3b8f9bdd5d5/1775081194098-Mikaylah_Williams_re1.jpg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/df3afeca-89e8-49b0-bd6a-8b00ea7b5ea4/1774483497066-Makhi_Falkquay_4.jpg",
-  "64a31cb4-1bee-4456-b3fc-3d7d0f81b077/c5c17d0c-ca40-496a-a81f-fa40fa8f5354/1773871398391-Eliza LaBelle.jpeg",
-  "64a31cb4-1bee-4456-b3fc-3d7d0f81b077/548dc126-a5c2-464a-8bce-a650c30831a5/1773871942997-Kamron Dillard 4.jpeg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/f84806a8-2e1e-44a3-a577-21f0a6a26ed5/1774483281049-Paris_Clark_5.jpg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/60808b45-8f21-4209-9604-bdeb9d5e6084/1774481198080-kennedi_bailey.jpg",
-  "4abbddb5-9635-4db4-9892-e8e85b1c3631/0ab2f8b5-9b46-40ed-88a7-3a8e50579950/1772603357088-_DSC4032-2.jpg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/d4bbb7da-9d1e-423d-9ee3-df4a5e18a82b/1774481848368-Donovan_Whitfield.jpg",
-  "b924229b-3a33-431a-aa2a-4332c4daae22/bdbafdd8-202d-441a-920c-47cfc70be586/1775071192894-2026 Darius Sams8.jpg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/c007234a-a7e4-44f8-a8cf-af19b9769319/1774471458731-1N3A5910 - Alisha Nunley.jpeg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/98324e14-f286-4024-b63b-71408b0da0b2/1774481851889-Maya_Robinson.jpg",
-  "17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/e2206a9d-11c3-4e50-afdf-e2eecebea35a/1775061169902-Maliq_Brown_IMG_3713.JPG",
-  "17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/8423a2ff-e7cc-47ed-b714-0448c3732b03/1775061177515-Nimari_Burnette_DSC03969.jpg",
-  "17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/00e0ac24-2426-421e-9450-934a48a7e38f/1775060559403-Adrian_Wooley_DSC01325-Enhanced-NR.jpg",
-  "4abbddb5-9635-4db4-9892-e8e85b1c3631/0ab2f8b5-9b46-40ed-88a7-3a8e50579950/1772603363497-_DSC4127.jpg",
-  "64a31cb4-1bee-4456-b3fc-3d7d0f81b077/37a17fe0-1b5a-4175-b784-878181b54854/1774465519790-SnapInsta.to_642585191_18569826502027136_3154976104383892850_n.jpg",
-  "fb31741a-195c-4308-82f5-26fed242b39e/23ad0e1d-a8a6-4f8a-9a35-ee2745fb1f96/1774381066061-IMG_6239 - gemma Morris.jpeg",
-  "4abbddb5-9635-4db4-9892-e8e85b1c3631/967b6f6a-ff21-495c-9d85-99d963a8c058/1774033456259-IND05028-Enhanced-NR.jpg",
-  "64a31cb4-1bee-4456-b3fc-3d7d0f81b077/d695e4e8-2189-4aab-999d-7a63d6b1781c/1773871962931-Savannah Moore.jpeg",
-  "d316c412-1782-46ca-906c-d6246bca71d6/c587e24a-d0e6-4966-a280-51899a4beb74/1773766326659-DSC00276.jpg",
-  "558aee46-8516-47ac-87d9-d959c4ccaedb/ede0926f-f22e-4aaf-8299-476c5fa6eb10/1775072988466-Jeremy_Fears_Jr._IMG_8137.jpg",
-  "5b035be0-7d17-499d-b512-ddb3f900b68f/3bd7fd8c-3c19-4508-b84a-75e6fa4c71d4/1775083743804-Labaron_Philon_Jr._Edit-2.jpg",
-  "558aee46-8516-47ac-87d9-d959c4ccaedb/18e921de-d731-4bbf-85cd-c64682ef8546/1775073507844-DSC05905.jpg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/f84806a8-2e1e-44a3-a577-21f0a6a26ed5/1774483481755-Paris_Clark_3.jpg",
-  "fb31741a-195c-4308-82f5-26fed242b39e/86cc00d4-e6a9-495a-8cca-88e0e02cc8d9/1774382093716-DSC09290.jpg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/d3d4538b-fcba-4b29-b0a4-d6f03356c891/1774483466467-Maria_Pena_1.jpeg",
-  "cc84b3b9-aef5-48bf-882c-24782a8432bf/c5556bb1-67e7-4e0c-9fc4-b14fad41aa09/1774483477347-Liron_Thomas_1.jpg",
-];
+const DEFAULT_PHOTOS = ['558aee46-8516-47ac-87d9-d959c4ccaedb/2c9f7a9e-460c-4846-b877-906a7e6a855e/1775073479874-DSC05557.jpg', '4abbddb5-9635-4db4-9892-e8e85b1c3631/8cc333d8-df36-435d-a39b-6809b8d475c1/1772603819513-IND05834.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/02d49608-c9a1-47de-bbc9-62248efe270a/1774482933543-Jaala_Thymes_3.jpg', '17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/8423a2ff-e7cc-47ed-b714-0448c3732b03/1775061177515-Nimari_Burnette_DSC03969.jpg', '64a31cb4-1bee-4456-b3fc-3d7d0f81b077/c5c17d0c-ca40-496a-a81f-fa40fa8f5354/1773871398391-Eliza LaBelle.jpeg', 'fb31741a-195c-4308-82f5-26fed242b39e/86cc00d4-e6a9-495a-8cca-88e0e02cc8d9/1774382093716-DSC09290.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/f84806a8-2e1e-44a3-a577-21f0a6a26ed5/1774483281049-Paris_Clark_5.jpg', '5b035be0-7d17-499d-b512-ddb3f900b68f/d5b449d2-ed5e-4d19-915d-a319a7aa7daa/1775083675731-Braden_Smith_-_Purdue_7B3A0113.jpg'];
 
-const styles = `
+const SHARED_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
   :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,0.08);--text:#fff;--text-muted:rgba(255,255,255,0.55);--text-dim:rgba(255,255,255,0.35);}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -55,25 +23,16 @@ const styles = `
   .btn-outline:hover{background:var(--orange);color:#fff;}
   .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:background 0.2s;}
   .btn-solid:hover{background:#c43808;}
-
-  /* HERO */
   .hero-wrap{position:relative;min-height:100vh;display:flex;align-items:center;padding:100px 48px 80px;overflow:hidden;}
-
-  /* Carousel background */
   .carousel-bg{position:absolute;inset:0;z-index:0;}
-  .carousel-track{display:flex;height:100%;transition:opacity 0.8s ease;}
   .carousel-slide{position:absolute;inset:0;opacity:0;transition:opacity 1.2s ease;}
   .carousel-slide.active{opacity:1;}
   .carousel-slide img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;}
   .carousel-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(5,5,5,0.92) 0%,rgba(5,5,5,0.7) 45%,rgba(5,5,5,0.2) 75%,rgba(5,5,5,0.05) 100%);}
   .carousel-overlay-top{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,10,10,0.5) 0%,transparent 20%,transparent 80%,rgba(10,10,10,1) 100%);}
-
-  /* Dots */
   .carousel-dots{position:absolute;bottom:32px;left:48px;display:flex;gap:8px;z-index:10;}
   .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);transition:all 0.3s;cursor:pointer;border:none;padding:0;}
   .dot.active{width:24px;border-radius:3px;background:var(--orange);}
-
-  /* Glass card */
   .hero-glass-card{position:relative;z-index:10;max-width:620px;background:rgba(10,10,10,0.45);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:52px 56px;box-shadow:0 24px 80px rgba(0,0,0,0.5);animation:fadeUp 0.8s ease 0.3s both;}
   .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);background:#fff;border:1.5px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:20px;}
   .hero-title{font-size:clamp(44px,6vw,76px);line-height:0.95;margin:0 0 20px;animation:fadeUp 0.7s ease 0.5s both;}
@@ -84,7 +43,6 @@ const styles = `
   .stat-num span{color:var(--orange);}
   .stat-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;}
   @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-
   .section{padding:80px 48px;}
   .section-eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:12px;}
   .section-title{font-size:clamp(32px,4vw,48px);line-height:1;margin:0 0 48px;}
@@ -117,12 +75,19 @@ const styles = `
   @media(max-width:900px){.nav{padding:14px 24px;}.nav-links{display:none;}.hero-wrap{padding:100px 24px 60px;}.hero-glass-card{padding:36px 28px;}.section{padding:60px 24px;}.services-nav{padding:0 24px 32px;}.features-grid{grid-template-columns:1fr;}.footer-top{grid-template-columns:1fr 1fr;gap:32px;}.carousel-dots{left:24px;}.hero-stats{grid-template-columns:1fr 1fr;}}
 `;
 
-const CAROUSEL = PHOTOS.slice(0, 8);
+export default async function ServicesScaledPage() {
+  // Fetch carousel photos from Supabase
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/pages?slug=eq.services&select=settings`,
+    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }, next: { revalidate: 60 } }
+  );
+  const rows = await res.json();
+  const settings = rows?.[0]?.settings ?? {};
+  const photos: string[] = settings?.["scaled"]?.carousel_photos ?? DEFAULT_PHOTOS;
 
-export default function ServicesScaledPage() {
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
+      <style dangerouslySetInnerHTML={{ __html: SHARED_STYLES }} />
       <script dangerouslySetInnerHTML={{ __html: `
         document.addEventListener('DOMContentLoaded', function() {
           var slides = document.querySelectorAll('.carousel-slide');
@@ -138,7 +103,7 @@ export default function ServicesScaledPage() {
           dots.forEach(function(d, i) { d.addEventListener('click', function() { go(i); }); });
           setInterval(function() { go(current + 1); }, 4000);
         });
-      `}} />
+      ` }} />
 
       <nav className="nav">
         <a href="/homepage" className="nav-logo">POSTGAME</a>
@@ -150,52 +115,49 @@ export default function ServicesScaledPage() {
       </nav>
 
       <div className="hero-wrap">
-        {/* Carousel background */}
         <div className="carousel-bg">
-          {CAROUSEL.map((src, i) => (
-            <div key={i} className={"carousel-slide" + (i === 0 ? " active" : "")}>
-              <img src={BASE + encodeURIComponent(src)} alt="" />
+          {photos.map((src, i) => (
+            <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`}>
+              <img src={`${BASE}${encodeURIComponent(src)}`} alt="" />
             </div>
           ))}
           <div className="carousel-overlay" />
           <div className="carousel-overlay-top" />
         </div>
 
-        {/* Glass card */}
         <div className="hero-glass-card">
           <div className="service-tag">Scaled NIL</div>
           <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
-          <p className="hero-desc">Scaled campaigns activate 10–500+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
+          <p className="hero-desc">Scaled campaigns activate 10–500+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters.</p>
           <div className="hero-actions">
             <a href="/contact" className="btn-solid">Start a Campaign</a>
             <a href="/campaigns" className="btn-outline">See Examples</a>
           </div>
           <div className="hero-stats">
-            <div><div className="stat-num">500<span>+</span></div><div className="stat-label">Athletes Per Campaign</div></div>
-            <div><div className="stat-num">100<span>+</span></div><div className="stat-label">Brand Partners</div></div>
+            <div><div className="stat-num">500+<span></span></div><div className="stat-label">Athletes Per Campaign</div></div>
+            <div><div className="stat-num">100+<span></span></div><div className="stat-label">Brand Partners</div></div>
             <div><div className="stat-num">4<span>yrs</span></div><div className="stat-label">In The NIL Space</div></div>
-            <div><div className="stat-num">70K<span>+</span></div><div className="stat-label">Athlete Network</div></div>
+            <div><div className="stat-num">70K+<span></span></div><div className="stat-label">Athlete Network</div></div>
           </div>
         </div>
 
-        {/* Carousel dots */}
         <div className="carousel-dots">
-          {CAROUSEL.map((_, i) => (
-            <button key={i} className={"dot" + (i === 0 ? " active" : "")} aria-label={"Slide " + (i+1)} />
+          {photos.map((_, i) => (
+            <button key={i} className={`dot${i === 0 ? " active" : ""}`} aria-label={`Slide ${i + 1}`} />
           ))}
         </div>
       </div>
 
       <div className="services-nav">
         <a href="/services/elevated" className="svc-link">Elevated</a>
-        <a href="/services/scaled" className="svc-link active">Scaled</a>
+        <a href="/services/scaled" className="svc-link">Scaled</a>
         <a href="/services/always-on" className="svc-link">Always On</a>
         <a href="/services/experiential" className="svc-link">Experiential</a>
       </div>
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="section-eyebrow">What&apos;s Included</div>
-        <h2 className="d section-title">The Scaled Package</h2>
+        <h2 className="d section-title">The Scaled NIL Package</h2>
         <div className="features-grid">
           {[
             { num: "01", title: "Multi-School Activation", desc: "We simultaneously activate athletes across 5 to 500+ schools — Power 4, G5, or any combination that matches your distribution goals." },
