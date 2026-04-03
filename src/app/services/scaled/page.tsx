@@ -81,13 +81,13 @@ const styles = `
     backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:40px;
     -webkit-mask-image:radial-gradient(ellipse at center,black 40%,transparent 75%);
     mask-image:radial-gradient(ellipse at center,black 40%,transparent 75%);
-    opacity:0;transform:scale(0.96);transition:opacity 0.9s ease 0.6s,transform 0.9s ease 0.6s;}
-  .hero-content.visible{opacity:1;transform:scale(1);}
-  .service-tag{opacity:0;transform:translateY(12px);transition:opacity 0.6s ease 1.2s,transform 0.6s ease 1.2s;}
-  .hero-title{opacity:0;transform:translateY(16px);transition:opacity 0.7s ease 1.4s,transform 0.7s ease 1.4s;}
-  .hero-desc{opacity:0;transform:translateY(12px);transition:opacity 0.6s ease 1.6s,transform 0.6s ease 1.6s;}
-  .hero-actions{opacity:0;transform:translateY(10px);transition:opacity 0.6s ease 1.8s,transform 0.6s ease 1.8s;}
-  .hero-content.visible .service-tag,.hero-content.visible .hero-title,.hero-content.visible .hero-desc,.hero-content.visible .hero-actions{opacity:1;transform:translateY(0);}
+    animation:fadeScale 0.9s ease 0.6s both;}
+  .service-tag{animation:fadeUp 0.6s ease 1.2s both;}
+  .hero-title{animation:fadeUp 0.7s ease 1.4s both;}
+  .hero-desc{animation:fadeUp 0.6s ease 1.6s both;}
+  .hero-actions{animation:fadeUp 0.6s ease 1.8s both;}
+  @keyframes fadeScale{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   .service-tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:4px 12px;margin-bottom:24px;}
   .hero-title{font-size:clamp(60px,9vw,110px);line-height:0.92;margin:0 0 24px;text-shadow:0 2px 20px rgba(0,0,0,0.5);}
   .hero-desc{font-size:18px;color:rgba(255,255,255,0.8);max-width:520px;line-height:1.6;margin:0 auto 40px;text-shadow:0 1px 8px rgba(0,0,0,0.6);}
@@ -153,7 +153,7 @@ export default function ServicesScaledPage() {
         </div>
         <div className="mosaic-overlay" />
         <div className="mosaic-overlay-left" />
-        <div className="hero-content" ref={(el) => { if (el) setTimeout(() => el.classList.add("visible"), 100); }}>
+        <div className="hero-content">
           <div className="service-tag">Scaled NIL</div>
           <h1 className="d hero-title">More Athletes.<br />More Markets.<br />More Reach.</h1>
           <p className="hero-desc">Scaled campaigns activate 10–50+ athletes simultaneously across every major conference, giving your brand authentic presence at every school that matters to you.</p>
