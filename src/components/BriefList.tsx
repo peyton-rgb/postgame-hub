@@ -15,7 +15,6 @@ export default function BriefList() {
   const [step, setStep] = useState<"template" | "details">("template");
   const [selectedTemplate, setSelectedTemplate] = useState<BriefTemplate | null>(null);
   const [newTitle, setNewTitle] = useState("");
-  const [newClient, setNewClient] = useState("");
   const [selectedBrandId, setSelectedBrandId] = useState<string>("");
   const [brands, setBrands] = useState<Brand[]>([]);
   const [creating, setCreating] = useState(false);
@@ -51,7 +50,6 @@ export default function BriefList() {
     setStep("template");
     setSelectedTemplate(null);
     setNewTitle("");
-    setNewClient("");
     setSelectedBrandId("");
     setShowCreate(true);
   }
