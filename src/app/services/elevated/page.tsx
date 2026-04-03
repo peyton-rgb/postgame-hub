@@ -3,8 +3,8 @@ import { createPlainSupabase } from "@/lib/supabase";
 export const revalidate = 60;
 
 const BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/";
-const SUPABASE_URL = "https://xqaybwhpgxillpbbqtks.supabase.co";
-const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxYXlid2hwZ3hpbGxwYmJxdGtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE2NTcxNTMsImV4cCI6MjAyNzIzMzE1M30.G_-BO7iBKBI0K4kLzXKzN4QRTZ1lAqNiXb8nNwqRv5s";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const DEFAULT_PHOTOS = ['558aee46-8516-47ac-87d9-d959c4ccaedb/2c9f7a9e-460c-4846-b877-906a7e6a855e/1775073479874-DSC05557.jpg', '4abbddb5-9635-4db4-9892-e8e85b1c3631/8cc333d8-df36-435d-a39b-6809b8d475c1/1772603819513-IND05834.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/02d49608-c9a1-47de-bbc9-62248efe270a/1774482933543-Jaala_Thymes_3.jpg', '17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/8423a2ff-e7cc-47ed-b714-0448c3732b03/1775061177515-Nimari_Burnette_DSC03969.jpg', '64a31cb4-1bee-4456-b3fc-3d7d0f81b077/c5c17d0c-ca40-496a-a81f-fa40fa8f5354/1773871398391-Eliza LaBelle.jpeg', 'fb31741a-195c-4308-82f5-26fed242b39e/86cc00d4-e6a9-495a-8cca-88e0e02cc8d9/1774382093716-DSC09290.jpg', 'cc84b3b9-aef5-48bf-882c-24782a8432bf/f84806a8-2e1e-44a3-a577-21f0a6a26ed5/1774483281049-Paris_Clark_5.jpg', '5b035be0-7d17-499d-b512-ddb3f900b68f/d5b449d2-ed5e-4d19-915d-a319a7aa7daa/1775083675731-Braden_Smith_-_Purdue_7B3A0113.jpg'];
 
