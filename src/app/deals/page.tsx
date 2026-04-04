@@ -108,12 +108,12 @@ export default function DealsPage() {
   /* ── Helpers ──────────────────────────────────────────────── */
   const curDeal = featured[heroIdx] || null;
   const curFocal = curDeal ? (focalMap[curDeal.id] || "50% 25%") : "50% 25%";
-  // On mobile, push photo down by adding 15% to Y (capped at 80%) so face isn't hidden by title
+  // On mobile, push photo down by adding 35% to Y (capped at 85%) so face isn't hidden by title
   const mobileFocal = useMemo(() => {
     const parts = curFocal.split(/\s+/);
     const x = parts[0] || "50%";
-    const yNum = parseFloat(parts[1]) || 25;
-    const mobileY = Math.min(80, yNum + 15);
+    const yNum = parseFloat(parts[1]) || 15;
+    const mobileY = Math.min(85, yNum + 35);
     return `${x} ${mobileY}%`;
   }, [curFocal]);
   const heroFocalPos = isMobile ? mobileFocal : curFocal;
@@ -136,7 +136,7 @@ export default function DealsPage() {
 
   const goHero = (i: number) => { setHeroFade(false); setTimeout(() => { setHeroIdx(i); setHeroFade(true); }, 300); };
 
-  const heroHeight = isMobile ? "clamp(500px,88vh,680px)" : isTablet ? "clamp(420px,75vh,600px)" : "clamp(480px,80vh,680px)";
+  const heroHeight = isMobile ? "clamp(560px,92vh,720px)" : isTablet ? "clamp(420px,75vh,600px)" : "clamp(480px,80vh,680px)";
   const carCardW = isMobile ? "clamp(150px,42vw,200px)" : isTablet ? "clamp(160px,28vw,220px)" : "248px";
   const carCardH = isMobile ? "clamp(220px,62vw,300px)" : isTablet ? "clamp(240px,42vw,330px)" : "380px";
   const gridCols = isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(4,1fr)";
@@ -153,7 +153,7 @@ export default function DealsPage() {
     <div style={{ minHeight: "100vh", background: "#000", color: "#fff", fontFamily: "Arial,Helvetica,sans-serif" }}>
 
       {/* ── Nav ─────────────────────────────────────────────── */}
-      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isCompact ? "12px 16px" : "16px 48px", background: "rgba(10,10,10,0.92)", backdropFilter: "blur(16px)", boxShadow: "0 1px 0 rgba(255,255,255,0.08)" }}>
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isCompact ? "12px 16px" : "16px 48px", background: isMobile ? "#000" : "rgba(10,10,10,0.92)", backdropFilter: isMobile ? undefined : "blur(16px)", boxShadow: isMobile ? "none" : "0 1px 0 rgba(255,255,255,0.08)" }}>
         <a href="/homepage" style={{ fontSize: isCompact ? 18 : 22, fontWeight: 900, color: "#D73F09", textDecoration: "none" }}>POSTGAME</a>
         {!isCompact ? (
           <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
@@ -234,9 +234,9 @@ export default function DealsPage() {
           </div>
 
           {/* Top black fade — stronger on mobile for title readability */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: isMobile ? 220 : 120, background: isMobile
-            ? "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 35%, rgba(0,0,0,0.4) 65%, transparent 100%)"
-            : "linear-gradient(to bottom, #000 0%, transparent 100%)", zIndex: 8, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: isMobile ? 280 : 120, background: isMobile
+            ? "linear-gradient(to bottom, #000000 0%, #000000 30%, rgba(0,0,0,0.85) 55%, rgba(0,0,0,0.4) 75%, transparent 100%)"
+            : "linear-gradient(to bottom, #000 0%, transparent 100%)", zIndex: 7, pointerEvents: "none" }} />
           {/* Bottom-heavy gradient */}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 22%, transparent 42%, rgba(0,0,0,0.82) 68%, rgba(0,0,0,0.98) 100%)" }} />
           {/* Subtle left gradient for nav */}
@@ -246,14 +246,14 @@ export default function DealsPage() {
           {isMobile && (
             <>
               {/* Title area — top */}
-              <div style={{ position: "absolute", top: 52, left: 14, zIndex: 10, pointerEvents: "none" }}>
+              <div style={{ position: "absolute", top: 58, left: 14, right: 14, zIndex: 10, pointerEvents: "none" }}>
                 <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 6 }}>Postgame NIL</div>
                 <div style={{ fontSize: "clamp(34px,9vw,44px)", fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 12 }}>
                   NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
                 </div>
               </div>
               {/* Deep bottom gradient for cinematic nameplate */}
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 240, background: "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.5) 60%, transparent 100%)", zIndex: 4, pointerEvents: "none" }} />
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 260, background: "linear-gradient(to top, #000000 0%, rgba(0,0,0,0.95) 25%, rgba(0,0,0,0.6) 55%, transparent 100%)", zIndex: 4, pointerEvents: "none" }} />
               {/* Cinematic nameplate — text floating over gradient */}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, padding: "0 14px 28px" }}>
                 {/* Brand row */}
