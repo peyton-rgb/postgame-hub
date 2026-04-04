@@ -862,10 +862,17 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const [campaignAthletes, setCampaignAthletes] = useState<{id:string;name:string;school:string;sport:string}[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
+  const [search, setSearch] = useState("");
+  const [filterFeatured, setFilterFeatured] = useState<"all"|"featured"|"unfeatured">("all");
+  const [filterPublished, setFilterPublished] = useState<"all"|"published"|"draft">("all");
+  const [heroOrder, setHeroOrder] = useState<string[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   useEffect(() => {
     supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url,focal_point").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
-      setDeals((data||[]) as any);
+      const rows = (data||[]) as any[];
+      setDeals(rows);
+      setHeroOrder(rows.filter((d:any)=>d.featured).map((d:any)=>d.id));
       setLoading(false);
     });
     supabase.from("brands").select("id,name").eq("archived",false).order("name").then(({ data }) => {
@@ -918,17 +925,61 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
 
   if (loading) return <div style={{ padding:40, color:C.text3, fontSize:14 }}>Loading deals...</div>;
 
-  const featured = deals.filter(d => d.featured);
-  const rest = deals.filter(d => !d.featured);
+  const allFiltered = deals.filter(d => {
+    const q = search.toLowerCase();
+    if (q && ![d.athlete_name, d.brand_name, d.athlete_sport].some(v => v?.toLowerCase().includes(q))) return false;
+    if (filterPublished === "published" && !d.published) return false;
+    if (filterPublished === "draft" && d.published) return false;
+    if (filterFeatured === "featured" && !d.featured) return false;
+    if (filterFeatured === "unfeatured" && d.featured) return false;
+    return true;
+  });
+  const featuredFiltered = allFiltered.filter(d => d.featured);
+  const restFiltered = allFiltered.filter(d => !d.featured);
+  const hasActiveFilters = search || filterFeatured !== "all" || filterPublished !== "all";
+
+  const moveHero = (idx: number, dir: -1|1) => {
+    const next = idx + dir;
+    if (next < 0 || next >= heroOrder.length) return;
+    const arr = [...heroOrder];
+    [arr[idx], arr[next]] = [arr[next], arr[idx]];
+    setHeroOrder(arr);
+  };
+  const saveHeroOrder = async () => {
+    setSavingOrder(true);
+    await Promise.all(heroOrder.map((id, i) => supabase.from("deals").update({ sort_order: i }).eq("id", id)));
+    setDeals(prev => prev.map(d => {
+      const idx = heroOrder.indexOf(d.id);
+      return idx >= 0 ? { ...d, sort_order: idx } : d;
+    }));
+    setSavingOrder(false);
+    onSaved();
+  };
 
   return (
     <>
       <div style={S.editScroll}>
+        {/* Search & filter bar */}
+        <div style={{ marginBottom:12, display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", padding:"0 0 12px", borderBottom:`1px solid rgba(255,255,255,0.07)` }}>
+          <input style={{ ...S.input, flex:1, minWidth:160 }} placeholder="Search by athlete, brand, sport..." value={search} onChange={e=>setSearch(e.target.value)} />
+          <select style={{ ...S.input, width:"auto" }} value={filterFeatured} onChange={e=>setFilterFeatured(e.target.value as any)}>
+            <option value="all">All</option>
+            <option value="featured">Featured</option>
+            <option value="unfeatured">Not Featured</option>
+          </select>
+          <select style={{ ...S.input, width:"auto" }} value={filterPublished} onChange={e=>setFilterPublished(e.target.value as any)}>
+            <option value="all">All</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+          </select>
+          {hasActiveFilters && <span style={{ fontSize:11, color:C.text3 }}>{allFiltered.length} deals</span>}
+        </div>
+
         {/* Featured deals */}
         <SectionCard title="⭐ Featured / Highlighted">
           <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Featured deals appear at the top of the Deal Tracker page.</div>
-          {featured.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals yet. Star deals below to feature them.</div>}
-          {featured.map(d => (
+          {featuredFiltered.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals{hasActiveFilters ? " match your filters" : " yet. Star deals below to feature them"}.</div>}
+          {featuredFiltered.map(d => (
             <div key={d.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", gap:10 }}>
               {d.image_url && <img src={d.image_url} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" as const }} />}
               <div style={{ flex:1, minWidth:0 }}>
@@ -938,12 +989,37 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
               <button onClick={()=>toggleFeatured(d.id,false)} style={{ ...S.btnSm, color:"#D73F09", borderColor:"rgba(215,63,9,0.3)" }}>★ Unstar</button>
             </div>
           ))}
+
+          {/* Hero Carousel Order */}
+          {heroOrder.length > 0 && (
+            <div style={{ marginTop:16, padding:"14px 0 0", borderTop:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:12, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.text2, marginBottom:4 }}>Hero Carousel Order</div>
+              <div style={{ fontSize:12, color:C.text3, marginBottom:10 }}>These athletes cycle in the full-bleed hero banner. Drag to reorder.</div>
+              {heroOrder.map((id, idx) => {
+                const d = deals.find(x=>x.id===id);
+                if (!d) return null;
+                return (
+                  <div key={id} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0", borderBottom:`1px solid rgba(255,255,255,0.04)` }}>
+                    <span style={{ cursor:"grab", fontSize:14, color:C.text3, userSelect:"none" }}>⠿</span>
+                    {d.image_url && <img src={d.image_url} alt="" style={{ width:32, height:32, borderRadius:6, objectFit:"cover" as const }} />}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
+                      <div style={{ fontSize:10, color:C.text3 }}>{d.brand_name}</div>
+                    </div>
+                    <button onClick={()=>moveHero(idx,-1)} disabled={idx===0} style={{ ...S.btnSm, fontSize:10, opacity:idx===0?0.3:1 }}>↑</button>
+                    <button onClick={()=>moveHero(idx,1)} disabled={idx===heroOrder.length-1} style={{ ...S.btnSm, fontSize:10, opacity:idx===heroOrder.length-1?0.3:1 }}>↓</button>
+                  </div>
+                );
+              })}
+              <button onClick={saveHeroOrder} disabled={savingOrder} style={{ ...S.btnSave, marginTop:10, width:"100%", opacity:savingOrder?0.6:1 }}>{savingOrder ? "Saving..." : "Save Order"}</button>
+            </div>
+          )}
         </SectionCard>
 
         {/* All deals - full management */}
         <SectionCard title="All Deals" defaultOpen={false}>
           <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Published = visible on public site. Star (☆) = featured at top. Use face position to keep athlete centered in banner.</div>
-          {rest.map(d => (
+          {restFiltered.map(d => (
             <div key={d.id} style={{ ...S.itemCard }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: d.image_url ? 10 : 0 }}>
                 {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const, objectPosition: d.focal_point||"50% 25%" }} />}
