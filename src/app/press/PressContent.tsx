@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { PressArticle } from "@/lib/types";
 
 const CHIPS = ["All", "NIL", "Brands", "Athletes", "Media", "Forbes", "Agency"];
@@ -8,6 +8,11 @@ const CHIPS = ["All", "NIL", "Brands", "Athletes", "Media", "Forbes", "Agency"];
 export default function PressContent({ articles }: { articles: PressArticle[] }) {
   const [chip, setChip] = useState("All");
   const [isDesktop, setIsDesktop] = useState(false);
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const paused = useRef(false);
+  const prevHeroId = useRef<string | null>(null);
+  const [droppedId, setDroppedId] = useState<string | null>(null);
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth > 768);
@@ -21,10 +26,55 @@ export default function PressContent({ articles }: { articles: PressArticle[] })
     return articles.filter(a => a.category?.toLowerCase().includes(chip.toLowerCase()));
   }, [articles, chip]);
 
-  const featuredArticle = filtered.find(a => a.featured) || filtered[0] || null;
-  const rest = filtered.filter(a => a !== featuredArticle);
-  const latest = rest.slice(0, 4);
-  const grid = rest.slice(4);
+  // Fixed featured article (stays static)
+  const fixedFeatured = filtered.find(a => a.featured) || null;
+
+  // Rotating articles = all non-featured
+  const rotatingArticles = useMemo(() => filtered.filter(a => !a.featured), [filtered]);
+
+  // Reset heroIdx when filter changes
+  useEffect(() => { setHeroIdx(0); }, [chip]);
+
+  const safeIdx = rotatingArticles.length > 0 ? heroIdx % rotatingArticles.length : 0;
+  const heroArticle = rotatingArticles[safeIdx] || null;
+  const listArticles = rotatingArticles.length > 1
+    ? [...rotatingArticles.slice(safeIdx + 1), ...rotatingArticles.slice(0, safeIdx)]
+    : [];
+  const latestList = listArticles.slice(0, 4);
+  const gridList = listArticles.slice(4);
+
+  // Auto-advance timer
+  useEffect(() => {
+    if (rotatingArticles.length <= 1) return;
+    const iv = setInterval(() => {
+      if (paused.current) return;
+      setIsTransitioning(true);
+      prevHeroId.current = rotatingArticles[heroIdx % rotatingArticles.length]?.id || null;
+      setTimeout(() => {
+        setHeroIdx(i => (i + 1) % rotatingArticles.length);
+        setTimeout(() => {
+          setIsTransitioning(false);
+          setDroppedId(prevHeroId.current);
+          setTimeout(() => setDroppedId(null), 500);
+        }, 50);
+      }, 400);
+    }, 5000);
+    return () => clearInterval(iv);
+  }, [rotatingArticles.length, heroIdx]);
+
+  const goTo = (i: number) => {
+    if (i === safeIdx) return;
+    setIsTransitioning(true);
+    prevHeroId.current = heroArticle?.id || null;
+    setTimeout(() => {
+      setHeroIdx(i);
+      setTimeout(() => {
+        setIsTransitioning(false);
+        setDroppedId(prevHeroId.current);
+        setTimeout(() => setDroppedId(null), 500);
+      }, 50);
+    }, 350);
+  };
 
   const excerpt = (s: string | null, len = 120) => {
     if (!s) return "";
@@ -32,7 +82,13 @@ export default function PressContent({ articles }: { articles: PressArticle[] })
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f4f0", fontFamily: "Arial,Helvetica,sans-serif" }}>
+    <div
+      onMouseEnter={() => { paused.current = true; }}
+      onMouseLeave={() => { paused.current = false; }}
+      style={{ minHeight: "100vh", background: "#f5f4f0", fontFamily: "Arial,Helvetica,sans-serif" }}
+    >
+      <style>{`@keyframes slideInBottom { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } } .slide-in-bottom { animation: slideInBottom 0.45s ease both; }`}</style>
+
       {/* ── Nav ─────────────────────────────────── */}
       <nav style={{ position: "sticky", top: 0, zIndex: 10, background: "#fff", borderBottom: "1px solid #e8e8e8", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <a href="/homepage" style={{ fontSize: 13, fontWeight: 900, color: "#111", textDecoration: "none", letterSpacing: "0.03em" }}>POSTGAME <span style={{ color: "#D73F09" }}>NIL</span></a>
@@ -72,36 +128,82 @@ export default function PressContent({ articles }: { articles: PressArticle[] })
           <div style={{ textAlign: "center", padding: "64px 18px", color: "#aaa", fontSize: 14 }}>No articles in this category yet.</div>
         )}
 
-        {/* Featured Article */}
-        {featuredArticle && (
+        {/* 1. Fixed Featured Article (static) */}
+        {fixedFeatured && (
           <div style={{ margin: isDesktop ? "24px auto" : "16px 18px", maxWidth: isDesktop ? 760 : undefined }}>
-            <a href={featuredArticle.external_url || "#"} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", display: "block", background: "#fff", borderRadius: 14, border: "1px solid #e8e8e8", overflow: "hidden" }}>
-              {featuredArticle.image_url && (
-                <img src={featuredArticle.image_url} alt={featuredArticle.title} style={{ width: "100%", height: isDesktop ? 320 : 220, objectFit: "cover", display: "block" }} />
+            <a href={fixedFeatured.external_url || "#"} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", display: "block", background: "#fff", borderRadius: 14, border: "1px solid #e8e8e8", overflow: "hidden" }}>
+              {fixedFeatured.image_url && (
+                <img src={fixedFeatured.image_url} alt={fixedFeatured.title} style={{ width: "100%", height: isDesktop ? 320 : 220, objectFit: "cover", display: "block" }} />
               )}
               <div style={{ padding: 18 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", background: "#D73F09", color: "#fff", padding: "3px 8px", borderRadius: 4 }}>Featured</span>
-                  {featuredArticle.publication && <span style={{ fontSize: 10, color: "#aaa", fontWeight: 600 }}>{featuredArticle.publication}</span>}
+                  {fixedFeatured.publication && <span style={{ fontSize: 10, color: "#aaa", fontWeight: 600 }}>{fixedFeatured.publication}</span>}
                 </div>
-                <h2 style={{ fontSize: isDesktop ? 22 : 17, fontWeight: 900, color: "#111", lineHeight: 1.25, margin: "0 0 8px" }}>{featuredArticle.title}</h2>
-                {featuredArticle.excerpt && <p style={{ fontSize: 12, color: "#666", lineHeight: 1.55, margin: "0 0 14px" }}>{excerpt(featuredArticle.excerpt)}</p>}
+                <h2 style={{ fontSize: isDesktop ? 22 : 17, fontWeight: 900, color: "#111", lineHeight: 1.25, margin: "0 0 8px" }}>{fixedFeatured.title}</h2>
+                {fixedFeatured.excerpt && <p style={{ fontSize: 12, color: "#666", lineHeight: 1.55, margin: "0 0 14px" }}>{excerpt(fixedFeatured.excerpt)}</p>}
                 <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#D73F09", letterSpacing: "0.1em" }}>Read Article →</span>
               </div>
             </a>
           </div>
         )}
 
-        {/* Latest Coverage */}
-        {latest.length > 0 && (
+        {/* 2. Rotating Hero Card */}
+        {heroArticle && (
+          <div style={{ margin: isDesktop ? "16px auto" : "12px 18px", maxWidth: isDesktop ? 760 : undefined }}>
+            <a
+              href={heroArticle.external_url || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                textDecoration: "none", color: "inherit", display: "block", background: "#fff", borderRadius: 14, border: "1px solid #e8e8e8", overflow: "hidden",
+                transition: "opacity 0.35s ease, transform 0.35s ease",
+                opacity: isTransitioning ? 0 : 1,
+                transform: isTransitioning ? "translateY(-16px)" : "translateY(0)",
+              }}
+            >
+              {heroArticle.image_url && (
+                <img src={heroArticle.image_url} alt={heroArticle.title} style={{ width: "100%", height: isDesktop ? 260 : 180, objectFit: "cover", display: "block" }} />
+              )}
+              <div style={{ padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  {heroArticle.category && <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D73F09" }}>{heroArticle.category}</span>}
+                  {heroArticle.publication && <span style={{ fontSize: 10, color: "#aaa", fontWeight: 600 }}>{heroArticle.publication}</span>}
+                </div>
+                <h3 style={{ fontSize: isDesktop ? 20 : 16, fontWeight: 900, color: "#111", lineHeight: 1.25, margin: "0 0 6px" }}>{heroArticle.title}</h3>
+                {heroArticle.excerpt && <p style={{ fontSize: 12, color: "#666", lineHeight: 1.55, margin: "0 0 12px" }}>{excerpt(heroArticle.excerpt)}</p>}
+                <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#D73F09", letterSpacing: "0.1em" }}>Read Article →</span>
+              </div>
+            </a>
+
+            {/* Dot indicators */}
+            {rotatingArticles.length > 1 && (
+              <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 12, marginBottom: 4 }}>
+                {rotatingArticles.map((_, i) => (
+                  <button key={i} onClick={() => goTo(i)} style={{ width: i === safeIdx ? 14 : 6, height: 6, borderRadius: 2, background: i === safeIdx ? "#D73F09" : "rgba(0,0,0,0.2)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3. Latest Coverage List */}
+        {latestList.length > 0 && (
           <>
             <div style={{ padding: "20px 18px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", color: "#111" }}>Latest Coverage</span>
-              <span style={{ fontSize: 10, color: "#aaa" }}>{rest.length} articles</span>
+              <span style={{ fontSize: 10, color: "#aaa" }}>{listArticles.length} articles</span>
             </div>
             <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-              {latest.map(a => (
-                <a key={a.id} href={a.external_url || "#"} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", display: "flex", gap: 12, padding: 12, alignItems: "flex-start", background: "#fff", borderRadius: 12, border: "1px solid #e8e8e8" }}>
+              {latestList.map(a => (
+                <a
+                  key={a.id}
+                  href={a.external_url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={a.id === droppedId ? "slide-in-bottom" : ""}
+                  style={{ textDecoration: "none", color: "inherit", display: "flex", gap: 12, padding: 12, alignItems: "flex-start", background: "#fff", borderRadius: 12, border: "1px solid #e8e8e8" }}
+                >
                   {a.image_url ? (
                     <img src={a.image_url} alt="" style={{ width: 72, height: 72, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
                   ) : (
@@ -118,14 +220,14 @@ export default function PressContent({ articles }: { articles: PressArticle[] })
           </>
         )}
 
-        {/* More Coverage Grid */}
-        {grid.length > 0 && (
+        {/* 4. More Coverage Grid */}
+        {gridList.length > 0 && (
           <>
             <div style={{ padding: "20px 18px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", color: "#111" }}>More Coverage</span>
             </div>
             <div style={{ padding: "0 18px 28px", display: "grid", gridTemplateColumns: isDesktop ? "repeat(3, 1fr)" : "repeat(2, 1fr)", gap: 10 }}>
-              {grid.map(a => (
+              {gridList.map(a => (
                 <a key={a.id} href={a.external_url || "#"} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit", background: "#fff", borderRadius: 12, border: "1px solid #e8e8e8", overflow: "hidden", display: "block" }}>
                   {a.image_url ? (
                     <img src={a.image_url} alt="" style={{ width: "100%", height: 90, objectFit: "cover", display: "block" }} />
