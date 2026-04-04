@@ -919,6 +919,10 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const toggleFeatured = async (id: string, val: boolean) => {
     await supabase.from("deals").update({ featured: val }).eq("id", id);
     setDeals(p => p.map(d => d.id===id ? {...d,featured:val} : d));
+    setHeroOrder(prev => val
+      ? prev.includes(id) ? prev : [...prev, id]
+      : prev.filter(x => x !== id)
+    );
     onSaved();
   };
 
@@ -943,6 +947,12 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
     setCarouselFocals(fm);
     setCarouselSelected(0);
     setCarouselDevice("desktop");
+    setHeroOrder(prev => {
+      const featuredIds = deals.filter(d=>d.featured).map(d=>d.id);
+      const kept = prev.filter(id => featuredIds.includes(id));
+      const added = featuredIds.filter(id => !prev.includes(id));
+      return [...kept, ...added];
+    });
     setShowCarouselEditor(true);
   };
 
