@@ -572,11 +572,15 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
 
   async function save() {
     setSaving(true);
-    await supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:data }, { onConflict:"slug" });
-    const paths = ['/services/elevated', '/services/scaled', '/services/always-on', '/services/experiential'];
-    await Promise.all(paths.map(path =>
-      fetch(`/api/revalidate?path=${path}`).catch(() => {})
-    ));
+    const { error } = await supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:data }, { onConflict:"slug" });
+    if (error) {
+      console.error("Services save error:", error);
+      alert("Save failed: " + error.message);
+      setSaving(false);
+      return;
+    }
+    const paths = ["/services/elevated", "/services/scaled", "/services/always-on", "/services/experiential"];
+    await Promise.all(paths.map(path => fetch(`/api/revalidate?path=${path}`).catch(() => {})));
     setSaving(false);
     onSaved();
   }
