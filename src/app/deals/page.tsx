@@ -186,7 +186,7 @@ export default function DealsPage() {
     requestAnimationFrame(tick);
   }, []);
 
-  const heroHeight = isMobile ? "100svh" : isTablet ? "clamp(600px,88vh,820px)" : "clamp(700px,92vh,960px)";
+  const heroHeight = isMobile ? "100svh" : isTablet ? "clamp(800px,110vh,1000px)" : "clamp(900px,115vh,1100px)";
   const carCardW = isMobile ? "clamp(150px,42vw,200px)" : isTablet ? "clamp(160px,28vw,220px)" : "248px";
   const carCardH = isMobile ? "clamp(220px,62vw,300px)" : isTablet ? "clamp(240px,42vw,330px)" : "380px";
   const gridCols = isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(4,1fr)";
@@ -289,8 +289,8 @@ export default function DealsPage() {
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: isMobile ? 280 : 120, background: isMobile
             ? "linear-gradient(to bottom, #000000 0%, #000000 30%, rgba(0,0,0,0.85) 55%, rgba(0,0,0,0.4) 75%, transparent 100%)"
             : "linear-gradient(to bottom, #000 0%, transparent 100%)", zIndex: 7, pointerEvents: "none" }} />
-          {/* Bottom-heavy gradient */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 22%, transparent 42%, rgba(0,0,0,0.82) 68%, rgba(0,0,0,0.98) 100%)" }} />
+          {/* Bottom-heavy gradient — long fade so photo is visible through stats/featured */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 15%, transparent 45%, rgba(0,0,0,0.7) 65%, rgba(0,0,0,0.92) 80%, #000 100%)" }} />
           {/* Subtle left gradient for nav */}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, rgba(0,0,0,0.25) 0%, transparent 50%)" }} />
 
@@ -421,37 +421,29 @@ export default function DealsPage() {
         </div>
       )}
 
-      {/* ── Hero photo bleed extension ──────────────────────── */}
-      {featured.length > 0 && curDeal && (
-        <div style={{ position: "relative", overflow: "hidden" }}>
-          {/* Continuation of hero image */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "100%", zIndex: 0 }}>
-            <img src={curDeal.image_url!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: heroFocalPos, transform: heroZoom !== 1 ? `scale(${heroZoom})` : undefined, transformOrigin: heroFocalPos }} />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.95) 60%, #000 85%)" }} />
-          </div>
-
-          {/* Stats Bar */}
-          <div style={{ position: "relative", zIndex: 2, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
-              {[
-                { num: campaignsCount + "+", label: "Campaigns Run" },
-                { num: brandsCount + "+", label: "Brand Partners" },
-                { num: athletesCount >= 10000 ? "10K+" : athletesCount + "+", label: "Athletes Activated" },
-                { num: "4K", label: "Production Standard" },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(24px,3.5vw,40px)", lineHeight: 1, color: "#D73F09" }}>{s.num}</div>
-                  <div style={{ fontSize: "clamp(10px,1vw,12px)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginTop: "clamp(4px,0.6vw,6px)" }}>{s.label}</div>
-                </div>
-              ))}
+      {/* ── Stats Bar ──────────────────────────────────────── */}
+      <div style={{ position: "relative", zIndex: 2, background: "transparent", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
+          {[
+            { num: campaignsCount + "+", label: "Campaigns Run" },
+            { num: brandsCount + "+", label: "Brand Partners" },
+            { num: athletesCount >= 10000 ? "10K+" : athletesCount + "+", label: "Athletes Activated" },
+            { num: "4K", label: "Production Standard" },
+          ].map(s => (
+            <div key={s.label} style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(24px,3.5vw,40px)", lineHeight: 1, color: "#D73F09" }}>{s.num}</div>
+              <div style={{ fontSize: "clamp(10px,1vw,12px)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginTop: "clamp(4px,0.6vw,6px)" }}>{s.label}</div>
             </div>
-          </div>
+          ))}
+        </div>
+      </div>
 
-          {/* Featured Athletes Carousel */}
-          <div style={{ position: "relative", zIndex: 2, padding: "clamp(28px,4vw,48px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-              <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
-              <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
+      {/* ── Featured Athletes Carousel ─────────────────────── */}
+      {featured.length > 0 && (
+        <div style={{ position: "relative", zIndex: 2, background: "transparent", padding: "clamp(28px,4vw,48px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+            <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
+            <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
             <div style={{ overflow: "hidden" }}>
               <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
                 {featured.map(d => (
@@ -478,11 +470,10 @@ export default function DealsPage() {
             )}
           </div>
         </div>
-      </div>
       )}
 
       {/* ── Filter Row ─────────────────────────────────────── */}
-      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+      <div style={{ position: "relative", zIndex: 2, background: "#000", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(14px,2vw,20px) clamp(20px,4vw,48px)", display: "flex", alignItems: "center", gap: "clamp(8px,1.2vw,12px)", flexWrap: "wrap" }}>
           <span style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginRight: 4 }}>Filter</span>
           <PillSelect label="Sport" value={sportFilter} onChange={setSportFilter} options={sports} />
@@ -498,7 +489,7 @@ export default function DealsPage() {
       </div>
 
       {/* ── Deal Grid ──────────────────────────────────────── */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(32px,5vw,48px) clamp(20px,4vw,48px) clamp(48px,7vw,80px)" }}>
+      <div style={{ position: "relative", zIndex: 2, background: "#000", maxWidth: 1200, margin: "0 auto", padding: "clamp(32px,5vw,48px) clamp(20px,4vw,48px) clamp(48px,7vw,80px)" }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "clamp(48px,8vw,80px) 0", color: "rgba(255,255,255,0.35)", fontSize: "clamp(14px,2vw,18px)" }}>
             No deals match your filters.
