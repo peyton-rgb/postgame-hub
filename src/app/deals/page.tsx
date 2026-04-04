@@ -5,7 +5,6 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import type { Deal } from "@/lib/types";
 import Link from "next/link";
 import "@/styles/motion.css";
-import { useInView, useCountUp } from "@/hooks/useInView";
 
 /* ── Extended deal with joined fields ─────────────────────────── */
 type DealRow = Deal & {
@@ -147,14 +146,22 @@ export default function DealsPage() {
 
   const goHero = (i: number) => { setHeroFade(false); setTimeout(() => { setHeroIdx(i); setHeroFade(true); }, 300); };
 
-  /* ── Scroll animations ───────────────────────────────────── */
-  const statsView = useInView();
-  const featCarView = useInView();
-  const filterView = useInView();
-  const gridView = useInView();
-  const campaignsCount = useCountUp(394, statsView.inView);
-  const brandsCount = useCountUp(100, statsView.inView);
-  const athletesCount = useCountUp(10000, statsView.inView);
+  /* ── Stats count-up on mount ──────────────────────────────── */
+  const [campaignsCount, setCampaignsCount] = useState(0);
+  const [brandsCount, setBrandsCount] = useState(0);
+  const [athletesCount, setAthletesCount] = useState(0);
+  useEffect(() => {
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - startTime) / 1400, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setCampaignsCount(Math.round(ease * 394));
+      setBrandsCount(Math.round(ease * 100));
+      setAthletesCount(Math.round(ease * 10000));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, []);
 
   const heroHeight = isMobile ? "clamp(560px,92vh,720px)" : isTablet ? "clamp(420px,75vh,600px)" : "clamp(480px,80vh,680px)";
   const carCardW = isMobile ? "clamp(150px,42vw,200px)" : isTablet ? "clamp(160px,28vw,220px)" : "248px";
@@ -391,7 +398,7 @@ export default function DealsPage() {
       )}
 
       {/* ── Stats Bar ──────────────────────────────────────── */}
-      <div ref={statsView.ref as any} className={"anim-fade-up " + (statsView.inView ? "in-view" : "")} style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "#0a0a0a" }}>
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "#0a0a0a" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
           {[
             { num: campaignsCount + "+", label: "Campaigns Run" },
@@ -409,14 +416,14 @@ export default function DealsPage() {
 
       {/* ── Featured Athletes Carousel ─────────────────────── */}
       {featured.length > 0 && (
-        <div ref={featCarView.ref as any} className={"anim-fade-up " + (featCarView.inView ? "in-view" : "")} style={{ padding: "clamp(40px,6vw,64px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ padding: "clamp(40px,6vw,64px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto" }}>
             <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
             <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
             <div style={{ overflow: "hidden" }}>
-              <div className="stagger" style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
+              <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
                 {featured.map(d => (
-                  <Link key={d.id} href={`/deals/${d.id}`} className={"anim-scale-in " + (featCarView.inView ? "in-view" : "")} style={{ flex: `0 0 ${carCardW}`, width: carCardW, height: carCardH, borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", position: "relative", textDecoration: "none", color: "#fff", display: "block" }}>
+                  <Link key={d.id} href={`/deals/${d.id}`} style={{ flex: `0 0 ${carCardW}`, width: carCardW, height: carCardH, borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", position: "relative", textDecoration: "none", color: "#fff", display: "block" }}>
                     <img src={d.image_url!} alt={d.athlete_name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(d.id) }} />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "clamp(14px,2vw,20px) clamp(12px,1.5vw,18px)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
@@ -442,7 +449,7 @@ export default function DealsPage() {
       )}
 
       {/* ── Filter Row ─────────────────────────────────────── */}
-      <div ref={filterView.ref as any} className={"anim-fade-up " + (filterView.inView ? "in-view" : "")} style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(14px,2vw,20px) clamp(20px,4vw,48px)", display: "flex", alignItems: "center", gap: "clamp(8px,1.2vw,12px)", flexWrap: "wrap" }}>
           <span style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginRight: 4 }}>Filter</span>
           <PillSelect label="Sport" value={sportFilter} onChange={setSportFilter} options={sports} />
@@ -458,16 +465,16 @@ export default function DealsPage() {
       </div>
 
       {/* ── Deal Grid ──────────────────────────────────────── */}
-      <div ref={gridView.ref as any} style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(32px,5vw,48px) clamp(20px,4vw,48px) clamp(48px,7vw,80px)" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(32px,5vw,48px) clamp(20px,4vw,48px) clamp(48px,7vw,80px)" }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "clamp(48px,8vw,80px) 0", color: "rgba(255,255,255,0.35)", fontSize: "clamp(14px,2vw,18px)" }}>
             No deals match your filters.
             {hasFilters && <div><button onClick={resetFilters} style={{ marginTop: 16, background: "none", border: "none", color: "#D73F09", fontSize: "clamp(12px,1.3vw,14px)", fontWeight: 700, cursor: "pointer" }}>Reset filters</button></div>}
           </div>
         ) : (
-          <div className="stagger" style={{ display: "grid", gridTemplateColumns: gridCols, gap: "clamp(12px,1.5vw,20px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: "clamp(12px,1.5vw,20px)" }}>
             {filtered.map(deal => (
-              <Link key={deal.id} href={`/deals/${deal.id}`} className={"hover-lift anim-scale-in " + (gridView.inView ? "in-view" : "")} style={{ borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#111", textDecoration: "none", color: "#fff", display: "block" }}>
+              <Link key={deal.id} href={`/deals/${deal.id}`} className="hover-lift" style={{ borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#111", textDecoration: "none", color: "#fff", display: "block" }}>
                 {deal.image_url && (
                   <div style={{ aspectRatio: "4/5", overflow: "hidden" }}>
                     <img src={deal.image_url} alt={deal.athlete_name || deal.brand_name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(deal.id), transition: "transform 0.4s" }} />
