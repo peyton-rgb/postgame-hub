@@ -958,6 +958,7 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   return (
     <>
       <div style={S.editScroll}>
+        <button onClick={()=>{ setShowCreate(true); setCreateError(""); }} style={{ ...S.btnSave, width:"100%", marginBottom:12 }}>+ New Deal</button>
         {/* Search bar */}
         <div style={{ marginBottom:12, display:"flex", gap:8, alignItems:"center", padding:"0 0 12px", borderBottom:`1px solid rgba(255,255,255,0.07)` }}>
           <div style={{ flex:1, position:"relative" }}>
@@ -1048,10 +1049,6 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
             </div>
           ))}
         </SectionCard>
-
-        <div style={{ padding:"16px 20px" }}>
-          <button onClick={()=>{ setShowCreate(true); setCreateError(""); }} style={{ ...S.btnSave, width:"100%" }}>+ New Deal</button>
-        </div>
 
         {/* Create deal modal */}
         {showCreate && (
