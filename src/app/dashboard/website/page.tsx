@@ -1067,32 +1067,13 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                   <div style={{ fontSize:13, fontWeight:700, color: d.published ? C.text : C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
                   <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name}</div>
                 </div>
-                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                   <button onClick={()=>toggleFeatured(d.id,true)} style={S.btnSm} title="Feature this deal">☆</button>
+                  <button onClick={()=>router.push(`/dashboard/deals/${d.id}`)} style={S.btnSm}>Edit</button>
                   <Toggle on={d.published} onChange={v=>togglePublished(d.id,v)} />
                 </div>
               </div>
-              {d.image_url && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-                  {([
-                    { icon:"🖥", label:"Desktop", val:d.focal_point||"50% 20%", fn:(v:string)=>updateFocalPoint(d.id,v) },
-                    { icon:"⬜", label:"Tablet", val:d.focal_point_tablet||"50% 20%", fn:(v:string)=>updateFocalTablet(d.id,v) },
-                    { icon:"📱", label:"Mobile", val:d.focal_point_mobile||"50% 20%", fn:(v:string)=>updateFocalMobile(d.id,v) },
-                  ] as const).map(dev => (
-                    <div key={dev.label}>
-                      <div style={{ fontSize:7, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.text3, marginBottom:2 }}>{dev.icon} {dev.label}</div>
-                      <select value={dev.val} onChange={e=>dev.fn(e.target.value)} style={{ ...S.input, fontSize:10, padding:"3px 6px" }}>
-                        <option value="50% 8%">Top</option>
-                        <option value="50% 20%">Face (default)</option>
-                        <option value="50% 35%">Upper body</option>
-                        <option value="50% 50%">Center</option>
-                        <option value="50% 65%">Lower</option>
-                        <option value="50% 80%">Full body</option>
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <button onClick={()=>router.push(`/dashboard/deals/${d.id}`)} style={{ ...S.btnSm, marginTop: d.image_url ? 8 : 0, width:"100%", justifyContent:"center" as const }}>Edit Photo</button>
             </div>
           ))}
         </SectionCard>
