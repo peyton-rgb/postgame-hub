@@ -874,11 +874,15 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   }, []);
 
   useEffect(() => {
-    if(!selectedBrandId){ setBrandCampaigns([]); setSelectedCampaignId(""); return; }
-    supabase.from("campaign_recaps").select("id,name").eq("brand_id",selectedBrandId).order("name").then(({ data }) => {
+    supabase.from("campaign_recaps").select("id,name").order("name").then(({ data }) => {
       setBrandCampaigns((data||[]) as any);
-      setSelectedCampaignId("");
     });
+  }, []);
+
+  useEffect(() => {
+    setSelectedCampaignId("");
+    setSelectedAthleteId("");
+    setCampaignAthletes([]);
   }, [selectedBrandId]);
 
   useEffect(() => {
