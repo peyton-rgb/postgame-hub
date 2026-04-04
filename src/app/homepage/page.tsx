@@ -1,6 +1,7 @@
 import IntroAnimation from "@/components/IntroAnimation";
 import { getHomepage, getBrandLogos, type HomepageData, type PageSection } from "@/lib/public-site";
 import SiteFooter from "@/components/SiteFooter";
+import AnimateIn from "@/components/AnimateIn";
 
 export const revalidate = 60;
 
@@ -209,12 +210,12 @@ export default async function HomepagePage() {
               </div>
             )}
             {rest.length > 0 && (
-              <div className="hp-masonry">
+              <AnimateIn className="anim-fade-up hp-masonry stagger">
                 {rest.map((item, i) => {
                   const hasMedia = !!item.image_url;
                   const isVid = String(item.media_type||"")==="video";
                   return (
-                    <div key={i} className={`hp-card${!hasMedia?" "+GRADIENTS[i%5]:""}`}>
+                    <div key={i} className={`hp-card hover-lift anim-scale-in in-view${!hasMedia?" "+GRADIENTS[i%5]:""}`}>
                       {hasMedia && (isVid
                         ? <video autoPlay muted loop playsInline src={String(item.image_url)} style={{width:"100%",display:"block"}}/>
                         : <img src={String(item.image_url)} alt="" style={{width:"100%",display:"block",objectPosition:String(item.focal_point||"center 20%")}}/>
@@ -227,7 +228,7 @@ export default async function HomepagePage() {
                     </div>
                   );
                 })}
-              </div>
+              </AnimateIn>
             )}
           </div>
         );
@@ -241,7 +242,7 @@ export default async function HomepagePage() {
           <div className="hp-sec-alt">
             {contentStr(fa,"eyebrow") && <div className="pg-eyebrow">{contentStr(fa,"eyebrow")}</div>}
             <h2 className="d pg-section-title">{fa.title || "Featured Athletes"}</h2>
-            <div className="hp-athletes-grid">
+            <AnimateIn className="anim-fade-up hp-athletes-grid stagger">
               {aths.map((item, i) => {
                 const name = String(item.name||"");
                 return (
@@ -259,7 +260,7 @@ export default async function HomepagePage() {
                   </div>
                 );
               })}
-            </div>
+            </AnimateIn>
           </div>
         );
       })()}
@@ -271,16 +272,16 @@ export default async function HomepagePage() {
           <div className="hp-brands-wrap">
             {contentStr(bp,"eyebrow") && <div className="pg-eyebrow">{contentStr(bp,"eyebrow")}</div>}
             <h2 className="d pg-section-title" style={{margin:"12px 0 0"}}>{bp.title||"Brand Partners"}</h2>
-            <div className="hp-brands-row">
+            <AnimateIn className="anim-fade-in hp-brands-row stagger">
               {(logos.length ? logos : Array.from({length:8},(_,i)=>({name:`Brand ${i+1}`,logo_url:"",href:"#"}))).map((item,i) => (
-                <a key={i} href={String(item.href||"#")} className="hp-brand-pill">
+                <a key={i} href={String(item.href||"#")} className="hp-brand-pill hover-lift">
                   {item.logo_url
                     ? <img src={String(item.logo_url)} alt={String(item.name||"")}/>
                     : <span className="hp-brand-txt">{String(item.name||"Brand")}</span>
                   }
                 </a>
               ))}
-            </div>
+            </AnimateIn>
           </div>
         );
       })()}

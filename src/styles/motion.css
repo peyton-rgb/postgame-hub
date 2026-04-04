@@ -1,0 +1,136 @@
+/* ── Keyframes ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes kenBurns {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.06) translate(-1.5%, -1%); }
+}
+@keyframes kenBurns2 {
+  from { transform: scale(1.06) translate(1.5%, 1%); }
+  to   { transform: scale(1) translate(0, 0); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* ── Scroll-triggered base state (hidden until .in-view added) ── */
+.anim-fade-up    { opacity: 0; transform: translateY(28px); transition: opacity 0.55s ease, transform 0.55s ease; }
+.anim-fade-in    { opacity: 0; transition: opacity 0.6s ease; }
+.anim-scale-in   { opacity: 0; transform: scale(0.94); transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+.anim-slide-left { opacity: 0; transform: translateX(-24px); transition: opacity 0.5s ease, transform 0.5s ease; }
+
+.anim-fade-up.in-view,
+.anim-fade-in.in-view,
+.anim-scale-in.in-view,
+.anim-slide-left.in-view {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Stagger delays for grid children ── */
+.stagger > *:nth-child(1)  { transition-delay: 0ms; }
+.stagger > *:nth-child(2)  { transition-delay: 60ms; }
+.stagger > *:nth-child(3)  { transition-delay: 120ms; }
+.stagger > *:nth-child(4)  { transition-delay: 180ms; }
+.stagger > *:nth-child(5)  { transition-delay: 240ms; }
+.stagger > *:nth-child(6)  { transition-delay: 300ms; }
+.stagger > *:nth-child(7)  { transition-delay: 360ms; }
+.stagger > *:nth-child(8)  { transition-delay: 420ms; }
+
+/* ── Page load animations (no observer needed) ── */
+.animate-hero-title {
+  animation: fadeUp 0.7s ease both;
+}
+.animate-hero-sub {
+  animation: fadeUp 0.7s ease 0.15s both;
+}
+.animate-hero-desc {
+  animation: fadeUp 0.7s ease 0.28s both;
+}
+.animate-hero-dots {
+  animation: fadeUp 0.5s ease 0.4s both;
+}
+.animate-hero-np {
+  animation: fadeUp 0.6s ease 0.2s both;
+}
+
+/* ── Ken Burns on hero images ── */
+.ken-burns-a {
+  animation: kenBurns 8s ease-in-out both;
+}
+.ken-burns-b {
+  animation: kenBurns2 8s ease-in-out both;
+}
+
+/* ── Hero crossfade with blur ── */
+.hero-slide-enter {
+  animation: fadeIn 1.2s ease both;
+}
+.hero-slide-exit {
+  animation: fadeIn 0.4s ease reverse both;
+  filter: blur(3px);
+}
+
+/* ── Card hover micro-interactions ── */
+.hover-lift {
+  transition: transform 0.22s ease, border-color 0.22s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px) scale(1.01);
+}
+
+/* ── Button press ── */
+.btn-press {
+  transition: transform 0.12s ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* ── Nav link underline ── */
+.nav-link-anim {
+  position: relative;
+}
+.nav-link-anim::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: #D73F09;
+  transition: width 0.2s ease;
+}
+.nav-link-anim:hover::after {
+  width: 100%;
+}
+
+/* ── Respect reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up, .anim-fade-in, .anim-scale-in, .anim-slide-left {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .ken-burns-a, .ken-burns-b { animation: none !important; }
+  .hover-lift:hover { transform: none !important; }
+}

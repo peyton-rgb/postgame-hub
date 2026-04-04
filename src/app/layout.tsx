@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue } from "next/font/google";
 import "./globals.css";
+import "@/styles/motion.css";
 import SiteNav from "@/components/SiteNav";
 
 const bebasNeue = Bebas_Neue({

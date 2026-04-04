@@ -119,7 +119,7 @@ export default async function ServicesElevatedPage() {
         <div className="carousel-bg">
           {photos.map((src, i) => (
             <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`}>
-              <img src={`${BASE}${encodeURIComponent(src)}`} alt="" />
+              <img className={i % 2 === 0 ? "ken-burns-a" : "ken-burns-b"} src={`${BASE}${encodeURIComponent(src)}`} alt="" />
             </div>
           ))}
           <div className="carousel-overlay" />
@@ -159,7 +159,7 @@ export default async function ServicesElevatedPage() {
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="section-eyebrow">What&apos;s Included</div>
         <h2 className="d section-title">The Elevated NIL Package</h2>
-        <div className="features-grid">
+        <div className="features-grid stagger">
           {[
             { num: "01", title: "Headliner Athletes", desc: "We match your brand with the most recognizable names in college sports — athletes with massive followings and authentic audiences." },
             { num: "02", title: "Premium Production", desc: "Professional videographers, styled shoots, and cinematic editing. Content that looks like a national brand campaign." },
@@ -168,7 +168,7 @@ export default async function ServicesElevatedPage() {
             { num: "05", title: "Full Rights Licensing", desc: "You own the content. Use it anywhere — organic, paid, OOH, retail. No usage restrictions." },
             { num: "06", title: "White-Glove Management", desc: "Dedicated campaign manager handles everything from athlete contracting to final delivery." },
           ].map((f) => (
-            <div key={f.num} className="feature">
+            <div key={f.num} className="feature hover-lift anim-fade-up in-view">
               <div className="feature-num">{f.num}</div>
               <div className="feature-title">{f.title}</div>
               <p className="feature-desc">{f.desc}</p>
