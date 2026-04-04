@@ -9,7 +9,7 @@ const DEFAULT_PHOTOS = [
 
 ];
 
-type CarouselPhoto = { path: string; brand_logo_url?: string };
+type CarouselPhoto = { path: string; brand_logo_url?: string; focal_point?: string };
 
 function toPhotos(raw: unknown[]): CarouselPhoto[] {
   return raw.map(p => typeof p === "string" ? { path: p } : p as CarouselPhoto);
@@ -124,7 +124,7 @@ export default async function ServicesScaledPage() {
         <div className="carousel-bg">
           {photos.map((photo, i) => (
             <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`} style={{ position:"absolute", inset:0 }}>
-              <img src={`${BASE}${encodeURIComponent(photo.path)}`} alt="" />
+              <img src={`${BASE}${photo.path}`} alt="" style={{ objectPosition: photo.focal_point || "50% 20%" }} />
               {photo.brand_logo_url && (
                 <img src={photo.brand_logo_url} className="slide-brand-logo" alt="" />
               )}
