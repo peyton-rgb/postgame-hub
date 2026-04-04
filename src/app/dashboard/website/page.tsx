@@ -573,6 +573,10 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
   async function save() {
     setSaving(true);
     await supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:data }, { onConflict:"slug" });
+    const paths = ['/services/elevated', '/services/scaled', '/services/always-on', '/services/experiential'];
+    await Promise.all(paths.map(path =>
+      fetch(`/api/revalidate?path=${path}`).catch(() => {})
+    ));
     setSaving(false);
     onSaved();
   }
@@ -681,12 +685,17 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={()=>setPendingPhoto(null)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:13, fontWeight:700, cursor:"pointer" }}>Cancel</button>
-              <button onClick={()=>{
+              <button onClick={async ()=>{
                 console.log("Adding photo to carousel:", pendingPhoto);
                 const newPhotos = [...(cur.carousel_photos||[]), pendingPhoto];
                 upd("carousel_photos", newPhotos);
                 setPendingPhoto(null);
-                supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:{...data,[tab]:{...cur,carousel_photos:newPhotos}} }, {onConflict:"slug"}).then(() => onSaved());
+                await supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:{...data,[tab]:{...cur,carousel_photos:newPhotos}} }, {onConflict:"slug"});
+                const paths = ['/services/elevated', '/services/scaled', '/services/always-on', '/services/experiential'];
+                await Promise.all(paths.map(path =>
+                  fetch(`/api/revalidate?path=${path}`).catch(() => {})
+                ));
+                onSaved();
               }} style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", background:"#D73F09", color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer" }}>Add to Carousel</button>
             </div>
           </div>

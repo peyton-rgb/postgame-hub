@@ -1,6 +1,6 @@
 import { createPlainSupabase } from "@/lib/supabase";
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 const BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -79,7 +79,7 @@ export default async function ServicesAlwaysOnPage() {
   // Fetch carousel photos from Supabase
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/pages?slug=eq.services&select=settings`,
-    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }, next: { revalidate: 60 } }
+    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }, next: { revalidate: 0 } }
   );
   const rows = await res.json();
   const settings = rows?.[0]?.settings ?? {};
