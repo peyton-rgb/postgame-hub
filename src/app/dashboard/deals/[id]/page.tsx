@@ -13,6 +13,7 @@ type DealRow = Deal & {
   zoom_desktop?: number | null;
   zoom_tablet?: number | null;
   zoom_mobile?: number | null;
+  bg_position_desktop?: string | null;
   source_campaign_id?: string | null;
   brand_id?: string | null;
   campaign_recaps?: { name: string } | null;
@@ -31,9 +32,9 @@ const sectionTitle: React.CSSProperties = { fontSize: 10, fontWeight: 800, textT
 
 /* ── Device configs ───────────────────────────────────────────── */
 const DEVICES = [
-  { key: "desktop" as const, label: "Desktop", ratio: "16:9", w: 400, h: 225 },
-  { key: "tablet" as const, label: "Tablet", ratio: "3:4", w: 270, h: 360 },
-  { key: "mobile" as const, label: "Mobile", ratio: "9:16", w: 200, h: 355 },
+  { key: "desktop" as const, label: "Desktop", ratio: "Full bleed", w: 420, h: 580 },
+  { key: "tablet" as const, label: "Tablet", ratio: "3:4", w: 240, h: 320 },
+  { key: "mobile" as const, label: "Mobile", ratio: "9:16", w: 170, h: 302 },
 ];
 const PRESETS = [
   { label: "Top", y: 8 }, { label: "Face", y: 20 }, { label: "Shoulders", y: 35 },
@@ -107,7 +108,7 @@ export default function DealEditor() {
         setPublished(d.published);
         setFeatured(d.featured);
         setPositions({
-          desktop: parseFocal(d.focal_point),
+          desktop: parseFocal(d.bg_position_desktop || d.focal_point),
           tablet: parseFocal(d.focal_point_tablet),
           mobile: parseFocal(d.focal_point_mobile),
         });
@@ -177,8 +178,10 @@ export default function DealEditor() {
   const savePositions = async () => {
     if (!deal) return;
     setSavingPos(true);
+    const desktopFocal = focalStr(positions.desktop);
     await supabase.from("deals").update({
-      focal_point: focalStr(positions.desktop),
+      focal_point: desktopFocal,
+      bg_position_desktop: desktopFocal,
       focal_point_tablet: focalStr(positions.tablet),
       focal_point_mobile: focalStr(positions.mobile),
       zoom_desktop: zooms.desktop,
@@ -306,7 +309,7 @@ export default function DealEditor() {
         {/* Header */}
         <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800 }}>Photo Editor</div>
-          <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>Drag to reposition · overlay = live hero preview</div>
+          <div style={{ fontSize: 10, color: C.text3, marginTop: 2 }}>{device === "desktop" ? "Drag to position across hero + featured section · zoom to scale" : "Drag to reposition · scroll to zoom"}</div>
         </div>
 
         {/* Device tabs */}
@@ -331,27 +334,57 @@ export default function DealEditor() {
               >
                 <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${curPos.x}% ${curPos.y}%`, transform: `scale(${curZoom})`, transformOrigin: `${curPos.x}% ${curPos.y}%`, pointerEvents: "none" }} />
 
-                {/* Hero overlay: top gradient */}
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)", pointerEvents: "none" }} />
-                {/* Hero overlay: bottom gradient */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)", pointerEvents: "none" }} />
-                {/* Hero overlay: title */}
-                <div style={{ position: "absolute", top: device === "mobile" ? 16 : undefined, bottom: device === "mobile" ? undefined : 12, left: 12, pointerEvents: "none", zIndex: 2 }}>
-                  <div style={{ fontSize: device === "mobile" ? 10 : 7, fontWeight: 900, textTransform: "uppercase", lineHeight: 0.92 }}>
-                    NIL<br /><span style={{ color: C.orange }}>Deal Tracker</span>
-                  </div>
-                </div>
-                {/* Hero overlay: nameplate */}
-                <div style={{ position: "absolute", bottom: 8, left: device === "mobile" ? 8 : undefined, right: device === "mobile" ? 8 : 8, pointerEvents: "none", zIndex: 2 }}>
-                  <div style={{ fontSize: 5, fontWeight: 800, textTransform: "uppercase", color: C.orange, letterSpacing: "0.1em" }}>{brandName}</div>
-                  <div style={{ fontSize: device === "mobile" ? 8 : 7, fontWeight: 900, lineHeight: 1 }}>{athleteName}</div>
-                  <div style={{ fontSize: 4, color: "rgba(255,255,255,0.5)" }}>{[athleteSchool, athleteSport].filter(Boolean).join(" · ")}</div>
-                </div>
+                {device === "desktop" ? (
+                  <>
+                    {/* Desktop full-bleed overlay — hero top 55%, stats strip, featured section */}
+                    {/* Top gradient */}
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "20%", background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)", pointerEvents: "none" }} />
+                    {/* Full-page gradient: transparent top → black bottom */}
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 15%, transparent 40%, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0.92) 75%, #000 90%)", pointerEvents: "none" }} />
+                    {/* Hero zone title (top-left, within upper 55%) */}
+                    <div style={{ position: "absolute", bottom: "48%", left: 12, pointerEvents: "none", zIndex: 2 }}>
+                      <div style={{ fontSize: 8, fontWeight: 900, textTransform: "uppercase", lineHeight: 0.92 }}>NIL<br /><span style={{ color: C.orange }}>Deal Tracker</span></div>
+                    </div>
+                    {/* Nameplate (upper-right area, within hero zone) */}
+                    <div style={{ position: "absolute", bottom: "48%", right: 10, pointerEvents: "none", zIndex: 2 }}>
+                      <div style={{ fontSize: 4, fontWeight: 800, textTransform: "uppercase", color: C.orange, letterSpacing: "0.1em" }}>{brandName}</div>
+                      <div style={{ fontSize: 6, fontWeight: 900, lineHeight: 1 }}>{athleteName}</div>
+                      <div style={{ fontSize: 3, color: "rgba(255,255,255,0.5)" }}>{[athleteSchool, athleteSport].filter(Boolean).join(" · ")}</div>
+                    </div>
+                    {/* Stats strip at ~55% */}
+                    <div style={{ position: "absolute", top: "55%", left: 0, right: 0, pointerEvents: "none", zIndex: 2, borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "6px 0", display: "flex", justifyContent: "space-around" }}>
+                      {["394+", "100+", "10K+", "4K"].map(n => <span key={n} style={{ fontSize: 6, fontWeight: 800, color: C.orange }}>{n}</span>)}
+                    </div>
+                    {/* Featured section labels below stats */}
+                    <div style={{ position: "absolute", top: "63%", left: 12, pointerEvents: "none", zIndex: 2 }}>
+                      <div style={{ fontSize: 4, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", color: C.orange }}>Featured Athletes</div>
+                      <div style={{ fontSize: 7, fontWeight: 900, marginTop: 2 }}>Headliner Deals</div>
+                    </div>
+                    {/* Placeholder carousel cards */}
+                    <div style={{ position: "absolute", top: "73%", left: 10, right: 10, display: "flex", gap: 4, pointerEvents: "none", zIndex: 2 }}>
+                      {[0,1,2,3].map(i => <div key={i} style={{ flex: 1, height: 40, borderRadius: 4, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }} />)}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Tablet/Mobile: standard hero crop overlay */}
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", top: device === "mobile" ? 16 : undefined, bottom: device === "mobile" ? undefined : 12, left: 12, pointerEvents: "none", zIndex: 2 }}>
+                      <div style={{ fontSize: device === "mobile" ? 10 : 7, fontWeight: 900, textTransform: "uppercase", lineHeight: 0.92 }}>NIL<br /><span style={{ color: C.orange }}>Deal Tracker</span></div>
+                    </div>
+                    <div style={{ position: "absolute", bottom: 8, left: device === "mobile" ? 8 : undefined, right: device === "mobile" ? 8 : 8, pointerEvents: "none", zIndex: 2 }}>
+                      <div style={{ fontSize: 5, fontWeight: 800, textTransform: "uppercase", color: C.orange, letterSpacing: "0.1em" }}>{brandName}</div>
+                      <div style={{ fontSize: device === "mobile" ? 8 : 7, fontWeight: 900, lineHeight: 1 }}>{athleteName}</div>
+                      <div style={{ fontSize: 4, color: "rgba(255,255,255,0.5)" }}>{[athleteSchool, athleteSport].filter(Boolean).join(" · ")}</div>
+                    </div>
+                  </>
+                )}
 
                 {/* Focal dot */}
                 <div style={{ position: "absolute", left: `${curPos.x}%`, top: `${curPos.y}%`, transform: "translate(-50%,-50%)", width: 14, height: 14, borderRadius: "50%", background: C.orange, border: "2px solid #fff", pointerEvents: "none", boxShadow: "0 0 0 3px rgba(215,63,9,0.3)" }} />
               </div>
-              <div style={{ fontSize: 10, color: C.text3 }}>Drag to reposition · click to set</div>
+              <div style={{ fontSize: 10, color: C.text3 }}>{device === "desktop" ? "Drag to position across hero + featured section" : "Drag to reposition · click to set"}</div>
             </>
           ) : (
             <div style={{ textAlign: "center", color: C.text3, fontSize: 13 }}>No image — select one from the right panel or upload</div>
