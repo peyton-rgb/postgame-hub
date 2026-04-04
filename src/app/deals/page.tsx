@@ -43,6 +43,15 @@ export default function DealsPage() {
   /* ── Focal map ────────────────────────────────────────────── */
   const [focalMap, setFocalMap] = useState<Record<string, string>>({});
 
+  /* ── Responsive ───────────────────────────────────────────── */
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   /* ── Load deals ───────────────────────────────────────────── */
   useEffect(() => {
     (async () => {
@@ -127,7 +136,7 @@ export default function DealsPage() {
 
       {/* ── Immersive Hero ──────────────────────────────────── */}
       {featured.length > 0 && currentHero && (
-        <div style={{ position: "relative", height: "clamp(320px,62vh,620px)", overflow: "hidden" }}>
+        <div style={{ position: "relative", height: "clamp(520px,90vh,680px)", overflow: "hidden" }}>
           {/* Background image with crossfade */}
           <div style={{ position: "absolute", inset: 0, transition: "opacity 0.6s ease", opacity: heroFade ? 1 : 0 }}>
             <img
@@ -138,25 +147,49 @@ export default function DealsPage() {
           </div>
 
           {/* Bottom-heavy gradient */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 40%, rgba(0,0,0,0.78) 68%, rgba(0,0,0,0.97) 100%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: isMobile
+            ? "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 20%, transparent 30%, rgba(0,0,0,0.85) 55%, rgba(0,0,0,0.99) 100%)"
+            : "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 40%, rgba(0,0,0,0.78) 68%, rgba(0,0,0,0.97) 100%)"
+          }} />
           {/* Subtle left gradient for nav */}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, rgba(0,0,0,0.25) 0%, transparent 50%)" }} />
 
-          {/* Two-column bottom layout */}
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "0 48px 36px", gap: 24, zIndex: 10, pointerEvents: "none" }}>
-            {/* LEFT — description box */}
-            <div style={{ maxWidth: 520 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 10 }}>Postgame NIL</div>
-              <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 14 }}>
+          {/* Bottom layout — column on mobile, row on desktop */}
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "flex-end", justifyContent: isMobile ? "flex-end" : "space-between", padding: isMobile ? "0 20px 24px" : "0 48px 36px", gap: isMobile ? 14 : 24, zIndex: 10, pointerEvents: "none" }}>
+
+            {/* Nameplate — on mobile renders FIRST (top), on desktop renders second (right) */}
+            {isMobile && (
+              <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, padding: "10px 14px", background: "rgba(10,10,10,0.55)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }}>
+                {currentHero.brands?.logo_primary_url && (
+                  <img src={currentHero.brands.logo_primary_url} alt="" style={{ width: 24, height: 24, objectFit: "contain", background: "rgba(255,255,255,0.07)", borderRadius: 6, padding: 3, filter: "brightness(0) invert(1)", flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 900, lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{currentHero.athlete_name}</div>
+                  <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#D73F09", marginTop: 2 }}>
+                    {currentHero.brand_name}{currentHero.campaign_recaps?.name ? ` · ${currentHero.campaign_recaps.name}` : ""}
+                  </div>
+                </div>
+                {(currentHero.athlete_school || currentHero.athlete_sport) && (
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textAlign: "right", flexShrink: 0 }}>{[currentHero.athlete_school, currentHero.athlete_sport].filter(Boolean).join(" · ")}</div>
+                )}
+              </div>
+            )}
+
+            {/* Description box */}
+            <div style={{ maxWidth: isMobile ? undefined : 520 }}>
+              <div style={{ fontSize: isMobile ? 9 : 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: isMobile ? 6 : 10 }}>Postgame NIL</div>
+              <div style={{ fontSize: isMobile ? 36 : 52, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: isMobile ? 10 : 14 }}>
                 NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
               </div>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.52)", lineHeight: 1.7, maxWidth: 440, marginBottom: 10, marginTop: 0 }}>
-                Postgame has executed NIL partnerships for thousands of college athletes across every sport and conference — from national fast food chains to global apparel labels.
-              </p>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>Filter by sport, school, or brand to explore the network.</div>
+              {!isMobile && (
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.52)", lineHeight: 1.7, maxWidth: 440, marginBottom: 10, marginTop: 0 }}>
+                  Postgame has executed NIL partnerships for thousands of college athletes across every sport and conference — from national fast food chains to global apparel labels.
+                </p>
+              )}
+              <div style={{ fontSize: isMobile ? 10 : 11, color: "rgba(255,255,255,0.28)" }}>Filter by sport, school, or brand to explore the network.</div>
               {/* Dot indicators */}
               {featured.length > 1 && (
-                <div style={{ display: "flex", gap: 8, marginTop: 18, pointerEvents: "all" }}>
+                <div style={{ display: "flex", gap: 8, marginTop: isMobile ? 12 : 18, pointerEvents: "all" }}>
                   {featured.map((_, i) => (
                     <button key={i} onClick={() => goHero(i)} style={{ width: i === heroIdx ? 28 : 8, height: 8, borderRadius: 4, background: i === heroIdx ? "#D73F09" : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
                   ))}
@@ -164,25 +197,27 @@ export default function DealsPage() {
               )}
             </div>
 
-            {/* RIGHT — compact nameplate card */}
-            <div style={{ width: 220, flexShrink: 0, background: "rgba(10,10,10,0.55)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                {currentHero.brands?.logo_primary_url && (
-                  <img src={currentHero.brands.logo_primary_url} alt="" style={{ width: 28, height: 28, objectFit: "contain", background: "rgba(255,255,255,0.07)", borderRadius: 6, padding: 4, filter: "brightness(0) invert(1)" }} />
-                )}
-                <div>
-                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D73F09", lineHeight: 1.3 }}>{currentHero.brand_name}</div>
-                  {currentHero.campaign_recaps?.name && (
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", lineHeight: 1.3 }}>{currentHero.campaign_recaps.name}</div>
+            {/* Desktop nameplate — right side */}
+            {!isMobile && (
+              <div style={{ width: 220, flexShrink: 0, background: "rgba(10,10,10,0.55)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  {currentHero.brands?.logo_primary_url && (
+                    <img src={currentHero.brands.logo_primary_url} alt="" style={{ width: 28, height: 28, objectFit: "contain", background: "rgba(255,255,255,0.07)", borderRadius: 6, padding: 4, filter: "brightness(0) invert(1)" }} />
                   )}
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D73F09", lineHeight: 1.3 }}>{currentHero.brand_name}</div>
+                    {currentHero.campaign_recaps?.name && (
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", lineHeight: 1.3 }}>{currentHero.campaign_recaps.name}</div>
+                    )}
+                  </div>
                 </div>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 10 }} />
+                <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>{currentHero.athlete_name}</div>
+                {(currentHero.athlete_school || currentHero.athlete_sport) && (
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{[currentHero.athlete_school, currentHero.athlete_sport].filter(Boolean).join(" · ")}</div>
+                )}
               </div>
-              <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 10 }} />
-              <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>{currentHero.athlete_name}</div>
-              {(currentHero.athlete_school || currentHero.athlete_sport) && (
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{[currentHero.athlete_school, currentHero.athlete_sport].filter(Boolean).join(" · ")}</div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -208,7 +243,7 @@ export default function DealsPage() {
             <div style={{ overflow: "hidden" }}>
               <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
                 {featured.map(d => (
-                  <Link key={d.id} href={`/deals/${d.id}`} style={{ flex: "0 0 clamp(200px,20vw,248px)", width: "clamp(200px,20vw,248px)", height: "clamp(300px,32vw,380px)", borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", position: "relative", textDecoration: "none", color: "#fff", display: "block" }}>
+                  <Link key={d.id} href={`/deals/${d.id}`} style={{ flex: `0 0 clamp(160px,${isMobile ? "42vw" : "20vw"},248px)`, width: `clamp(160px,${isMobile ? "42vw" : "20vw"},248px)`, height: `clamp(240px,${isMobile ? "63vw" : "32vw"},380px)`, borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", position: "relative", textDecoration: "none", color: "#fff", display: "block" }}>
                     <img src={d.image_url!} alt={d.athlete_name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: focalMap[d.id] || "50% 25%" }} />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "clamp(14px,2vw,20px) clamp(12px,1.5vw,18px)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
@@ -258,7 +293,7 @@ export default function DealsPage() {
             {hasFilters && <div><button onClick={resetFilters} style={{ marginTop: 16, background: "none", border: "none", color: "#D73F09", fontSize: "clamp(12px,1.3vw,14px)", fontWeight: 700, cursor: "pointer" }}>Reset filters</button></div>}
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "clamp(12px,1.5vw,20px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: "clamp(12px,1.5vw,20px)" }}>
             {filtered.map(deal => (
               <Link key={deal.id} href={`/deals/${deal.id}`} style={{ borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#111", textDecoration: "none", color: "#fff", display: "block", transition: "border-color 0.2s" }}>
                 {deal.image_url && (
