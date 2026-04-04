@@ -402,7 +402,7 @@ function TeamEditor({ onSaved }: { onSaved: () => void }) {
 
   async function save() {
     setSaving(true);
-    await supabase.from("pages").upsert({ slug:"team", title:"Team", published:true, settings:{ team, values, offices } }, { onConflict:"slug" });
+    await supabase.from("pages").upsert({ slug:"team", type:"homepage", title:"Team", published:true, settings:{ team, values, offices } }, { onConflict:"slug" });
     setSaving(false);
     onSaved();
   }
@@ -572,7 +572,7 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
 
   async function save() {
     setSaving(true);
-    const { error } = await supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:data }, { onConflict:"slug" });
+    const { error } = await supabase.from("pages").upsert({ slug:"services", type:"homepage", title:"Services", published:true, settings:data }, { onConflict:"slug" });
     if (error) {
       console.error("Services save error:", error);
       alert("Save failed: " + error.message);
@@ -694,7 +694,7 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
                 const newPhotos = [...(cur.carousel_photos||[]), pendingPhoto];
                 upd("carousel_photos", newPhotos);
                 setPendingPhoto(null);
-                await supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:{...data,[tab]:{...cur,carousel_photos:newPhotos}} }, {onConflict:"slug"});
+                await supabase.from("pages").upsert({ slug:"services", type:"homepage", title:"Services", published:true, settings:{...data,[tab]:{...cur,carousel_photos:newPhotos}} }, {onConflict:"slug"});
                 const paths = ['/services/elevated', '/services/scaled', '/services/always-on', '/services/experiential'];
                 await Promise.all(paths.map(path =>
                   fetch(`/api/revalidate?path=${path}`).catch(() => {})
@@ -847,7 +847,7 @@ function ContactEditor({ onSaved }: { onSaved: () => void }) {
 
   async function save() {
     setSaving(true);
-    await supabase.from("pages").upsert({ slug:"contact", title:"Contact", published:true, settings }, { onConflict:"slug" });
+    await supabase.from("pages").upsert({ slug:"contact", type:"homepage", title:"Contact", published:true, settings }, { onConflict:"slug" });
     setSaving(false);
     onSaved();
   }
