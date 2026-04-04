@@ -979,33 +979,60 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                 <div style={{ fontSize:13, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
                 <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name} · {d.athlete_sport}</div>
               </div>
-              <button onClick={()=>toggleFeatured(d.id,false)} style={{ ...S.btnSm, color:"#D73F09", borderColor:"rgba(215,63,9,0.3)" }}>★ Unstar</button>
+              <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                <button onClick={()=>toggleFeatured(d.id,false)} style={{ ...S.btnSm, color:"#D73F09", borderColor:"rgba(215,63,9,0.3)" }}>★ Unstar</button>
+                <button onClick={()=>router.push(`/dashboard/deals/${d.id}`)} style={S.btnSm}>Edit</button>
+              </div>
             </div>
           ))}
+        </SectionCard>
 
-          {/* Hero Carousel Order */}
-          {heroOrder.length > 0 && (
-            <div style={{ marginTop:16, padding:"14px 0 0", borderTop:`1px solid ${C.border}` }}>
-              <div style={{ fontSize:12, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.text2, marginBottom:4 }}>Hero Carousel Order</div>
-              <div style={{ fontSize:12, color:C.text3, marginBottom:10 }}>These athletes cycle in the full-bleed hero banner. Drag to reorder.</div>
-              {heroOrder.map((id, idx) => {
-                const d = deals.find(x=>x.id===id);
-                if (!d) return null;
-                return (
-                  <div key={id} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0", borderBottom:`1px solid rgba(255,255,255,0.04)` }}>
-                    <span style={{ cursor:"grab", fontSize:14, color:C.text3, userSelect:"none" }}>⠿</span>
-                    {d.image_url && <img src={d.image_url} alt="" style={{ width:32, height:32, borderRadius:6, objectFit:"cover" as const }} />}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:12, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
-                      <div style={{ fontSize:10, color:C.text3 }}>{d.brand_name}</div>
-                    </div>
-                    <button onClick={()=>moveHero(idx,-1)} disabled={idx===0} style={{ ...S.btnSm, fontSize:10, opacity:idx===0?0.3:1 }}>↑</button>
-                    <button onClick={()=>moveHero(idx,1)} disabled={idx===heroOrder.length-1} style={{ ...S.btnSm, fontSize:10, opacity:idx===heroOrder.length-1?0.3:1 }}>↓</button>
+        {/* Carousel Order & Photo Position */}
+        <SectionCard title="Carousel Order & Photo Position" defaultOpen={false}>
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Control the order featured athletes appear in the hero carousel and set per-device photo position.</div>
+          {heroOrder.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals to order.</div>}
+          {heroOrder.map((id, idx) => {
+            const d = deals.find(x=>x.id===id);
+            if (!d) return null;
+            return (
+              <div key={id} style={{ ...S.itemCard }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: d.image_url ? 10 : 0 }}>
+                  <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                    <button onClick={()=>moveHero(idx,-1)} disabled={idx===0} style={{ ...S.btnSm, fontSize:10, padding:"2px 6px", opacity:idx===0?0.3:1 }}>↑</button>
+                    <button onClick={()=>moveHero(idx,1)} disabled={idx===heroOrder.length-1} style={{ ...S.btnSm, fontSize:10, padding:"2px 6px", opacity:idx===heroOrder.length-1?0.3:1 }}>↓</button>
                   </div>
-                );
-              })}
-              <button onClick={saveHeroOrder} disabled={savingOrder} style={{ ...S.btnSave, marginTop:10, width:"100%", opacity:savingOrder?0.6:1 }}>{savingOrder ? "Saving..." : "Save Order"}</button>
-            </div>
+                  {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const }} />}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
+                    <div style={{ fontSize:10, color:C.text3 }}>{d.brand_name}</div>
+                  </div>
+                </div>
+                {d.image_url && (
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+                    {([
+                      { icon:"🖥", label:"Desktop", val:d.focal_point||"50% 20%", fn:(v:string)=>updateFocalPoint(d.id,v) },
+                      { icon:"⬜", label:"Tablet", val:d.focal_point_tablet||"50% 20%", fn:(v:string)=>updateFocalTablet(d.id,v) },
+                      { icon:"📱", label:"Mobile", val:d.focal_point_mobile||"50% 20%", fn:(v:string)=>updateFocalMobile(d.id,v) },
+                    ] as const).map(dev => (
+                      <div key={dev.label}>
+                        <div style={{ fontSize:7, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.text3, marginBottom:2 }}>{dev.icon} {dev.label}</div>
+                        <select value={dev.val} onChange={e=>dev.fn(e.target.value)} style={{ ...S.input, fontSize:10, padding:"3px 6px" }}>
+                          <option value="50% 8%">Top</option>
+                          <option value="50% 20%">Face (default)</option>
+                          <option value="50% 35%">Upper body</option>
+                          <option value="50% 50%">Center</option>
+                          <option value="50% 65%">Lower</option>
+                          <option value="50% 80%">Full body</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {heroOrder.length > 0 && (
+            <button onClick={saveHeroOrder} disabled={savingOrder} style={{ ...S.btnSave, marginTop:10, width:"100%", opacity:savingOrder?0.6:1 }}>{savingOrder ? "Saving..." : "Save Order"}</button>
           )}
         </SectionCard>
 
