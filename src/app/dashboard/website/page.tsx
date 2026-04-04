@@ -946,7 +946,7 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
           {rest.map(d => (
             <div key={d.id} style={{ ...S.itemCard }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: d.image_url ? 10 : 0 }}>
-                {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const, objectPosition: d.focal_point||"center 15%" }} />}
+                {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const, objectPosition: d.focal_point||"50% 25%" }} />}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:13, fontWeight:700, color: d.published ? C.text : C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
                   <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name}</div>
@@ -960,16 +960,16 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <label style={{ ...S.label, marginBottom:0, whiteSpace:"nowrap" as const }}>Face position</label>
                   <select
-                    value={d.focal_point||"center 15%"}
+                    value={d.focal_point||"50% 25%"}
                     onChange={e=>updateFocalPoint(d.id,e.target.value)}
                     style={{ ...S.input, fontSize:11, padding:"4px 8px" }}
                   >
-                    <option value="center 10%">Top (face near top)</option>
-                    <option value="center 15%">Upper (default)</option>
-                    <option value="center 25%">Upper-mid</option>
-                    <option value="center 35%">Center-upper</option>
-                    <option value="center 50%">Center</option>
-                    <option value="center 65%">Center-lower</option>
+                    <option value="50% 10%">Top</option>
+                    <option value="50% 25%">Face (default)</option>
+                    <option value="50% 30%">Upper-mid</option>
+                    <option value="50% 40%">Center-upper</option>
+                    <option value="50% 50%">Center</option>
+                    <option value="50% 65%">Lower</option>
                   </select>
                 </div>
               )}
