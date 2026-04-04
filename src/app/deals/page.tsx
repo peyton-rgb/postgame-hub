@@ -257,6 +257,17 @@ export default function DealsPage() {
         </div>
       </div>
 
+      {/* ── Header / Descriptor ─────────────────────────────── */}
+      <div style={{ padding: "64px 48px 48px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: 16 }}>Postgame NIL</div>
+          <h1 style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(40px,5vw,60px)", lineHeight: 1, margin: "0 0 20px", fontWeight: 800 }}>NIL Deal Tracker</h1>
+          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.55)", maxWidth: 640, lineHeight: 1.7, margin: 0 }}>
+            Postgame has executed NIL partnerships for thousands of college athletes across every sport and conference. This tracker showcases a sample of the headliner athletes and brands we&apos;ve connected — from national fast food chains to global apparel labels. Filter by sport, school, or brand to explore the network.
+          </p>
+        </div>
+      </div>
+
       {/* ── Featured Athletes Carousel ─────────────────────── */}
       {featured.length > 0 && (
         <div style={{ padding: "64px 48px 48px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
