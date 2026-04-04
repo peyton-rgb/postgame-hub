@@ -865,6 +865,12 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const [search, setSearch] = useState("");
   const [heroOrder, setHeroOrder] = useState<string[]>([]);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [photoEditor, setPhotoEditor] = useState<{id:string;athlete_name:string;brand_name:string;image_url:string;focal_point:string|null;focal_point_tablet?:string|null;focal_point_mobile?:string|null}|null>(null);
+  const [photoEditorDevice, setPhotoEditorDevice] = useState<"desktop"|"tablet"|"mobile">("desktop");
+  const [photoPositions, setPhotoPositions] = useState<{desktop:{x:number;y:number};tablet:{x:number;y:number};mobile:{x:number;y:number}}>({desktop:{x:50,y:20},tablet:{x:50,y:20},mobile:{x:50,y:20}});
+  const [photoEditorSaving, setPhotoEditorSaving] = useState(false);
+  const photoEditorDragging = useRef(false);
+  const photoEditorCanvas = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,athlete_school,published,featured,sort_order,image_url,focal_point,focal_point_tablet,focal_point_mobile").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
@@ -929,6 +935,43 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
     setDeals(p => p.map(d => d.id===id ? {...d,focal_point_mobile:val} : d));
   };
 
+  const openPhotoEditor = (deal: typeof deals[0]) => {
+    const parse = (fp: string|null|undefined) => { const m = (fp||"").match(/(\d+)%\s+(\d+)%/); return m ? {x:parseInt(m[1]),y:parseInt(m[2])} : {x:50,y:20}; };
+    setPhotoPositions({ desktop:parse(deal.focal_point), tablet:parse(deal.focal_point_tablet), mobile:parse(deal.focal_point_mobile) });
+    setPhotoEditorDevice("desktop");
+    setPhotoEditor(deal as any);
+  };
+
+  useEffect(() => {
+    if (!photoEditor) return;
+    const move = (e: MouseEvent|TouchEvent) => {
+      if (!photoEditorDragging.current || !photoEditorCanvas.current) return;
+      const rect = photoEditorCanvas.current.getBoundingClientRect();
+      const cx = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const cy = "touches" in e ? e.touches[0].clientY : e.clientY;
+      const x = Math.round(Math.max(0,Math.min(100,(cx-rect.left)/rect.width*100)));
+      const y = Math.round(Math.max(0,Math.min(100,(cy-rect.top)/rect.height*100)));
+      setPhotoPositions(p => ({...p,[photoEditorDevice]:{x,y}}));
+    };
+    const up = () => { photoEditorDragging.current = false; };
+    window.addEventListener("mousemove",move);
+    window.addEventListener("touchmove",move,{passive:false});
+    window.addEventListener("mouseup",up);
+    window.addEventListener("touchend",up);
+    return () => { window.removeEventListener("mousemove",move); window.removeEventListener("touchmove",move); window.removeEventListener("mouseup",up); window.removeEventListener("touchend",up); };
+  }, [photoEditor, photoEditorDevice]);
+
+  const savePhotoPositions = async () => {
+    if (!photoEditor) return;
+    setPhotoEditorSaving(true);
+    const toStr = (p:{x:number;y:number}) => `${p.x}% ${p.y}%`;
+    await supabase.from("deals").update({ focal_point:toStr(photoPositions.desktop), focal_point_tablet:toStr(photoPositions.tablet), focal_point_mobile:toStr(photoPositions.mobile) }).eq("id",photoEditor.id);
+    setDeals(prev => prev.map(d => d.id===photoEditor.id ? {...d, focal_point:toStr(photoPositions.desktop), focal_point_tablet:toStr(photoPositions.tablet), focal_point_mobile:toStr(photoPositions.mobile)} : d));
+    setPhotoEditorSaving(false);
+    setPhotoEditor(null);
+    onSaved();
+  };
+
   if (loading) return <div style={{ padding:40, color:C.text3, fontSize:14 }}>Loading deals...</div>;
 
   const q = search.toLowerCase();
@@ -981,7 +1024,8 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
               </div>
               <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                 <button onClick={()=>toggleFeatured(d.id,false)} style={{ ...S.btnSm, color:"#D73F09", borderColor:"rgba(215,63,9,0.3)" }}>★ Unstar</button>
-                <button onClick={()=>router.push(`/dashboard/deals/${d.id}`)} style={S.btnSm}>Edit</button>
+                <button onClick={()=>openPhotoEditor(d)} style={S.btnSm}>📐 Position</button>
+                <button onClick={()=>router.push(`/dashboard/deals/${d.id}`)} style={S.btnSm}>Edit Details</button>
               </div>
             </div>
           ))}
@@ -1154,6 +1198,106 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
       <div style={S.actionsBar}>
         <a href="/deals" target="_blank" style={S.btnPreview}>↗ View Live</a>
       </div>
+
+      {/* ── Photo Position Editor Modal ──────────────────────── */}
+      {photoEditor && (
+        <div style={{ position:"fixed", inset:0, zIndex:9999, background:C.bg, display:"flex", flexDirection:"column" }}>
+          {/* Header */}
+          <div style={{ padding:"16px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:800 }}>{photoEditor.athlete_name}</div>
+              <div style={{ fontSize:11, color:C.text3 }}>{photoEditor.brand_name}</div>
+            </div>
+            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <button onClick={()=>setPhotoEditor(null)} style={S.btnPreview}>Cancel</button>
+              <button onClick={savePhotoPositions} disabled={photoEditorSaving} style={{ ...S.btnSave, opacity:photoEditorSaving?0.6:1 }}>{photoEditorSaving ? "Saving..." : "Save All"}</button>
+            </div>
+          </div>
+
+          {/* Device tabs */}
+          <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
+            {(["desktop","tablet","mobile"] as const).map(dev => {
+              const active = photoEditorDevice===dev;
+              const icons = {desktop:"🖥",tablet:"⬜",mobile:"📱"};
+              const ratios = {desktop:"16:9",tablet:"3:4",mobile:"9:16"};
+              return (
+                <button key={dev} onClick={()=>setPhotoEditorDevice(dev)} style={{ flex:1, padding:"12px 0", background:"none", border:"none", borderBottom: active ? `2px solid ${C.orange}` : "2px solid transparent", color: active ? C.orange : C.text3, fontSize:12, fontWeight:700, cursor:"pointer", textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                  {icons[dev]} {dev} <span style={{ fontSize:10, opacity:0.5 }}>{ratios[dev]}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Body */}
+          <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+            {/* Canvas area */}
+            <div style={{ flex:1, background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, padding:20 }}>
+              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3 }}>
+                {photoEditorDevice} · {{desktop:"16:9",tablet:"3:4",mobile:"9:16"}[photoEditorDevice]}
+              </div>
+              <div
+                ref={photoEditorCanvas}
+                onMouseDown={()=>{photoEditorDragging.current=true;}}
+                onTouchStart={()=>{photoEditorDragging.current=true;}}
+                style={{
+                  width: photoEditorDevice==="desktop" ? 400 : photoEditorDevice==="tablet" ? 270 : 200,
+                  height: photoEditorDevice==="desktop" ? 225 : photoEditorDevice==="tablet" ? 360 : 355,
+                  overflow:"hidden", borderRadius:8, border:`2px solid ${C.orange}`, cursor:"crosshair", position:"relative", flexShrink:0,
+                }}
+              >
+                <img src={photoEditor.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${photoPositions[photoEditorDevice].x}% ${photoPositions[photoEditorDevice].y}%`, pointerEvents:"none" }} />
+                <div style={{ position:"absolute", left:`${photoPositions[photoEditorDevice].x}%`, top:`${photoPositions[photoEditorDevice].y}%`, transform:"translate(-50%,-50%)", width:16, height:16, borderRadius:"50%", background:C.orange, border:"2px solid #fff", pointerEvents:"none", boxShadow:"0 0 0 3px rgba(215,63,9,0.3)" }} />
+              </div>
+              <div style={{ fontSize:10, color:C.text3 }}>Drag to reposition · click to set</div>
+            </div>
+
+            {/* Right panel */}
+            <div style={{ width:200, borderLeft:`1px solid ${C.border}`, display:"flex", flexDirection:"column", overflowY:"auto" }}>
+              {/* Presets */}
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
+                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Quick Presets</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
+                  {([{l:"Top",y:8},{l:"Face",y:20},{l:"Shoulders",y:35},{l:"Center",y:50},{l:"Lower",y:65},{l:"Full",y:80}]).map(p => {
+                    const active = photoPositions[photoEditorDevice].x===50 && photoPositions[photoEditorDevice].y===p.y;
+                    return <button key={p.l} onClick={()=>setPhotoPositions(prev=>({...prev,[photoEditorDevice]:{x:50,y:p.y}}))} style={{ padding:"6px 0", borderRadius:6, fontSize:10, fontWeight:700, cursor:"pointer", border: active ? `1px solid ${C.orange}` : `1px solid ${C.border2}`, background: active ? "rgba(215,63,9,0.15)" : "rgba(255,255,255,0.03)", color: active ? C.orange : C.text2 }}>{p.l}</button>;
+                  })}
+                </div>
+              </div>
+
+              {/* Position */}
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
+                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Position</div>
+                <div style={{ display:"flex", gap:16 }}>
+                  <div><div style={{ fontSize:9, color:C.text3 }}>X</div><div style={{ fontSize:13, fontWeight:900 }}>{photoPositions[photoEditorDevice].x}%</div></div>
+                  <div><div style={{ fontSize:9, color:C.text3 }}>Y</div><div style={{ fontSize:13, fontWeight:900 }}>{photoPositions[photoEditorDevice].y}%</div></div>
+                </div>
+              </div>
+
+              {/* Copy to */}
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
+                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Copy To</div>
+                <div style={{ display:"flex", gap:4 }}>
+                  {(["desktop","tablet","mobile"] as const).map(dev => (
+                    <button key={dev} disabled={dev===photoEditorDevice} onClick={()=>setPhotoPositions(p=>({...p,[dev]:p[photoEditorDevice]}))} style={{ ...S.btnSm, fontSize:9, flex:1, opacity: dev===photoEditorDevice ? 0.3 : 1, textTransform:"capitalize" }}>{dev}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mini previews */}
+              <div style={{ padding:"14px 16px" }}>
+                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Preview</div>
+                <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
+                  {([{dev:"desktop" as const,w:60,h:34},{dev:"tablet" as const,w:38,h:50},{dev:"mobile" as const,w:28,h:50}]).map(p => (
+                    <div key={p.dev} onClick={()=>setPhotoEditorDevice(p.dev)} style={{ width:p.w, height:p.h, borderRadius:4, overflow:"hidden", border: photoEditorDevice===p.dev ? `2px solid ${C.orange}` : `1px solid ${C.border2}`, cursor:"pointer" }}>
+                      <img src={photoEditor.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${photoPositions[p.dev].x}% ${photoPositions[p.dev].y}%` }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
