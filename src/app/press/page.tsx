@@ -16,7 +16,8 @@ export default async function PressPage() {
     .eq("published", true)
     .eq("archived", false)
     .order("featured", { ascending: false })
-    .order("sort_order", { ascending: true });
+    .order("published_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
 
   return (
     <>
