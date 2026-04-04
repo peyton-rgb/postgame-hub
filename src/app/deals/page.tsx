@@ -224,6 +224,8 @@ export default function DealsPage() {
             />
           </div>
 
+          {/* Top black fade */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 120, background: "linear-gradient(to bottom, #000 0%, transparent 100%)", zIndex: 8, pointerEvents: "none" }} />
           {/* Bottom-heavy gradient */}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 22%, transparent 42%, rgba(0,0,0,0.82) 68%, rgba(0,0,0,0.98) 100%)" }} />
           {/* Subtle left gradient for nav */}
@@ -238,27 +240,37 @@ export default function DealsPage() {
                 <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 12 }}>
                   NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
                 </div>
+              </div>
+              {/* Deep bottom gradient for cinematic nameplate */}
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 200, background: "linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.7) 40%, transparent 100%)", zIndex: 4, pointerEvents: "none" }} />
+              {/* Cinematic nameplate — text floating over gradient */}
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, padding: "0 14px 20px" }}>
+                {/* Brand row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {curDeal.brands?.logo_primary_url && (
+                    <img src={curDeal.brands.logo_primary_url} alt="" style={{ width: 22, height: 22, objectFit: "contain", background: "rgba(255,255,255,0.07)", borderRadius: 5, padding: 3, filter: "brightness(0) invert(1)", flexShrink: 0 }} />
+                  )}
+                  <span style={{ fontSize: 8, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.14em", color: "#D73F09" }}>{curDeal.brand_name}</span>
+                  {curDeal.campaign_recaps?.name && (
+                    <>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.25)" }}>·</span>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>{curDeal.campaign_recaps.name}</span>
+                    </>
+                  )}
+                </div>
+                {/* Athlete name */}
+                <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", lineHeight: 1, marginTop: 4, marginBottom: 3 }}>{curDeal.athlete_name}</div>
+                {/* School · Sport */}
+                {(curDeal.athlete_school || curDeal.athlete_sport) && (
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)" }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
+                )}
+                {/* Dots */}
                 {featured.length > 1 && (
-                  <div style={{ display: "flex", gap: 8, pointerEvents: "all" }}>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                     {featured.map((_, i) => (
                       <button key={i} onClick={() => goHero(i)} style={{ width: i === heroIdx ? 28 : 8, height: 8, borderRadius: 4, background: i === heroIdx ? "#D73F09" : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
                     ))}
                   </div>
-                )}
-              </div>
-              {/* Nameplate bar — bottom */}
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6))", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "10px 14px 14px", display: "flex", alignItems: "center", gap: 10, zIndex: 10 }}>
-                {curDeal.brands?.logo_primary_url && (
-                  <img src={curDeal.brands.logo_primary_url} alt="" style={{ width: 28, height: 28, objectFit: "contain", background: "rgba(255,255,255,0.07)", borderRadius: 6, padding: 3, filter: "brightness(0) invert(1)", flexShrink: 0 }} />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{curDeal.athlete_name}</div>
-                  <div style={{ fontSize: 8, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#D73F09", marginTop: 2 }}>
-                    {curDeal.brand_name}{curDeal.campaign_recaps?.name ? ` · ${curDeal.campaign_recaps.name}` : ""}
-                  </div>
-                </div>
-                {(curDeal.athlete_school || curDeal.athlete_sport) && (
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "right", flexShrink: 0 }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
                 )}
               </div>
             </>
