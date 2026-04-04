@@ -864,13 +864,13 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [search, setSearch] = useState("");
   const [heroOrder, setHeroOrder] = useState<string[]>([]);
-  const [savingOrder, setSavingOrder] = useState(false);
-  const [photoEditor, setPhotoEditor] = useState<{id:string;athlete_name:string;brand_name:string;image_url:string;focal_point:string|null;focal_point_tablet?:string|null;focal_point_mobile?:string|null}|null>(null);
-  const [photoEditorDevice, setPhotoEditorDevice] = useState<"desktop"|"tablet"|"mobile">("desktop");
-  const [photoPositions, setPhotoPositions] = useState<{desktop:{x:number;y:number};tablet:{x:number;y:number};mobile:{x:number;y:number}}>({desktop:{x:50,y:20},tablet:{x:50,y:20},mobile:{x:50,y:20}});
-  const [photoEditorSaving, setPhotoEditorSaving] = useState(false);
-  const photoEditorDragging = useRef(false);
-  const photoEditorCanvas = useRef<HTMLDivElement>(null);
+  const [showCarouselEditor, setShowCarouselEditor] = useState(false);
+  const [carouselSelected, setCarouselSelected] = useState(0);
+  const [carouselDevice, setCarouselDevice] = useState<"desktop"|"tablet"|"mobile">("desktop");
+  const [carouselFocals, setCarouselFocals] = useState<Record<string,{desktop:string;tablet:string;mobile:string}>>({});
+  const [carouselSaving, setCarouselSaving] = useState(false);
+  const carouselDragging = useRef(false);
+  const carouselCanvas = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,athlete_school,published,featured,sort_order,image_url,focal_point,focal_point_tablet,focal_point_mobile").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
@@ -935,40 +935,55 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
     setDeals(p => p.map(d => d.id===id ? {...d,focal_point_mobile:val} : d));
   };
 
-  const openPhotoEditor = (deal: typeof deals[0]) => {
-    const parse = (fp: string|null|undefined) => { const m = (fp||"").match(/(\d+)%\s+(\d+)%/); return m ? {x:parseInt(m[1]),y:parseInt(m[2])} : {x:50,y:20}; };
-    setPhotoPositions({ desktop:parse(deal.focal_point), tablet:parse(deal.focal_point_tablet), mobile:parse(deal.focal_point_mobile) });
-    setPhotoEditorDevice("desktop");
-    setPhotoEditor(deal as any);
+  const openCarouselEditor = () => {
+    const fm: Record<string,{desktop:string;tablet:string;mobile:string}> = {};
+    deals.filter(d=>d.featured).forEach(d => {
+      fm[d.id] = { desktop: d.focal_point||"50% 20%", tablet: d.focal_point_tablet||"50% 20%", mobile: d.focal_point_mobile||"50% 20%" };
+    });
+    setCarouselFocals(fm);
+    setCarouselSelected(0);
+    setCarouselDevice("desktop");
+    setShowCarouselEditor(true);
   };
 
   useEffect(() => {
-    if (!photoEditor) return;
+    if (!showCarouselEditor) return;
     const move = (e: MouseEvent|TouchEvent) => {
-      if (!photoEditorDragging.current || !photoEditorCanvas.current) return;
-      const rect = photoEditorCanvas.current.getBoundingClientRect();
+      if (!carouselDragging.current || !carouselCanvas.current) return;
+      const rect = carouselCanvas.current.getBoundingClientRect();
       const cx = "touches" in e ? e.touches[0].clientX : e.clientX;
       const cy = "touches" in e ? e.touches[0].clientY : e.clientY;
       const x = Math.round(Math.max(0,Math.min(100,(cx-rect.left)/rect.width*100)));
       const y = Math.round(Math.max(0,Math.min(100,(cy-rect.top)/rect.height*100)));
-      setPhotoPositions(p => ({...p,[photoEditorDevice]:{x,y}}));
+      const selId = heroOrder[carouselSelected];
+      if (selId) setCarouselFocals(p => ({...p,[selId]:{...p[selId],[carouselDevice]:`${x}% ${y}%`}}));
     };
-    const up = () => { photoEditorDragging.current = false; };
+    const up = () => { carouselDragging.current = false; };
     window.addEventListener("mousemove",move);
     window.addEventListener("touchmove",move,{passive:false});
     window.addEventListener("mouseup",up);
     window.addEventListener("touchend",up);
     return () => { window.removeEventListener("mousemove",move); window.removeEventListener("touchmove",move); window.removeEventListener("mouseup",up); window.removeEventListener("touchend",up); };
-  }, [photoEditor, photoEditorDevice]);
+  }, [showCarouselEditor, carouselDevice, carouselSelected, heroOrder]);
 
-  const savePhotoPositions = async () => {
-    if (!photoEditor) return;
-    setPhotoEditorSaving(true);
-    const toStr = (p:{x:number;y:number}) => `${p.x}% ${p.y}%`;
-    await supabase.from("deals").update({ focal_point:toStr(photoPositions.desktop), focal_point_tablet:toStr(photoPositions.tablet), focal_point_mobile:toStr(photoPositions.mobile) }).eq("id",photoEditor.id);
-    setDeals(prev => prev.map(d => d.id===photoEditor.id ? {...d, focal_point:toStr(photoPositions.desktop), focal_point_tablet:toStr(photoPositions.tablet), focal_point_mobile:toStr(photoPositions.mobile)} : d));
-    setPhotoEditorSaving(false);
-    setPhotoEditor(null);
+  const saveCarouselAll = async () => {
+    setCarouselSaving(true);
+    // Save sort order
+    await Promise.all(heroOrder.map((id,i) => supabase.from("deals").update({sort_order:i}).eq("id",id)));
+    // Save focal points
+    for (const [id, fp] of Object.entries(carouselFocals)) {
+      await supabase.from("deals").update({ focal_point:fp.desktop, focal_point_tablet:fp.tablet, focal_point_mobile:fp.mobile }).eq("id",id);
+    }
+    setDeals(prev => prev.map(d => {
+      const idx = heroOrder.indexOf(d.id);
+      const fp = carouselFocals[d.id];
+      const updates: any = {};
+      if (idx >= 0) updates.sort_order = idx;
+      if (fp) { updates.focal_point = fp.desktop; updates.focal_point_tablet = fp.tablet; updates.focal_point_mobile = fp.mobile; }
+      return Object.keys(updates).length ? {...d,...updates} : d;
+    }));
+    setCarouselSaving(false);
+    setShowCarouselEditor(false);
     onSaved();
   };
 
@@ -987,16 +1002,6 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
     [arr[idx], arr[next]] = [arr[next], arr[idx]];
     setHeroOrder(arr);
   };
-  const saveHeroOrder = async () => {
-    setSavingOrder(true);
-    await Promise.all(heroOrder.map((id, i) => supabase.from("deals").update({ sort_order: i }).eq("id", id)));
-    setDeals(prev => prev.map(d => {
-      const idx = heroOrder.indexOf(d.id);
-      return idx >= 0 ? { ...d, sort_order: idx } : d;
-    }));
-    setSavingOrder(false);
-    onSaved();
-  };
 
   return (
     <>
@@ -1011,74 +1016,35 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
           {search && <span style={{ fontSize:11, color:C.orange, fontWeight:700, flexShrink:0 }}>{allFiltered.length} results</span>}
         </div>
 
-        {/* Featured deals */}
-        <SectionCard title="⭐ Featured / Highlighted">
-          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Featured deals appear at the top of the Deal Tracker page.</div>
-          {featuredFiltered.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals{search ? " match your search" : " yet. Star deals below to feature them"}.</div>}
-          {featuredFiltered.map(d => (
-            <div key={d.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", gap:10 }}>
-              {d.image_url && <img src={d.image_url} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" as const }} />}
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
-                <div style={{ fontSize:11, color:C.text3 }}>{d.brand_name} · {d.athlete_sport}</div>
-              </div>
-              <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                <button onClick={()=>toggleFeatured(d.id,false)} style={{ ...S.btnSm, color:"#D73F09", borderColor:"rgba(215,63,9,0.3)" }}>★ Unstar</button>
-                <button onClick={()=>openPhotoEditor(d)} style={S.btnSm}>📐 Position</button>
-                <button onClick={()=>router.push(`/dashboard/deals/${d.id}`)} style={S.btnSm}>Edit Details</button>
-              </div>
+        {/* Featured Athletes — collapsed strip */}
+        <div style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
+          {/* Header row */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: featuredFiltered.length > 0 ? 12 : 0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:14 }}>⭐</span>
+              <span style={{ fontSize:13, fontWeight:800, color:C.text }}>Featured Athletes</span>
+              <span style={{ fontSize:10, fontWeight:700, color:C.text3, background:"rgba(255,255,255,0.06)", padding:"2px 8px", borderRadius:10 }}>{featuredFiltered.length} athletes</span>
             </div>
-          ))}
-        </SectionCard>
-
-        {/* Carousel Order & Photo Position */}
-        <SectionCard title="Carousel Order & Photo Position" defaultOpen={false}>
-          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Control the order featured athletes appear in the hero carousel and set per-device photo position.</div>
-          {heroOrder.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals to order.</div>}
-          {heroOrder.map((id, idx) => {
-            const d = deals.find(x=>x.id===id);
-            if (!d) return null;
-            return (
-              <div key={id} style={{ ...S.itemCard }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: d.image_url ? 10 : 0 }}>
-                  <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
-                    <button onClick={()=>moveHero(idx,-1)} disabled={idx===0} style={{ ...S.btnSm, fontSize:10, padding:"2px 6px", opacity:idx===0?0.3:1 }}>↑</button>
-                    <button onClick={()=>moveHero(idx,1)} disabled={idx===heroOrder.length-1} style={{ ...S.btnSm, fontSize:10, padding:"2px 6px", opacity:idx===heroOrder.length-1?0.3:1 }}>↓</button>
-                  </div>
-                  {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:"cover" as const }} />}
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:12, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
-                    <div style={{ fontSize:10, color:C.text3 }}>{d.brand_name}</div>
-                  </div>
+            <button onClick={openCarouselEditor} style={S.btnSm}>Edit Carousel</button>
+          </div>
+          {/* Horizontal thumbnail strip */}
+          {featuredFiltered.length > 0 && (
+            <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
+              {featuredFiltered.map(d => (
+                <div key={d.id} style={{ flexShrink:0, width:64, textAlign:"center" }}>
+                  {d.image_url ? (
+                    <img src={d.image_url} alt="" style={{ width:64, height:80, borderRadius:8, objectFit:"cover" as const, objectPosition:d.focal_point||"50% 20%", border:`1px solid ${C.border}` }} />
+                  ) : (
+                    <div style={{ width:64, height:80, borderRadius:8, background:C.surface, border:`1px solid ${C.border}` }} />
+                  )}
+                  <div style={{ fontSize:8, fontWeight:700, color:C.text, marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
+                  <div style={{ fontSize:7, color:C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.brand_name}</div>
                 </div>
-                {d.image_url && (
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-                    {([
-                      { icon:"🖥", label:"Desktop", val:d.focal_point||"50% 20%", fn:(v:string)=>updateFocalPoint(d.id,v) },
-                      { icon:"⬜", label:"Tablet", val:d.focal_point_tablet||"50% 20%", fn:(v:string)=>updateFocalTablet(d.id,v) },
-                      { icon:"📱", label:"Mobile", val:d.focal_point_mobile||"50% 20%", fn:(v:string)=>updateFocalMobile(d.id,v) },
-                    ] as const).map(dev => (
-                      <div key={dev.label}>
-                        <div style={{ fontSize:7, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.text3, marginBottom:2 }}>{dev.icon} {dev.label}</div>
-                        <select value={dev.val} onChange={e=>dev.fn(e.target.value)} style={{ ...S.input, fontSize:10, padding:"3px 6px" }}>
-                          <option value="50% 8%">Top</option>
-                          <option value="50% 20%">Face (default)</option>
-                          <option value="50% 35%">Upper body</option>
-                          <option value="50% 50%">Center</option>
-                          <option value="50% 65%">Lower</option>
-                          <option value="50% 80%">Full body</option>
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {heroOrder.length > 0 && (
-            <button onClick={saveHeroOrder} disabled={savingOrder} style={{ ...S.btnSave, marginTop:10, width:"100%", opacity:savingOrder?0.6:1 }}>{savingOrder ? "Saving..." : "Save Order"}</button>
+              ))}
+              <button onClick={()=>{ setShowCreate(true); setCreateError(""); }} style={{ flexShrink:0, width:64, height:80, borderRadius:8, border:`1px dashed ${C.border2}`, background:"none", color:C.text3, fontSize:24, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+            </div>
           )}
-        </SectionCard>
+        </div>
 
         {/* All deals - full management */}
         <SectionCard title="All Deals" defaultOpen={false}>
@@ -1199,105 +1165,114 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
         <a href="/deals" target="_blank" style={S.btnPreview}>↗ View Live</a>
       </div>
 
-      {/* ── Photo Position Editor Modal ──────────────────────── */}
-      {photoEditor && (
-        <div style={{ position:"fixed", inset:0, zIndex:9999, background:C.bg, display:"flex", flexDirection:"column" }}>
-          {/* Header */}
-          <div style={{ padding:"16px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-            <div>
-              <div style={{ fontSize:15, fontWeight:800 }}>{photoEditor.athlete_name}</div>
-              <div style={{ fontSize:11, color:C.text3 }}>{photoEditor.brand_name}</div>
-            </div>
-            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-              <button onClick={()=>setPhotoEditor(null)} style={S.btnPreview}>Cancel</button>
-              <button onClick={savePhotoPositions} disabled={photoEditorSaving} style={{ ...S.btnSave, opacity:photoEditorSaving?0.6:1 }}>{photoEditorSaving ? "Saving..." : "Save All"}</button>
-            </div>
-          </div>
-
-          {/* Device tabs */}
-          <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
-            {(["desktop","tablet","mobile"] as const).map(dev => {
-              const active = photoEditorDevice===dev;
-              const icons = {desktop:"🖥",tablet:"⬜",mobile:"📱"};
-              const ratios = {desktop:"16:9",tablet:"3:4",mobile:"9:16"};
-              return (
-                <button key={dev} onClick={()=>setPhotoEditorDevice(dev)} style={{ flex:1, padding:"12px 0", background:"none", border:"none", borderBottom: active ? `2px solid ${C.orange}` : "2px solid transparent", color: active ? C.orange : C.text3, fontSize:12, fontWeight:700, cursor:"pointer", textTransform:"uppercase", letterSpacing:"0.06em" }}>
-                  {icons[dev]} {dev} <span style={{ fontSize:10, opacity:0.5 }}>{ratios[dev]}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Body */}
-          <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
-            {/* Canvas area */}
-            <div style={{ flex:1, background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, padding:20 }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3 }}>
-                {photoEditorDevice} · {{desktop:"16:9",tablet:"3:4",mobile:"9:16"}[photoEditorDevice]}
+      {/* ── Carousel Editor Full-Screen ──────────────────────── */}
+      {showCarouselEditor && (() => {
+        const selId = heroOrder[carouselSelected];
+        const selDeal = selId ? deals.find(d=>d.id===selId) : null;
+        const selFocal = selId && carouselFocals[selId] ? carouselFocals[selId][carouselDevice] : "50% 20%";
+        const fpParts = (selFocal||"50% 20%").match(/(\d+)%\s+(\d+)%/);
+        const fx = fpParts ? parseInt(fpParts[1]) : 50;
+        const fy = fpParts ? parseInt(fpParts[2]) : 20;
+        const devSizes = {desktop:{w:400,h:225},tablet:{w:240,h:320},mobile:{w:170,h:302}};
+        const ds = devSizes[carouselDevice];
+        return (
+          <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#080808", display:"flex", flexDirection:"column" }}>
+            {/* Header */}
+            <div style={{ padding:"14px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:900 }}>Featured Carousel Editor</div>
+                <div style={{ fontSize:11, color:C.text3, marginTop:1 }}>Select athlete · drag photo · reorder with arrows</div>
               </div>
-              <div
-                ref={photoEditorCanvas}
-                onMouseDown={()=>{photoEditorDragging.current=true;}}
-                onTouchStart={()=>{photoEditorDragging.current=true;}}
-                style={{
-                  width: photoEditorDevice==="desktop" ? 400 : photoEditorDevice==="tablet" ? 270 : 200,
-                  height: photoEditorDevice==="desktop" ? 225 : photoEditorDevice==="tablet" ? 360 : 355,
-                  overflow:"hidden", borderRadius:8, border:`2px solid ${C.orange}`, cursor:"crosshair", position:"relative", flexShrink:0,
-                }}
-              >
-                <img src={photoEditor.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${photoPositions[photoEditorDevice].x}% ${photoPositions[photoEditorDevice].y}%`, pointerEvents:"none" }} />
-                <div style={{ position:"absolute", left:`${photoPositions[photoEditorDevice].x}%`, top:`${photoPositions[photoEditorDevice].y}%`, transform:"translate(-50%,-50%)", width:16, height:16, borderRadius:"50%", background:C.orange, border:"2px solid #fff", pointerEvents:"none", boxShadow:"0 0 0 3px rgba(215,63,9,0.3)" }} />
+              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                <button onClick={()=>setShowCarouselEditor(false)} style={S.btnPreview}>Cancel</button>
+                <button onClick={saveCarouselAll} disabled={carouselSaving} style={{ ...S.btnSave, opacity:carouselSaving?0.6:1 }}>{carouselSaving ? "Saving..." : "Save All"}</button>
               </div>
-              <div style={{ fontSize:10, color:C.text3 }}>Drag to reposition · click to set</div>
             </div>
 
-            {/* Right panel */}
-            <div style={{ width:200, borderLeft:`1px solid ${C.border}`, display:"flex", flexDirection:"column", overflowY:"auto" }}>
-              {/* Presets */}
-              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
-                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Quick Presets</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
-                  {([{l:"Top",y:8},{l:"Face",y:20},{l:"Shoulders",y:35},{l:"Center",y:50},{l:"Lower",y:65},{l:"Full",y:80}]).map(p => {
-                    const active = photoPositions[photoEditorDevice].x===50 && photoPositions[photoEditorDevice].y===p.y;
-                    return <button key={p.l} onClick={()=>setPhotoPositions(prev=>({...prev,[photoEditorDevice]:{x:50,y:p.y}}))} style={{ padding:"6px 0", borderRadius:6, fontSize:10, fontWeight:700, cursor:"pointer", border: active ? `1px solid ${C.orange}` : `1px solid ${C.border2}`, background: active ? "rgba(215,63,9,0.15)" : "rgba(255,255,255,0.03)", color: active ? C.orange : C.text2 }}>{p.l}</button>;
+            {/* Body */}
+            <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+              {/* LEFT — athlete list */}
+              <div style={{ width:220, borderRight:`1px solid ${C.border}`, overflowY:"auto", flexShrink:0 }}>
+                {heroOrder.map((hid, idx) => {
+                  const d = deals.find(x=>x.id===hid);
+                  if (!d) return null;
+                  const active = idx === carouselSelected;
+                  return (
+                    <div key={hid} onClick={()=>setCarouselSelected(idx)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", cursor:"pointer", borderLeft: active ? `3px solid ${C.orange}` : "3px solid transparent", background: active ? "rgba(215,63,9,0.06)" : "transparent", borderBottom:`1px solid ${C.border}` }}>
+                      {d.image_url && <img src={d.image_url} alt="" style={{ width:36, height:46, borderRadius:6, objectFit:"cover" as const, objectPosition:d.focal_point||"50% 20%", flexShrink:0 }} />}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{d.athlete_name}</div>
+                        <div style={{ fontSize:10, fontWeight:700, color:C.orange }}>{d.brand_name}</div>
+                        <div style={{ fontSize:9, color:C.text3 }}>{[d.athlete_school,d.athlete_sport].filter(Boolean).join(" · ")}</div>
+                      </div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:2, flexShrink:0 }}>
+                        <button onClick={e=>{e.stopPropagation();moveHero(idx,-1);}} disabled={idx===0} style={{ background:"none", border:`1px solid ${C.border2}`, borderRadius:4, color:C.text3, fontSize:9, cursor:"pointer", padding:"1px 4px", opacity:idx===0?0.3:1 }}>▲</button>
+                        <button onClick={e=>{e.stopPropagation();moveHero(idx,1);}} disabled={idx===heroOrder.length-1} style={{ background:"none", border:`1px solid ${C.border2}`, borderRadius:4, color:C.text3, fontSize:9, cursor:"pointer", padding:"1px 4px", opacity:idx===heroOrder.length-1?0.3:1 }}>▼</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* RIGHT — photo position editor */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+                {/* Device tabs */}
+                <div style={{ display:"flex", borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
+                  {(["desktop","tablet","mobile"] as const).map(dev => {
+                    const a = carouselDevice===dev;
+                    const ratios = {desktop:"16:9",tablet:"3:4",mobile:"9:16"};
+                    return <button key={dev} onClick={()=>setCarouselDevice(dev)} style={{ flex:1, padding:"10px 0", background:"none", border:"none", borderBottom: a ? `2px solid ${C.orange}` : "2px solid transparent", color: a ? C.orange : C.text3, fontSize:11, fontWeight:700, cursor:"pointer", textTransform:"uppercase", letterSpacing:"0.06em" }}>{dev} <span style={{ fontSize:9, opacity:0.5 }}>{ratios[dev]}</span></button>;
                   })}
                 </div>
-              </div>
 
-              {/* Position */}
-              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
-                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Position</div>
-                <div style={{ display:"flex", gap:16 }}>
-                  <div><div style={{ fontSize:9, color:C.text3 }}>X</div><div style={{ fontSize:13, fontWeight:900 }}>{photoPositions[photoEditorDevice].x}%</div></div>
-                  <div><div style={{ fontSize:9, color:C.text3 }}>Y</div><div style={{ fontSize:13, fontWeight:900 }}>{photoPositions[photoEditorDevice].y}%</div></div>
-                </div>
-              </div>
-
-              {/* Copy to */}
-              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${C.border}` }}>
-                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Copy To</div>
-                <div style={{ display:"flex", gap:4 }}>
-                  {(["desktop","tablet","mobile"] as const).map(dev => (
-                    <button key={dev} disabled={dev===photoEditorDevice} onClick={()=>setPhotoPositions(p=>({...p,[dev]:p[photoEditorDevice]}))} style={{ ...S.btnSm, fontSize:9, flex:1, opacity: dev===photoEditorDevice ? 0.3 : 1, textTransform:"capitalize" }}>{dev}</button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Mini previews */}
-              <div style={{ padding:"14px 16px" }}>
-                <div style={{ fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.1em", color:C.text3, marginBottom:8 }}>Preview</div>
-                <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
-                  {([{dev:"desktop" as const,w:60,h:34},{dev:"tablet" as const,w:38,h:50},{dev:"mobile" as const,w:28,h:50}]).map(p => (
-                    <div key={p.dev} onClick={()=>setPhotoEditorDevice(p.dev)} style={{ width:p.w, height:p.h, borderRadius:4, overflow:"hidden", border: photoEditorDevice===p.dev ? `2px solid ${C.orange}` : `1px solid ${C.border2}`, cursor:"pointer" }}>
-                      <img src={photoEditor.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${photoPositions[p.dev].x}% ${photoPositions[p.dev].y}%` }} />
+                {/* Canvas */}
+                <div style={{ flex:1, background:"#050505", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+                  {selDeal?.image_url ? (
+                    <div
+                      ref={carouselCanvas}
+                      onMouseDown={()=>{carouselDragging.current=true;}}
+                      onTouchStart={()=>{carouselDragging.current=true;}}
+                      style={{ width:ds.w, height:ds.h, overflow:"hidden", borderRadius:8, border:`2px solid ${C.orange}`, cursor:"crosshair", position:"relative", flexShrink:0 }}
+                    >
+                      <img src={selDeal.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${fx}% ${fy}%`, pointerEvents:"none" }} />
+                      {/* Hero overlay gradients */}
+                      <div style={{ position:"absolute", top:0, left:0, right:0, height:"30%", background:"linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)", pointerEvents:"none" }} />
+                      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"45%", background:"linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)", pointerEvents:"none" }} />
+                      {/* Title overlay */}
+                      <div style={{ position:"absolute", top: carouselDevice==="mobile"?14:undefined, bottom: carouselDevice==="mobile"?undefined:10, left:10, pointerEvents:"none", zIndex:2 }}>
+                        <div style={{ fontSize: carouselDevice==="mobile"?9:7, fontWeight:900, textTransform:"uppercase", lineHeight:0.92 }}>NIL<br/><span style={{ color:C.orange }}>Deal Tracker</span></div>
+                      </div>
+                      {/* Nameplate overlay */}
+                      <div style={{ position:"absolute", bottom:6, left: carouselDevice==="mobile"?6:undefined, right: carouselDevice==="mobile"?6:6, pointerEvents:"none", zIndex:2 }}>
+                        <div style={{ fontSize:5, fontWeight:800, textTransform:"uppercase", color:C.orange, letterSpacing:"0.1em" }}>{selDeal.brand_name}</div>
+                        <div style={{ fontSize: carouselDevice==="mobile"?8:6, fontWeight:900, lineHeight:1 }}>{selDeal.athlete_name}</div>
+                        <div style={{ fontSize:4, color:"rgba(255,255,255,0.5)" }}>{[selDeal.athlete_school,selDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
+                      </div>
+                      {/* Focal dot */}
+                      <div style={{ position:"absolute", left:`${fx}%`, top:`${fy}%`, transform:"translate(-50%,-50%)", width:14, height:14, borderRadius:"50%", background:C.orange, border:"2px solid #fff", pointerEvents:"none", boxShadow:"0 0 0 3px rgba(215,63,9,0.3)" }} />
                     </div>
+                  ) : (
+                    <div style={{ color:C.text3, fontSize:12 }}>No image for this athlete</div>
+                  )}
+                </div>
+
+                {/* Controls bar */}
+                <div style={{ padding:"8px 16px", borderTop:`1px solid ${C.border}`, display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
+                  {[{l:"Face",y:20},{l:"Center",y:50}].map(p => (
+                    <button key={p.l} onClick={()=>{ if(!selId) return; setCarouselFocals(prev=>({...prev,[selId]:{...prev[selId],[carouselDevice]:`50% ${p.y}%`}})); }} style={{ padding:"4px 10px", borderRadius:6, border: fy===p.y && fx===50 ? `1px solid ${C.orange}` : `1px solid ${C.border2}`, background: fy===p.y && fx===50 ? "rgba(215,63,9,0.15)" : "none", color: fy===p.y && fx===50 ? C.orange : C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>{p.l}</button>
                   ))}
+                  <button onClick={()=>{ if(!selId) return; setCarouselFocals(prev=>({...prev,[selId]:{...prev[selId],[carouselDevice]:"50% 20%"}})); }} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${C.border2}`, background:"none", color:C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>Reset</button>
+                  <div style={{ flex:1 }} />
+                  <span style={{ fontSize:10, color:C.text3 }}>{fx}% {fy}%</span>
+                  {selId && (
+                    <button onClick={()=>{ toggleFeatured(selId,false); setHeroOrder(h=>h.filter(x=>x!==selId)); if(carouselSelected>=heroOrder.length-1) setCarouselSelected(Math.max(0,heroOrder.length-2)); }} style={{ padding:"4px 10px", borderRadius:6, border:"1px solid rgba(255,80,80,0.3)", background:"none", color:"#ff6b6b", fontSize:10, fontWeight:700, cursor:"pointer" }}>Unfeature</button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }
