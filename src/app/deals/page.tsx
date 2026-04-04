@@ -421,34 +421,37 @@ export default function DealsPage() {
         </div>
       )}
 
-      {/* ── Hero bleed gradient — extends hero photo fade into sections below ── */}
-      {featured.length > 0 && (
-        <div style={{ position: "relative", marginTop: -200, paddingTop: 200, background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 30%, #000 55%)", pointerEvents: "none", zIndex: 3 }}>
-          <div style={{ pointerEvents: "auto" }}>
+      {/* ── Hero photo bleed extension ──────────────────────── */}
+      {featured.length > 0 && curDeal && (
+        <div style={{ position: "relative", overflow: "hidden" }}>
+          {/* Continuation of hero image */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "100%", zIndex: 0 }}>
+            <img src={curDeal.image_url!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: heroFocalPos, transform: heroZoom !== 1 ? `scale(${heroZoom})` : undefined, transformOrigin: heroFocalPos }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.95) 60%, #000 85%)" }} />
+          </div>
 
-      {/* ── Stats Bar ──────────────────────────────────────── */}
-      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
-          {[
-            { num: campaignsCount + "+", label: "Campaigns Run" },
-            { num: brandsCount + "+", label: "Brand Partners" },
-            { num: athletesCount >= 10000 ? "10K+" : athletesCount + "+", label: "Athletes Activated" },
-            { num: "4K", label: "Production Standard" },
-          ].map(s => (
-            <div key={s.label} style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(24px,3.5vw,40px)", lineHeight: 1, color: "#D73F09" }}>{s.num}</div>
-              <div style={{ fontSize: "clamp(10px,1vw,12px)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginTop: "clamp(4px,0.6vw,6px)" }}>{s.label}</div>
+          {/* Stats Bar */}
+          <div style={{ position: "relative", zIndex: 2, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
+              {[
+                { num: campaignsCount + "+", label: "Campaigns Run" },
+                { num: brandsCount + "+", label: "Brand Partners" },
+                { num: athletesCount >= 10000 ? "10K+" : athletesCount + "+", label: "Athletes Activated" },
+                { num: "4K", label: "Production Standard" },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(24px,3.5vw,40px)", lineHeight: 1, color: "#D73F09" }}>{s.num}</div>
+                  <div style={{ fontSize: "clamp(10px,1vw,12px)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginTop: "clamp(4px,0.6vw,6px)" }}>{s.label}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* ── Featured Athletes Carousel ─────────────────────── */}
-      {featured.length > 0 && (
-        <div style={{ padding: "clamp(28px,4vw,48px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-            <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
-            <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
+          {/* Featured Athletes Carousel */}
+          <div style={{ position: "relative", zIndex: 2, padding: "clamp(28px,4vw,48px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+              <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
+              <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
             <div style={{ overflow: "hidden" }}>
               <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
                 {featured.map(d => (
@@ -475,10 +478,7 @@ export default function DealsPage() {
             )}
           </div>
         </div>
-      )}
-
-          </div>
-        </div>
+      </div>
       )}
 
       {/* ── Filter Row ─────────────────────────────────────── */}
