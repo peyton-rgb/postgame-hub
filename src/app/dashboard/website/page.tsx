@@ -846,7 +846,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
 function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const supabase = createBrowserSupabase();
   const router = useRouter();
-  const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;published:boolean;featured:boolean;sort_order:number;image_url:string;focal_point:string}[]>([]);
+  const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;athlete_school?:string;published:boolean;featured:boolean;sort_order:number;image_url:string;focal_point:string;focal_point_tablet?:string;focal_point_mobile?:string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -863,13 +863,11 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const [campaignAthletes, setCampaignAthletes] = useState<{id:string;name:string;school:string;sport:string}[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [search, setSearch] = useState("");
-  const [filterFeatured, setFilterFeatured] = useState<"all"|"featured"|"unfeatured">("all");
-  const [filterPublished, setFilterPublished] = useState<"all"|"published"|"draft">("all");
   const [heroOrder, setHeroOrder] = useState<string[]>([]);
   const [savingOrder, setSavingOrder] = useState(false);
 
   useEffect(() => {
-    supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url,focal_point").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
+    supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,athlete_school,published,featured,sort_order,image_url,focal_point,focal_point_tablet,focal_point_mobile").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
       const rows = (data||[]) as any[];
       setDeals(rows);
       setHeroOrder(rows.filter((d:any)=>d.featured).map((d:any)=>d.id));
@@ -922,21 +920,22 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
     await supabase.from("deals").update({ focal_point }).eq("id", id);
     setDeals(p => p.map(d => d.id===id ? {...d,focal_point} : d));
   };
+  const updateFocalTablet = async (id: string, val: string) => {
+    await supabase.from("deals").update({ focal_point_tablet: val }).eq("id", id);
+    setDeals(p => p.map(d => d.id===id ? {...d,focal_point_tablet:val} : d));
+  };
+  const updateFocalMobile = async (id: string, val: string) => {
+    await supabase.from("deals").update({ focal_point_mobile: val }).eq("id", id);
+    setDeals(p => p.map(d => d.id===id ? {...d,focal_point_mobile:val} : d));
+  };
 
   if (loading) return <div style={{ padding:40, color:C.text3, fontSize:14 }}>Loading deals...</div>;
 
-  const allFiltered = deals.filter(d => {
-    const q = search.toLowerCase();
-    if (q && ![d.athlete_name, d.brand_name, d.athlete_sport].some(v => v?.toLowerCase().includes(q))) return false;
-    if (filterPublished === "published" && !d.published) return false;
-    if (filterPublished === "draft" && d.published) return false;
-    if (filterFeatured === "featured" && !d.featured) return false;
-    if (filterFeatured === "unfeatured" && d.featured) return false;
-    return true;
-  });
+  const q = search.toLowerCase();
+  const filterDeal = (d: any) => !q || [d.athlete_name, d.brand_name, d.athlete_sport, d.athlete_school].some((v:string|null) => v?.toLowerCase().includes(q));
+  const allFiltered = deals.filter(filterDeal);
   const featuredFiltered = allFiltered.filter(d => d.featured);
   const restFiltered = allFiltered.filter(d => !d.featured);
-  const hasActiveFilters = search || filterFeatured !== "all" || filterPublished !== "all";
 
   const moveHero = (idx: number, dir: -1|1) => {
     const next = idx + dir;
@@ -959,26 +958,19 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   return (
     <>
       <div style={S.editScroll}>
-        {/* Search & filter bar */}
-        <div style={{ marginBottom:12, display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", padding:"0 0 12px", borderBottom:`1px solid rgba(255,255,255,0.07)` }}>
-          <input style={{ ...S.input, flex:1, minWidth:160 }} placeholder="Search by athlete, brand, sport..." value={search} onChange={e=>setSearch(e.target.value)} />
-          <select style={{ ...S.input, width:"auto" }} value={filterFeatured} onChange={e=>setFilterFeatured(e.target.value as any)}>
-            <option value="all">All</option>
-            <option value="featured">Featured</option>
-            <option value="unfeatured">Not Featured</option>
-          </select>
-          <select style={{ ...S.input, width:"auto" }} value={filterPublished} onChange={e=>setFilterPublished(e.target.value as any)}>
-            <option value="all">All</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-          </select>
-          {hasActiveFilters && <span style={{ fontSize:11, color:C.text3 }}>{allFiltered.length} deals</span>}
+        {/* Search bar */}
+        <div style={{ marginBottom:12, display:"flex", gap:8, alignItems:"center", padding:"0 0 12px", borderBottom:`1px solid rgba(255,255,255,0.07)` }}>
+          <div style={{ flex:1, position:"relative" }}>
+            <input style={{ ...S.input, paddingRight:28 }} placeholder="Search athlete, brand, sport, school..." value={search} onChange={e=>setSearch(e.target.value)} />
+            {search && <button onClick={()=>setSearch("")} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.text3, fontSize:14, cursor:"pointer", padding:0, lineHeight:1 }}>×</button>}
+          </div>
+          {search && <span style={{ fontSize:11, color:C.orange, fontWeight:700, flexShrink:0 }}>{allFiltered.length} results</span>}
         </div>
 
         {/* Featured deals */}
         <SectionCard title="⭐ Featured / Highlighted">
           <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Featured deals appear at the top of the Deal Tracker page.</div>
-          {featuredFiltered.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals{hasActiveFilters ? " match your filters" : " yet. Star deals below to feature them"}.</div>}
+          {featuredFiltered.length === 0 && <div style={{ fontSize:12, color:C.text3, padding:"12px 0" }}>No featured deals{search ? " match your search" : " yet. Star deals below to feature them"}.</div>}
           {featuredFiltered.map(d => (
             <div key={d.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", gap:10 }}>
               {d.image_url && <img src={d.image_url} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" as const }} />}
@@ -1033,20 +1025,24 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                 </div>
               </div>
               {d.image_url && (
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <label style={{ ...S.label, marginBottom:0, whiteSpace:"nowrap" as const }}>Face position</label>
-                  <select
-                    value={d.focal_point||"50% 25%"}
-                    onChange={e=>updateFocalPoint(d.id,e.target.value)}
-                    style={{ ...S.input, fontSize:11, padding:"4px 8px" }}
-                  >
-                    <option value="50% 10%">Top</option>
-                    <option value="50% 25%">Face (default)</option>
-                    <option value="50% 30%">Upper-mid</option>
-                    <option value="50% 40%">Center-upper</option>
-                    <option value="50% 50%">Center</option>
-                    <option value="50% 65%">Lower</option>
-                  </select>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+                  {([
+                    { icon:"🖥", label:"Desktop", val:d.focal_point||"50% 20%", fn:(v:string)=>updateFocalPoint(d.id,v) },
+                    { icon:"⬜", label:"Tablet", val:d.focal_point_tablet||"50% 20%", fn:(v:string)=>updateFocalTablet(d.id,v) },
+                    { icon:"📱", label:"Mobile", val:d.focal_point_mobile||"50% 20%", fn:(v:string)=>updateFocalMobile(d.id,v) },
+                  ] as const).map(dev => (
+                    <div key={dev.label}>
+                      <div style={{ fontSize:7, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.text3, marginBottom:2 }}>{dev.icon} {dev.label}</div>
+                      <select value={dev.val} onChange={e=>dev.fn(e.target.value)} style={{ ...S.input, fontSize:10, padding:"3px 6px" }}>
+                        <option value="50% 8%">Top</option>
+                        <option value="50% 20%">Face (default)</option>
+                        <option value="50% 35%">Upper body</option>
+                        <option value="50% 50%">Center</option>
+                        <option value="50% 65%">Lower</option>
+                        <option value="50% 80%">Full body</option>
+                      </select>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -8,6 +8,8 @@ import Link from "next/link";
 /* ── Extended deal with joined fields ─────────────────────────── */
 type DealRow = Deal & {
   focal_point?: string | null;
+  focal_point_tablet?: string | null;
+  focal_point_mobile?: string | null;
   brand_id?: string | null;
   source_campaign_id?: string | null;
   campaign_recaps?: { name: string } | null;
@@ -50,8 +52,10 @@ export default function DealsPage() {
   const [carIdx, setCarIdx] = useState(0);
   const carTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /* ── Focal map ────────────────────────────────────────────── */
+  /* ── Focal maps (per device) ───────────────────────────────── */
   const [focalMap, setFocalMap] = useState<Record<string, string>>({});
+  const [tabletFocalMap, setTabletFocalMap] = useState<Record<string, string>>({});
+  const [mobileFocalMap, setMobileFocalMap] = useState<Record<string, string>>({});
 
   /* ── Responsive ───────────────────────────────────────────── */
   const [isMobile, setIsMobile] = useState(false);
@@ -78,8 +82,16 @@ export default function DealsPage() {
       const rows = (data || []) as DealRow[];
       setDeals(rows);
       const fm: Record<string, string> = {};
-      rows.forEach(d => { if (d.focal_point) fm[d.id] = d.focal_point; });
+      const tfm: Record<string, string> = {};
+      const mfm: Record<string, string> = {};
+      rows.forEach(d => {
+        if (d.focal_point) fm[d.id] = d.focal_point;
+        if (d.focal_point_tablet) tfm[d.id] = d.focal_point_tablet;
+        if (d.focal_point_mobile) mfm[d.id] = d.focal_point_mobile;
+      });
       setFocalMap(fm);
+      setTabletFocalMap(tfm);
+      setMobileFocalMap(mfm);
       setLoading(false);
     })();
   }, []);
@@ -107,19 +119,13 @@ export default function DealsPage() {
 
   /* ── Helpers ──────────────────────────────────────────────── */
   const curDeal = featured[heroIdx] || null;
-  const curFocal = curDeal ? (focalMap[curDeal.id] || "50% 25%") : "50% 25%";
-  // On mobile, use 50% 20% as default for all slides (stored values calibrated for desktop).
-  // Only override if user set a custom focal point that isn't the bulk default (50% 25%).
-  const getMobileFocal = (dealId: string) => {
-    const fp = focalMap[dealId];
-    if (!fp) return "50% 20%";
-    const parts = fp.split(/\s+/);
-    const x = parseFloat(parts[0]) || 50;
-    const y = parseFloat(parts[1]) || 25;
-    if (x === 50 && y === 25) return "50% 20%";
-    return `${x}% ${Math.max(10, y - 10)}%`;
+  // Per-device focal: use dedicated column if set, else fall back to desktop, else default
+  const getFocal = (dealId: string) => {
+    if (isMobile) return mobileFocalMap[dealId] || "50% 20%";
+    if (isTablet) return tabletFocalMap[dealId] || focalMap[dealId] || "50% 20%";
+    return focalMap[dealId] || "50% 25%";
   };
-  const heroFocalPos = isMobile && curDeal ? getMobileFocal(curDeal.id) : curFocal;
+  const heroFocalPos = curDeal ? getFocal(curDeal.id) : "50% 25%";
 
   const sports = useMemo(() => [...new Set(deals.map(d => d.athlete_sport).filter(Boolean))].sort() as string[], [deals]);
   const colleges = useMemo(() => [...new Set(deals.map(d => d.athlete_school).filter(Boolean))].sort() as string[], [deals]);
@@ -393,7 +399,7 @@ export default function DealsPage() {
               <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
                 {featured.map(d => (
                   <Link key={d.id} href={`/deals/${d.id}`} style={{ flex: `0 0 ${carCardW}`, width: carCardW, height: carCardH, borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", position: "relative", textDecoration: "none", color: "#fff", display: "block" }}>
-                    <img src={d.image_url!} alt={d.athlete_name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: isMobile ? getMobileFocal(d.id) : (focalMap[d.id] || "50% 25%") }} />
+                    <img src={d.image_url!} alt={d.athlete_name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(d.id) }} />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "clamp(14px,2vw,20px) clamp(12px,1.5vw,18px)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                       <div style={{ fontSize: "clamp(9px,0.9vw,10px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D73F09", marginBottom: 2 }}>{d.brand_name}</div>
@@ -446,7 +452,7 @@ export default function DealsPage() {
               <Link key={deal.id} href={`/deals/${deal.id}`} style={{ borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#111", textDecoration: "none", color: "#fff", display: "block", transition: "border-color 0.2s" }}>
                 {deal.image_url && (
                   <div style={{ aspectRatio: "4/5", overflow: "hidden" }}>
-                    <img src={deal.image_url} alt={deal.athlete_name || deal.brand_name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: focalMap[deal.id] || "50% 25%", transition: "transform 0.4s" }} />
+                    <img src={deal.image_url} alt={deal.athlete_name || deal.brand_name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(deal.id), transition: "transform 0.4s" }} />
                   </div>
                 )}
                 <div style={{ padding: "clamp(12px,1.5vw,16px) clamp(14px,1.8vw,20px) clamp(14px,1.8vw,20px)" }}>
