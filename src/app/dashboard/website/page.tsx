@@ -489,7 +489,7 @@ function TeamEditor({ onSaved }: { onSaved: () => void }) {
 
 // ── Services editor ───────────────────────────────────────────
 type ServiceTab = "elevated"|"scaled"|"always-on"|"experiential";
-interface CarouselPhoto { path:string; brand_logo_url?:string; }
+interface CarouselPhoto { path:string; brand_logo_url?:string; focal_point?:string; }
 interface ServicePageData { hero_tag:string; hero_title:string; hero_desc:string; features:{num:string;title:string;desc:string}[]; cta_title:string; cta_sub:string; carousel_photos:CarouselPhoto[] }
 
 function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTab }) {
@@ -505,6 +505,11 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
   const [carouselPickerOpen, setCarouselPickerOpen] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<{path:string;brand_logo_url?:string}|null>(null);
   const [carouselBrands, setCarouselBrands] = useState<{id:string;name:string;logo_primary_url:string|null}[]>([]);
+  const [carouselEditorOpen, setCarouselEditorOpen] = useState(false);
+  const [carouselEditIdx, setCarouselEditIdx] = useState(0);
+  const [photoZooms, setPhotoZooms] = useState<Record<number,number>>({});
+  const svcCarouselDragging = useRef(false);
+  const svcCarouselCanvas = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.from("brands").select("id,name,logo_primary_url").order("name").then(({data})=>setCarouselBrands(data||[]));
@@ -534,6 +539,32 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
       }
     });
   }, []);
+
+  // Drag handler for services carousel editor
+  useEffect(() => {
+    if (!carouselEditorOpen) return;
+    const move = (e: MouseEvent|TouchEvent) => {
+      if (!svcCarouselDragging.current || !svcCarouselCanvas.current) return;
+      const rect = svcCarouselCanvas.current.getBoundingClientRect();
+      const cx = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const cy = "touches" in e ? e.touches[0].clientY : e.clientY;
+      const x = Math.round(Math.max(0,Math.min(100,(cx-rect.left)/rect.width*100)));
+      const y = Math.round(Math.max(0,Math.min(100,(cy-rect.top)/rect.height*100)));
+      setData(prev => {
+        const photos = [...(prev[tab].carousel_photos||[])];
+        if (photos[carouselEditIdx]) {
+          photos[carouselEditIdx] = { ...photos[carouselEditIdx], focal_point: `${x}% ${y}%` };
+        }
+        return { ...prev, [tab]: { ...prev[tab], carousel_photos: photos } };
+      });
+    };
+    const up = () => { svcCarouselDragging.current = false; };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("mouseup", up);
+    window.addEventListener("touchend", up);
+    return () => { window.removeEventListener("mousemove", move); window.removeEventListener("touchmove", move); window.removeEventListener("mouseup", up); window.removeEventListener("touchend", up); };
+  }, [carouselEditorOpen, carouselEditIdx, tab]);
 
   const cur = data[tab];
   const upd = (key: keyof ServicePageData, val: unknown) => setData(p => ({ ...p, [tab]: { ...p[tab], [key]: val } }));
@@ -582,21 +613,28 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
         <SectionCard title="Carousel Photos">
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
             {(cur.carousel_photos||[]).map((photo, i) => {
-              const p = typeof photo === "string" ? {path: photo} : photo;
+              const p = typeof photo === "string" ? {path: photo} as CarouselPhoto : photo;
               return (
                 <div key={i} style={{ position:"relative", width:72, height:72, borderRadius:8, overflow:"hidden", border:"1px solid rgba(255,255,255,0.1)" }}>
-                  <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${p.path}`} style={{ width:72, height:72, objectFit:"cover", objectPosition:"50% 15%" }} alt="" />
+                  <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${p.path}`} style={{ width:72, height:72, objectFit:"cover", objectPosition: p.focal_point || "50% 20%" }} alt="" />
                   {p.brand_logo_url && (
                     <div style={{ position:"absolute", bottom:3, right:3, width:22, height:22, borderRadius:4, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                       <img src={p.brand_logo_url} style={{ width:18, height:18, objectFit:"contain" }} alt="" />
                     </div>
                   )}
-                  <button onClick={()=>upd("carousel_photos",(cur.carousel_photos||[]).filter((_,j)=>j!==i))} style={{ position:"absolute", top:-1, right:-1, width:18, height:18, borderRadius:"50%", background:"#D73F09", border:"none", color:"#fff", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+                  <div style={{ position:"absolute", top:-1, right:-1, display:"flex", gap:1 }}>
+                    {i > 0 && <button onClick={()=>{ const arr=[...(cur.carousel_photos||[])]; [arr[i-1],arr[i]]=[arr[i],arr[i-1]]; upd("carousel_photos",arr); }} style={{ width:16, height:16, borderRadius:3, background:"rgba(0,0,0,0.7)", border:"1px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>&#9650;</button>}
+                    {i < (cur.carousel_photos||[]).length-1 && <button onClick={()=>{ const arr=[...(cur.carousel_photos||[])]; [arr[i],arr[i+1]]=[arr[i+1],arr[i]]; upd("carousel_photos",arr); }} style={{ width:16, height:16, borderRadius:3, background:"rgba(0,0,0,0.7)", border:"1px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>&#9660;</button>}
+                    <button onClick={()=>upd("carousel_photos",(cur.carousel_photos||[]).filter((_,j)=>j!==i))} style={{ width:16, height:16, borderRadius:"50%", background:"#D73F09", border:"none", color:"#fff", fontSize:10, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>&#215;</button>
+                  </div>
                 </div>
               );
             })}
           </div>
-          <button style={S.btnAdd} onClick={()=>setCarouselPickerOpen(true)}>+ Add Photo from Media Library</button>
+          <div style={{ display:"flex", gap:8 }}>
+            <button style={{ ...S.btnAdd, flex:1 }} onClick={()=>setCarouselPickerOpen(true)}>+ Add Photo</button>
+            <button style={{ ...S.btnSm, padding:"8px 14px" }} onClick={()=>{ setCarouselEditIdx(0); setPhotoZooms({}); setCarouselEditorOpen(true); }}>Edit Carousel</button>
+          </div>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:6 }}>{(cur.carousel_photos||[]).length} photos · changes live after Save</div>
         </SectionCard>
       </div>
@@ -654,6 +692,127 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
           </div>
         </div>
       )}
+
+      {/* ── Services Carousel Editor Full-Screen ──────────────── */}
+      {carouselEditorOpen && (() => {
+        const photos = cur.carousel_photos || [];
+        const selPhoto = photos[carouselEditIdx];
+        const selFocal = selPhoto?.focal_point || "50% 20%";
+        const selZoom = photoZooms[carouselEditIdx] ?? 1;
+        const fpParts = selFocal.match(/(\d+)%\s+(\d+)%/);
+        const fx = fpParts ? parseInt(fpParts[1]) : 50;
+        const fy = fpParts ? parseInt(fpParts[2]) : 20;
+        const MEDIA_BASE = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/";
+        const movePhoto = (idx: number, dir: -1|1) => {
+          const next = idx + dir;
+          if (next < 0 || next >= photos.length) return;
+          const arr = [...photos];
+          [arr[idx], arr[next]] = [arr[next], arr[idx]];
+          upd("carousel_photos", arr);
+          setCarouselEditIdx(next);
+        };
+        const removePhoto = (idx: number) => {
+          upd("carousel_photos", photos.filter((_,j)=>j!==idx));
+          if (carouselEditIdx >= photos.length - 1) setCarouselEditIdx(Math.max(0, photos.length - 2));
+        };
+        const saveFocalForPhoto = () => {
+          // focal_point is already updated in state via drag handler; this is a visual confirmation
+        };
+        return (
+          <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#080808", display:"flex", flexDirection:"column" }}>
+            {/* Header */}
+            <div style={{ padding:"14px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:900 }}>Service Carousel Editor — {tab}</div>
+                <div style={{ fontSize:11, color:C.text3, marginTop:1 }}>Drag photo to reposition · reorder with arrows · Save All to persist</div>
+              </div>
+              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                <button onClick={()=>setCarouselEditorOpen(false)} style={S.btnPreview}>Cancel</button>
+                <button onClick={()=>{ save(); setCarouselEditorOpen(false); }} disabled={saving} style={{ ...S.btnSave, opacity:saving?0.6:1, flex:"none", width:"auto", padding:"9px 20px" }}>{saving ? "Saving..." : "Save All"}</button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+              {/* LEFT — photo list */}
+              <div style={{ width:220, borderRight:`1px solid ${C.border}`, overflowY:"auto", flexShrink:0, display:"flex", flexDirection:"column" }}>
+                <div style={{ flex:1, overflowY:"auto" }}>
+                  {photos.map((photo, idx) => {
+                    const p = typeof photo === "string" ? { path: photo } as CarouselPhoto : photo;
+                    const active = idx === carouselEditIdx;
+                    return (
+                      <div key={idx} onClick={()=>setCarouselEditIdx(idx)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", cursor:"pointer", borderLeft: active ? `3px solid ${C.orange}` : "3px solid transparent", background: active ? "rgba(215,63,9,0.06)" : "transparent", borderBottom:`1px solid ${C.border}` }}>
+                        <img src={`${MEDIA_BASE}${p.path}`} alt="" style={{ width:36, height:46, borderRadius:6, objectFit:"cover" as const, objectPosition: p.focal_point || "50% 20%", flexShrink:0 }} />
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:11, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.path.split("/").pop()}</div>
+                          <div style={{ fontSize:9, color:C.text3 }}>{p.focal_point || "50% 20%"}</div>
+                        </div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:2, flexShrink:0 }}>
+                          <button onClick={e=>{e.stopPropagation();movePhoto(idx,-1);}} disabled={idx===0} style={{ background:"none", border:`1px solid ${C.border2}`, borderRadius:4, color:C.text3, fontSize:9, cursor:"pointer", padding:"1px 4px", opacity:idx===0?0.3:1 }}>&#9650;</button>
+                          <button onClick={e=>{e.stopPropagation();movePhoto(idx,1);}} disabled={idx===photos.length-1} style={{ background:"none", border:`1px solid ${C.border2}`, borderRadius:4, color:C.text3, fontSize:9, cursor:"pointer", padding:"1px 4px", opacity:idx===photos.length-1?0.3:1 }}>&#9660;</button>
+                          <button onClick={e=>{e.stopPropagation();removePhoto(idx);}} style={{ background:"none", border:"1px solid rgba(255,80,80,0.3)", borderRadius:4, color:"#ff6b6b", fontSize:9, cursor:"pointer", padding:"1px 4px" }}>&#215;</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ padding:10, borderTop:`1px solid ${C.border}` }}>
+                  <button style={{ ...S.btnAdd, marginTop:0 }} onClick={()=>{ setCarouselEditorOpen(false); setCarouselPickerOpen(true); }}>+ Add Photo</button>
+                </div>
+              </div>
+
+              {/* CENTER — drag-to-reposition canvas */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+                {/* Canvas */}
+                <div style={{ flex:1, background:"#050505", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+                  {selPhoto ? (
+                    <div
+                      ref={svcCarouselCanvas}
+                      onMouseDown={()=>{svcCarouselDragging.current=true;}}
+                      onTouchStart={()=>{svcCarouselDragging.current=true;}}
+                      style={{ width:400, height:225, overflow:"hidden", borderRadius:8, border:`2px solid ${C.orange}`, cursor:"crosshair", position:"relative", flexShrink:0 }}
+                    >
+                      <img src={`${MEDIA_BASE}${selPhoto.path}`} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${fx}% ${fy}%`, transform: selZoom !== 1 ? `scale(${selZoom})` : undefined, transformOrigin:`${fx}% ${fy}%`, pointerEvents:"none" }} />
+                      {/* Service page gradient overlay preview */}
+                      <div style={{ position:"absolute", inset:0, background:"linear-gradient(to right,rgba(5,5,5,0.92) 0%,rgba(5,5,5,0.7) 45%,rgba(5,5,5,0.2) 75%,rgba(5,5,5,0.05) 100%)", pointerEvents:"none" }} />
+                      <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom,rgba(10,10,10,0.5) 0%,transparent 20%,transparent 80%,rgba(10,10,10,1) 100%)", pointerEvents:"none" }} />
+                      {/* Focal dot */}
+                      <div style={{ position:"absolute", left:`${fx}%`, top:`${fy}%`, transform:"translate(-50%,-50%)", width:14, height:14, borderRadius:"50%", background:C.orange, border:"2px solid #fff", pointerEvents:"none", boxShadow:"0 0 0 3px rgba(215,63,9,0.3)" }} />
+                      {/* Device ratio label */}
+                      <div style={{ position:"absolute", top:8, right:8, fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.4)", background:"rgba(0,0,0,0.5)", padding:"2px 6px", borderRadius:4, pointerEvents:"none" }}>16:9</div>
+                    </div>
+                  ) : (
+                    <div style={{ color:C.text3, fontSize:12 }}>No photos in carousel</div>
+                  )}
+                </div>
+
+                {/* Controls bar */}
+                <div style={{ padding:"8px 16px", borderTop:`1px solid ${C.border}`, display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
+                  {[{l:"Face",y:20},{l:"Center",y:50},{l:"Top",y:10}].map(p => (
+                    <button key={p.l} onClick={()=>{
+                      const photos2 = [...(cur.carousel_photos||[])];
+                      if (photos2[carouselEditIdx]) { photos2[carouselEditIdx] = { ...photos2[carouselEditIdx], focal_point:`50% ${p.y}%` }; upd("carousel_photos", photos2); }
+                    }} style={{ padding:"4px 10px", borderRadius:6, border: fy===p.y && fx===50 ? `1px solid ${C.orange}` : `1px solid ${C.border2}`, background: fy===p.y && fx===50 ? "rgba(215,63,9,0.15)" : "none", color: fy===p.y && fx===50 ? C.orange : C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>{p.l}</button>
+                  ))}
+                  <button onClick={()=>{
+                    const photos2 = [...(cur.carousel_photos||[])];
+                    if (photos2[carouselEditIdx]) { photos2[carouselEditIdx] = { ...photos2[carouselEditIdx], focal_point:"50% 20%" }; upd("carousel_photos", photos2); }
+                    setPhotoZooms(p => { const n={...p}; delete n[carouselEditIdx]; return n; });
+                  }} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${C.border2}`, background:"none", color:C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>Reset</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginLeft:8 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:C.text3 }}>Zoom</span>
+                    <input type="range" min={1} max={3} step={0.05} value={selZoom} onChange={e=>{ setPhotoZooms(p=>({...p,[carouselEditIdx]:parseFloat(e.target.value)})); }} style={{ width:80, accentColor:C.orange }} />
+                    <span style={{ fontSize:10, color:C.text3, minWidth:32, textAlign:"right" as const }}>{selZoom.toFixed(2)}x</span>
+                  </div>
+                  <div style={{ flex:1 }} />
+                  <span style={{ fontSize:10, color:C.text3 }}>{fx}% {fy}%</span>
+                  <button onClick={saveFocalForPhoto} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${C.orange}`, background:"rgba(215,63,9,0.15)", color:C.orange, fontSize:10, fontWeight:700, cursor:"pointer" }}>Save Position</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }

@@ -83,7 +83,8 @@ export default async function ServicesElevatedPage() {
   );
   const rows = await res.json();
   const settings = rows?.[0]?.settings ?? {};
-  const photos: string[] = settings?.["elevated"]?.carousel_photos ?? DEFAULT_PHOTOS;
+  const raw = settings?.["elevated"]?.carousel_photos ?? DEFAULT_PHOTOS;
+  const photos: {path:string; brand_logo_url?:string; focal_point?:string}[] = (Array.isArray(raw) ? raw : DEFAULT_PHOTOS).map((p: unknown) => typeof p === "string" ? { path: p } : p as {path:string; brand_logo_url?:string; focal_point?:string});
 
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
@@ -117,9 +118,9 @@ export default async function ServicesElevatedPage() {
 
       <div className="hero-wrap">
         <div className="carousel-bg">
-          {photos.map((src, i) => (
+          {photos.map((photo, i) => (
             <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`}>
-              <img className={i % 2 === 0 ? "ken-burns-a" : "ken-burns-b"} src={`${BASE}${encodeURIComponent(src)}`} alt="" />
+              <img className={i % 2 === 0 ? "ken-burns-a" : "ken-burns-b"} src={`${BASE}${photo.path}`} alt="" style={{ objectPosition: photo.focal_point || '50% 20%' }} />
             </div>
           ))}
           <div className="carousel-overlay" />
