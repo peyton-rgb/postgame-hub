@@ -860,6 +860,8 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const [selectedBrandId, setSelectedBrandId] = useState("");
   const [brandCampaigns, setBrandCampaigns] = useState<{id:string;name:string}[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [campaignAthletes, setCampaignAthletes] = useState<{id:string;name:string;school:string;sport:string}[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState("");
 
   useEffect(() => {
     supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,published,featured,sort_order,image_url,focal_point").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
@@ -878,6 +880,20 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
       setSelectedCampaignId("");
     });
   }, [selectedBrandId]);
+
+  useEffect(() => {
+    if(!selectedCampaignId){ setCampaignAthletes([]); setSelectedAthleteId(""); return; }
+    supabase.from("athletes").select("id,name,school,sport").eq("campaign_id",selectedCampaignId).order("name").then(({ data }) => {
+      setCampaignAthletes((data||[]) as any);
+      setSelectedAthleteId("");
+    });
+  }, [selectedCampaignId]);
+
+  useEffect(() => {
+    if(!selectedAthleteId) return;
+    const ath = campaignAthletes.find(a=>a.id===selectedAthleteId);
+    if(ath){ setNewAthlete(ath.name||""); setNewSchool(ath.school||""); setNewSport(ath.sport||""); }
+  }, [selectedAthleteId]);
 
   const togglePublished = async (id: string, val: boolean) => {
     await supabase.from("deals").update({ published: val }).eq("id", id);
@@ -982,6 +998,13 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                 </select>
               </div>
               <div style={{ marginBottom:12 }}>
+                <label style={S.label}>Athlete</label>
+                <select style={{ ...S.input, opacity: selectedCampaignId ? 1 : 0.5 }} value={selectedAthleteId} onChange={e=>setSelectedAthleteId(e.target.value)} disabled={!selectedCampaignId}>
+                  <option value="">{selectedCampaignId ? "Select an athlete (optional)..." : "Select a campaign first"}</option>
+                  {campaignAthletes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom:12 }}>
                 <label style={S.label}>Athlete Name *</label>
                 <input style={S.input} value={newAthlete} onChange={e=>setNewAthlete(e.target.value)} placeholder="e.g. John Doe" />
               </div>
@@ -996,7 +1019,7 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                 </div>
               </div>
               <div style={{ display:"flex", gap:10, marginTop:18 }}>
-                <button onClick={()=>{ setShowCreate(false); setSelectedBrandId(""); setSelectedCampaignId(""); }} style={{ ...S.btnPreview, flex:1 }}>Cancel</button>
+                <button onClick={()=>{ setShowCreate(false); setSelectedBrandId(""); setSelectedCampaignId(""); setSelectedAthleteId(""); setNewAthlete(""); setNewSport(""); setNewSchool(""); setCreateError(""); }} style={{ ...S.btnPreview, flex:1 }}>Cancel</button>
                 <button
                   disabled={creating}
                   onClick={async ()=>{
@@ -1010,13 +1033,15 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                       athlete_name: newAthlete.trim(),
                       athlete_sport: newSport.trim()||null,
                       athlete_school: newSchool.trim()||null,
+                      tier: "tier_1",
                       published: false,
                       featured: false,
+                      sort_order: 0,
                     }).select("id").single();
                     if(error||!data){ setCreateError(error?.message||"Failed to create deal."); setCreating(false); return; }
                     setCreating(false); setShowCreate(false);
-                    setSelectedBrandId(""); setSelectedCampaignId("");
-                    setNewBrand(""); setNewAthlete(""); setNewSport(""); setNewSchool("");
+                    setSelectedBrandId(""); setSelectedCampaignId(""); setSelectedAthleteId("");
+                    setNewAthlete(""); setNewSport(""); setNewSchool("");
                     router.push(`/dashboard/deals/${data.id}`);
                   }}
                   style={{ ...S.btnSave, flex:1, opacity: creating ? 0.6 : 1 }}
