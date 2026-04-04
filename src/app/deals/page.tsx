@@ -14,7 +14,7 @@ type DealRow = Deal & {
   brand_id?: string | null;
   source_campaign_id?: string | null;
   campaign_recaps?: { name: string } | null;
-  brands?: { logo_primary_url: string | null } | null;
+  brands?: { logo_primary_url: string | null; logo_white_url?: string | null } | null;
 };
 
 /* ── Stats ────────────────────────────────────────────────────── */
@@ -76,7 +76,7 @@ export default function DealsPage() {
     (async () => {
       const { data } = await supabase
         .from("deals")
-        .select("*, campaign_recaps(name), brands(logo_primary_url)")
+        .select("*, campaign_recaps(name), brands(logo_primary_url, logo_white_url)")
         .eq("published", true)
         .order("featured", { ascending: false })
         .order("sort_order", { ascending: true });
@@ -284,21 +284,20 @@ export default function DealsPage() {
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 260, background: "linear-gradient(to top, #000000 0%, rgba(0,0,0,0.95) 25%, rgba(0,0,0,0.6) 55%, transparent 100%)", zIndex: 4, pointerEvents: "none" }} />
               {/* Mobile nameplate — logo tab + glass card */}
               <div className="animate-hero-np" style={{ position: "absolute", bottom: 14, left: 14, zIndex: 10 }}>
-                {/* Logo tab */}
-                <div style={{ marginLeft: 10, width: 40, height: 40, borderRadius: "8px 8px 0 0", background: "#fff", padding: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {curDeal.brands?.logo_primary_url
-                    ? <img src={curDeal.brands.logo_primary_url} alt="" style={{ maxWidth: 30, maxHeight: 30, objectFit: "contain" }} />
-                    : <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#D73F09", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "#fff" }}>{curDeal.brand_name?.slice(0, 2).toUpperCase()}</div>
-                  }
-                </div>
+                {/* Floating logo */}
+                {(curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url) && (
+                  <div style={{ marginLeft: 12, marginBottom: 6, height: 32, display: "flex", alignItems: "flex-end" }}>
+                    <img src={curDeal.brands.logo_white_url || curDeal.brands.logo_primary_url!} alt="" style={{ maxHeight: 32, maxWidth: 80, objectFit: "contain", ...(!curDeal.brands.logo_white_url ? { filter: "brightness(0) invert(1)" } : {}) }} />
+                  </div>
+                )}
                 {/* Glass card */}
-                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0 10px 10px 10px", padding: "8px 12px 10px", minWidth: 160 }}>
+                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 12px 10px", minWidth: 140 }}>
                   <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
-                  <div style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 1 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>
                   <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "6px 0" }} />
-                  <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{curDeal.athlete_name}</div>
-                  {(curDeal.athlete_school || curDeal.athlete_sport) && (
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{curDeal.athlete_name}</div>
+                  {(curDeal.athlete_school || curDeal.athlete_sport) && (curDeal.athlete_name?.length || 0) <= 18 && (
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
                   )}
                 </div>
                 {/* Dots */}
@@ -336,17 +335,16 @@ export default function DealsPage() {
               </div>
               {/* Right — logo tab + glass nameplate */}
               <div className="animate-hero-np" style={{ flexShrink: 0 }}>
-                <div style={{ marginLeft: 12, width: 42, height: 42, borderRadius: "10px 10px 0 0", background: "#fff", padding: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {curDeal.brands?.logo_primary_url
-                    ? <img src={curDeal.brands.logo_primary_url} alt="" style={{ maxWidth: 32, maxHeight: 32, objectFit: "contain" }} />
-                    : <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#D73F09", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: "#fff" }}>{curDeal.brand_name?.slice(0, 2).toUpperCase()}</div>
-                  }
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0 10px 10px 10px", padding: "10px 14px 12px", minWidth: 190 }}>
+                {(curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url) && (
+                  <div style={{ marginLeft: 12, marginBottom: 6, height: 36, display: "flex", alignItems: "flex-end" }}>
+                    <img src={curDeal.brands.logo_white_url || curDeal.brands.logo_primary_url!} alt="" style={{ maxHeight: 36, maxWidth: 90, objectFit: "contain", ...(!curDeal.brands.logo_white_url ? { filter: "brightness(0) invert(1)" } : {}) }} />
+                  </div>
+                )}
+                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px 12px", minWidth: 190 }}>
                   <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
                   <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>
                   <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
-                  <div style={{ fontSize: 17, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{curDeal.athlete_name}</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{curDeal.athlete_name}</div>
                   {(curDeal.athlete_school || curDeal.athlete_sport) && (
                     <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
                   )}
@@ -378,15 +376,14 @@ export default function DealsPage() {
               </div>
               {/* Right — logo tab + glass nameplate */}
               <div className="animate-hero-np" style={{ position: "absolute", bottom: 20, right: 24, zIndex: 10 }}>
-                {/* Logo tab */}
-                <div style={{ marginLeft: 14, width: 48, height: 48, borderRadius: "10px 10px 0 0", background: "#fff", padding: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {curDeal.brands?.logo_primary_url
-                    ? <img src={curDeal.brands.logo_primary_url} alt="" style={{ maxWidth: 36, maxHeight: 36, objectFit: "contain" }} />
-                    : <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#D73F09", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#fff" }}>{curDeal.brand_name?.slice(0, 2).toUpperCase()}</div>
-                  }
-                </div>
+                {/* Floating logo */}
+                {(curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url) && (
+                  <div style={{ marginLeft: 12, marginBottom: 6, height: 38, display: "flex", alignItems: "flex-end" }}>
+                    <img src={curDeal.brands.logo_white_url || curDeal.brands.logo_primary_url!} alt="" style={{ maxHeight: 38, maxWidth: 100, objectFit: "contain", ...(!curDeal.brands.logo_white_url ? { filter: "brightness(0) invert(1)" } : {}) }} />
+                  </div>
+                )}
                 {/* Glass card */}
-                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0 10px 10px 10px", padding: "10px 16px 14px", minWidth: 220 }}>
+                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 16px 14px", minWidth: 220 }}>
                   <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
                   <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>
                   <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
