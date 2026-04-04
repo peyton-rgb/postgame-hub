@@ -421,8 +421,13 @@ export default function DealsPage() {
         </div>
       )}
 
+      {/* ── Hero bleed gradient — extends hero photo fade into sections below ── */}
+      {featured.length > 0 && (
+        <div style={{ position: "relative", marginTop: -200, paddingTop: 200, background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 30%, #000 55%)", pointerEvents: "none", zIndex: 3 }}>
+          <div style={{ pointerEvents: "auto" }}>
+
       {/* ── Stats Bar ──────────────────────────────────────── */}
-      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "#0a0a0a" }}>
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
           {[
             { num: campaignsCount + "+", label: "Campaigns Run" },
@@ -440,7 +445,7 @@ export default function DealsPage() {
 
       {/* ── Featured Athletes Carousel ─────────────────────── */}
       {featured.length > 0 && (
-        <div style={{ padding: "clamp(40px,6vw,64px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ padding: "clamp(28px,4vw,48px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto" }}>
             <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
             <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
@@ -468,6 +473,10 @@ export default function DealsPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
           </div>
         </div>
       )}
