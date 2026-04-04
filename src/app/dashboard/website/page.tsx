@@ -1120,6 +1120,7 @@ function WebsiteEditorInner() {
   const [previewKey, setPreviewKey] = useState(0);
   const [toast, setToast] = useState("");
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [previewSize, setPreviewSize] = useState<"desktop"|"tablet"|"mobile">("desktop");
 
   const setPage = (p: string) => router.push(`/dashboard/website?page=${p}`, { scroll: false });
 
@@ -1208,15 +1209,23 @@ function WebsiteEditorInner() {
             <div style={{ display:"flex", gap:10, alignItems:"center" }}>
               <button onClick={() => setPreviewKey(k=>k+1)} style={{ ...S.btnSm, fontSize:11 }}>↺ Refresh</button>
               <a href={previewUrl} target="_blank" style={{ fontSize:11, color:C.text3, textDecoration:"none", fontWeight:700 }}>Open ↗</a>
+              <span style={{ width:1, height:14, background:C.border2, margin:"0 2px" }} />
+              {(["desktop","tablet","mobile"] as const).map(s => (
+                <button key={s} onClick={()=>setPreviewSize(s)} style={{ ...S.btnSm, fontSize:11, color: previewSize===s ? C.orange : C.text3, borderColor: previewSize===s ? C.orange : C.border2 }}>
+                  {s.charAt(0).toUpperCase()+s.slice(1)}
+                </button>
+              ))}
             </div>
           </div>
-          <iframe
-            key={previewKey}
-            ref={iframeRef}
-            src={previewUrl}
-            style={S.previewFrame}
-            title="Page Preview"
-          />
+          <div style={{ position:"absolute", top:40, left:0, right:0, bottom:0, background:"#0a0a0a", display:"flex", justifyContent:"center", overflowX:"auto" }}>
+            <iframe
+              key={previewKey}
+              ref={iframeRef}
+              src={previewUrl}
+              style={{ width: previewSize==="desktop" ? "100%" : previewSize==="tablet" ? 768 : 390, height:"100%", border:"none", background:"#000", flexShrink:0 }}
+              title="Page Preview"
+            />
+          </div>
         </div>
       </div>
 
