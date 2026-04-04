@@ -108,6 +108,15 @@ export default function DealsPage() {
   /* ── Helpers ──────────────────────────────────────────────── */
   const curDeal = featured[heroIdx] || null;
   const curFocal = curDeal ? (focalMap[curDeal.id] || "50% 25%") : "50% 25%";
+  // On mobile, push photo down by adding 15% to Y (capped at 80%) so face isn't hidden by title
+  const mobileFocal = useMemo(() => {
+    const parts = curFocal.split(/\s+/);
+    const x = parts[0] || "50%";
+    const yNum = parseFloat(parts[1]) || 25;
+    const mobileY = Math.min(80, yNum + 15);
+    return `${x} ${mobileY}%`;
+  }, [curFocal]);
+  const heroFocalPos = isMobile ? mobileFocal : curFocal;
 
   const sports = useMemo(() => [...new Set(deals.map(d => d.athlete_sport).filter(Boolean))].sort() as string[], [deals]);
   const colleges = useMemo(() => [...new Set(deals.map(d => d.athlete_school).filter(Boolean))].sort() as string[], [deals]);
@@ -220,12 +229,14 @@ export default function DealsPage() {
             <img
               src={curDeal.image_url!}
               alt={curDeal.athlete_name || ""}
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: curFocal }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: heroFocalPos }}
             />
           </div>
 
-          {/* Top black fade */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 120, background: "linear-gradient(to bottom, #000 0%, transparent 100%)", zIndex: 8, pointerEvents: "none" }} />
+          {/* Top black fade — stronger on mobile for title readability */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: isMobile ? 220 : 120, background: isMobile
+            ? "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 35%, rgba(0,0,0,0.4) 65%, transparent 100%)"
+            : "linear-gradient(to bottom, #000 0%, transparent 100%)", zIndex: 8, pointerEvents: "none" }} />
           {/* Bottom-heavy gradient */}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 22%, transparent 42%, rgba(0,0,0,0.82) 68%, rgba(0,0,0,0.98) 100%)" }} />
           {/* Subtle left gradient for nav */}
@@ -237,14 +248,14 @@ export default function DealsPage() {
               {/* Title area — top */}
               <div style={{ position: "absolute", top: 52, left: 14, zIndex: 10, pointerEvents: "none" }}>
                 <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 6 }}>Postgame NIL</div>
-                <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 12 }}>
+                <div style={{ fontSize: "clamp(34px,9vw,44px)", fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 12 }}>
                   NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
                 </div>
               </div>
               {/* Deep bottom gradient for cinematic nameplate */}
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 200, background: "linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.7) 40%, transparent 100%)", zIndex: 4, pointerEvents: "none" }} />
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 240, background: "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.5) 60%, transparent 100%)", zIndex: 4, pointerEvents: "none" }} />
               {/* Cinematic nameplate — text floating over gradient */}
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, padding: "0 14px 20px" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, padding: "0 14px 28px" }}>
                 {/* Brand row */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {curDeal.brands?.logo_primary_url && (
