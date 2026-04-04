@@ -846,7 +846,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
 function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const supabase = createBrowserSupabase();
   const router = useRouter();
-  const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;athlete_school?:string;published:boolean;featured:boolean;sort_order:number;image_url:string;focal_point:string;focal_point_tablet?:string;focal_point_mobile?:string}[]>([]);
+  const [deals, setDeals] = useState<{id:string;athlete_name:string;brand_name:string;athlete_sport:string;athlete_school?:string;published:boolean;featured:boolean;sort_order:number;image_url:string;focal_point:string;focal_point_tablet?:string;focal_point_mobile?:string;zoom_desktop?:number;zoom_tablet?:number;zoom_mobile?:number}[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -867,13 +867,13 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   const [showCarouselEditor, setShowCarouselEditor] = useState(false);
   const [carouselSelected, setCarouselSelected] = useState(0);
   const [carouselDevice, setCarouselDevice] = useState<"desktop"|"tablet"|"mobile">("desktop");
-  const [carouselFocals, setCarouselFocals] = useState<Record<string,{desktop:string;tablet:string;mobile:string}>>({});
+  const [carouselFocals, setCarouselFocals] = useState<Record<string,{desktop:{focal:string;zoom:number};tablet:{focal:string;zoom:number};mobile:{focal:string;zoom:number}}>>({});
   const [carouselSaving, setCarouselSaving] = useState(false);
   const carouselDragging = useRef(false);
   const carouselCanvas = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,athlete_school,published,featured,sort_order,image_url,focal_point,focal_point_tablet,focal_point_mobile").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
+    supabase.from("deals").select("id,athlete_name,brand_name,athlete_sport,athlete_school,published,featured,sort_order,image_url,focal_point,focal_point_tablet,focal_point_mobile,zoom_desktop,zoom_tablet,zoom_mobile").order("featured",{ascending:false}).order("sort_order",{ascending:true}).then(({ data }) => {
       const rows = (data||[]) as any[];
       setDeals(rows);
       setHeroOrder(rows.filter((d:any)=>d.featured).map((d:any)=>d.id));
@@ -940,9 +940,13 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
   };
 
   const openCarouselEditor = () => {
-    const fm: Record<string,{desktop:string;tablet:string;mobile:string}> = {};
+    const fm: Record<string,{desktop:{focal:string;zoom:number};tablet:{focal:string;zoom:number};mobile:{focal:string;zoom:number}}> = {};
     deals.filter(d=>d.featured).forEach(d => {
-      fm[d.id] = { desktop: d.focal_point||"50% 20%", tablet: d.focal_point_tablet||"50% 20%", mobile: d.focal_point_mobile||"50% 20%" };
+      fm[d.id] = {
+        desktop: { focal: d.focal_point||"50% 20%", zoom: d.zoom_desktop ?? 1 },
+        tablet: { focal: d.focal_point_tablet||"50% 20%", zoom: d.zoom_tablet ?? 1 },
+        mobile: { focal: d.focal_point_mobile||"50% 20%", zoom: d.zoom_mobile ?? 1 },
+      };
     });
     setCarouselFocals(fm);
     setCarouselSelected(0);
@@ -966,7 +970,7 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
       const x = Math.round(Math.max(0,Math.min(100,(cx-rect.left)/rect.width*100)));
       const y = Math.round(Math.max(0,Math.min(100,(cy-rect.top)/rect.height*100)));
       const selId = heroOrder[carouselSelected];
-      if (selId) setCarouselFocals(p => ({...p,[selId]:{...p[selId],[carouselDevice]:`${x}% ${y}%`}}));
+      if (selId) setCarouselFocals(p => ({...p,[selId]:{...p[selId],[carouselDevice]:{...p[selId][carouselDevice],focal:`${x}% ${y}%`}}}));
     };
     const up = () => { carouselDragging.current = false; };
     window.addEventListener("mousemove",move);
@@ -982,14 +986,14 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
     await Promise.all(heroOrder.map((id,i) => supabase.from("deals").update({sort_order:i}).eq("id",id)));
     // Save focal points
     for (const [id, fp] of Object.entries(carouselFocals)) {
-      await supabase.from("deals").update({ focal_point:fp.desktop, focal_point_tablet:fp.tablet, focal_point_mobile:fp.mobile }).eq("id",id);
+      await supabase.from("deals").update({ focal_point:fp.desktop.focal, focal_point_tablet:fp.tablet.focal, focal_point_mobile:fp.mobile.focal, zoom_desktop:fp.desktop.zoom, zoom_tablet:fp.tablet.zoom, zoom_mobile:fp.mobile.zoom }).eq("id",id);
     }
     setDeals(prev => prev.map(d => {
       const idx = heroOrder.indexOf(d.id);
       const fp = carouselFocals[d.id];
       const updates: any = {};
       if (idx >= 0) updates.sort_order = idx;
-      if (fp) { updates.focal_point = fp.desktop; updates.focal_point_tablet = fp.tablet; updates.focal_point_mobile = fp.mobile; }
+      if (fp) { updates.focal_point = fp.desktop.focal; updates.focal_point_tablet = fp.tablet.focal; updates.focal_point_mobile = fp.mobile.focal; updates.zoom_desktop = fp.desktop.zoom; updates.zoom_tablet = fp.tablet.zoom; updates.zoom_mobile = fp.mobile.zoom; }
       return Object.keys(updates).length ? {...d,...updates} : d;
     }));
     setCarouselSaving(false);
@@ -1160,7 +1164,9 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
       {showCarouselEditor && (() => {
         const selId = heroOrder[carouselSelected];
         const selDeal = selId ? deals.find(d=>d.id===selId) : null;
-        const selFocal = selId && carouselFocals[selId] ? carouselFocals[selId][carouselDevice] : "50% 20%";
+        const selEntry = selId && carouselFocals[selId] ? carouselFocals[selId][carouselDevice] : { focal: "50% 20%", zoom: 1 };
+        const selFocal = selEntry.focal;
+        const selZoom = selEntry.zoom;
         const fpParts = (selFocal||"50% 20%").match(/(\d+)%\s+(\d+)%/);
         const fx = fpParts ? parseInt(fpParts[1]) : 50;
         const fy = fpParts ? parseInt(fpParts[2]) : 20;
@@ -1225,7 +1231,7 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                       onTouchStart={()=>{carouselDragging.current=true;}}
                       style={{ width:ds.w, height:ds.h, overflow:"hidden", borderRadius:8, border:`2px solid ${C.orange}`, cursor:"crosshair", position:"relative", flexShrink:0 }}
                     >
-                      <img src={selDeal.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${fx}% ${fy}%`, pointerEvents:"none" }} />
+                      <img src={selDeal.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:`${fx}% ${fy}%`, transform: selZoom !== 1 ? `scale(${selZoom})` : undefined, transformOrigin:`${fx}% ${fy}%`, pointerEvents:"none" }} />
                       {/* Hero overlay gradients */}
                       <div style={{ position:"absolute", top:0, left:0, right:0, height:"30%", background:"linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)", pointerEvents:"none" }} />
                       <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"45%", background:"linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)", pointerEvents:"none" }} />
@@ -1250,9 +1256,14 @@ function DealsEditor({ onSaved }: { onSaved: () => void }) {
                 {/* Controls bar */}
                 <div style={{ padding:"8px 16px", borderTop:`1px solid ${C.border}`, display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
                   {[{l:"Face",y:20},{l:"Center",y:50}].map(p => (
-                    <button key={p.l} onClick={()=>{ if(!selId) return; setCarouselFocals(prev=>({...prev,[selId]:{...prev[selId],[carouselDevice]:`50% ${p.y}%`}})); }} style={{ padding:"4px 10px", borderRadius:6, border: fy===p.y && fx===50 ? `1px solid ${C.orange}` : `1px solid ${C.border2}`, background: fy===p.y && fx===50 ? "rgba(215,63,9,0.15)" : "none", color: fy===p.y && fx===50 ? C.orange : C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>{p.l}</button>
+                    <button key={p.l} onClick={()=>{ if(!selId) return; setCarouselFocals(prev=>({...prev,[selId]:{...prev[selId],[carouselDevice]:{...prev[selId][carouselDevice],focal:`50% ${p.y}%`}}})); }} style={{ padding:"4px 10px", borderRadius:6, border: fy===p.y && fx===50 ? `1px solid ${C.orange}` : `1px solid ${C.border2}`, background: fy===p.y && fx===50 ? "rgba(215,63,9,0.15)" : "none", color: fy===p.y && fx===50 ? C.orange : C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>{p.l}</button>
                   ))}
-                  <button onClick={()=>{ if(!selId) return; setCarouselFocals(prev=>({...prev,[selId]:{...prev[selId],[carouselDevice]:"50% 20%"}})); }} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${C.border2}`, background:"none", color:C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>Reset</button>
+                  <button onClick={()=>{ if(!selId) return; setCarouselFocals(prev=>({...prev,[selId]:{...prev[selId],[carouselDevice]:{focal:"50% 20%",zoom:1}}})); }} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${C.border2}`, background:"none", color:C.text3, fontSize:10, fontWeight:700, cursor:"pointer" }}>Reset</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginLeft:8 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:C.text3 }}>Zoom</span>
+                    <input type="range" min={1} max={3} step={0.05} value={selZoom} onChange={e=>{ if(!selId) return; const z=parseFloat(e.target.value); setCarouselFocals(prev=>({...prev,[selId]:{...prev[selId],[carouselDevice]:{...prev[selId][carouselDevice],zoom:z}}})); }} style={{ width:80, accentColor:C.orange }} />
+                    <span style={{ fontSize:10, color:C.text3, minWidth:32, textAlign:"right" as const }}>{selZoom.toFixed(2)}x</span>
+                  </div>
                   <div style={{ flex:1 }} />
                   <span style={{ fontSize:10, color:C.text3 }}>{fx}% {fy}%</span>
                   {selId && (

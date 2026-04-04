@@ -10,6 +10,9 @@ type DealRow = Deal & {
   focal_point?: string | null;
   focal_point_tablet?: string | null;
   focal_point_mobile?: string | null;
+  zoom_desktop?: number | null;
+  zoom_tablet?: number | null;
+  zoom_mobile?: number | null;
   source_campaign_id?: string | null;
   brand_id?: string | null;
   campaign_recaps?: { name: string } | null;
@@ -75,6 +78,7 @@ export default function DealEditor() {
   /* ── Photo editor state ─────────────────────────────────────── */
   const [device, setDevice] = useState<DeviceKey>("desktop");
   const [positions, setPositions] = useState<Record<DeviceKey, FocalXY>>({ desktop: { x: 50, y: 20 }, tablet: { x: 50, y: 20 }, mobile: { x: 50, y: 20 } });
+  const [zooms, setZooms] = useState<Record<DeviceKey, number>>({ desktop: 1, tablet: 1, mobile: 1 });
   const [savingPos, setSavingPos] = useState(false);
   const dragging = useRef(false);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -106,6 +110,11 @@ export default function DealEditor() {
           desktop: parseFocal(d.focal_point),
           tablet: parseFocal(d.focal_point_tablet),
           mobile: parseFocal(d.focal_point_mobile),
+        });
+        setZooms({
+          desktop: d.zoom_desktop ?? 1,
+          tablet: d.zoom_tablet ?? 1,
+          mobile: d.zoom_mobile ?? 1,
         });
         // Load campaign photos
         if (d.source_campaign_id) {
@@ -172,6 +181,9 @@ export default function DealEditor() {
       focal_point: focalStr(positions.desktop),
       focal_point_tablet: focalStr(positions.tablet),
       focal_point_mobile: focalStr(positions.mobile),
+      zoom_desktop: zooms.desktop,
+      zoom_tablet: zooms.tablet,
+      zoom_mobile: zooms.mobile,
     }).eq("id", deal.id);
     setSavingPos(false);
   };
@@ -212,6 +224,7 @@ export default function DealEditor() {
   };
 
   const curPos = positions[device];
+  const curZoom = zooms[device];
   const devConfig = DEVICES.find(d => d.key === device)!;
 
   if (loading) return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", color: C.text3, fontFamily: "Arial,sans-serif" }}>Loading...</div>;
@@ -316,7 +329,7 @@ export default function DealEditor() {
                 onTouchStart={() => { dragging.current = true; }}
                 style={{ width: devConfig.w, height: devConfig.h, overflow: "hidden", borderRadius: 8, border: `2px solid ${C.orange}`, cursor: "crosshair", position: "relative", flexShrink: 0 }}
               >
-                <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${curPos.x}% ${curPos.y}%`, pointerEvents: "none" }} />
+                <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${curPos.x}% ${curPos.y}%`, transform: `scale(${curZoom})`, transformOrigin: `${curPos.x}% ${curPos.y}%`, pointerEvents: "none" }} />
 
                 {/* Hero overlay: top gradient */}
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)", pointerEvents: "none" }} />
@@ -350,6 +363,11 @@ export default function DealEditor() {
           {PRESETS.slice(0, 3).map(p => (
             <button key={p.label} onClick={() => setPositions(prev => ({ ...prev, [device]: { x: 50, y: p.y } }))} style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${curPos.x === 50 && curPos.y === p.y ? C.orange : C.border2}`, background: curPos.x === 50 && curPos.y === p.y ? "rgba(215,63,9,0.15)" : "none", color: curPos.x === 50 && curPos.y === p.y ? C.orange : C.text3, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>{p.label}</button>
           ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.text3 }}>Zoom</span>
+            <input type="range" min={1} max={3} step={0.05} value={curZoom} onChange={e => setZooms(prev => ({ ...prev, [device]: parseFloat(e.target.value) }))} style={{ width: 80, accentColor: C.orange }} />
+            <span style={{ fontSize: 10, color: C.text3, minWidth: 32, textAlign: "right" }}>{curZoom.toFixed(2)}x</span>
+          </div>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 10, color: C.text3 }}>{curPos.x}% {curPos.y}%</span>
           <div style={{ display: "flex", gap: 4 }}>

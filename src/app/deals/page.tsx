@@ -11,6 +11,9 @@ type DealRow = Deal & {
   focal_point?: string | null;
   focal_point_tablet?: string | null;
   focal_point_mobile?: string | null;
+  zoom_desktop?: number | null;
+  zoom_tablet?: number | null;
+  zoom_mobile?: number | null;
   brand_id?: string | null;
   source_campaign_id?: string | null;
   campaign_recaps?: { name: string } | null;
@@ -58,6 +61,11 @@ export default function DealsPage() {
   const [tabletFocalMap, setTabletFocalMap] = useState<Record<string, string>>({});
   const [mobileFocalMap, setMobileFocalMap] = useState<Record<string, string>>({});
 
+  /* ── Zoom maps (per device) ──────────────────────────────── */
+  const [zoomMap, setZoomMap] = useState<Record<string, number>>({});
+  const [tabletZoomMap, setTabletZoomMap] = useState<Record<string, number>>({});
+  const [mobileZoomMap, setMobileZoomMap] = useState<Record<string, number>>({});
+
   /* ── Responsive ───────────────────────────────────────────── */
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -85,14 +93,23 @@ export default function DealsPage() {
       const fm: Record<string, string> = {};
       const tfm: Record<string, string> = {};
       const mfm: Record<string, string> = {};
+      const zm: Record<string, number> = {};
+      const tzm: Record<string, number> = {};
+      const mzm: Record<string, number> = {};
       rows.forEach(d => {
         if (d.focal_point) fm[d.id] = d.focal_point;
         if (d.focal_point_tablet) tfm[d.id] = d.focal_point_tablet;
         if (d.focal_point_mobile) mfm[d.id] = d.focal_point_mobile;
+        if (d.zoom_desktop != null) zm[d.id] = d.zoom_desktop;
+        if (d.zoom_tablet != null) tzm[d.id] = d.zoom_tablet;
+        if (d.zoom_mobile != null) mzm[d.id] = d.zoom_mobile;
       });
       setFocalMap(fm);
       setTabletFocalMap(tfm);
       setMobileFocalMap(mfm);
+      setZoomMap(zm);
+      setTabletZoomMap(tzm);
+      setMobileZoomMap(mzm);
       setLoading(false);
     })();
   }, []);
@@ -126,7 +143,13 @@ export default function DealsPage() {
     if (isTablet) return tabletFocalMap[dealId] || focalMap[dealId] || "50% 20%";
     return focalMap[dealId] || "50% 25%";
   };
+  const getZoom = (dealId: string): number => {
+    if (isMobile) return mobileZoomMap[dealId] ?? 1;
+    if (isTablet) return tabletZoomMap[dealId] ?? 1;
+    return zoomMap[dealId] ?? 1;
+  };
   const heroFocalPos = curDeal ? getFocal(curDeal.id) : "50% 25%";
+  const heroZoom = curDeal ? getZoom(curDeal.id) : 1;
 
   const sports = useMemo(() => [...new Set(deals.map(d => d.athlete_sport).filter(Boolean))].sort() as string[], [deals]);
   const colleges = useMemo(() => [...new Set(deals.map(d => d.athlete_school).filter(Boolean))].sort() as string[], [deals]);
@@ -258,7 +281,7 @@ export default function DealsPage() {
               className={heroIdx % 2 === 0 ? "ken-burns-a" : "ken-burns-b"}
               src={curDeal.image_url!}
               alt={curDeal.athlete_name || ""}
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: heroFocalPos }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: heroFocalPos, transform: heroZoom !== 1 ? `scale(${heroZoom})` : undefined, transformOrigin: heroFocalPos }}
             />
           </div>
 
@@ -425,7 +448,7 @@ export default function DealsPage() {
               <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
                 {featured.map(d => (
                   <Link key={d.id} href={`/deals/${d.id}`} style={{ flex: `0 0 ${carCardW}`, width: carCardW, height: carCardH, borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", position: "relative", textDecoration: "none", color: "#fff", display: "block" }}>
-                    <img src={d.image_url!} alt={d.athlete_name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(d.id) }} />
+                    <img src={d.image_url!} alt={d.athlete_name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(d.id), transform: getZoom(d.id) !== 1 ? `scale(${getZoom(d.id)})` : undefined, transformOrigin: getFocal(d.id) }} />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "clamp(14px,2vw,20px) clamp(12px,1.5vw,18px)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                       <div style={{ fontSize: "clamp(9px,0.9vw,10px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D73F09", marginBottom: 2 }}>{d.brand_name}</div>
@@ -478,7 +501,7 @@ export default function DealsPage() {
               <Link key={deal.id} href={`/deals/${deal.id}`} className="hover-lift" style={{ borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#111", textDecoration: "none", color: "#fff", display: "block" }}>
                 {deal.image_url && (
                   <div style={{ aspectRatio: "4/5", overflow: "hidden" }}>
-                    <img src={deal.image_url} alt={deal.athlete_name || deal.brand_name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(deal.id), transition: "transform 0.4s" }} />
+                    <img src={deal.image_url} alt={deal.athlete_name || deal.brand_name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(deal.id), transform: getZoom(deal.id) !== 1 ? `scale(${getZoom(deal.id)})` : undefined, transformOrigin: getFocal(deal.id), transition: "transform 0.4s" }} />
                   </div>
                 )}
                 <div style={{ padding: "clamp(12px,1.5vw,16px) clamp(14px,1.8vw,20px) clamp(14px,1.8vw,20px)" }}>
