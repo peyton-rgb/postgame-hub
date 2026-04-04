@@ -585,7 +585,7 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
               const p = typeof photo === "string" ? {path: photo} : photo;
               return (
                 <div key={i} style={{ position:"relative", width:72, height:72, borderRadius:8, overflow:"hidden", border:"1px solid rgba(255,255,255,0.1)" }}>
-                  <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent(p.path)}`} style={{ width:72, height:72, objectFit:"cover", objectPosition:"50% 15%" }} alt="" />
+                  <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${p.path}`} style={{ width:72, height:72, objectFit:"cover", objectPosition:"50% 15%" }} alt="" />
                   {p.brand_logo_url && (
                     <div style={{ position:"absolute", bottom:3, right:3, width:22, height:22, borderRadius:4, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                       <img src={p.brand_logo_url} style={{ width:18, height:18, objectFit:"contain" }} alt="" />
@@ -614,7 +614,7 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
           onSelect={(item) => {
             if (item.type === "image") {
               const raw = item.url.replace("https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/","").split("?")[0];
-              setPendingPhoto({ path: decodeURIComponent(raw) });
+              setPendingPhoto({ path: raw });
             }
             setCarouselPickerOpen(false);
           }}
@@ -627,7 +627,7 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
             <div style={{ fontSize:16, fontWeight:800, color:"#fff", marginBottom:4 }}>Add Brand Logo?</div>
             <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginBottom:20 }}>Optionally overlay a brand logo on the bottom-right of this photo.</div>
             <div style={{ display:"flex", gap:12, marginBottom:20, alignItems:"center" }}>
-              <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${encodeURIComponent(pendingPhoto.path)}`} style={{ width:80, height:80, objectFit:"cover", objectPosition:"50% 15%", borderRadius:10, flexShrink:0 }} alt="" />
+              <img src={`https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/${pendingPhoto.path}`} style={{ width:80, height:80, objectFit:"cover", objectPosition:"50% 15%", borderRadius:10, flexShrink:0 }} alt="" />
               <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)", wordBreak:"break-all" }}>{pendingPhoto.path.split("/").pop()}</div>
             </div>
             <div style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Select Brand</div>
@@ -643,7 +643,13 @@ function ServicesEditor({ onSaved, svc }: { onSaved: () => void; svc?: ServiceTa
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={()=>setPendingPhoto(null)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"rgba(255,255,255,0.6)", fontSize:13, fontWeight:700, cursor:"pointer" }}>Cancel</button>
-              <button onClick={()=>{ upd("carousel_photos",[...(cur.carousel_photos||[]),pendingPhoto]); setPendingPhoto(null); }} style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", background:"#D73F09", color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer" }}>Add to Carousel</button>
+              <button onClick={()=>{
+                console.log("Adding photo to carousel:", pendingPhoto);
+                const newPhotos = [...(cur.carousel_photos||[]), pendingPhoto];
+                upd("carousel_photos", newPhotos);
+                setPendingPhoto(null);
+                supabase.from("pages").upsert({ slug:"services", title:"Services", published:true, settings:{...data,[tab]:{...cur,carousel_photos:newPhotos}} }, {onConflict:"slug"}).then(() => onSaved());
+              }} style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", background:"#D73F09", color:"#fff", fontSize:13, fontWeight:800, cursor:"pointer" }}>Add to Carousel</button>
             </div>
           </div>
         </div>
