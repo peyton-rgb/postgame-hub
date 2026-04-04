@@ -186,7 +186,7 @@ export default function DealsPage() {
     requestAnimationFrame(tick);
   }, []);
 
-  const heroHeight = isMobile ? "clamp(560px,92vh,720px)" : isTablet ? "clamp(420px,75vh,600px)" : "clamp(480px,80vh,680px)";
+  const heroHeight = isMobile ? "100svh" : isTablet ? "clamp(600px,88vh,820px)" : "clamp(700px,92vh,960px)";
   const carCardW = isMobile ? "clamp(150px,42vw,200px)" : isTablet ? "clamp(160px,28vw,220px)" : "248px";
   const carCardH = isMobile ? "clamp(220px,62vw,300px)" : isTablet ? "clamp(240px,42vw,330px)" : "380px";
   const gridCols = isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(4,1fr)";
