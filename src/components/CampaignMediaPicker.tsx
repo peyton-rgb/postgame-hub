@@ -40,6 +40,7 @@ interface CampaignRow {
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "avif"];
 const VIDEO_EXTS = ["mp4", "mov", "webm", "avi"];
+const RAW_EXTS = ["cr2", "nef", "arw", "raf", "dng", "orf", "rw2", "pef", "srw", "tiff", "tif", "bmp"];
 
 function ext(name: string) {
   return name.split(".").pop()?.toLowerCase() || "";
@@ -377,13 +378,20 @@ export default function CampaignMediaPicker({
 
     // Auto-convert unsupported image formats to JPEG
     const fileExt = ext(file.name);
-    const isImage = file.type.startsWith("image/");
+    const isImage = file.type.startsWith("image/") || RAW_EXTS.includes(fileExt);
     const supportedImage = IMAGE_EXTS.includes(fileExt);
 
     if (isImage && !supportedImage) {
       try {
         let blob: Blob;
-        if (file.type === "image/heic" || file.type === "image/heif" || fileExt === "heic" || fileExt === "heif") {
+        if (RAW_EXTS.includes(fileExt)) {
+          // RAW files: convert server-side via sharp
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/convert-image", { method: "POST", body: formData });
+          if (!res.ok) throw new Error("Server conversion failed");
+          blob = await res.blob();
+        } else if (file.type === "image/heic" || file.type === "image/heif" || fileExt === "heic" || fileExt === "heif") {
           const heic2any = (await import("heic2any")).default;
           const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
           blob = Array.isArray(result) ? result[0] : result;
