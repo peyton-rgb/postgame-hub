@@ -372,17 +372,51 @@ export default function CampaignMediaPicker({
   const uploadFile = async (file: File) => {
     if (!selectedCampaign) return;
     setUploading(true);
+
+    let processedFile = file;
+
+    // Auto-convert unsupported image formats to JPEG
+    const fileExt = ext(file.name);
+    const isImage = file.type.startsWith("image/");
+    const supportedImage = IMAGE_EXTS.includes(fileExt);
+
+    if (isImage && !supportedImage) {
+      try {
+        let blob: Blob;
+        if (file.type === "image/heic" || file.type === "image/heif" || fileExt === "heic" || fileExt === "heif") {
+          const heic2any = (await import("heic2any")).default;
+          const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+          blob = Array.isArray(result) ? result[0] : result;
+        } else {
+          const bitmap = await createImageBitmap(file);
+          const canvas = document.createElement("canvas");
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+          ctx.drawImage(bitmap, 0, 0);
+          blob = await new Promise<Blob>((resolve) =>
+            canvas.toBlob((b) => resolve(b as Blob), "image/jpeg", 0.92)
+          );
+          bitmap.close();
+        }
+        const newName = file.name.replace(/\.[^.]+$/, ".jpg");
+        processedFile = new File([blob], newName, { type: "image/jpeg" });
+      } catch (err) {
+        console.error("Image conversion failed, uploading original:", err);
+      }
+    }
+
     const ts = Date.now();
-    const path = `${selectedCampaign.id}/homepage/${ts}-${file.name}`;
+    const path = `${selectedCampaign.id}/homepage/${ts}-${processedFile.name}`;
     const { error } = await supabase.storage
       .from("campaign-media")
-      .upload(path, file);
+      .upload(path, processedFile);
     if (!error) {
       const {
         data: { publicUrl },
       } = supabase.storage.from("campaign-media").getPublicUrl(path);
       setUploadedUrl(publicUrl);
-      const e = ext(file.name);
+      const e = ext(processedFile.name);
       onSelect({
         type: VIDEO_EXTS.includes(e) ? "video" : "image",
         url: publicUrl,
