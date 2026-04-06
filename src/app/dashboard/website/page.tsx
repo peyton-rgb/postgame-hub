@@ -9,6 +9,7 @@ import DealList from "@/components/DealList";
 import PressList from "@/components/PressList";
 import CaseStudyList from "@/components/CaseStudyList";
 import Link from "next/link";
+import Image from "next/image";
 
 // ── Design tokens ────────────────────────────────────────────
 const C = {
@@ -1533,7 +1534,7 @@ function WebsiteEditorInner() {
       {/* Sidebar */}
       <div style={S.sidebar}>
         <div style={S.sidebarHeader}>
-          <div style={S.sidebarLogo}>POSTGAME</div>
+          <Image src="/postgame-logo.png" alt="Postgame" width={150} height={38} style={{ objectFit:"contain" }} />
           <div style={S.sidebarSub}>Website Editor</div>
         </div>
 
