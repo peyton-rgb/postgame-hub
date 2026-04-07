@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -129,21 +129,48 @@ export default function DrivePicker({
   const [wasAborted, setWasAborted] = useState(false);
 
   const isImporting = mode === "importing";
+  const prevIsOpen = useRef<boolean>(false);
 
-  // Initialize mode on open and when folderId changes
+  const resetImportState = (nextMode: "connect" | "selecting") => {
+    setSelections({});
+    setFilterType("all");
+    setAbortController(null);
+    setWasAborted(false);
+    setImportProgress({
+      current: 0,
+      total: 0,
+      currentFile: "",
+      succeeded: 0,
+      failed: 0,
+      errors: [],
+    });
+    setError(null);
+    setIsLoading(false);
+    setDriveData(null);
+    setActiveAthleteId(athletes[0]?.id || null);
+    setFolderUrlInput("");
+    setConnectError(null);
+    setIsConnecting(false);
+    setMode(nextMode);
+  };
+
+  // Reset when modal is opened (fresh session each time)
+  useEffect(() => {
+    const wasOpen = prevIsOpen.current;
+    if (isOpen && !wasOpen) {
+      if (mode === "importing") return;
+      resetImportState(folderId ? "selecting" : "connect");
+    }
+    prevIsOpen.current = isOpen;
+    // Intentionally include athletes so first-athlete selection is correct on open
+  }, [isOpen, folderId, athletes, mode]);
+
+  // Keep mode in sync with folderId, but never override importing/complete
   useEffect(() => {
     if (!isOpen) return;
-    if (folderId) {
-      setMode("selecting");
-    } else {
-      setMode("connect");
-      setDriveData(null);
-      setError(null);
-      setIsLoading(false);
-      setSelections({});
-      setActiveAthleteId(athletes[0]?.id || null);
-    }
-  }, [isOpen, folderId, athletes]);
+    if (mode === "importing" || mode === "complete") return;
+    setMode(folderId ? "selecting" : "connect");
+  }, [isOpen, folderId, mode]);
 
   // ── Fetch Drive data when modal opens ──
   useEffect(() => {
@@ -512,7 +539,10 @@ export default function DrivePicker({
               <div className="mt-6 flex justify-end">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={() => {
+                    resetImportState(folderId ? "selecting" : "connect");
+                    onClose();
+                  }}
                   className="px-6 py-3 rounded-lg font-bold uppercase text-sm bg-[#D73F09] hover:bg-[#ff5722] text-white transition-colors"
                 >
                   Done
