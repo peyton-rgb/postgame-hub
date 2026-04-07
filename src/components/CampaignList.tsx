@@ -7,13 +7,12 @@ import type { Campaign } from "@/lib/types";
 import { parseMetricsCSV } from "@/lib/csv-parser";
 import { autoFillMetrics } from "@/lib/metrics-helpers";
 import Link from "next/link";
-import ViewToggle, { type ViewMode } from "./ViewToggle";
 
 export default function CampaignList() {
   const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [brandFilterId, setBrandFilterId] = useState<string>("");
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newClient, setNewClient] = useState("");
@@ -202,12 +201,36 @@ export default function CampaignList() {
 
   return (
     <>
-      {/* Header row with toggle + create button */}
-      <div className="flex items-center justify-between mb-6">
-        <ViewToggle mode={viewMode} onChange={setViewMode} />
+      {/* Header row with brand filter + create button */}
+      <div className="flex items-center justify-between mb-6 gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 shrink-0">
+            Filter by brand
+          </label>
+          <select
+            value={brandFilterId}
+            onChange={(e) => setBrandFilterId(e.target.value)}
+            className="px-3 py-2 bg-[#111] border border-gray-800 rounded-lg text-sm text-white font-bold focus:border-[#D73F09] focus:outline-none min-w-[220px]"
+          >
+            <option value="">All Brands</option>
+            {brands.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          {brandFilterId && (
+            <button
+              onClick={() => setBrandFilterId("")}
+              className="text-[11px] font-bold text-gray-500 hover:text-white uppercase tracking-wider"
+            >
+              Clear
+            </button>
+          )}
+        </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407]"
+          className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407] shrink-0"
         >
           + New Campaign
         </button>
@@ -439,82 +462,47 @@ export default function CampaignList() {
         </div>
       )}
 
-      {/* Campaign list */}
-      {loading ? (
-        <div className="text-gray-500 text-center py-20">Loading...</div>
-      ) : campaigns.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-gray-500 mb-4">No campaigns yet.</p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="text-[#D73F09] font-bold text-sm hover:underline"
-          >
-            Create your first campaign →
-          </button>
-        </div>
-      ) : (
-        viewMode === "card" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {campaigns.map((c) => (
-              <div
-                key={c.id}
-                className="relative p-6 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors group"
+      {/* Filter campaigns by selected brand. Sort is already applied at fetch time
+          (created_at desc), so newest campaigns appear at the top. */}
+      {(() => {
+        const filteredCampaigns = brandFilterId
+          ? campaigns.filter((c: any) => c.brand_id === brandFilterId)
+          : campaigns;
+
+        if (loading) {
+          return <div className="text-gray-500 text-center py-20">Loading...</div>;
+        }
+        if (campaigns.length === 0) {
+          return (
+            <div className="text-center py-20">
+              <p className="text-gray-500 mb-4">No campaigns yet.</p>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="text-[#D73F09] font-bold text-sm hover:underline"
               >
-                <Link href={`/dashboard/${c.id}`} className="absolute inset-0 z-0" />
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {(c as any).brands?.logo_light_url || (c as any).brands?.logo_url ? (
-                      <img
-                        src={((c as any).brands.logo_light_url || (c as any).brands.logo_url) as string}
-                        alt={c.client_name}
-                        className="h-[24px] max-w-[80px] object-contain flex-shrink-0"
-                      />
-                    ) : null}
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 truncate">
-                      {c.client_name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded ${
-                        c.published
-                          ? "bg-green-900/30 text-green-400"
-                          : "bg-gray-800 text-gray-500"
-                      }`}
-                    >
-                      {c.published ? "Published" : "Draft"}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setConfirmDelete(c);
-                      }}
-                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
-                      title="Delete campaign"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <h3 className="text-lg font-black mb-2">{c.name}</h3>
-                <p className="text-xs text-gray-600">
-                  {new Date(c.created_at).toLocaleDateString()}
-                  {c.published && (
-                    <span className="ml-2 text-[#D73F09]">
-                      /recap/{c.slug}
-                    </span>
-                  )}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
+                Create your first campaign →
+              </button>
+            </div>
+          );
+        }
+        if (filteredCampaigns.length === 0) {
+          const brandName = brands.find((b: any) => b.id === brandFilterId)?.name || "this brand";
+          return (
+            <div className="text-center py-20">
+              <p className="text-gray-500 mb-4">No campaigns for {brandName}.</p>
+              <button
+                onClick={() => setBrandFilterId("")}
+                className="text-[#D73F09] font-bold text-sm hover:underline"
+              >
+                Clear filter →
+              </button>
+            </div>
+          );
+        }
+
+        return (
           <div className="flex flex-col gap-2">
-            {campaigns.map((c) => (
+            {filteredCampaigns.map((c) => (
               <div
                 key={c.id}
                 className="relative flex items-center gap-4 px-5 py-4 bg-[#111] border border-gray-800 rounded-lg hover:border-gray-600 transition-colors group"
@@ -567,8 +555,8 @@ export default function CampaignList() {
               </div>
             ))}
           </div>
-        )
-      )}
+        );
+      })()}
     </>
   );
 }
