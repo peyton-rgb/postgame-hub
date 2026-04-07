@@ -472,16 +472,8 @@ export function CampaignRecap({
             </div>
             <div className="space-y-0">
               {[
-                { label: "BRAND", value: campaign.client_name },
-                { label: "CAMPAIGN", value: campaign.name },
-                { label: "QUARTER", value: settings.quarter },
-                { label: "TYPE", value: settings.campaign_type },
-                { label: "PLATFORM", value: settings.platform },
-                { label: "ATHLETES", value: String(stats.athleteCount) },
-                { label: "SCHOOLS", value: String(stats.schoolCount) },
-                { label: "SPORTS", value: String(stats.sportCount) },
-                { label: "TOTAL REACH", value: fmt(stats.totalReach) + "+ Followers" },
-                { label: "TOTAL POSTS", value: String(stats.totalPosts) },
+                { label: "TIMEFRAME", value: settings.quarter },
+                { label: "SOCIAL PLATFORM(S)", value: settings.platform },
                 { label: "CONTENT TYPE", value: contentTypes },
               ].filter((r) => r.value).map((row) => (
                 <div key={row.label} className="flex items-baseline py-3 border-b border-white/[0.12]">
@@ -567,6 +559,8 @@ export function CampaignRecap({
           <div className="flex flex-wrap justify-center gap-3 mb-8">
             {[
               { value: stats.athleteCount, label: "ATHLETES" },
+              { value: stats.schoolCount, label: "COLLEGES" },
+              { value: stats.sportCount, label: "SPORTS" },
               { value: stats.totalPosts, label: "TOTAL POSTS" },
               { value: fmt(stats.totalImpressions), label: "TOTAL IMPRESSIONS" },
               { value: fmt(stats.totalEngagements), label: "TOTAL ENGAGEMENTS" },
