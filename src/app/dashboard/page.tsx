@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
+import OptInList from "@/components/OptInList";
 import CampaignList from "@/components/CampaignList";
 import RunOfShowList from "@/components/RunOfShowList";
 import BriefList from "@/components/BriefList";
@@ -124,7 +125,7 @@ function DashboardContent() {
         {activeTab === "briefs" && <BriefList />}
         {activeTab === "newsletter"   && <RedirectTab href="/dashboard/newsletter" label="Newsletter Creator" desc="Build exportable Mailchimp newsletters tied to brand campaigns." />}
         {activeTab === "instructions" && <RedirectTab href="/dashboard/campaign-instructions" label="Campaign Instructions" desc="Create athlete + crew instruction pages with deliverables, dos/don'ts, and contact info." />}
-        {activeTab === "optin"        && <RedirectTab href="/dashboard/campaign-optin" label="Campaign Opt-In" desc="Build confirmation pages for athletes to officially opt in to campaigns." />}
+        {activeTab === "optin"        && <OptInList />}
 
       </div>
     </div>
