@@ -32,8 +32,15 @@ function parseRate(val: string | undefined): number | undefined {
  * Detect if the first row is a platform group header (e.g. "IG FEED POSTS", "IG STORIES")
  * rather than the actual column headers. If so, return row 1 as headers and data starting at row 2.
  * Otherwise, return row 0 as headers and data starting at row 1.
+ *
+ * Also returns row0 (the group label row, when present) so callers can build a
+ * column→platform map for scoped column resolution. row0 will be undefined when
+ * the file has no group label row.
  */
-function detectHeaderRow(lines: string[], delimiter = ","): { headers: string[]; dataStartIndex: number } {
+function detectHeaderRow(
+  lines: string[],
+  delimiter = ","
+): { headers: string[]; dataStartIndex: number; groupRow?: string[] } {
   const row0 = parseCSVLine(lines[0], delimiter);
 
   // Check if row 0 contains platform group labels (IG FEED POSTS, IG STORY, TIKTOK, etc.)
@@ -49,7 +56,11 @@ function detectHeaderRow(lines: string[], delimiter = ","): { headers: string[];
   });
 
   if (hasPlatformGroups && !hasIdentityHeadersInRow0 && lines.length >= 2) {
-    return { headers: parseCSVLine(lines[1], delimiter), dataStartIndex: 2 };
+    return {
+      headers: parseCSVLine(lines[1], delimiter),
+      dataStartIndex: 2,
+      groupRow: row0,
+    };
   }
 
   // Check if row 0 contains recognizable column headers
@@ -59,15 +70,60 @@ function detectHeaderRow(lines: string[], delimiter = ","): { headers: string[];
   });
 
   if (hasIdentityHeaders) {
-    return { headers: row0, dataStartIndex: 1, };
+    return { headers: row0, dataStartIndex: 1 };
   }
 
   // Row 0 has neither platform groups nor identity headers — try row 1
   if (lines.length >= 2) {
-    return { headers: parseCSVLine(lines[1], delimiter), dataStartIndex: 2 };
+    return {
+      headers: parseCSVLine(lines[1], delimiter),
+      dataStartIndex: 2,
+      groupRow: row0,
+    };
   }
 
-  return { headers: row0, dataStartIndex: 1, };
+  return { headers: row0, dataStartIndex: 1 };
+}
+
+type PlatformTag = "identity" | "ig_feed" | "ig_story" | "ig_reel" | "tiktok" | "other";
+
+/**
+ * Build a column index → platform tag map by walking the row-0 group labels
+ * left-to-right and forward-filling across blank cells. Each non-empty cell
+ * starts a new platform group; everything to its right (until the next label)
+ * inherits that tag. Identity columns (before the first group label) are tagged
+ * "identity".
+ *
+ * If no group row is provided, every column is tagged "identity" — meaning
+ * scoped lookups won't filter anything out and the parser falls back to the
+ * pre-existing global findCol behavior.
+ */
+function buildPlatformMap(headerCount: number, groupRow?: string[]): PlatformTag[] {
+  const map: PlatformTag[] = new Array(headerCount).fill("identity");
+  if (!groupRow) return map;
+
+  const PLATFORM_PATTERNS: { tag: PlatformTag; patterns: string[] }[] = [
+    // ORDER MATTERS: more-specific patterns first
+    { tag: "ig_story", patterns: ["ig story", "ig stories", "story post"] },
+    { tag: "ig_reel", patterns: ["ig reel", "reel post", "ig reels"] },
+    { tag: "ig_feed", patterns: ["ig feed", "feed post"] },
+    { tag: "tiktok", patterns: ["tiktok", "tik tok", "tt post"] },
+    { tag: "other", patterns: ["other engagement", "clicks", "links", "web", "conversion"] },
+  ];
+
+  let current: PlatformTag = "identity";
+  for (let i = 0; i < headerCount; i++) {
+    const cell = (groupRow[i] || "").trim().toLowerCase();
+    if (cell) {
+      const matched = PLATFORM_PATTERNS.find(({ patterns }) =>
+        patterns.some((p) => cell.includes(p))
+      );
+      if (matched) current = matched.tag;
+      // If the cell has text but no platform match, keep current.
+    }
+    map[i] = current;
+  }
+  return map;
 }
 
 /** Check if a row should be skipped (CALCULATIONS, totals, blank first name, header leak) */
@@ -120,6 +176,39 @@ function findCol(headers: string[], ...names: string[]): number {
       return hClean === lower || hClean.includes(lower);
     });
     if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+/**
+ * Find a column index, but ONLY among columns whose platform tag matches.
+ * Used for trackers like the EVO Performance Tracker where IG Feed / IG Reel /
+ * TikTok all use bare column names ("Likes", "Comments", "Total Engagements")
+ * and rely on row-0 group labels ("IG FEED POSTS", "TIK TOK POSTS") to
+ * disambiguate which platform each column belongs to.
+ *
+ * If platformMap is all "identity" (no group row was present), this falls back
+ * to a normal global findCol so behavior is unchanged for trackers without
+ * group rows.
+ */
+function findColInPlatform(
+  headers: string[],
+  platformMap: PlatformTag[],
+  platform: PlatformTag,
+  ...names: string[]
+): number {
+  const hasGroupRow = platformMap.some((p) => p !== "identity");
+  if (!hasGroupRow) return findCol(headers, ...names);
+
+  for (const name of names) {
+    const lower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!lower) continue;
+    for (let i = 0; i < headers.length; i++) {
+      if (platformMap[i] !== platform) continue;
+      const hClean = headers[i].toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!hClean) continue;
+      if (hClean === lower || hClean.includes(lower)) return i;
+    }
   }
   return -1;
 }
@@ -212,6 +301,15 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
 /**
  * Parse a Metrics/Performance CSV — engagement and post data
  * Expected columns: First, Last, IG Followers, IG Feed Post, Engagement Rate, etc.
+ *
+ * Supports two header layouts:
+ *   1. Single header row with prefixed names ("IG Feed Likes", "Tiktok Views", etc.)
+ *   2. Two-row layout with platform group labels in row 0 ("IG FEED POSTS", "TIK TOK POSTS")
+ *      and bare column names in row 1 ("Likes", "Comments", "Total Engagements"). In this
+ *      case the row-0 labels are used to build a column→platform map and every platform-
+ *      scoped column lookup is constrained to its group's column range. This prevents
+ *      cross-platform data leakage where, e.g., the IG Feed "Total Engagements" column
+ *      was being read into metrics.tiktok.total_engagements.
  */
 export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -220,9 +318,10 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   // Detect delimiter from the first line
   const _delimiter = lines[0].includes("\t") && lines[0].split("\t").length > lines[0].split(",").length ? "\t" : ",";
 
-  const { headers, dataStartIndex } = detectHeaderRow(lines, _delimiter);
+  const { headers, dataStartIndex, groupRow } = detectHeaderRow(lines, _delimiter);
+  const platformMap = buildPlatformMap(headers.length, groupRow);
 
-  // Core identity columns
+  // Core identity columns (always global)
   const iFirst = findCol(headers, "first", "firstname", "first name", "fname");
   const iLast = findCol(headers, "last", "lastname", "last name", "lname");
   const iFullName = findCol(headers, "full name", "fullname", "athlete name", "athletename");
@@ -237,48 +336,110 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iGender = findCol(headers, "gender", "sex");
   const iNotes = findCol(headers, "notes", "note", "bio", "insight", "description");
 
-  // IG Feed columns — flexible matching for variations like "IG Feed 1 Impressions"
-  const iIgFeedUrl = findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
-  const iIgFeedReach = findCol(headers, "ig feed reach", "feed reach");
-  const iIgFeedImpressions = findCol(headers, "ig feed impressions", "ig feed 1 impressions", "feed impressions");
-  const iIgFeedLikes = findCol(headers, "ig feed likes", "ig feed 1 likes", "feed likes");
-  const iIgFeedComments = findCol(headers, "ig feed comments", "ig feed 1 comments", "feed comments");
-  const iIgFeedShares = findCol(headers, "ig feed shares", "feed shares");
-  const iIgFeedReposts = findCol(headers, "ig feed reposts", "feed reposts");
-  const iIgFeedEngagements = findCol(headers, "ig feed total engagements", "feed total engagements", "ig feed engagements", "feed engagements", "total ig feed engagements");
-  const iIgFeedEngRate = findCol(headers, "ig feed engagement rate", "feed engagement rate", "ig feed eng rate", "feed eng rate");
+  // ── IG Feed columns ──
+  // Try platform-scoped first (handles bare-name layouts), then fall back to prefixed search.
+  const iIgFeedUrl = findColInPlatform(headers, platformMap, "ig_feed", "post url", "post", "url")
+    || findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
+  const iIgFeedReach = findColInPlatform(headers, platformMap, "ig_feed", "reach")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "reach")
+    : findCol(headers, "ig feed reach", "feed reach");
+  const iIgFeedImpressions = findColInPlatform(headers, platformMap, "ig_feed", "impressions")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "impressions")
+    : findCol(headers, "ig feed impressions", "ig feed 1 impressions", "feed impressions");
+  const iIgFeedLikes = findColInPlatform(headers, platformMap, "ig_feed", "likes")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "likes")
+    : findCol(headers, "ig feed likes", "ig feed 1 likes", "feed likes");
+  const iIgFeedComments = findColInPlatform(headers, platformMap, "ig_feed", "comments")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "comments")
+    : findCol(headers, "ig feed comments", "ig feed 1 comments", "feed comments");
+  const iIgFeedShares = findColInPlatform(headers, platformMap, "ig_feed", "shares")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "shares")
+    : findCol(headers, "ig feed shares", "feed shares");
+  const iIgFeedReposts = findColInPlatform(headers, platformMap, "ig_feed", "reposts")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "reposts")
+    : findCol(headers, "ig feed reposts", "feed reposts");
+  const iIgFeedEngagements = findColInPlatform(headers, platformMap, "ig_feed", "total engagements", "engagements")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "total engagements", "engagements")
+    : findCol(headers, "ig feed total engagements", "feed total engagements", "ig feed engagements", "feed engagements", "total ig feed engagements");
+  const iIgFeedEngRate = findColInPlatform(headers, platformMap, "ig_feed", "engagement rate", "eng rate")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "engagement rate", "eng rate")
+    : findCol(headers, "ig feed engagement rate", "feed engagement rate", "ig feed eng rate", "feed eng rate");
 
-  // IG Story columns
-  const iIgStoryCount = findCol(headers, "ig story count", "story count", "ig stories count", "stories count", "ig story post", "ig story");
-  const iIgStoryImpressions = findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions", "total ig story impressions");
+  // ── IG Story columns ──
+  const iIgStoryCount = findColInPlatform(headers, platformMap, "ig_story", "count", "post")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "count", "post")
+    : findCol(headers, "ig story count", "story count", "ig stories count", "stories count", "ig story post", "ig story");
+  const iIgStoryImpressions = findColInPlatform(headers, platformMap, "ig_story", "impressions")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "impressions")
+    : findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions", "total ig story impressions");
 
-  // IG Reel columns
-  const iIgReelUrl = findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post");
-  const iIgReelViews = findCol(headers, "ig reel views", "reel views", "ig reels views", "reels views");
-  const iIgReelLikes = findCol(headers, "ig reel likes", "reel likes", "ig reels likes", "reels likes");
-  const iIgReelComments = findCol(headers, "ig reel comments", "reel comments", "ig reels comments", "reels comments");
-  const iIgReelShares = findCol(headers, "ig reel shares", "reel shares");
-  const iIgReelReposts = findCol(headers, "ig reel reposts", "reel reposts");
-  const iIgReelEngagements = findCol(headers, "ig reel total engagements", "reel total engagements", "ig reel engagements", "reel engagements", "ig reels engagements", "total ig reel engagements");
-  const iIgReelEngRate = findCol(headers, "ig reel engagement rate", "reel engagement rate", "ig reel eng rate", "reel eng rate", "ig reels engagement rate");
+  // ── IG Reel columns ──
+  const iIgReelUrl = findColInPlatform(headers, platformMap, "ig_reel", "post url", "post", "url")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "post url", "post", "url")
+    : findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post");
+  const iIgReelViews = findColInPlatform(headers, platformMap, "ig_reel", "views")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "views")
+    : findCol(headers, "ig reel views", "reel views", "ig reels views", "reels views");
+  const iIgReelLikes = findColInPlatform(headers, platformMap, "ig_reel", "likes")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "likes")
+    : findCol(headers, "ig reel likes", "reel likes", "ig reels likes", "reels likes");
+  const iIgReelComments = findColInPlatform(headers, platformMap, "ig_reel", "comments")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "comments")
+    : findCol(headers, "ig reel comments", "reel comments", "ig reels comments", "reels comments");
+  const iIgReelShares = findColInPlatform(headers, platformMap, "ig_reel", "shares")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "shares")
+    : findCol(headers, "ig reel shares", "reel shares");
+  const iIgReelReposts = findColInPlatform(headers, platformMap, "ig_reel", "reposts")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "reposts")
+    : findCol(headers, "ig reel reposts", "reel reposts");
+  const iIgReelEngagements = findColInPlatform(headers, platformMap, "ig_reel", "total engagements", "engagements")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "total engagements", "engagements")
+    : findCol(headers, "ig reel total engagements", "reel total engagements", "ig reel engagements", "reel engagements", "ig reels engagements", "total ig reel engagements");
+  const iIgReelEngRate = findColInPlatform(headers, platformMap, "ig_reel", "engagement rate", "eng rate")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "engagement rate", "eng rate")
+    : findCol(headers, "ig reel engagement rate", "reel engagement rate", "ig reel eng rate", "reel eng rate", "ig reels engagement rate");
 
-  // TikTok columns — support both combined and separate likes/comments
-  const iTiktokUrl = findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url");
-  const iTiktokViews = findCol(headers, "tiktok views", "tt views", "tiktok video views");
-  const iTiktokLikes = findCol(headers, "tiktok likes", "tt likes");
-  const iTiktokComments = findCol(headers, "tiktok comments", "tt comments");
-  const iTiktokLikesComments = findCol(headers, "tiktok likes comments", "tiktok likes + comments", "tt likes comments", "tiktok likes/comments");
-  const iTiktokSavesShares = findCol(headers, "tiktok saves shares", "tiktok saves + shares", "tt saves shares", "tiktok saves/shares");
-  const iTiktokEngagements = findCol(headers, "tiktok total engagements", "tiktok engagements", "tt total engagements", "tt engagements", "total engagements");
-  const iTiktokEngRate = findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate", "engagement rate");
+  // ── TikTok columns ──
+  const iTiktokUrl = findColInPlatform(headers, platformMap, "tiktok", "post url", "post", "url")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "post url", "post", "url")
+    : findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url");
+  const iTiktokViews = findColInPlatform(headers, platformMap, "tiktok", "views")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "views")
+    : findCol(headers, "tiktok views", "tt views", "tiktok video views");
+  const iTiktokLikes = findColInPlatform(headers, platformMap, "tiktok", "likes")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "likes")
+    : findCol(headers, "tiktok likes", "tt likes");
+  const iTiktokComments = findColInPlatform(headers, platformMap, "tiktok", "comments")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "comments")
+    : findCol(headers, "tiktok comments", "tt comments");
+  const iTiktokLikesComments = findColInPlatform(headers, platformMap, "tiktok", "likes comments", "likes + comments")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "likes comments", "likes + comments")
+    : findCol(headers, "tiktok likes comments", "tiktok likes + comments", "tt likes comments", "tiktok likes/comments");
+  const iTiktokSavesShares = findColInPlatform(headers, platformMap, "tiktok", "saves shares", "saves + shares")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "saves shares", "saves + shares")
+    : findCol(headers, "tiktok saves shares", "tiktok saves + shares", "tt saves shares", "tiktok saves/shares");
+  const iTiktokEngagements = findColInPlatform(headers, platformMap, "tiktok", "total engagements", "engagements")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "total engagements", "engagements")
+    : findCol(headers, "tiktok total engagements", "tiktok engagements", "tt total engagements", "tt engagements");
+  const iTiktokEngRate = findColInPlatform(headers, platformMap, "tiktok", "engagement rate", "eng rate")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "engagement rate", "eng rate")
+    : findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate");
 
-  // Clicks columns
-  const iLinkClicks = findCol(headers, "link clicks", "clicks", "link click", "total clicks");
+  // ── Other / Clicks / Sales / Targets columns ──
+  // These are global because they're typically not duplicated across platforms,
+  // but we still scope to "other" first when a group row exists.
+  const iLinkClicks = findColInPlatform(headers, platformMap, "other", "link clicks", "clicks", "link click", "total clicks")
+    !== -1 ? findColInPlatform(headers, platformMap, "other", "link clicks", "clicks", "link click", "total clicks")
+    : findCol(headers, "link clicks", "clicks", "link click", "total clicks");
   const iClickThroughRate = findCol(headers, "click through rate", "ctr", "click rate", "clickthrough rate");
   const iLandingPageViews = findCol(headers, "landing page views", "lpv", "landing views", "page views");
   const iCostPerClick = findCol(headers, "cost per click", "cpc", "avg cpc", "average cpc");
-  const iOrders = findCol(headers, "orders", "order", "total orders");
-  const iSalesAmount = findCol(headers, "sales", "total sales", "sales amount");
+  const iOrders = findColInPlatform(headers, platformMap, "other", "orders", "order", "total orders")
+    !== -1 ? findColInPlatform(headers, platformMap, "other", "orders", "order", "total orders")
+    : findCol(headers, "orders", "order", "total orders");
+  const iSalesAmount = findColInPlatform(headers, platformMap, "other", "sales", "total sales", "sales amount")
+    !== -1 ? findColInPlatform(headers, platformMap, "other", "sales", "total sales", "sales amount")
+    : findCol(headers, "sales", "total sales", "sales amount");
   const iCpm = findCol(headers, "cpm", "cost per mille", "cost per thousand");
 
   // Sales columns
@@ -295,49 +456,14 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iCostPerPost = findCol(headers, "cost per post", "cost_per_post", "costperpost");
   const iCostPerAthlete = findCol(headers, "cost per athlete", "cost_per_athlete", "costperathlete");
 
-  // For columns that have duplicate names (e.g. two "Engagement Rate" columns),
-  // find them positionally — first occurrence is feed, second is reel
-  let feedEngRateIdx = iIgFeedEngRate;
-  let reelEngRateIdx = iIgReelEngRate;
-  let feedTotalEngIdx = iIgFeedEngagements;
-  let reelTotalEngIdx = iIgReelEngagements;
-
-  // Handle duplicate "Engagement Rate" columns by position
-  // Also handles when both findCol calls matched the same column via fuzzy matching
-  if (feedEngRateIdx === -1 || reelEngRateIdx === -1 || feedEngRateIdx === reelEngRateIdx) {
-    const engRateIndices: number[] = [];
-    headers.forEach((h, i) => {
-      const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (clean === "engagementrate") engRateIndices.push(i);
-    });
-    if (engRateIndices.length >= 1) feedEngRateIdx = engRateIndices[0];
-    if (engRateIndices.length >= 2) reelEngRateIdx = engRateIndices[1];
-  }
-
-  // Handle duplicate "Engagements" / "Total Engagements" columns by position
-  // Matches: "engagements", "totalengagement", "totalengagements"
-  if (feedTotalEngIdx === -1 || reelTotalEngIdx === -1 || feedTotalEngIdx === reelTotalEngIdx) {
-    const totalEngIndices: number[] = [];
-    headers.forEach((h, i) => {
-      const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (clean === "engagements" || clean === "engagement" || clean === "totalengagement" || clean === "totalengagements") totalEngIndices.push(i);
-    });
-    if (totalEngIndices.length >= 1) feedTotalEngIdx = totalEngIndices[0];
-    if (totalEngIndices.length >= 2) reelTotalEngIdx = totalEngIndices[1];
-  }
-
-  // Handle duplicate "Impressions" columns by position (first = feed, second = story)
-  let feedImpressionsIdx = iIgFeedImpressions;
-  let storyImpressionsIdx = iIgStoryImpressions;
-  if (feedImpressionsIdx === -1 || storyImpressionsIdx === -1 || feedImpressionsIdx === storyImpressionsIdx) {
-    const impIndices: number[] = [];
-    headers.forEach((h, i) => {
-      const clean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (clean === "impressions") impIndices.push(i);
-    });
-    if (impIndices.length >= 1) feedImpressionsIdx = impIndices[0];
-    if (impIndices.length >= 2) storyImpressionsIdx = impIndices[1];
-  }
+  // Resolved final indices (no positional fallback needed — platform scoping handles
+  // duplicate column names like multiple "Total Engagements" columns).
+  const feedTotalEngIdx = iIgFeedEngagements;
+  const reelTotalEngIdx = iIgReelEngagements;
+  const feedEngRateIdx = iIgFeedEngRate;
+  const reelEngRateIdx = iIgReelEngRate;
+  const feedImpressionsIdx = iIgFeedImpressions;
+  const storyImpressionsIdx = iIgStoryImpressions;
 
   // Determine if we have a single "Name" column or separate First/Last
   const hasSingleNameCol = iFullName !== -1 || iName !== -1;
