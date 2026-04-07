@@ -49,9 +49,23 @@ interface RecapAthlete {
 interface DrivePickerProps {
   isOpen: boolean;
   onClose: () => void;
-  folderId: string;
+  folderId: string | null | undefined;
+  onFolderConnected: (folderId: string) => Promise<void>;
   athletes: RecapAthlete[];
-  onImport: (selections: Record<string, DriveFile[]>) => Promise<void>;
+  onImport: (
+    selections: Record<string, DriveFile[]>,
+    onProgress: (p: ImportProgress) => void,
+    signal?: AbortSignal
+  ) => Promise<ImportProgress>;
+}
+
+interface ImportProgress {
+  current: number;
+  total: number;
+  currentFile: string;
+  succeeded: number;
+  failed: number;
+  errors: Array<{ file: string; error: string }>;
 }
 
 // ── Name matching helpers ─────────────────────────────────────
@@ -89,6 +103,7 @@ export default function DrivePicker({
   isOpen,
   onClose,
   folderId,
+  onFolderConnected,
   athletes,
   onImport,
 }: DrivePickerProps) {
@@ -98,12 +113,42 @@ export default function DrivePicker({
   const [activeAthleteId, setActiveAthleteId] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, Set<string>>>({});
   const [filterType, setFilterType] = useState<"all" | "image" | "video">("all");
-  const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
+  const [mode, setMode] = useState<"connect" | "selecting" | "importing" | "complete">("selecting");
+  const [folderUrlInput, setFolderUrlInput] = useState("");
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [importProgress, setImportProgress] = useState<ImportProgress>({
+    current: 0,
+    total: 0,
+    currentFile: "",
+    succeeded: 0,
+    failed: 0,
+    errors: [],
+  });
+  const [wasAborted, setWasAborted] = useState(false);
+
+  const isImporting = mode === "importing";
+
+  // Initialize mode on open and when folderId changes
+  useEffect(() => {
+    if (!isOpen) return;
+    if (folderId) {
+      setMode("selecting");
+    } else {
+      setMode("connect");
+      setDriveData(null);
+      setError(null);
+      setIsLoading(false);
+      setSelections({});
+      setActiveAthleteId(athletes[0]?.id || null);
+    }
+  }, [isOpen, folderId, athletes]);
 
   // ── Fetch Drive data when modal opens ──
   useEffect(() => {
     if (!isOpen || !folderId) return;
+    if (mode !== "selecting") return;
 
     setIsLoading(true);
     setError(null);
@@ -125,7 +170,20 @@ export default function DrivePicker({
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
-  }, [isOpen, folderId, athletes]);
+  }, [isOpen, folderId, athletes, mode]);
+
+  // Prevent Escape from closing modal during import
+  useEffect(() => {
+    if (!isOpen || mode !== "importing") return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [isOpen, mode]);
 
   // ── Match active athlete to Drive folder ──
   const activeAthlete = athletes.find((a) => a.id === activeAthleteId);
@@ -202,8 +260,18 @@ export default function DrivePicker({
   const handleImport = async () => {
     if (totalSelected === 0 || !driveData) return;
 
-    setIsImporting(true);
-    setImportProgress({ done: 0, total: totalSelected });
+    setMode("importing");
+    setWasAborted(false);
+    const controller = new AbortController();
+    setAbortController(controller);
+    setImportProgress({
+      current: 0,
+      total: totalSelected,
+      currentFile: "",
+      succeeded: 0,
+      failed: 0,
+      errors: [],
+    });
 
     // Build selections payload: { [athleteId]: DriveFile[] }
     const payload: Record<string, DriveFile[]> = {};
@@ -218,15 +286,19 @@ export default function DrivePicker({
     }
 
     try {
-      await onImport(payload);
-      // Reset selections after successful import
-      setSelections({});
-      onClose();
+      const finalStats = await onImport(
+        payload,
+        (p) => setImportProgress(p),
+        controller.signal
+      );
+      setImportProgress(finalStats);
     } catch (err) {
       console.error("Import failed:", err);
       setError("Import failed. Check console for details.");
     } finally {
-      setIsImporting(false);
+      if (controller.signal.aborted) setWasAborted(true);
+      setAbortController(null);
+      setMode("complete");
     }
   };
 
@@ -236,7 +308,7 @@ export default function DrivePicker({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !isImporting) onClose();
+        if (e.target === e.currentTarget && mode !== "importing") onClose();
       }}
     >
       <div className="w-[95vw] h-[90vh] max-w-7xl bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden flex flex-col">
@@ -247,25 +319,211 @@ export default function DrivePicker({
               Google Drive
             </div>
             <h2 className="text-xl font-black text-white">
-              {driveData?.parentFolderName || "Loading..."}
+              {mode === "connect" ? "Connect Google Drive" : (driveData?.parentFolderName || "Loading...")}
             </h2>
-            {driveData && (
+            {mode === "connect" ? (
+              <div className="text-xs text-gray-500 mt-0.5">
+                Paste a Drive folder link to import campaign content
+              </div>
+            ) : driveData ? (
               <div className="text-xs text-gray-500 mt-0.5">
                 {driveData.athletes.length} folders · {driveData.totalFiles} files
               </div>
-            )}
+            ) : null}
           </div>
-          <button
-            onClick={onClose}
-            disabled={isImporting}
-            className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white disabled:opacity-30"
-          >
-            ✕
-          </button>
+          {mode !== "importing" ? (
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          ) : (
+            <div className="w-8 h-8" />
+          )}
         </div>
 
+        {/* Connect mode */}
+        {mode === "connect" && (
+          <div className="flex-1 flex items-center justify-center px-6">
+            <div className="w-full max-w-md py-16">
+              <div className="text-center mb-8">
+                <div className="text-[10px] font-bold tracking-widest text-[#D73F09] uppercase">
+                  Google Drive
+                </div>
+                <div className="text-2xl font-black text-white mt-2">
+                  Connect Google Drive
+                </div>
+                <div className="text-sm text-gray-500 mt-2">
+                  Paste a Drive folder link to import campaign content
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <input
+                  value={folderUrlInput}
+                  onChange={(e) => {
+                    setFolderUrlInput(e.target.value);
+                    setConnectError(null);
+                  }}
+                  placeholder="https://drive.google.com/drive/folders/..."
+                  className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
+                />
+                {connectError ? (
+                  <div className="text-sm text-red-400">{connectError}</div>
+                ) : null}
+
+                <button
+                  type="button"
+                  disabled={isConnecting}
+                  onClick={async () => {
+                    const match = folderUrlInput.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+                    if (!match) {
+                      setConnectError("Invalid Drive folder URL — must be a Google Drive folder link");
+                      return;
+                    }
+                    const extractedId = match[1];
+                    setIsConnecting(true);
+                    setConnectError(null);
+                    try {
+                      await onFolderConnected(extractedId);
+                      setMode("selecting");
+                    } catch (e: any) {
+                      setConnectError(String(e?.message || e));
+                    } finally {
+                      setIsConnecting(false);
+                    }
+                  }}
+                  className="w-full bg-[#D73F09] hover:bg-[#ff5722] px-6 py-3 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isConnecting ? "Connecting..." : "Connect"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Importing mode */}
+        {mode === "importing" && (
+          <div className="flex-1 flex flex-col overflow-hidden px-6 py-8">
+            <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col">
+              <div className="text-2xl font-black text-white mb-6">
+                Importing from Drive
+              </div>
+
+              <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6">
+                <div className="w-full h-4 bg-black/60 rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className="h-full bg-[#D73F09] transition-all"
+                    style={{
+                      width: `${importProgress.total > 0 ? Math.min(100, (importProgress.current / importProgress.total) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-4 text-xl font-black text-white">
+                  {importProgress.current} of {importProgress.total} files
+                </div>
+                <div className="mt-2 text-sm text-gray-500">
+                  Currently processing:{" "}
+                  <span className="text-gray-200 font-semibold">
+                    {importProgress.currentFile || "—"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3">
+                    <div className="text-sm font-black text-green-300">
+                      ✓ Succeeded: {importProgress.succeeded}
+                    </div>
+                  </div>
+                  {importProgress.failed > 0 ? (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3">
+                      <div className="text-sm font-black text-red-300">
+                        ✗ Failed: {importProgress.failed}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" />
+                  )}
+                </div>
+              </div>
+
+              {importProgress.errors.length > 0 ? (
+                <div className="mt-4 bg-black/40 border border-white/10 rounded-2xl p-4 overflow-hidden">
+                  <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                    Errors
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                    {importProgress.errors.map((e, i) => (
+                      <div key={i} className="text-sm">
+                        <div className="text-red-300 font-bold truncate">{e.file}</div>
+                        <div className="text-gray-500 text-xs">{e.error}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => abortController?.abort()}
+                  className="px-6 py-3 rounded-lg font-bold uppercase text-sm bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                >
+                  Cancel Import
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Complete mode */}
+        {mode === "complete" && (
+          <div className="flex-1 flex items-center justify-center px-6">
+            <div className="w-full max-w-2xl">
+              <div className="text-center mb-6">
+                <div className="text-5xl mb-3">
+                  {importProgress.succeeded > 0 ? "✓" : "✕"}
+                </div>
+                <div className="text-2xl font-black text-white">
+                  {wasAborted ? "Import Cancelled" : "Import Complete"}
+                </div>
+                <div className="text-sm text-gray-500 mt-2">
+                  {importProgress.succeeded} of {importProgress.total} files imported successfully
+                </div>
+              </div>
+
+              {importProgress.errors.length > 0 ? (
+                <div className="bg-black/40 border border-white/10 rounded-2xl p-4 overflow-hidden">
+                  <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                    Failed files
+                  </div>
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {importProgress.errors.map((e, i) => (
+                      <div key={i} className="text-sm">
+                        <div className="text-red-300 font-bold truncate">{e.file}</div>
+                        <div className="text-gray-500 text-xs">{e.error}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-6 py-3 rounded-lg font-bold uppercase text-sm bg-[#D73F09] hover:bg-[#ff5722] text-white transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Loading state */}
-        {isLoading && (
+        {mode === "selecting" && isLoading && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <svg
@@ -295,7 +553,7 @@ export default function DrivePicker({
         )}
 
         {/* Error state */}
-        {error && !isLoading && (
+        {mode === "selecting" && error && !isLoading && (
           <div className="flex-1 flex items-center justify-center px-6">
             <div className="text-center max-w-md">
               <div className="text-4xl mb-3">⚠️</div>
@@ -308,7 +566,7 @@ export default function DrivePicker({
         )}
 
         {/* Main content */}
-        {driveData && !isLoading && !error && (
+        {mode === "selecting" && driveData && !isLoading && !error && (
           <div className="flex-1 flex overflow-hidden">
             {/* Left sidebar — athlete tabs */}
             <div className="w-64 border-r border-white/10 overflow-y-auto bg-black/40">
@@ -491,7 +749,7 @@ export default function DrivePicker({
         )}
 
         {/* Footer */}
-        {driveData && !isLoading && (
+        {mode === "selecting" && driveData && !isLoading && (
           <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-black/40">
             <div className="text-xs text-gray-400">
               {totalSelected > 0 ? (
@@ -518,32 +776,7 @@ export default function DrivePicker({
                 disabled={totalSelected === 0 || isImporting}
                 className="px-6 py-2 text-xs font-black uppercase bg-[#D73F09] text-white rounded-lg hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600 transition-colors flex items-center gap-2"
               >
-                {isImporting ? (
-                  <>
-                    <svg
-                      className="animate-spin h-3 w-3"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      />
-                    </svg>
-                    Importing {importProgress.done}/{importProgress.total}...
-                  </>
-                ) : (
-                  <>Import {totalSelected > 0 ? `${totalSelected} files` : ""}</>
-                )}
+                <>Import {totalSelected > 0 ? `${totalSelected} files` : ""}</>
               </button>
             </div>
           </div>

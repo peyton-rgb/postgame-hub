@@ -605,31 +605,83 @@ export default function CampaignEditor() {
     setPendingVideo(null);
   }
 
-  async function handleDriveImport(selections: Record<string, any[]>) {
-    for (const [athleteId, files] of Object.entries(selections)) {
+  async function handleFolderConnected(folderId: string) {
+    if (!campaign) return;
+    const { data, error } = await supabase
+      .from("campaign_recaps")
+      .update({ drive_folder_id: folderId })
+      .eq("id", campaign.id)
+      .select()
+      .single();
+    if (error) throw error;
+    if (data) setCampaign(data);
+    else setCampaign((prev) => (prev ? ({ ...prev, drive_folder_id: folderId } as Campaign) : prev));
+  }
+
+  async function handleDriveImport(
+    selections: Record<string, any[]>,
+    onProgress: (p: {
+      current: number;
+      total: number;
+      currentFile: string;
+      succeeded: number;
+      failed: number;
+      errors: Array<{ file: string; error: string }>;
+    }) => void,
+    signal?: AbortSignal
+  ) {
+    const total = Object.values(selections).reduce((sum, files) => sum + files.length, 0);
+    let current = 0;
+    let succeeded = 0;
+    let failed = 0;
+    const errors: Array<{ file: string; error: string }> = [];
+
+    outer: for (const [athleteId, files] of Object.entries(selections)) {
       for (const file of files) {
-        const res = await fetch("/api/drive/import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileId: file.id,
-            fileName: file.name,
-            athleteId,
-            recapId: id,
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          console.error(`Failed to import ${file.name}:`, err);
-          continue;
+        if (signal?.aborted) break outer;
+
+        const currentFile = String(file?.name || "Unknown file");
+        onProgress({ current, total, currentFile, succeeded, failed, errors: [...errors] });
+
+        try {
+          const res = await fetch("/api/drive/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileId: file.id,
+              fileName: file.name,
+              athleteId,
+              recapId: id,
+            }),
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            const msg =
+              errBody?.error ||
+              errBody?.message ||
+              `HTTP ${res.status}`;
+            failed++;
+            errors.push({ file: currentFile, error: String(msg) });
+          } else {
+            const { media: newMedia } = await res.json();
+            succeeded++;
+            setMedia((prev) => ({
+              ...prev,
+              [athleteId]: [...(prev[athleteId] || []), newMedia],
+            }));
+          }
+        } catch (e: any) {
+          failed++;
+          errors.push({ file: currentFile, error: String(e?.message || e) });
+        } finally {
+          current++;
+          onProgress({ current, total, currentFile, succeeded, failed, errors: [...errors] });
         }
-        const { media: newMedia } = await res.json();
-        setMedia((prev) => ({
-          ...prev,
-          [athleteId]: [...(prev[athleteId] || []), newMedia],
-        }));
       }
     }
+
+    return { current, total, currentFile: "", succeeded, failed, errors };
   }
 
   async function removeMedia(athleteId: string, mediaId: string) {
@@ -1344,8 +1396,7 @@ export default function CampaignEditor() {
               <button
                 type="button"
                 onClick={() => setDriveImportOpen(true)}
-                disabled={!campaign?.drive_folder_id}
-                className="px-5 py-2.5 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-500"
               >
                 Import from Drive
               </button>
@@ -1570,15 +1621,14 @@ export default function CampaignEditor() {
               </div>
             </div>
 
-            {campaign?.drive_folder_id ? (
-              <DrivePicker
-                isOpen={driveImportOpen}
-                onClose={() => setDriveImportOpen(false)}
-                folderId={campaign.drive_folder_id}
-                athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name }))}
-                onImport={handleDriveImport}
-              />
-            ) : null}
+            <DrivePicker
+              isOpen={driveImportOpen}
+              onClose={() => setDriveImportOpen(false)}
+              folderId={campaign?.drive_folder_id}
+              onFolderConnected={handleFolderConnected}
+              athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name }))}
+              onImport={handleDriveImport}
+            />
           </div>
         )}
       </div>
