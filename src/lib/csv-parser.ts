@@ -161,6 +161,43 @@ function parseCSVLine(line: string, delimiter = ","): string[] {
   return result;
 }
 
+/**
+ * Split CSV text into logical rows, respecting quoted cells that may contain
+ * embedded newlines. The naive split(/\r?\n/) is wrong for any CSV exported
+ * from Excel/Google Sheets when a cell contains a line break — those line
+ * breaks live INSIDE quoted cells and a row split must skip over them.
+ *
+ * Returns logical rows as strings (each still needs to be passed through
+ * parseCSVLine to be split into columns). Empty rows are filtered out.
+ */
+function splitCSVRows(csvText: string): string[] {
+  const rows: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < csvText.length; i++) {
+    const ch = csvText[i];
+    if (ch === '"') {
+      // Track quote state. Doubled quotes "" inside a quoted cell stay quoted.
+      if (inQuotes && csvText[i + 1] === '"') {
+        current += '""';
+        i++;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      current += ch;
+    } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
+      // Row terminator outside any quoted cell. Handle \r\n as one terminator.
+      if (ch === "\r" && csvText[i + 1] === "\n") i++;
+      if (current.trim().length > 0) rows.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim().length > 0) rows.push(current);
+  return rows;
+}
+
 // Find the column index by matching against possible header names (case-insensitive)
 function findCol(headers: string[], ...names: string[]): number {
   for (const name of names) {
@@ -218,7 +255,7 @@ function findColInPlatform(
  * Expected columns: First, Last, IG Handle, School, Sport, Gender, Notes (flexible matching)
  */
 export function parseInfoCSV(csvText: string): ParsedAthlete[] {
-  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const lines = splitCSVRows(csvText);
   if (lines.length < 2) return [];
 
   // Detect delimiter from the first line
@@ -312,7 +349,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
  *      was being read into metrics.tiktok.total_engagements.
  */
 export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
-  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const lines = splitCSVRows(csvText);
   if (lines.length < 2) return [];
 
   // Detect delimiter from the first line
