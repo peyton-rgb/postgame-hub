@@ -279,6 +279,19 @@ function athleteToRow(a: Athlete): EditableRow {
   };
 }
 
+/**
+ * Normalize a name for fuzzy matching across roster vs CSV imports.
+ * Strips all non-alphanumeric characters and lowercases everything, so
+ * "TAYLOR FELDMAN", "Taylor Feldman", "taylor-feldman", and "Taylor  Feldman "
+ * all collapse to "taylorfeldman" and match each other.
+ *
+ * Different people remain distinct: "Taylor Feldman" → "taylorfeldman",
+ * "Taylor Feldman Jr." → "taylorfeldmanjr".
+ */
+function normalizeName(name: string): string {
+  return (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function blankRow(): EditableRow {
   return {
     _key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -375,14 +388,15 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
       setRows((prev) => {
         const existing = new Map<string, number>();
         prev.forEach((r, i) => {
-          if (r.name.trim()) existing.set(r.name.toLowerCase().trim(), i);
+          const k = normalizeName(r.name);
+          if (k) existing.set(k, i);
         });
 
         const updated = [...prev];
         const newRows: EditableRow[] = [];
 
         for (const pa of parsed) {
-          const key = pa.name.toLowerCase().trim();
+          const key = normalizeName(pa.name);
           const existingIdx = existing.get(key);
 
           if (existingIdx != null) {
