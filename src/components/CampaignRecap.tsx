@@ -294,6 +294,8 @@ export function CampaignRecap({
 
   // Detect athletes with landscape videos to render them as full-width cards above masonry
   const [wideAthleteIds, setWideAthleteIds] = useState<Set<string>>(new Set());
+  // Roster expand/collapse for campaigns with >50 athletes
+  const [rosterExpanded, setRosterExpanded] = useState(false);
   useEffect(() => {
     const detected = new Set<string>();
     let pending = 0;
@@ -322,8 +324,68 @@ export function CampaignRecap({
     stats.tiktokPosts > 0 && "TikTok BTS",
   ].filter(Boolean).join(", ");
 
-  // Roster uses full campaign roster, sorted by followers
-  const rosterAthletes = [...fullRoster].sort((a, b) => (b.ig_followers || 0) - (a.ig_followers || 0));
+  // Roster sort: composite of "biggest names" (followers) and "top performers"
+  // (total engagements). For each athlete we compute a percentile rank within
+  // the campaign on each signal, then average the two. Featured athletes pin
+  // to the top regardless of score (sorted by featured_order among themselves).
+  // Roster is then sliced to the first 50; the rest live behind an expand button.
+  const ROSTER_VISIBLE_COUNT = 50;
+  const rosterAthletes = (() => {
+    const list = [...fullRoster];
+    if (list.length === 0) return list;
+
+    // Compute total engagements for each athlete (sum across IG Feed + Reel + TikTok)
+    const totalEngagementsFor = (a: any) => {
+      const m = a.metrics || {};
+      const f = Number(m.ig_feed?.total_engagements) || 0;
+      const r = Number(m.ig_reel?.total_engagements) || 0;
+      const t = Number(m.tiktok?.total_engagements) || 0;
+      return f + r + t;
+    };
+
+    // Build percentile-rank lookups: rank position / (n - 1) → 0..1 score.
+    // Athletes with the same value get the same rank (averaged).
+    const percentileRank = (values: number[]): Map<number, number> => {
+      const sorted = [...new Set(values)].sort((a, b) => a - b);
+      const map = new Map<number, number>();
+      sorted.forEach((v, i) => {
+        map.set(v, sorted.length === 1 ? 1 : i / (sorted.length - 1));
+      });
+      return map;
+    };
+
+    const followerVals = list.map((a) => Number(a.ig_followers) || 0);
+    const engagementVals = list.map(totalEngagementsFor);
+    const followerRanks = percentileRank(followerVals);
+    const engagementRanks = percentileRank(engagementVals);
+
+    const scoreFor = (a: any) => {
+      const fScore = followerRanks.get(Number(a.ig_followers) || 0) ?? 0;
+      const eScore = engagementRanks.get(totalEngagementsFor(a)) ?? 0;
+      return (fScore + eScore) / 2;
+    };
+
+    // Split: featured athletes go on top, sorted by featured_order then score.
+    // Everyone else sorts by composite score descending.
+    const featured = list.filter((a: any) => a.is_featured);
+    const nonFeatured = list.filter((a: any) => !a.is_featured);
+
+    featured.sort((a: any, b: any) => {
+      const ao = a.featured_order ?? 9999;
+      const bo = b.featured_order ?? 9999;
+      if (ao !== bo) return ao - bo;
+      return scoreFor(b) - scoreFor(a);
+    });
+    nonFeatured.sort((a, b) => scoreFor(b) - scoreFor(a));
+
+    return [...featured, ...nonFeatured];
+  })();
+
+  const rosterIsTruncated = rosterAthletes.length > ROSTER_VISIBLE_COUNT;
+  const visibleRosterAthletes = rosterExpanded || !rosterIsTruncated
+    ? rosterAthletes
+    : rosterAthletes.slice(0, ROSTER_VISIBLE_COUNT);
+  const hiddenRosterCount = rosterAthletes.length - ROSTER_VISIBLE_COUNT;
 
   return (
     <div className="recap-container min-h-screen bg-[#111111] text-white font-sans">
@@ -829,7 +891,7 @@ export function CampaignRecap({
                 </tr>
               </thead>
               <tbody>
-                {rosterAthletes.map((a, i) => {
+                {visibleRosterAthletes.map((a, i) => {
                   const m = a.metrics || {};
                   const feedUrl = m.ig_feed?.post_url || null;
                   const reelUrl = m.ig_reel?.post_url || null;
@@ -880,7 +942,7 @@ export function CampaignRecap({
 
           {/* Mobile: compact cards */}
           <div className="md:hidden space-y-1">
-            {rosterAthletes.map((a, i) => {
+            {visibleRosterAthletes.map((a, i) => {
               const m = a.metrics || {};
               const feedUrl = m.ig_feed?.post_url || null;
               const reelUrl = m.ig_reel?.post_url || null;
@@ -924,6 +986,33 @@ export function CampaignRecap({
               );
             })}
           </div>
+
+          {/* Expand / collapse button for campaigns with >50 athletes */}
+          {rosterIsTruncated && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => setRosterExpanded((v) => !v)}
+                className="px-6 py-3 rounded-full border border-white/[0.20] bg-white/[0.04] hover:bg-white/[0.10] hover:border-white/[0.35] transition-all text-sm font-bold uppercase tracking-wider text-white inline-flex items-center gap-2"
+              >
+                {rosterExpanded ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="18 15 12 9 6 15" />
+                    </svg>
+                    Collapse Roster
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                    Expand to See Full Roster
+                    <span className="ml-1 text-[10px] font-black text-white/50">+{hiddenRosterCount}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
