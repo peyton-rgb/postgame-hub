@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     const drive = getDriveClient();
     const meta = await drive.files.get({
       fileId,
+      supportsAllDrives: true,
       fields: "name, mimeType, size",
     });
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // ── 2. Download the file bytes ──
     const fileResponse = await drive.files.get(
-      { fileId, alt: "media" },
+      { fileId, alt: "media", supportsAllDrives: true },
       { responseType: "arraybuffer" }
     );
 
