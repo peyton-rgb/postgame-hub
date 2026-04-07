@@ -424,9 +424,9 @@ export function CampaignRecap({
         <div className="flex flex-col items-center text-center gap-6">
           {/* Brand logo — big, no container */}
           {settings.brand_logo_url ? (
-            <img src={settings.brand_logo_url} className="h-28 md:h-44 object-contain" alt={campaign.client_name} />
+            <img src={settings.brand_logo_url} className="h-24 md:h-36 object-contain" alt={campaign.client_name} />
           ) : campaign.client_logo_url ? (
-            <img src={campaign.client_logo_url} className="h-24 md:h-40 object-contain" alt={campaign.client_name} />
+            <img src={campaign.client_logo_url} className="h-20 md:h-32 object-contain" alt={campaign.client_name} />
           ) : null}
 
           <h1 className="text-3xl md:text-5xl font-black uppercase leading-tight">
