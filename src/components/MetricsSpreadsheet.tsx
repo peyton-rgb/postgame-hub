@@ -682,6 +682,102 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
                   </th>
                 ))}
               </tr>
+              {/* Totals row — sticky under the header. Updates live as cells are edited.
+                  For engagement-rate columns, shows the WEIGHTED average (total engagements
+                  ÷ total impressions/views), not a naive mean of percentages. */}
+              <tr className="bg-[#1a0f08]">
+                <th className="sticky left-0 z-30 bg-[#1a0f08] w-8 px-2 py-2 text-[#D73F09] font-black text-[9px] text-center border-b-2 border-r border-gray-800 uppercase tracking-wider">
+                  Σ
+                </th>
+                <th className="sticky left-8 z-30 bg-[#1a0f08] w-8 px-1 py-2 border-b-2 border-r border-gray-800"></th>
+                {activeTab !== "identity" && (
+                  <th className="sticky left-16 z-30 bg-[#1a0f08] px-2 py-2 text-left text-[#D73F09] font-black text-[10px] uppercase tracking-wider border-b-2 border-r border-gray-800 whitespace-nowrap" style={{ minWidth: "150px" }}>
+                    TOTALS · {rows.length}
+                  </th>
+                )}
+                {cols.map((col) => {
+                  // Identity tab: show total only on the followers column, athlete count on Name
+                  if (activeTab === "identity") {
+                    if (col.key === "name") {
+                      return (
+                        <th key={col.key} className="px-2 py-2 text-left text-[#D73F09] font-black text-[10px] uppercase tracking-wider border-b-2 border-gray-800 whitespace-nowrap">
+                          TOTALS · {rows.length}
+                        </th>
+                      );
+                    }
+                    if (col.key === "ig_followers") {
+                      const sum = rows.reduce((acc, r) => acc + (typeof r.ig_followers === "number" ? r.ig_followers : 0), 0);
+                      return (
+                        <th key={col.key} className="px-2 py-2 text-left text-[#D73F09] font-black text-[10px] font-mono border-b-2 border-gray-800">
+                          {sum.toLocaleString()}
+                        </th>
+                      );
+                    }
+                    return <th key={col.key} className="px-2 py-2 border-b-2 border-gray-800"></th>;
+                  }
+                  // Metric tabs: skip text/url columns, sum number columns
+                  if (col.type !== "number") {
+                    return <th key={col.key} className="px-2 py-2 border-b-2 border-gray-800"></th>;
+                  }
+                  // Engagement-rate columns get a weighted average instead of a sum
+                  const isRateCol = col.key.endsWith("_rate") || col.key.endsWith("_ctr") || col.key.endsWith("_conv_rate");
+                  if (isRateCol) {
+                    // Match the rate column to its numerator+denominator pair
+                    let totalEng = 0, totalDenom = 0;
+                    if (col.key === "ig_feed_rate") {
+                      rows.forEach((r) => {
+                        const te = Number(metricVal(r.metrics, "ig_feed", "total_engagements")) || 0;
+                        const imp = Number(metricVal(r.metrics, "ig_feed", "impressions")) || 0;
+                        totalEng += te; totalDenom += imp;
+                      });
+                    } else if (col.key === "ig_reel_rate") {
+                      rows.forEach((r) => {
+                        const te = Number(metricVal(r.metrics, "ig_reel", "total_engagements")) || 0;
+                        const v = Number(metricVal(r.metrics, "ig_reel", "views")) || 0;
+                        totalEng += te; totalDenom += v;
+                      });
+                    } else if (col.key === "tiktok_rate") {
+                      rows.forEach((r) => {
+                        const te = Number(metricVal(r.metrics, "tiktok", "total_engagements")) || 0;
+                        const v = Number(metricVal(r.metrics, "tiktok", "views")) || 0;
+                        totalEng += te; totalDenom += v;
+                      });
+                    } else if (col.key === "clicks_ctr") {
+                      rows.forEach((r) => {
+                        const c = Number(metricVal(r.metrics, "clicks", "link_clicks")) || 0;
+                        const i = Number(metricVal(r.metrics, "ig_feed", "impressions")) || 0;
+                        totalEng += c; totalDenom += i;
+                      });
+                    } else {
+                      // Fallback: naive average of present values
+                      const present = rows.map((r) => Number(col.getValue(r))).filter((n) => !isNaN(n) && n !== 0);
+                      const avg = present.length ? present.reduce((a, b) => a + b, 0) / present.length : 0;
+                      return (
+                        <th key={col.key} className="px-2 py-2 text-left text-[#D73F09] font-black text-[10px] font-mono border-b-2 border-gray-800">
+                          {avg ? avg.toFixed(2) + "%" : "—"}
+                        </th>
+                      );
+                    }
+                    const rate = totalDenom > 0 ? (totalEng / totalDenom) * 100 : 0;
+                    return (
+                      <th key={col.key} className="px-2 py-2 text-left text-[#D73F09] font-black text-[10px] font-mono border-b-2 border-gray-800" title="Weighted average across all athletes">
+                        {rate ? rate.toFixed(2) + "%" : "—"}
+                      </th>
+                    );
+                  }
+                  // Numeric column: sum it
+                  const sum = rows.reduce((acc, r) => {
+                    const v = col.getValue(r);
+                    const n = typeof v === "number" ? v : parseFloat(String(v));
+                    return acc + (isNaN(n) ? 0 : n);
+                  }, 0);
+                  return (
+                    <th key={col.key} className="px-2 py-2 text-left text-[#D73F09] font-black text-[10px] font-mono border-b-2 border-gray-800">
+                      {sum ? sum.toLocaleString() : "—"}
+                    </th>
+                  );
+                })}
+              </tr>
             </thead>
             <tbody>
               {rows.map((row, idx) => (
