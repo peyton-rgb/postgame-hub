@@ -76,6 +76,9 @@ async function listSubfolders(
   do {
     const res = await drive.files.list({
       q: `'${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      corpora: "allDrives",
       fields: "nextPageToken, files(id, name)",
       pageSize: 100,
       orderBy: "name",
@@ -107,6 +110,9 @@ async function listMediaFilesInFolder(
   do {
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')`,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      corpora: "allDrives",
       fields:
         "nextPageToken, files(id, name, mimeType, size, thumbnailLink, webViewLink, webContentLink, createdTime)",
       pageSize: 100,
@@ -172,6 +178,7 @@ async function getFolderName(
 ): Promise<string> {
   const res = await drive.files.get({
     fileId: folderId,
+    supportsAllDrives: true,
     fields: "name",
   });
   return res.data.name ?? "Unknown Folder";
@@ -331,6 +338,7 @@ export async function getDriveThumbnail(
     const drive = getDriveClient();
     const meta = await drive.files.get({
       fileId,
+      supportsAllDrives: true,
       fields: "thumbnailLink",
     });
 
@@ -355,7 +363,7 @@ export async function getDriveThumbnail(
 
     // Fallback: download the file itself (works for images)
     const res = await drive.files.get(
-      { fileId, alt: "media" },
+      { fileId, alt: "media", supportsAllDrives: true },
       { responseType: "arraybuffer" }
     );
     return Buffer.from(res.data as ArrayBuffer);
