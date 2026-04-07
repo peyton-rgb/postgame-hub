@@ -12,7 +12,7 @@ import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 import heic2any from "heic2any";
-import DriveImportModal from "@/components/DriveImportModal";
+import DrivePicker from "@/components/DrivePicker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
@@ -603,6 +603,33 @@ export default function CampaignEditor() {
       });
     }
     setPendingVideo(null);
+  }
+
+  async function handleDriveImport(selections: Record<string, any[]>) {
+    for (const [athleteId, files] of Object.entries(selections)) {
+      for (const file of files) {
+        const res = await fetch("/api/drive/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileId: file.id,
+            fileName: file.name,
+            athleteId,
+            recapId: id,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error(`Failed to import ${file.name}:`, err);
+          continue;
+        }
+        const { media: newMedia } = await res.json();
+        setMedia((prev) => ({
+          ...prev,
+          [athleteId]: [...(prev[athleteId] || []), newMedia],
+        }));
+      }
+    }
   }
 
   async function removeMedia(athleteId: string, mediaId: string) {
@@ -1317,7 +1344,8 @@ export default function CampaignEditor() {
               <button
                 type="button"
                 onClick={() => setDriveImportOpen(true)}
-                className="px-5 py-2.5 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-500"
+                disabled={!campaign?.drive_folder_id}
+                className="px-5 py-2.5 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Import from Drive
               </button>
@@ -1542,12 +1570,15 @@ export default function CampaignEditor() {
               </div>
             </div>
 
-            <DriveImportModal
-              isOpen={driveImportOpen}
-              onClose={() => setDriveImportOpen(false)}
-              campaignId={id}
-              onImportComplete={() => loadData()}
-            />
+            {campaign?.drive_folder_id ? (
+              <DrivePicker
+                isOpen={driveImportOpen}
+                onClose={() => setDriveImportOpen(false)}
+                folderId={campaign.drive_folder_id}
+                athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name }))}
+                onImport={handleDriveImport}
+              />
+            ) : null}
           </div>
         )}
       </div>

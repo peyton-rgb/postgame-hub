@@ -385,12 +385,7 @@ export default function CampaignMediaPicker({
       try {
         let blob: Blob;
         if (RAW_EXTS.includes(fileExt)) {
-          // RAW files: convert server-side via sharp
-          const formData = new FormData();
-          formData.append("file", file);
-          const res = await fetch("/api/convert-image", { method: "POST", body: formData });
-          if (!res.ok) throw new Error("Server conversion failed");
-          blob = await res.blob();
+          throw new Error("RAW conversion disabled");
         } else if (file.type === "image/heic" || file.type === "image/heif" || fileExt === "heic" || fileExt === "heif") {
           const heic2any = (await import("heic2any")).default;
           const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
