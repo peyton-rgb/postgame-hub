@@ -387,21 +387,26 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
 
           if (existingIdx != null) {
             const row = updated[existingIdx];
-            // Deep-merge metrics: only overwrite fields the CSV actually has data for
-            const existingMetrics = row.metrics || {};
+            // Platform-block replacement: the CSV is the source of truth.
+            // For every platform group present in the CSV, REPLACE the entire
+            // existing block (don't field-merge) so empty/null values in the
+            // new CSV correctly erase stale data from prior imports. Platform
+            // groups NOT present in the CSV are preserved as-is. All-empty
+            // platform blocks are deleted entirely so we don't store hollow
+            // {tiktok: {}} objects.
             const csvMetrics = pa.metrics || {};
-            const mergedMetrics: Record<string, any> = { ...existingMetrics };
+            const replacedMetrics: Record<string, any> = { ...(row.metrics || {}) };
             for (const platform of Object.keys(csvMetrics) as string[]) {
               const csvPlatform = (csvMetrics as any)[platform];
               if (!csvPlatform || typeof csvPlatform !== "object") continue;
-              const existingPlatform = (existingMetrics as any)[platform] || {};
-              const mergedPlatform = { ...existingPlatform };
-              for (const [field, value] of Object.entries(csvPlatform)) {
-                if (value != null && value !== "" && value !== 0) {
-                  mergedPlatform[field] = value;
-                }
+              const hasAnyValue = Object.values(csvPlatform).some(
+                (v) => v != null && v !== ""
+              );
+              if (hasAnyValue) {
+                replacedMetrics[platform] = csvPlatform;
+              } else {
+                delete replacedMetrics[platform];
               }
-              mergedMetrics[platform] = mergedPlatform;
             }
             updated[existingIdx] = {
               ...row,
@@ -413,7 +418,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               content_rating: pa.content_rating || row.content_rating,
               reach_level: pa.reach_level || row.reach_level,
               notes: pa.notes || row.notes,
-              metrics: autoFillMetrics(mergedMetrics as any),
+              metrics: autoFillMetrics(replacedMetrics as any),
             };
           } else {
             newRows.push({
