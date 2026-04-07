@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -11,6 +12,8 @@ import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 import heic2any from "heic2any";
+import DriveImportModal from "@/components/DriveImportModal";
+import { supabaseImageUrl } from "@/lib/supabase-image";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Overview" },
@@ -114,6 +117,7 @@ export default function CampaignEditor() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [media, setMedia] = useState<Record<string, Media[]>>({});
+  const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
@@ -1309,6 +1313,16 @@ export default function CampaignEditor() {
         {step === 4 && (
           <div className="space-y-8">
 
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDriveImportOpen(true)}
+                className="px-5 py-2.5 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-500"
+              >
+                Import from Drive
+              </button>
+            </div>
+
             {/* Bulk Upload Drop Zone */}
             <div
               onDragEnter={(e) => { e.preventDefault(); bulkDragCounter.current++; setBulkDragging(true); }}
@@ -1415,7 +1429,18 @@ export default function CampaignEditor() {
                         }`}
                       >
                         {coverSrc ? (
-                          <img src={coverSrc} className="w-full h-full object-cover" alt={a.name} loading="lazy" />
+                          <img
+                            src={supabaseImageUrl(coverSrc, 600) ?? coverSrc}
+                            className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+                            alt={a.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              if (img.src.includes("/render/image/public/")) {
+                                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+                              }
+                            }}
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1456,7 +1481,18 @@ export default function CampaignEditor() {
                                 }`}
                               >
                                 {thumbSrc ? (
-                                  <img src={thumbSrc} className="w-full h-full object-cover" alt="" loading="lazy" />
+                                  <img
+                                    src={supabaseImageUrl(thumbSrc, 100) ?? thumbSrc}
+                                    className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+                                    alt=""
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      const img = e.currentTarget;
+                                      if (img.src.includes("/render/image/public/")) {
+                                        img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+                                      }
+                                    }}
+                                  />
                                 ) : (
                                   <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
                                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1505,6 +1541,13 @@ export default function CampaignEditor() {
                 })}
               </div>
             </div>
+
+            <DriveImportModal
+              isOpen={driveImportOpen}
+              onClose={() => setDriveImportOpen(false)}
+              campaignId={id}
+              onImportComplete={() => loadData()}
+            />
           </div>
         )}
       </div>

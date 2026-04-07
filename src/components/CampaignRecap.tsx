@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
+import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStats, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
@@ -100,12 +101,18 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
           <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1] object-cover" style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }} onEnded={() => setPlaying(false)} />
         ) : displaySrc ? (
           <img
-            src={displaySrc}
-            className="w-full block object-cover"
+            src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
+            className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
             style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
             draggable={false}
             alt={athlete.name}
             loading="lazy"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.src.includes("/render/image/public/")) {
+                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+              }
+            }}
           />
         ) : isVideo ? (
           <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }} onClick={() => setPlaying(true)}>

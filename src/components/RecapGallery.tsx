@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { Campaign, Athlete, Media } from "@/lib/types";
+import { supabaseImageUrl } from "@/lib/supabase-image";
 
 function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Media[] }) {
   // Videos always first in carousel
@@ -59,10 +60,17 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
           />
         ) : displaySrc ? (
           <img
-            src={displaySrc}
-            className={`w-full block ${isVideo ? "aspect-[9/16] object-cover" : ""}`}
+            src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
+            className={`w-full block object-cover [image-rendering:-webkit-optimize-contrast] ${isVideo ? "aspect-[9/16]" : ""}`}
             draggable={false}
             alt={athlete.name}
+            loading="lazy"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.src.includes("/render/image/public/")) {
+                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+              }
+            }}
           />
         ) : (
           <div className="w-full aspect-[4/5] bg-black flex items-center justify-center">

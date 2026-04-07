@@ -66,6 +66,8 @@ export interface Campaign {
   id: string;
   name: string;
   slug: string;
+  /** Google Drive parent folder for campaign media imports (recap rows). */
+  drive_folder_id?: string | null;
   client_name: string;
   client_logo_url: string | null;
   brand_id: string | null;
@@ -178,6 +180,7 @@ export interface Media {
   thumbnail_url: string | null;
   sort_order: number;
   is_video_thumbnail: boolean;
+  drive_file_id?: string | null;
   created_at: string;
 }
 

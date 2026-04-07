@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { Campaign, Athlete, Media } from "@/lib/types";
+import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, computeStats } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { SchoolLogo, getFullSchoolName, getSchoolColor } from "./SchoolBadge";
@@ -61,7 +62,18 @@ function FeaturedCard({
         {/* Background image */}
         <div className="absolute inset-0">
           {imgSrc ? (
-            <img src={imgSrc} className="w-full h-full object-cover" style={{ objectPosition: "center 20%" }} alt={athlete.name} />
+            <img
+              src={supabaseImageUrl(imgSrc, 1200) ?? imgSrc}
+              className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+              style={{ objectPosition: "center 20%" }}
+              alt={athlete.name}
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (img.src.includes("/render/image/public/")) {
+                  img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+                }
+              }}
+            />
           ) : (
             <div className="w-full h-full bg-black" />
           )}
@@ -170,7 +182,18 @@ function RosterCard({
       {/* Photo */}
       <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden flex-shrink-0 bg-[#111] border border-white/[0.05]">
         {thumbSrc ? (
-          <img src={thumbSrc} className="w-full h-full object-cover" style={{ objectPosition: "center 20%" }} alt={athlete.name} />
+          <img
+            src={supabaseImageUrl(thumbSrc, 100) ?? thumbSrc}
+            className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+            style={{ objectPosition: "center 20%" }}
+            alt={athlete.name}
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.src.includes("/render/image/public/")) {
+                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+              }
+            }}
+          />
         ) : (
           <div className="w-full h-full bg-[#111]" />
         )}
