@@ -232,9 +232,17 @@ export default function PitchEditor() {
   }
 
   async function toggleStatus() {
+    if (!pitch) return;
     const newStatus = status === "draft" ? "published" : "draft";
     setStatus(newStatus);
-    debouncedSave(sections, newStatus);
+    setSaving(true);
+    await supabase
+      .from("pitch_pages")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", pitch.id);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }
 
   if (loading) {

@@ -1,4 +1,4 @@
-import { createPlainSupabase } from "@/lib/supabase";
+import { createPlainSupabase, createServiceSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import type { PitchPage, PitchSectionData } from "@/types/pitch";
 import TickerSection from "@/components/pitch/TickerSection";
@@ -29,11 +29,17 @@ const SECTION_MAP: Record<
 
 export default async function PitchPageRoute({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { slug } = await params;
-  const supabase = createPlainSupabase();
+  const { preview } = await searchParams;
+
+  // preview=1 uses service client (bypasses RLS) so draft pitches render in the editor iframe
+  const isPreview = preview === "1";
+  const supabase = isPreview ? createServiceSupabase() : createPlainSupabase();
 
   const { data } = await supabase
     .from("pitch_pages")
