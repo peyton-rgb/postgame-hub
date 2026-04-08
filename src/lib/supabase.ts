@@ -20,3 +20,15 @@ export function createPlainSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
+
+// Service role client (server-side ONLY — bypasses RLS).
+// Use this in dashboard server components and API routes that need to read
+// or write rows that anon users cannot. NEVER import this in a client component.
+export function createServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
+

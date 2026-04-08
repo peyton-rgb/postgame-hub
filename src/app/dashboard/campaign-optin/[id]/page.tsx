@@ -1,4 +1,4 @@
-import { createPlainSupabase } from "@/lib/supabase";
+import { createServiceSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import OptInEditor from "@/components/OptInEditor";
 
@@ -10,7 +10,7 @@ type Props = {
 
 export default async function OptInEditorPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createPlainSupabase();
+  const supabase = createServiceSupabase();
 
   const [{ data: campaign }, { data: brands }] = await Promise.all([
     supabase
