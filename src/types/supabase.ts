@@ -1849,6 +1849,64 @@ export type Database = {
           },
         ]
       }
+      pitch_pages: {
+        Row: {
+          brand_id: string | null
+          content: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          slug: string
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          slug: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          slug?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pitch_pages_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pitch_pages_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pitch_pages_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
       press_articles: {
         Row: {
           archived: boolean
@@ -2129,7 +2187,7 @@ export type Database = {
           athlete_id: string | null
           athlete_name: string
           brand_id: string | null
-          campaign_id: string | null
+          campaign_id: string
           campaign_media_id: string | null
           campaign_name: string | null
           caption: string | null
@@ -2142,6 +2200,7 @@ export type Database = {
           form_response_id: string | null
           id: string
           mime_type: string | null
+          recap_id: string | null
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -2166,7 +2225,7 @@ export type Database = {
           athlete_id?: string | null
           athlete_name: string
           brand_id?: string | null
-          campaign_id?: string | null
+          campaign_id: string
           campaign_media_id?: string | null
           campaign_name?: string | null
           caption?: string | null
@@ -2179,6 +2238,7 @@ export type Database = {
           form_response_id?: string | null
           id?: string
           mime_type?: string | null
+          recap_id?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2203,7 +2263,7 @@ export type Database = {
           athlete_id?: string | null
           athlete_name?: string
           brand_id?: string | null
-          campaign_id?: string | null
+          campaign_id?: string
           campaign_media_id?: string | null
           campaign_name?: string | null
           caption?: string | null
@@ -2216,6 +2276,7 @@ export type Database = {
           form_response_id?: string | null
           id?: string
           mime_type?: string | null
+          recap_id?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2261,6 +2322,20 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "brand_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
         ]
@@ -2560,4 +2635,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

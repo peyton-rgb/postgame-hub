@@ -13,6 +13,7 @@ import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 import heic2any from "heic2any";
 import DrivePicker from "@/components/DrivePicker";
+import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
@@ -118,6 +119,7 @@ export default function CampaignEditor() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [media, setMedia] = useState<Record<string, Media[]>>({});
   const [driveImportOpen, setDriveImportOpen] = useState(false);
+  const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
@@ -1392,7 +1394,7 @@ export default function CampaignEditor() {
         {step === 4 && (
           <div className="space-y-8">
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setDriveImportOpen(true)}
@@ -1615,6 +1617,19 @@ export default function CampaignEditor() {
                         <div className="text-[10px] font-bold uppercase truncate text-gray-300">{a.name}</div>
                         <div className="text-[9px] text-gray-600 truncate">{a.school}</div>
                       </div>
+                      {campaign?.admin_campaign_id && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setTier3PickerAthlete(a); }}
+                          className="mt-1 w-full px-2 py-1 border border-gray-700 rounded text-[9px] font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                          </svg>
+                          Submissions
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -1629,6 +1644,22 @@ export default function CampaignEditor() {
               athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name }))}
               onImport={handleDriveImport}
             />
+
+            {tier3PickerAthlete && campaign?.admin_campaign_id && (
+              <Tier3Picker
+                recapId={id}
+                brandCampaignId={campaign.admin_campaign_id}
+                athleteId={tier3PickerAthlete.id}
+                athleteName={tier3PickerAthlete.name}
+                onClose={() => setTier3PickerAthlete(null)}
+                onImported={(newMedia) => {
+                  setMedia((prev) => ({
+                    ...prev,
+                    [tier3PickerAthlete.id]: [...(prev[tier3PickerAthlete.id] || []), newMedia],
+                  }));
+                }}
+              />
+            )}
           </div>
         )}
       </div>

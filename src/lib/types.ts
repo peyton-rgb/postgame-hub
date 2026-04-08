@@ -70,6 +70,7 @@ export interface Campaign {
   drive_folder_id?: string | null;
   client_name: string;
   client_logo_url: string | null;
+  admin_campaign_id: string | null;
   brand_id: string | null;
   created_at: string;
   published: boolean;
