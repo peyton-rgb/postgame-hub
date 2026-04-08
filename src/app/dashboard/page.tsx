@@ -6,6 +6,7 @@ import OptInList from "@/components/OptInList";
 import CampaignList from "@/components/CampaignList";
 import RunOfShowList from "@/components/RunOfShowList";
 import BriefList from "@/components/BriefList";
+import PitchList from "@/components/PitchList";
 import TrackerList from "@/components/TrackerList";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import Link from "next/link";
@@ -16,6 +17,7 @@ const TABS = [
   { key: "trackers",     label: "Performance Trackers" },
   { key: "ros",          label: "Run of Shows" },
   { key: "briefs",       label: "Briefs" },
+  { key: "pitches",      label: "Pitches" },
   { key: "newsletter",   label: "Newsletter" },
   { key: "instructions", label: "Campaign Instructions" },
   { key: "optin",        label: "Campaign Opt-In" },
@@ -132,6 +134,7 @@ function DashboardContent() {
         {activeTab === "trackers" && <TrackerList />}
         {activeTab === "ros" && <RunOfShowList />}
         {activeTab === "briefs" && <BriefList />}
+        {activeTab === "pitches" && <PitchList />}
         {activeTab === "newsletter"   && <RedirectTab href="/dashboard/newsletter" label="Newsletter Creator" desc="Build exportable Mailchimp newsletters tied to brand campaigns." />}
         {activeTab === "instructions" && <RedirectTab href="/dashboard/campaign-instructions" label="Campaign Instructions" desc="Create athlete + crew instruction pages with deliverables, dos/don'ts, and contact info." />}
         {activeTab === "optin"        && <OptInList />}
