@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { createBrowserSupabase } from "@/lib/supabase";
 
 const POSTGAME_LOGO_URL = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632055938-16gy1u2t.PNG";
@@ -112,10 +113,13 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
         {/* Hero — photo background, brand mark, headline pill, title */}
         <div className="relative h-[380px] overflow-hidden">
           {heroImage ? (
-            <img
+            <Image
               src={heroImage}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              fill={true}
+              sizes="(max-width: 768px) 100vw, 768px"
+              priority={true}
+              className="object-cover"
             />
           ) : (
             <div
@@ -187,49 +191,8 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
             </div>
           )}
 
-          {/* NOTICE callout (eligibility / heads-up) */}
-          {campaign.notice && (
-            <div className="mb-5 flex items-start gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#fbbf24"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="flex-shrink-0 mt-0.5"
-              >
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-amber-400 mb-0.5">
-                  Notice
-                </div>
-                <div className="text-[13px] text-amber-100/90 leading-snug">
-                  {campaign.notice}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Brief bullets */}
-          {(campaign.requirements || campaign.products) && (
-            <div className="mb-5">
-              {campaign.requirements && (
-                <BriefRow label="Requirements" value={campaign.requirements} />
-              )}
-              {campaign.products && (
-                <BriefRow label="Products" value={campaign.products} />
-              )}
-            </div>
-          )}
-
-          {/* Form */}
-          <div className="bg-white/[0.04] border border-white/[0.12] rounded-2xl p-4">
+          {/* Form — positioned early so athletes see it without scrolling */}
+          <div className="bg-white/[0.04] border border-white/[0.12] rounded-2xl p-4 mb-5">
             {submitted ? (
               <div className="text-center py-4">
                 <svg
@@ -284,6 +247,47 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
               </>
             )}
           </div>
+
+          {/* NOTICE callout (eligibility / heads-up) */}
+          {campaign.notice && (
+            <div className="mb-5 flex items-start gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fbbf24"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="flex-shrink-0 mt-0.5"
+              >
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-amber-400 mb-0.5">
+                  Notice
+                </div>
+                <div className="text-[13px] text-amber-100/90 leading-snug">
+                  {campaign.notice}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Brief bullets */}
+          {(campaign.requirements || campaign.products) && (
+            <div className="mb-5">
+              {campaign.requirements && (
+                <BriefRow label="Requirements" value={campaign.requirements} />
+              )}
+              {campaign.products && (
+                <BriefRow label="Products" value={campaign.products} />
+              )}
+            </div>
+          )}
 
           <div className="text-center pt-4 pb-2 text-[10px] text-white/30">
             Powered by Postgame
