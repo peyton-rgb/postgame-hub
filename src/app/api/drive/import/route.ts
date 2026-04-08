@@ -71,8 +71,20 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[drive/import] Error:", error);
+    // DEBUG: temporary verbose error — remove after fix
     return NextResponse.json(
-      { error: error.message || "Failed to import file" },
+      {
+        error: error?.message || "Failed to import file",
+        name: error?.name || "Unknown",
+        stack: error?.stack || null,
+        response_data: error?.response?.data || error?.errors || null,
+        code: error?.code || null,
+        env_check: {
+          client_id_set: !!process.env.GOOGLE_CLIENT_ID,
+          client_secret_set: !!process.env.GOOGLE_CLIENT_SECRET,
+          refresh_token_set: !!process.env.GOOGLE_REFRESH_TOKEN,
+        },
+      },
       { status: 500 }
     );
   }

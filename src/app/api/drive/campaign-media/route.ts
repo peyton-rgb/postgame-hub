@@ -43,26 +43,20 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("[drive/campaign-media] Error:", error);
 
-    // Handle specific Google API errors
-    if (error?.code === 404) {
-      return NextResponse.json(
-        { error: "Folder not found. Make sure it's shared with the service account." },
-        { status: 404 }
-      );
-    }
-
-    if (error?.code === 403) {
-      return NextResponse.json(
-        {
-          error:
-            "Access denied. Share the Drive folder with the service account email.",
-        },
-        { status: 403 }
-      );
-    }
-
+    // DEBUG: temporary verbose error — remove after fix
     return NextResponse.json(
-      { error: "Failed to fetch Drive media" },
+      {
+        error: error?.message || "Failed to fetch Drive media",
+        name: error?.name || "Unknown",
+        stack: error?.stack || null,
+        response_data: error?.response?.data || error?.errors || null,
+        code: error?.code || null,
+        env_check: {
+          client_id_set: !!process.env.GOOGLE_CLIENT_ID,
+          client_secret_set: !!process.env.GOOGLE_CLIENT_SECRET,
+          refresh_token_set: !!process.env.GOOGLE_REFRESH_TOKEN,
+        },
+      },
       { status: 500 }
     );
   }
