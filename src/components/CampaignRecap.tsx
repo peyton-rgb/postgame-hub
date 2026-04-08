@@ -446,23 +446,18 @@ export function CampaignRecap({
       {show("brief") && (
         <div ref={(el) => { sectionRefs.current["brief"] = el; }} data-section="brief" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
-            <div className="space-y-0">
+          <div className="space-y-8">
+            {settings.description && (
+              <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
+                {settings.description}
+              </div>
+            )}
+            <div className="space-y-0 max-w-xl">
               {[
                 { label: "CAMPAIGN NAME", value: campaign.name },
                 { label: "TIMEFRAME", value: settings.quarter },
                 { label: "PLATFORM(S)", value: settings.platform },
                 { label: "CONTENT TYPE", value: contentTypes },
-              ].filter((r) => r.value).map((row) => (
-                <div key={row.label} className="flex items-baseline py-3 border-b border-white/[0.12]">
-                  <span className="text-xs font-bold uppercase tracking-wider text-white/70 w-40 flex-shrink-0">{row.label}</span>
-                  <span className="text-base font-semibold text-white/90">{row.value}</span>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-0">
-              {[
-                { label: "CAMPAIGN", value: campaign.client_name },
                 { label: "CAMPAIGN TYPE", value: settings.campaign_type },
               ].filter((r) => r.value).map((row) => (
                 <div key={row.label} className="flex items-baseline py-3 border-b border-white/[0.12]">
