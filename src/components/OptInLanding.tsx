@@ -129,13 +129,13 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/95" />
 
           {/* Top bar */}
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+          <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-10">
+            <div className="flex flex-col items-start gap-1">
+              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">Powered by</span>
+              <img src={POSTGAME_LOGO_URL} alt="Postgame" className="h-5 object-contain" />
+            </div>
             <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">
               Opt-In
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">Powered by</span>
-              <img src={POSTGAME_LOGO_URL} alt="Postgame" className="h-4 object-contain" />
             </div>
           </div>
 
