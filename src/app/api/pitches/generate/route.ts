@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createServiceSupabase } from "@/lib/supabase";
 import Anthropic from "@anthropic-ai/sdk";
-import { buildSystemPrompt } from "@/lib/pitch/aiPrompts";
+import { buildSystemPrompt, type BuildPromptInput } from "@/lib/pitch/aiPrompts";
 import type { PitchSectionData } from "@/types/pitch";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { tmpdir } from "os";
@@ -21,12 +21,13 @@ interface RequestBody {
   brandId: string;
   title: string;
   slug: string;
+  voiceId: string;
   userPrompt: string;
   uploadedAssets: UploadedAsset[];
 }
 
 const VALID_SECTION_TYPES = new Set([
-  "ticker", "hero", "thesis", "roster", "pullQuote", "capabilities", "ideas", "cta",
+  "ticker", "hero", "thesis", "roster", "pullQuote", "pull_quote", "capabilities", "ideas", "cta",
 ]);
 
 // ---- Auth helper ----
@@ -214,10 +215,16 @@ async function cleanupTempDir(tempDir: string) {
 
 // ---- Brand context builder ----
 
+interface BrandContextResult {
+  brandName: string;
+  brandContext: string;
+  pastCampaignsContext: string;
+}
+
 async function buildBrandContext(
   serviceSupabase: ReturnType<typeof createServiceSupabase>,
   brandId: string
-): Promise<string> {
+): Promise<BrandContextResult> {
   // Fetch brand
   const { data: brand } = await serviceSupabase
     .from("brands")
@@ -227,6 +234,15 @@ async function buildBrandContext(
 
   if (!brand) throw new Error("Brand not found");
 
+  // Build brand details
+  let brandContext = "";
+  if (brand.primary_color) brandContext += `Primary color: ${brand.primary_color}\n`;
+  if (brand.secondary_color) brandContext += `Secondary color: ${brand.secondary_color}\n`;
+  if (brand.website) brandContext += `Website: ${brand.website}\n`;
+  if (brand.notes) brandContext += `Notes: ${brand.notes}\n`;
+  if (brand.kit_notes) brandContext += `Brand kit notes: ${brand.kit_notes}\n`;
+  if (brand.brand_colors) brandContext += `Brand colors: ${JSON.stringify(brand.brand_colors)}\n`;
+
   // Fetch past campaigns
   const { data: campaigns } = await serviceSupabase
     .from("brand_campaigns")
@@ -234,31 +250,24 @@ async function buildBrandContext(
     .eq("brand_id", brandId)
     .order("created_at", { ascending: false });
 
-  let context = `## BRAND: ${brand.name}\n`;
-  if (brand.primary_color) context += `Primary color: ${brand.primary_color}\n`;
-  if (brand.secondary_color) context += `Secondary color: ${brand.secondary_color}\n`;
-  if (brand.website) context += `Website: ${brand.website}\n`;
-  if (brand.notes) context += `Notes: ${brand.notes}\n`;
-  if (brand.kit_notes) context += `Brand kit notes: ${brand.kit_notes}\n`;
-  if (brand.brand_colors) context += `Brand colors: ${JSON.stringify(brand.brand_colors)}\n`;
-
+  let pastCampaignsContext = "";
   if (campaigns && campaigns.length > 0) {
-    context += `\n## PAST CAMPAIGNS (${campaigns.length} total)\n`;
+    pastCampaignsContext = `${campaigns.length} campaigns on record:\n`;
     for (const c of campaigns) {
-      context += `\n### ${c.name}\n`;
-      if (c.status) context += `Status: ${c.status}\n`;
-      if (c.budget) context += `Budget: $${c.budget}\n`;
-      if (c.created_at) context += `Date: ${new Date(c.created_at).toLocaleDateString()}\n`;
+      pastCampaignsContext += `\n### ${c.name}\n`;
+      if (c.status) pastCampaignsContext += `Status: ${c.status}\n`;
+      if (c.budget) pastCampaignsContext += `Budget: $${c.budget}\n`;
+      if (c.created_at) pastCampaignsContext += `Date: ${new Date(c.created_at).toLocaleDateString()}\n`;
       if (c.settings) {
         const settings = typeof c.settings === "string" ? JSON.parse(c.settings) : c.settings;
-        if (settings.description) context += `Description: ${settings.description}\n`;
+        if (settings.description) pastCampaignsContext += `Description: ${settings.description}\n`;
       }
     }
   } else {
-    context += `\nNo past campaigns found for this brand.\n`;
+    pastCampaignsContext = "No past campaigns found for this brand.";
   }
 
-  return context;
+  return { brandName: brand.name, brandContext, pastCampaignsContext };
 }
 
 // ---- Validation ----
@@ -289,7 +298,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body: RequestBody = await req.json();
-    const { brandId, title, slug, userPrompt, uploadedAssets } = body;
+    const { brandId, title, slug, voiceId, userPrompt, uploadedAssets } = body;
 
     if (!brandId) {
       return NextResponse.json({ error: "brandId is required" }, { status: 400 });
@@ -297,8 +306,9 @@ export async function POST(req: NextRequest) {
 
     const serviceSupabase = createServiceSupabase();
 
-    // Build brand context
-    const brandContext = await buildBrandContext(serviceSupabase, brandId);
+    // Build brand context (split into details + campaigns for the prompt builder)
+    const { brandName, brandContext, pastCampaignsContext } =
+      await buildBrandContext(serviceSupabase, brandId);
 
     // Process assets
     const imageBlocks: Anthropic.ImageBlockParam[] = [];
@@ -325,14 +335,27 @@ export async function POST(req: NextRequest) {
       await cleanupTempDir(tempDir);
     }
 
-    // Build messages for Anthropic
+    // Build system prompt using the voice module
+    const promptInput: BuildPromptInput = {
+      voiceId: voiceId || "reactive",
+      brandName,
+      brandContext,
+      pastCampaignsContext,
+      userPrompt: userPrompt || "",
+    };
+
+    const systemPrompt = buildSystemPrompt(promptInput);
+
+    // Build user message for Anthropic (assets only — brand context is in system prompt)
     const userContent: Anthropic.ContentBlockParam[] = [];
 
-    // Text context
-    userContent.push({
-      type: "text",
-      text: `${brandContext}\n\n## USER PROMPT\n${userPrompt || "Generate a compelling pitch for this brand."}\n\n${textBlocks.length > 0 ? "## VIDEO TRANSCRIPTS\n" + textBlocks.join("\n\n") : ""}`,
-    });
+    // Video transcripts as text
+    if (textBlocks.length > 0) {
+      userContent.push({
+        type: "text",
+        text: `## VIDEO TRANSCRIPTS\n${textBlocks.join("\n\n")}`,
+      });
+    }
 
     // Image blocks (photos + video frames)
     for (const img of imageBlocks) {
@@ -346,13 +369,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // If no assets at all, send a simple generation request
+    if (userContent.length === 0) {
+      userContent.push({
+        type: "text",
+        text: "Generate the pitch now based on the brand context and user prompt in the system message.",
+      });
+    }
+
     // Call Anthropic
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 8000,
-      system: buildSystemPrompt(),
+      system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
     });
 

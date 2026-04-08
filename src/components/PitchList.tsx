@@ -3,8 +3,11 @@
 import { useEffect, useState, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getDefaultPitchSections } from "@/lib/pitch/defaultTemplate";
+import { VOICES, DEFAULT_VOICE_ID, type VoiceModule } from "@/lib/pitch/aiPrompts";
 import type { PitchPage } from "@/types/pitch";
 import Link from "next/link";
+
+const VOICE_LIST = Object.values(VOICES);
 
 interface Brand {
   id: string;
@@ -49,6 +52,7 @@ export default function PitchList() {
   const [selectedBrandId, setSelectedBrandId] = useState("");
 
   // AI tab state
+  const [selectedVoiceId, setSelectedVoiceId] = useState(DEFAULT_VOICE_ID);
   const [aiPrompt, setAiPrompt] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -85,6 +89,7 @@ export default function PitchList() {
     setNewTitle("");
     setNewSlug("");
     setSelectedBrandId("");
+    setSelectedVoiceId(DEFAULT_VOICE_ID);
     setAiPrompt("");
     setUploadedFiles([]);
     setGenError(null);
@@ -264,6 +269,7 @@ export default function PitchList() {
           brandId: selectedBrandId,
           title: finalTitle,
           slug: finalSlug,
+          voiceId: selectedVoiceId,
           userPrompt: aiPrompt,
           uploadedAssets,
         }),
@@ -504,6 +510,41 @@ export default function PitchList() {
                 {/* AI-only fields */}
                 {createTab === "ai" && (
                   <>
+                    {/* Voice selector */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        Voice
+                      </label>
+                      <div className="space-y-2">
+                        {VOICE_LIST.map((voice) => (
+                          <label
+                            key={voice.id}
+                            className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                              !voice.ready
+                                ? "opacity-40 cursor-not-allowed border-gray-800"
+                                : selectedVoiceId === voice.id
+                                ? "border-[#D73F09]/40 bg-[#D73F09]/5"
+                                : "border-gray-800 hover:border-gray-600"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="voice"
+                              value={voice.id}
+                              checked={selectedVoiceId === voice.id}
+                              disabled={!voice.ready}
+                              onChange={() => setSelectedVoiceId(voice.id)}
+                              className="mt-0.5 accent-[#D73F09]"
+                            />
+                            <div>
+                              <div className="text-sm font-bold text-white">{voice.name}</div>
+                              <div className="text-xs text-gray-400 mt-0.5">{voice.tagline}</div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Prompt */}
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
