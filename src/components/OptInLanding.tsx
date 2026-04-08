@@ -152,7 +152,7 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
               <img
                 src={brandLogo}
                 alt={brandName}
-                className="h-12 md:h-14 object-contain mb-2 brightness-0 invert"
+                className="h-12 md:h-14 object-contain mb-2"
               />
             ) : (
               <div className="text-3xl font-black text-white tracking-tight leading-none">
