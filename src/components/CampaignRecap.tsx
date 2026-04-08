@@ -446,13 +446,15 @@ export function CampaignRecap({
       {show("brief") && (
         <div ref={(el) => { sectionRefs.current["brief"] = el; }} data-section="brief" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Overview</h2>
-          <div className="space-y-8">
-            {settings.description && (
-              <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
-                {settings.description}
-              </div>
-            )}
-            <div className="space-y-0 max-w-xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+            <div>
+              {settings.description && (
+                <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
+                  {settings.description}
+                </div>
+              )}
+            </div>
+            <div className="space-y-0">
               {[
                 { label: "CAMPAIGN NAME", value: campaign.name },
                 { label: "TIMEFRAME", value: settings.quarter },
