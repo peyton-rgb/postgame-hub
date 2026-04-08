@@ -241,7 +241,7 @@ export function CampaignRecap({
   // Build nav tabs dynamically based on visible sections + data availability
   const hasKpi = settings.kpi_targets && (settings.kpi_targets.athlete_quantity || settings.kpi_targets.content_units || settings.kpi_targets.posts || settings.kpi_targets.impressions || settings.kpi_targets.engagements || settings.kpi_targets.engagement_rate || settings.kpi_targets.cpm || settings.kpi_targets.other_kpis);
   const navTabs = [
-    show("brief") && settings.description && { key: "brief", label: "Recap" },
+    show("brief") && { key: "brief", label: "Recap" },
     show("key_takeaways") && settings.key_takeaways && { key: "key_takeaways", label: "Takeaways" },
     show("kpi_targets") && hasKpi && { key: "kpi_targets", label: "KPIs" },
     show("metrics") && { key: "metrics", label: "Metrics" },
@@ -433,51 +433,40 @@ export function CampaignRecap({
             {campaign.name}
           </h1>
 
-          {/* Badges row */}
-          {(settings.quarter || settings.campaign_type) && (
-            <div className="flex items-center gap-3">
-              {settings.quarter && (
-                <span className="px-3 py-1.5 bg-white/[0.10] border border-white/[0.15] rounded text-xs font-bold uppercase tracking-wider text-white/70">
-                  {settings.quarter}
-                </span>
-              )}
-              {settings.campaign_type && (
-                <span className="px-3 py-1.5 bg-white/[0.10] border border-white/[0.15] rounded text-xs font-bold uppercase tracking-wider text-white/70">
-                  {settings.campaign_type}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Tag pills */}
-          {settings.tags && settings.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {settings.tags.map((tag) => (
-                <span key={tag} className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-brand text-white">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* Tag pill */}
+          <div className="flex items-center gap-3">
+            <span className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-[#D73F09] text-white">
+              NIL Campaign
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* ── SECTION 2: CAMPAIGN BRIEF ──────────────────────── */}
-      {show("brief") && settings.description && (
+      {/* ── SECTION 2: CAMPAIGN OVERVIEW ─────────────────────── */}
+      {show("brief") && (
         <div ref={(el) => { sectionRefs.current["brief"] = el; }} data-section="brief" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
-            <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
-              {settings.description}
-            </div>
             <div className="space-y-0">
               {[
+                { label: "CAMPAIGN NAME", value: campaign.name },
                 { label: "TIMEFRAME", value: settings.quarter },
-                { label: "SOCIAL PLATFORM(S)", value: settings.platform },
+                { label: "PLATFORM(S)", value: settings.platform },
                 { label: "CONTENT TYPE", value: contentTypes },
               ].filter((r) => r.value).map((row) => (
                 <div key={row.label} className="flex items-baseline py-3 border-b border-white/[0.12]">
-                  <span className="text-xs font-bold uppercase tracking-wider text-white/70 w-36 flex-shrink-0">{row.label}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-white/70 w-40 flex-shrink-0">{row.label}</span>
+                  <span className="text-base font-semibold text-white/90">{row.value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-0">
+              {[
+                { label: "CAMPAIGN", value: campaign.client_name },
+                { label: "CAMPAIGN TYPE", value: settings.campaign_type },
+              ].filter((r) => r.value).map((row) => (
+                <div key={row.label} className="flex items-baseline py-3 border-b border-white/[0.12]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-white/70 w-40 flex-shrink-0">{row.label}</span>
                   <span className="text-base font-semibold text-white/90">{row.value}</span>
                 </div>
               ))}
