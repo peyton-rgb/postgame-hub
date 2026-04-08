@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 
+const POSTGAME_LOGO_URL = "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632055938-16gy1u2t.PNG";
+
 /**
  * OptInLanding — public-facing landing page for an opt-in campaign.
  *
@@ -129,17 +131,7 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
           {/* Top bar */}
           <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
             <div className="flex items-center gap-1.5">
-              <div className="w-[18px] h-[18px] rounded-full bg-white flex items-center justify-center">
-                <div
-                  className="w-[10px] h-[10px] rounded-full flex items-center justify-center"
-                  style={{ background: "#D73F09" }}
-                >
-                  <span className="text-white text-[9px] font-bold leading-none">+</span>
-                </div>
-              </div>
-              <span className="text-[11px] text-white/95 font-bold tracking-wide">
-                postgame
-              </span>
+              <img src={POSTGAME_LOGO_URL} alt="Postgame" className="h-5 object-contain" />
             </div>
             <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">
               Opt-In
