@@ -563,6 +563,7 @@ export function CampaignRecap({
           {/* Per-platform breakdown */}
           {show("platform_breakdown") && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* IG Feed card — merges Stories as sub-section when TikTok is present */}
             {stats.igFeedPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -586,9 +587,27 @@ export function CampaignRecap({
                     </div>
                   ))}
                 </div>
+                {/* Stories sub-section merged into Feed card when TikTok is present */}
+                {stats.tiktokPosts > 0 && (stats.igStory.count > 0 || stats.igStory.impressions > 0) && (
+                  <div className="mt-4 pt-4 border-t border-dashed border-white/[0.15]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#D73F09]/75 mb-2">IG Stories</div>
+                    <div className="space-y-0">
+                      {[
+                        { label: "Story Count", value: fmt(stats.igStory.count), col: "ig_story_count" },
+                        { label: "Total Story Impressions", value: fmt(stats.igStory.impressions), col: "ig_story_impressions" },
+                      ].filter((row) => showCol(row.col)).map((row) => (
+                        <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
+                          <span className="text-xs text-white/70 font-semibold">{row.label}</span>
+                          <span className="text-base font-bold text-white/90">{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
+            {/* IG Reels card */}
             {stats.igReelPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -614,6 +633,7 @@ export function CampaignRecap({
               </div>
             )}
 
+            {/* TikTok card */}
             {stats.tiktokPosts > 0 && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -638,7 +658,8 @@ export function CampaignRecap({
               </div>
             )}
 
-            {(stats.igStory.count > 0 || stats.igStory.impressions > 0) && (
+            {/* IG Stories standalone card — only when TikTok is NOT present */}
+            {stats.tiktokPosts === 0 && (stats.igStory.count > 0 || stats.igStory.impressions > 0) && (
               <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-brand"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>IG Stories</h3>
