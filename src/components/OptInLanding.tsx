@@ -130,11 +130,12 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
 
           {/* Top bar */}
           <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-            <div className="flex items-center gap-1.5">
-              <img src={POSTGAME_LOGO_URL} alt="Postgame" className="h-5 object-contain" />
-            </div>
             <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">
               Opt-In
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/60">Powered by</span>
+              <img src={POSTGAME_LOGO_URL} alt="Postgame" className="h-4 object-contain" />
             </div>
           </div>
 
@@ -216,20 +217,13 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
           )}
 
           {/* Brief bullets */}
-          {(campaign.goal || campaign.requirements || campaign.products) && (
+          {(campaign.requirements || campaign.products) && (
             <div className="mb-5">
-              {campaign.goal && (
-                <BriefRow accent={accent} label="Goal" value={campaign.goal} />
-              )}
               {campaign.requirements && (
-                <BriefRow
-                  accent={accent}
-                  label="Requirements"
-                  value={campaign.requirements}
-                />
+                <BriefRow label="Requirements" value={campaign.requirements} />
               )}
               {campaign.products && (
-                <BriefRow accent={accent} label="Products" value={campaign.products} />
+                <BriefRow label="Products" value={campaign.products} />
               )}
             </div>
           )}
@@ -301,27 +295,18 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
 }
 
 function BriefRow({
-  accent,
   label,
   value,
 }: {
-  accent: string;
   label: string;
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-2.5 py-2.5 border-b border-white/[0.08] last:border-b-0">
-      <div
-        className="w-1 h-1 rounded-full mt-[7px] flex-shrink-0"
-        style={{ background: accent }}
-      />
-      <div className="flex-1 min-w-0">
-        <div className="text-[10px] text-white/50 tracking-[0.08em] uppercase font-bold">
-          {label}
-        </div>
-        <div className="text-[13px] text-white/90 leading-snug mt-0.5 whitespace-pre-line">
-          {value}
-        </div>
+    <div className="py-4 border-b border-white/[0.08] last:border-b-0">
+      <div className="text-[15px] leading-relaxed">
+        <span className="font-black text-white">{label}</span>
+        <span className="text-white/40 mx-2">—</span>
+        <span className="font-medium text-white/85 whitespace-pre-line">{value}</span>
       </div>
     </div>
   );
