@@ -51,6 +51,10 @@ export default function PitchList() {
   const [newSlug, setNewSlug] = useState("");
   const [selectedBrandId, setSelectedBrandId] = useState("");
 
+  // Slug validation
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+
   // AI tab state
   const [selectedVoiceId, setSelectedVoiceId] = useState(DEFAULT_VOICE_ID);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -88,6 +92,8 @@ export default function PitchList() {
     setCreateTab("blank");
     setNewTitle("");
     setNewSlug("");
+    setSlugError(null);
+    setSlugManuallyEdited(false);
     setSelectedBrandId("");
     setSelectedVoiceId(DEFAULT_VOICE_ID);
     setAiPrompt("");
@@ -107,7 +113,16 @@ export default function PitchList() {
 
   function handleTitleChange(title: string) {
     setNewTitle(title);
-    setNewSlug(slugify(title));
+    if (!slugManuallyEdited) {
+      setNewSlug(slugify(title));
+      setSlugError(null);
+    }
+  }
+
+  function handleSlugChange(slug: string) {
+    setNewSlug(slug);
+    setSlugManuallyEdited(true);
+    setSlugError(null);
   }
 
   function handleBrandChange(brandId: string) {
@@ -188,17 +203,59 @@ export default function PitchList() {
     });
   }
 
+  // ---- Slug collision check ----
+
+  async function ensureSlugAvailable(slug: string): Promise<string | null> {
+    const { data } = await supabase
+      .from("pitch_pages")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (!data) return slug; // Available
+
+    // Collision — if user manually typed it, block submission
+    if (slugManuallyEdited) {
+      setSlugError("This slug is already taken \u2014 try another");
+      return null;
+    }
+
+    // Auto-generated slug collided — find a free suffix
+    for (let i = 2; i <= 20; i++) {
+      const candidate = `${slug}-${i}`;
+      const { data: existing } = await supabase
+        .from("pitch_pages")
+        .select("id")
+        .eq("slug", candidate)
+        .maybeSingle();
+      if (!existing) {
+        setNewSlug(candidate);
+        setSlugError(null);
+        return candidate;
+      }
+    }
+
+    setSlugError("Could not find an available slug \u2014 try a different name");
+    return null;
+  }
+
   // ---- Blank create ----
 
   async function createBlankPitch() {
     if (!newTitle.trim() || !newSlug.trim()) return;
     setCreating(true);
 
+    const finalSlug = await ensureSlugAvailable(newSlug);
+    if (!finalSlug) {
+      setCreating(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("pitch_pages")
       .insert({
         title: newTitle,
-        slug: newSlug,
+        slug: finalSlug,
         brand_id: selectedBrandId || null,
         status: "draft",
         content: { sections: getDefaultPitchSections() },
@@ -229,6 +286,18 @@ export default function PitchList() {
     setProgressStep(0);
 
     try {
+      // Derive title/slug if not set
+      const brand = brands.find((b) => b.id === selectedBrandId);
+      const finalTitle = newTitle || `Postgame \u00d7 ${brand?.name || "Brand"}`;
+      const derivedSlug = newSlug || slugify(brand?.name || "pitch");
+
+      // Check slug availability before doing any expensive work
+      const finalSlug = await ensureSlugAvailable(derivedSlug);
+      if (!finalSlug) {
+        setGenerating(false);
+        return;
+      }
+
       // Step 0: Upload assets
       const tempId = crypto.randomUUID();
       const uploadedAssets: { path: string; mimeType: string; originalName: string }[] = [];
@@ -250,11 +319,6 @@ export default function PitchList() {
 
       // Step 1: Analyzing brand
       setProgressStep(1);
-
-      // Derive title/slug if not set
-      const brand = brands.find((b) => b.id === selectedBrandId);
-      const finalTitle = newTitle || `Postgame \u00d7 ${brand?.name || "Brand"}`;
-      const finalSlug = newSlug || slugify(brand?.name || "pitch");
 
       // Step 2: Processing video
       setProgressStep(2);
@@ -496,15 +560,18 @@ export default function PitchList() {
                     {createTab === "ai" && <span className="text-gray-600 normal-case font-normal"> (auto from brand if blank)</span>}
                   </label>
                   <div className="flex items-center">
-                    <span className="text-xs text-gray-500 bg-black border border-gray-700 border-r-0 rounded-l-xl px-3 py-3">/pitch/</span>
+                    <span className={`text-xs text-gray-500 bg-black border border-r-0 rounded-l-xl px-3 py-3 ${slugError ? "border-red-500/50" : "border-gray-700"}`}>/pitch/</span>
                     <input
                       type="text"
                       value={newSlug}
-                      onChange={(e) => setNewSlug(e.target.value)}
+                      onChange={(e) => handleSlugChange(e.target.value)}
                       placeholder={createTab === "ai" ? "auto" : "crocs"}
-                      className="flex-1 px-4 py-3 bg-black border border-gray-700 rounded-r-xl text-white text-sm focus:border-[#D73F09] outline-none placeholder-gray-600"
+                      className={`flex-1 px-4 py-3 bg-black border rounded-r-xl text-white text-sm outline-none placeholder-gray-600 ${slugError ? "border-red-500/50 focus:border-red-500" : "border-gray-700 focus:border-[#D73F09]"}`}
                     />
                   </div>
+                  {slugError && (
+                    <div className="text-xs text-red-400 mt-1.5">{slugError}</div>
+                  )}
                 </div>
 
                 {/* AI-only fields */}

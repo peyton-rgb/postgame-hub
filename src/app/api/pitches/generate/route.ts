@@ -303,8 +303,25 @@ export async function POST(req: NextRequest) {
     if (!brandId) {
       return NextResponse.json({ error: "brandId is required" }, { status: 400 });
     }
+    if (!slug) {
+      return NextResponse.json({ error: "slug is required" }, { status: 400 });
+    }
 
     const serviceSupabase = createServiceSupabase();
+
+    // Check slug uniqueness BEFORE any expensive work (asset processing, Claude call)
+    const { data: existingSlug } = await serviceSupabase
+      .from("pitch_pages")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (existingSlug) {
+      return NextResponse.json(
+        { error: "slug_taken", message: `Slug "${slug}" is already taken` },
+        { status: 409 }
+      );
+    }
 
     // Build brand context (split into details + campaigns for the prompt builder)
     const { brandName, brandContext, pastCampaignsContext } =
