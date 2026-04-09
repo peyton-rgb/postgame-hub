@@ -117,6 +117,11 @@ export default function DrivePicker({
   const [folderUrlInput, setFolderUrlInput] = useState("");
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [extraFolderIds, setExtraFolderIds] = useState<string[]>([]);
+  const [addFolderOpen, setAddFolderOpen] = useState(false);
+  const [addFolderInput, setAddFolderInput] = useState("");
+  const [addFolderError, setAddFolderError] = useState<string | null>(null);
+  const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [importProgress, setImportProgress] = useState<ImportProgress>({
     current: 0,
@@ -151,6 +156,11 @@ export default function DrivePicker({
     setFolderUrlInput("");
     setConnectError(null);
     setIsConnecting(false);
+    setExtraFolderIds([]);
+    setAddFolderOpen(false);
+    setAddFolderInput("");
+    setAddFolderError(null);
+    setIsAddingFolder(false);
     setMode(nextMode);
   };
 
@@ -212,7 +222,70 @@ export default function DrivePicker({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [isOpen, mode]);
 
+  // ── Add another folder (merges into current driveData) ──
+  const handleAddFolder = async () => {
+    const match = addFolderInput.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    if (!match) {
+      setAddFolderError("Invalid Drive folder URL");
+      return;
+    }
+    const newId = match[1];
+    if (newId === folderId || extraFolderIds.includes(newId)) {
+      setAddFolderError("That folder is already loaded");
+      return;
+    }
+    setIsAddingFolder(true);
+    setAddFolderError(null);
+    try {
+      const res = await fetch(
+        `/api/drive/campaign-media?folderId=${encodeURIComponent(newId)}`
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      const newData: DriveData = await res.json();
+      setDriveData((prev) => {
+        if (!prev) return newData;
+        // Merge athletes: if same folder name exists, combine files
+        const mergedAthletes = [...prev.athletes];
+        for (const incoming of newData.athletes) {
+          const existingIdx = mergedAthletes.findIndex(
+            (a) => normalizeName(a.folderName) === normalizeName(incoming.folderName)
+          );
+          if (existingIdx >= 0) {
+            const existing = mergedAthletes[existingIdx];
+            const existingFileIds = new Set(existing.files.map((f) => f.id));
+            mergedAthletes[existingIdx] = {
+              ...existing,
+              files: [
+                ...existing.files,
+                ...incoming.files.filter((f) => !existingFileIds.has(f.id)),
+              ],
+            };
+          } else {
+            mergedAthletes.push(incoming);
+          }
+        }
+        return {
+          ...prev,
+          parentFolderName: `${prev.parentFolderName} + ${newData.parentFolderName}`,
+          athletes: mergedAthletes,
+          totalFiles: mergedAthletes.reduce((sum, a) => sum + a.files.length, 0),
+        };
+      });
+      setExtraFolderIds((prev) => [...prev, newId]);
+      setAddFolderInput("");
+      setAddFolderOpen(false);
+    } catch (e: any) {
+      setAddFolderError(String(e?.message || e));
+    } finally {
+      setIsAddingFolder(false);
+    }
+  };
+
   // ── Match active athlete to Drive folder ──
+          
   const activeAthlete = athletes.find((a) => a.id === activeAthleteId);
   const activeFolder = useMemo(() => {
     if (!driveData || !activeAthlete) return null;
@@ -353,8 +426,15 @@ export default function DrivePicker({
                 Paste a Drive folder link to import campaign content
               </div>
             ) : driveData ? (
-              <div className="text-xs text-gray-500 mt-0.5">
-                {driveData.athletes.length} folders · {driveData.totalFiles} files
+              <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
+                <span>{driveData.athletes.length} folders · {driveData.totalFiles} files</span>
+                <button
+                  type="button"
+                  onClick={() => setAddFolderOpen((v) => !v)}
+                  className="text-[10px] font-bold tracking-widest uppercase text-[#D73F09] hover:text-[#ff5722]"
+                >
+                  + Add Folder
+                </button>
               </div>
             ) : null}
           </div>
@@ -369,6 +449,44 @@ export default function DrivePicker({
             <div className="w-8 h-8" />
           )}
         </div>
+
+        {/* Add Folder inline input */}
+        {mode === "selecting" && addFolderOpen && (
+          <div className="px-6 py-3 border-b border-white/10 bg-white/[0.02] flex items-center gap-2">
+            <input
+              value={addFolderInput}
+              onChange={(e) => {
+                setAddFolderInput(e.target.value);
+                setAddFolderError(null);
+              }}
+              placeholder="https://drive.google.com/drive/folders/..."
+              className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#D73F09]"
+              disabled={isAddingFolder}
+            />
+            <button
+              type="button"
+              disabled={isAddingFolder || !addFolderInput}
+              onClick={handleAddFolder}
+              className="bg-[#D73F09] hover:bg-[#ff5722] px-4 py-2 rounded-lg font-bold uppercase text-xs text-white disabled:opacity-50"
+            >
+              {isAddingFolder ? "Adding..." : "Add"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddFolderOpen(false);
+                setAddFolderInput("");
+                setAddFolderError(null);
+              }}
+              className="px-3 py-2 text-xs text-gray-400 hover:text-white"
+            >
+              Cancel
+            </button>
+            {addFolderError ? (
+              <div className="text-xs text-red-400 ml-2">{addFolderError}</div>
+            ) : null}
+          </div>
+        )}
 
         {/* Connect mode */}
         {mode === "connect" && (
