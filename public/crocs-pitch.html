@@ -420,7 +420,7 @@
   .recent-lede { max-width: 820px; margin-bottom: 56px; font-size: 18px; line-height: 1.65; color: var(--ink-dim); }
   .recent-lede b { color: var(--ink); }
 
-  .recent-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: var(--line); border: 1px solid var(--line); }
+  .recent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--line); border: 1px solid var(--line); }
   .recent-card {
     position: relative; background: var(--bg); overflow: hidden;
     display: flex; flex-direction: column;
@@ -433,7 +433,7 @@
     overflow: hidden; background: #000;
     flex-shrink: 0;
   }
-  .recent-card .athlete-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .recent-card .athlete-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   .recent-card .no-asset-fallback {
     position: absolute; inset: 0; display: none;
     flex-direction: column; align-items: center; justify-content: center;
@@ -554,7 +554,7 @@
 
     <div class="reactive-story-block">
       <div class="reactive-story-photo">
-        <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/hero.jpg" alt="Jaden Bradley" onerror="this.style.display='none'; this.nextElementSibling.classList.add('show');">
+        <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/DSC08793.jpg" alt="Jaden Bradley" onerror="this.style.display='none'; this.nextElementSibling.classList.add('show');">
         <div class="photo-fallback">
           <div class="photo-fallback-label">JADEN BRADLEY</div>
           <div class="photo-fallback-sub">Photo coming</div>
@@ -584,9 +584,9 @@
     </div>
 
     <div class="card-grid cols-3">
-      <div class="athlete has-assets">
+      <div class="athlete has-assets fill-photo">
         <div class="athlete-media">
-          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/hero.jpg" alt="Jaden Bradley" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/DSC08793.jpg" alt="Jaden Bradley" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
           <div class="no-asset-fallback">
             <div class="no-asset-label">JADEN BRADLEY</div>
             <div class="no-asset-sub">Photo coming</div>
@@ -604,9 +604,9 @@
           <div class="athlete-foot">→ Crocs × Dick's · March Madness</div>
         </div>
       </div>
-      <div class="athlete has-assets">
+      <div class="athlete has-assets fill-photo">
         <div class="athlete-media">
-          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Nyla-Harris/hero.jpg" alt="Nyla Harris" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Nyla-Harris/DSC07086.jpg" alt="Nyla Harris" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
           <div class="no-asset-fallback">
             <div class="no-asset-label">NYLA HARRIS</div>
             <div class="no-asset-sub">Photo coming</div>
@@ -968,7 +968,7 @@
     <div class="recent-grid">
         <div class="recent-card">
           <div class="athlete-media">
-            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/hero.jpg" alt="Jaden Bradley" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/DSC08793.jpg" alt="Jaden Bradley" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
             <div class="no-asset-fallback">
               <div class="no-asset-label">JADEN BRADLEY</div>
               <div class="no-asset-sub">Photo coming</div>
@@ -983,7 +983,7 @@
         </div>
         <div class="recent-card">
           <div class="athlete-media">
-            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jestin-Porter/hero.jpg" alt="Jestin Porter" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jestin-Porter/SNY06794.jpg" alt="Jestin Porter" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
             <div class="no-asset-fallback">
               <div class="no-asset-label">JESTIN PORTER</div>
               <div class="no-asset-sub">Photo coming</div>
@@ -998,7 +998,7 @@
         </div>
         <div class="recent-card">
           <div class="athlete-media">
-            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Joshua-Jefferson/hero.jpg" alt="Joshua Jefferson" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Joshua-Jefferson/DSC04000.jpg" alt="Joshua Jefferson" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
             <div class="no-asset-fallback">
               <div class="no-asset-label">JOSHUA JEFFERSON</div>
               <div class="no-asset-sub">Photo coming</div>
@@ -1013,7 +1013,7 @@
         </div>
         <div class="recent-card">
           <div class="athlete-media">
-            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Saylor-Poffenbarger/hero.jpg" alt="Saylor Poffenbarger" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Saylor-Poffenbarger/pic-3.jpg" alt="Saylor Poffenbarger" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
             <div class="no-asset-fallback">
               <div class="no-asset-label">SAYLOR POFFENBARGER</div>
               <div class="no-asset-sub">Photo coming</div>
@@ -1024,6 +1024,36 @@
             <h3>Saylor Poffenbarger</h3>
             <div class="card-role">F · Women's Basketball</div>
             <div class="card-note">One of the women's basketball activations inside the 2026 Crocs × Dick's Sporting Goods March Madness program.</div>
+          </div>
+        </div>
+        <div class="recent-card">
+          <div class="athlete-media">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Nyla-Harris/DSC07086.jpg" alt="Nyla Harris" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <div class="no-asset-fallback">
+              <div class="no-asset-label">NYLA HARRIS</div>
+              <div class="no-asset-sub">Photo coming</div>
+            </div>
+          </div>
+          <div class="card-panel">
+            <div class="card-tag">● MM × DSG</div>
+            <h3>Nyla Harris</h3>
+            <div class="card-role">F · UNC Women's Basketball</div>
+            <div class="card-note">All-ACC forward who powered UNC to the Sweet 16. Featured in Reactive — also part of the MM × DSG class.</div>
+          </div>
+        </div>
+        <div class="recent-card">
+          <div class="athlete-media">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Seth-Trimble/DSC07215.jpg" alt="Seth Trimble" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <div class="no-asset-fallback">
+              <div class="no-asset-label">SETH TRIMBLE</div>
+              <div class="no-asset-sub">Photo coming</div>
+            </div>
+          </div>
+          <div class="card-panel">
+            <div class="card-tag">● MM × DSG</div>
+            <h3>Seth Trimble</h3>
+            <div class="card-role">G · UNC Men's Basketball</div>
+            <div class="card-note">UNC guard activated as part of the 2026 Crocs × Dick's Sporting Goods March Madness program.</div>
           </div>
         </div>
     </div>
