@@ -9,703 +9,488 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #000;
-    --surface: #0f0f0f;
-    --surface-2: #161616;
-    --ink: #ffffff;
-    --ink-dim: #8a8a85;
-    --ink-dimmer: #555550;
-    --line: rgba(255,255,255,0.08);
-    --line-bright: rgba(255,255,255,0.18);
-    --orange: #D73F09;
-    --orange-dim: rgba(215, 63, 9, 0.12);
+    --bg: #000; --surface: #0f0f0f; --surface-2: #161616;
+    --ink: #ffffff; --ink-dim: #8a8a85; --ink-dimmer: #555550;
+    --line: rgba(255,255,255,0.08); --line-bright: rgba(255,255,255,0.18);
+    --orange: #D73F09; --orange-dim: rgba(215, 63, 9, 0.12);
     --orange-glow: rgba(215, 63, 9, 0.18);
     --glass-bg: rgba(255,255,255,0.055);
-    --blur: blur(24px);
-
+    --panel-glass: rgba(8, 8, 8, 0.72); --blur: blur(24px);
     --display: 'Bebas Neue', Impact, sans-serif;
     --body: 'Inter', Arial, system-ui, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, monospace;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: var(--body);
-    font-weight: 400;
-    line-height: 1.5;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
+    background: var(--bg); color: var(--ink);
+    font-family: var(--body); font-weight: 400; line-height: 1.5;
+    overflow-x: hidden; -webkit-font-smoothing: antialiased;
   }
-
   body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 200;
-    opacity: 0.22;
-    mix-blend-mode: overlay;
+    content: ''; position: fixed; inset: 0; pointer-events: none;
+    z-index: 200; opacity: 0.22; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   }
-
   em { font-style: italic; color: var(--orange); font-weight: inherit; }
   b, strong { font-weight: 700; color: var(--ink); }
 
-  /* NAV */
   .nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 88px;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    border-bottom: 1px solid var(--line);
-    z-index: 100;
-    display: flex;
-    align-items: center;
+    position: fixed; top: 0; left: 0; right: 0; height: 88px;
+    background: rgba(0,0,0,0.75); backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--line);
+    z-index: 100; display: flex; align-items: center;
   }
   .nav-inner {
-    max-width: 1360px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 0 48px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 40px;
+    max-width: 1360px; width: 100%; margin: 0 auto; padding: 0 48px;
+    display: flex; align-items: center; justify-content: space-between; gap: 40px;
   }
-  .lockup {
-    display: flex;
-    align-items: center;
-    gap: 28px;
-    height: 44px;
-  }
-  .lockup img {
-    height: 32px;
-    width: auto;
-    object-fit: contain;
-    display: block;
-  }
-  .lockup .x {
-    color: var(--orange);
-    font-family: var(--body);
-    font-size: 26px;
-    font-weight: 200;
-    line-height: 1;
-    opacity: 0.7;
-  }
+  .lockup { display: flex; align-items: center; gap: 28px; height: 44px; }
+  .lockup img { height: 32px; width: auto; object-fit: contain; display: block; }
+  .lockup .x { color: var(--orange); font-size: 26px; font-weight: 200; line-height: 1; opacity: 0.7; }
   .nav-right {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--ink-dim);
+    display: flex; align-items: center; gap: 12px;
   }
-  .nav-right .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--orange);
-    animation: pulse 1.6s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
+  .nav-right .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  .container {
-    max-width: 1360px;
-    margin: 0 auto;
-    padding: 0 48px;
-  }
+  .container { max-width: 1360px; margin: 0 auto; padding: 0 48px; }
 
-  /* HERO */
   .hero {
-    min-height: 100vh;
-    padding: 170px 0 80px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    min-height: 100vh; padding: 170px 0 80px; position: relative;
+    display: flex; flex-direction: column; justify-content: space-between;
     border-bottom: 1px solid var(--line);
   }
   .hero-grid-bg {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    position: absolute; inset: 0;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
     background-size: 80px 80px;
     mask-image: radial-gradient(ellipse at 30% 40%, black 20%, transparent 70%);
     -webkit-mask-image: radial-gradient(ellipse at 30% 40%, black 20%, transparent 70%);
     pointer-events: none;
   }
   .hero::after {
-    content: '';
-    position: absolute;
-    top: 10%;
-    right: -25%;
-    width: 1000px;
-    height: 1000px;
+    content: ''; position: absolute; top: 10%; right: -25%;
+    width: 1000px; height: 1000px;
     background: radial-gradient(circle, var(--orange-glow) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
   }
-
-  .hero-headline {
-    position: relative;
-    z-index: 2;
-    margin: 40px 0;
-  }
+  .hero-headline { position: relative; z-index: 2; margin: 40px 0; }
   .hero-kicker {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--orange);
-    margin-bottom: 36px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--orange); margin-bottom: 36px;
+    display: flex; align-items: center; gap: 14px;
   }
-  .hero-kicker::before {
-    content: '';
-    width: 48px;
-    height: 1px;
-    background: var(--orange);
-  }
+  .hero-kicker::before { content: ''; width: 48px; height: 1px; background: var(--orange); }
   .hero h1 {
-    font-family: var(--display);
-    font-weight: 400;
-    font-size: clamp(72px, 11vw, 188px);
-    line-height: 0.86;
-    letter-spacing: -0.005em;
-    text-transform: uppercase;
-    max-width: 1200px;
+    font-family: var(--display); font-weight: 400;
+    font-size: clamp(72px, 11vw, 188px); line-height: 0.86;
+    letter-spacing: -0.005em; text-transform: uppercase; max-width: 1200px;
   }
   .hero-quote {
-    max-width: 860px;
-    margin-top: 64px;
-    padding: 32px 0 32px 36px;
-    border-left: 3px solid var(--orange);
-    font-size: 22px;
-    line-height: 1.5;
-    color: var(--ink);
-    font-weight: 500;
-    font-style: italic;
+    max-width: 860px; margin-top: 64px; padding: 32px 0 32px 36px;
+    border-left: 3px solid var(--orange); font-size: 22px; line-height: 1.5;
+    color: var(--ink); font-weight: 500; font-style: italic;
   }
   .hero-quote-attrib {
-    display: block;
-    margin-top: 20px;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    font-style: normal;
-    font-weight: 500;
+    display: block; margin-top: 20px; font-family: var(--mono);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim); font-style: normal; font-weight: 500;
   }
-  .hero-sub {
-    max-width: 820px;
-    margin-top: 48px;
-    font-size: 17px;
-    line-height: 1.7;
-    color: var(--ink-dim);
-  }
+  .hero-sub { max-width: 820px; margin-top: 48px; font-size: 17px; line-height: 1.7; color: var(--ink-dim); }
   .hero-bottom {
-    position: relative;
-    z-index: 2;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 40px;
-    padding-top: 48px;
-    border-top: 1px solid var(--line);
-    margin-top: 80px;
+    position: relative; z-index: 2; display: grid;
+    grid-template-columns: repeat(4, 1fr); gap: 40px;
+    padding-top: 48px; border-top: 1px solid var(--line); margin-top: 80px;
   }
-  .stat-num {
-    font-family: var(--display);
-    font-size: 92px;
-    line-height: 0.9;
-    letter-spacing: -0.005em;
-    color: var(--ink);
-  }
+  .stat-num { font-family: var(--display); font-size: 92px; line-height: 0.9; letter-spacing: -0.005em; color: var(--ink); }
   .stat-num .accent { color: var(--orange); }
-  .stat-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    margin-top: 18px;
-    max-width: 220px;
-    line-height: 1.5;
-  }
+  .stat-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-dim); margin-top: 18px; max-width: 220px; line-height: 1.5; }
 
-  /* SECTIONS */
-  section {
-    padding: 140px 0;
-    border-bottom: 1px solid var(--line);
-    position: relative;
-  }
-  .section-head {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 60px;
-    margin-bottom: 80px;
-    align-items: start;
-  }
+  section { padding: 140px 0; border-bottom: 1px solid var(--line); position: relative; }
+  .section-head { display: grid; grid-template-columns: 220px 1fr; gap: 60px; margin-bottom: 80px; align-items: start; }
   .section-num {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--orange);
-    padding-top: 20px;
-    border-top: 2px solid var(--orange);
-    display: inline-block;
-    max-width: 180px;
-    line-height: 1.8;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--orange); padding-top: 20px;
+    border-top: 2px solid var(--orange); display: inline-block;
+    max-width: 180px; line-height: 1.8;
   }
-  .section-num span {
-    display: block;
-    color: var(--ink-dim);
-    margin-top: 6px;
-  }
+  .section-num span { display: block; color: var(--ink-dim); margin-top: 6px; }
   .section-title {
-    font-family: var(--display);
-    font-weight: 400;
-    font-size: clamp(56px, 7vw, 120px);
-    line-height: 0.9;
-    letter-spacing: -0.005em;
-    text-transform: uppercase;
+    font-family: var(--display); font-weight: 400;
+    font-size: clamp(56px, 7vw, 120px); line-height: 0.9;
+    letter-spacing: -0.005em; text-transform: uppercase;
   }
-  .section-lede {
-    max-width: 820px;
-    margin-top: 40px;
-    font-size: 19px;
-    line-height: 1.6;
-    color: var(--ink-dim);
-  }
-  .section-lede b { color: var(--ink); }
 
-  /* PARTNERSHIP NARRATIVE (case study) */
-  .partnership {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 60px;
-  }
-  .partnership-body {
-    max-width: 860px;
-  }
-  .partnership-body p {
-    font-size: 20px;
-    line-height: 1.65;
-    margin-bottom: 28px;
-    color: var(--ink);
-  }
+  .partnership { display: grid; grid-template-columns: 220px 1fr; gap: 60px; }
+  .partnership-body { max-width: 860px; }
+  .partnership-body p { font-size: 20px; line-height: 1.65; margin-bottom: 28px; color: var(--ink); }
   .partnership-body p.dim { color: var(--ink-dim); }
   .partnership-body p:last-child { margin-bottom: 0; }
   .partnership-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin-top: 64px;
-    padding-top: 48px;
-    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    margin-top: 64px; padding-top: 48px; border-top: 1px solid var(--line);
   }
-  .p-stat {
-    padding: 32px 28px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--blur);
-    border: 1px solid var(--line);
-  }
-  .p-stat-num {
-    font-family: var(--display);
-    font-size: 64px;
-    line-height: 0.9;
-    color: var(--ink);
-    margin-bottom: 14px;
-  }
+  .p-stat { padding: 32px 28px; background: var(--glass-bg); backdrop-filter: var(--blur); border: 1px solid var(--line); }
+  .p-stat-num { font-family: var(--display); font-size: 64px; line-height: 0.9; color: var(--ink); margin-bottom: 14px; }
   .p-stat-num .accent { color: var(--orange); }
-  .p-stat-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    line-height: 1.5;
-  }
+  .p-stat-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); line-height: 1.5; }
 
-  /* BUCKET LABELS */
-  .bucket {
-    padding: 120px 0;
-    border-bottom: 1px solid var(--line);
-    position: relative;
-  }
-  .bucket-head {
-    display: flex;
-    align-items: baseline;
-    gap: 40px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-  }
+  .bucket { padding: 120px 0; border-bottom: 1px solid var(--line); position: relative; }
+  .bucket-head { display: flex; align-items: baseline; gap: 40px; margin-bottom: 24px; flex-wrap: wrap; }
   .bucket-tag {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--orange);
-    padding: 10px 16px;
-    border: 1.5px solid var(--orange);
-    background: var(--orange-dim);
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--orange);
+    padding: 10px 16px; border: 1.5px solid var(--orange);
+    background: var(--orange-dim); font-weight: 700;
+    display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0;
   }
-  .bucket-tag::before {
-    content: '';
-    display: inline-block;
-    width: 7px; height: 7px;
-    background: var(--orange);
-    border-radius: 50%;
-  }
-  .bucket-title {
-    font-family: var(--display);
-    font-weight: 400;
-    font-size: clamp(56px, 6.5vw, 112px);
-    line-height: 0.9;
-    letter-spacing: -0.005em;
-    text-transform: uppercase;
-  }
-  .bucket-lede {
-    max-width: 840px;
-    margin: 32px 0 64px 0;
-    font-size: 19px;
-    line-height: 1.6;
-    color: var(--ink-dim);
-  }
+  .bucket-tag::before { content: ''; display: inline-block; width: 7px; height: 7px; background: var(--orange); border-radius: 50%; }
+  .bucket-title { font-family: var(--display); font-weight: 400; font-size: clamp(56px, 6.5vw, 112px); line-height: 0.9; letter-spacing: -0.005em; text-transform: uppercase; }
+  .bucket-lede { max-width: 840px; margin: 32px 0 64px 0; font-size: 19px; line-height: 1.6; color: var(--ink-dim); }
   .bucket-lede b { color: var(--ink); }
   .bucket-lede em { color: var(--orange); font-style: italic; }
 
-  /* REACTIVE HERO STORY (Bradley) */
-  .reactive-story {
-    background: var(--orange-dim);
-    border: 1px solid var(--orange);
-    padding: 48px 52px;
+  /* New: 2-col wrapper for Bradley photo + story callout */
+  .reactive-story-block {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.6fr) 1.4fr;
+    gap: 0;
     margin-bottom: 64px;
-    position: relative;
+    border: 1px solid var(--orange);
     overflow: hidden;
   }
+  .reactive-story-photo {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    min-height: 100%;
+  }
+  .reactive-story-photo img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+  .reactive-story-photo .photo-fallback {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(215,63,9,0.18) 0%, transparent 60%), linear-gradient(180deg, #0a0a0a 0%, #000 100%);
+    display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 40px;
+  }
+  .reactive-story-photo .photo-fallback.show { display: flex; }
+  .reactive-story-photo .photo-fallback-label {
+    font-family: var(--display); font-size: 36px; line-height: 0.9;
+    color: var(--ink-dim); text-transform: uppercase;
+    letter-spacing: -0.005em; margin-bottom: 16px;
+  }
+  .reactive-story-photo .photo-fallback-sub {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-dimmer);
+    padding: 6px 12px; border: 1px dashed var(--line-bright);
+  }
+  /* Story content adjustments when inside the block */
+  .reactive-story-block .reactive-story {
+    margin-bottom: 0;
+    border: none;
+  }
+  @media (max-width: 900px) {
+    .reactive-story-block { grid-template-columns: 1fr; }
+    .reactive-story-photo { aspect-ratio: 4 / 5; min-height: auto; }
+  }
+
+  .reactive-story {
+    background: var(--orange-dim); border: 1px solid var(--orange);
+    padding: 48px 52px; margin-bottom: 64px; position: relative; overflow: hidden;
+  }
   .reactive-story::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 600px;
-    height: 600px;
+    content: ''; position: absolute; top: -50%; right: -20%;
+    width: 600px; height: 600px;
     background: radial-gradient(circle, var(--orange-glow) 0%, transparent 60%);
     pointer-events: none;
   }
-  .reactive-story-tag {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--orange);
-    font-weight: 700;
-    margin-bottom: 20px;
-    position: relative;
-  }
-  .reactive-story-title {
-    font-family: var(--display);
-    font-weight: 400;
-    font-size: clamp(36px, 4vw, 60px);
-    line-height: 0.95;
-    letter-spacing: -0.005em;
-    text-transform: uppercase;
-    margin-bottom: 24px;
-    max-width: 900px;
-    position: relative;
-  }
-  .reactive-story p {
-    font-size: 19px;
-    line-height: 1.6;
-    max-width: 820px;
-    color: var(--ink);
-    position: relative;
-  }
-  .reactive-timeline {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
-    margin-top: 40px;
-    position: relative;
-  }
-  .r-beat {
-    background: rgba(0,0,0,0.4);
-    padding: 24px 24px;
-    border: 1px solid var(--line);
-  }
-  .r-beat-day {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--orange);
-    margin-bottom: 10px;
-    font-weight: 700;
-  }
-  .r-beat-body {
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--ink);
-  }
+  .reactive-story-tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--orange); font-weight: 700; margin-bottom: 20px; position: relative; }
+  .reactive-story-title { font-family: var(--display); font-weight: 400; font-size: clamp(36px, 4vw, 60px); line-height: 0.95; letter-spacing: -0.005em; text-transform: uppercase; margin-bottom: 24px; max-width: 900px; position: relative; }
+  .reactive-story p { font-size: 19px; line-height: 1.6; max-width: 820px; color: var(--ink); position: relative; }
+  .reactive-timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 40px; position: relative; }
+  .r-beat { background: rgba(0,0,0,0.4); padding: 24px 24px; border: 1px solid var(--line); }
+  .r-beat-day { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--orange); margin-bottom: 10px; font-weight: 700; }
+  .r-beat-body { font-size: 14px; line-height: 1.55; color: var(--ink); }
 
-  /* CARD GRID */
+  /* ==================
+     SYMMETRIC GRIDS
+     ================== */
   .card-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
     gap: 2px;
     background: var(--line);
     border: 1px solid var(--line);
   }
+  .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
   .athlete {
     background: var(--bg);
-    padding: 36px 32px;
-    grid-column: span 2;
     position: relative;
     display: flex;
     flex-direction: column;
-    min-height: 400px;
-    transition: background 0.3s ease;
-  }
-  .athlete:hover { background: var(--surface); }
-  .athlete:hover .athlete-name { color: var(--orange); }
-  .athlete.feature {
-    grid-column: span 3;
-    min-height: 460px;
-    padding: 44px 40px;
-  }
-  .athlete-photo {
-    aspect-ratio: 4 / 3;
-    background: var(--surface-2);
-    border: 1px dashed var(--line-bright);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-dimmer);
-    margin-bottom: 24px;
+    padding: 0;
     overflow: hidden;
   }
-  .athlete.feature .athlete-photo { aspect-ratio: 21 / 10; }
-  .athlete-head {
+
+  /* PHOTO CARD WITH GLASS PANEL */
+  .athlete.has-assets .athlete-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: #000;
+    flex-shrink: 0;
+  }
+  .athlete.has-assets .athlete-media img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; display: block;
+  }
+  /* Specific athletes whose photos look better filling the container */
+  .athlete.has-assets.fill-photo .athlete-media img {
+    object-fit: cover;
+  }
+  .athlete.has-assets .no-asset-fallback {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(215,63,9,0.12) 0%, transparent 60%), linear-gradient(180deg, #0a0a0a 0%, #000 100%);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 40px;
+    z-index: 1;
+  }
+  .athlete.has-assets .no-asset-fallback::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at center, black 20%, transparent 70%);
+  }
+  .athlete.has-assets .no-asset-label { font-family: var(--display); font-size: 36px; line-height: 0.9; color: var(--ink-dimmer); text-transform: uppercase; letter-spacing: -0.005em; margin-bottom: 16px; position: relative; max-width: 100%; }
+  .athlete.has-assets .no-asset-sub { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dimmer); padding: 6px 12px; border: 1px dashed var(--line-bright); position: relative; }
+  .athlete.has-assets .athlete-media.no-asset .no-asset-fallback { display: flex; }
+
+  .athlete.has-assets .athlete-panel {
+    position: relative;
+    padding: 24px 26px 26px 26px;
+    background: var(--surface);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex: 1;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 18px;
-    padding-bottom: 14px;
-    border-bottom: 1px dashed var(--line-bright);
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    flex-direction: column;
+  }
+  .athlete.has-assets .athlete-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px; padding-bottom: 12px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
   }
   .athlete-num { color: var(--ink-dim); }
   .athlete-tag { color: var(--orange); font-weight: 700; }
   .athlete-tag.pro { color: var(--ink-dim); }
-  .athlete-tag.event { color: #FFB800; }
-  .athlete-name {
-    font-family: var(--display);
-    font-weight: 400;
-    font-size: 42px;
-    line-height: 0.92;
-    letter-spacing: -0.002em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-    transition: color 0.3s ease;
+
+  .athlete.has-assets .athlete-name {
+    font-family: var(--display); font-weight: 400;
+    font-size: 34px; line-height: 0.92; letter-spacing: -0.002em;
+    text-transform: uppercase; margin-bottom: 6px;
+    color: var(--ink); transition: color 0.3s ease;
   }
-  .athlete.feature .athlete-name { font-size: 56px; }
-  .athlete-role {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    margin-bottom: 20px;
+  .athlete.has-assets:hover .athlete-name { color: var(--orange); }
+  .athlete.has-assets .athlete-role {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-dim); margin-bottom: 12px;
   }
-  .athlete-moment {
-    font-size: 15px;
-    line-height: 1.6;
-    color: var(--ink);
-    margin-bottom: auto;
+  .athlete.has-assets .athlete-moment {
+    font-size: 13px; line-height: 1.55; color: var(--ink); margin-bottom: auto; padding-bottom: 14px;
   }
-  .athlete.feature .athlete-moment { font-size: 17px; }
-  .athlete-foot {
-    margin-top: 20px;
-    padding-top: 14px;
-    border-top: 1px solid var(--line);
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-dimmer);
+  .athlete.has-assets .athlete-foot {
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .athlete.has-assets .asset-badge {
+    position: absolute; top: 20px; right: 20px; z-index: 3;
+    padding: 6px 12px; background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--orange); font-weight: 700;
+  }
+  .athlete.has-assets .asset-badge::before {
+    content: ''; display: inline-block; width: 6px; height: 6px;
+    background: var(--orange); border-radius: 50%; margin-right: 7px;
+    vertical-align: middle; animation: pulse 1.4s infinite;
   }
 
-  /* EVENT CARD (wider layout) */
-  .event-card {
+  /* ROMAN MENTION TILE — fills slot 12 symmetrically */
+  .athlete.mention {
     background: var(--bg);
-    padding: 48px;
-    border: 1px solid var(--line);
+    border: 1px dashed var(--line-bright);
+    padding: 36px 32px;
+    display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  }
+  .athlete.mention .mention-tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--orange); font-weight: 700;
     margin-bottom: 24px;
-    display: grid;
-    grid-template-columns: 200px 1fr 260px;
-    gap: 40px;
-    align-items: start;
-    transition: border-color 0.3s ease;
+  }
+  .athlete.mention h3 {
+    font-family: var(--display); font-weight: 400;
+    font-size: 48px; line-height: 0.9; text-transform: uppercase;
+    letter-spacing: -0.005em; margin-bottom: 14px; color: var(--ink);
+  }
+  .athlete.mention .mention-role {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-dim); margin-bottom: 20px;
+  }
+  .athlete.mention .mention-body {
+    font-size: 14px; line-height: 1.55; color: var(--ink); margin-bottom: 20px;
+  }
+  .athlete.mention a {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--orange); text-decoration: none;
+    padding-top: 14px; border-top: 1px solid var(--line-bright);
+    display: inline-block; margin-top: auto;
+  }
+
+  /* EVENTS — side-by-side symmetric */
+  .events-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .event-card {
+    background: var(--bg); padding: 0; border: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    overflow: hidden; transition: border-color 0.3s ease;
   }
   .event-card:hover { border-color: var(--orange); }
-  .event-card:last-child { margin-bottom: 0; }
-  .event-meta {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-    line-height: 1.9;
-  }
-  .event-meta .tag {
-    display: inline-block;
-    color: #FFB800;
-    border: 1px solid #FFB800;
-    padding: 4px 10px;
-    margin-bottom: 16px;
-    font-weight: 700;
-  }
-  .event-meta b { color: var(--ink); }
-  .event-body h3 {
-    font-family: var(--display);
-    font-weight: 400;
-    font-size: 48px;
-    line-height: 0.92;
-    text-transform: uppercase;
-    margin-bottom: 18px;
-    letter-spacing: -0.005em;
-  }
-  .event-body p {
-    font-size: 16px;
-    line-height: 1.6;
-    color: var(--ink-dim);
-    max-width: 620px;
-  }
-  .event-body p b { color: var(--ink); }
   .event-photo {
+    position: relative; background: #000; overflow: hidden;
     aspect-ratio: 4 / 3;
-    background: var(--surface-2);
-    border: 1px dashed var(--line-bright);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ink-dimmer);
   }
+  .event-photo img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+  .event-photo .fallback {
+    position: absolute; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, rgba(215,63,9,0.12) 0%, transparent 60%), linear-gradient(180deg, #0a0a0a 0%, #000 100%);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-dimmer);
+  }
+  .event-photo.no-asset .fallback { display: flex; }
+  .event-body {
+    padding: 36px 40px;
+    display: flex; flex-direction: column; flex: 1;
+  }
+  .event-meta-row {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-dim);
+    margin-bottom: 20px; display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .event-meta-row .tag { color: #FFB800; border: 1px solid #FFB800; padding: 4px 10px; font-weight: 700; }
+  .event-body h3 { font-family: var(--display); font-weight: 400; font-size: 44px; line-height: 0.92; text-transform: uppercase; margin-bottom: 18px; letter-spacing: -0.005em; }
+  .event-body p { font-size: 15px; line-height: 1.6; color: var(--ink-dim); }
+  .event-body p b { color: var(--ink); }
 
-  /* CTA */
-  .cta {
-    text-align: center;
-    padding: 200px 0;
-    border-bottom: none;
-    position: relative;
+  /* RECENT — symmetric 4-col grid */
+  .recent {
+    padding: 120px 0; border-bottom: none; position: relative;
+    background: linear-gradient(180deg, var(--bg) 0%, #050505 100%);
   }
+  .recent-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 48px; gap: 40px; flex-wrap: wrap; }
+  .recent-head-left { flex: 1; min-width: 300px; }
+  .recent-tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--orange);
+    padding: 10px 16px; border: 1.5px solid var(--orange);
+    background: var(--orange-dim); font-weight: 700;
+    display: inline-flex; align-items: center; gap: 10px; margin-bottom: 32px;
+  }
+  .recent-tag::before {
+    content: ''; display: inline-block; width: 7px; height: 7px;
+    background: var(--orange); border-radius: 50%;
+    animation: pulse 1.4s infinite;
+  }
+  .recent-title { font-family: var(--display); font-weight: 400; font-size: clamp(48px, 6vw, 96px); line-height: 0.9; letter-spacing: -0.005em; text-transform: uppercase; }
+  .recent-meta { text-align: right; font-family: var(--mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-dim); line-height: 2; }
+  .recent-meta b { color: var(--ink); }
+  .recent-meta .accent { color: var(--orange); }
+  .recent-lede { max-width: 820px; margin-bottom: 56px; font-size: 18px; line-height: 1.65; color: var(--ink-dim); }
+  .recent-lede b { color: var(--ink); }
+
+  .recent-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: var(--line); border: 1px solid var(--line); }
+  .recent-card {
+    position: relative; background: var(--bg); overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: transform 0.3s ease;
+  }
+  .recent-card:hover { transform: translateY(-4px); }
+  .recent-card .athlete-media {
+    position: relative; width: 100%;
+    aspect-ratio: 4 / 5;
+    overflow: hidden; background: #000;
+    flex-shrink: 0;
+  }
+  .recent-card .athlete-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .recent-card .no-asset-fallback {
+    position: absolute; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, rgba(215,63,9,0.12) 0%, transparent 60%), linear-gradient(180deg, #0a0a0a 0%, #000 100%);
+    padding: 40px; text-align: center; z-index: 1;
+  }
+  .recent-card .athlete-media.no-asset .no-asset-fallback { display: flex; }
+  .recent-card .no-asset-label { font-family: var(--display); font-size: 32px; line-height: 0.9; color: var(--ink-dimmer); text-transform: uppercase; letter-spacing: -0.005em; margin-bottom: 16px; }
+  .recent-card .no-asset-sub { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dimmer); padding: 6px 12px; border: 1px dashed var(--line-bright); }
+  .recent-card .card-panel {
+    position: relative;
+    padding: 22px 24px 24px 24px;
+    background: var(--surface);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex: 1; display: flex; flex-direction: column;
+  }
+  .recent-card .card-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--orange); font-weight: 700; margin-bottom: 10px; }
+  .recent-card h3 { font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.002em; margin-bottom: 8px; color: var(--ink); transition: color 0.3s ease; }
+  .recent-card:hover h3 { color: var(--orange); }
+  .recent-card .card-role { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 10px; }
+  .recent-card .card-note { font-size: 12px; line-height: 1.5; color: var(--ink); }
+
+  .cta { text-align: center; padding: 200px 0; border-bottom: none; position: relative; }
   .cta::after {
-    content: '';
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 900px;
-    height: 900px;
+    content: ''; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); width: 900px; height: 900px;
     background: radial-gradient(circle, var(--orange-glow) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
   }
   .cta-inner { position: relative; z-index: 1; }
-  .cta-kicker {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--orange);
-    margin-bottom: 40px;
-  }
-  .cta h2 {
-    font-family: var(--display);
-    font-weight: 400;
-    font-size: clamp(72px, 10vw, 168px);
-    line-height: 0.88;
-    letter-spacing: -0.005em;
-    text-transform: uppercase;
-    margin-bottom: 56px;
-  }
-  .cta-lockup {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 40px;
-    margin-bottom: 56px;
-    opacity: 0.6;
-  }
+  .cta-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--orange); margin-bottom: 40px; }
+  .cta h2 { font-family: var(--display); font-weight: 400; font-size: clamp(72px, 10vw, 168px); line-height: 0.88; letter-spacing: -0.005em; text-transform: uppercase; margin-bottom: 56px; }
+  .cta-lockup { display: flex; align-items: center; justify-content: center; gap: 40px; margin-bottom: 56px; opacity: 0.6; }
   .cta-lockup img { height: 28px; width: auto; }
   .cta-lockup .x { color: var(--orange); font-size: 24px; opacity: 0.6; }
   .cta-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 18px;
-    padding: 26px 54px;
-    background: var(--orange);
-    color: #000;
-    text-decoration: none;
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    font-weight: 700;
-    transition: all 0.3s ease;
-    border: 2px solid var(--orange);
+    display: inline-flex; align-items: center; gap: 18px;
+    padding: 26px 54px; background: var(--orange); color: #000;
+    text-decoration: none; font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700;
+    transition: all 0.3s ease; border: 2px solid var(--orange);
   }
   .cta-btn:hover { background: transparent; color: var(--orange); }
   .cta-btn span { font-size: 20px; }
-
   footer {
-    padding: 48px 0;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-dimmer);
+    padding: 48px 0; border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-dimmer);
   }
 
   @media (max-width: 1100px) {
-    .card-grid { grid-template-columns: repeat(2, 1fr); }
-    .athlete, .athlete.feature { grid-column: span 1; }
+    .card-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
+    .card-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
+    .recent-grid { grid-template-columns: repeat(2, 1fr); }
     .partnership-stats { grid-template-columns: 1fr; }
-    .event-card { grid-template-columns: 1fr; }
+    .events-grid { grid-template-columns: 1fr; }
     .reactive-timeline { grid-template-columns: 1fr; }
   }
   @media (max-width: 900px) {
@@ -714,11 +499,10 @@
     .hero-bottom { grid-template-columns: repeat(2, 1fr); gap: 32px; }
     .stat-num { font-size: 64px; }
     .section-head, .partnership { grid-template-columns: 1fr; gap: 24px; }
-    section, .bucket { padding: 80px 0; }
-    .card-grid { grid-template-columns: 1fr; }
+    section, .bucket, .recent { padding: 80px 0; }
+    .card-grid.cols-3, .card-grid.cols-4, .recent-grid { grid-template-columns: 1fr; }
     .lockup { gap: 16px; }
     .lockup img { height: 26px; }
-    .athlete-name { font-size: 34px !important; }
     footer { flex-direction: column; gap: 12px; text-align: center; }
   }
 
@@ -728,7 +512,6 @@
 </head>
 <body>
 
-<!-- NAV -->
 <nav class="nav">
   <div class="nav-inner">
     <div class="lockup">
@@ -745,10 +528,8 @@
 
 <div class="container">
 
-  <!-- HERO -->
   <header class="hero">
     <div class="hero-grid-bg"></div>
-
     <div class="hero-headline">
       <div class="hero-kicker">A pitch from Postgame · April 2026</div>
       <h1>Three years.<br>Thousands of<br>pieces of <em>content.</em><br>One playbook<br>that works.</h1>
@@ -760,369 +541,494 @@
         This page exists for one reason: some of the best athlete work Crocs has ever done happened through Postgame — and not everyone in the building knows about it. What follows is a look at the athletes behind that work, how we show up when the moment demands it, and what this relationship looks like for the Crocs business units that are just being introduced to us.
       </p>
     </div>
-
-    <div class="hero-bottom">
-      <div class="stat">
-        <div class="stat-num">1,000<span class="accent">+</span></div>
-        <div class="stat-label">Athletes in the original Crocs gifting campaign, 2022</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">70k</div>
-        <div class="stat-label">Athletes in the Postgame network</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">3</div>
-        <div class="stat-label">Program pillars — Reactive, Pros, Events</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">2022</div>
-        <div class="stat-label">First Crocs campaign delivered by Postgame</div>
-      </div>
-    </div>
   </header>
 
-  <!-- PARTNERSHIP NARRATIVE -->
-  <section id="partnership">
-    <div class="section-head">
-      <div class="section-num">§ 01 <span>The partnership</span></div>
-      <div>
-        <h2 class="section-title">Four years.<br>Built on <em>repetition.</em></h2>
-      </div>
-    </div>
-
-    <div class="partnership">
-      <div class="section-num">What's been built</div>
-      <div class="partnership-body">
-        <p>
-          The relationship started in 2022 with a bet: give Crocs to <b>nearly 1,000 college athletes</b> in a single four-week window, ask each one to post, and see what happens when authentic content hits Gen-Z at scale. It became one of the most impactful campaigns Postgame has ever run.
-        </p>
-        <p class="dim">
-          Since then, the model has kept working. Postgame tapped its network of <b style="color:var(--ink)">70,000 college athletes</b> to deliver a repeatable mix of large-scale gifting, high-profile elevated content shoots produced by a nationwide videographer network, and physical retail activations with Dick's Sporting Goods in Knoxville and Champaign.
-        </p>
-        <p>
-          What's on this page is the shape of that relationship in 2026 — organized into the three program types that make Postgame × Crocs work: <em>reactive</em> moments caught in real time, <em>pro</em> athletes who carry the brand from college into the league, and <em>in-person events</em> that turn the network into foot traffic.
-        </p>
-
-        <div class="partnership-stats">
-          <div class="p-stat">
-            <div class="p-stat-num">~1,000</div>
-            <div class="p-stat-label">Athletes gifted in the 2022 launch campaign</div>
-          </div>
-          <div class="p-stat">
-            <div class="p-stat-num">2<span class="accent">+</span></div>
-            <div class="p-stat-label">Documented Dick's Sporting Goods retail activations</div>
-          </div>
-          <div class="p-stat">
-            <div class="p-stat-num">5</div>
-            <div class="p-stat-label">Sports covered — football, M + W hoops, baseball, more</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- BUCKET 1: REACTIVE -->
   <section class="bucket" id="reactive">
     <div class="bucket-head">
-      <div class="bucket-tag">§ 02 · Reactive</div>
+      <div class="bucket-tag">§ 01 · Reactive</div>
       <h2 class="bucket-title">React to the<br><em>moment.</em></h2>
     </div>
     <p class="bucket-lede">
       The entire reactive model is built for this: when a Crocs athlete makes news — a buzzer-beater, a Sweet 16 run, a draft night moment — Postgame's network is already on campus, the creative is already built, and the content is in-feed <b>the next day.</b> No quarterly brief. No scramble. Just speed.
     </p>
 
-    <!-- BRADLEY HERO STORY -->
-    <div class="reactive-story">
-      <div class="reactive-story-tag">● Receipt 001 — The Bradley playbook, in three beats</div>
-      <h3 class="reactive-story-title">Jaden Bradley hit a buzzer-beater to win the Big 12.<br>His Crocs content was live the next day.</h3>
-      <p>
-        Arizona's Big 12 Player of the Year didn't just carry his team to its first Final Four in 25 years — he gave Crocs one of the cleanest reactivity case studies of the entire tournament. Postgame's team was already holding the creative. When the moment happened, we shipped.
-      </p>
-      <div class="reactive-timeline">
-        <div class="r-beat">
-          <div class="r-beat-day">Day 0 · Saturday night</div>
-          <div class="r-beat-body">Bradley hits the buzzer-beater to win the Big 12 Tournament. National headlines by Sunday morning.</div>
+    <div class="reactive-story-block">
+      <div class="reactive-story-photo">
+        <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/hero.jpg" alt="Jaden Bradley" onerror="this.style.display='none'; this.nextElementSibling.classList.add('show');">
+        <div class="photo-fallback">
+          <div class="photo-fallback-label">JADEN BRADLEY</div>
+          <div class="photo-fallback-sub">Photo coming</div>
         </div>
-        <div class="r-beat">
-          <div class="r-beat-day">Day 1 · Sunday</div>
-          <div class="r-beat-body">Bradley posts his Crocs content. Still peak search volume, still peak cultural attention, still in the news cycle.</div>
-        </div>
-        <div class="r-beat">
-          <div class="r-beat-day">Day 4 · Thursday</div>
-          <div class="r-beat-body">Arizona advances to the Final Four. Bradley's Crocs post is still compounding impressions on the way there.</div>
+      </div>
+      <div class="reactive-story">
+        <div class="reactive-story-tag">● Receipt 001 — The Bradley playbook, in three beats</div>
+        <h3 class="reactive-story-title">Jaden Bradley hit a buzzer-beater to win the Big 12.<br>His Crocs content was live the next day.</h3>
+        <p>
+          Arizona's Big 12 Player of the Year didn't just carry his team to its first Final Four in 25 years — he gave Crocs one of the cleanest reactivity case studies of the entire tournament. Postgame's team was already holding the creative. When the moment happened, we shipped.
+        </p>
+        <div class="reactive-timeline">
+          <div class="r-beat">
+            <div class="r-beat-day">Day 0 · Saturday night</div>
+            <div class="r-beat-body">Bradley hits the buzzer-beater to win the Big 12 Tournament. National headlines by Sunday morning.</div>
+          </div>
+          <div class="r-beat">
+            <div class="r-beat-day">Day 1 · Sunday</div>
+            <div class="r-beat-body">Bradley posts his Crocs content. Still peak search volume, still peak cultural attention, still in the news cycle.</div>
+          </div>
+          <div class="r-beat">
+            <div class="r-beat-day">Day 4 · Thursday</div>
+            <div class="r-beat-body">Arizona advances to the Final Four. Bradley's Crocs post is still compounding impressions on the way there.</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- REACTIVE ATHLETES -->
-    <div class="card-grid">
-
-      <!-- Bradley feature -->
-      <div class="athlete feature">
-        <div class="athlete-photo">[ Photo — Jaden Bradley ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 01</span>
-          <span class="athlete-tag">★ POY · NEXT DAY</span>
+    <div class="card-grid cols-3">
+      <div class="athlete has-assets">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/hero.jpg" alt="Jaden Bradley" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">JADEN BRADLEY</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
         </div>
-        <h3 class="athlete-name">Jaden Bradley</h3>
-        <div class="athlete-role">G · Arizona · Big 12 Player of the Year</div>
-        <p class="athlete-moment">
-          Hit a <b>buzzer-beater to win the Big 12 Tournament.</b> Took Arizona to its first Final Four in 25 years. Posted his Crocs content <b>the next day</b> — while he was still the top-searched name in college basketball.
-        </p>
-        <div class="athlete-foot">→ Crocs × Dick's · March Madness</div>
-      </div>
-
-      <!-- Nyla feature -->
-      <div class="athlete feature">
-        <div class="athlete-photo">[ Photo — Nyla Harris ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 02</span>
-          <span class="athlete-tag">◆ SWEET 16</span>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 01</span>
+            <span class="athlete-tag ">★ POY · NEXT DAY</span>
+          </div>
+          <h3 class="athlete-name">Jaden Bradley</h3>
+          <div class="athlete-role">G · Arizona · Big 12 POY</div>
+          <p class="athlete-moment">Hit a <b>buzzer-beater to win the Big 12 Tournament.</b> Took Arizona to its first Final Four in 25 years. Posted his Crocs content <b>the next day</b> — while he was still the top-searched name in college basketball.</p>
+          <div class="athlete-foot">→ Crocs × Dick's · March Madness</div>
         </div>
-        <h3 class="athlete-name">Nyla Harris</h3>
-        <div class="athlete-role">F · UNC (formerly Louisville)</div>
-        <p class="athlete-moment">
-          Transferred to UNC for her senior year, made <b>All-ACC</b>, and powered the Tar Heels to the Sweet 16. A women's basketball activation timed to the one moment of the year her name was everywhere.
-        </p>
-        <div class="athlete-foot">→ Sweet 16, March 29, 2026</div>
       </div>
-
-      <!-- Roman Wilson std -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Roman Wilson ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 03</span>
-          <span class="athlete-tag">◇ CHAMP</span>
+      <div class="athlete has-assets">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Nyla-Harris/hero.jpg" alt="Nyla Harris" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">NYLA HARRIS</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
         </div>
-        <h3 class="athlete-name">Roman Wilson</h3>
-        <div class="athlete-role">WR · Michigan → Pittsburgh Steelers</div>
-        <p class="athlete-moment">
-          <b>Michigan national champion.</b> Activated in the reactive window that opens the moment a title game ends — riding the peak of his college narrative straight into the NFL.
-        </p>
-        <div class="athlete-foot">→ Post-championship reactive</div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 02</span>
+            <span class="athlete-tag ">◆ SWEET 16</span>
+          </div>
+          <h3 class="athlete-name">Nyla Harris</h3>
+          <div class="athlete-role">F · UNC Women's Basketball</div>
+          <p class="athlete-moment">Transferred to UNC for her senior year, made <b>All-ACC</b>, and powered the Tar Heels to the Sweet 16. A women's basketball activation timed to the one moment of the year her name was everywhere.</p>
+          <div class="athlete-foot">→ Sweet 16, March 29, 2026</div>
+        </div>
       </div>
-
-      <!-- Empty placeholder cells to keep grid clean: 2 features (span 3 each) + 1 std (span 2) = 3+3+2 = 8. Need to pad to 12 for 2 rows. Or just leave odd - 1 row of 2 features (6 cols used) + 1 row with 1 std and 2 empty (4 empty cols). Actually 3+3 = 6 = row 1 complete. Then 1 std = 2 cols of row 2, 4 cols empty. Pad with 2 more std to fill. -->
-      <div class="athlete" style="border: 1px dashed var(--line-bright); background: transparent; min-height: 400px; align-items: center; justify-content: center; display: flex; color: var(--ink-dimmer); font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;">
-        Reactive slot · add next moment
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Roman-Wilson/Crocs%20.jpg" alt="Roman Wilson" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">ROMAN WILSON</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 03</span>
+            <span class="athlete-tag ">◇ CHAMP</span>
+          </div>
+          <h3 class="athlete-name">Roman Wilson</h3>
+          <div class="athlete-role">WR · Michigan → Pittsburgh Steelers</div>
+          <p class="athlete-moment"><b>Michigan national champion.</b> Activated in the reactive window that opens the moment a title game ends — riding the peak of his college narrative straight into the NFL.</p>
+          <div class="athlete-foot">→ Post-championship reactive</div>
+        </div>
       </div>
-      <div class="athlete" style="border: 1px dashed var(--line-bright); background: transparent; min-height: 400px; align-items: center; justify-content: center; display: flex; color: var(--ink-dimmer); font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;">
-        Reactive slot · add next moment
-      </div>
-
     </div>
   </section>
 
-  <!-- BUCKET 2: IN THE PROS -->
   <section class="bucket" id="pros">
     <div class="bucket-head">
-      <div class="bucket-tag">§ 03 · In the Pros</div>
+      <div class="bucket-tag">§ 02 · In the Pros</div>
       <h2 class="bucket-title">Activated in college.<br>Still <em>relevant</em> in the league.</h2>
     </div>
     <p class="bucket-lede">
-      The best NIL activations don't expire at graduation — they compound. Every athlete on this list was a Postgame × Crocs partner during their college career. Every single one of them is <b>still in the pros today</b>, still producing content, still carrying the brand into rooms Crocs wouldn't otherwise be in.
+      The best NIL activations don't expire at graduation — they compound. Every athlete below was a Postgame × Crocs partner during their college career. Every single one is <b>still in the pros today</b>, still producing content, still carrying the brand into rooms Crocs wouldn't otherwise be in.
     </p>
-
-    <div class="card-grid">
-
-      <!-- Knecht -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Knecht ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 01</span>
-          <span class="athlete-tag pro">PRO</span>
+    <div class="card-grid cols-4">
+      <div class="athlete has-assets">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Dalton-Knecht/Dalton%207.jpg" alt="Dalton Knecht" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">DALTON KNECHT</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
         </div>
-        <h3 class="athlete-name">Dalton Knecht</h3>
-        <div class="athlete-role">G/F · Los Angeles Lakers</div>
-        <p class="athlete-moment">
-          SEC Player of the Year at Tennessee, drafted <b>17th overall</b> by the Lakers. Now a rotational wing on the league's most-watched franchise.
-        </p>
-        <div class="athlete-foot">→ Active 2025-26 NBA season</div>
-      </div>
-
-      <!-- Lamont Butler -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Butler ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 02</span>
-          <span class="athlete-tag pro">PRO</span>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 01</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Dalton Knecht</h3>
+          <div class="athlete-role">G/F · Lakers</div>
+          <p class="athlete-moment">SEC Player of the Year at Tennessee, drafted <b>17th overall</b> by the Lakers. Now a rotational wing on the league's most-watched franchise.</p>
+          <div class="athlete-foot">→ NBA · 2025-26</div>
         </div>
-        <h3 class="athlete-name">Lamont Butler</h3>
-        <div class="athlete-role">G · Atlanta Hawks (two-way)</div>
-        <p class="athlete-moment">
-          <b>10/10 from the field, 33 points</b> vs Louisville as a Kentucky Wildcat. Parlayed it into a two-way contract with the Hawks.
-        </p>
-        <div class="athlete-foot">→ Hawks / G League, 2026</div>
       </div>
-
-      <!-- Tyler Hansbrough (pro legacy) -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Hansbrough ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 03</span>
-          <span class="athlete-tag pro">HOF</span>
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Lamont-Butler/Lamont%2010.jpg" alt="Lamont Butler" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">LAMONT BUTLER</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
         </div>
-        <h3 class="athlete-name">Tyler Hansbrough</h3>
-        <div class="athlete-role">"Psycho T" · UNC · NBA · HOF</div>
-        <p class="athlete-moment">
-          UNC's all-time leading scorer. <b>2009 national champion.</b> College Basketball Hall of Fame. NBA veteran. The legacy anchor of the Crocs roster.
-        </p>
-        <div class="athlete-foot">→ Forever a Tar Heel</div>
-      </div>
-
-      <!-- Charlie Condon -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Condon ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 04</span>
-          <span class="athlete-tag pro">PRO</span>
+        <div class="asset-badge">Live Assets</div>
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 02</span>
+            <span class="athlete-tag pro">PRO · CROCS</span>
+          </div>
+          <h3 class="athlete-name">Lamont Butler</h3>
+          <div class="athlete-role">G · Atlanta Hawks</div>
+          <p class="athlete-moment"><b>10/10 from the field, 33 points</b> vs Louisville as a Kentucky Wildcat. Parlayed it into a two-way contract with the Hawks.</p>
+          <div class="athlete-foot">→ Hawks · G League, 2026</div>
         </div>
-        <h3 class="athlete-name">Charlie Condon</h3>
-        <div class="athlete-role">OF/1B · Colorado Rockies</div>
-        <p class="athlete-moment">
-          <b>2024 Golden Spikes winner</b> — the best player in college baseball. Drafted <b>#3 overall</b> by the Rockies, climbing the system now.
-        </p>
-        <div class="athlete-foot">→ Rockies system, 2026</div>
       </div>
-
-      <!-- Chase Burns -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Burns ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 05</span>
-          <span class="athlete-tag pro">PRO</span>
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Kyle-Filipowski/Crocs%20T1%20Duke%20%281%29.jpg" alt="Kyle Filipowski" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">KYLE FILIPOWSKI</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
         </div>
-        <h3 class="athlete-name">Chase Burns</h3>
-        <div class="athlete-role">RHP · Cincinnati Reds</div>
-        <p class="athlete-moment">
-          <b>#2 overall in the 2024 MLB Draft.</b> Signed the largest bonus in draft history at <b>$9.25M.</b> Struck out the first five Yankees in his MLB debut — first since 1961.
-        </p>
-        <div class="athlete-foot">→ Reds rotation, 2026</div>
-      </div>
-
-      <!-- Devin Taylor -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Taylor ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 06</span>
-          <span class="athlete-tag pro">PRO</span>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 03</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Kyle Filipowski</h3>
+          <div class="athlete-role">F · Utah Jazz</div>
+          <p class="athlete-moment">Duke All-American, drafted <b>32nd overall</b> by the Jazz. Now a rotational NBA big making the leap his college ceiling promised.</p>
+          <div class="athlete-foot">→ Jazz roster, 2025-26</div>
         </div>
-        <h3 class="athlete-name">Devin Taylor</h3>
-        <div class="athlete-role">OF · Oakland Athletics</div>
-        <p class="athlete-moment">
-          Indiana's <b>all-time HR leader</b> (passed Kyle Schwarber). 2nd-round pick, signed for $2.5M, climbing the A's system.
-        </p>
-        <div class="athlete-foot">→ Single-A Stockton, 2026</div>
       </div>
-
-      <!-- Joe Milton -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Milton ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 07</span>
-          <span class="athlete-tag pro">PRO</span>
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/RJ-Davis/Crocs%20T1%20UNC.jpg" alt="RJ Davis" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">RJ DAVIS</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
         </div>
-        <h3 class="athlete-name">Joe Milton&nbsp;III</h3>
-        <div class="athlete-role">QB · Dallas Cowboys</div>
-        <p class="athlete-moment">
-          Tennessee QB turned Cowboys backup. Big arm, bigger national audience every time he steps on the field for <b>America's Team.</b>
-        </p>
-        <div class="athlete-foot">→ Cowboys QB room, 2026</div>
-      </div>
-
-      <!-- Josh Williams -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — J. Williams ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 08</span>
-          <span class="athlete-tag pro">PRO</span>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 04</span>
+            <span class="athlete-tag pro">G LEAGUE</span>
+          </div>
+          <h3 class="athlete-name">RJ Davis</h3>
+          <div class="athlete-role">G · South Bay Lakers</div>
+          <p class="athlete-moment">UNC legend and face of Tar Heel basketball for four years. Now in the <b>Lakers G League system</b>, one step from the NBA — still carrying the Carolina Blue audience everywhere he goes.</p>
+          <div class="athlete-foot">→ South Bay Lakers, 2025-26</div>
         </div>
-        <h3 class="athlete-name">Josh Williams</h3>
-        <div class="athlete-role">RB · LSU → Tampa Bay Buccaneers</div>
-        <p class="athlete-moment">
-          <b>Walk-on to national champion.</b> 2019 LSU title team alongside Joe Burrow. Wore the legacy #18 jersey. Put up a <b>42" vertical</b> at Pro Day and signed with the Bucs.
-        </p>
-        <div class="athlete-foot">→ Buccaneers roster, 2025-26</div>
       </div>
-
-      <!-- Marek Houston placeholder -->
-      <div class="athlete">
-        <div class="athlete-photo">[ Photo — Houston ]</div>
-        <div class="athlete-head">
-          <span class="athlete-num">№ 09</span>
-          <span class="athlete-tag pro">PRO</span>
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Charlie-Condon/DSC00014.jpg" alt="Charlie Condon" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">CHARLIE CONDON</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
         </div>
-        <h3 class="athlete-name">Marek Houston</h3>
-        <div class="athlete-role">Baseball · Professional pipeline</div>
-        <p class="athlete-moment">
-          Activated with Crocs during his college career and now continuing that relationship into the pros. <b>Bio copy to be finalized with Peyton's notes.</b>
-        </p>
-        <div class="athlete-foot">→ Active pro cycle</div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 05</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Charlie Condon</h3>
+          <div class="athlete-role">OF/1B · Rockies</div>
+          <p class="athlete-moment"><b>2024 Golden Spikes winner</b> — the best player in college baseball. Drafted <b>#3 overall</b> by the Rockies.</p>
+          <div class="athlete-foot">→ Rockies system, 2026</div>
+        </div>
       </div>
-
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Chase-Burns/DSC02447-Edit.jpg" alt="Chase Burns" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">CHASE BURNS</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 06</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Chase Burns</h3>
+          <div class="athlete-role">RHP · Cincinnati Reds</div>
+          <p class="athlete-moment"><b>#2 overall in 2024.</b> Signed the largest bonus in MLB draft history at <b>$9.25M.</b> Struck out the first five Yankees in his debut — first since 1961.</p>
+          <div class="athlete-foot">→ Reds rotation, 2026</div>
+        </div>
+      </div>
+      <div class="athlete has-assets">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Marek-Houston/YES.jpg" alt="Marek Houston" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">MAREK HOUSTON</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 07</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Marek Houston</h3>
+          <div class="athlete-role">SS · Minnesota Twins</div>
+          <p class="athlete-moment">Chase Burns' Wake Forest teammate. Drafted <b>#16 overall</b> by the Twins in 2025 — the best defensive shortstop in the class. <b>Two first-round Crocs athletes from the same clubhouse.</b></p>
+          <div class="athlete-foot">→ Twins system, 2026</div>
+        </div>
+      </div>
+      <div class="athlete has-assets">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Devin-Taylor/SBM06080.jpg" alt="Devin Taylor" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">DEVIN TAYLOR</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 08</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Devin Taylor</h3>
+          <div class="athlete-role">OF · Oakland Athletics</div>
+          <p class="athlete-moment">Indiana's <b>all-time HR leader</b> (passed Kyle Schwarber). 2nd-round pick, signed for $2.5M, climbing the A's system.</p>
+          <div class="athlete-foot">→ Single-A Stockton, 2026</div>
+        </div>
+      </div>
+      <div class="athlete has-assets">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Christian-Moore/AL1A4471.jpg" alt="Christian Moore" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">CHRISTIAN MOORE</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 09</span>
+            <span class="athlete-tag pro">CASE STUDY</span>
+          </div>
+          <h3 class="athlete-name">Christian Moore</h3>
+          <div class="athlete-role">INF · LA Angels</div>
+          <p class="athlete-moment">Tennessee star activated during his college career. <b>Referenced by name in Postgame's Crocs case study</b> as one of the nationally relevant athletes the partnership was built around.</p>
+          <div class="athlete-foot">→ Angels system, 2026</div>
+        </div>
+      </div>
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Joe-Milton/Joe%20Milton.jpg" alt="Joe Milton III" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">JOE MILTON III</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 10</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Joe Milton III</h3>
+          <div class="athlete-role">QB · Dallas Cowboys</div>
+          <p class="athlete-moment">Tennessee QB turned Cowboys backup. Big arm, bigger national audience every time he steps on the field for <b>America's Team.</b></p>
+          <div class="athlete-foot">→ Cowboys QB room, 2026</div>
+        </div>
+      </div>
+      <div class="athlete has-assets">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Josh-Williams/DSC04363-Enhanced-NR.jpg" alt="Josh Williams" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">JOSH WILLIAMS</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 11</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Josh Williams</h3>
+          <div class="athlete-role">RB · Tampa Bay Buccaneers</div>
+          <p class="athlete-moment"><b>Walk-on to national champion.</b> 2019 LSU title team alongside Joe Burrow. Wore the legacy #18 jersey. Put up a <b>42" vertical</b> at Pro Day.</p>
+          <div class="athlete-foot">→ Buccaneers, 2025-26</div>
+        </div>
+      </div>
+      <div class="athlete has-assets fill-photo">
+        <div class="athlete-media">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Roman-Wilson/Crocs%20.jpg" alt="Roman Wilson" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="no-asset-fallback">
+            <div class="no-asset-label">ROMAN WILSON</div>
+            <div class="no-asset-sub">Photo coming</div>
+          </div>
+        </div>
+        <div class="athlete-panel">
+          <div class="athlete-head">
+            <span class="athlete-num">№ 12</span>
+            <span class="athlete-tag pro">PRO</span>
+          </div>
+          <h3 class="athlete-name">Roman Wilson</h3>
+          <div class="athlete-role">WR · Pittsburgh Steelers</div>
+          <p class="athlete-moment">
+            <b>Michigan national champion.</b> Steelers third-round pick. Featured above in the Reactive section for the championship-moment activation — now carrying the Michigan → NFL story into Pittsburgh.
+          </p>
+          <div class="athlete-foot">→ Steelers, 2026 season</div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- BUCKET 3: EVENTS -->
   <section class="bucket" id="events">
     <div class="bucket-head">
-      <div class="bucket-tag">§ 04 · Events</div>
+      <div class="bucket-tag">§ 03 · Events</div>
       <h2 class="bucket-title">In-store, in-person,<br><em>in the building.</em></h2>
     </div>
     <p class="bucket-lede">
       Postgame doesn't just make content — it makes the physical moments that pull athletes, fans, and foot traffic into Crocs' retail partners. Documented retail activations with <b>Dick's Sporting Goods</b> in Knoxville and Champaign anchor the events program.
     </p>
 
-    <div class="event-card">
-      <div class="event-meta">
-        <span class="tag">✦ EVENT 01</span><br>
-        <b>Location</b><br>Knoxville, TN<br><br>
-        <b>Retail Partner</b><br>Dick's Sporting Goods<br><br>
-        <b>Year</b><br>2023-24
-      </div>
-      <div class="event-body">
-        <h3>The Knoxville<br>Activation</h3>
-        <p>
-          A live in-store retail event at Dick's Sporting Goods in Knoxville, featuring Tennessee football quarterback <b>Joe Milton III</b> and Tennessee men's basketball star <b>Dalton Knecht</b> — both activated through the Postgame × Crocs partnership. This is what reactive looks like in physical form: national college athletes, local store traffic, real product in real hands.
-        </p>
-      </div>
-      <div class="event-photo">[ Photo — Knoxville event ]</div>
-    </div>
+    <div class="events-grid">
 
-    <div class="event-card">
-      <div class="event-meta">
-        <span class="tag">✦ EVENT 02</span><br>
-        <b>Location</b><br>Champaign, IL<br><br>
-        <b>Retail Partner</b><br>Dick's Sporting Goods<br><br>
-        <b>Year</b><br>2024-25
+      <div class="event-card">
+        <div class="event-photo">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Knoxville-Event/1080x1920.png" alt="Knoxville Activation" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="fallback">[ Knoxville event photo ]</div>
+        </div>
+        <div class="event-body">
+          <div class="event-meta-row">
+            <span class="tag">✦ EVENT 01</span>
+            <span>Knoxville, TN</span>
+            <span>Dick's Sporting Goods</span>
+          </div>
+          <h3>The Knoxville<br>Activation</h3>
+          <p>
+            A live in-store retail event at Dick's Sporting Goods in Knoxville, featuring Tennessee football quarterback <b>Joe Milton III</b> and Tennessee men's basketball star <b>Dalton Knecht</b> — both activated through the Postgame × Crocs partnership. National college athletes, local store traffic, real product in real hands.
+          </p>
+        </div>
       </div>
-      <div class="event-body">
-        <h3>The Champaign<br>Activation</h3>
-        <p>
-          A second documented Crocs × Dick's Sporting Goods retail activation — this time in the Big Ten heartland at Illinois. Same model, different market: bring the Crocs brand into the store, back it with Postgame-activated college athletes, turn the event into content.
-        </p>
-      </div>
-      <div class="event-photo">[ Photo — Champaign event ]</div>
-    </div>
 
-    <div class="event-card">
-      <div class="event-meta">
-        <span class="tag">✦ EVENT 03</span><br>
-        <b>Athlete</b><br>Tyler Hansbrough<br><br>
-        <b>Type</b><br>Legacy appearance<br><br>
-        <b>Status</b><br>Featured
+      <div class="event-card">
+        <div class="event-photo">
+          <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Champaign-Event/hero.jpg" alt="Champaign Activation" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+          <div class="fallback">[ Champaign event photo ]</div>
+        </div>
+        <div class="event-body">
+          <div class="event-meta-row">
+            <span class="tag">✦ EVENT 02</span>
+            <span>Champaign, IL</span>
+            <span>Dick's Sporting Goods</span>
+          </div>
+          <h3>The Champaign<br>Activation</h3>
+          <p>
+            A second documented Crocs × Dick's Sporting Goods retail activation — this time in the Big Ten heartland at Illinois. Same model, different market: bring the Crocs brand into the store, back it with Postgame-activated college athletes, turn the event into content.
+          </p>
+        </div>
       </div>
-      <div class="event-body">
-        <h3>Psycho T,<br>in the building.</h3>
-        <p>
-          The experiential version of the legacy play. <b>Tyler Hansbrough</b> — UNC's all-time leading scorer, 2009 national champion, Hall of Famer — brought into a Crocs event as the generational bridge. A name that lands with every demographic in the store, from college kids to their parents.
-        </p>
-      </div>
-      <div class="event-photo">[ Photo — Hansbrough event ]</div>
+
     </div>
   </section>
 
-  <!-- CTA -->
+  <section class="recent" id="recent">
+    <div class="recent-head">
+      <div class="recent-head-left">
+        <div class="recent-tag">§ 04 · Recent Activations</div>
+        <h2 class="recent-title">March Madness<br><em>× Dick's Sporting Goods.</em></h2>
+      </div>
+      <div class="recent-meta">
+        <div><b>Window</b> March 2026</div>
+        <div><b>Retail partner</b> Dick's Sporting Goods</div>
+        <div><b>Status</b> <span class="accent">Live</span></div>
+      </div>
+    </div>
+    <p class="recent-lede">
+      The most recent proof point. A Crocs × Dick's Sporting Goods March Madness campaign executed by Postgame across the 2026 NCAA tournament — mixing men's and women's basketball talent, tournament moments, and reactive content. <b>This is the work we just shipped for you three weeks ago.</b>
+    </p>
+    <div class="recent-grid">
+        <div class="recent-card">
+          <div class="athlete-media">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jaden-Bradley/hero.jpg" alt="Jaden Bradley" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <div class="no-asset-fallback">
+              <div class="no-asset-label">JADEN BRADLEY</div>
+              <div class="no-asset-sub">Photo coming</div>
+            </div>
+          </div>
+          <div class="card-panel">
+            <div class="card-tag">● MM × DSG</div>
+            <h3>Jaden Bradley</h3>
+            <div class="card-role">G · Arizona · Big 12 POY</div>
+            <div class="card-note">The Crocs × Dick's March Madness campaign hero. Buzzer-beater to win the Big 12, Crocs content the next day.</div>
+          </div>
+        </div>
+        <div class="recent-card">
+          <div class="athlete-media">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Jestin-Porter/hero.jpg" alt="Jestin Porter" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <div class="no-asset-fallback">
+              <div class="no-asset-label">JESTIN PORTER</div>
+              <div class="no-asset-sub">Photo coming</div>
+            </div>
+          </div>
+          <div class="card-panel">
+            <div class="card-tag">● MM × DSG</div>
+            <h3>Jestin Porter</h3>
+            <div class="card-role">Basketball · Active 2026</div>
+            <div class="card-note">Part of the Postgame × Crocs × Dick's Sporting Goods March Madness class. Activated during the 2026 tournament.</div>
+          </div>
+        </div>
+        <div class="recent-card">
+          <div class="athlete-media">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Joshua-Jefferson/hero.jpg" alt="Joshua Jefferson" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <div class="no-asset-fallback">
+              <div class="no-asset-label">JOSHUA JEFFERSON</div>
+              <div class="no-asset-sub">Photo coming</div>
+            </div>
+          </div>
+          <div class="card-panel">
+            <div class="card-tag">● MM × DSG</div>
+            <h3>Joshua Jefferson</h3>
+            <div class="card-role">Basketball · Active 2026</div>
+            <div class="card-note">Part of the Postgame × Crocs × Dick's Sporting Goods March Madness class. Activated during the 2026 tournament.</div>
+          </div>
+        </div>
+        <div class="recent-card">
+          <div class="athlete-media">
+            <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Pitch/Crocs/Saylor-Poffenbarger/hero.jpg" alt="Saylor Poffenbarger" onerror="this.parentNode.classList.add('no-asset'); this.style.display='none';">
+            <div class="no-asset-fallback">
+              <div class="no-asset-label">SAYLOR POFFENBARGER</div>
+              <div class="no-asset-sub">Photo coming</div>
+            </div>
+          </div>
+          <div class="card-panel">
+            <div class="card-tag">● MM × DSG</div>
+            <h3>Saylor Poffenbarger</h3>
+            <div class="card-role">F · Women's Basketball</div>
+            <div class="card-note">One of the women's basketball activations inside the 2026 Crocs × Dick's Sporting Goods March Madness program.</div>
+          </div>
+        </div>
+    </div>
+  </section>
+
   <section class="cta">
     <div class="cta-inner">
       <div class="cta-kicker">The next moment is already on the schedule</div>
@@ -1152,7 +1058,7 @@
       if (entry.isIntersecting) entry.target.classList.add('in');
     });
   }, { threshold: 0.1 });
-  document.querySelectorAll('.athlete, .event-card, .p-stat, .r-beat').forEach(el => {
+  document.querySelectorAll('.athlete, .event-card, .p-stat, .r-beat, .recent-card').forEach(el => {
     el.classList.add('reveal');
     observer.observe(el);
   });
