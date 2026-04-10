@@ -3,6 +3,7 @@ import { Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import "@/styles/motion.css";
 import SiteNav from "@/components/SiteNav";
+import PageWrapper from "@/components/PageWrapper";
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -20,8 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={bebasNeue.variable}>
       <body>
-        <SiteNav />
-        {children}
+        <PageWrapper>
+          <SiteNav />
+          {children}
+        </PageWrapper>
       </body>
     </html>
   );
