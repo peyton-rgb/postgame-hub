@@ -1,5 +1,5 @@
 import { createPlainSupabase, createServiceSupabase } from "@/lib/supabase";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { PitchPage, PitchSectionData } from "@/types/pitch";
 import TickerSection from "@/components/pitch/TickerSection";
 import HeroSection from "@/components/pitch/HeroSection";
@@ -48,6 +48,10 @@ export default async function PitchPageRoute({
     .single();
 
   if (!data) return notFound();
+
+  if (data.content?.external_url) {
+    redirect(data.content.external_url);
+  }
 
   const pitch = data as PitchPage;
   const sections: PitchSectionData[] = pitch.content?.sections ?? [];
