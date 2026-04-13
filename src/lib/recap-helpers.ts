@@ -113,8 +113,8 @@ export function computeStats(athletes: Athlete[]) {
     }
   }
 
-  const avgEngRate = engRateCount > 0 ? totalEngRateSum / engRateCount : 0;
 
+  const avgEngRate = totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0;
   return {
     athleteCount: athletes.length, schoolCount: schools.size, sportCount: sports.size,
     totalPosts, totalImpressions, totalEngagements, avgEngRate,
