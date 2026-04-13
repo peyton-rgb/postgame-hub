@@ -1,147 +1,125 @@
-# Postgame Recaps
+# Postgame Hub
 
-Campaign recap builder for athlete content. Build masonry galleries with photos and videos, publish them as shareable URLs.
+Internal web app for Postgame — a sports marketing agency specializing in NIL brand campaigns with college athletes.
 
-## Architecture
+Live app: https://postgame-hub.vercel.app
+GitHub: https://github.com/peyton-rgb/postgame-hub
+Supabase project: xqaybwhpgxillpbbqtks
 
-```
-/dashboard          → Your internal tool (create campaigns, upload content)
-/dashboard/[id]     → Campaign editor (select athletes, upload media, preview)
-/recap/[slug]       → Public recap page (what clients see)
-```
+## What This App Does
 
-**Stack:** Next.js 14 + Supabase (Postgres + Storage + Auth) + Tailwind + Vercel
+- Public pages: case studies, press, campaigns, deals, services, pitches
+- Client-facing pages: briefs, recaps, opt-in forms, campaign instructions
+- Private dashboard: manage all content, brands, athletes, media
+- Google Drive integration: import and manage campaign media
+- AI-powered pitch builder: generate pitch decks with Claude
 
----
+## Tech Stack
 
-## Setup Guide
+- Framework: Next.js 14 (App Router)
+- Language: TypeScript
+- Styling: Tailwind CSS
+- Database: Supabase (Postgres)
+- Auth: Supabase Auth
+- File storage: Supabase Storage
+- Deployment: Vercel
+- AI: Anthropic Claude API
+- Media: Google Drive API
 
-### 1. Create Supabase Project
+## Running the App Locally
 
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Copy your **Project URL** and **anon key** from Settings → API
+Locally means running the app on your own computer instead of at the live URL.
+Changes you make locally do not affect the live site until you push to GitHub.
 
-### 2. Run Database Migration
+FIRST TIME SETUP:
 
-1. In Supabase Dashboard, go to **SQL Editor**
-2. Paste the contents of `supabase/migration.sql`
-3. Click **Run** — this creates the tables, RLS policies, and storage bucket
+Step 1 — Check Node.js is installed:
+  node --version
+  If you see a version number you are good. If not, download from nodejs.org.
 
-### 3. Set Up Auth
+Step 2 — Go to the repo folder:
+  cd ~/postgame/hub
 
-1. Go to **Authentication → Settings**
-2. Enable **Email** provider (magic link or password — your choice)
-3. Create your account: **Authentication → Users → Add User**
+Step 3 — Install dependencies:
+  npm install
 
-### 4. Configure Environment
+Step 4 — Create your local environment file:
+  cp .env.local.example .env.local
+  Then open .env.local and fill in your actual keys from Vercel.
 
-```bash
-cp .env.local.example .env.local
-```
+STARTING THE APP:
+  cd ~/postgame/hub
+  npm run dev
+  Then open your browser to: http://localhost:3000
+  To stop it: press Control + C in Terminal.
 
-Fill in your Supabase credentials:
+## Deploying to Production
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
-```
+You almost never need to do this manually. It happens automatically.
 
-### 5. Install & Run Locally
+The automatic flow:
+1. You make a change on your computer
+2. You run: git add . && git commit -m "describe your change" && git push
+3. Vercel detects the push to main branch
+4. Vercel builds and deploys automatically (takes about 2 minutes)
+5. Your change is live at postgame-hub.vercel.app
 
-```bash
-npm install
-npm run dev
-```
+To check deployment status: go to vercel.com, open your project, click Deployments tab.
 
-Open [localhost:3000](http://localhost:3000)
+## Environment Variables
 
-### 6. Deploy to Vercel
+Secret keys your app needs to work. They live in Vercel, not in this repo.
 
-```bash
-# Install Vercel CLI
-npm i -g vercel
+NEXT_PUBLIC_SUPABASE_URL — Your Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY — Public Supabase key (safe to expose)
+SUPABASE_SERVICE_ROLE_KEY — Private Supabase key (never expose publicly)
+ANTHROPIC_API_KEY — Claude AI key (for pitch generation)
+GOOGLE_CLIENT_ID — Google Drive API credentials
+GOOGLE_CLIENT_SECRET — Google Drive API credentials
+GOOGLE_REFRESH_TOKEN — Google Drive API credentials
 
-# Deploy
-vercel
-
-# Set env vars in Vercel dashboard or CLI:
-vercel env add NEXT_PUBLIC_SUPABASE_URL
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-# Deploy to production
-vercel --prod
-```
-
-### 7. Custom Domain (Optional)
-
-1. In Vercel, go to your project → **Settings → Domains**
-2. Add `postgame.co` (or whatever your domain is)
-3. Update DNS records as instructed
-
-Now recaps are live at `postgame.co/recap/campaign-slug`
-
----
-
-## How It Works
-
-### Creating a Recap
-
-1. Go to `/dashboard` → click **New Campaign**
-2. Enter campaign name (e.g. "Adidas EVO SL") and client name
-3. Open the campaign → **Step 1:** Select which athletes to feature
-4. **Step 2:** Upload photos and videos for each athlete
-   - When you upload a video, a popup asks you to upload a thumbnail image
-   - Video always becomes slide 1 in the carousel
-   - Photos become additional slides
-5. Click **Preview Recap** to see the masonry gallery
-6. Click **Publish** → the recap is live at `/recap/[slug]`
-
-### Importing Athletes from CSV
-
-To bulk-import athletes (like from your tracker spreadsheet), you can:
-1. Use Supabase's CSV import in the Table Editor
-2. Or build an import feature in the dashboard (future enhancement)
-
-### Video Playback
-
-- In the published recap (`/recap/[slug]`), videos play natively in the browser
-- Click the play button → full video with controls
-- Carousel arrows cycle through all media
-
----
+For local development: copy .env.local.example to .env.local and fill in your values.
 
 ## Project Structure
 
-```
-src/
-├── app/
-│   ├── page.tsx                    # Landing / redirect
-│   ├── layout.tsx                  # Root layout
-│   ├── globals.css                 # Tailwind + global styles
-│   ├── dashboard/
-│   │   ├── page.tsx                # Campaign list
-│   │   └── [id]/
-│   │       └── page.tsx            # Campaign editor (curator)
-│   └── recap/
-│       └── [slug]/
-│           └── page.tsx            # Public recap (server component)
-├── components/
-│   ├── SchoolBadge.tsx             # School color badge
-│   ├── ThumbnailModal.tsx          # Video thumbnail upload popup
-│   ├── RecapGallery.tsx            # Masonry gallery (used in both preview & public)
-│   └── MasonryPreview.tsx          # Dashboard preview wrapper
-└── lib/
-    ├── supabase.ts                 # Supabase client helpers
-    └── types.ts                    # TypeScript types
-```
+postgame-hub/
+  src/
+    app/          — Every page and API route
+      dashboard/  — Private dashboard (login required)
+      api/        — Backend API endpoints
+      [pages]/    — Public pages
+    components/   — Reusable UI building blocks
+    lib/          — Helper functions and utilities
+    types/        — TypeScript type definitions
+    hooks/        — Custom React hooks
+    styles/       — Extra CSS files
+    middleware.ts — Protects dashboard from public access
+  public/         — Static files (images, videos)
+  supabase/       — Raw SQL migration files
+  scripts/        — One-off data utilities (should move outside repo)
 
----
+## Two Machines
 
-## Future Enhancements
+This repo is cloned on two machines:
 
-- [ ] CSV athlete import
-- [ ] Drag-and-drop card reordering
-- [ ] Custom branding per campaign (colors, logos)
-- [ ] Analytics (view counts per recap)
-- [ ] Download all media as ZIP
-- [ ] Embed code generator for client websites
+iMac — username: billjula — repo at: ~/postgame/hub
+MacBook Air — username: peytonjula — repo at: ~/postgame/hub
+
+IMPORTANT: Before starting work on either machine, run:
+  git pull
+This downloads the latest code from GitHub.
+
+After finishing work, run:
+  git push
+This sends your changes back up to GitHub.
+
+## Database
+
+Provider: Supabase
+Project ID: xqaybwhpgxillpbbqtks
+Tables: approximately 21 active tables (post-cleanup)
+Records: 120 brands, 1083 campaigns, 1280 athletes, 1305 media files
+
+To view or edit the database: go to supabase.com, open your project, click Table Editor.
+
+Last updated: April 2026
