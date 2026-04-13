@@ -408,7 +408,10 @@ export default function CampaignEditor() {
       .eq("id", campaign.id)
       .select()
       .single();
-    if (data) setCampaign(data);
+    if (data) {
+      setCampaign(data);
+      await fetch(`/api/revalidate?path=/recap/${data.slug}`);
+    }
     setSavingInfo(false);
   }
 
@@ -881,7 +884,10 @@ export default function CampaignEditor() {
       setPublishing(false);
       return;
     }
-    if (data) setCampaign(data);
+    if (data) {
+      setCampaign(data);
+      await fetch(`/api/revalidate?path=/recap/${data.slug}`);
+    }
     setPublishing(false);
   }
 
