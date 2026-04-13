@@ -52,9 +52,8 @@ export default function TrackerEditor() {
       await supabase.from("athletes").delete().in("id", deletedIds);
     }
 
-    // Upsert rows
-    const upsertRows = rows.map((r, i) => ({
-      id: r.id || undefined,
+    // Build base row shape (no id)
+    const baseRows = rows.map((r, i) => ({
       campaign_id: id,
       name: r.name,
       ig_handle: r.ig_handle,
@@ -69,17 +68,29 @@ export default function TrackerEditor() {
       post_url: r.metrics?.ig_feed?.post_url || r.metrics?.ig_reel?.post_url || null,
       metrics: r.metrics || {},
       sort_order: i,
+      _origId: r.id,
     }));
 
-    // Separate new rows (no id) from existing
-    const existingRows = upsertRows.filter((r) => r.id);
-    const newRows = upsertRows.filter((r) => !r.id).map(({ id: _, ...rest }) => rest);
+    const existingRows = baseRows.filter((r) => r._origId).map(({ _origId, ...rest }) => ({ id: _origId, ...rest }));
+    const newRows = baseRows.filter((r) => !r._origId).map(({ _origId, ...rest }) => rest);
 
     if (existingRows.length > 0) {
-      await supabase.from("athletes").upsert(existingRows);
+      const { error: upsertErr } = await supabase.from("athletes").upsert(existingRows);
+      if (upsertErr) {
+        console.error("Save failed (upsert):", upsertErr);
+        alert("Save failed: " + upsertErr.message);
+        setSavingMetrics(false);
+        return;
+      }
     }
     if (newRows.length > 0) {
-      await supabase.from("athletes").insert(newRows);
+      const { error: insertErr } = await supabase.from("athletes").insert(newRows);
+      if (insertErr) {
+        console.error("Save failed (insert):", insertErr);
+        alert("Save failed: " + insertErr.message);
+        setSavingMetrics(false);
+        return;
+      }
     }
 
     // Reload
