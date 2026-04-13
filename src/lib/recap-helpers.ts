@@ -114,7 +114,7 @@ export function computeStats(athletes: Athlete[]) {
   }
 
 
-  const avgEngRate = totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0;
+  const _denom = igFeed.impressions + igReel.views + tiktok.views; const avgEngRate = _denom > 0 ? (totalEngagements / _denom) * 100 : 0;
   return {
     athleteCount: athletes.length, schoolCount: schools.size, sportCount: sports.size,
     totalPosts, totalImpressions, totalEngagements, avgEngRate,
