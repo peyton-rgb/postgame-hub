@@ -859,11 +859,28 @@ export default function CampaignEditor() {
   async function togglePublish() {
     if (!campaign) return;
     setPublishing(true);
-    const { data } = await supabase
+    const newSettings = {
+      ...campaign.settings,
+      description, quarter, campaign_type: campaignType,
+      platform, tags, visible_sections: visibleSections,
+      brand_logo_url: brandLogoUrl,
+      key_takeaways: keyTakeaways,
+      kpi_targets: kpiTargets,
+    };
+    const { data, error } = await supabase
       .from("campaign_recaps")
-      .update({ published: !campaign.published })
+      .update({
+        published: !campaign.published,
+        settings: newSettings,
+      })
       .eq("id", campaign.id)
       .select().single();
+    if (error) {
+      console.error("Publish failed:", error);
+      alert("Publish failed: " + error.message);
+      setPublishing(false);
+      return;
+    }
     if (data) setCampaign(data);
     setPublishing(false);
   }
