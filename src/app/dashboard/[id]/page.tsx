@@ -133,6 +133,7 @@ export default function CampaignEditor() {
   const [quarter, setQuarter] = useState("");
   const [campaignType, setCampaignType] = useState("");
   const [platform, setPlatform] = useState("");
+  const [contentType, setContentType] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [visibleSections, setVisibleSections] = useState<VisibleSections>({
@@ -192,6 +193,7 @@ export default function CampaignEditor() {
       setQuarter(camp.settings.quarter || "");
       setCampaignType(camp.settings.campaign_type || "");
       setPlatform(camp.settings.platform || "");
+      setContentType(camp.settings.content_type || "");
       setTags(camp.settings.tags || []);
       setVisibleSections(camp.settings.visible_sections || {
         brief: true, key_takeaways: true, kpi_targets: true, metrics: true, platform_breakdown: true,
@@ -397,7 +399,7 @@ export default function CampaignEditor() {
     const newSettings = {
       ...campaign.settings,
       description, quarter, campaign_type: campaignType,
-      platform, tags, visible_sections: visibleSections,
+      platform, content_type: contentType, tags, visible_sections: visibleSections,
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
@@ -428,7 +430,7 @@ export default function CampaignEditor() {
       const newSettings = {
         ...campaign.settings,
         description, quarter, campaign_type: campaignType,
-        platform, tags, visible_sections: visibleSections,
+        platform, content_type: contentType, tags, visible_sections: visibleSections,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -443,7 +445,7 @@ export default function CampaignEditor() {
     }, 1500);
 
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [description, quarter, campaignType, platform, tags, visibleSections, brandLogoUrl, keyTakeaways, kpiTargets]);
+  }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, brandLogoUrl, keyTakeaways, kpiTargets]);
 
   // Mark initial load as done after campaign data is populated
   useEffect(() => {
@@ -865,7 +867,7 @@ export default function CampaignEditor() {
     const newSettings = {
       ...campaign.settings,
       description, quarter, campaign_type: campaignType,
-      platform, tags, visible_sections: visibleSections,
+      platform, content_type: contentType, tags, visible_sections: visibleSections,
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
@@ -901,7 +903,7 @@ export default function CampaignEditor() {
       settings: {
         ...campaign.settings,
         description, quarter, campaign_type: campaignType,
-        platform, tags, visible_sections: visibleSections,
+        platform, content_type: contentType, tags, visible_sections: visibleSections,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -1214,6 +1216,17 @@ export default function CampaignEditor() {
               <p className="text-[10px] text-gray-600 mt-1">Displayed in the recap header and footer</p>
             </div>
 
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Name</label>
+              <input value={campaign?.name || ""} onChange={async (e) => {
+                  const val = e.target.value;
+                  setCampaign((prev) => prev ? { ...prev, name: val } : prev);
+                  await supabase.from("campaign_recaps").update({ name: val }).eq("id", id);
+                }}
+                className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                placeholder="e.g. March Madness" />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Quarter</label>
@@ -1248,11 +1261,19 @@ export default function CampaignEditor() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Platform</label>
-              <input value={platform} onChange={(e) => setPlatform(e.target.value)}
-                className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
-                placeholder="Instagram (Feed + Reels) + TikTok" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Platform(s)</label>
+                <input value={platform} onChange={(e) => setPlatform(e.target.value)}
+                  className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                  placeholder="Instagram" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Content Type</label>
+                <input value={contentType} onChange={(e) => setContentType(e.target.value)}
+                  className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                  placeholder="IG Feed, Reels" />
+              </div>
             </div>
 
             {/* Tags */}

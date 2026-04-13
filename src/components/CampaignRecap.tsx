@@ -318,11 +318,12 @@ export function CampaignRecap({
   const wideFiltered = filtered.filter((a) => wideAthleteIds.has(a.id));
   const normalFiltered = filtered.filter((a) => !wideAthleteIds.has(a.id));
 
-  const contentTypes = [
+  const autoContentTypes = [
     stats.igFeedPosts > 0 && "IG Feed",
     stats.igReelPosts > 0 && "Reels",
     stats.tiktokPosts > 0 && "TikTok BTS",
   ].filter(Boolean).join(", ");
+  const contentTypes = campaign.settings?.content_type || autoContentTypes;
 
   // Roster sort: composite of "biggest names" (followers) and "top performers"
   // (total engagements). For each athlete we compute a percentile rank within
