@@ -375,7 +375,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
 
   // ── IG Feed columns ──
   // Try platform-scoped first (handles bare-name layouts), then fall back to prefixed search.
-  const iIgFeedUrl = findColInPlatform(headers, platformMap, "ig_feed", "post url", "post", "url")
+  const iIgFeedUrl = findColInPlatform(headers, platformMap, "ig_feed", "post url", "url")
     || findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
   const iIgFeedReach = findColInPlatform(headers, platformMap, "ig_feed", "reach")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "reach")
@@ -411,8 +411,8 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     : findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions", "total ig story impressions");
 
   // ── IG Reel columns ──
-  const iIgReelUrl = findColInPlatform(headers, platformMap, "ig_reel", "post url", "post", "url")
-    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "post url", "post", "url")
+  const iIgReelUrl = findColInPlatform(headers, platformMap, "ig_reel", "post url", "url")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "post url", "url")
     : findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post");
   const iIgReelViews = findColInPlatform(headers, platformMap, "ig_reel", "views")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "views")
@@ -437,8 +437,8 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     : findCol(headers, "ig reel engagement rate", "reel engagement rate", "ig reel eng rate", "reel eng rate", "ig reels engagement rate");
 
   // ── TikTok columns ──
-  const iTiktokUrl = findColInPlatform(headers, platformMap, "tiktok", "post url", "post", "url")
-    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "post url", "post", "url")
+  const iTiktokUrl = findColInPlatform(headers, platformMap, "tiktok", "post url", "url")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "post url", "url")
     : findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url");
   const iTiktokViews = findColInPlatform(headers, platformMap, "tiktok", "views")
     !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "views")
