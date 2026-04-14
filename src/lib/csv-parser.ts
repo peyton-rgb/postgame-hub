@@ -376,7 +376,8 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   // ── IG Feed columns ──
   // Try platform-scoped first (handles bare-name layouts), then fall back to prefixed search.
   const iIgFeedUrl = findColInPlatform(headers, platformMap, "ig_feed", "post url", "url")
-    || findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "post url", "url")
+    : findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
   const iIgFeedReach = findColInPlatform(headers, platformMap, "ig_feed", "reach")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "reach")
     : findCol(headers, "ig feed reach", "feed reach");
