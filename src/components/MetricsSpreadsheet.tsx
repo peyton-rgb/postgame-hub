@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Athlete, AthleteMetrics } from "@/lib/types";
-import { autoFillMetrics } from "@/lib/metrics-helpers";
 import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
 
 // ─── Types ───────────────────────────────────────────────
@@ -64,7 +63,7 @@ function setMetricVal(row: EditableRow, platform: string, field: string, val: st
     const n = val === "" ? undefined : parseFloat(val);
     metrics[platform][field] = n != null && !isNaN(n) ? n : undefined;
   }
-  return { ...row, metrics: autoFillMetrics(metrics) };
+  return { ...row, metrics };
 }
 
 const IDENTITY_COLS: ColDef[] = [
@@ -155,6 +154,8 @@ const IG_REEL_COLS: ColDef[] = [
 ];
 
 const TIKTOK_COLS: ColDef[] = [
+  { key: "tiktok_followers", label: "Followers", type: "number", width: "100px",
+    getValue: (r) => metricVal(r.metrics, "tiktok", "followers"), setValue: (r, v) => setMetricVal(r, "tiktok", "followers", v) },
   { key: "tiktok_post_url", label: "Post URL", type: "url", width: "180px",
     getValue: (r) => metricVal(r.metrics, "tiktok", "post_url"),
     setValue: (r, v) => setMetricVal(r, "tiktok", "post_url", v) },
@@ -275,7 +276,7 @@ function athleteToRow(a: Athlete): EditableRow {
     reach_level: a.reach_level || "",
     notes: a.notes || "",
     post_type: a.post_type || "IG Feed",
-    metrics: autoFillMetrics(a.metrics || {}),
+    metrics: a.metrics || {},
   };
 }
 
@@ -432,7 +433,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               content_rating: pa.content_rating || row.content_rating,
               reach_level: pa.reach_level || row.reach_level,
               notes: pa.notes || row.notes,
-              metrics: autoFillMetrics(replacedMetrics as any),
+              metrics: replacedMetrics as any,
             };
           } else {
             newRows.push({
@@ -448,7 +449,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               reach_level: pa.reach_level || "",
               notes: pa.notes,
               post_type: pa.metrics.ig_reel?.post_url ? "IG Reel" : pa.metrics.tiktok?.post_url ? "TikTok" : "IG Feed",
-              metrics: autoFillMetrics(pa.metrics),
+              metrics: pa.metrics,
             });
           }
         }
