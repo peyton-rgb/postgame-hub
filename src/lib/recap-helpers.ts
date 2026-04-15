@@ -1,4 +1,6 @@
-import type { Athlete, Media } from "@/lib/types";
+import type { Athlete, AthleteMetrics, Campaign, MetricOverrides, HeroMetricOverrideKey, Media } from "@/lib/types";
+
+// ─── Display formatters (unchanged) ──────────────────────────────────────────
 
 export function fmt(n: number | undefined): string {
   if (n == null) return "0";
@@ -19,24 +21,115 @@ export function dollar(n: number | undefined): string {
   return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function computeStats(athletes: Athlete[]) {
-  const schools = new Set(athletes.map((a) => a.school));
-  const sports = new Set(athletes.map((a) => a.sport));
+// ─── Engagement-rate helpers (per the agreed source-of-truth rules) ──────────
+
+type Platform = "ig_feed" | "ig_reel" | "tiktok";
+
+/**
+ * For a single athlete + platform, return the higher of the two engagement rates
+ * (vs Followers, vs Impressions). Falls back to the legacy single `engagement_rate`
+ * field when neither dual-rate field is present (older campaigns).
+ *
+ * Returns 0 when the athlete didn't post on this platform at all (no post_url AND
+ * no view/impression activity). Returns 0 when no rate data of any kind exists.
+ */
+export function bestRateForPlatform(metrics: AthleteMetrics | undefined, platform: Platform): number {
+  if (!metrics) return 0;
+
+  // If there's no post and no engagement activity, treat as "didn't post" (0, will be excluded upstream).
+  if (!athletePostedOn(metrics, platform)) return 0;
+
+  const block = metrics[platform];
+  if (!block) return 0;
+
+  const rateF = block.engagement_rate_followers;
+  const rateI = block.engagement_rate_impressions;
+  const legacy = block.engagement_rate;
+
+  const candidates: number[] = [];
+  if (rateF != null && rateF > 0) candidates.push(rateF);
+  if (rateI != null && rateI > 0) candidates.push(rateI);
+  if (candidates.length === 0 && legacy != null && legacy > 0) candidates.push(legacy);
+
+  if (candidates.length === 0) return 0;
+  return Math.max(...candidates);
+}
+
+/**
+ * Did this athlete post anything on this platform? Used to decide whether the
+ * platform's engagement rate is included in the Hero average. Per the rule:
+ * platforms with no posts are excluded (not counted as 0%).
+ */
+function athletePostedOn(metrics: AthleteMetrics | undefined, platform: Platform): boolean {
+  if (!metrics) return false;
+  if (platform === "ig_feed") {
+    const b = metrics.ig_feed;
+    if (!b) return false;
+    return !!b.post_url || (b.impressions ?? 0) > 0 || (b.total_engagements ?? 0) > 0;
+  }
+  if (platform === "ig_reel") {
+    const b = metrics.ig_reel;
+    if (!b) return false;
+    return !!b.post_url || (b.views ?? 0) > 0 || (b.total_engagements ?? 0) > 0;
+  }
+  // tiktok
+  const b = metrics.tiktok;
+  if (!b) return false;
+  return !!b.post_url || (b.views ?? 0) > 0 || (b.total_engagements ?? 0) > 0;
+}
+
+// ─── Hero metric computation ─────────────────────────────────────────────────
+
+export interface ComputedStats {
+  // Hero metrics (the eight numbers shown at the top of every recap)
+  athleteCount: number;
+  schoolCount: number;
+  sportCount: number;
+  totalPosts: number;
+  combinedFollowers: number;
+  totalImpressions: number;
+  totalEngagements: number;
+  avgEngRate: number; // average of platform-best rates, average across platforms
+
+  // Per-platform totals (used by the Platform Breakdown section)
+  igFeedPosts: number;
+  igReelPosts: number;
+  tiktokPosts: number;
+  totalReach: number;
+  igFeed: { reach: number; impressions: number; likes: number; comments: number; shares: number; reposts: number; engagements: number; engRateSum: number; engRateCount: number };
+  igStory: { count: number; impressions: number };
+  igReel: { views: number; likes: number; comments: number; shares: number; reposts: number; engagements: number; engRateSum: number; engRateCount: number };
+  tiktok: { followers: number; views: number; likes: number; comments: number; saves: number; likes_comments: number; saves_shares: number; engagements: number; engRateSum: number; engRateCount: number };
+
+  // Click & sales (unchanged from prior implementation)
+  clicks: { link_clicks: number; click_through_rate_sum: number; click_through_rate_count: number; landing_page_views: number; cost_per_click_sum: number; cost_per_click_count: number; orders: number; salesAmount: number; cpm_sum: number; cpm_count: number };
+  hasClicks: boolean;
+  sales: { conversions: number; revenue: number; conversion_rate_sum: number; conversion_rate_count: number; cost_per_acquisition_sum: number; cost_per_acquisition_count: number; roas_sum: number; roas_count: number };
+  hasSales: boolean;
+}
+
+export function computeStats(athletes: Athlete[]): ComputedStats {
+  // Filter out blank/whitespace strings when counting uniques (was a bug — blanks counted as a unique value).
+  const schools = new Set(athletes.map((a) => (a.school || "").trim()).filter(Boolean));
+  const sports = new Set(athletes.map((a) => (a.sport || "").trim()).filter(Boolean));
 
   let totalPosts = 0;
   let totalImpressions = 0;
   let totalEngagements = 0;
-  let totalEngRateSum = 0;
-  let engRateCount = 0;
+  let combinedFollowers = 0;
   let igFeedPosts = 0;
   let igReelPosts = 0;
   let tiktokPosts = 0;
   let totalReach = 0;
 
+  // Per-platform: average of best engagement rates across athletes who posted.
+  const platformRateSum = { ig_feed: 0, ig_reel: 0, tiktok: 0 };
+  const platformRateCount = { ig_feed: 0, ig_reel: 0, tiktok: 0 };
+
   const igFeed = { reach: 0, impressions: 0, likes: 0, comments: 0, shares: 0, reposts: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
   const igStory = { count: 0, impressions: 0 };
   const igReel = { views: 0, likes: 0, comments: 0, shares: 0, reposts: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
-  const tiktok = { views: 0, likes: 0, comments: 0, likes_comments: 0, saves_shares: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
+  const tiktok = { followers: 0, views: 0, likes: 0, comments: 0, saves: 0, likes_comments: 0, saves_shares: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
   const clicks = { link_clicks: 0, click_through_rate_sum: 0, click_through_rate_count: 0, landing_page_views: 0, cost_per_click_sum: 0, cost_per_click_count: 0, orders: 0, salesAmount: 0, cpm_sum: 0, cpm_count: 0 };
   const sales = { conversions: 0, revenue: 0, conversion_rate_sum: 0, conversion_rate_count: 0, cost_per_acquisition_sum: 0, cost_per_acquisition_count: 0, roas_sum: 0, roas_count: 0 };
   let hasClicks = false;
@@ -44,16 +137,35 @@ export function computeStats(athletes: Athlete[]) {
 
   for (const a of athletes) {
     const m = a.metrics || {};
+
+    // ── Combined Followers (IG + TikTok per the Definitions doc) ──
+    combinedFollowers += (a.ig_followers || 0) + (m.tiktok?.followers || 0);
+
+    // ── Post counting ──
     if (m.ig_feed?.post_url) { igFeedPosts++; totalPosts++; }
     if (m.ig_reel?.post_url) { igReelPosts++; totalPosts++; }
     if (m.tiktok?.post_url) { tiktokPosts++; totalPosts++; }
     if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
-    const storyImpressions = (m.ig_story?.impressions || 0) * (m.ig_story?.count || 1);
-    totalImpressions += (m.ig_feed?.impressions || 0) + storyImpressions + (m.ig_reel?.views || 0);
-    totalEngagements += (m.ig_feed?.total_engagements || 0) + (m.ig_reel?.total_engagements || 0) + (m.tiktok?.total_engagements || 0);
+    // ── Total Impressions: Feed + Story + Reel + TikTok ──
+    // FIX: ig_story.impressions is a TOTAL across all that athlete's stories
+    // (per Peyton's confirmation), not per-story. Don't multiply by count.
+    totalImpressions +=
+      (m.ig_feed?.impressions || 0) +
+      (m.ig_story?.impressions || 0) +
+      (m.ig_reel?.views || 0) +
+      (m.tiktok?.views || 0);
+
+    // ── Total Engagements: Feed + Reel + TikTok (Story has no engagements) ──
+    totalEngagements +=
+      (m.ig_feed?.total_engagements || 0) +
+      (m.ig_reel?.total_engagements || 0) +
+      (m.tiktok?.total_engagements || 0);
+
+    // ── Reach (legacy display field) ──
     totalReach += (m.ig_feed?.reach || 0) + (a.ig_followers || 0);
 
+    // ── Per-platform aggregations ──
     igFeed.reach += m.ig_feed?.reach || 0;
     igFeed.impressions += m.ig_feed?.impressions || 0;
     igFeed.likes += m.ig_feed?.likes || 0;
@@ -61,10 +173,14 @@ export function computeStats(athletes: Athlete[]) {
     igFeed.shares += m.ig_feed?.shares || 0;
     igFeed.reposts += m.ig_feed?.reposts || 0;
     igFeed.engagements += m.ig_feed?.total_engagements || 0;
-    if (m.ig_feed?.engagement_rate != null && m.ig_feed.engagement_rate > 0) { igFeed.engRateSum += m.ig_feed.engagement_rate; igFeed.engRateCount++; }
+    {
+      const r = bestRateForPlatform(m, "ig_feed");
+      if (r > 0) { igFeed.engRateSum += r; igFeed.engRateCount++; }
+    }
 
+    // FIX: ig_story.impressions is already a total (see above). No multiplication.
     igStory.count += m.ig_story?.count || 0;
-    igStory.impressions += storyImpressions;
+    igStory.impressions += m.ig_story?.impressions || 0;
 
     igReel.views += m.ig_reel?.views || 0;
     igReel.likes += m.ig_reel?.likes || 0;
@@ -72,23 +188,38 @@ export function computeStats(athletes: Athlete[]) {
     igReel.shares += m.ig_reel?.shares || 0;
     igReel.reposts += m.ig_reel?.reposts || 0;
     igReel.engagements += m.ig_reel?.total_engagements || 0;
-    if (m.ig_reel?.engagement_rate != null && m.ig_reel.engagement_rate > 0) { igReel.engRateSum += m.ig_reel.engagement_rate; igReel.engRateCount++; }
+    {
+      const r = bestRateForPlatform(m, "ig_reel");
+      if (r > 0) { igReel.engRateSum += r; igReel.engRateCount++; }
+    }
 
+    tiktok.followers += m.tiktok?.followers || 0;
     tiktok.views += m.tiktok?.views || 0;
     tiktok.likes += m.tiktok?.likes || 0;
     tiktok.comments += m.tiktok?.comments || 0;
+    tiktok.saves += m.tiktok?.saves || 0;
     tiktok.likes_comments += m.tiktok?.likes_comments || 0;
     tiktok.saves_shares += m.tiktok?.saves_shares || 0;
     tiktok.engagements += m.tiktok?.total_engagements || 0;
-    if (m.tiktok?.engagement_rate != null && m.tiktok.engagement_rate > 0) { tiktok.engRateSum += m.tiktok.engagement_rate; tiktok.engRateCount++; }
-
-    const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-    if (rates.length > 0) {
-      totalEngRateSum += rates.reduce((s, r) => s + r, 0) / rates.length;
-      engRateCount++;
+    {
+      const r = bestRateForPlatform(m, "tiktok");
+      if (r > 0) { tiktok.engRateSum += r; tiktok.engRateCount++; }
     }
 
-    // Clicks
+    // ── Hero Avg Engagement Rate inputs (per-platform aggregation) ──
+    // Rule: average of each platform's higher of (vs Followers, vs Impressions),
+    // averaged across the platforms the athlete posted on.
+    for (const p of ["ig_feed", "ig_reel", "tiktok"] as const) {
+      if (athletePostedOn(m, p)) {
+        const r = bestRateForPlatform(m, p);
+        if (r > 0) {
+          platformRateSum[p] += r;
+          platformRateCount[p] += 1;
+        }
+      }
+    }
+
+    // ── Clicks (unchanged) ──
     if (m.clicks) {
       const c = m.clicks;
       if (c.link_clicks || c.click_through_rate || c.landing_page_views || c.cost_per_click || c.orders || c.sales || c.cpm) hasClicks = true;
@@ -101,7 +232,7 @@ export function computeStats(athletes: Athlete[]) {
       if (c.cpm != null && c.cpm > 0) { clicks.cpm_sum += c.cpm; clicks.cpm_count++; }
     }
 
-    // Sales
+    // ── Sales (unchanged) ──
     if (m.sales) {
       const s = m.sales;
       if (s.conversions || s.revenue || s.conversion_rate || s.cost_per_acquisition || s.roas) hasSales = true;
@@ -113,30 +244,103 @@ export function computeStats(athletes: Athlete[]) {
     }
   }
 
+  // ── Hero Avg Engagement Rate: average of per-platform averages ──
+  // Each platform's average = mean of best-rates across athletes who posted on it.
+  // Hero average = mean of those platform averages (only platforms that had any activity).
+  const platformAverages: number[] = [];
+  for (const p of ["ig_feed", "ig_reel", "tiktok"] as const) {
+    if (platformRateCount[p] > 0) {
+      platformAverages.push(platformRateSum[p] / platformRateCount[p]);
+    }
+  }
+  const avgEngRate = platformAverages.length > 0
+    ? platformAverages.reduce((s, r) => s + r, 0) / platformAverages.length
+    : 0;
 
-  const _denom = igFeed.impressions + igReel.views + tiktok.views; const avgEngRate = _denom > 0 ? (totalEngagements / _denom) * 100 : 0;
   return {
-    athleteCount: athletes.length, schoolCount: schools.size, sportCount: sports.size,
-    totalPosts, totalImpressions, totalEngagements, avgEngRate,
+    athleteCount: athletes.length,
+    schoolCount: schools.size,
+    sportCount: sports.size,
+    totalPosts,
+    combinedFollowers,
+    totalImpressions,
+    totalEngagements,
+    avgEngRate,
     igFeedPosts, igReelPosts, tiktokPosts, totalReach,
     igFeed, igStory, igReel, tiktok,
     clicks, hasClicks, sales, hasSales,
   };
 }
 
-function bestEngByPlatform(m: Athlete["metrics"]): { rate: number; platform: string } {
-  const candidates: { rate: number; platform: string }[] = [];
-  if (m?.ig_feed?.engagement_rate && m.ig_feed.engagement_rate > 0) candidates.push({ rate: m.ig_feed.engagement_rate, platform: "IG Feed" });
-  if (m?.ig_reel?.engagement_rate && m.ig_reel.engagement_rate > 0) candidates.push({ rate: m.ig_reel.engagement_rate, platform: "IG Reel" });
-  if (m?.tiktok?.engagement_rate && m.tiktok.engagement_rate > 0) candidates.push({ rate: m.tiktok.engagement_rate, platform: "TikTok" });
-  if (candidates.length === 0) return { rate: 0, platform: "" };
-  return candidates.reduce((best, c) => c.rate > best.rate ? c : best);
+// ─── Override application ────────────────────────────────────────────────────
+
+/**
+ * Apply hand-typed Hero metric overrides on top of computed stats.
+ * Returns both the merged values AND a record of which keys were overridden,
+ * so the recap UI can render an "edited" badge next to overridden values.
+ *
+ * An override is applied only when the value is a non-null number. An explicit
+ * `null` in the overrides JSON means "the user cleared this override" — fall
+ * back to the calculated value.
+ */
+export interface AppliedStats extends ComputedStats {
+  /** Keys whose displayed value comes from an override, not from calculation. */
+  overriddenKeys: Set<HeroMetricOverrideKey>;
+}
+
+export function applyOverrides(stats: ComputedStats, overrides?: MetricOverrides | null): AppliedStats {
+  const out: AppliedStats = { ...stats, overriddenKeys: new Set<HeroMetricOverrideKey>() };
+  if (!overrides) return out;
+
+  const map: Record<HeroMetricOverrideKey, keyof ComputedStats> = {
+    athlete_count: "athleteCount",
+    school_count: "schoolCount",
+    sport_count: "sportCount",
+    total_posts: "totalPosts",
+    combined_followers: "combinedFollowers",
+    total_impressions: "totalImpressions",
+    total_engagements: "totalEngagements",
+    avg_engagement_rate: "avgEngRate",
+  };
+
+  for (const key of Object.keys(map) as HeroMetricOverrideKey[]) {
+    const override = overrides[key];
+    if (override != null && typeof override === "number" && !isNaN(override)) {
+      // Type assertion is safe because every key in `map` points to a numeric field.
+      (out as unknown as Record<string, number>)[map[key]] = override;
+      out.overriddenKeys.add(key);
+    }
+  }
+
+  return out;
+}
+
+/** Convenience: compute + apply overrides in one call. */
+export function computeStatsWithOverrides(athletes: Athlete[], campaign?: { metric_overrides?: MetricOverrides | null } | null): AppliedStats {
+  const stats = computeStats(athletes);
+  return applyOverrides(stats, campaign?.metric_overrides);
+}
+
+// ─── Top performers (uses the new dual-rate engagement model) ────────────────
+
+function bestEngWithPlatform(m: AthleteMetrics | undefined): { rate: number; platform: string } {
+  let best = { rate: 0, platform: "" };
+  const platforms: { key: Platform; label: string }[] = [
+    { key: "ig_feed", label: "IG Feed" },
+    { key: "ig_reel", label: "IG Reel" },
+    { key: "tiktok", label: "TikTok" },
+  ];
+  for (const { key, label } of platforms) {
+    const r = bestRateForPlatform(m, key);
+    if (r > best.rate) best = { rate: r, platform: label };
+  }
+  return best;
 }
 
 export function getTopPerformers(athletes: Athlete[], count = 5) {
   return [...athletes]
     .map((a) => {
-      const { rate, platform } = bestEngByPlatform(a.metrics);
+      const { rate, platform } = bestEngWithPlatform(a.metrics);
       return { ...a, bestEngRate: rate, bestPlatform: platform, totalImpressions: getTotalImpressions(a) };
     })
     .filter((a) => a.bestEngRate > 0)
@@ -147,7 +351,7 @@ export function getTopPerformers(athletes: Athlete[], count = 5) {
 export function getTopPerformersByImpressions(athletes: Athlete[], count = 5) {
   return [...athletes]
     .map((a) => {
-      const { rate, platform } = bestEngByPlatform(a.metrics);
+      const { rate, platform } = bestEngWithPlatform(a.metrics);
       const total = getTotalImpressions(a);
       return { ...a, bestEngRate: rate, bestPlatform: platform, totalImpressions: total };
     })
@@ -155,6 +359,8 @@ export function getTopPerformersByImpressions(athletes: Athlete[], count = 5) {
     .sort((a, b) => b.totalImpressions - a.totalImpressions)
     .slice(0, count);
 }
+
+// ─── Per-athlete helpers (used by recap detail rows) ─────────────────────────
 
 export function getPostUrl(athlete: Athlete): string | null {
   const m = athlete.metrics || {};
@@ -170,12 +376,16 @@ export function getMediaLabel(items: Media[]): string {
 }
 
 export function getBestEngRate(athlete: Athlete): number {
-  return bestEngByPlatform(athlete.metrics).rate;
+  return bestEngWithPlatform(athlete.metrics).rate;
 }
 
 export function getTotalImpressions(athlete: Athlete): number {
   const m = athlete.metrics || {};
-  return (m.ig_feed?.impressions || 0) + ((m.ig_story?.impressions || 0) * (m.ig_story?.count || 1)) + (m.ig_reel?.views || 0);
+  // FIX: ig_story.impressions is already a total across all stories — no multiplication.
+  return (m.ig_feed?.impressions || 0)
+    + (m.ig_story?.impressions || 0)
+    + (m.ig_reel?.views || 0)
+    + (m.tiktok?.views || 0);
 }
 
 export function getTotalEngagements(athlete: Athlete): number {

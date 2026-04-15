@@ -399,9 +399,21 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iIgFeedEngagements = findColInPlatform(headers, platformMap, "ig_feed", "total engagements", "engagements")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "total engagements", "engagements")
     : findCol(headers, "ig feed total engagements", "feed total engagements", "ig feed engagements", "feed engagements", "total ig feed engagements");
-  const iIgFeedEngRate = findColInPlatform(headers, platformMap, "ig_feed", "engagement rate", "eng rate")
-    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "engagement rate", "eng rate")
-    : findCol(headers, "ig feed engagement rate", "feed engagement rate", "ig feed eng rate", "feed eng rate");
+  // Two separate engagement rates (2026 Performance Tracker template).
+  // Followers-based and Impressions-based are now distinct columns.
+  const iIgFeedEngRateFollowers = findColInPlatform(headers, platformMap, "ig_feed", "engagement rate followers", "eng rate followers")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "engagement rate followers", "eng rate followers")
+    : findCol(headers, "ig feed engagement rate followers", "ig feed engagement rate (followers)", "feed engagement rate followers");
+  const iIgFeedEngRateImpressions = findColInPlatform(headers, platformMap, "ig_feed", "engagement rate impressions", "eng rate impressions")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "engagement rate impressions", "eng rate impressions")
+    : findCol(headers, "ig feed engagement rate impressions", "ig feed engagement rate (impressions)", "feed engagement rate impressions");
+  // LEGACY: single engagement rate column (older spreadsheet format).
+  // Only used when neither of the new dual-rate columns are present.
+  const iIgFeedEngRate = (iIgFeedEngRateFollowers === -1 && iIgFeedEngRateImpressions === -1)
+    ? (findColInPlatform(headers, platformMap, "ig_feed", "engagement rate", "eng rate")
+        !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "engagement rate", "eng rate")
+        : findCol(headers, "ig feed engagement rate", "feed engagement rate", "ig feed eng rate", "feed eng rate"))
+    : -1;
 
   // ── IG Story columns ──
   const iIgStoryCount = findColInPlatform(headers, platformMap, "ig_story", "count", "post")
@@ -433,9 +445,17 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iIgReelEngagements = findColInPlatform(headers, platformMap, "ig_reel", "total engagements", "engagements")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "total engagements", "engagements")
     : findCol(headers, "ig reel total engagements", "reel total engagements", "ig reel engagements", "reel engagements", "ig reels engagements", "total ig reel engagements");
-  const iIgReelEngRate = findColInPlatform(headers, platformMap, "ig_reel", "engagement rate", "eng rate")
-    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "engagement rate", "eng rate")
-    : findCol(headers, "ig reel engagement rate", "reel engagement rate", "ig reel eng rate", "reel eng rate", "ig reels engagement rate");
+  const iIgReelEngRateFollowers = findColInPlatform(headers, platformMap, "ig_reel", "engagement rate followers", "eng rate followers")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "engagement rate followers", "eng rate followers")
+    : findCol(headers, "ig reel engagement rate followers", "ig reel engagement rate (followers)", "reel engagement rate followers");
+  const iIgReelEngRateImpressions = findColInPlatform(headers, platformMap, "ig_reel", "engagement rate impressions", "eng rate impressions")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "engagement rate impressions", "eng rate impressions")
+    : findCol(headers, "ig reel engagement rate impressions", "ig reel engagement rate (impressions)", "reel engagement rate impressions");
+  const iIgReelEngRate = (iIgReelEngRateFollowers === -1 && iIgReelEngRateImpressions === -1)
+    ? (findColInPlatform(headers, platformMap, "ig_reel", "engagement rate", "eng rate")
+        !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "engagement rate", "eng rate")
+        : findCol(headers, "ig reel engagement rate", "reel engagement rate", "ig reel eng rate", "reel eng rate", "ig reels engagement rate"))
+    : -1;
 
   // ── TikTok columns ──
   const iTiktokUrl = findColInPlatform(headers, platformMap, "tiktok", "post url", "url")
@@ -459,9 +479,27 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   const iTiktokEngagements = findColInPlatform(headers, platformMap, "tiktok", "total engagements", "engagements")
     !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "total engagements", "engagements")
     : findCol(headers, "tiktok total engagements", "tiktok engagements", "tt total engagements", "tt engagements");
-  const iTiktokEngRate = findColInPlatform(headers, platformMap, "tiktok", "engagement rate", "eng rate")
-    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "engagement rate", "eng rate")
-    : findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate");
+  // NEW: TikTok Followers (column AF in 2026 template — was previously not read at all,
+  // which silently broke any downstream calculation that needed TikTok follower count).
+  const iTiktokFollowers = findColInPlatform(headers, platformMap, "tiktok", "followers")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "followers")
+    : findCol(headers, "tiktok followers", "tt followers");
+  // NEW: TikTok Saves (standalone column in 2026 template — older sheets had a combined
+  // "saves + shares" column captured as iTiktokSavesShares above).
+  const iTiktokSaves = findColInPlatform(headers, platformMap, "tiktok", "saves")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "saves")
+    : findCol(headers, "tiktok saves", "tt saves");
+  const iTiktokEngRateFollowers = findColInPlatform(headers, platformMap, "tiktok", "engagement rate followers", "eng rate followers")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "engagement rate followers", "eng rate followers")
+    : findCol(headers, "tiktok engagement rate followers", "tiktok engagement rate (followers)", "tt engagement rate followers");
+  const iTiktokEngRateImpressions = findColInPlatform(headers, platformMap, "tiktok", "engagement rate impressions", "eng rate impressions")
+    !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "engagement rate impressions", "eng rate impressions")
+    : findCol(headers, "tiktok engagement rate impressions", "tiktok engagement rate (impressions)", "tt engagement rate impressions");
+  const iTiktokEngRate = (iTiktokEngRateFollowers === -1 && iTiktokEngRateImpressions === -1)
+    ? (findColInPlatform(headers, platformMap, "tiktok", "engagement rate", "eng rate")
+        !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "engagement rate", "eng rate")
+        : findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate"))
+    : -1;
 
   // ── Other / Clicks / Sales / Targets columns ──
   // These are global because they're typically not duplicated across platforms,
@@ -554,6 +592,8 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
         reposts: parseNum(getVal(iIgFeedReposts)),
         total_engagements: parseNum(getVal(feedTotalEngIdx)),
         engagement_rate: parseRate(getVal(feedEngRateIdx)),
+        engagement_rate_followers: parseRate(getVal(iIgFeedEngRateFollowers)),
+        engagement_rate_impressions: parseRate(getVal(iIgFeedEngRateImpressions)),
       },
       ig_story: {
         count: parseNum(getVal(iIgStoryCount)),
@@ -568,16 +608,22 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
         reposts: parseNum(getVal(iIgReelReposts)),
         total_engagements: parseNum(getVal(reelTotalEngIdx)),
         engagement_rate: parseRate(getVal(reelEngRateIdx)),
+        engagement_rate_followers: parseRate(getVal(iIgReelEngRateFollowers)),
+        engagement_rate_impressions: parseRate(getVal(iIgReelEngRateImpressions)),
       },
       tiktok: {
         post_url: getVal(iTiktokUrl)?.trim() || undefined,
+        followers: parseNum(getVal(iTiktokFollowers)),
         views: parseNum(getVal(iTiktokViews)),
         likes: parseNum(getVal(iTiktokLikes)),
         comments: parseNum(getVal(iTiktokComments)),
         likes_comments: parseNum(getVal(iTiktokLikesComments)),
+        saves: parseNum(getVal(iTiktokSaves)),
         saves_shares: parseNum(getVal(iTiktokSavesShares)),
         total_engagements: parseNum(getVal(iTiktokEngagements)),
         engagement_rate: parseRate(getVal(iTiktokEngRate)),
+        engagement_rate_followers: parseRate(getVal(iTiktokEngRateFollowers)),
+        engagement_rate_impressions: parseRate(getVal(iTiktokEngRateImpressions)),
       },
       ...((iLinkClicks !== -1 || iClickThroughRate !== -1 || iLandingPageViews !== -1 || iCostPerClick !== -1 || iOrders !== -1 || iSalesAmount !== -1 || iCpm !== -1) ? {
         clicks: {

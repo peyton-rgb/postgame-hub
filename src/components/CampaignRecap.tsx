@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { Campaign, Athlete, Media, VisibleSections } from "@/lib/types";
+import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { fmt, pct, dollar, computeStats, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
+import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 
@@ -232,7 +232,7 @@ export function CampaignRecap({
   // Gallery athletes for Content Gallery only
   const fullRoster = allAthletes || athletes;
 
-  const stats = computeStats(fullRoster);
+  const stats = computeStatsWithOverrides(fullRoster, campaign);
   const topPerformers = topPerformerMode === "engagement"
     ? getTopPerformers(fullRoster)
     : getTopPerformersByImpressions(fullRoster);
@@ -544,21 +544,34 @@ export function CampaignRecap({
 
           {/* Summary row */}
           <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {[
-              { value: stats.athleteCount, label: "ATHLETES" },
-              { value: stats.schoolCount, label: "COLLEGES" },
-              { value: stats.sportCount, label: "SPORTS" },
-              { value: stats.totalPosts, label: "TOTAL POSTS" },
-              { value: fmt(stats.totalImpressions), label: "TOTAL IMPRESSIONS" },
-              { value: fmt(stats.totalEngagements), label: "TOTAL ENGAGEMENTS" },
-              { value: pct(stats.avgEngRate), label: "AVG ENGAGEMENT RATE" },
-              ...(stats.hasSales && show("sales") ? [{ value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
-            ].map((m) => (
-              <div key={m.label} className="bg-white/[0.07] border border-white/[0.15] rounded-xl p-5 md:p-8 text-center flex-1 min-w-[140px] max-w-[220px]">
-                <div className="text-2xl md:text-4xl font-black text-white mb-2">{m.value}</div>
-                <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/70">{m.label}</div>
-              </div>
-            ))}
+            {([
+              { key: "athlete_count" as const,       value: stats.athleteCount,             label: "ATHLETES" },
+              { key: "school_count" as const,        value: stats.schoolCount,              label: "COLLEGES" },
+              { key: "sport_count" as const,         value: stats.sportCount,               label: "SPORTS" },
+              { key: "total_posts" as const,         value: stats.totalPosts,               label: "TOTAL POSTS" },
+              { key: "combined_followers" as const,  value: fmt(stats.combinedFollowers),   label: "COMBINED FOLLOWERS" },
+              { key: "total_impressions" as const,   value: fmt(stats.totalImpressions),    label: "TOTAL IMPRESSIONS" },
+              { key: "total_engagements" as const,   value: fmt(stats.totalEngagements),    label: "TOTAL ENGAGEMENTS" },
+              { key: "avg_engagement_rate" as const, value: pct(stats.avgEngRate),          label: "AVG ENGAGEMENT RATE" },
+              ...(stats.hasSales && show("sales") ? [{ key: null, value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
+            ] as { key: HeroMetricOverrideKey | null; value: string | number; label: string }[]).map((m) => {
+              const isOverridden = m.key != null && stats.overriddenKeys.has(m.key);
+              return (
+                <div key={m.label} className="bg-white/[0.07] border border-white/[0.15] rounded-xl p-5 md:p-8 text-center flex-1 min-w-[140px] max-w-[220px] relative">
+                  {isOverridden && (
+                    <span
+                      title="This value was manually adjusted"
+                      aria-label="manually adjusted"
+                      className="absolute top-2 right-2 text-[10px] text-amber-400/80"
+                    >
+                      ✎
+                    </span>
+                  )}
+                  <div className="text-2xl md:text-4xl font-black text-white mb-2">{m.value}</div>
+                  <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/70">{m.label}</div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Per-platform breakdown */}

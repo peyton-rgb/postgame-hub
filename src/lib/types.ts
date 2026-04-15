@@ -62,6 +62,22 @@ export interface BrandAsset {
   created_at: string;
 }
 
+// NEW: Hero metric override keys. These match the field names returned by
+// computeStats() in recap-helpers.ts. When a key is present with a number,
+// the recap displays that hand-typed value instead of the calculated one
+// (and shows an "edited" badge).
+export type HeroMetricOverrideKey =
+  | "athlete_count"
+  | "school_count"
+  | "sport_count"
+  | "total_posts"
+  | "combined_followers"
+  | "total_impressions"
+  | "total_engagements"
+  | "avg_engagement_rate";
+
+export type MetricOverrides = Partial<Record<HeroMetricOverrideKey, number | null>>;
+
 export interface Campaign {
   id: string;
   name: string;
@@ -74,6 +90,9 @@ export interface Campaign {
   brand_id: string | null;
   created_at: string;
   published: boolean;
+  // NEW: Hand-typed Hero metric overrides. Empty object {} means no overrides.
+  // Stored in the metric_overrides jsonb column on campaign_recaps.
+  metric_overrides?: MetricOverrides;
   settings: {
     primary_color?: string;
     secondary_color?: string;
@@ -102,7 +121,10 @@ export interface AthleteMetrics {
     shares?: number;
     reposts?: number;
     total_engagements?: number;
-    engagement_rate?: number;
+    engagement_rate?: number; // LEGACY: single-rate field, kept for old campaigns
+    // NEW: separate rates from the 2026 Performance Tracker template
+    engagement_rate_followers?: number;
+    engagement_rate_impressions?: number;
   };
   ig_story?: {
     count?: number;
@@ -116,17 +138,25 @@ export interface AthleteMetrics {
     shares?: number;
     reposts?: number;
     total_engagements?: number;
-    engagement_rate?: number;
+    engagement_rate?: number; // LEGACY
+    // NEW
+    engagement_rate_followers?: number;
+    engagement_rate_impressions?: number;
   };
   tiktok?: {
     post_url?: string;
     views?: number;
     likes?: number;
     comments?: number;
-    likes_comments?: number;
-    saves_shares?: number;
+    likes_comments?: number; // LEGACY
+    saves_shares?: number;   // LEGACY
     total_engagements?: number;
-    engagement_rate?: number;
+    engagement_rate?: number; // LEGACY
+    // NEW: 2026 spreadsheet has these as separate columns
+    followers?: number;
+    saves?: number;
+    engagement_rate_followers?: number;
+    engagement_rate_impressions?: number;
   };
   clicks?: {
     link_clicks?: number;
