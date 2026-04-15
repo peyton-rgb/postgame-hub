@@ -416,12 +416,19 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     : -1;
 
   // ── IG Story columns ──
+  // CRITICAL: search for the explicit TOTAL column first (most-specific patterns win).
+  // The 2026 template provides a "Total IG Story Impressions" column that is the
+  // multiplied-out total. If absent, we fall back to the per-story column and let
+  // the formula multiply it by count downstream.
   const iIgStoryCount = findColInPlatform(headers, platformMap, "ig_story", "count", "post")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "count", "post")
     : findCol(headers, "ig story count", "story count", "ig stories count", "stories count", "ig story post", "ig story");
+  const iIgStoryTotalImpressions = findColInPlatform(headers, platformMap, "ig_story", "total impressions", "total ig story impressions")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "total impressions", "total ig story impressions")
+    : findCol(headers, "total ig story impressions", "ig story total impressions", "total story impressions", "story total impressions");
   const iIgStoryImpressions = findColInPlatform(headers, platformMap, "ig_story", "impressions")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "impressions")
-    : findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions", "total ig story impressions");
+    : findCol(headers, "ig story impressions", "story impressions", "ig stories impressions", "stories impressions");
 
   // ── IG Reel columns ──
   const iIgReelUrl = findColInPlatform(headers, platformMap, "ig_reel", "post url", "url")
@@ -598,6 +605,7 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
       ig_story: {
         count: parseNum(getVal(iIgStoryCount)),
         impressions: parseNum(getVal(storyImpressionsIdx)),
+        total_impressions: parseNum(getVal(iIgStoryTotalImpressions)),
       },
       ig_reel: {
         post_url: getVal(iIgReelUrl)?.trim() || undefined,
