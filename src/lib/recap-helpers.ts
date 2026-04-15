@@ -148,11 +148,14 @@ export function computeStats(athletes: Athlete[]): ComputedStats {
     if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
     // ── Total Impressions: Feed + Story + Reel + TikTok ──
-    // FIX: ig_story.impressions is a TOTAL across all that athlete's stories
-    // (per Peyton's confirmation), not per-story. Don't multiply by count.
+    // Story impressions: prefer the explicit "Total IG Story Impressions" column
+    // (the multiplied-out value entered in the spreadsheet). If absent, fall back
+    // to per-story × count. If neither is present, contributes 0.
+    const storyTotalImp = m.ig_story?.total_impressions
+      ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
     totalImpressions +=
       (m.ig_feed?.impressions || 0) +
-      (m.ig_story?.impressions || 0) +
+      storyTotalImp +
       (m.ig_reel?.views || 0) +
       (m.tiktok?.views || 0);
 
@@ -178,9 +181,10 @@ export function computeStats(athletes: Athlete[]): ComputedStats {
       if (r > 0) { igFeed.engRateSum += r; igFeed.engRateCount++; }
     }
 
-    // FIX: ig_story.impressions is already a total (see above). No multiplication.
+    // FIX: prefer explicit total_impressions column, fall back to per-story × count.
     igStory.count += m.ig_story?.count || 0;
-    igStory.impressions += m.ig_story?.impressions || 0;
+    igStory.impressions += m.ig_story?.total_impressions
+      ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
 
     igReel.views += m.ig_reel?.views || 0;
     igReel.likes += m.ig_reel?.likes || 0;
@@ -381,9 +385,10 @@ export function getBestEngRate(athlete: Athlete): number {
 
 export function getTotalImpressions(athlete: Athlete): number {
   const m = athlete.metrics || {};
-  // FIX: ig_story.impressions is already a total across all stories — no multiplication.
+  const storyTotal = m.ig_story?.total_impressions
+    ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
   return (m.ig_feed?.impressions || 0)
-    + (m.ig_story?.impressions || 0)
+    + storyTotal
     + (m.ig_reel?.views || 0)
     + (m.tiktok?.views || 0);
 }

@@ -128,7 +128,8 @@ export interface AthleteMetrics {
   };
   ig_story?: {
     count?: number;
-    impressions?: number;
+    impressions?: number;       // per-story impressions (LEGACY/per-post)
+    total_impressions?: number; // explicit total across all stories (preferred when present)
   };
   ig_reel?: {
     post_url?: string;
