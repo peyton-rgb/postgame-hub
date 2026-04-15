@@ -420,8 +420,12 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
   // The 2026 template provides a "Total IG Story Impressions" column that is the
   // multiplied-out total. If absent, we fall back to the per-story column and let
   // the formula multiply it by count downstream.
-  const iIgStoryCount = findColInPlatform(headers, platformMap, "ig_story", "count", "post")
-    !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "count", "post")
+  // Story count: search for "post" FIRST (matches "IG STORY Post" at column T cleanly).
+  // The previous order ("count", "post") incorrectly matched the unrelated "Review Count"
+  // column at AR because the platform map forward-fills ig_story across all columns to
+  // the right of the IG STORY group label, and "Review Count" contains the word "count".
+  const iIgStoryCount = findColInPlatform(headers, platformMap, "ig_story", "post", "count")
+    !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "post", "count")
     : findCol(headers, "ig story count", "story count", "ig stories count", "stories count", "ig story post", "ig story");
   const iIgStoryTotalImpressions = findColInPlatform(headers, platformMap, "ig_story", "total impressions", "total ig story impressions")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_story", "total impressions", "total ig story impressions")
