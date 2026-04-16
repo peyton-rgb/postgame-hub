@@ -635,6 +635,7 @@ export default function CampaignEditor() {
   // Key takeaways + KPI targets
   const [keyTakeaways, setKeyTakeaways] = useState("");
   const [kpiTargets, setKpiTargets] = useState<KpiTargets>({});
+  const [budget, setBudget] = useState<number | "">("");
 
   // Editable campaign name / client name
   const [editingName, setEditingName] = useState(false);
@@ -687,6 +688,7 @@ export default function CampaignEditor() {
       setBrandLogoUrl(camp.settings.brand_logo_url || "");
       setKeyTakeaways(camp.settings.key_takeaways || "");
       setKpiTargets(camp.settings.kpi_targets || {});
+      setBudget(camp.settings.budget ?? "");
     }
 
     const grouped: Record<string, Media[]> = {};
@@ -888,6 +890,7 @@ export default function CampaignEditor() {
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
+      budget: budget === "" ? undefined : budget,
     };
     const { data } = await supabase
       .from("campaign_recaps")
@@ -930,7 +933,7 @@ export default function CampaignEditor() {
     }, 1500);
 
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, brandLogoUrl, keyTakeaways, kpiTargets]);
+  }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, brandLogoUrl, keyTakeaways, kpiTargets, budget]);
 
   // Mark initial load as done after campaign data is populated
   useEffect(() => {
@@ -1356,6 +1359,7 @@ export default function CampaignEditor() {
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
+      budget: budget === "" ? undefined : budget,
     };
     const { data, error } = await supabase
       .from("campaign_recaps")
@@ -1590,6 +1594,49 @@ export default function CampaignEditor() {
         {/* ── STEP 2: Campaign Info ─────────────────────────── */}
         {step === 2 && (
           <div className="max-w-3xl space-y-6">
+            {/* Budget + CPM */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Budget</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={budget === "" ? "" : Number(budget).toLocaleString()}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      setBudget(raw === "" ? "" : parseInt(raw));
+                    }}
+                    className="w-full bg-[#111] border border-gray-800 rounded-lg pl-8 pr-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                    placeholder="25,000"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Actual CPM</label>
+                <div className="bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm">
+                  {(() => {
+                    const b = typeof budget === "number" ? budget : 0;
+                    let totalImpressions = 0;
+                    for (const a of athletes) {
+                      const m = a.metrics || {};
+                      totalImpressions += m.ig_feed?.impressions || 0;
+                      totalImpressions += m.ig_reel?.views || 0;
+                      totalImpressions += m.ig_story?.total_impressions || m.ig_story?.impressions || 0;
+                      totalImpressions += m.tiktok?.views || 0;
+                    }
+                    if (b > 0 && totalImpressions > 0) {
+                      const cpm = (b / totalImpressions) * 1000;
+                      return <span className="text-white font-bold">${cpm.toFixed(2)}</span>;
+                    }
+                    return <span className="text-gray-600">—</span>;
+                  })()}
+                  <span className="text-gray-600 text-xs ml-2">cost per 1,000 impressions</span>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Description</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
