@@ -129,6 +129,122 @@ function Top50RosterEditor({
   convertHeicIfNeeded: (file: File) => Promise<File>;
 }) {
   const [saving, setSaving] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvDragging, setCsvDragging] = useState(false);
+  const csvDragCounter = useRef(0);
+
+  async function handleCsvImport(file: File) {
+    if (athletes.length > 0) {
+      const ok = window.confirm(`This will replace all ${athletes.length} existing athletes. Continue?`);
+      if (!ok) return;
+    }
+
+    setCsvImporting(true);
+
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) { setCsvImporting(false); return; }
+
+      // Parse header row — normalize to lowercase, trim whitespace
+      const rawHeaders = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/[^a-z0-9_ ]/g, ""));
+      const colIndex = (variants: string[]) => {
+        for (const v of variants) {
+          const idx = rawHeaders.indexOf(v);
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      };
+      const iRank = colIndex(["rank", "#"]);
+      const iName = colIndex(["name", "athlete name", "athlete"]);
+      const iSchool = colIndex(["school", "university"]);
+      const iSport = colIndex(["sport"]);
+      const iHandle = colIndex(["ig handle", "ig_handle", "handle", "instagram"]);
+      const iFollowers = colIndex(["ig followers", "ig_followers", "followers"]);
+      const iNotes = colIndex(["notes", "bio"]);
+      const iTag = colIndex(["campaign tag", "campaign_tag", "tag"]);
+      const iPostUrl = colIndex(["post url", "post_url", "url"]);
+      const iFeatured = colIndex(["featured"]);
+
+      // Parse CSV rows (handles quoted fields with commas)
+      const parseCsvRow = (line: string): string[] => {
+        const fields: string[] = [];
+        let current = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (inQuotes) {
+            if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+            else if (ch === '"') { inQuotes = false; }
+            else { current += ch; }
+          } else {
+            if (ch === '"') { inQuotes = true; }
+            else if (ch === ",") { fields.push(current.trim()); current = ""; }
+            else { current += ch; }
+          }
+        }
+        fields.push(current.trim());
+        return fields;
+      }
+
+      // Delete existing athletes if any
+      if (athletes.length > 0) {
+        const existingIds = athletes.map((a) => a.id);
+        await supabase.from("media").delete().in("athlete_id", existingIds);
+        await supabase.from("athletes").delete().in("id", existingIds);
+      }
+
+      const toInsert: Record<string, unknown>[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvRow(lines[i]);
+        const name = iName !== -1 ? cols[iName] || "" : "";
+        if (!name) continue;
+
+        const rank = iRank !== -1 ? parseInt(cols[iRank]) || i : i;
+        const school = iSchool !== -1 ? cols[iSchool] || "" : "";
+        const sport = iSport !== -1 ? cols[iSport] || "" : "";
+        const igHandle = iHandle !== -1 ? cols[iHandle]?.replace(/^@/, "") || "" : "";
+        const igFollowers = iFollowers !== -1 ? parseInt(cols[iFollowers]?.replace(/[^0-9]/g, "")) || 0 : 0;
+        const notes = iNotes !== -1 ? cols[iNotes] || "" : "";
+        const campaignTag = iTag !== -1 ? cols[iTag] || "" : "";
+        const postUrl = iPostUrl !== -1 ? cols[iPostUrl] || "" : "";
+        const featured = iFeatured !== -1 ? cols[iFeatured]?.toLowerCase() === "yes" : false;
+
+        const metrics: Record<string, unknown> = {};
+        if (campaignTag) metrics.campaign_tag = campaignTag;
+        if (postUrl) metrics.ig_feed = { post_url: postUrl };
+
+        toInsert.push({
+          campaign_id: campaignId,
+          name,
+          school,
+          sport,
+          ig_handle: igHandle,
+          ig_followers: igFollowers,
+          notes,
+          post_type: "IG Feed" as const,
+          post_url: postUrl || null,
+          sort_order: rank - 1,
+          metrics,
+          is_featured: featured,
+          featured_order: featured ? rank : 0,
+        });
+      }
+
+      if (toInsert.length > 0) {
+        const { data: inserted } = await supabase
+          .from("athletes")
+          .insert(toInsert)
+          .select();
+        if (inserted) setAthletes(inserted);
+      }
+    } catch (e) {
+      console.error("CSV import failed:", e);
+      alert("CSV import failed. Check the file format and try again.");
+    }
+
+    setCsvImporting(false);
+  }
 
   async function updateAthleteField(athleteId: string, field: string, value: any) {
     setAthletes((prev) =>
@@ -206,6 +322,52 @@ function Top50RosterEditor({
         <div>Tag</div>
         <div>Post</div>
         <div></div>
+      </div>
+
+      {/* CSV Import Drop Zone */}
+      <div
+        onDragEnter={(e) => { e.preventDefault(); csvDragCounter.current++; setCsvDragging(true); }}
+        onDragLeave={(e) => { e.preventDefault(); csvDragCounter.current--; if (csvDragCounter.current === 0) setCsvDragging(false); }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          csvDragCounter.current = 0;
+          setCsvDragging(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file && (file.name.endsWith(".csv") || file.type === "text/csv")) handleCsvImport(file);
+        }}
+        onClick={() => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = ".csv,text/csv";
+          input.onchange = (ev) => {
+            const f = (ev.target as HTMLInputElement).files?.[0];
+            if (f) handleCsvImport(f);
+          };
+          input.click();
+        }}
+        className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all my-2 ${
+          csvDragging
+            ? "border-[#D73F09] bg-[#D73F09]/5"
+            : "border-gray-700 hover:border-gray-500 bg-[#111]"
+        }`}
+      >
+        {csvImporting ? (
+          <div className="flex items-center justify-center gap-3 py-1">
+            <svg className="animate-spin h-4 w-4 text-[#D73F09]" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            <span className="text-sm font-bold text-gray-300">Importing CSV...</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-3 py-1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={csvDragging ? "#D73F09" : "#666"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span className="text-sm font-bold text-gray-500">Drop a CSV or click to import roster</span>
+            <span className="text-[10px] text-gray-600 hidden sm:inline">(Rank, Name, School, Sport, IG Handle, IG Followers, Notes, Campaign Tag, Post URL, Featured)</span>
+          </div>
+        )}
       </div>
 
       {athletes.map((a, idx) => {
