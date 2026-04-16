@@ -27,7 +27,7 @@ function IgProfileLink({ athlete, className = "" }: { athlete: Athlete; classNam
       href={`https://instagram.com/${athlete.ig_handle.replace("@", "")}`}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center text-white/30 hover:text-brand transition-colors ${className}`}
+      className={`inline-flex items-center text-white/50 hover:text-brand transition-colors ${className}`}
       title={`@${athlete.ig_handle.replace("@", "")}`}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
@@ -97,11 +97,6 @@ function FeaturedCard({
           <div className="absolute inset-0 bg-gradient-to-t from-black/[0.97] via-black/[0.65] to-transparent" />
         </div>
 
-        {/* Rank badge */}
-        <div className="absolute top-3.5 left-3.5 w-10 h-10 rounded-xl bg-brand text-white text-base font-black flex items-center justify-center z-10 shadow-[0_4px_16px_rgba(215,63,9,0.4)]">
-          #{rank}
-        </div>
-
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
           {/* Logo + sport row */}
@@ -118,22 +113,22 @@ function FeaturedCard({
             <span className="text-2xl md:text-[28px] font-black uppercase tracking-tight leading-tight">{athlete.name}</span>
             <IgProfileLink athlete={athlete} />
           </div>
-          <div className="text-sm md:text-base text-white/40 mt-1 font-medium">{getFullSchoolName(athlete.school)}</div>
+          <div className="text-sm md:text-base text-white/60 mt-1 font-medium">{getFullSchoolName(athlete.school)}</div>
 
           {athlete.notes && (
-            <p className="text-sm md:text-base text-white/35 leading-relaxed mt-2 line-clamp-2">{athlete.notes}</p>
+            <p className="text-sm md:text-base text-white/55 leading-relaxed mt-2 line-clamp-2">{athlete.notes}</p>
           )}
 
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-3 flex-wrap">
             {athlete.ig_followers ? (
-              <span className="flex items-center gap-1.5 text-sm font-bold text-white/40">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-white/60">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                 {fmt(athlete.ig_followers)}
               </span>
             ) : null}
-            <span className="px-2.5 py-1 bg-white/[0.06] border border-white/[0.08] rounded text-[10px] font-bold text-white/45">
-              {athlete.metrics?.campaign_tag || `${campaign.client_name} Top 50`}
+            <span className="text-sm text-white/50">
+              Campaign: {athlete.metrics?.campaign_tag || `${campaign.client_name} Top 50`}
             </span>
           </div>
 
@@ -198,9 +193,6 @@ function RosterCard({
       {/* School color bar */}
       <div className="w-[3px] self-stretch flex-shrink-0 opacity-35 group-hover:opacity-100 transition-opacity" style={{ background: color }} />
 
-      {/* Rank */}
-      <div className="text-lg font-black text-white/15 w-10 text-center flex-shrink-0">#{rank}</div>
-
       {/* Photo */}
       <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden flex-shrink-0 bg-[#111] border border-white/[0.05]">
         {thumbSrc ? (
@@ -233,21 +225,19 @@ function RosterCard({
           <span className="text-xl md:text-2xl font-black uppercase tracking-tight leading-tight truncate">{athlete.name}</span>
           <IgProfileLink athlete={athlete} />
         </div>
-        <div className="text-base text-white/30 font-medium truncate">{getFullSchoolName(athlete.school)}</div>
+        <div className="text-base text-white/50 font-medium truncate">{getFullSchoolName(athlete.school)}</div>
       </div>
 
       {/* Notes */}
       <div className="flex-1 min-w-0 hidden md:block">
-        <p className="text-lg text-white/35 leading-relaxed line-clamp-2">{athlete.notes || "Elite collegiate athlete and brand partner."}</p>
-        <div className="flex gap-1 mt-2">
-          <span className="px-3 py-1 bg-white/[0.05] border border-white/[0.06] rounded text-sm font-bold text-white/40">{athlete.metrics?.campaign_tag || `${campaign.client_name} Top 50`}</span>
-        </div>
+        <p className="text-lg text-white/55 leading-relaxed line-clamp-2">{athlete.notes || "Elite collegiate athlete and brand partner."}</p>
+        <span className="text-sm text-white/50 mt-2 inline-block">Campaign: {athlete.metrics?.campaign_tag || `${campaign.client_name} Top 50`}</span>
       </div>
 
       {/* Right: followers + links */}
       <div className="flex items-center gap-4 flex-shrink-0 ml-auto">
         {athlete.ig_followers ? (
-          <span className="hidden md:flex items-center gap-1.5 text-lg font-bold text-white/30 whitespace-nowrap">
+          <span className="hidden md:flex items-center gap-1.5 text-lg font-bold text-white/50 whitespace-nowrap">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
             {fmt(athlete.ig_followers)}
           </span>
@@ -354,34 +344,34 @@ export function Top50Recap({
         <div className="relative z-10 flex items-start justify-between">
           {/* Left side - title and stats */}
           <div>
-            <div className="flex items-center gap-3 mb-6">
-              <span className="px-4 py-2 bg-brand text-white rounded-md text-[11px] font-black uppercase tracking-widest">
-                Top 50
-              </span>
-              {settings.quarter && (
+            {settings.quarter && (
+              <div className="flex items-center gap-3 mb-6">
                 <span className="px-3 py-2 bg-white/[0.06] border border-white/10 rounded-md text-[11px] font-bold uppercase tracking-widest text-white/50">
                   {settings.quarter}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             <h1 className="text-4xl md:text-[64px] font-black uppercase tracking-tight leading-[1.05] mb-4">
-              The <span className="text-brand">Top 50</span>
-              <br />Athletes
+              Top 50 College Athletes {settings.quarter || ""}
             </h1>
 
             {settings.description && (
-              <p className="text-lg md:text-xl text-white/35 max-w-xl leading-relaxed">{settings.description}</p>
+              <p className="text-lg md:text-xl text-white/50 max-w-xl leading-relaxed">{settings.description}</p>
             )}
 
             <div className="flex gap-9 mt-8">
-              <div><div className="text-4xl md:text-[40px] font-black">{stats.athleteCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Athletes</div></div>
-              <div><div className="text-4xl md:text-[40px] font-black">{uniCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Universities</div></div>
-              <div><div className="text-4xl md:text-[40px] font-black">{sports.length}</div><div className="text-xs font-bold uppercase tracking-widest text-white/30 mt-0.5">Sports</div></div>
+              <div><div className="text-4xl md:text-[40px] font-black">{stats.athleteCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Athletes</div></div>
+              <div><div className="text-4xl md:text-[40px] font-black">{uniCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Universities</div></div>
+              <div><div className="text-4xl md:text-[40px] font-black">{sports.length}</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Sports</div></div>
             </div>
+
+            <p className="text-lg text-white/50 max-w-2xl leading-relaxed mt-6">
+              Postgame and {campaign.client_name} have already worked with an impressive roster of college talent so far this year! From projected top Draft Picks to All Conference selections and National Champions - Postgame continues to ensure {campaign.client_name} is well represented across every campaign. Check out who we think are the Top 50 so far this year and why below:
+            </p>
           </div>
 
-          {/* Right side - brand logo + year */}
+          {/* Right side - brand logo */}
           <div className="hidden md:flex flex-col items-end gap-4">
             {(settings.brand_logo_url || campaign.client_logo_url) && (
               <img
@@ -390,9 +380,6 @@ export function Top50Recap({
                 className="h-24 lg:h-32 object-contain opacity-80"
               />
             )}
-            <div className="text-[80px] lg:text-[120px] font-black text-white/[0.06] leading-none tracking-tighter">
-              {settings.quarter?.match(/\d{4}/)?.[0] || new Date().getFullYear()}
-            </div>
           </div>
         </div>
       </div>
