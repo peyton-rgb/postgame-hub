@@ -28,7 +28,7 @@ const SCHOOL_COLORS: Record<string, string> = {
   Kentucky: "#0033A0", "Michigan State": "#18453B", "Penn State": "#041E42",
   Stanford: "#8C1515", Tennessee: "#FF8200", Virginia: "#232D4B", Virgina: "#232D4B",
   // Pro teams
-  "Chicago Bears": "#0B162A",
+  "Chicago Bears": "#0B162A", "Virginia Tech": "#630031",
 };
 
 const ABBREVS: Record<string, string> = {
@@ -49,7 +49,7 @@ const ABBREVS: Record<string, string> = {
   Kentucky: "UK", "Michigan State": "MSU", "Penn State": "PSU",
   Stanford: "STAN", Tennessee: "TENN", Virginia: "UVA", Virgina: "UVA",
   // Pro teams
-  "Chicago Bears": "CHI",
+  "Chicago Bears": "CHI", "Virginia Tech": "VT",
 };
 
 // ESPN team IDs for logo CDN
@@ -71,7 +71,7 @@ const ESPN_IDS: Record<string, number> = {
   "Oregon / Reds": 2483, "Notre Dame / TCU": 87,
   // Additional college teams
   Kentucky: 96, "Michigan State": 127, "Penn State": 213,
-  Stanford: 24, Tennessee: 2633, Virginia: 258, Virgina: 258,
+  Stanford: 24, Tennessee: 2633, Virginia: 258, Virgina: 258, "Virginia Tech": 259,
 };
 
 const FULL_NAMES: Record<string, string> = {
@@ -106,6 +106,7 @@ const FULL_NAMES: Record<string, string> = {
   Virgina: "University of Virginia",
   // Pro teams
   "Chicago Bears": "Chicago Bears",
+  "Virginia Tech": "Virginia Tech University",
 };
 
 // ESPN NFL team IDs for pro logo CDN
