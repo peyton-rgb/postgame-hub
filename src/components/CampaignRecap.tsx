@@ -484,28 +484,31 @@ export function CampaignRecap({
       )}
 
       {/* ── KPI TARGETS ───────────────────────────────────── */}
-      {show("kpi_targets") && settings.kpi_targets && (() => {
-        const t = settings.kpi_targets;
-        const hasAnyTarget = t.athlete_quantity || t.content_units || t.posts || t.impressions || t.engagements || t.engagement_rate || t.cpm || t.other_kpis;
+      {show("kpi_targets") && (() => {
+        const t = settings.kpi_targets || {};
         const hasBudget = settings.budget != null && settings.budget > 0;
+        const hasAnyTarget = t.athlete_quantity || t.content_units || t.posts || t.impressions || t.engagements || t.engagement_rate || t.other_kpis;
         if (!hasAnyTarget && !hasBudget) return null;
 
-        const manualCpm = hasBudget && settings.total_impressions && settings.total_impressions > 0
+        console.log("Budget data:", { budget: settings.budget, impressions: settings.total_impressions });
+
+        const actualCpm = hasBudget && settings.total_impressions && settings.total_impressions > 0
           ? (settings.budget! / settings.total_impressions) * 1000
           : null;
-        const fallbackCpm = stats.hasClicks && stats.clicks.cpm_count > 0 ? stats.clicks.cpm_sum / stats.clicks.cpm_count : 0;
-        const actualCpm = manualCpm ?? (fallbackCpm > 0 ? fallbackCpm : null);
 
         const kpiRows: { label: string; target: number | null; actual: number | null; isPercent?: boolean; isDollar?: boolean }[] = [];
 
+        // Budget first (standalone, no target)
         if (hasBudget) kpiRows.push({ label: "Budget", target: null, actual: settings.budget!, isDollar: true });
+        // KPI target rows
         if (t.athlete_quantity != null) kpiRows.push({ label: "Athletes", target: t.athlete_quantity, actual: stats.athleteCount });
         if (t.content_units != null) kpiRows.push({ label: "Content Units", target: t.content_units, actual: null });
         if (t.posts != null) kpiRows.push({ label: "Posts", target: t.posts, actual: stats.totalPosts });
         if (t.impressions != null) kpiRows.push({ label: "Impressions", target: t.impressions, actual: stats.totalImpressions });
         if (t.engagements != null) kpiRows.push({ label: "Engagements", target: t.engagements, actual: stats.totalEngagements });
         if (t.engagement_rate != null) kpiRows.push({ label: "Engagement Rate", target: t.engagement_rate, actual: stats.avgEngRate, isPercent: true });
-        if (t.cpm != null || actualCpm != null) kpiRows.push({ label: "Actual CPM", target: t.cpm ?? null, actual: actualCpm, isDollar: true });
+        // Actual CPM last (auto-calculated, no target)
+        if (actualCpm != null) kpiRows.push({ label: "Actual CPM", target: null, actual: actualCpm, isDollar: true });
 
         if (kpiRows.length === 0) return null;
 
