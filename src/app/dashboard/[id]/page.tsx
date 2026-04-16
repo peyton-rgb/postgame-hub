@@ -148,6 +148,7 @@ function Top50RosterEditor({
 
       // Parse header row — normalize to lowercase, trim whitespace
       const rawHeaders = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/[^a-z0-9_ ]/g, ""));
+      console.log("CSV Headers:", rawHeaders);
       const colIndex = (variants: string[]) => {
         for (const v of variants) {
           const idx = rawHeaders.indexOf(v);
@@ -170,6 +171,7 @@ function Top50RosterEditor({
       const iFeatured = colIndex(["featured"]);
       const iContentFolder = colIndex(["content folder", "content_folder", "content folder url", "content_folder_url"]);
       const iGender = colIndex(["gender"]);
+      console.log("Column indices:", { iName, iFirstName, iLastName, iHandle, iTag, iPostUrl, iReelUrl, iGender, iContentFolder });
 
       // Parse CSV rows (handles quoted fields with commas)
       const parseCsvRow = (line: string): string[] => {
