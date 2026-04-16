@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       source: "produced_catalog",
       tagging_status: "pending",
       triage_status: "pending",
-      format: parsed.format ?? null,
+      format: "unknown",
       mime_type: inferMimeType(body.file_name) ?? null,
       athlete_name: body.athlete_name || parsed.athlete_name || null,
       tech_notes: body.tech_notes || null,
