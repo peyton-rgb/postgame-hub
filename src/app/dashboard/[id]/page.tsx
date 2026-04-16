@@ -132,6 +132,8 @@ function Top50RosterEditor({
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvDragging, setCsvDragging] = useState(false);
   const csvDragCounter = useRef(0);
+  const [headshotFetching, setHeadshotFetching] = useState(false);
+  const [headshotProgress, setHeadshotProgress] = useState<{ done: number; total: number; found: number } | null>(null);
 
   async function handleCsvImport(file: File) {
     if (athletes.length > 0) {
@@ -309,6 +311,48 @@ function Top50RosterEditor({
     setAthletes((prev) =>
       prev.map((a) => (a.id === athleteId ? { ...a, metrics: newMetrics } : a))
     );
+  }
+
+  async function fetchHeadshots() {
+    const missing = athletes.filter((a) => a.name && !a.metrics?.headshot_url);
+    if (missing.length === 0) return;
+
+    setHeadshotFetching(true);
+    setHeadshotProgress({ done: 0, total: missing.length, found: 0 });
+    let found = 0;
+
+    for (let i = 0; i < missing.length; i++) {
+      const a = missing[i];
+      try {
+        const params = new URLSearchParams({ name: a.name });
+        if (a.school) params.set("school", a.school);
+        if (a.sport) params.set("sport", a.sport);
+        if (a.gender) params.set("gender", a.gender);
+
+        const res = await fetch(`/api/athlete-headshot?${params}`);
+        const { url } = await res.json();
+
+        if (url) {
+          found++;
+          const newMetrics = { ...(a.metrics || {}), headshot_url: url };
+          await supabase.from("athletes").update({ metrics: newMetrics }).eq("id", a.id);
+          setAthletes((prev) =>
+            prev.map((x) => (x.id === a.id ? { ...x, metrics: newMetrics } : x))
+          );
+        }
+      } catch (e) {
+        // Skip failed fetches silently
+      }
+
+      setHeadshotProgress({ done: i + 1, total: missing.length, found });
+
+      // Rate-limit delay between requests
+      if (i < missing.length - 1) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    }
+
+    setHeadshotFetching(false);
   }
 
   async function addAthlete() {
@@ -519,14 +563,35 @@ function Top50RosterEditor({
         );
       })}
 
-      {/* Add athlete button */}
-      <button
-        onClick={addAthlete}
-        disabled={saving}
-        className="w-full py-3 border-2 border-dashed border-gray-700 rounded-lg text-sm font-bold text-gray-500 hover:text-white hover:border-gray-500 transition-colors mt-2 disabled:opacity-50"
-      >
-        + Add Athlete
-      </button>
+      {/* Add athlete + Fetch headshots */}
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={addAthlete}
+          disabled={saving}
+          className="flex-1 py-3 border-2 border-dashed border-gray-700 rounded-lg text-sm font-bold text-gray-500 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
+        >
+          + Add Athlete
+        </button>
+        <button
+          onClick={fetchHeadshots}
+          disabled={headshotFetching || athletes.length === 0}
+          className="px-5 py-3 border border-gray-700 rounded-lg text-sm font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {headshotFetching ? (
+            <>
+              <svg className="animate-spin h-4 w-4 text-[#D73F09]" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              <span>Fetching headshots... {headshotProgress?.done}/{headshotProgress?.total}</span>
+            </>
+          ) : headshotProgress && !headshotFetching ? (
+            <span>Found {headshotProgress.found} of {headshotProgress.total} headshots</span>
+          ) : (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+              Fetch Headshots
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
