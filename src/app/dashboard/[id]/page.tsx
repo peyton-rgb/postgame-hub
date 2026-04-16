@@ -928,6 +928,7 @@ export default function CampaignEditor() {
         budget: budget === "" ? undefined : budget,
         total_impressions: totalImpressions === "" ? undefined : totalImpressions,
       };
+      console.log("AUTO-SAVE firing:", { budget, totalImpressions, newSettings: JSON.stringify(newSettings).slice(0, 200) });
       const { data } = await supabase
         .from("campaign_recaps")
         .update({ settings: newSettings })
