@@ -1598,51 +1598,58 @@ export default function CampaignEditor() {
         {/* ── STEP 2: Campaign Info ─────────────────────────── */}
         {step === 2 && (
           <div className="max-w-3xl space-y-6">
-            {/* Budget + Impressions + CPM */}
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Budget</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">$</span>
+            {/* ── Campaign Actuals ─────────────────────── */}
+            <div className="border-l-2 border-[#D73F09]/40 pl-5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Campaign Actuals</label>
+              <p className="text-[10px] text-gray-600 mb-3">Actual campaign spend and performance</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">Budget</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">$</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={budget === "" ? "" : Number(budget).toLocaleString()}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        setBudget(raw === "" ? "" : parseInt(raw));
+                      }}
+                      className="w-full bg-[#111] border border-gray-800 rounded-lg pl-8 pr-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                      placeholder="25,000"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">Total Impressions</label>
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={budget === "" ? "" : Number(budget).toLocaleString()}
+                    value={totalImpressions === "" ? "" : Number(totalImpressions).toLocaleString()}
                     onChange={(e) => {
                       const raw = e.target.value.replace(/[^0-9]/g, "");
-                      setBudget(raw === "" ? "" : parseInt(raw));
+                      setTotalImpressions(raw === "" ? "" : parseInt(raw));
                     }}
-                    className="w-full bg-[#111] border border-gray-800 rounded-lg pl-8 pr-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
-                    placeholder="25,000"
+                    className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
+                    placeholder="500,000"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Total Impressions</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={totalImpressions === "" ? "" : Number(totalImpressions).toLocaleString()}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^0-9]/g, "");
-                    setTotalImpressions(raw === "" ? "" : parseInt(raw));
-                  }}
-                  className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
-                  placeholder="500,000"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Actual CPM</label>
-                <div className="bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm">
-                  {typeof budget === "number" && budget > 0 && typeof totalImpressions === "number" && totalImpressions > 0 ? (
-                    <span className="text-white font-bold">${((budget / totalImpressions) * 1000).toFixed(2)}</span>
-                  ) : (
-                    <span className="text-gray-600">—</span>
-                  )}
-                  <span className="text-gray-600 text-xs ml-2">per 1K impressions</span>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">Actual CPM</label>
+                  <div className="bg-[#111] border border-gray-800 rounded-lg px-4 py-2.5 text-sm">
+                    {typeof budget === "number" && budget > 0 && typeof totalImpressions === "number" && totalImpressions > 0 ? (
+                      <span className="text-white font-bold">${((budget / totalImpressions) * 1000).toFixed(2)}</span>
+                    ) : (
+                      <span className="text-gray-600">—</span>
+                    )}
+                    <span className="text-gray-600 text-xs ml-2">per 1K impressions</span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Divider */}
+            <div className="h-px bg-gray-800" />
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Description</label>
@@ -1662,17 +1669,17 @@ export default function CampaignEditor() {
 
             {/* Campaign KPI Targets */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Campaign KPI Targets</label>
-              <p className="text-[10px] text-gray-600 mb-3">Set goals from the brief/SOW. The recap will show actual vs. target.</p>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Campaign KPI Targets</label>
+              <p className="text-[10px] text-gray-600 mb-3">Goals from the brief/SOW — the recap will compare actual vs. target</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { key: "athlete_quantity" as const, label: "Athletes", placeholder: "e.g. 50" },
-                  { key: "content_units" as const, label: "Content Units", placeholder: "e.g. 150" },
-                  { key: "posts" as const, label: "Posts", placeholder: "e.g. 100" },
-                  { key: "impressions" as const, label: "Impressions", placeholder: "e.g. 500000" },
-                  { key: "engagements" as const, label: "Engagements", placeholder: "e.g. 25000" },
-                  { key: "engagement_rate" as const, label: "Eng. Rate %", placeholder: "e.g. 5" },
-                  { key: "cpm" as const, label: "CPM ($)", placeholder: "e.g. 12" },
+                  { key: "athlete_quantity" as const, label: "Athletes Target", placeholder: "e.g. 50" },
+                  { key: "content_units" as const, label: "Content Units Target", placeholder: "e.g. 150" },
+                  { key: "posts" as const, label: "Posts Target", placeholder: "e.g. 100" },
+                  { key: "impressions" as const, label: "Impressions Target", placeholder: "e.g. 500000" },
+                  { key: "engagements" as const, label: "Engagements Target", placeholder: "e.g. 25000" },
+                  { key: "engagement_rate" as const, label: "Eng. Rate Target %", placeholder: "e.g. 5" },
+                  { key: "cpm" as const, label: "CPM Target ($)", placeholder: "e.g. 12" },
                 ].map(({ key, label, placeholder }) => (
                   <div key={key}>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">{label}</label>
