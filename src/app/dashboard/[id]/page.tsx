@@ -148,7 +148,6 @@ function Top50RosterEditor({
 
       // Parse header row — normalize to lowercase, trim whitespace
       const rawHeaders = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/[^a-z0-9_ ]/g, ""));
-      console.log("CSV Headers:", rawHeaders);
       const colIndex = (variants: string[]) => {
         for (const v of variants) {
           const idx = rawHeaders.indexOf(v);
@@ -171,7 +170,6 @@ function Top50RosterEditor({
       const iFeatured = colIndex(["featured"]);
       const iContentFolder = colIndex(["content folder", "content_folder", "content folder url", "content_folder_url"]);
       const iGender = colIndex(["gender"]);
-      console.log("Column indices:", { iName, iFirstName, iLastName, iHandle, iTag, iPostUrl, iReelUrl, iGender, iContentFolder });
 
       // Parse CSV rows (handles quoted fields with commas)
       const parseCsvRow = (line: string): string[] => {
@@ -345,10 +343,11 @@ function Top50RosterEditor({
       </div>
 
       {/* Header row */}
-      <div className="grid grid-cols-[40px_48px_1.5fr_1fr_0.8fr_1.2fr_1fr_80px_40px] gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-800">
+      <div className="grid grid-cols-[40px_48px_1.5fr_32px_1fr_0.8fr_1.2fr_1fr_80px_40px] gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-800">
         <div>#</div>
         <div>Photo</div>
         <div>Name</div>
+        <div>IG</div>
         <div>School</div>
         <div>Sport</div>
         <div>Notes</div>
@@ -410,7 +409,7 @@ function Top50RosterEditor({
         return (
           <div
             key={a.id}
-            className="grid grid-cols-[40px_48px_1.5fr_1fr_0.8fr_1.2fr_1fr_80px_40px] gap-2 px-3 py-2 items-center bg-[#111] border border-gray-800/50 rounded-lg hover:border-gray-700 transition-colors"
+            className="grid grid-cols-[40px_48px_1.5fr_32px_1fr_0.8fr_1.2fr_1fr_80px_40px] gap-2 px-3 py-2 items-center bg-[#111] border border-gray-800/50 rounded-lg hover:border-gray-700 transition-colors"
           >
             {/* Rank */}
             <div className="text-sm font-black text-gray-500 text-center">{idx + 1}</div>
@@ -438,26 +437,30 @@ function Top50RosterEditor({
               )}
             </div>
 
-            {/* Name + IG link */}
-            <div className="flex items-center gap-2 min-w-0">
-              <input
-                value={a.name}
-                onChange={(e) => updateAthleteField(a.id, "name", e.target.value)}
-                className="flex-1 bg-transparent text-sm font-bold text-white outline-none truncate placeholder-gray-600"
-                placeholder="Athlete name"
-              />
-              {a.ig_handle && (
+            {/* Name */}
+            <input
+              value={a.name}
+              onChange={(e) => updateAthleteField(a.id, "name", e.target.value)}
+              className="bg-transparent text-sm font-bold text-white outline-none truncate placeholder-gray-600 min-w-0"
+              placeholder="Athlete name"
+            />
+
+            {/* IG profile link */}
+            <div className="flex items-center justify-center">
+              {a.ig_handle ? (
                 <a
                   href={`https://instagram.com/${a.ig_handle.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-shrink-0 text-[#D73F09] hover:text-[#ff5722] transition-colors"
+                  className="text-[#D73F09] hover:text-[#ff5722] transition-colors"
                   title={`@${a.ig_handle.replace("@", "")}`}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
                   </svg>
                 </a>
+              ) : (
+                <span className="text-gray-700">—</span>
               )}
             </div>
 
