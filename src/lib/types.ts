@@ -108,6 +108,8 @@ export interface Campaign {
     brand_logo_url?: string;
     key_takeaways?: string;
     kpi_targets?: KpiTargets;
+    budget?: number;
+    total_impressions?: number;
   };
 }
 

@@ -487,26 +487,34 @@ export function CampaignRecap({
       {show("kpi_targets") && settings.kpi_targets && (() => {
         const t = settings.kpi_targets;
         const hasAnyTarget = t.athlete_quantity || t.content_units || t.posts || t.impressions || t.engagements || t.engagement_rate || t.cpm || t.other_kpis;
-        if (!hasAnyTarget) return null;
+        const hasBudget = settings.budget != null && settings.budget > 0;
+        if (!hasAnyTarget && !hasBudget) return null;
 
-        const avgCpm = stats.hasClicks && stats.clicks.cpm_count > 0 ? stats.clicks.cpm_sum / stats.clicks.cpm_count : 0;
+        const manualCpm = hasBudget && settings.total_impressions && settings.total_impressions > 0
+          ? (settings.budget! / settings.total_impressions) * 1000
+          : null;
+        const fallbackCpm = stats.hasClicks && stats.clicks.cpm_count > 0 ? stats.clicks.cpm_sum / stats.clicks.cpm_count : 0;
+        const actualCpm = manualCpm ?? (fallbackCpm > 0 ? fallbackCpm : null);
 
-        const kpiRows = [
-          t.athlete_quantity != null ? { label: "Athletes", target: t.athlete_quantity, actual: stats.athleteCount } : null,
-          t.content_units != null ? { label: "Content Units", target: t.content_units, actual: null } : null,
-          t.posts != null ? { label: "Posts", target: t.posts, actual: stats.totalPosts } : null,
-          t.impressions != null ? { label: "Impressions", target: t.impressions, actual: stats.totalImpressions } : null,
-          t.engagements != null ? { label: "Engagements", target: t.engagements, actual: stats.totalEngagements } : null,
-          t.engagement_rate != null ? { label: "Engagement Rate", target: t.engagement_rate, actual: stats.avgEngRate, isPercent: true } : null,
-          t.cpm != null ? { label: "CPM", target: t.cpm, actual: avgCpm, isDollar: true } : null,
-        ].filter(Boolean) as { label: string; target: number; actual: number | null; isPercent?: boolean; isDollar?: boolean }[];
+        const kpiRows: { label: string; target: number | null; actual: number | null; isPercent?: boolean; isDollar?: boolean }[] = [];
+
+        if (hasBudget) kpiRows.push({ label: "Budget", target: null, actual: settings.budget!, isDollar: true });
+        if (t.athlete_quantity != null) kpiRows.push({ label: "Athletes", target: t.athlete_quantity, actual: stats.athleteCount });
+        if (t.content_units != null) kpiRows.push({ label: "Content Units", target: t.content_units, actual: null });
+        if (t.posts != null) kpiRows.push({ label: "Posts", target: t.posts, actual: stats.totalPosts });
+        if (t.impressions != null) kpiRows.push({ label: "Impressions", target: t.impressions, actual: stats.totalImpressions });
+        if (t.engagements != null) kpiRows.push({ label: "Engagements", target: t.engagements, actual: stats.totalEngagements });
+        if (t.engagement_rate != null) kpiRows.push({ label: "Engagement Rate", target: t.engagement_rate, actual: stats.avgEngRate, isPercent: true });
+        if (t.cpm != null || actualCpm != null) kpiRows.push({ label: "Actual CPM", target: t.cpm ?? null, actual: actualCpm, isDollar: true });
+
+        if (kpiRows.length === 0) return null;
 
         return (
           <div ref={(el) => { sectionRefs.current["kpi_targets"] = el; }} data-section="kpi_targets" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
             <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign KPI Targets</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {kpiRows.map((row) => {
-                const pctOfGoal = row.actual != null && row.target > 0 ? (row.actual / row.target) * 100 : null;
+                const pctOfGoal = row.actual != null && row.target != null && row.target > 0 ? (row.actual / row.target) * 100 : null;
                 const color = pctOfGoal == null ? "text-gray-400" : pctOfGoal >= 100 ? "text-emerald-400" : pctOfGoal >= 80 ? "text-amber-400" : "text-red-400";
                 const formatVal = (n: number | null) => {
                   if (n == null) return "\u2014";
@@ -518,8 +526,10 @@ export function CampaignRecap({
                 return (
                   <div key={row.label} className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 text-center">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">{row.label}</div>
-                    <div className="text-xs text-white/60 mb-1">Target: <span className="text-white/80 font-bold">{formatVal(row.target)}</span></div>
-                    <div className={`text-2xl font-black ${color}`}>{formatVal(row.actual)}</div>
+                    {row.target != null && (
+                      <div className="text-xs text-white/60 mb-1">Target: <span className="text-white/80 font-bold">{formatVal(row.target)}</span></div>
+                    )}
+                    <div className={`text-2xl font-black ${row.target != null ? color : "text-white"}`}>{formatVal(row.actual)}</div>
                     {pctOfGoal != null && (
                       <div className={`text-[10px] font-bold mt-1 ${color}`}>{Math.round(pctOfGoal)}% of goal</div>
                     )}
