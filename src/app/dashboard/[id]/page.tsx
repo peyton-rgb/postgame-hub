@@ -925,6 +925,8 @@ export default function CampaignEditor() {
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
+        budget: budget === "" ? undefined : budget,
+        total_impressions: totalImpressions === "" ? undefined : totalImpressions,
       };
       const { data } = await supabase
         .from("campaign_recaps")
@@ -1013,6 +1015,8 @@ export default function CampaignEditor() {
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
+        budget: budget === "" ? undefined : budget,
+        total_impressions: totalImpressions === "" ? undefined : totalImpressions,
       };
       const { data: updatedCamp } = await supabase
         .from("campaign_recaps")
@@ -1400,6 +1404,8 @@ export default function CampaignEditor() {
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
+        budget: budget === "" ? undefined : budget,
+        total_impressions: totalImpressions === "" ? undefined : totalImpressions,
       },
     };
     return (
