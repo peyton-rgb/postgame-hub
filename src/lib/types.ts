@@ -182,6 +182,8 @@ export interface AthleteMetrics {
     cost_per_post?: number;
     cost_per_athlete?: number;
   };
+  campaign_tag?: string;
+  headshot_url?: string;
 }
 
 export interface Athlete {

@@ -111,6 +111,228 @@ function generateDescription(campaignName: string, clientName: string, parsed: P
   return { description: line1 + line2, platform: platformStr, tags: autoTags };
 }
 
+// ── Top 50 Roster Editor (inline) ────────────────────────────
+
+function Top50RosterEditor({
+  athletes,
+  setAthletes,
+  campaignId,
+  supabase,
+  uploadFile,
+  convertHeicIfNeeded,
+}: {
+  athletes: Athlete[];
+  setAthletes: React.Dispatch<React.SetStateAction<Athlete[]>>;
+  campaignId: string;
+  supabase: ReturnType<typeof createBrowserSupabase>;
+  uploadFile: (file: File, path: string) => Promise<string | null>;
+  convertHeicIfNeeded: (file: File) => Promise<File>;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  async function updateAthleteField(athleteId: string, field: string, value: any) {
+    setAthletes((prev) =>
+      prev.map((a) => {
+        if (a.id !== athleteId) return a;
+        if (field === "campaign_tag") {
+          return { ...a, metrics: { ...a.metrics, campaign_tag: value } };
+        }
+        return { ...a, [field]: value };
+      })
+    );
+
+    // Debounced save
+    if (field === "campaign_tag") {
+      const athlete = athletes.find((a) => a.id === athleteId);
+      const newMetrics = { ...(athlete?.metrics || {}), campaign_tag: value };
+      await supabase.from("athletes").update({ metrics: newMetrics }).eq("id", athleteId);
+    } else {
+      await supabase.from("athletes").update({ [field]: value }).eq("id", athleteId);
+    }
+  }
+
+  async function handleHeadshotUpload(athleteId: string, file: File) {
+    const converted = await convertHeicIfNeeded(file);
+    const path = `${campaignId}/${athleteId}/headshot-${Date.now()}-${converted.name}`;
+    const url = await uploadFile(converted, path);
+    if (!url) return;
+    const athlete = athletes.find((a) => a.id === athleteId);
+    const newMetrics = { ...(athlete?.metrics || {}), headshot_url: url };
+    await supabase.from("athletes").update({ metrics: newMetrics }).eq("id", athleteId);
+    setAthletes((prev) =>
+      prev.map((a) => (a.id === athleteId ? { ...a, metrics: newMetrics } : a))
+    );
+  }
+
+  async function addAthlete() {
+    setSaving(true);
+    const { data } = await supabase
+      .from("athletes")
+      .insert({
+        campaign_id: campaignId,
+        name: "",
+        school: "",
+        sport: "",
+        post_type: "IG Feed",
+        sort_order: athletes.length,
+        metrics: {},
+      })
+      .select()
+      .single();
+    if (data) setAthletes((prev) => [...prev, data]);
+    setSaving(false);
+  }
+
+  async function removeAthlete(athleteId: string) {
+    await supabase.from("athletes").delete().eq("id", athleteId);
+    setAthletes((prev) => prev.filter((a) => a.id !== athleteId));
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-black uppercase tracking-wider">Top 50 Roster</h3>
+        <span className="text-xs text-gray-500">{athletes.length} athletes</span>
+      </div>
+
+      {/* Header row */}
+      <div className="grid grid-cols-[40px_48px_1.5fr_1fr_0.8fr_1.2fr_1fr_80px_40px] gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-800">
+        <div>#</div>
+        <div>Photo</div>
+        <div>Name</div>
+        <div>School</div>
+        <div>Sport</div>
+        <div>Notes</div>
+        <div>Tag</div>
+        <div>Post</div>
+        <div></div>
+      </div>
+
+      {athletes.map((a, idx) => {
+        const headshotUrl = a.metrics?.headshot_url;
+        const postUrl = a.metrics?.ig_feed?.post_url || a.metrics?.ig_reel?.post_url || a.post_url;
+
+        return (
+          <div
+            key={a.id}
+            className="grid grid-cols-[40px_48px_1.5fr_1fr_0.8fr_1.2fr_1fr_80px_40px] gap-2 px-3 py-2 items-center bg-[#111] border border-gray-800/50 rounded-lg hover:border-gray-700 transition-colors"
+          >
+            {/* Rank */}
+            <div className="text-sm font-black text-gray-500 text-center">{idx + 1}</div>
+
+            {/* Headshot */}
+            <div
+              className="w-10 h-10 rounded-lg overflow-hidden bg-[#1a1a1a] border border-gray-700 cursor-pointer hover:border-[#D73F09] transition-colors flex-shrink-0"
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*,.heic,.heif";
+                input.onchange = (e) => {
+                  const f = (e.target as HTMLInputElement).files?.[0];
+                  if (f) handleHeadshotUpload(a.id, f);
+                };
+                input.click();
+              }}
+            >
+              {headshotUrl ? (
+                <img src={headshotUrl} className="w-full h-full object-cover" alt="" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                </div>
+              )}
+            </div>
+
+            {/* Name + IG link */}
+            <div className="flex items-center gap-2 min-w-0">
+              <input
+                value={a.name}
+                onChange={(e) => updateAthleteField(a.id, "name", e.target.value)}
+                className="flex-1 bg-transparent text-sm font-bold text-white outline-none truncate placeholder-gray-600"
+                placeholder="Athlete name"
+              />
+              {a.ig_handle && (
+                <a
+                  href={`https://instagram.com/${a.ig_handle.replace("@", "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 text-[#D73F09] hover:text-[#ff5722] transition-colors"
+                  title={`@${a.ig_handle.replace("@", "")}`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                  </svg>
+                </a>
+              )}
+            </div>
+
+            {/* School */}
+            <input
+              value={a.school}
+              onChange={(e) => updateAthleteField(a.id, "school", e.target.value)}
+              className="bg-transparent text-sm text-gray-300 outline-none truncate placeholder-gray-600"
+              placeholder="School"
+            />
+
+            {/* Sport */}
+            <input
+              value={a.sport}
+              onChange={(e) => updateAthleteField(a.id, "sport", e.target.value)}
+              className="bg-transparent text-sm text-gray-300 outline-none truncate placeholder-gray-600"
+              placeholder="Sport"
+            />
+
+            {/* Notes */}
+            <input
+              value={a.notes || ""}
+              onChange={(e) => updateAthleteField(a.id, "notes", e.target.value)}
+              className="bg-transparent text-sm text-gray-400 outline-none truncate placeholder-gray-600"
+              placeholder="Notes..."
+            />
+
+            {/* Campaign Tag */}
+            <input
+              value={a.metrics?.campaign_tag || ""}
+              onChange={(e) => updateAthleteField(a.id, "campaign_tag", e.target.value)}
+              className="bg-transparent text-sm text-[#D73F09] outline-none truncate placeholder-gray-600"
+              placeholder="e.g. CVS Top 50"
+            />
+
+            {/* View Post */}
+            <div className="text-center">
+              {postUrl ? (
+                <a href={postUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#D73F09] hover:underline font-bold">
+                  View →
+                </a>
+              ) : (
+                <span className="text-xs text-gray-700">—</span>
+              )}
+            </div>
+
+            {/* Remove */}
+            <button
+              onClick={() => removeAthlete(a.id)}
+              className="w-6 h-6 rounded flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              title="Remove athlete"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        );
+      })}
+
+      {/* Add athlete button */}
+      <button
+        onClick={addAthlete}
+        disabled={saving}
+        className="w-full py-3 border-2 border-dashed border-gray-700 rounded-lg text-sm font-bold text-gray-500 hover:text-white hover:border-gray-500 transition-colors mt-2 disabled:opacity-50"
+      >
+        + Add Athlete
+      </button>
+    </div>
+  );
+}
+
 export default function CampaignEditor() {
   const params = useParams();
   const id = params.id as string;
@@ -1075,19 +1297,30 @@ export default function CampaignEditor() {
               </div>
             )}
 
-            <MetricsSpreadsheet
-              athletes={athletes}
-              campaignId={id}
-              onSave={saveMetrics}
-              saving={savingMetrics}
-              hiddenColumns={campaign?.settings?.hidden_columns || []}
-              onHiddenColumnsChange={async (cols) => {
-                if (!campaign) return;
-                const newSettings = { ...campaign.settings, hidden_columns: cols };
-                await supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", campaign.id);
-                setCampaign({ ...campaign, settings: newSettings });
-              }}
-            />
+            {campaignType === "top_50" ? (
+              <Top50RosterEditor
+                athletes={athletes}
+                setAthletes={setAthletes}
+                campaignId={id}
+                supabase={supabase}
+                uploadFile={uploadFile}
+                convertHeicIfNeeded={convertHeicIfNeeded}
+              />
+            ) : (
+              <MetricsSpreadsheet
+                athletes={athletes}
+                campaignId={id}
+                onSave={saveMetrics}
+                saving={savingMetrics}
+                hiddenColumns={campaign?.settings?.hidden_columns || []}
+                onHiddenColumnsChange={async (cols) => {
+                  if (!campaign) return;
+                  const newSettings = { ...campaign.settings, hidden_columns: cols };
+                  await supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", campaign.id);
+                  setCampaign({ ...campaign, settings: newSettings });
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -1341,47 +1574,92 @@ export default function CampaignEditor() {
                     .filter((a: any) => a.is_featured)
                     .sort((a: any, b: any) => (a.featured_order || 0) - (b.featured_order || 0))
                     .map((a: any, idx: number) => (
-                      <div key={a.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#D73F09]/10 border border-[#D73F09]/30">
-                        <span className="text-lg font-black text-[#D73F09] w-8 text-center">#{idx + 1}</span>
-                        <SchoolBadge school={a.school} size={32} />
-                        <div className="flex-1">
-                          <div className="text-sm font-black uppercase">{a.name}</div>
-                          <div className="text-xs text-gray-500">{a.school} · {a.sport}</div>
+                      <div key={a.id} className="rounded-lg bg-[#D73F09]/10 border border-[#D73F09]/30 overflow-hidden">
+                        <div className="flex items-center gap-3 p-3">
+                          <span className="text-lg font-black text-[#D73F09] w-8 text-center">#{idx + 1}</span>
+                          <SchoolBadge school={a.school} size={32} />
+                          <div className="flex-1">
+                            <div className="text-sm font-black uppercase">{a.name}</div>
+                            <div className="text-xs text-gray-500">{a.school} · {a.sport}</div>
+                          </div>
+                          {/* Move up/down */}
+                          <button
+                            className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10"
+                            onClick={async () => {
+                              if (idx === 0) return;
+                              const featured = athletes.filter((x: any) => x.is_featured).sort((x: any, y: any) => (x.featured_order || 0) - (y.featured_order || 0));
+                              const prev = featured[idx - 1];
+                              await supabase.from("athletes").update({ featured_order: idx }).eq("id", a.id);
+                              await supabase.from("athletes").update({ featured_order: idx + 1 }).eq("id", prev.id);
+                              setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, featured_order: idx } : x.id === prev.id ? { ...x, featured_order: idx + 1 } : x));
+                            }}>
+                            ▲
+                          </button>
+                          <button
+                            className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10"
+                            onClick={async () => {
+                              const featured = athletes.filter((x: any) => x.is_featured).sort((x: any, y: any) => (x.featured_order || 0) - (y.featured_order || 0));
+                              if (idx >= featured.length - 1) return;
+                              const next = featured[idx + 1];
+                              await supabase.from("athletes").update({ featured_order: idx + 2 }).eq("id", a.id);
+                              await supabase.from("athletes").update({ featured_order: idx + 1 }).eq("id", next.id);
+                              setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, featured_order: idx + 2 } : x.id === next.id ? { ...x, featured_order: idx + 1 } : x));
+                            }}>
+                            ▼
+                          </button>
+                          {/* Remove from featured */}
+                          <button
+                            className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-white/5 hover:bg-red-500/10"
+                            onClick={async () => {
+                              await supabase.from("athletes").update({ is_featured: false, featured_order: 0 }).eq("id", a.id);
+                              setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, is_featured: false, featured_order: 0 } : x));
+                            }}>
+                            ✕ Remove
+                          </button>
                         </div>
-                        {/* Move up/down */}
-                        <button
-                          className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10"
-                          onClick={async () => {
-                            if (idx === 0) return;
-                            const featured = athletes.filter((x: any) => x.is_featured).sort((x: any, y: any) => (x.featured_order || 0) - (y.featured_order || 0));
-                            const prev = featured[idx - 1];
-                            await supabase.from("athletes").update({ featured_order: idx }).eq("id", a.id);
-                            await supabase.from("athletes").update({ featured_order: idx + 1 }).eq("id", prev.id);
-                            setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, featured_order: idx } : x.id === prev.id ? { ...x, featured_order: idx + 1 } : x));
-                          }}>
-                          ▲
-                        </button>
-                        <button
-                          className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10"
-                          onClick={async () => {
-                            const featured = athletes.filter((x: any) => x.is_featured).sort((x: any, y: any) => (x.featured_order || 0) - (y.featured_order || 0));
-                            if (idx >= featured.length - 1) return;
-                            const next = featured[idx + 1];
-                            await supabase.from("athletes").update({ featured_order: idx + 2 }).eq("id", a.id);
-                            await supabase.from("athletes").update({ featured_order: idx + 1 }).eq("id", next.id);
-                            setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, featured_order: idx + 2 } : x.id === next.id ? { ...x, featured_order: idx + 1 } : x));
-                          }}>
-                          ▼
-                        </button>
-                        {/* Remove from featured */}
-                        <button
-                          className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-white/5 hover:bg-red-500/10"
-                          onClick={async () => {
-                            await supabase.from("athletes").update({ is_featured: false, featured_order: 0 }).eq("id", a.id);
-                            setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, is_featured: false, featured_order: 0 } : x));
-                          }}>
-                          ✕ Remove
-                        </button>
+
+                        {/* Content upload zone for featured athletes */}
+                        <div className="px-3 pb-3 pt-1 border-t border-[#D73F09]/15">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#D73F09]/60">Featured Content</span>
+                            <span className="text-[10px] text-gray-600">{(media[a.id] || []).length} files</span>
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            {(media[a.id] || []).map((m: Media) => {
+                              const src = m.thumbnail_url || (m.type === "image" ? m.file_url : null);
+                              return (
+                                <div key={m.id} className="relative group/ft w-14 h-14 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
+                                  {src ? (
+                                    <img src={supabaseImageUrl(src, 100) ?? src} className="w-full h-full object-cover" alt="" />
+                                  ) : (
+                                    <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => removeMedia(a.id, m.id)}
+                                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/80 text-white text-[8px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover/ft:opacity-100 transition-opacity z-10"
+                                  >×</button>
+                                </div>
+                              );
+                            })}
+                            <div
+                              onClick={() => {
+                                const input = document.createElement("input");
+                                input.type = "file";
+                                input.accept = "image/*,video/*,.heic,.heif";
+                                input.multiple = true;
+                                input.onchange = (ev) => handleFiles(a.id, (ev.target as HTMLInputElement).files);
+                                input.click();
+                              }}
+                              onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
+                              onDragOver={(e) => e.preventDefault()}
+                              className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-700 hover:border-[#D73F09] flex items-center justify-center cursor-pointer transition-colors flex-shrink-0"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   {athletes.filter((a: any) => a.is_featured).length === 0 && (

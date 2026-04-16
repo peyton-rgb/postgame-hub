@@ -43,10 +43,12 @@ function FeaturedCard({
   athlete,
   rank,
   items,
+  campaign,
 }: {
   athlete: Athlete;
   rank: number;
   items: Media[];
+  campaign: Campaign;
 }) {
   const color = getSchoolColor(athlete.school);
   const firstMedia = items[0];
@@ -89,7 +91,7 @@ function FeaturedCard({
         <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
           {/* Logo + sport row */}
           <div className="flex items-center gap-2 mb-2.5">
-            <div className="brightness-0 invert opacity-60">
+            <div>
               <SchoolLogo school={athlete.school} size={28} />
             </div>
             <span className="px-2.5 py-1 bg-brand/20 text-brand rounded text-[11px] font-extrabold uppercase tracking-wider">
@@ -113,7 +115,7 @@ function FeaturedCard({
               </span>
             ) : null}
             <span className="px-2.5 py-1 bg-white/[0.06] border border-white/[0.08] rounded text-[10px] font-bold text-white/45">
-              CVS Top 50
+              {athlete.metrics?.campaign_tag || `${campaign.client_name} Top 50`}
             </span>
           </div>
 
@@ -156,10 +158,12 @@ function RosterCard({
   athlete,
   rank,
   items,
+  campaign,
 }: {
   athlete: Athlete;
   rank: number;
   items: Media[];
+  campaign: Campaign;
 }) {
   const color = getSchoolColor(athlete.school);
   const firstMedia = items[0];
@@ -215,7 +219,7 @@ function RosterCard({
       <div className="flex-1 min-w-0 hidden md:block">
         <p className="text-lg text-white/35 leading-relaxed line-clamp-2">{athlete.notes || "Elite collegiate athlete and brand partner."}</p>
         <div className="flex gap-1 mt-2">
-          <span className="px-3 py-1 bg-white/[0.05] border border-white/[0.06] rounded text-sm font-bold text-white/40">CVS Top 50</span>
+          <span className="px-3 py-1 bg-white/[0.05] border border-white/[0.06] rounded text-sm font-bold text-white/40">{athlete.metrics?.campaign_tag || `${campaign.client_name} Top 50`}</span>
         </div>
       </div>
 
@@ -411,7 +415,7 @@ export function Top50Recap({
           <div className="text-base font-extrabold uppercase tracking-[3px] text-white/25 mb-4">Featured Athletes</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5" style={{ gridTemplateColumns: filteredTop3.length >= 3 ? "1.3fr 1fr 1fr" : undefined }}>
             {filteredTop3.map((a, i) => (
-              <FeaturedCard key={a.id} athlete={a} rank={i + 1} items={media[a.id] || []} />
+              <FeaturedCard key={a.id} athlete={a} rank={i + 1} items={media[a.id] || []} campaign={campaign} />
             ))}
           </div>
         </div>
@@ -425,7 +429,7 @@ export function Top50Recap({
         <div className="text-base font-extrabold uppercase tracking-[3px] text-white/25 mb-4">Full Roster</div>
         <div className="flex flex-col gap-1">
           {filteredRest.map((a, i) => (
-            <RosterCard key={a.id} athlete={a} rank={i + 4} items={media[a.id] || []} />
+            <RosterCard key={a.id} athlete={a} rank={i + 4} items={media[a.id] || []} campaign={campaign} />
           ))}
         </div>
         {filteredRest.length === 0 && (
