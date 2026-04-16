@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     // Build the inspo_items row — explicit fields win over parsed filename
     const row: Record<string, unknown> = {
       file_url: body.file_url,
-      source: "produced",
+      source: "produced_catalog",
       tagging_status: "pending",
       triage_status: "pending",
       format: parsed.format ?? null,
