@@ -22,14 +22,27 @@ const SPORT_PATHS: Record<string, string> = {
   nfl: "nfl",
 };
 
+// Sports where ESPN has no women's headshots — skip fallback searches
+const NO_WOMENS_HEADSHOTS = new Set([
+  "gymnastics", "rowing", "swimming", "diving", "swimming & diving",
+  "swimming and diving", "tennis", "golf", "lacrosse", "field hockey",
+  "water polo", "beach volleyball", "equestrian", "fencing", "rifle",
+  "skiing", "bowling", "ice hockey",
+]);
+
+function isFemaleGender(gender?: string): boolean {
+  if (!gender) return false;
+  const g = gender.toLowerCase().trim();
+  return g === "female" || g === "f" || g === "women" || g === "woman" || g === "w";
+}
+
 function getSportPath(sport: string, gender?: string): string {
   const lower = sport.toLowerCase().trim();
   const match = SPORT_PATHS[lower];
   if (match) return match;
 
-  // If gender is provided, use it to disambiguate
-  const isFemale = gender?.toLowerCase() === "female" || gender?.toLowerCase() === "f" || gender?.toLowerCase() === "women";
-  if (isFemale) {
+  const female = isFemaleGender(gender);
+  if (female) {
     if (lower.includes("basketball")) return "womens-college-basketball";
     if (lower.includes("soccer")) return "womens-college-soccer";
     if (lower.includes("volleyball")) return "womens-college-volleyball";
@@ -47,38 +60,63 @@ function getSportPath(sport: string, gender?: string): string {
   return "college-football";
 }
 
-// Get alternate sport paths to try when the primary doesn't work
-function getAlternateSportPaths(sport: string, gender?: string): string[] {
-  const primary = getSportPath(sport, gender);
-  const alts: string[] = [];
+// Return sport paths in priority order based on gender.
+// Female athletes: women's path first, men's path only as last resort.
+// Male/unknown: men's path first, women's as fallback for ambiguous sports.
+function getGenderedSportPaths(sport: string, gender?: string): string[] {
   const lower = sport.toLowerCase().trim();
-  const isFemale = gender?.toLowerCase() === "female" || gender?.toLowerCase() === "f" || gender?.toLowerCase() === "women";
+  const female = isFemaleGender(gender);
+  const paths: string[] = [];
+  const seen = new Set<string>();
+  const add = (p: string) => { if (!seen.has(p)) { seen.add(p); paths.push(p); } };
 
-  if (lower.includes("basketball") && !gender) {
-    // Try both genders if not specified
-    if (primary !== "womens-college-basketball") alts.push("womens-college-basketball");
-    if (primary !== "mens-college-basketball") alts.push("mens-college-basketball");
-  }
-  if (lower.includes("soccer")) {
-    if (primary !== "womens-college-soccer") alts.push("womens-college-soccer");
-    if (primary !== "mens-college-soccer") alts.push("mens-college-soccer");
-  }
-  if (lower.includes("softball") && primary !== "college-softball") {
-    alts.push("college-softball");
-  }
-  if ((lower.includes("track") || lower.includes("field")) && primary !== "cross-country-track-and-field") {
-    alts.push("cross-country-track-and-field");
-  }
-  if (lower.includes("baseball") && primary !== "college-baseball") {
-    alts.push("college-baseball");
+  if (female) {
+    // Women's paths first
+    if (lower.includes("basketball")) { add("womens-college-basketball"); add("mens-college-basketball"); }
+    else if (lower.includes("softball")) { add("college-softball"); }
+    else if (lower.includes("soccer")) { add("womens-college-soccer"); add("mens-college-soccer"); }
+    else if (lower.includes("volleyball")) { add("womens-college-volleyball"); }
+    else if (lower.includes("track") || lower.includes("field") || lower.includes("cross country")) { add("cross-country-track-and-field"); }
+    else if (lower.includes("baseball")) { add("college-baseball"); }
+    else if (lower.includes("football")) { add("college-football"); }
+    else {
+      // Unknown women's sport — try common women's paths
+      add("womens-college-basketball");
+      add("college-softball");
+      add("womens-college-soccer");
+      add("womens-college-volleyball");
+    }
+  } else {
+    // Men's / unknown gender paths first
+    if (lower.includes("basketball")) {
+      add("mens-college-basketball");
+      if (!gender) add("womens-college-basketball"); // try women's if gender unknown
+    }
+    else if (lower.includes("football")) { add("college-football"); }
+    else if (lower.includes("baseball")) { add("college-baseball"); }
+    else if (lower.includes("softball")) { add("college-softball"); }
+    else if (lower.includes("soccer")) {
+      add("mens-college-soccer");
+      if (!gender) add("womens-college-soccer");
+    }
+    else if (lower.includes("volleyball")) { add("womens-college-volleyball"); }
+    else if (lower.includes("track") || lower.includes("field") || lower.includes("cross country")) { add("cross-country-track-and-field"); }
+    else {
+      // Unknown sport — try the most common paths
+      add("college-football");
+      add("mens-college-basketball");
+    }
+
+    // Football as last-resort for everyone
+    add("college-football");
   }
 
-  // Always try football as a last-resort alternate if it wasn't primary
-  if (primary !== "college-football" && !alts.includes("college-football")) {
-    alts.push("college-football");
-  }
+  return paths;
+}
 
-  return alts;
+// Classify a sport path as men's or women's
+function isMensPath(path: string): boolean {
+  return path.startsWith("mens-") || path === "college-football" || path === "college-baseball" || path === "nfl";
 }
 
 function normalize(s: string): string {
@@ -190,6 +228,24 @@ async function tryHeadshotUrl(athleteId: string, sportPath: string): Promise<str
   return null;
 }
 
+// Try all gendered sport paths for an athlete ID.
+// For female athletes, require a high similarity score to accept a mens-path result.
+async function tryAllPaths(
+  athleteId: string,
+  score: number,
+  sportPaths: string[],
+  female: boolean
+): Promise<string | null> {
+  for (const path of sportPaths) {
+    // If female athlete and this is a men's path, only accept with high confidence
+    if (female && isMensPath(path) && score < 0.85) continue;
+
+    const url = await tryHeadshotUrl(athleteId, path);
+    if (url) return url;
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const name = searchParams.get("name")?.trim();
@@ -201,22 +257,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ url: null, error: "name is required" }, { status: 400 });
   }
 
+  const female = isFemaleGender(gender);
+
+  // For sports where ESPN has no women's headshots, bail early
+  if (female && NO_WOMENS_HEADSHOTS.has(sport.toLowerCase().trim())) {
+    return NextResponse.json({ url: null });
+  }
+
   const nameParts = name.split(/\s+/);
   const lastName = nameParts[nameParts.length - 1];
-  const primarySportPath = getSportPath(sport, gender);
+  const sportPaths = getGenderedSportPaths(sport, gender);
 
   try {
     // ── Attempt 1: Full name search ──────────────────────────
     const result1 = await searchEspn(name, name, 0.5);
     if (result1) {
-      const url = await tryHeadshotUrl(result1.athleteId, primarySportPath);
+      const url = await tryAllPaths(result1.athleteId, result1.score, sportPaths, female);
       if (url) return NextResponse.json({ url });
-
-      // Try alternate sport paths with the same athlete ID
-      for (const altPath of getAlternateSportPaths(sport, gender)) {
-        const url = await tryHeadshotUrl(result1.athleteId, altPath);
-        if (url) return NextResponse.json({ url });
-      }
     }
 
     // ── Attempt 2: Last name + school search ─────────────────
@@ -224,13 +281,8 @@ export async function GET(req: NextRequest) {
       const fallbackQuery = `${lastName} ${school}`;
       const result2 = await searchEspn(fallbackQuery, name, 0.5);
       if (result2) {
-        const url = await tryHeadshotUrl(result2.athleteId, primarySportPath);
+        const url = await tryAllPaths(result2.athleteId, result2.score, sportPaths, female);
         if (url) return NextResponse.json({ url });
-
-        for (const altPath of getAlternateSportPaths(sport, gender)) {
-          const url = await tryHeadshotUrl(result2.athleteId, altPath);
-          if (url) return NextResponse.json({ url });
-        }
       }
     }
 
@@ -238,13 +290,8 @@ export async function GET(req: NextRequest) {
     if (lastName && lastName.length >= 3 && lastName.toLowerCase() !== name.toLowerCase()) {
       const result3 = await searchEspn(lastName, name, 0.6);
       if (result3) {
-        const url = await tryHeadshotUrl(result3.athleteId, primarySportPath);
+        const url = await tryAllPaths(result3.athleteId, result3.score, sportPaths, female);
         if (url) return NextResponse.json({ url });
-
-        for (const altPath of getAlternateSportPaths(sport, gender)) {
-          const url = await tryHeadshotUrl(result3.athleteId, altPath);
-          if (url) return NextResponse.json({ url });
-        }
       }
     }
 
