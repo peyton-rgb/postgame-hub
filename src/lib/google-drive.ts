@@ -78,7 +78,7 @@ async function listSubfolders(
       q: `'${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
-      corpora: "user,allDrives",
+      corpora: "allDrives",
       fields: "nextPageToken, files(id, name)",
       pageSize: 100,
       orderBy: "name",
@@ -112,7 +112,7 @@ async function listMediaFilesInFolder(
       q: `'${folderId}' in parents and trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')`,
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
-      corpora: "user,allDrives",
+      corpora: "allDrives",
       fields:
         "nextPageToken, files(id, name, mimeType, size, thumbnailLink, webViewLink, webContentLink, createdTime)",
       pageSize: 100,
