@@ -24,6 +24,11 @@ const SCHOOL_COLORS: Record<string, string> = {
   "LSU / Mariners": "#461D7C", "FSU / Athletics": "#782F40", "Wake Forrest / Twins": "#9E7E38",
   "Oklahoma / Red Sox": "#841617", "Arizona / Rays": "#CC0033", "Alabama / Twins": "#9E1B32",
   "Oregon / Reds": "#154733", "Notre Dame / TCU": "#0C2340",
+  // Additional college teams
+  Kentucky: "#0033A0", "Michigan State": "#18453B", "Penn State": "#041E42",
+  Stanford: "#8C1515", Tennessee: "#FF8200", Virginia: "#232D4B", Virgina: "#232D4B",
+  // Pro teams
+  "Chicago Bears": "#0B162A",
 };
 
 const ABBREVS: Record<string, string> = {
@@ -40,6 +45,11 @@ const ABBREVS: Record<string, string> = {
   "Florida International University": "FIU", "Indiana University": "IU",
   "University of Louisville": "UL", "North Carolina State University": "NCS",
   "University of Deleware": "DEL", "Jackson State University": "JSU",
+  // Additional college teams
+  Kentucky: "UK", "Michigan State": "MSU", "Penn State": "PSU",
+  Stanford: "STAN", Tennessee: "TENN", Virginia: "UVA", Virgina: "UVA",
+  // Pro teams
+  "Chicago Bears": "CHI",
 };
 
 // ESPN team IDs for logo CDN
@@ -59,6 +69,9 @@ const ESPN_IDS: Record<string, number> = {
   "LSU / Mariners": 99, "FSU / Athletics": 52, "Wake Forrest / Twins": 154,
   "Oklahoma / Red Sox": 201, "Arizona / Rays": 12, "Alabama / Twins": 333,
   "Oregon / Reds": 2483, "Notre Dame / TCU": 87,
+  // Additional college teams
+  Kentucky: 96, "Michigan State": 127, "Penn State": 213,
+  Stanford: 24, Tennessee: 2633, Virginia: 258, Virgina: 258,
 };
 
 const FULL_NAMES: Record<string, string> = {
@@ -86,9 +99,23 @@ const FULL_NAMES: Record<string, string> = {
   "Wake Forrest / Twins": "Wake Forest University", "Oklahoma / Red Sox": "University of Oklahoma",
   "Arizona / Rays": "University of Arizona", "Alabama / Twins": "University of Alabama",
   "Oregon / Reds": "University of Oregon", "Notre Dame / TCU": "University of Notre Dame",
+  // Additional college teams
+  Kentucky: "University of Kentucky", "Michigan State": "Michigan State University",
+  "Penn State": "Penn State University", Stanford: "Stanford University",
+  Tennessee: "University of Tennessee", Virginia: "University of Virginia",
+  Virgina: "University of Virginia",
+  // Pro teams
+  "Chicago Bears": "Chicago Bears",
+};
+
+// ESPN NFL team IDs for pro logo CDN
+const NFL_IDS: Record<string, string> = {
+  "Chicago Bears": "chi",
 };
 
 export function getSchoolLogo(school: string): string | null {
+  const nflId = NFL_IDS[school];
+  if (nflId) return `https://a.espncdn.com/i/teamlogos/nfl/500/${nflId}.png`;
   const id = ESPN_IDS[school];
   return id ? `https://a.espncdn.com/i/teamlogos/ncaa/500/${id}.png` : null;
 }
