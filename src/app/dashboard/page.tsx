@@ -81,6 +81,15 @@ function DashboardContent() {
               Media Library
             </Link>
             <Link
+              href="/dashboard/inspo"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+              </svg>
+              Inspo Library
+            </Link>
+            <Link
               href="/dashboard/website"
               className="flex items-center gap-2 px-5 py-2 text-sm font-black text-[#D73F09] border-2 border-[#D73F09] hover:bg-[#D73F09] hover:text-white rounded-lg transition-colors"
             >
