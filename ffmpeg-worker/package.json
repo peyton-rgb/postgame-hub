@@ -1,0 +1,12 @@
+{
+  "name": "postgame-ffmpeg-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "fluent-ffmpeg": "^2.1.3"
+  }
+}
