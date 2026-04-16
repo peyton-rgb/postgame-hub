@@ -157,14 +157,19 @@ function Top50RosterEditor({
       };
       const iRank = colIndex(["rank", "#"]);
       const iName = colIndex(["name", "athlete name", "athlete"]);
+      const iFirstName = colIndex(["first name", "first_name", "firstname"]);
+      const iLastName = colIndex(["last name", "last_name", "lastname"]);
       const iSchool = colIndex(["school", "university"]);
       const iSport = colIndex(["sport"]);
-      const iHandle = colIndex(["ig handle", "ig_handle", "handle", "instagram"]);
+      const iHandle = colIndex(["ig handle", "ig_handle", "handle", "instagram", "instagram profile"]);
       const iFollowers = colIndex(["ig followers", "ig_followers", "followers"]);
       const iNotes = colIndex(["notes", "bio"]);
-      const iTag = colIndex(["campaign tag", "campaign_tag", "tag"]);
-      const iPostUrl = colIndex(["post url", "post_url", "url"]);
+      const iTag = colIndex(["campaign tag", "campaign_tag", "tag", "campaign participated in", "campaign"]);
+      const iPostUrl = colIndex(["post url", "post_url", "url", "ig feed url", "ig_feed_url"]);
+      const iReelUrl = colIndex(["ig reel url", "ig_reel_url"]);
       const iFeatured = colIndex(["featured"]);
+      const iContentFolder = colIndex(["content folder", "content_folder", "content folder url", "content_folder_url"]);
+      const iGender = colIndex(["gender"]);
 
       // Parse CSV rows (handles quoted fields with commas)
       const parseCsvRow = (line: string): string[] => {
@@ -194,31 +199,57 @@ function Top50RosterEditor({
         await supabase.from("athletes").delete().in("id", existingIds);
       }
 
+      // Extract IG handle from a value that might be a full URL or @handle
+      const extractIgHandle = (raw: string): string => {
+        if (!raw) return "";
+        // Full URL: https://www.instagram.com/alexkaraban_/?hl=en → alexkaraban_
+        const urlMatch = raw.match(/instagram\.com\/([^/?#]+)/i);
+        if (urlMatch) return urlMatch[1];
+        // Strip leading @
+        return raw.replace(/^@/, "").trim();
+      };
+
       const toInsert: Record<string, unknown>[] = [];
       for (let i = 1; i < lines.length; i++) {
         const cols = parseCsvRow(lines[i]);
-        const name = iName !== -1 ? cols[iName] || "" : "";
+
+        // Build name: prefer single "Name" column, fall back to First+Last
+        let name = iName !== -1 ? cols[iName] || "" : "";
+        if (!name && iFirstName !== -1) {
+          const first = cols[iFirstName]?.trim() || "";
+          const last = iLastName !== -1 ? cols[iLastName]?.trim() || "" : "";
+          name = (first + " " + last).trim();
+        }
         if (!name) continue;
 
         const rank = iRank !== -1 ? parseInt(cols[iRank]) || i : i;
         const school = iSchool !== -1 ? cols[iSchool] || "" : "";
         const sport = iSport !== -1 ? cols[iSport] || "" : "";
-        const igHandle = iHandle !== -1 ? cols[iHandle]?.replace(/^@/, "") || "" : "";
+        const igHandle = iHandle !== -1 ? extractIgHandle(cols[iHandle] || "") : "";
         const igFollowers = iFollowers !== -1 ? parseInt(cols[iFollowers]?.replace(/[^0-9]/g, "")) || 0 : 0;
         const notes = iNotes !== -1 ? cols[iNotes] || "" : "";
         const campaignTag = iTag !== -1 ? cols[iTag] || "" : "";
-        const postUrl = iPostUrl !== -1 ? cols[iPostUrl] || "" : "";
+        const gender = iGender !== -1 ? cols[iGender] || "" : "";
+        const contentFolder = iContentFolder !== -1 ? cols[iContentFolder] || "" : "";
         const featured = iFeatured !== -1 ? cols[iFeatured]?.toLowerCase() === "yes" : false;
+
+        // Post URL: prefer feed URL, fall back to reel URL
+        let postUrl = iPostUrl !== -1 ? cols[iPostUrl] || "" : "";
+        const reelUrl = iReelUrl !== -1 ? cols[iReelUrl] || "" : "";
+        if (!postUrl && reelUrl) postUrl = reelUrl;
 
         const metrics: Record<string, unknown> = {};
         if (campaignTag) metrics.campaign_tag = campaignTag;
+        if (contentFolder) metrics.content_folder_url = contentFolder;
         if (postUrl) metrics.ig_feed = { post_url: postUrl };
+        if (reelUrl) metrics.ig_reel = { post_url: reelUrl };
 
         toInsert.push({
           campaign_id: campaignId,
           name,
           school,
           sport,
+          gender,
           ig_handle: igHandle,
           ig_followers: igFollowers,
           notes,

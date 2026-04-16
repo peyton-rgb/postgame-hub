@@ -184,6 +184,7 @@ export interface AthleteMetrics {
   };
   campaign_tag?: string;
   headshot_url?: string;
+  content_folder_url?: string;
 }
 
 export interface Athlete {
