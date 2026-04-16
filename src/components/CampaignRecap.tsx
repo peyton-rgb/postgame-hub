@@ -508,7 +508,7 @@ export function CampaignRecap({
         if (t.engagements != null) kpiRows.push({ label: "Engagements", target: t.engagements, actual: stats.totalEngagements });
         if (t.engagement_rate != null) kpiRows.push({ label: "Engagement Rate", target: t.engagement_rate, actual: stats.avgEngRate, isPercent: true });
         // Actual CPM last (auto-calculated, no target)
-        if (actualCpm != null) kpiRows.push({ label: "Actual CPM", target: null, actual: actualCpm, isDollar: true });
+        if (actualCpm != null || t.cpm != null) kpiRows.push({ label: "Actual CPM", target: t.cpm ?? null, actual: actualCpm, isDollar: true });
 
         if (kpiRows.length === 0) return null;
 
