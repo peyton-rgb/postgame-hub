@@ -67,7 +67,7 @@ function FeaturedCard({
 }) {
   const color = getSchoolColor(athlete.school);
   const firstMedia = items[0];
-  const imgSrc = firstMedia?.thumbnail_url || (firstMedia?.type === "image" ? firstMedia?.file_url : null);
+  const imgSrc = firstMedia?.thumbnail_url || (firstMedia?.type === "image" ? firstMedia?.file_url : null) || athlete.metrics?.headshot_url || null;
   const links = getSocialLinks(athlete);
 
   return (
@@ -185,7 +185,7 @@ function RosterCard({
 }) {
   const color = getSchoolColor(athlete.school);
   const firstMedia = items[0];
-  const thumbSrc = firstMedia?.thumbnail_url || (firstMedia?.type === "image" ? firstMedia?.file_url : null);
+  const thumbSrc = firstMedia?.thumbnail_url || (firstMedia?.type === "image" ? firstMedia?.file_url : null) || athlete.metrics?.headshot_url || null;
   const links = getSocialLinks(athlete);
 
   return (
