@@ -575,8 +575,8 @@ export function CampaignRecap({
                 { key: "combined_followers" as const,  value: fmt(stats.combinedFollowers),   label: "TOTAL FOLLOWERS" },
                 { key: "total_impressions" as const,   value: fmt(stats.totalImpressions),    label: "TOTAL IMPRESSIONS" },
                 { key: "total_engagements" as const,   value: fmt(stats.totalEngagements),    label: "TOTAL ENGAGEMENTS" },
-                { key: "ig_avg_engagement_rate" as const, value: pct(stats.igAvgEngRate),     label: "IG AVG ENG RATE" },
-                { key: "tiktok_avg_engagement_rate" as const, value: pct(stats.tiktokAvgEngRate), label: "TIKTOK AVG ENG RATE" },
+                ...(stats.igFeedPosts > 0 || stats.igReelPosts > 0 ? [{ key: "ig_avg_engagement_rate" as const, value: pct(stats.igAvgEngRate), label: "IG AVG ENG RATE" }] : []),
+                ...(stats.tiktokPosts > 0 ? [{ key: "tiktok_avg_engagement_rate" as const, value: pct(stats.tiktokAvgEngRate), label: "TIKTOK AVG ENG RATE" }] : []),
                 ...(stats.hasSales && show("sales") ? [{ key: null as HeroMetricOverrideKey | null, value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
               ].filter(m => m.key === null || !hiddenHeroes.includes(m.key)) as { key: HeroMetricOverrideKey | null; value: string | number; label: string }[];
 
