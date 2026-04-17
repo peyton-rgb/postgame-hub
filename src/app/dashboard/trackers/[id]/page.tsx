@@ -26,10 +26,11 @@ const HERO_METRICS: HeroMetric[] = [
   { key: "school_count",        label: "Colleges",            read: (s) => s.schoolCount,        format: (v) => v.toLocaleString() },
   { key: "sport_count",         label: "Sports",              read: (s) => s.sportCount,         format: (v) => v.toLocaleString() },
   { key: "total_posts",         label: "Total Posts",         read: (s) => s.totalPosts,         format: (v) => v.toLocaleString() },
-  { key: "combined_followers",  label: "Combined Followers",  read: (s) => s.combinedFollowers,  format: fmt },
+  { key: "combined_followers",  label: "Total Followers",     read: (s) => s.combinedFollowers,  format: fmt },
   { key: "total_impressions",   label: "Total Impressions",   read: (s) => s.totalImpressions,   format: fmt },
   { key: "total_engagements",   label: "Total Engagements",   read: (s) => s.totalEngagements,   format: fmt },
-  { key: "avg_engagement_rate", label: "Avg Engagement Rate", read: (s) => s.avgEngRate,         format: (v) => v.toFixed(2) + "%" },
+  { key: "ig_avg_engagement_rate", label: "IG Avg Eng Rate",  read: (s) => s.igAvgEngRate,       format: (v) => v.toFixed(2) + "%" },
+  { key: "tiktok_avg_engagement_rate", label: "TikTok Avg Eng Rate", read: (s) => s.tiktokAvgEngRate, format: (v) => v.toFixed(2) + "%" },
 ];
 
 export default function TrackerEditor() {
@@ -271,7 +272,7 @@ export default function TrackerEditor() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
             {HERO_METRICS.map((metric) => {
               const displayValue = metric.read(stats);
               const calculatedValue = metric.read(calcStats);
@@ -294,6 +295,23 @@ export default function TrackerEditor() {
                       </span>
                     )}
                   </div>
+                  {editingOverrides && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = tracker.settings?.hidden_heroes || [];
+                        const isHidden = current.includes(metric.key);
+                        const updated = isHidden ? current.filter(k => k !== metric.key) : [...current, metric.key];
+                        const newSettings = { ...tracker.settings, hidden_heroes: updated };
+                        setTracker({ ...tracker, settings: newSettings });
+                        supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", tracker.id);
+                      }}
+                      className={"text-[10px] px-1.5 py-0.5 rounded border transition-colors mb-1 " + ((tracker.settings?.hidden_heroes || []).includes(metric.key) ? "border-red-500/50 text-red-400 bg-red-900/20" : "border-gray-600 text-gray-400 hover:text-white")}
+                      title={(tracker.settings?.hidden_heroes || []).includes(metric.key) ? "Hidden on recap — click to show" : "Visible on recap — click to hide"}
+                    >
+                      {(tracker.settings?.hidden_heroes || []).includes(metric.key) ? "Hidden" : "Visible"}
+                    </button>
+                  )}
                   <div className={`text-2xl font-black ${isOverridden ? "text-amber-300" : ""}`}>
                     {metric.format(displayValue)}
                   </div>

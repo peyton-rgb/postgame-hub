@@ -74,7 +74,8 @@ export type HeroMetricOverrideKey =
   | "combined_followers"
   | "total_impressions"
   | "total_engagements"
-  | "avg_engagement_rate";
+  | "ig_avg_engagement_rate"
+  | "tiktok_avg_engagement_rate";
 
 export type MetricOverrides = Partial<Record<HeroMetricOverrideKey, number | null>>;
 
@@ -105,6 +106,7 @@ export interface Campaign {
     tags?: string[];
     visible_sections?: VisibleSections;
     hidden_columns?: string[];
+    hidden_heroes?: HeroMetricOverrideKey[];
     brand_logo_url?: string;
     key_takeaways?: string;
     kpi_targets?: KpiTargets;

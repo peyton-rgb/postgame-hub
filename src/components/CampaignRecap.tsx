@@ -560,36 +560,56 @@ export function CampaignRecap({
         <div ref={(el) => { sectionRefs.current["metrics"] = el; }} data-section="metrics" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Metrics</h2>
 
-          {/* Summary row */}
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {([
-              { key: "athlete_count" as const,       value: stats.athleteCount,             label: "ATHLETES" },
-              { key: "school_count" as const,        value: stats.schoolCount,              label: "COLLEGES" },
-              { key: "sport_count" as const,         value: stats.sportCount,               label: "SPORTS" },
-              { key: "total_posts" as const,         value: stats.totalPosts,               label: "TOTAL POSTS" },
-              { key: "combined_followers" as const,  value: fmt(stats.combinedFollowers),   label: "COMBINED FOLLOWERS" },
-              { key: "total_impressions" as const,   value: fmt(stats.totalImpressions),    label: "TOTAL IMPRESSIONS" },
-              { key: "total_engagements" as const,   value: fmt(stats.totalEngagements),    label: "TOTAL ENGAGEMENTS" },
-              { key: "avg_engagement_rate" as const, value: pct(stats.avgEngRate),          label: "AVG ENGAGEMENT RATE" },
-              ...(stats.hasSales && show("sales") ? [{ key: null, value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
-            ] as { key: HeroMetricOverrideKey | null; value: string | number; label: string }[]).map((m) => {
-              const isOverridden = m.key != null && stats.overriddenKeys.has(m.key);
+          {/* Summary rows */}
+          <div className="mb-8">
+            {(() => {
+              const hiddenHeroes = settings.hidden_heroes || [];
+              const row1 = [
+                { key: "athlete_count" as const,       value: stats.athleteCount,             label: "ATHLETES" },
+                { key: "school_count" as const,        value: stats.schoolCount,              label: "COLLEGES" },
+                { key: "sport_count" as const,         value: stats.sportCount,               label: "SPORTS" },
+                { key: "total_posts" as const,         value: stats.totalPosts,               label: "TOTAL POSTS" },
+              ].filter(m => !hiddenHeroes.includes(m.key)) as { key: HeroMetricOverrideKey | null; value: string | number; label: string }[];
+
+              const row2 = [
+                { key: "combined_followers" as const,  value: fmt(stats.combinedFollowers),   label: "TOTAL FOLLOWERS" },
+                { key: "total_impressions" as const,   value: fmt(stats.totalImpressions),    label: "TOTAL IMPRESSIONS" },
+                { key: "total_engagements" as const,   value: fmt(stats.totalEngagements),    label: "TOTAL ENGAGEMENTS" },
+                { key: "ig_avg_engagement_rate" as const, value: pct(stats.igAvgEngRate),     label: "IG AVG ENG RATE" },
+                { key: "tiktok_avg_engagement_rate" as const, value: pct(stats.tiktokAvgEngRate), label: "TIKTOK AVG ENG RATE" },
+                ...(stats.hasSales && show("sales") ? [{ key: null as HeroMetricOverrideKey | null, value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
+              ].filter(m => m.key === null || !hiddenHeroes.includes(m.key)) as { key: HeroMetricOverrideKey | null; value: string | number; label: string }[];
+
+              const renderBox = (m: { key: HeroMetricOverrideKey | null; value: string | number; label: string }) => {
+                const isOverridden = m.key != null && stats.overriddenKeys.has(m.key);
+                return (
+                  <div key={m.label} className="bg-white/[0.07] border border-white/[0.15] rounded-xl p-5 md:p-8 text-center flex-1 min-w-[140px] max-w-[220px] relative">
+                    {isOverridden && (
+                      <span
+                        title="This value was manually adjusted"
+                        aria-label="manually adjusted"
+                        className="absolute top-2 right-2 text-[10px] text-amber-400/80"
+                      >
+                        ✎
+                      </span>
+                    )}
+                    <div className="text-2xl md:text-4xl font-black text-white mb-2">{m.value}</div>
+                    <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/70">{m.label}</div>
+                  </div>
+                );
+              };
+
               return (
-                <div key={m.label} className="bg-white/[0.07] border border-white/[0.15] rounded-xl p-5 md:p-8 text-center flex-1 min-w-[140px] max-w-[220px] relative">
-                  {isOverridden && (
-                    <span
-                      title="This value was manually adjusted"
-                      aria-label="manually adjusted"
-                      className="absolute top-2 right-2 text-[10px] text-amber-400/80"
-                    >
-                      ✎
-                    </span>
-                  )}
-                  <div className="text-2xl md:text-4xl font-black text-white mb-2">{m.value}</div>
-                  <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/70">{m.label}</div>
-                </div>
+                <>
+                  <div className="flex flex-wrap justify-center gap-3 mb-3">
+                    {row1.map(renderBox)}
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {row2.map(renderBox)}
+                  </div>
+                </>
               );
-            })}
+            })()}
           </div>
 
           {/* Per-platform breakdown */}

@@ -89,7 +89,9 @@ export interface ComputedStats {
   combinedFollowers: number;
   totalImpressions: number;
   totalEngagements: number;
-  avgEngRate: number; // average of platform-best rates, average across platforms
+  avgEngRate: number; // @deprecated — average of platform-best rates, average across platforms
+  igAvgEngRate: number;
+  tiktokAvgEngRate: number;
 
   // Per-platform totals (used by the Platform Breakdown section)
   igFeedPosts: number;
@@ -248,17 +250,21 @@ export function computeStats(athletes: Athlete[]): ComputedStats {
     }
   }
 
-  // ── Hero Avg Engagement Rate: average of per-platform averages ──
-  // Each platform's average = mean of best-rates across athletes who posted on it.
-  // Hero average = mean of those platform averages (only platforms that had any activity).
-  const platformAverages: number[] = [];
-  for (const p of ["ig_feed", "ig_reel", "tiktok"] as const) {
-    if (platformRateCount[p] > 0) {
-      platformAverages.push(platformRateSum[p] / platformRateCount[p]);
-    }
-  }
-  const avgEngRate = platformAverages.length > 0
-    ? platformAverages.reduce((s, r) => s + r, 0) / platformAverages.length
+  // ── Platform-specific avg engagement rates ──
+  const igPlatformAvgs: number[] = [];
+  if (platformRateCount.ig_feed > 0) igPlatformAvgs.push(platformRateSum.ig_feed / platformRateCount.ig_feed);
+  if (platformRateCount.ig_reel > 0) igPlatformAvgs.push(platformRateSum.ig_reel / platformRateCount.ig_reel);
+  const igAvgEngRate = igPlatformAvgs.length > 0
+    ? igPlatformAvgs.reduce((s, r) => s + r, 0) / igPlatformAvgs.length
+    : 0;
+  const tiktokAvgEngRate = platformRateCount.tiktok > 0
+    ? platformRateSum.tiktok / platformRateCount.tiktok
+    : 0;
+  // Legacy combined rate (deprecated, kept for backward compat)
+  const allPlatformAvgs = [...igPlatformAvgs];
+  if (platformRateCount.tiktok > 0) allPlatformAvgs.push(platformRateSum.tiktok / platformRateCount.tiktok);
+  const avgEngRate = allPlatformAvgs.length > 0
+    ? allPlatformAvgs.reduce((s, r) => s + r, 0) / allPlatformAvgs.length
     : 0;
 
   return {
@@ -270,6 +276,8 @@ export function computeStats(athletes: Athlete[]): ComputedStats {
     totalImpressions,
     totalEngagements,
     avgEngRate,
+    igAvgEngRate,
+    tiktokAvgEngRate,
     igFeedPosts, igReelPosts, tiktokPosts, totalReach,
     igFeed, igStory, igReel, tiktok,
     clicks, hasClicks, sales, hasSales,
@@ -304,7 +312,8 @@ export function applyOverrides(stats: ComputedStats, overrides?: MetricOverrides
     combined_followers: "combinedFollowers",
     total_impressions: "totalImpressions",
     total_engagements: "totalEngagements",
-    avg_engagement_rate: "avgEngRate",
+    ig_avg_engagement_rate: "igAvgEngRate",
+    tiktok_avg_engagement_rate: "tiktokAvgEngRate",
   };
 
   for (const key of Object.keys(map) as HeroMetricOverrideKey[]) {
