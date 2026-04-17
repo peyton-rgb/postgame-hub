@@ -370,7 +370,8 @@ function emptyDrafts(): Record<HeroMetricOverrideKey, string> {
     combined_followers: "",
     total_impressions: "",
     total_engagements: "",
-    avg_engagement_rate: "",
+    ig_avg_engagement_rate: "",
+    tiktok_avg_engagement_rate: "",
   };
 }
 
