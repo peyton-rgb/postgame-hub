@@ -496,7 +496,7 @@ export function CampaignRecap({
           ? (settings.budget! / settings.total_impressions) * 1000
           : null;
 
-        const kpiRows: { label: string; target: number | null; actual: number | null; isPercent?: boolean; isDollar?: boolean }[] = [];
+        const kpiRows: { label: string; target: number | null; actual: number | null; isPercent?: boolean; isDollar?: boolean; isCpm?: boolean }[] = [];
 
         // Budget first (standalone, no target)
         if (hasBudget) kpiRows.push({ label: "Budget", target: null, actual: settings.budget!, isDollar: true });
@@ -508,7 +508,7 @@ export function CampaignRecap({
         if (t.engagements != null) kpiRows.push({ label: "Engagements", target: t.engagements, actual: stats.totalEngagements });
         if (t.engagement_rate != null) kpiRows.push({ label: "Engagement Rate", target: t.engagement_rate, actual: stats.avgEngRate, isPercent: true });
         // Actual CPM last (auto-calculated, no target)
-        if (actualCpm != null || t.cpm != null) kpiRows.push({ label: "Actual CPM", target: t.cpm ?? null, actual: actualCpm, isDollar: true });
+        if (actualCpm != null || t.cpm != null) kpiRows.push({ label: "Actual CPM", target: t.cpm ?? null, actual: actualCpm, isDollar: true, isCpm: true });
 
         if (kpiRows.length === 0) return null;
 
@@ -518,7 +518,12 @@ export function CampaignRecap({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {kpiRows.map((row) => {
                 const pctOfGoal = row.actual != null && row.target != null && row.target > 0 ? (row.actual / row.target) * 100 : null;
-                const color = pctOfGoal == null ? "text-gray-400" : pctOfGoal >= 100 ? "text-emerald-400" : pctOfGoal >= 80 ? "text-amber-400" : "text-red-400";
+                const color = row.isCpm
+                  ? (row.actual == null || row.target == null ? "text-gray-400"
+                    : row.actual <= row.target ? "text-emerald-400"
+                    : row.actual <= row.target * 1.10 ? "text-amber-400"
+                    : "text-red-400")
+                  : (pctOfGoal == null ? "text-gray-400" : pctOfGoal >= 100 ? "text-emerald-400" : pctOfGoal >= 80 ? "text-amber-400" : "text-red-400");
                 const formatVal = (n: number | null) => {
                   if (n == null) return "\u2014";
                   if (row.isPercent) return pct(n);
@@ -533,7 +538,7 @@ export function CampaignRecap({
                       <div className="text-xs text-white/60 mb-1">Target: <span className="text-white/80 font-bold">{formatVal(row.target)}</span></div>
                     )}
                     <div className={`text-2xl font-black ${row.target != null ? color : "text-white"}`}>{formatVal(row.actual)}</div>
-                    {pctOfGoal != null && (
+                    {pctOfGoal != null && !row.isCpm && (
                       <div className={`text-[10px] font-bold mt-1 ${color}`}>{Math.round(pctOfGoal)}% of goal</div>
                     )}
                   </div>
