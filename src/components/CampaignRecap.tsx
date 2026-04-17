@@ -922,6 +922,14 @@ export function CampaignRecap({
         <div ref={(el) => { sectionRefs.current["roster"] = el; }} data-section="roster" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Roster</h2>
 
+          {(() => {
+            const hasAnyImpressions = fullRoster.some(a => getTotalImpressions(a) > 0);
+            const hasAnyEngagements = fullRoster.some(a => getTotalEngagements(a) > 0);
+            const hasAnyEngRate = fullRoster.some(a => getBestEngRate(a) > 0);
+            const hasAnyFeedUrl = fullRoster.some(a => a.metrics?.ig_feed?.post_url);
+            const hasAnyReelUrl = fullRoster.some(a => a.metrics?.ig_reel?.post_url);
+            const hasAnyFollowers = fullRoster.some(a => a.ig_followers && a.ig_followers > 0);
+            return (<>
           {/* Desktop: full table with headers */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
@@ -932,15 +940,15 @@ export function CampaignRecap({
                   {showCol("school") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>}
                   {showCol("sport") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Sport</th>}
                   {showCol("ig_handle") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">IG Handle</th>}
-                  {showCol("ig_followers") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Followers</th>}
-                  {showCol("ig_feed_impressions") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
-                  {showCol("ig_feed_total") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
-                  {showCol("ig_feed_rate") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
+                  {showCol("ig_followers") && hasAnyFollowers && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Followers</th>}
+                  {showCol("ig_feed_impressions") && hasAnyImpressions && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
+                  {showCol("ig_feed_total") && hasAnyEngagements && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
+                  {showCol("ig_feed_rate") && hasAnyEngRate && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
                   {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
                   {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
                   {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
-                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>
-                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>
+                  {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
+                  {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
                 </tr>
               </thead>
               <tbody>
@@ -961,31 +969,35 @@ export function CampaignRecap({
                     {showCol("ig_handle") && <td className="px-3 py-3 text-sm">{a.ig_handle ? (
                       <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
                     ) : "\u2014"}</td>}
-                    {showCol("ig_followers") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
-                    {showCol("ig_feed_impressions") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>}
-                    {showCol("ig_feed_total") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>}
-                    {showCol("ig_feed_rate") && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>}
+                    {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
+                    {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>}
+                    {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>}
+                    {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>}
                     {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
                     {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
                     {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
-                    <td className="px-3 py-3 text-center">
-                      {feedUrl ? (
-                        <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                      ) : (
-                        <span className="text-white/35">&mdash;</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {reelUrl ? (
-                        <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                        </a>
-                      ) : (
-                        <span className="text-white/35">&mdash;</span>
-                      )}
-                    </td>
+                    {hasAnyFeedUrl && (
+                      <td className="px-3 py-3 text-center">
+                        {feedUrl ? (
+                          <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                          </a>
+                        ) : (
+                          <span className="text-white/35">&mdash;</span>
+                        )}
+                      </td>
+                    )}
+                    {hasAnyReelUrl && (
+                      <td className="px-3 py-3 text-center">
+                        {reelUrl ? (
+                          <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                          </a>
+                        ) : (
+                          <span className="text-white/35">&mdash;</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                   );
                 })}
@@ -1007,8 +1019,8 @@ export function CampaignRecap({
                   <div className="text-xs text-white/70">{a.school} &middot; {a.sport}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  {showCol("ig_followers") && <div className="text-sm font-bold text-white/70">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>}
-                  {showCol("ig_feed_rate") && getBestEngRate(a) > 0 && (
+                  {showCol("ig_followers") && hasAnyFollowers && <div className="text-sm font-bold text-white/70">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>}
+                  {showCol("ig_feed_rate") && hasAnyEngRate && getBestEngRate(a) > 0 && (
                     <div className="text-xs font-bold text-brand">{pct(getBestEngRate(a))}</div>
                   )}
                   {stats.hasClicks && show("clicks") && (
@@ -1039,6 +1051,8 @@ export function CampaignRecap({
               );
             })}
           </div>
+            </>);
+          })()}
 
           {/* Expand / collapse button for campaigns with >50 athletes */}
           {rosterIsTruncated && (
