@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import type { Campaign, Athlete, Media, VisibleSections, KpiTargets } from "@/lib/types";
+import type { Campaign, Athlete, Media, VisibleSections, KpiTargets, HeroMetricOverrideKey } from "@/lib/types";
 import { SchoolBadge } from "@/components/SchoolBadge";
 import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { MasonryPreview } from "@/components/MasonryPreview";
@@ -15,6 +15,7 @@ import heic2any from "heic2any";
 import DrivePicker from "@/components/DrivePicker";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
+import { computeStats, pct } from "@/lib/recap-helpers";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Overview" },
@@ -27,6 +28,18 @@ const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "roster", label: "Campaign Roster" },
   { key: "clicks", label: "Clicks & Conversions" },
   { key: "sales", label: "Sales" },
+];
+
+const HERO_METRICS: { key: HeroMetricOverrideKey; label: string }[] = [
+  { key: "athlete_count", label: "Athletes" },
+  { key: "school_count", label: "Colleges" },
+  { key: "sport_count", label: "Sports" },
+  { key: "total_posts", label: "Total Posts" },
+  { key: "combined_followers", label: "Total Followers" },
+  { key: "total_impressions", label: "Total Impressions" },
+  { key: "total_engagements", label: "Total Engagements" },
+  { key: "ig_avg_engagement_rate", label: "IG Avg Eng Rate" },
+  { key: "tiktok_avg_engagement_rate", label: "TikTok Avg Eng Rate" },
 ];
 
 function fmt(n: number): string {
@@ -625,6 +638,7 @@ export default function CampaignEditor() {
     brief: true, key_takeaways: true, kpi_targets: true, metrics: true, platform_breakdown: true,
     top_performers: true, content_gallery: true, roster: true,
   });
+  const [hiddenHeroes, setHiddenHeroes] = useState<HeroMetricOverrideKey[]>([]);
   const [savingInfo, setSavingInfo] = useState(false);
 
   // Brand logo state
@@ -635,6 +649,9 @@ export default function CampaignEditor() {
   // Key takeaways + KPI targets
   const [keyTakeaways, setKeyTakeaways] = useState("");
   const [kpiTargets, setKpiTargets] = useState<KpiTargets>({});
+
+  // Live stats for Campaign Metrics preview
+  const previewStats = useMemo(() => computeStats(athletes), [athletes]);
   const [budget, setBudget] = useState<number | "">("");
   const [totalImpressions, setTotalImpressions] = useState<number | "">("");
 
@@ -682,6 +699,7 @@ export default function CampaignEditor() {
       setPlatform(camp.settings.platform || "");
       setContentType(camp.settings.content_type || "");
       setTags(camp.settings.tags || []);
+      setHiddenHeroes(camp.settings.hidden_heroes || []);
       setVisibleSections(camp.settings.visible_sections || {
         brief: true, key_takeaways: true, kpi_targets: true, metrics: true, platform_breakdown: true,
         top_performers: true, content_gallery: true, roster: true,
@@ -888,7 +906,7 @@ export default function CampaignEditor() {
     const newSettings = {
       ...campaign.settings,
       description, quarter, campaign_type: campaignType,
-      platform, content_type: contentType, tags, visible_sections: visibleSections,
+      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
@@ -921,7 +939,7 @@ export default function CampaignEditor() {
       const newSettings = {
         ...campaign.settings,
         description, quarter, campaign_type: campaignType,
-        platform, content_type: contentType, tags, visible_sections: visibleSections,
+        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -939,7 +957,7 @@ export default function CampaignEditor() {
     }, 1500);
 
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, brandLogoUrl, keyTakeaways, kpiTargets, budget, totalImpressions]);
+  }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, hiddenHeroes, brandLogoUrl, keyTakeaways, kpiTargets, budget, totalImpressions]);
 
   // Mark initial load as done after campaign data is populated
   useEffect(() => {
@@ -1012,7 +1030,7 @@ export default function CampaignEditor() {
         tags: auto.tags,
         quarter: quarter || "",
         campaign_type: campaignType || "Product Seeding",
-        visible_sections: visibleSections,
+        visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -1363,7 +1381,7 @@ export default function CampaignEditor() {
     const newSettings = {
       ...campaign.settings,
       description, quarter, campaign_type: campaignType,
-      platform, content_type: contentType, tags, visible_sections: visibleSections,
+      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
@@ -1401,7 +1419,7 @@ export default function CampaignEditor() {
       settings: {
         ...campaign.settings,
         description, quarter, campaign_type: campaignType,
-        platform, content_type: contentType, tags, visible_sections: visibleSections,
+        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -1880,6 +1898,64 @@ export default function CampaignEditor() {
                     <span className="text-sm font-semibold text-gray-300">{label}</span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            {/* Campaign Metrics Preview */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Campaign Metrics Preview</label>
+              <p className="text-xs text-gray-500 mb-4">Click a box to hide it from the recap, or use the checkboxes. Changes save automatically.</p>
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Left: mini preview */}
+                <div className="flex-1 bg-black/40 border border-white/[0.15] rounded-xl p-4">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {HERO_METRICS.map((m) => {
+                      const isHidden = hiddenHeroes.includes(m.key);
+                      let value: string | number = "—";
+                      if (m.key === "athlete_count") value = previewStats.athleteCount;
+                      else if (m.key === "school_count") value = previewStats.schoolCount;
+                      else if (m.key === "sport_count") value = previewStats.sportCount;
+                      else if (m.key === "total_posts") value = previewStats.totalPosts;
+                      else if (m.key === "combined_followers") value = fmt(previewStats.combinedFollowers);
+                      else if (m.key === "total_impressions") value = fmt(previewStats.totalImpressions);
+                      else if (m.key === "total_engagements") value = fmt(previewStats.totalEngagements);
+                      else if (m.key === "ig_avg_engagement_rate") value = pct(previewStats.igAvgEngRate);
+                      else if (m.key === "tiktok_avg_engagement_rate") value = pct(previewStats.tiktokAvgEngRate);
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => setHiddenHeroes((prev) => prev.includes(m.key) ? prev.filter(k => k !== m.key) : [...prev, m.key])}
+                          className={`transition-all text-center flex-1 min-w-[110px] max-w-[160px] rounded-lg p-3 border ${isHidden ? "bg-white/[0.02] border-white/[0.08] opacity-40" : "bg-white/[0.07] border-white/[0.15] hover:border-[#D73F09]/60"}`}
+                          title={isHidden ? "Hidden on recap — click to show" : "Visible on recap — click to hide"}
+                        >
+                          <div className={`text-lg font-black mb-1 ${isHidden ? "text-gray-500 line-through" : "text-white"}`}>{value}</div>
+                          <div className={`text-[9px] font-bold uppercase tracking-widest ${isHidden ? "text-gray-600 line-through" : "text-white/70"}`}>{m.label}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right: checkbox list */}
+                <div className="lg:w-64 space-y-2">
+                  {HERO_METRICS.map(({ key, label }) => {
+                    const isVisible = !hiddenHeroes.includes(key);
+                    return (
+                      <label key={key} className="flex items-center gap-3 cursor-pointer">
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isVisible ? "bg-[#D73F09] border-[#D73F09]" : "border-gray-600"}`}
+                          onClick={() => setHiddenHeroes((prev) => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
+                        >
+                          {isVisible && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold text-gray-300">{label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
