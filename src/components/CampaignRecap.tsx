@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useLayoutEffect, createContext, useContext } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
@@ -36,131 +36,102 @@ function SafeHTML({ html, className }: { html: string; className?: string }) {
   );
 }
 
-// ── Best In Class featured row wrapper ───────────────────────
+// ── Best In Class true-masonry grid ──────────────────────────
 //
-// CSS percentage-height cascades don't propagate reliably down to the media
-// inside MasonryCard (grid/flex interactions + inline aspect-ratio combine
-// into a chain that resolves to an intrinsic content height instead of the
-// row's concrete pixel height). The fix: every featured box gets its OWN
-// explicit pixel height inline, not a percentage. FeaturedRow measures the
-// row width on mount + on resize and exposes a concrete rowHeight (px) via
-// context; FeaturedSlot reads that value and applies it to each slot
-// container. On mobile (< 768px) the context value is null — slots render
-// no inline height and fall back to natural single-column stack.
-const FEATURED_GAP = 8; // px, must match Tailwind `gap-2`
+// CSS Grid with grid-auto-flow: dense, fine-grained grid-auto-rows (8px),
+// and per-card grid-row: span N computed from measured height. Horizontal
+// (landscape-video) athletes get grid-column: span 2; everyone else spans 1.
+// Dense flow fills the 1-col gaps beside span-2 horizontals so packing stays
+// tight. Each card's natural aspect-ratio-driven height is measured via
+// ResizeObserver and turned into a row-span so tall portraits don't leave
+// dead space under shorter neighbors — true vertical masonry.
+//
+// Mobile breakpoints are handled in globals.css (.bic-masonry):
+//   default     → cols from settings.columns (inline CSS var --bic-cols)
+//   ≤ 768px     → 2 cols
+//   ≤ 480px     → 1 col (span-2 clamped to 1 via !important)
+const BIC_TRACK_HEIGHT = 8;
+const BIC_GAP = 8;
 
-type FeaturedCtx = { rowHeight: number | null };
-const FeaturedContext = createContext<FeaturedCtx>({ rowHeight: null });
-
-function FeaturedRow({ children }: { children: React.ReactNode }) {
+function BicMasonryCell({
+  isWide,
+  children,
+}: {
+  isWide: boolean;
+  children: React.ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
-  const [rowHeight, setRowHeight] = useState<number | null>(null);
+  const [rowSpan, setRowSpan] = useState(1);
 
   useLayoutEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(min-width: 768px)");
-
+    if (typeof window === "undefined" || !ref.current) return;
+    const el = ref.current;
     const measure = () => {
-      if (!ref.current) return;
-      if (!mq.matches) { setRowHeight(null); return; }
-      const w = ref.current.offsetWidth;
-      if (w > 0) setRowHeight(Math.round(w * 9 / 32));
+      // Height of the cell's content (the MasonryCard + any margin).
+      // rowSpan must cover (contentHeight + gap) because the gap sits AFTER
+      // each row track; span N covers N*track + (N-1)*gap, plus one trailing
+      // gap from the container → effective per-span size = track + gap.
+      const h = el.getBoundingClientRect().height;
+      if (h <= 0) return;
+      const span = Math.max(1, Math.ceil((h + BIC_GAP) / (BIC_TRACK_HEIGHT + BIC_GAP)));
+      setRowSpan(span);
     };
-
     measure();
     const ro = new ResizeObserver(measure);
-    if (ref.current) ro.observe(ref.current);
-    const onMqChange = () => measure();
-    if (mq.addEventListener) mq.addEventListener("change", onMqChange);
-    else mq.addListener(onMqChange);
-
-    return () => {
-      ro.disconnect();
-      if (mq.removeEventListener) mq.removeEventListener("change", onMqChange);
-      else mq.removeListener(onMqChange);
-    };
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   return (
-    <FeaturedContext.Provider value={{ rowHeight }}>
-      <div
-        ref={ref}
-        className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2"
-        style={rowHeight != null ? { height: `${rowHeight}px`, overflow: "hidden" } : undefined}
-      >
-        {children}
-      </div>
-    </FeaturedContext.Provider>
-  );
-}
-
-/**
- * One slot inside a FeaturedRow. `portion` controls how much of the row
- * height this slot takes:
- *   "full"  → the row's full pixel height (left slot, right tall-v slot,
- *             or right-column wrapper that further splits).
- *   "half"  → (rowHeight - gap) / 2, used for each of the two stacked
- *             portrait slots inside the right column of h_plus_stacked_vs.
- * On mobile (rowHeight is null) no inline height is emitted — slot inherits
- * its natural content height. overflow-hidden is always on via className so
- * any unexpected child overflow is clipped.
- */
-function FeaturedSlot({
-  portion = "full",
-  className = "",
-  children,
-}: {
-  portion?: "full" | "half";
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const { rowHeight } = useContext(FeaturedContext);
-  let inlineHeight: number | null = null;
-  if (rowHeight != null) {
-    inlineHeight = portion === "half"
-      ? Math.max(0, Math.round((rowHeight - FEATURED_GAP) / 2))
-      : rowHeight;
-  }
-  return (
     <div
-      className={`bic-featured-slot rounded-xl overflow-hidden ${className}`.trim()}
-      style={inlineHeight != null ? { height: `${inlineHeight}px` } : undefined}
+      ref={ref}
+      className="bic-cell"
+      style={{
+        gridColumn: isWide ? "span 2" : "span 1",
+        gridRow: `span ${rowSpan}`,
+      }}
     >
       {children}
     </div>
   );
 }
 
-/**
- * Right-column wrapper for h_plus_stacked_vs: holds two FeaturedSlots
- * (portion="half") in a vertical flex stack, itself sized to the full row
- * height. On mobile the wrapper has no inline height.
- */
-function FeaturedStackedRight({ children }: { children: React.ReactNode }) {
-  const { rowHeight } = useContext(FeaturedContext);
+function BicMasonry({
+  athletes,
+  media,
+  wideAthleteIds,
+  activeFilter,
+  cols,
+}: {
+  athletes: Athlete[];
+  media: Record<string, Media[]>;
+  wideAthleteIds: Set<string>;
+  activeFilter: string;
+  cols: number;
+}) {
   return (
     <div
-      className="flex flex-col gap-2"
-      style={rowHeight != null ? { height: `${rowHeight}px` } : undefined}
+      className="bic-masonry"
+      style={{ ["--bic-cols" as string]: cols }}
     >
-      {children}
+      {athletes.map((a, i) => (
+        <BicMasonryCell key={a.id} isWide={wideAthleteIds.has(a.id)}>
+          <MasonryCard athlete={a} items={media[a.id] || []} activeFilter={activeFilter} cardIndex={i} />
+        </BicMasonryCell>
+      ))}
     </div>
   );
 }
 
 // ── Masonry Card ─────────────────────────────────────────────
 //
-// NOTE: The Best In Class featured rows (the orphan-wide pairing block in
-// CampaignRecap below, class .bic-featured-slot) depend on this component's
-// DOM structure and class names:
-//   - The root element carries class "media-card".
-//   - The FIRST child of the root is the thumbnail wrapper; its first child
-//     is the <img> or <video> that displays the media.
-// The CSS in src/app/globals.css (`.bic-featured-slot > .media-card ...`)
-// overrides inline aspect-ratio and sizing INSIDE featured slots so stacked
-// portraits match the horizontal's height. If you restructure this card,
-// update those selectors too or featured rows will regress to mismatched
-// heights.
+// NOTE: The Best In Class grid (BicMasonry above) relies on this component's
+// outer DOM: each card's root carries `.media-card`, and its natural height
+// is driven by inline aspect-ratio on the media inside. BicMasonryCell
+// measures the card's rendered height via ResizeObserver and computes a
+// CSS Grid row-span from it. If you restructure this card, update the
+// `.bic-masonry > .bic-cell > .media-card` rule in globals.css (which
+// zeros mb-2 to avoid doubling up with the grid gap).
 
 const DEFAULT_RATIOS = ["1/1", "9/16", "4/5"] as const;
 const VIDEO_SAFE_RATIOS = ["9/16", "4/5"] as const;
@@ -470,8 +441,8 @@ export function CampaignRecap({
     });
   }, [athletes, media]);
 
-  const wideFiltered = filtered.filter((a) => wideAthleteIds.has(a.id));
-  const normalFiltered = filtered.filter((a) => !wideAthleteIds.has(a.id));
+  // wideAthleteIds is still populated by the probe above — BicMasonry reads
+  // it per-card to decide grid-column: span 2 vs span 1.
 
   const autoContentTypes = [
     stats.igFeedPosts > 0 && "IG Feed",
@@ -1060,77 +1031,13 @@ export function CampaignRecap({
             </div>
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            {/* Orphan-wide handling: when there's an odd count of landscape-video
-                athletes, the first one pairs with up-to-two portrait athletes
-                borrowed from the top of the masonry bucket. Even counts keep
-                the existing grid-cols-2 pair row exactly as before.
-                  - 0 normals available → solo full-width fallback
-                  - 1 normal available  → h + tall v side-by-side
-                  - 2+ normals          → h + two stacked vs on the right
-                Borrowed normals are removed from the masonry below so they
-                don't appear twice. MasonryCard stays untouched. */}
-            {(() => {
-              const odd = wideFiltered.length % 2 === 1;
-              const orphan = odd ? wideFiltered[0] : null;
-              const restWides = odd ? wideFiltered.slice(1) : wideFiltered;
-              const borrowCount = orphan ? Math.min(2, normalFiltered.length) : 0;
-              const borrowed = orphan ? normalFiltered.slice(0, borrowCount) : [];
-              const remainingNormals = orphan ? normalFiltered.slice(borrowCount) : normalFiltered;
-
-              return (
-                <>
-                  {orphan && borrowed.length === 0 && (
-                    /* solo_full fallback — no portraits available to borrow */
-                    <div className="mb-2">
-                      <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
-                    </div>
-                  )}
-                  {orphan && borrowed.length === 1 && (
-                    /* h_plus_tall_v — each slot gets its OWN explicit pixel
-                       height from the FeaturedRow context. No height: 100%
-                       cascade. Mobile falls back to natural stack. */
-                    <FeaturedRow>
-                      <FeaturedSlot portion="full">
-                        <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
-                      </FeaturedSlot>
-                      <FeaturedSlot portion="full">
-                        <MasonryCard key={borrowed[0].id} athlete={borrowed[0]} items={media[borrowed[0].id] || []} activeFilter={filter} cardIndex={1} />
-                      </FeaturedSlot>
-                    </FeaturedRow>
-                  )}
-                  {orphan && borrowed.length === 2 && (
-                    /* h_plus_stacked_vs — left slot takes the full row height,
-                       right column wrapper takes the same full height and
-                       splits it (minus one gap) into two half-height slots. */
-                    <FeaturedRow>
-                      <FeaturedSlot portion="full">
-                        <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
-                      </FeaturedSlot>
-                      <FeaturedStackedRight>
-                        <FeaturedSlot portion="half">
-                          <MasonryCard key={borrowed[0].id} athlete={borrowed[0]} items={media[borrowed[0].id] || []} activeFilter={filter} cardIndex={1} />
-                        </FeaturedSlot>
-                        <FeaturedSlot portion="half">
-                          <MasonryCard key={borrowed[1].id} athlete={borrowed[1]} items={media[borrowed[1].id] || []} activeFilter={filter} cardIndex={2} />
-                        </FeaturedSlot>
-                      </FeaturedStackedRight>
-                    </FeaturedRow>
-                  )}
-                  {restWides.length > 0 && (
-                    <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {restWides.map((a, i) => (
-                        <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + (orphan ? 1 + borrowed.length : 0)} />
-                      ))}
-                    </div>
-                  )}
-                  <div data-masonry style={{ columnCount: cols, columnGap: 8 }}>
-                    {remainingNormals.map((a, i) => (
-                      <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + wideFiltered.length + borrowed.length} />
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
+            <BicMasonry
+              athletes={filtered}
+              media={media}
+              wideAthleteIds={wideAthleteIds}
+              activeFilter={filter}
+              cols={cols}
+            />
           </div>
         </div>
       )}
