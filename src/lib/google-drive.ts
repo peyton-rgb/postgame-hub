@@ -10,20 +10,12 @@
 // ─────────────────────────────────────────────────────────────
 
 import { google, drive_v3 } from "googleapis";
+import { getGoogleAuth } from "./google-auth";
 
 // ── Auth ──────────────────────────────────────────────────────
 
 export function getDriveClient(): drive_v3.Drive {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID!,
-    process.env.GOOGLE_CLIENT_SECRET!
-  );
-
-  oauth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
-  });
-
-  return google.drive({ version: "v3", auth: oauth2Client });
+  return google.drive({ version: "v3", auth: getGoogleAuth() });
 }
 
 // ── Types ─────────────────────────────────────────────────────
@@ -343,14 +335,7 @@ export async function getDriveThumbnail(
     });
 
     if (meta.data.thumbnailLink) {
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID!,
-        process.env.GOOGLE_CLIENT_SECRET!
-      );
-      oauth2Client.setCredentials({
-        refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
-      });
-      const token = await oauth2Client.getAccessToken();
+      const token = await getGoogleAuth().getAccessToken();
 
       const response = await fetch(meta.data.thumbnailLink, {
         headers: { Authorization: `Bearer ${token.token}` },
