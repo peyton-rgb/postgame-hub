@@ -37,6 +37,18 @@ function SafeHTML({ html, className }: { html: string; className?: string }) {
 }
 
 // ── Masonry Card ─────────────────────────────────────────────
+//
+// NOTE: The Best In Class featured rows (the orphan-wide pairing block in
+// CampaignRecap below, class .bic-featured-slot) depend on this component's
+// DOM structure and class names:
+//   - The root element carries class "media-card".
+//   - The FIRST child of the root is the thumbnail wrapper; its first child
+//     is the <img> or <video> that displays the media.
+// The CSS in src/app/globals.css (`.bic-featured-slot > .media-card ...`)
+// overrides inline aspect-ratio and sizing INSIDE featured slots so stacked
+// portraits match the horizontal's height. If you restructure this card,
+// update those selectors too or featured rows will regress to mismatched
+// heights.
 
 const DEFAULT_RATIOS = ["1/1", "9/16", "4/5"] as const;
 const VIDEO_SAFE_RATIOS = ["9/16", "4/5"] as const;
@@ -936,36 +948,73 @@ export function CampaignRecap({
             </div>
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            {/* Odd number of wide (landscape-video) athletes → pop the first
-                as a solo full-width hero row so nobody gets orphaned in a
-                half-width cell with dead space beside them. Even counts
-                (including 0) keep the existing grid-cols-2 pair row only. */}
+            {/* Orphan-wide handling: when there's an odd count of landscape-video
+                athletes, the first one pairs with up-to-two portrait athletes
+                borrowed from the top of the masonry bucket. Even counts keep
+                the existing grid-cols-2 pair row exactly as before.
+                  - 0 normals available → solo full-width fallback
+                  - 1 normal available  → h + tall v side-by-side
+                  - 2+ normals          → h + two stacked vs on the right
+                Borrowed normals are removed from the masonry below so they
+                don't appear twice. MasonryCard stays untouched. */}
             {(() => {
               const odd = wideFiltered.length % 2 === 1;
-              const solo = odd ? wideFiltered[0] : null;
-              const rest = odd ? wideFiltered.slice(1) : wideFiltered;
+              const orphan = odd ? wideFiltered[0] : null;
+              const restWides = odd ? wideFiltered.slice(1) : wideFiltered;
+              const borrowCount = orphan ? Math.min(2, normalFiltered.length) : 0;
+              const borrowed = orphan ? normalFiltered.slice(0, borrowCount) : [];
+              const remainingNormals = orphan ? normalFiltered.slice(borrowCount) : normalFiltered;
+
               return (
                 <>
-                  {solo && (
+                  {orphan && borrowed.length === 0 && (
+                    /* solo_full fallback — no portraits available to borrow */
                     <div className="mb-2">
-                      <MasonryCard key={solo.id} athlete={solo} items={media[solo.id] || []} activeFilter={filter} cardIndex={0} />
+                      <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
                     </div>
                   )}
-                  {rest.length > 0 && (
+                  {orphan && borrowed.length === 1 && (
+                    /* h_plus_tall_v — desktop 2-col matched heights, mobile stacks */
+                    <div className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2 md:[aspect-ratio:32/9]">
+                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
+                        <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
+                      </div>
+                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
+                        <MasonryCard key={borrowed[0].id} athlete={borrowed[0]} items={media[borrowed[0].id] || []} activeFilter={filter} cardIndex={1} />
+                      </div>
+                    </div>
+                  )}
+                  {orphan && borrowed.length === 2 && (
+                    /* h_plus_stacked_vs — horizontal left, 2 stacked portraits right, matched heights */
+                    <div className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2 md:[aspect-ratio:32/9]">
+                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
+                        <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
+                      </div>
+                      <div className="grid grid-cols-1 grid-rows-2 gap-2 md:h-full">
+                        <div className="bic-featured-slot h-full rounded-xl overflow-hidden">
+                          <MasonryCard key={borrowed[0].id} athlete={borrowed[0]} items={media[borrowed[0].id] || []} activeFilter={filter} cardIndex={1} />
+                        </div>
+                        <div className="bic-featured-slot h-full rounded-xl overflow-hidden">
+                          <MasonryCard key={borrowed[1].id} athlete={borrowed[1]} items={media[borrowed[1].id] || []} activeFilter={filter} cardIndex={2} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {restWides.length > 0 && (
                     <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {rest.map((a, i) => (
-                        <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + (solo ? 1 : 0)} />
+                      {restWides.map((a, i) => (
+                        <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + (orphan ? 1 + borrowed.length : 0)} />
                       ))}
                     </div>
                   )}
+                  <div data-masonry style={{ columnCount: cols, columnGap: 8 }}>
+                    {remainingNormals.map((a, i) => (
+                      <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + wideFiltered.length + borrowed.length} />
+                    ))}
+                  </div>
                 </>
               );
             })()}
-            <div data-masonry style={{ columnCount: cols, columnGap: 8 }}>
-              {normalFiltered.map((a, i) => (
-                <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + wideFiltered.length} />
-              ))}
-            </div>
           </div>
         </div>
       )}

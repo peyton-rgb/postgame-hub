@@ -526,3 +526,30 @@ img, video { display: block; max-width: 100%; }
 @media (max-width: 480px) {
   .recap-container [data-masonry] { column-count: 1 !important; }
 }
+
+/* Best In Class featured row — orphan-wide pairs (desktop only).
+   Each slot locks its child MasonryCard to 100% height and forces the
+   card's image/video to cover the slot so stacked portraits line up
+   exactly with the horizontal's height (aspect-ratio on the row sets
+   the total height; slots divide it). Mobile stacks naturally, so
+   these overrides only apply at md+ where the row has h-full. */
+@media (min-width: 768px) {
+  .bic-featured-slot { min-height: 0; }
+  .bic-featured-slot > .media-card {
+    height: 100%;
+    margin-bottom: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+  .bic-featured-slot > .media-card > div:first-child {
+    flex: 1;
+    min-height: 0;
+  }
+  .bic-featured-slot > .media-card > div:first-child > img,
+  .bic-featured-slot > .media-card > div:first-child > video {
+    height: 100% !important;
+    width: 100% !important;
+    aspect-ratio: auto !important;
+    object-fit: cover;
+  }
+}
