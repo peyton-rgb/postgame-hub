@@ -54,6 +54,22 @@ function metricVal(m: AthleteMetrics | undefined, platform: string, field: strin
   return v as string | number;
 }
 
+// Mirrors bestRateForPlatform in recap-helpers.ts, minus the "did they post?"
+// guard — in the editor we want to surface whatever rate was entered even if
+// the post URL/views haven't been filled in yet.
+function bestRate(m: AthleteMetrics | undefined, platform: "ig_feed" | "ig_reel" | "tiktok"): number | "" {
+  const block = m?.[platform];
+  if (!block) return "";
+  const rateF = block.engagement_rate_followers;
+  const rateI = block.engagement_rate_impressions;
+  const legacy = block.engagement_rate;
+  const candidates: number[] = [];
+  if (rateF != null && rateF > 0) candidates.push(rateF);
+  if (rateI != null && rateI > 0) candidates.push(rateI);
+  if (candidates.length === 0 && legacy != null && legacy > 0) candidates.push(legacy);
+  return candidates.length === 0 ? "" : Math.max(...candidates);
+}
+
 function setMetricVal(row: EditableRow, platform: string, field: string, val: string): EditableRow {
   const metrics = JSON.parse(JSON.stringify(row.metrics || {}));
   if (!metrics[platform]) metrics[platform] = {};
@@ -113,7 +129,7 @@ const IG_FEED_COLS: ColDef[] = [
     getValue: (r) => metricVal(r.metrics, "ig_feed", "total_engagements"),
     setValue: (r) => r },
   { key: "ig_feed_rate", label: "Eng. Rate %", type: "number", width: "100px", computed: true,
-    getValue: (r) => metricVal(r.metrics, "ig_feed", "engagement_rate"),
+    getValue: (r) => bestRate(r.metrics, "ig_feed"),
     setValue: (r) => r },
 ];
 
@@ -149,7 +165,7 @@ const IG_REEL_COLS: ColDef[] = [
     getValue: (r) => metricVal(r.metrics, "ig_reel", "total_engagements"),
     setValue: (r) => r },
   { key: "ig_reel_rate", label: "Eng. Rate %", type: "number", width: "100px", computed: true,
-    getValue: (r) => metricVal(r.metrics, "ig_reel", "engagement_rate"),
+    getValue: (r) => bestRate(r.metrics, "ig_reel"),
     setValue: (r) => r },
 ];
 
@@ -172,7 +188,7 @@ const TIKTOK_COLS: ColDef[] = [
     getValue: (r) => metricVal(r.metrics, "tiktok", "total_engagements"),
     setValue: (r) => r },
   { key: "tiktok_rate", label: "Eng. Rate %", type: "number", width: "100px", computed: true,
-    getValue: (r) => metricVal(r.metrics, "tiktok", "engagement_rate"),
+    getValue: (r) => bestRate(r.metrics, "tiktok"),
     setValue: (r) => r },
 ];
 
