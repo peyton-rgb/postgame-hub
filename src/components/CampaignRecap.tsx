@@ -936,13 +936,31 @@ export function CampaignRecap({
             </div>
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            {wideFiltered.length > 0 && (
-              <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                {wideFiltered.map((a, i) => (
-                  <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
-                ))}
-              </div>
-            )}
+            {/* Odd number of wide (landscape-video) athletes → pop the first
+                as a solo full-width hero row so nobody gets orphaned in a
+                half-width cell with dead space beside them. Even counts
+                (including 0) keep the existing grid-cols-2 pair row only. */}
+            {(() => {
+              const odd = wideFiltered.length % 2 === 1;
+              const solo = odd ? wideFiltered[0] : null;
+              const rest = odd ? wideFiltered.slice(1) : wideFiltered;
+              return (
+                <>
+                  {solo && (
+                    <div className="mb-2">
+                      <MasonryCard key={solo.id} athlete={solo} items={media[solo.id] || []} activeFilter={filter} cardIndex={0} />
+                    </div>
+                  )}
+                  {rest.length > 0 && (
+                    <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {rest.map((a, i) => (
+                        <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + (solo ? 1 : 0)} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <div data-masonry style={{ columnCount: cols, columnGap: 8 }}>
               {normalFiltered.map((a, i) => (
                 <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + wideFiltered.length} />
