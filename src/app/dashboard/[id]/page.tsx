@@ -639,6 +639,7 @@ export default function CampaignEditor() {
     top_performers: true, content_gallery: true, roster: true,
   });
   const [hiddenHeroes, setHiddenHeroes] = useState<HeroMetricOverrideKey[]>([]);
+  const [hiddenPlatformCards, setHiddenPlatformCards] = useState<string[]>([]);
   const [savingInfo, setSavingInfo] = useState(false);
 
   // Brand logo state
@@ -700,6 +701,7 @@ export default function CampaignEditor() {
       setContentType(camp.settings.content_type || "");
       setTags(camp.settings.tags || []);
       setHiddenHeroes(camp.settings.hidden_heroes || []);
+      setHiddenPlatformCards(camp.settings.hidden_platform_cards || []);
       setVisibleSections(camp.settings.visible_sections || {
         brief: true, key_takeaways: true, kpi_targets: true, metrics: true, platform_breakdown: true,
         top_performers: true, content_gallery: true, roster: true,
@@ -906,7 +908,7 @@ export default function CampaignEditor() {
     const newSettings = {
       ...campaign.settings,
       description, quarter, campaign_type: campaignType,
-      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
+      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
@@ -939,7 +941,7 @@ export default function CampaignEditor() {
       const newSettings = {
         ...campaign.settings,
         description, quarter, campaign_type: campaignType,
-        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
+        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -957,7 +959,7 @@ export default function CampaignEditor() {
     }, 1500);
 
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, hiddenHeroes, brandLogoUrl, keyTakeaways, kpiTargets, budget, totalImpressions]);
+  }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, hiddenHeroes, hiddenPlatformCards, brandLogoUrl, keyTakeaways, kpiTargets, budget, totalImpressions]);
 
   // Mark initial load as done after campaign data is populated
   useEffect(() => {
@@ -1030,7 +1032,7 @@ export default function CampaignEditor() {
         tags: auto.tags,
         quarter: quarter || "",
         campaign_type: campaignType || "Product Seeding",
-        visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
+        visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -1381,7 +1383,7 @@ export default function CampaignEditor() {
     const newSettings = {
       ...campaign.settings,
       description, quarter, campaign_type: campaignType,
-      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
+      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
       brand_logo_url: brandLogoUrl,
       key_takeaways: keyTakeaways,
       kpi_targets: kpiTargets,
@@ -1419,7 +1421,7 @@ export default function CampaignEditor() {
       settings: {
         ...campaign.settings,
         description, quarter, campaign_type: campaignType,
-        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes,
+        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
         brand_logo_url: brandLogoUrl,
         key_takeaways: keyTakeaways,
         kpi_targets: kpiTargets,
@@ -1956,6 +1958,106 @@ export default function CampaignEditor() {
                     );
                   })}
                 </div>
+              </div>
+            </div>
+
+            {/* Platform Breakdown Preview */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Platform Breakdown Preview</label>
+              <p className="text-xs text-gray-500 mb-4">Click a card header to hide the whole card, or click any row to hide just that row from the recap. Changes save automatically.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  {
+                    key: "ig_feed",
+                    label: "IG Feed",
+                    hasData: previewStats.igFeedPosts > 0,
+                    rows: [
+                      { col: "ig_feed_post_url", label: "Total Posts", value: String(previewStats.igFeedPosts) },
+                      { col: "ig_feed_impressions", label: "Impressions", value: fmt(previewStats.igFeed.impressions) },
+                      { col: "ig_feed_likes", label: "Likes", value: fmt(previewStats.igFeed.likes) },
+                      { col: "ig_feed_total", label: "Total Engagements", value: fmt(previewStats.igFeed.engagements) },
+                    ],
+                  },
+                  {
+                    key: "ig_reels",
+                    label: "IG Reels",
+                    hasData: previewStats.igReelPosts > 0,
+                    rows: [
+                      { col: "ig_reel_post_url", label: "Total Posts", value: String(previewStats.igReelPosts) },
+                      { col: "ig_reel_views", label: "Views", value: fmt(previewStats.igReel.views) },
+                      { col: "ig_reel_likes", label: "Likes", value: fmt(previewStats.igReel.likes) },
+                      { col: "ig_reel_total", label: "Total Engagements", value: fmt(previewStats.igReel.engagements) },
+                    ],
+                  },
+                  {
+                    key: "ig_stories",
+                    label: "IG Stories",
+                    hasData: previewStats.igStory.count > 0 || previewStats.igStory.impressions > 0,
+                    rows: [
+                      { col: "ig_story_count", label: "Story Count", value: fmt(previewStats.igStory.count) },
+                      { col: "ig_story_impressions", label: "Total Impressions", value: fmt(previewStats.igStory.impressions) },
+                    ],
+                  },
+                  {
+                    key: "tiktok",
+                    label: "TikTok",
+                    hasData: previewStats.tiktokPosts > 0,
+                    rows: [
+                      { col: "tiktok_post_url", label: "Total Posts", value: String(previewStats.tiktokPosts) },
+                      { col: "tiktok_views", label: "Views", value: fmt(previewStats.tiktok.views) },
+                      { col: "tiktok_likes", label: "Likes", value: fmt(previewStats.tiktok.likes) },
+                      { col: "tiktok_total", label: "Total Engagements", value: fmt(previewStats.tiktok.engagements) },
+                    ],
+                  },
+                ].map((card) => {
+                  const cardHidden = hiddenPlatformCards.includes(card.key);
+                  const hiddenCols = campaign?.settings?.hidden_columns || [];
+                  const saveHiddenCols = async (newCols: string[]) => {
+                    if (!campaign) return;
+                    const newSettings = { ...campaign.settings, hidden_columns: newCols };
+                    await supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", campaign.id);
+                    setCampaign({ ...campaign, settings: newSettings });
+                  };
+                  return (
+                    <div key={card.key} className={`rounded-xl border p-4 transition-all ${cardHidden ? "bg-black/20 border-white/[0.05] opacity-40" : "bg-black/40 border-white/[0.15]"}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`text-sm font-black uppercase tracking-wider ${cardHidden ? "text-gray-500 line-through" : "text-[#D73F09]"}`}>{card.label}</div>
+                        <button
+                          type="button"
+                          onClick={() => setHiddenPlatformCards((prev) => prev.includes(card.key) ? prev.filter(k => k !== card.key) : [...prev, card.key])}
+                          className={`text-[10px] px-2 py-0.5 rounded border ${cardHidden ? "border-red-500/50 text-red-400 bg-red-900/20" : "border-gray-600 text-gray-400 hover:text-white"}`}
+                        >
+                          {cardHidden ? "Hidden" : "Visible"}
+                        </button>
+                      </div>
+                      {!card.hasData ? (
+                        <div className="text-xs text-gray-600 italic py-2">No data yet</div>
+                      ) : (
+                        <div className="space-y-0">
+                          {card.rows.map((row) => {
+                            const rowHidden = hiddenCols.includes(row.col);
+                            return (
+                              <button
+                                key={row.col}
+                                type="button"
+                                onClick={() => {
+                                  const next = rowHidden ? hiddenCols.filter((c: string) => c !== row.col) : [...hiddenCols, row.col];
+                                  saveHiddenCols(next);
+                                }}
+                                disabled={cardHidden}
+                                className={`w-full flex items-center justify-between py-2 border-b border-white/[0.08] last:border-0 transition-colors ${cardHidden ? "cursor-not-allowed" : "hover:bg-white/[0.03] cursor-pointer"}`}
+                                title={cardHidden ? "Card is hidden" : rowHidden ? "Hidden on recap — click to show" : "Visible on recap — click to hide"}
+                              >
+                                <span className={`text-xs font-semibold ${rowHidden || cardHidden ? "text-gray-600 line-through" : "text-white/70"}`}>{row.label}</span>
+                                <span className={`text-sm font-bold ${rowHidden || cardHidden ? "text-gray-600 line-through" : "text-white/90"}`}>{row.value}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

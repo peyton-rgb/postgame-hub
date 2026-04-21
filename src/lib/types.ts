@@ -106,6 +106,7 @@ export interface Campaign {
     tags?: string[];
     visible_sections?: VisibleSections;
     hidden_columns?: string[];
+    hidden_platform_cards?: string[];
     hidden_heroes?: HeroMetricOverrideKey[];
     brand_logo_url?: string;
     key_takeaways?: string;
