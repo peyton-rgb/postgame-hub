@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
@@ -33,6 +33,56 @@ function SafeHTML({ html, className }: { html: string; className?: string }) {
       className={className}
       dangerouslySetInnerHTML={{ __html: clean }}
     />
+  );
+}
+
+// ── Best In Class featured row wrapper ───────────────────────
+//
+// Enforces a concrete pixel height on the row equal to width * 9/32 so that
+// both columns (left 16:9 horizontal, right stacked portraits or tall portrait)
+// stretch to a hard constraint rather than letting the portraits' natural
+// heights grow the row. CSS aspect-ratio was tried first but is only a sizing
+// hint — children with larger intrinsic heights won anyway. A measured pixel
+// height + overflow: hidden is a hard constraint. At mobile (< 768px) the
+// height is cleared so the row falls back to its natural single-column stack.
+function FeaturedRow({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 768px)");
+
+    const measure = () => {
+      if (!ref.current) return;
+      if (!mq.matches) { setHeight(null); return; }
+      const w = ref.current.offsetWidth;
+      if (w > 0) setHeight(Math.round(w * 9 / 32));
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (ref.current) ro.observe(ref.current);
+    const onMqChange = () => measure();
+    // Safari <14 uses addListener; modern browsers use addEventListener.
+    if (mq.addEventListener) mq.addEventListener("change", onMqChange);
+    else mq.addListener(onMqChange);
+
+    return () => {
+      ro.disconnect();
+      if (mq.removeEventListener) mq.removeEventListener("change", onMqChange);
+      else mq.removeListener(onMqChange);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2"
+      style={height != null ? { height: `${height}px`, overflow: "hidden" } : undefined}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -974,26 +1024,24 @@ export function CampaignRecap({
                     </div>
                   )}
                   {orphan && borrowed.length === 1 && (
-                    /* h_plus_tall_v — OUTER ROW anchors height via globals.css
-                       .bic-featured-row { aspect-ratio: 32/9 } at md+. Both
-                       slots stretch to fill that height; right slot's portrait
-                       is clipped via object-fit: cover. Mobile falls back to
-                       single-column stack at each card's natural aspect. */
-                    <div className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    /* h_plus_tall_v — FeaturedRow enforces a measured pixel
+                       height (width × 9/32) at md+. Both slots stretch to
+                       fill that height; right slot's portrait is clipped
+                       via object-fit: cover. Mobile stacks naturally. */
+                    <FeaturedRow>
                       <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
                         <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
                       </div>
                       <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
                         <MasonryCard key={borrowed[0].id} athlete={borrowed[0]} items={media[borrowed[0].id] || []} activeFilter={filter} cardIndex={1} />
                       </div>
-                    </div>
+                    </FeaturedRow>
                   )}
                   {orphan && borrowed.length === 2 && (
-                    /* h_plus_stacked_vs — OUTER ROW at aspect-ratio 32/9;
-                       left slot stretches to full row height, right column
-                       is a 2-row grid at h-full dividing that height for the
-                       two stacked portraits (both clipped via cover). */
-                    <div className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    /* h_plus_stacked_vs — same measured-height row; right
+                       column is a 2-row grid at h-full that divides the
+                       row height for the two stacked portraits. */
+                    <FeaturedRow>
                       <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
                         <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
                       </div>
@@ -1005,7 +1053,7 @@ export function CampaignRecap({
                           <MasonryCard key={borrowed[1].id} athlete={borrowed[1]} items={media[borrowed[1].id] || []} activeFilter={filter} cardIndex={2} />
                         </div>
                       </div>
-                    </div>
+                    </FeaturedRow>
                   )}
                   {restWides.length > 0 && (
                     <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">

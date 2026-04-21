@@ -528,17 +528,14 @@ img, video { display: block; max-width: 100%; }
 }
 
 /* Best In Class featured row — orphan-wide pairs (desktop only).
-   The row itself is anchored at aspect-ratio 32/9 so its height equals
-   approximately half its width × 9/16 — the natural height of a 16:9
-   card at half-width. Both slots stretch to fill that row height via
-   grid alignment; their contents are clipped via object-fit: cover so
-   portrait cards don't grow the row to their intrinsic height. Mobile
-   (< 768px) gets a single-column stack at each card's natural aspect,
-   so these overrides apply at md+ only. (We tried a Tailwind arbitrary
-   value `md:[aspect-ratio:32/9]` first — it did not compile into the
-   bundle; plain CSS here does.) */
+   The row's pixel height is measured and applied by the FeaturedRow React
+   component (width × 9/32) with overflow: hidden. CSS aspect-ratio was
+   tried first but only acts as a sizing hint — children with taller
+   intrinsic heights grew the row anyway. These rules force the media
+   inside each slot to cover at 100% of its flex slot so a portrait card
+   doesn't render at its natural 9:16 height and bleed past the clip.
+   Mobile (< 768px) stacks naturally, so these overrides apply at md+. */
 @media (min-width: 768px) {
-  .bic-featured-row { aspect-ratio: 32 / 9; }
   .bic-featured-slot { min-height: 0; }
   .bic-featured-slot > .media-card {
     height: 100%;
