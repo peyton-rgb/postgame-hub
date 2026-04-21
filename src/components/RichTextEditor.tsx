@@ -165,6 +165,10 @@ export default function RichTextEditor({
   const [highlightColor, setHighlightColor] = useState("#D73F09");
 
   const editor = useEditor({
+    // Prevent SSR hydration mismatch — TipTap's official fix for Next.js.
+    // Without this, TipTap tries to render on the server where there's no DOM,
+    // causing a mismatch with what the client renders.
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         // StarterKit bundles heading, bulletList, orderedList, blockquote, etc.
