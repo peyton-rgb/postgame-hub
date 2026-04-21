@@ -295,7 +295,7 @@ function TriageCard({
 // trailing masonry flow for everything else. Featured rows are always
 // gap-free: every slot is filled before the row is committed.
 
-type Orientation = "horizontal" | "vertical" | "square" | "unknown";
+type Orientation = "horizontal" | "vertical" | "square" | "unknown" | "broken";
 
 type FeaturedRow =
   | { kind: "solo_full"; item: InspoItem }
@@ -711,13 +711,21 @@ export default function InspoLibrary() {
     for (const item of gridItems) {
       if (orientations[item.id]) continue;
       const src = item.thumbnail_url || item.file_url;
-      if (!src) continue;
+      if (!src) {
+        // No image at all — mark broken so the planner won't feature it.
+        setOrientations((prev) => prev[item.id] ? prev : { ...prev, [item.id]: "broken" });
+        continue;
+      }
       const img = new Image();
       img.onload = () => {
         if (cancelled) return;
         setOrientations((prev) =>
           prev[item.id] ? prev : { ...prev, [item.id]: classify(img.naturalWidth, img.naturalHeight) }
         );
+      };
+      img.onerror = () => {
+        if (cancelled) return;
+        setOrientations((prev) => prev[item.id] ? prev : { ...prev, [item.id]: "broken" });
       };
       img.src = src;
     }
@@ -895,6 +903,16 @@ export default function InspoLibrary() {
           height: 100%;
           object-fit: cover;
           min-height: 0 !important;
+        }
+        /* NO-PREVIEW fallback: if InspoCard renders a text div instead of an
+           <img>, make it fill the slot so the dark bg shows edge-to-edge
+           rather than leaving black page-bg void below a short fallback box. */
+        .best-featured-slot > div > div:first-child > div {
+          width: 100%;
+          height: 100% !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
       `}</style>
     </div>
