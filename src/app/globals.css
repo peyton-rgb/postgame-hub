@@ -526,32 +526,3 @@ img, video { display: block; max-width: 100%; }
 @media (max-width: 480px) {
   .recap-container [data-masonry] { column-count: 1 !important; }
 }
-
-/* Best In Class true-masonry grid.
-   Single CSS Grid with dense auto-flow. Horizontal (landscape-video) cards
-   span 2 cols; everyone else spans 1. Row granularity is 8px + 8px gap, and
-   per-card row-span is computed in JS from each card's measured height
-   (BicMasonryCell in CampaignRecap.tsx). That gives true vertical masonry:
-   tall portraits don't leave dead space under shorter neighbors.
-   The --bic-cols custom prop is set inline from the React component based
-   on settings.columns; the media queries clamp it at narrower viewports. */
-.bic-masonry {
-  display: grid;
-  grid-template-columns: repeat(var(--bic-cols, 4), minmax(0, 1fr));
-  grid-auto-rows: 8px;
-  gap: 8px;
-  grid-auto-flow: dense;
-}
-/* Zero out MasonryCard's mb-2 inside the grid — grid gap handles spacing. */
-.bic-masonry > .bic-cell > .media-card { margin-bottom: 0 !important; }
-/* Each cell is its own content box — aspect-ratio-driven height drives the
-   row-span computation and the cell itself is just a thin positioning div. */
-.bic-masonry > .bic-cell { min-width: 0; }
-@media (max-width: 768px) {
-  .bic-masonry { --bic-cols: 2 !important; }
-}
-@media (max-width: 480px) {
-  .bic-masonry { --bic-cols: 1 !important; }
-  /* At 1 col the whole grid is single-column — clamp any span-2 cells. */
-  .bic-masonry > .bic-cell { grid-column: span 1 !important; }
-}

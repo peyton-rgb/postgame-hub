@@ -1,137 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
-import DOMPurify from "dompurify";
-
-/**
- * Safely render a string that may be HTML (from the rich text editor) or
- * plain text (from older campaigns saved before the editor existed).
- *
- * - If the string contains HTML tags → sanitize with DOMPurify, render as HTML
- * - If it's plain text → just render it as-is with whitespace preserved
- */
-function SafeHTML({ html, className }: { html: string; className?: string }) {
-  const hasHTML = /<[a-z][\s\S]*>/i.test(html);
-  if (!hasHTML) {
-    // Old plain-text data — render with line breaks preserved
-    return <div className={className + " whitespace-pre-line"}>{html}</div>;
-  }
-  const clean = DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: [
-      "p", "br", "strong", "em", "u", "s", "a", "h2", "h3",
-      "ul", "ol", "li", "blockquote", "span", "mark",
-    ],
-    ALLOWED_ATTR: ["href", "target", "rel", "style", "class"],
-  });
-  return (
-    <div
-      className={className}
-      dangerouslySetInnerHTML={{ __html: clean }}
-    />
-  );
-}
-
-// ── Best In Class true-masonry grid ──────────────────────────
-//
-// CSS Grid with grid-auto-flow: dense, fine-grained grid-auto-rows (8px),
-// and per-card grid-row: span N computed from measured height. Horizontal
-// (landscape-video) athletes get grid-column: span 2; everyone else spans 1.
-// Dense flow fills the 1-col gaps beside span-2 horizontals so packing stays
-// tight. Each card's natural aspect-ratio-driven height is measured via
-// ResizeObserver and turned into a row-span so tall portraits don't leave
-// dead space under shorter neighbors — true vertical masonry.
-//
-// Mobile breakpoints are handled in globals.css (.bic-masonry):
-//   default     → cols from settings.columns (inline CSS var --bic-cols)
-//   ≤ 768px     → 2 cols
-//   ≤ 480px     → 1 col (span-2 clamped to 1 via !important)
-const BIC_TRACK_HEIGHT = 8;
-const BIC_GAP = 8;
-
-function BicMasonryCell({
-  isWide,
-  children,
-}: {
-  isWide: boolean;
-  children: React.ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [rowSpan, setRowSpan] = useState(1);
-
-  useLayoutEffect(() => {
-    if (typeof window === "undefined" || !ref.current) return;
-    const el = ref.current;
-    const measure = () => {
-      // Height of the cell's content (the MasonryCard + any margin).
-      // rowSpan must cover (contentHeight + gap) because the gap sits AFTER
-      // each row track; span N covers N*track + (N-1)*gap, plus one trailing
-      // gap from the container → effective per-span size = track + gap.
-      const h = el.getBoundingClientRect().height;
-      if (h <= 0) return;
-      const span = Math.max(1, Math.ceil((h + BIC_GAP) / (BIC_TRACK_HEIGHT + BIC_GAP)));
-      setRowSpan(span);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className="bic-cell"
-      style={{
-        gridColumn: isWide ? "span 2" : "span 1",
-        gridRow: `span ${rowSpan}`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function BicMasonry({
-  athletes,
-  media,
-  wideAthleteIds,
-  activeFilter,
-  cols,
-}: {
-  athletes: Athlete[];
-  media: Record<string, Media[]>;
-  wideAthleteIds: Set<string>;
-  activeFilter: string;
-  cols: number;
-}) {
-  return (
-    <div
-      className="bic-masonry"
-      style={{ ["--bic-cols" as string]: cols }}
-    >
-      {athletes.map((a, i) => (
-        <BicMasonryCell key={a.id} isWide={wideAthleteIds.has(a.id)}>
-          <MasonryCard athlete={a} items={media[a.id] || []} activeFilter={activeFilter} cardIndex={i} />
-        </BicMasonryCell>
-      ))}
-    </div>
-  );
-}
 
 // ── Masonry Card ─────────────────────────────────────────────
-//
-// NOTE: The Best In Class grid (BicMasonry above) relies on this component's
-// outer DOM: each card's root carries `.media-card`, and its natural height
-// is driven by inline aspect-ratio on the media inside. BicMasonryCell
-// measures the card's rendered height via ResizeObserver and computes a
-// CSS Grid row-span from it. If you restructure this card, update the
-// `.bic-masonry > .bic-cell > .media-card` rule in globals.css (which
-// zeros mb-2 to avoid doubling up with the grid gap).
 
 const DEFAULT_RATIOS = ["1/1", "9/16", "4/5"] as const;
 const VIDEO_SAFE_RATIOS = ["9/16", "4/5"] as const;
@@ -441,8 +317,8 @@ export function CampaignRecap({
     });
   }, [athletes, media]);
 
-  // wideAthleteIds is still populated by the probe above — BicMasonry reads
-  // it per-card to decide grid-column: span 2 vs span 1.
+  const wideFiltered = filtered.filter((a) => wideAthleteIds.has(a.id));
+  const normalFiltered = filtered.filter((a) => !wideAthleteIds.has(a.id));
 
   const autoContentTypes = [
     stats.igFeedPosts > 0 && "IG Feed",
@@ -576,10 +452,9 @@ export function CampaignRecap({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
             <div>
               {settings.description && (
-                <SafeHTML
-                  html={settings.description}
-                  className="prose prose-invert prose-sm md:prose-base max-w-none text-white/70 prose-headings:text-white prose-a:text-[#D73F09] prose-strong:text-white prose-blockquote:border-[#D73F09] prose-blockquote:text-white/80"
-                />
+                <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
+                  {settings.description}
+                </div>
               )}
             </div>
             <div className="space-y-0">
@@ -605,10 +480,7 @@ export function CampaignRecap({
         <div ref={(el) => { sectionRefs.current["key_takeaways"] = el; }} data-section="key_takeaways" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Key Takeaways</h2>
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 md:p-8">
-            <SafeHTML
-              html={settings.key_takeaways}
-              className="prose prose-invert prose-sm md:prose-base max-w-none text-white/90 prose-headings:text-white prose-a:text-[#D73F09] prose-strong:text-white prose-blockquote:border-[#D73F09] prose-blockquote:text-white/80"
-            />
+            <div className="text-sm md:text-base text-white/90 leading-relaxed whitespace-pre-line">{settings.key_takeaways}</div>
           </div>
         </div>
       )}
@@ -1031,13 +903,18 @@ export function CampaignRecap({
             </div>
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            <BicMasonry
-              athletes={filtered}
-              media={media}
-              wideAthleteIds={wideAthleteIds}
-              activeFilter={filter}
-              cols={cols}
-            />
+            {wideFiltered.length > 0 && (
+              <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                {wideFiltered.map((a, i) => (
+                  <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
+                ))}
+              </div>
+            )}
+            <div data-masonry style={{ columnCount: cols, columnGap: 8 }}>
+              {normalFiltered.map((a, i) => (
+                <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + wideFiltered.length} />
+              ))}
+            </div>
           </div>
         </div>
       )}
