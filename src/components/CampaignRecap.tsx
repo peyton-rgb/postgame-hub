@@ -317,8 +317,8 @@ export function CampaignRecap({
     });
   }, [athletes, media]);
 
-  const wideFiltered = filtered.filter((a) => wideAthleteIds.has(a.id));
-  const normalFiltered = filtered.filter((a) => !wideAthleteIds.has(a.id));
+  // wideAthleteIds feeds per-card grid-column: span 2 in the Best In Class
+  // grid below. No bucket split — every athlete renders in a single grid.
 
   const autoContentTypes = [
     stats.igFeedPosts > 0 && "IG Feed",
@@ -903,19 +903,40 @@ export function CampaignRecap({
             </div>
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            {wideFiltered.length > 0 && (
-              <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                {wideFiltered.map((a, i) => (
-                  <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
-                ))}
-              </div>
-            )}
-            <div data-masonry style={{ columnCount: cols, columnGap: 8 }}>
-              {normalFiltered.map((a, i) => (
-                <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i + wideFiltered.length} />
+            <div
+              className="bic-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                gap: 8,
+                gridAutoFlow: "dense",
+              }}
+            >
+              {filtered.map((a, i) => (
+                <div
+                  key={a.id}
+                  style={{ gridColumn: wideAthleteIds.has(a.id) ? "span 2" : "span 1" }}
+                >
+                  <MasonryCard athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
+                </div>
               ))}
             </div>
           </div>
+          <style jsx>{`
+            @media (max-width: 768px) {
+              :global(.bic-grid) {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              }
+            }
+            @media (max-width: 480px) {
+              :global(.bic-grid) {
+                grid-template-columns: 1fr !important;
+              }
+              :global(.bic-grid) > :global(div) {
+                grid-column: span 1 !important;
+              }
+            }
+          `}</style>
         </div>
       )}
 
