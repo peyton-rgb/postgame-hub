@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, createContext, useContext } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
@@ -38,16 +38,23 @@ function SafeHTML({ html, className }: { html: string; className?: string }) {
 
 // ── Best In Class featured row wrapper ───────────────────────
 //
-// Enforces a concrete pixel height on the row equal to width * 9/32 so that
-// both columns (left 16:9 horizontal, right stacked portraits or tall portrait)
-// stretch to a hard constraint rather than letting the portraits' natural
-// heights grow the row. CSS aspect-ratio was tried first but is only a sizing
-// hint — children with larger intrinsic heights won anyway. A measured pixel
-// height + overflow: hidden is a hard constraint. At mobile (< 768px) the
-// height is cleared so the row falls back to its natural single-column stack.
+// CSS percentage-height cascades don't propagate reliably down to the media
+// inside MasonryCard (grid/flex interactions + inline aspect-ratio combine
+// into a chain that resolves to an intrinsic content height instead of the
+// row's concrete pixel height). The fix: every featured box gets its OWN
+// explicit pixel height inline, not a percentage. FeaturedRow measures the
+// row width on mount + on resize and exposes a concrete rowHeight (px) via
+// context; FeaturedSlot reads that value and applies it to each slot
+// container. On mobile (< 768px) the context value is null — slots render
+// no inline height and fall back to natural single-column stack.
+const FEATURED_GAP = 8; // px, must match Tailwind `gap-2`
+
+type FeaturedCtx = { rowHeight: number | null };
+const FeaturedContext = createContext<FeaturedCtx>({ rowHeight: null });
+
 function FeaturedRow({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | null>(null);
+  const [rowHeight, setRowHeight] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -55,16 +62,15 @@ function FeaturedRow({ children }: { children: React.ReactNode }) {
 
     const measure = () => {
       if (!ref.current) return;
-      if (!mq.matches) { setHeight(null); return; }
+      if (!mq.matches) { setRowHeight(null); return; }
       const w = ref.current.offsetWidth;
-      if (w > 0) setHeight(Math.round(w * 9 / 32));
+      if (w > 0) setRowHeight(Math.round(w * 9 / 32));
     };
 
     measure();
     const ro = new ResizeObserver(measure);
     if (ref.current) ro.observe(ref.current);
     const onMqChange = () => measure();
-    // Safari <14 uses addListener; modern browsers use addEventListener.
     if (mq.addEventListener) mq.addEventListener("change", onMqChange);
     else mq.addListener(onMqChange);
 
@@ -76,10 +82,66 @@ function FeaturedRow({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
+    <FeaturedContext.Provider value={{ rowHeight }}>
+      <div
+        ref={ref}
+        className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2"
+        style={rowHeight != null ? { height: `${rowHeight}px`, overflow: "hidden" } : undefined}
+      >
+        {children}
+      </div>
+    </FeaturedContext.Provider>
+  );
+}
+
+/**
+ * One slot inside a FeaturedRow. `portion` controls how much of the row
+ * height this slot takes:
+ *   "full"  → the row's full pixel height (left slot, right tall-v slot,
+ *             or right-column wrapper that further splits).
+ *   "half"  → (rowHeight - gap) / 2, used for each of the two stacked
+ *             portrait slots inside the right column of h_plus_stacked_vs.
+ * On mobile (rowHeight is null) no inline height is emitted — slot inherits
+ * its natural content height. overflow-hidden is always on via className so
+ * any unexpected child overflow is clipped.
+ */
+function FeaturedSlot({
+  portion = "full",
+  className = "",
+  children,
+}: {
+  portion?: "full" | "half";
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const { rowHeight } = useContext(FeaturedContext);
+  let inlineHeight: number | null = null;
+  if (rowHeight != null) {
+    inlineHeight = portion === "half"
+      ? Math.max(0, Math.round((rowHeight - FEATURED_GAP) / 2))
+      : rowHeight;
+  }
+  return (
     <div
-      ref={ref}
-      className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2"
-      style={height != null ? { height: `${height}px`, overflow: "hidden" } : undefined}
+      className={`bic-featured-slot rounded-xl overflow-hidden ${className}`.trim()}
+      style={inlineHeight != null ? { height: `${inlineHeight}px` } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Right-column wrapper for h_plus_stacked_vs: holds two FeaturedSlots
+ * (portion="half") in a vertical flex stack, itself sized to the full row
+ * height. On mobile the wrapper has no inline height.
+ */
+function FeaturedStackedRight({ children }: { children: React.ReactNode }) {
+  const { rowHeight } = useContext(FeaturedContext);
+  return (
+    <div
+      className="flex flex-col gap-2"
+      style={rowHeight != null ? { height: `${rowHeight}px` } : undefined}
     >
       {children}
     </div>
@@ -1024,35 +1086,34 @@ export function CampaignRecap({
                     </div>
                   )}
                   {orphan && borrowed.length === 1 && (
-                    /* h_plus_tall_v — FeaturedRow enforces a measured pixel
-                       height (width × 9/32) at md+. Both slots stretch to
-                       fill that height; right slot's portrait is clipped
-                       via object-fit: cover. Mobile stacks naturally. */
+                    /* h_plus_tall_v — each slot gets its OWN explicit pixel
+                       height from the FeaturedRow context. No height: 100%
+                       cascade. Mobile falls back to natural stack. */
                     <FeaturedRow>
-                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
+                      <FeaturedSlot portion="full">
                         <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
-                      </div>
-                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
+                      </FeaturedSlot>
+                      <FeaturedSlot portion="full">
                         <MasonryCard key={borrowed[0].id} athlete={borrowed[0]} items={media[borrowed[0].id] || []} activeFilter={filter} cardIndex={1} />
-                      </div>
+                      </FeaturedSlot>
                     </FeaturedRow>
                   )}
                   {orphan && borrowed.length === 2 && (
-                    /* h_plus_stacked_vs — same measured-height row; right
-                       column is a 2-row grid at h-full that divides the
-                       row height for the two stacked portraits. */
+                    /* h_plus_stacked_vs — left slot takes the full row height,
+                       right column wrapper takes the same full height and
+                       splits it (minus one gap) into two half-height slots. */
                     <FeaturedRow>
-                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
+                      <FeaturedSlot portion="full">
                         <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
-                      </div>
-                      <div className="grid grid-cols-1 grid-rows-2 gap-2 md:h-full">
-                        <div className="bic-featured-slot h-full rounded-xl overflow-hidden">
+                      </FeaturedSlot>
+                      <FeaturedStackedRight>
+                        <FeaturedSlot portion="half">
                           <MasonryCard key={borrowed[0].id} athlete={borrowed[0]} items={media[borrowed[0].id] || []} activeFilter={filter} cardIndex={1} />
-                        </div>
-                        <div className="bic-featured-slot h-full rounded-xl overflow-hidden">
+                        </FeaturedSlot>
+                        <FeaturedSlot portion="half">
                           <MasonryCard key={borrowed[1].id} athlete={borrowed[1]} items={media[borrowed[1].id] || []} activeFilter={filter} cardIndex={2} />
-                        </div>
-                      </div>
+                        </FeaturedSlot>
+                      </FeaturedStackedRight>
                     </FeaturedRow>
                   )}
                   {restWides.length > 0 && (

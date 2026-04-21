@@ -528,27 +528,34 @@ img, video { display: block; max-width: 100%; }
 }
 
 /* Best In Class featured row — orphan-wide pairs (desktop only).
-   The row's pixel height is measured and applied by the FeaturedRow React
-   component (width × 9/32) with overflow: hidden. CSS aspect-ratio was
-   tried first but only acts as a sizing hint — children with taller
-   intrinsic heights grew the row anyway. These rules force the media
-   inside each slot to cover at 100% of its flex slot so a portrait card
-   doesn't render at its natural 9:16 height and bleed past the clip.
-   Mobile (< 768px) stacks naturally, so these overrides apply at md+. */
+   Every featured box (row, each slot, stacked right-column wrapper, each
+   stacked half-slot) gets its own concrete pixel height inline from the
+   FeaturedRow React component. We do NOT rely on a height: 100% cascade —
+   in practice it didn't propagate through MasonryCard's grid/flex chain
+   and the media rendered at intrinsic size (~2480px). Instead, each slot
+   becomes a positioning context and MasonryCard is absolutely anchored
+   to the slot's concrete pixel box via `inset: 0`. The media inside has
+   its inline aspect-ratio neutralized and forced to cover the slot.
+   Mobile (< 768px): slots have no inline height and render at natural
+   content height, so these positioning overrides apply at md+ only. */
 @media (min-width: 768px) {
-  .bic-featured-slot { min-height: 0; }
+  .bic-featured-slot {
+    position: relative;
+    min-height: 0;
+  }
   .bic-featured-slot > .media-card {
-    height: 100%;
+    position: absolute;
+    inset: 0;
     margin-bottom: 0 !important;
-    display: flex;
-    flex-direction: column;
   }
   .bic-featured-slot > .media-card > div:first-child {
-    flex: 1;
-    min-height: 0;
+    position: absolute;
+    inset: 0;
   }
   .bic-featured-slot > .media-card > div:first-child > img,
   .bic-featured-slot > .media-card > div:first-child > video {
+    position: absolute;
+    inset: 0;
     height: 100% !important;
     width: 100% !important;
     aspect-ratio: auto !important;
