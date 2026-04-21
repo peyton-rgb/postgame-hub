@@ -423,6 +423,18 @@ function FeaturedSlot({ item, rowHeight }: { item: InspoItem; rowHeight: number 
 }
 
 function FeaturedRowView({ row }: { row: FeaturedRow }) {
+  // DIAGNOSTIC — temporary
+  if (typeof window !== "undefined") {
+    // eslint-disable-next-line no-console
+    console.log("[inspo-grid] FeaturedRowView render:", {
+      kind: row.kind,
+      slots:
+        row.kind === "solo_full" ? [row.item.athlete_name || row.item.id]
+        : row.kind === "h_pair" ? [row.left.athlete_name || row.left.id, row.right.athlete_name || row.right.id]
+        : row.kind === "h_plus_tall_v" ? [row.h.athlete_name || row.h.id, row.v.athlete_name || row.v.id]
+        : [row.h.athlete_name || row.h.id, row.v1.athlete_name || row.v1.id, row.v2.athlete_name || row.v2.id],
+    });
+  }
   const gap = 12;
   const rowStyle: React.CSSProperties = {
     display: "grid",
@@ -742,6 +754,31 @@ export default function InspoLibrary() {
     () => planLayout(gridItems, orientationMap),
     [gridItems, orientationMap]
   );
+
+  // ── DIAGNOSTIC LOGGING (temporary — remove once root cause found) ──
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const orientDump: Record<string, { orientation: Orientation | "unknown"; name: string; thumb: string | null }> = {};
+    for (const it of gridItems) {
+      orientDump[it.id] = {
+        orientation: orientationMap.get(it.id) ?? "unknown",
+        name: it.athlete_name || it.visual_description?.slice(0, 40) || "(untitled)",
+        thumb: it.thumbnail_url || it.file_url || null,
+      };
+    }
+    const blockDump = layoutBlocks.map((b, i) => {
+      if (b.type === "flow") return { idx: i, type: "flow", count: b.items.length, firstFew: b.items.slice(0, 3).map((x) => x.athlete_name || x.id.slice(0, 8)) };
+      const r = b.row;
+      if (r.kind === "solo_full") return { idx: i, type: "featured", kind: r.kind, item: r.item.athlete_name || r.item.id };
+      if (r.kind === "h_pair") return { idx: i, type: "featured", kind: r.kind, left: r.left.athlete_name || r.left.id, right: r.right.athlete_name || r.right.id };
+      if (r.kind === "h_plus_tall_v") return { idx: i, type: "featured", kind: r.kind, h: r.h.athlete_name || r.h.id, v: r.v.athlete_name || r.v.id };
+      return { idx: i, type: "featured", kind: r.kind, h: r.h.athlete_name || r.h.id, v1: r.v1.athlete_name || r.v1.id, v2: r.v2.athlete_name || r.v2.id };
+    });
+    // eslint-disable-next-line no-console
+    console.log("[inspo-grid] orientations:", orientDump);
+    // eslint-disable-next-line no-console
+    console.log("[inspo-grid] layoutBlocks:", blockDump);
+  }, [layoutBlocks, orientationMap, gridItems]);
 
   if (loading) {
     return (
