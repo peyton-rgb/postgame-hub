@@ -974,11 +974,13 @@ export function CampaignRecap({
                     </div>
                   )}
                   {orphan && borrowed.length === 1 && (
-                    /* h_plus_tall_v — LEFT slot anchors row height at 16:9 via
-                       inline style (Tailwind arbitrary aspect-ratio did not
-                       apply in the compiled bundle); right slot h-full matches. */
+                    /* h_plus_tall_v — OUTER ROW anchors height via globals.css
+                       .bic-featured-row { aspect-ratio: 32/9 } at md+. Both
+                       slots stretch to fill that height; right slot's portrait
+                       is clipped via object-fit: cover. Mobile falls back to
+                       single-column stack at each card's natural aspect. */
                     <div className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <div className="bic-featured-slot rounded-xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
+                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
                         <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
                       </div>
                       <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
@@ -987,11 +989,12 @@ export function CampaignRecap({
                     </div>
                   )}
                   {orphan && borrowed.length === 2 && (
-                    /* h_plus_stacked_vs — LEFT slot anchors row height at 16:9;
-                       right column is a 2-row grid at h-full that divides
-                       that height for the two stacked portraits. */
+                    /* h_plus_stacked_vs — OUTER ROW at aspect-ratio 32/9;
+                       left slot stretches to full row height, right column
+                       is a 2-row grid at h-full dividing that height for the
+                       two stacked portraits (both clipped via cover). */
                     <div className="bic-featured-row mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <div className="bic-featured-slot rounded-xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
+                      <div className="bic-featured-slot md:h-full rounded-xl overflow-hidden">
                         <MasonryCard key={orphan.id} athlete={orphan} items={media[orphan.id] || []} activeFilter={filter} cardIndex={0} />
                       </div>
                       <div className="grid grid-cols-1 grid-rows-2 gap-2 md:h-full">

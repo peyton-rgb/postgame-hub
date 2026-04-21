@@ -528,12 +528,17 @@ img, video { display: block; max-width: 100%; }
 }
 
 /* Best In Class featured row — orphan-wide pairs (desktop only).
-   Each slot locks its child MasonryCard to 100% height and forces the
-   card's image/video to cover the slot so stacked portraits line up
-   exactly with the horizontal's height (aspect-ratio on the row sets
-   the total height; slots divide it). Mobile stacks naturally, so
-   these overrides only apply at md+ where the row has h-full. */
+   The row itself is anchored at aspect-ratio 32/9 so its height equals
+   approximately half its width × 9/16 — the natural height of a 16:9
+   card at half-width. Both slots stretch to fill that row height via
+   grid alignment; their contents are clipped via object-fit: cover so
+   portrait cards don't grow the row to their intrinsic height. Mobile
+   (< 768px) gets a single-column stack at each card's natural aspect,
+   so these overrides apply at md+ only. (We tried a Tailwind arbitrary
+   value `md:[aspect-ratio:32/9]` first — it did not compile into the
+   bundle; plain CSS here does.) */
 @media (min-width: 768px) {
+  .bic-featured-row { aspect-ratio: 32 / 9; }
   .bic-featured-slot { min-height: 0; }
   .bic-featured-slot > .media-card {
     height: 100%;
