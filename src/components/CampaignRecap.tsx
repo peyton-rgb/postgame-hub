@@ -6,6 +6,7 @@ import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
+import Masonry from "react-masonry-css";
 
 // ── Masonry Card ─────────────────────────────────────────────
 
@@ -903,39 +904,27 @@ export function CampaignRecap({
             </div>
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            <div
-              className="bic-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                gap: 8,
-                gridAutoFlow: "dense",
-              }}
+            <Masonry
+              breakpointCols={{ default: cols, 768: 2, 480: 1 }}
+              className="bic-masonry"
+              columnClassName="bic-masonry_col"
             >
               {filtered.map((a, i) => (
-                <div
-                  key={a.id}
-                  style={{ gridColumn: wideAthleteIds.has(a.id) ? "span 2" : "span 1" }}
-                >
-                  <MasonryCard athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
-                </div>
+                <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
               ))}
-            </div>
+            </Masonry>
           </div>
-          <style jsx>{`
-            @media (max-width: 768px) {
-              :global(.bic-grid) {
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-              }
+          <style jsx global>{`
+            .bic-masonry {
+              display: flex;
+              margin-left: -8px; /* cancel the first column's left padding */
+              width: auto;
             }
-            @media (max-width: 480px) {
-              :global(.bic-grid) {
-                grid-template-columns: 1fr !important;
-              }
-              :global(.bic-grid) > :global(div) {
-                grid-column: span 1 !important;
-              }
+            .bic-masonry_col {
+              padding-left: 8px; /* gutter */
+              background-clip: padding-box;
             }
+            /* MasonryCard already uses mb-2 (8px) as vertical card spacing. */
           `}</style>
         </div>
       )}
