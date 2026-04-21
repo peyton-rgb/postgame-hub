@@ -16,6 +16,7 @@ import DrivePicker from "@/components/DrivePicker";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { computeStats, pct } from "@/lib/recap-helpers";
+import RichTextEditor from "@/components/RichTextEditor";
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Overview" },
@@ -1680,17 +1681,21 @@ export default function CampaignEditor() {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
-                className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
-                placeholder="Twenty-five college athletes across six sports showcase the adidas Evo SL..." />
+              <RichTextEditor
+                value={description}
+                onChange={setDescription}
+                placeholder="Twenty-five college athletes across six sports showcase the adidas Evo SL..."
+              />
             </div>
 
             {/* Key Takeaways */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Key Takeaways</label>
-              <textarea value={keyTakeaways} onChange={(e) => setKeyTakeaways(e.target.value)} rows={4}
-                className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#D73F09] focus:outline-none"
-                placeholder="Callouts, recommendations, and highlights for executives..." />
+              <RichTextEditor
+                value={keyTakeaways}
+                onChange={setKeyTakeaways}
+                placeholder="Callouts, recommendations, and highlights for executives..."
+              />
               <p className="text-[10px] text-gray-600 mt-1">Displayed prominently in the recap for executive review</p>
             </div>
 
