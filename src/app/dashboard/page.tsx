@@ -81,6 +81,16 @@ function DashboardContent() {
               Media Library
             </Link>
             <Link
+              href="/dashboard/bts"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-400 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+              BTS Submissions
+            </Link>
+            <Link
               href="/dashboard/inspo"
               className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
             >
