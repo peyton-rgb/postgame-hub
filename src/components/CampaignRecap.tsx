@@ -6,6 +6,35 @@ import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
+import DOMPurify from "dompurify";
+
+/**
+ * Safely render a string that may be HTML (from the rich text editor) or
+ * plain text (from older campaigns saved before the editor existed).
+ *
+ * - If the string contains HTML tags → sanitize with DOMPurify, render as HTML
+ * - If it's plain text → just render it as-is with whitespace preserved
+ */
+function SafeHTML({ html, className }: { html: string; className?: string }) {
+  const hasHTML = /<[a-z][\s\S]*>/i.test(html);
+  if (!hasHTML) {
+    // Old plain-text data — render with line breaks preserved
+    return <div className={className + " whitespace-pre-line"}>{html}</div>;
+  }
+  const clean = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "u", "s", "a", "h2", "h3",
+      "ul", "ol", "li", "blockquote", "span", "mark",
+    ],
+    ALLOWED_ATTR: ["href", "target", "rel", "style", "class"],
+  });
+  return (
+    <div
+      className={className}
+      dangerouslySetInnerHTML={{ __html: clean }}
+    />
+  );
+}
 
 // ── Masonry Card ─────────────────────────────────────────────
 
@@ -452,9 +481,10 @@ export function CampaignRecap({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
             <div>
               {settings.description && (
-                <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
-                  {settings.description}
-                </div>
+                <SafeHTML
+                  html={settings.description}
+                  className="prose prose-invert prose-sm md:prose-base max-w-none text-white/70 prose-headings:text-white prose-a:text-[#D73F09] prose-strong:text-white prose-blockquote:border-[#D73F09] prose-blockquote:text-white/80"
+                />
               )}
             </div>
             <div className="space-y-0">
@@ -480,7 +510,10 @@ export function CampaignRecap({
         <div ref={(el) => { sectionRefs.current["key_takeaways"] = el; }} data-section="key_takeaways" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Key Takeaways</h2>
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 md:p-8">
-            <div className="text-sm md:text-base text-white/90 leading-relaxed whitespace-pre-line">{settings.key_takeaways}</div>
+            <SafeHTML
+              html={settings.key_takeaways}
+              className="prose prose-invert prose-sm md:prose-base max-w-none text-white/90 prose-headings:text-white prose-a:text-[#D73F09] prose-strong:text-white prose-blockquote:border-[#D73F09] prose-blockquote:text-white/80"
+            />
           </div>
         </div>
       )}
