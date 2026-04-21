@@ -904,7 +904,7 @@ export function CampaignRecap({
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
             {wideFiltered.length > 0 && (
-              <div className="mb-2 flex flex-col gap-2">
+              <div className="mb-2 grid grid-cols-1 md:grid-cols-2 gap-2">
                 {wideFiltered.map((a, i) => (
                   <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
                 ))}
