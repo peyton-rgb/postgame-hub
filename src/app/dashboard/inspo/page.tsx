@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import Link from "next/link";
 
@@ -286,6 +286,186 @@ function TriageCard({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Best-In-Class layout planner
+// ---------------------------------------------------------------------------
+//
+// Classifies each item's orientation from its loaded image dimensions, then
+// builds a sequence of "featured rows" (horizontal-video arrangements) and a
+// trailing masonry flow for everything else. Featured rows are always
+// gap-free: every slot is filled before the row is committed.
+
+type Orientation = "horizontal" | "vertical" | "square" | "unknown";
+
+type FeaturedRow =
+  | { kind: "solo_full"; item: InspoItem }
+  | { kind: "h_plus_tall_v"; h: InspoItem; v: InspoItem }
+  | { kind: "h_plus_stacked_vs"; h: InspoItem; v1: InspoItem; v2: InspoItem }
+  | { kind: "h_pair"; left: InspoItem; right: InspoItem };
+
+type LayoutBlock =
+  | { type: "featured"; row: FeaturedRow }
+  | { type: "flow"; items: InspoItem[] };
+
+const PAIRING_WINDOW = 6;
+
+function classify(w: number, h: number): Orientation {
+  if (!w || !h) return "unknown";
+  const r = w / h;
+  if (r >= 1.2) return "horizontal";
+  if (r <= 0.85) return "vertical";
+  return "square";
+}
+
+/**
+ * Walk the items in feed order and plan the layout. Each horizontal video
+ * gets a chance to become a featured row by pairing with nearby verticals
+ * within PAIRING_WINDOW slots ahead of it in the feed. If no suitable
+ * partners exist nearby, a lone horizontal becomes a solo full-width row.
+ * Two adjacent (within the window) horizontals can pair with each other
+ * regardless of verticals. Items consumed by a featured row are removed
+ * from the flow; everything else renders into the trailing masonry.
+ */
+function planLayout(items: InspoItem[], orient: Map<string, Orientation>): LayoutBlock[] {
+  const blocks: LayoutBlock[] = [];
+  const consumed = new Set<string>();
+  let flow: InspoItem[] = [];
+
+  const flush = () => {
+    if (flow.length) {
+      blocks.push({ type: "flow", items: flow });
+      flow = [];
+    }
+  };
+
+  const getO = (it: InspoItem) => orient.get(it.id) ?? "unknown";
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (consumed.has(it.id)) continue;
+    if (getO(it) !== "horizontal") {
+      flow.push(it);
+      continue;
+    }
+
+    // Look ahead within the window for a pairing partner, skipping consumed.
+    const windowEnd = Math.min(items.length, i + 1 + PAIRING_WINDOW);
+    const nearby: InspoItem[] = [];
+    for (let j = i + 1; j < windowEnd; j++) {
+      if (!consumed.has(items[j].id)) nearby.push(items[j]);
+    }
+
+    const nearbyHorizontals = nearby.filter((x) => getO(x) === "horizontal");
+    const nearbyVerticals = nearby.filter((x) => getO(x) === "vertical");
+
+    // Preferred: pair with another horizontal inside the window.
+    if (nearbyHorizontals.length >= 1) {
+      const partner = nearbyHorizontals[0];
+      flush();
+      blocks.push({ type: "featured", row: { kind: "h_pair", left: it, right: partner } });
+      consumed.add(it.id);
+      consumed.add(partner.id);
+      continue;
+    }
+
+    // Next: horizontal with two stacked verticals (matched heights).
+    if (nearbyVerticals.length >= 2) {
+      const [v1, v2] = nearbyVerticals;
+      flush();
+      blocks.push({ type: "featured", row: { kind: "h_plus_stacked_vs", h: it, v1, v2 } });
+      consumed.add(it.id);
+      consumed.add(v1.id);
+      consumed.add(v2.id);
+      continue;
+    }
+
+    // Next: horizontal with one tall vertical.
+    if (nearbyVerticals.length === 1) {
+      const v = nearbyVerticals[0];
+      flush();
+      blocks.push({ type: "featured", row: { kind: "h_plus_tall_v", h: it, v } });
+      consumed.add(it.id);
+      consumed.add(v.id);
+      continue;
+    }
+
+    // Fallback: solo full-width horizontal. Still gap-free — it's the entire row.
+    flush();
+    blocks.push({ type: "featured", row: { kind: "solo_full", item: it } });
+    consumed.add(it.id);
+  }
+
+  flush();
+  return blocks;
+}
+
+// Fixed featured-row height (px). 16:9 at half the masonry width (~600px total
+// container / 2 per row) sits around ~180px tall; we bump it a bit to give the
+// featured treatment real visual weight and to leave breathing room for cards
+// with badges/tags.
+const FEATURED_ROW_HEIGHT = 260;
+
+function FeaturedSlot({ item, rowHeight }: { item: InspoItem; rowHeight: number }) {
+  // Wrap InspoCard in a fixed-height box and force the image inside to cover
+  // the box. InspoCard stays untouched — we only constrain its container.
+  return (
+    <div
+      style={{
+        height: rowHeight,
+        overflow: "hidden",
+        borderRadius: "var(--r-md)",
+      }}
+      className="best-featured-slot"
+    >
+      <InspoCard item={item} />
+    </div>
+  );
+}
+
+function FeaturedRowView({ row }: { row: FeaturedRow }) {
+  const gap = 12;
+  const rowStyle: React.CSSProperties = {
+    display: "grid",
+    gap,
+    marginBottom: 12,
+  };
+  if (row.kind === "solo_full") {
+    return (
+      <div style={{ ...rowStyle, gridTemplateColumns: "1fr" }}>
+        <FeaturedSlot item={row.item} rowHeight={FEATURED_ROW_HEIGHT} />
+      </div>
+    );
+  }
+  if (row.kind === "h_pair") {
+    return (
+      <div style={{ ...rowStyle, gridTemplateColumns: "1fr 1fr" }}>
+        <FeaturedSlot item={row.left} rowHeight={FEATURED_ROW_HEIGHT} />
+        <FeaturedSlot item={row.right} rowHeight={FEATURED_ROW_HEIGHT} />
+      </div>
+    );
+  }
+  if (row.kind === "h_plus_tall_v") {
+    return (
+      <div style={{ ...rowStyle, gridTemplateColumns: "1fr 1fr" }}>
+        <FeaturedSlot item={row.h} rowHeight={FEATURED_ROW_HEIGHT} />
+        <FeaturedSlot item={row.v} rowHeight={FEATURED_ROW_HEIGHT} />
+      </div>
+    );
+  }
+  // h_plus_stacked_vs: left half = horizontal, right half = two stacked verticals,
+  // each vertical is (rowHeight - gap) / 2 so the stack matches the left height.
+  const halfHeight = (FEATURED_ROW_HEIGHT - gap) / 2;
+  return (
+    <div style={{ ...rowStyle, gridTemplateColumns: "1fr 1fr" }}>
+      <FeaturedSlot item={row.h} rowHeight={FEATURED_ROW_HEIGHT} />
+      <div style={{ display: "grid", gap, gridTemplateRows: `${halfHeight}px ${halfHeight}px` }}>
+        <FeaturedSlot item={row.v1} rowHeight={halfHeight} />
+        <FeaturedSlot item={row.v2} rowHeight={halfHeight} />
+      </div>
+    </div>
+  );
+}
+
 function InspoCard({ item }: { item: InspoItem }) {
   const brandName = item.brands?.name ?? "";
   const thumb = item.thumbnail_url || item.file_url;
@@ -521,6 +701,40 @@ export default function InspoLibrary() {
   // ── Which items to show in the grid ──
   const gridItems = searchResults ?? approvedItems;
 
+  // ── Orientation probe ──
+  // Preload each item's thumbnail in a detached Image() and record its
+  // orientation when it resolves. Items we haven't measured yet stay
+  // "unknown" and render in the normal masonry flow until their image lands.
+  const [orientations, setOrientations] = useState<Record<string, Orientation>>({});
+  useEffect(() => {
+    let cancelled = false;
+    for (const item of gridItems) {
+      if (orientations[item.id]) continue;
+      const src = item.thumbnail_url || item.file_url;
+      if (!src) continue;
+      const img = new Image();
+      img.onload = () => {
+        if (cancelled) return;
+        setOrientations((prev) =>
+          prev[item.id] ? prev : { ...prev, [item.id]: classify(img.naturalWidth, img.naturalHeight) }
+        );
+      };
+      img.src = src;
+    }
+    return () => { cancelled = true; };
+  }, [gridItems]);
+
+  const orientationMap = useMemo(() => {
+    const m = new Map<string, Orientation>();
+    for (const [k, v] of Object.entries(orientations)) m.set(k, v);
+    return m;
+  }, [orientations]);
+
+  const layoutBlocks = useMemo(
+    () => planLayout(gridItems, orientationMap),
+    [gridItems, orientationMap]
+  );
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -623,17 +837,23 @@ export default function InspoLibrary() {
         </div>
       )}
 
-      {/* ── Masonry Grid ── */}
+      {/* ── Best-In-Class Grid ── */}
       {gridItems.length > 0 ? (
-        <div
-          style={{
-            columnCount: 4,
-            columnGap: 12,
-          }}
-        >
-          {gridItems.map((item) => (
-            <InspoCard key={item.id} item={item} />
-          ))}
+        <div>
+          {layoutBlocks.map((block, idx) =>
+            block.type === "featured" ? (
+              <FeaturedRowView key={`feat-${idx}`} row={block.row} />
+            ) : (
+              <div
+                key={`flow-${idx}`}
+                style={{ columnCount: 4, columnGap: 12, marginBottom: 12 }}
+              >
+                {block.items.map((item) => (
+                  <InspoCard key={item.id} item={item} />
+                ))}
+              </div>
+            )
+          )}
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
@@ -655,10 +875,26 @@ export default function InspoLibrary() {
         </div>
       )}
 
-      {/* Spin animation for search indicator */}
-      <style jsx>{`
+      {/* Spin animation for search indicator + featured-slot sizing */}
+      <style jsx global>{`
         @keyframes spin {
           to { transform: translateY(-50%) rotate(360deg); }
+        }
+        .best-featured-slot > div {
+          margin-bottom: 0 !important;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+        .best-featured-slot > div > div:first-child {
+          flex: 1;
+          min-height: 0;
+        }
+        .best-featured-slot > div > div:first-child > img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          min-height: 0 !important;
         }
       `}</style>
     </div>
