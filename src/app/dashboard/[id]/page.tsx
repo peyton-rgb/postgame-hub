@@ -11,12 +11,13 @@ import { MasonryPreview } from "@/components/MasonryPreview";
 import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
-import heic2any from "heic2any";
+// heic2any is browser-only; imported dynamically inside convertHeicIfNeeded()
 import DrivePicker from "@/components/DrivePicker";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { computeStats, pct } from "@/lib/recap-helpers";
-import RichTextEditor from "@/components/RichTextEditor";
+import dynamic from "next/dynamic";
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
 
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Overview" },
@@ -1058,6 +1059,7 @@ export default function CampaignEditor() {
     const name = file.name.toLowerCase();
     if (name.endsWith(".heic") || name.endsWith(".heif") || file.type === "image/heic" || file.type === "image/heif") {
       try {
+        const heic2any = (await import("heic2any")).default;
         const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 }) as Blob;
         const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
         return new File([blob], newName, { type: "image/jpeg" });
