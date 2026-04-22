@@ -343,7 +343,7 @@ export function CampaignRecap({
   const hasKpi = settings.kpi_targets && (settings.kpi_targets.athlete_quantity || settings.kpi_targets.content_units || settings.kpi_targets.posts || settings.kpi_targets.impressions || settings.kpi_targets.engagements || settings.kpi_targets.engagement_rate || settings.kpi_targets.cpm || settings.kpi_targets.other_kpis);
   const navTabs = [
     show("brief") && { key: "brief", label: "Recap" },
-    show("key_takeaways") && settings.key_takeaways && { key: "key_takeaways", label: "Takeaways" },
+    show("key_takeaways") && hasRichTextContent(settings.key_takeaways) && { key: "key_takeaways", label: "Takeaways" },
     show("kpi_targets") && hasKpi && { key: "kpi_targets", label: "KPIs" },
     show("metrics") && { key: "metrics", label: "Metrics" },
     show("top_performers") && topPerformers.length > 0 && { key: "top_performers", label: "Top Performers" },
@@ -579,11 +579,14 @@ export function CampaignRecap({
       )}
 
       {/* ── KEY TAKEAWAYS ─────────────────────────────────── */}
-      {show("key_takeaways") && settings.key_takeaways && (
+      {show("key_takeaways") && hasRichTextContent(settings.key_takeaways) && (
         <div ref={(el) => { sectionRefs.current["key_takeaways"] = el; }} data-section="key_takeaways" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Key Takeaways</h2>
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 md:p-8">
-            <div className="text-sm md:text-base text-white/90 leading-relaxed whitespace-pre-line">{settings.key_takeaways}</div>
+            <div
+              className="text-sm md:text-base text-white/90 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: settings.key_takeaways as string }}
+            />
           </div>
         </div>
       )}
