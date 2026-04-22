@@ -7,6 +7,31 @@ import { fmt, computeStats } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { SchoolLogo, getFullSchoolName, getSchoolColor } from "./SchoolBadge";
 
+// ── Rich Text Helper ─────────────────────────────────────────
+
+/**
+ * Returns true only if the given HTML string would produce visible content.
+ *
+ * Strips all tags, decodes the few HTML entities most likely to appear as
+ * whitespace placeholders (&nbsp;), and trims. Returns false for null /
+ * undefined / "" / "<p></p>" / "<p><br></p>" / "<p>&nbsp;</p>" and similar
+ * empty-but-not-truly-empty shapes the TipTap editor produces. Media tags
+ * (<img>, <iframe>) are treated as visible even without text.
+ */
+function hasRichTextContent(html: string | null | undefined): boolean {
+  if (!html) return false;
+  // Images and iframes are visible content on their own.
+  if (/<(img|iframe)\b/i.test(html)) return true;
+  const stripped = html
+    .replace(/<[^>]*>/g, "")           // drop tags
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .trim();
+  return stripped.length > 0;
+}
+
 // ── Social Links Helper ──────────────────────────────────────
 
 function getSocialLinks(athlete: Athlete) {
@@ -356,8 +381,11 @@ export function Top50Recap({
               Top 50 College Athletes {settings.quarter || ""}
             </h1>
 
-            {settings.description && (
-              <p className="text-lg md:text-xl text-white/50 max-w-xl leading-relaxed">{settings.description}</p>
+            {hasRichTextContent(settings.description) && (
+              <div
+                className="text-lg md:text-xl text-white/50 max-w-xl leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: settings.description as string }}
+              />
             )}
 
             <div className="flex gap-9 mt-8">
