@@ -214,7 +214,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
               (e.currentTarget as HTMLImageElement).style.display = 'none';
             }}
           />
-          <h2 className={styles.title}>The Postgame Calendar</h2>
+          <span className={styles.title}>Calendar</span>
         </div>
         <p className={styles.subtitle}>{description ?? DEFAULT_DESCRIPTION}</p>
       </header>
