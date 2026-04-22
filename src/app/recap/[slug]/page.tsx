@@ -2,6 +2,7 @@ import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
+import PostgameCalendar from "@/components/PostgameCalendar";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -76,20 +77,26 @@ export default async function RecapPage({ params }: Props) {
 
   if (isTop50) {
     return (
-      <Top50Recap
-        campaign={campaign}
-        athletes={allAthletes}
-        media={mediaByAthlete}
-      />
+      <>
+        <Top50Recap
+          campaign={campaign}
+          athletes={allAthletes}
+          media={mediaByAthlete}
+        />
+        <PostgameCalendar />
+      </>
     );
   }
 
   return (
-    <CampaignRecap
-      campaign={campaign}
-      athletes={galleryAthletes}
-      allAthletes={allAthletes}
-      media={mediaByAthlete}
-    />
+    <>
+      <CampaignRecap
+        campaign={campaign}
+        athletes={galleryAthletes}
+        allAthletes={allAthletes}
+        media={mediaByAthlete}
+      />
+      <PostgameCalendar />
+    </>
   );
 }
