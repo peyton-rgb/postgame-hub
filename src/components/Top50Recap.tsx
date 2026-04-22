@@ -383,7 +383,7 @@ export function Top50Recap({
 
             {hasRichTextContent(settings.description) && (
               <div
-                className="text-lg md:text-xl text-white/50 max-w-xl leading-relaxed"
+                className="prose prose-invert max-w-xl text-lg md:text-xl text-white/50 leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: settings.description as string }}
               />
             )}

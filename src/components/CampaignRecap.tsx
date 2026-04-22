@@ -555,7 +555,7 @@ export function CampaignRecap({
             <div>
               {hasRichTextContent(settings.description) && (
                 <div
-                  className="text-base md:text-lg text-white/70 leading-relaxed"
+                  className="prose prose-invert max-w-none text-base md:text-lg text-white/70 leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: settings.description as string }}
                 />
               )}
@@ -584,7 +584,7 @@ export function CampaignRecap({
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Key Takeaways</h2>
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 md:p-8">
             <div
-              className="text-sm md:text-base text-white/90 leading-relaxed"
+              className="prose prose-invert max-w-none text-sm md:text-base text-white/90 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: settings.key_takeaways as string }}
             />
           </div>
