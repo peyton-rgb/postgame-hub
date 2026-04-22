@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import heic2any from "heic2any";
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -82,6 +81,7 @@ export function ThumbnailModal({
     if (isHeic) {
       setConverting(true);
       try {
+        const heic2any = (await import("heic2any")).default;
         const blob = await heic2any({ blob: f, toType: "image/jpeg", quality: 0.9 }) as Blob;
         const newName = f.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
         const converted = new File([blob], newName, { type: "image/jpeg" });
