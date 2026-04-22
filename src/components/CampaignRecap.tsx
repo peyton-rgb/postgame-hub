@@ -8,6 +8,31 @@ import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import Masonry from "react-masonry-css";
 
+// ── Rich Text Helper ─────────────────────────────────────────
+
+/**
+ * Returns true only if the given HTML string would produce visible content.
+ *
+ * Strips all tags, decodes the few HTML entities most likely to appear as
+ * whitespace placeholders (&nbsp;), and trims. Returns false for null /
+ * undefined / "" / "<p></p>" / "<p><br></p>" / "<p>&nbsp;</p>" and similar
+ * empty-but-not-truly-empty shapes the TipTap editor produces. Media tags
+ * (<img>, <iframe>) are treated as visible even without text.
+ */
+function hasRichTextContent(html: string | null | undefined): boolean {
+  if (!html) return false;
+  // Images and iframes are visible content on their own.
+  if (/<(img|iframe)\b/i.test(html)) return true;
+  const stripped = html
+    .replace(/<[^>]*>/g, "")           // drop tags
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .trim();
+  return stripped.length > 0;
+}
+
 // ── Masonry Card ─────────────────────────────────────────────
 
 const DEFAULT_RATIOS = ["1/1", "9/16", "4/5"] as const;
@@ -204,6 +229,79 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
   );
 }
 
+// ── Export as PowerPoint button ───────────────────────────────
+
+function ExportPptxButton({ slug, campaignName }: { slug: string; campaignName: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleExport() {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/recap/${slug}/pptx`);
+      if (!res.ok) {
+        const msg = await res.json().catch(() => ({ error: "Export failed." }));
+        throw new Error(msg.error || `Export failed (${res.status})`);
+      }
+      // Pull filename out of Content-Disposition if the server provided one
+      const disp = res.headers.get("Content-Disposition") || "";
+      const match = disp.match(/filename="?([^"]+)"?/);
+      const filename = match?.[1] || `${campaignName.replace(/\s+/g, "-")}-Recap.pptx`;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e?.message || "Export failed.");
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleExport}
+      disabled={loading}
+      title={error || "Download a fully editable PowerPoint version of this recap"}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded text-[10px] md:text-xs font-bold uppercase tracking-wider transition-colors border ${
+        loading
+          ? "bg-white/[0.04] border-white/10 text-white/40 cursor-wait"
+          : error
+          ? "bg-red-500/10 border-red-500/40 text-red-300"
+          : "bg-white/[0.06] border-white/[0.15] text-white/80 hover:bg-[#D73F09] hover:border-[#D73F09] hover:text-white"
+      }`}
+    >
+      {loading ? (
+        <>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" />
+          </svg>
+          Building…
+        </>
+      ) : error ? (
+        <>Export failed — retry</>
+      ) : (
+        <>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Export PowerPoint
+        </>
+      )}
+    </button>
+  );
+}
+
 // ── Main Recap Component ──────────────────────────────────────
 
 export function CampaignRecap({
@@ -397,9 +495,12 @@ export function CampaignRecap({
       {/* ── POSTGAME TOP BAR ───────────────────────────────── */}
       <div className="px-6 md:px-12 py-3 border-b border-white/[0.12] flex items-center justify-between">
         <PostgameLogo size="sm" className="opacity-60" />
-        <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-white/50">
-          Campaign Recap
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="hidden md:inline text-[10px] md:text-xs font-bold uppercase tracking-wider text-white/50">
+            Campaign Recap
+          </span>
+          <ExportPptxButton slug={campaign.slug} campaignName={campaign.name} />
+        </div>
       </div>
 
       {/* ── STICKY SECTION NAV ────────────────────────────── */}
@@ -452,10 +553,11 @@ export function CampaignRecap({
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
             <div>
-              {settings.description && (
-                <div className="text-base md:text-lg text-white/70 leading-relaxed whitespace-pre-line">
-                  {settings.description}
-                </div>
+              {hasRichTextContent(settings.description) && (
+                <div
+                  className="text-base md:text-lg text-white/70 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: settings.description as string }}
+                />
               )}
             </div>
             <div className="space-y-0">
