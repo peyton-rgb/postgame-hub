@@ -71,13 +71,14 @@
 }
 .brandRow {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   margin: 0 0 14px;
 }
 .brandLogo {
-  height: 48px;
+  height: 56px;
   width: auto;
   display: block;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
