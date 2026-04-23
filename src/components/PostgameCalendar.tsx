@@ -136,7 +136,9 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
     const currentMonth = d.getMonth() + 1;
     const currentDay = d.getDate();
     const daysInMonth = new Date(d.getFullYear(), currentMonth, 0).getDate();
-    const section = scroller.querySelector<HTMLElement>(`[data-month="${currentMonth}"]`);
+    const section = scroller.querySelector<HTMLElement>(
+      `[data-month="${currentMonth}"][data-year="${d.getFullYear()}"]`
+    );
     if (!section) return;
     const dayPct = (currentDay - 0.5) / daysInMonth;
     const targetLeft = section.offsetLeft + dayPct * section.offsetWidth;
@@ -202,6 +204,64 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
     filter === 'all' || ev.category === filter;
   const sectionVisible = (layout: MonthLayout): boolean =>
     layout.above.some((i) => eventVisible(i.ev)) || layout.below.some((i) => eventVisible(i.ev));
+
+  // Decide whether an event has already passed (relative to today and the
+  // year the section is being rendered in). Uses the event's start day.
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  function isPastEvent(ev: TimelineEvent, year: number): boolean {
+    if (year < currentYear) return true;
+    if (year > currentYear) return false;
+    if (ev.month < currentMonth) return true;
+    if (ev.month > currentMonth) return false;
+    return getStartDay(ev.dateLabel, ev.month) < currentDay;
+  }
+
+  // Render the 12 month-sections for a given calendar year.
+  function renderYear(year: number) {
+    return LAYOUT.map((layout) => {
+      const hidden = !sectionVisible(layout);
+      return (
+        <div
+          key={`${year}-${layout.month}`}
+          data-month={layout.month}
+          data-year={year}
+          className={`${styles.monthSection} ${hidden ? styles.hidden : ''}`}
+          style={{ width: layout.width }}
+        >
+          <div className={`${styles.monthEvents} ${styles.above}`}>
+            {layout.above.map((item) => (
+              <EventCard
+                key={`${year}-${item.ev.id}`}
+                ev={item.ev}
+                placement="above"
+                posPx={item.finalPx}
+                hidden={!eventVisible(item.ev)}
+                isPast={isPastEvent(item.ev, year)}
+              />
+            ))}
+          </div>
+          <div className={styles.spineRow}>
+            <div className={styles.monthLabel}>{MONTH_NAMES[layout.month - 1]}</div>
+          </div>
+          <div className={`${styles.monthEvents} ${styles.below}`}>
+            {layout.below.map((item) => (
+              <EventCard
+                key={`${year}-${item.ev.id}`}
+                ev={item.ev}
+                placement="below"
+                posPx={item.finalPx}
+                hidden={!eventVisible(item.ev)}
+                isPast={isPastEvent(item.ev, year)}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    });
+  }
 
   return (
     <section id="postgame-calendar" className={styles.wrap}>
@@ -285,43 +345,11 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
           }}
         >
           <div className={styles.timeline}>
-            {LAYOUT.map((layout) => {
-              const hidden = !sectionVisible(layout);
-              return (
-                <div
-                  key={layout.month}
-                  data-month={layout.month}
-                  className={`${styles.monthSection} ${hidden ? styles.hidden : ''}`}
-                  style={{ width: layout.width }}
-                >
-                  <div className={`${styles.monthEvents} ${styles.above}`}>
-                    {layout.above.map((item) => (
-                      <EventCard
-                        key={item.ev.id}
-                        ev={item.ev}
-                        placement="above"
-                        posPx={item.finalPx}
-                        hidden={!eventVisible(item.ev)}
-                      />
-                    ))}
-                  </div>
-                  <div className={styles.spineRow}>
-                    <div className={styles.monthLabel}>{MONTH_NAMES[layout.month - 1]}</div>
-                  </div>
-                  <div className={`${styles.monthEvents} ${styles.below}`}>
-                    {layout.below.map((item) => (
-                      <EventCard
-                        key={item.ev.id}
-                        ev={item.ev}
-                        placement="below"
-                        posPx={item.finalPx}
-                        hidden={!eventVisible(item.ev)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+            {renderYear(2026)}
+            <div className={styles.yearMarker} aria-hidden="true">
+              <span className={styles.yearMarkerLabel}>2027</span>
+            </div>
+            {renderYear(2027)}
           </div>
         </div>
       </div>
@@ -334,11 +362,13 @@ function EventCard({
   placement,
   posPx,
   hidden,
+  isPast = false,
 }: {
   ev: TimelineEvent;
   placement: 'above' | 'below';
   posPx: number;
   hidden: boolean;
+  isPast?: boolean;
 }) {
   const classes = [
     styles.event,
@@ -346,6 +376,7 @@ function EventCard({
     ev.isTentpole ? styles.tentpole : '',
     ev.isQuadrennial ? styles.quadrennial : '',
     hidden ? styles.hidden : '',
+    isPast ? styles.past : '',
   ]
     .filter(Boolean)
     .join(' ');
