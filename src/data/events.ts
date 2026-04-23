@@ -65,7 +65,6 @@ export const EVENTS: TimelineEvent[] = [
   { id: 'nhl-playoffs',              name: 'NHL Playoffs',               month: 4, dateLabel: 'Apr 18 – Jun',     emoji: '\uD83C\uDFD2',     isTentpole: false, logoFile: 'stanley-cup-final.png',            category: 'pro-sports' },
   { id: 'boston-marathon',           name: 'Boston Marathon',            month: 4, dateLabel: 'Apr 20',           emoji: '\uD83C\uDFC3',     isTentpole: false, logoFile: 'boston-marathon.png',              category: 'pro-sports' },
   { id: 'nfl-draft',                 name: 'NFL Draft',                  month: 4, dateLabel: 'Apr 23-25',        emoji: '\uD83C\uDFC8',     isTentpole: true,  logoFile: 'nfl-draft.png',                    category: 'pro-sports' },
-  { id: 'stagecoach',                name: 'Stagecoach',                 month: 4, dateLabel: 'Apr 24-26',        emoji: '\uD83E\uDD20',     isTentpole: false, logoFile: 'stagecoach.png',                   category: 'brand-moment' },
 
   // MAY
   { id: 'kentucky-derby',            name: 'Kentucky Derby',             month: 5, dateLabel: 'May 2',            emoji: '\uD83C\uDFC7',     isTentpole: true,  logoFile: 'kentucky-derby.png',               category: 'pro-sports' },
@@ -125,7 +124,6 @@ export const EVENTS: TimelineEvent[] = [
 
   // OCTOBER
   { id: 'mlb-postseason',            name: 'MLB Postseason',             month: 10, dateLabel: 'Sep 29 – Nov 3',   emoji: '\u26BE',           isTentpole: false, logoFile: 'mlb-postseason.png',               category: 'pro-sports' },
-  { id: 'austin-city-limits',        name: 'Austin City Limits',         month: 10, dateLabel: 'Oct 2-11',         emoji: '\uD83C\uDFB8',     isTentpole: false, logoFile: 'austin-city-limits.png',           category: 'brand-moment' },
   { id: 'nhl-season-begins',         name: 'NHL Season Opens',           month: 10, dateLabel: 'Oct 7',            emoji: '\uD83C\uDFD2',     isTentpole: false, logoFile: 'nhl-all-star-game.png',            category: 'pro-sports' },
   { id: 'nba-tip-off',               name: 'NBA Tip-Off',                month: 10, dateLabel: 'Oct 20',           emoji: '\uD83C\uDFC0',     isTentpole: false, logoFile: 'nba-tip-off.png',                  category: 'pro-sports' },
   { id: 'world-series',              name: 'World Series',               month: 10, dateLabel: 'Oct 23 – Nov 3',   emoji: '\u26BE',           isTentpole: true,  logoFile: 'world-series.png',                 category: 'pro-sports' },
