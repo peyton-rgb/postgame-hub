@@ -203,7 +203,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
     layout.above.some((i) => eventVisible(i.ev)) || layout.below.some((i) => eventVisible(i.ev));
 
   return (
-    <section className={styles.wrap}>
+    <section id="postgame-calendar" className={styles.wrap}>
       <header className={styles.header}>
         <div className={styles.brandRow}>
           <img

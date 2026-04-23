@@ -443,6 +443,18 @@ export function Top50Recap({
             {s}
           </button>
         ))}
+        <div className="ml-auto">
+          <button
+            onClick={() => {
+              document
+                .getElementById("postgame-calendar")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="px-4 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all bg-white/[0.04] border border-white/[0.08] text-white/60 hover:border-brand/50 hover:text-white hover:bg-brand/10"
+          >
+            Timeline
+          </button>
+        </div>
       </div>
 
       {/* ── FEATURED ATHLETES ─────────────────────────────── */}
