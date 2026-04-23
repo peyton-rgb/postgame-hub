@@ -221,9 +221,8 @@
 
 .monthEvents {
   display: flex;
-  justify-content: space-evenly;
+  justify-content: center;
   height: 100%;
-  width: 100%;
   gap: 12px;
 }
 .above {
@@ -239,8 +238,7 @@
 
 .event {
   position: relative;
-  flex: 0 1 96px;
-  max-width: 96px;
+  flex: 0 0 96px;
   display: flex;
   flex-direction: column;
   align-items: center;

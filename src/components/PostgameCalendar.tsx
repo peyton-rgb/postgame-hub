@@ -101,7 +101,25 @@ const LAYOUT = buildLayout();
 
 export default function PostgameCalendar({ description, focusDate }: PostgameCalendarProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const [filter, setFilter] = useState<FilterValue>('all');
+  // Multi-select filter — Set of active categories. Empty set means "All".
+  const [activeFilters, setActiveFilters] = useState<Set<EventCategory>>(new Set());
+  const isAllActive = activeFilters.size === 0;
+  function handleTabClick(k: 'all' | EventCategory) {
+    if (k === 'all') {
+      setActiveFilters(new Set());
+      return;
+    }
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  }
+  function isTabActive(k: 'all' | EventCategory): boolean {
+    if (k === 'all') return isAllActive;
+    return activeFilters.has(k);
+  }
   const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef({ startX: 0, scrollLeftStart: 0, moved: false });
   const [leftDisabled, setLeftDisabled] = useState(true);
@@ -201,7 +219,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
   };
 
   const eventVisible = (ev: TimelineEvent): boolean =>
-    filter === 'all' || ev.category === filter;
+    isAllActive || activeFilters.has(ev.category);
   const sectionVisible = (layout: MonthLayout): boolean =>
     layout.above.some((i) => eventVisible(i.ev)) || layout.below.some((i) => eventVisible(i.ev));
 
@@ -229,7 +247,6 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
           data-month={layout.month}
           data-year={year}
           className={`${styles.monthSection} ${hidden ? styles.hidden : ''}`}
-          style={{ width: layout.width }}
         >
           <div className={`${styles.monthEvents} ${styles.above}`}>
             {layout.above.map((item) => (
@@ -299,8 +316,8 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
             <button
               key={k}
               type="button"
-              className={`${styles.filterBtn} ${filter === k ? styles.active : ''}`}
-              onClick={() => setFilter(k as FilterValue)}
+              className={`${styles.filterBtn} ${isTabActive(k) ? styles.active : ''}`}
+              onClick={() => handleTabClick(k)}
             >
               {label} <span className={styles.count}>{counts[k as FilterValue]}</span>
             </button>
