@@ -400,13 +400,13 @@ export function Top50Recap({
             </p>
           </div>
 
-          {/* Right side - brand logo */}
+          {/* Right side - brand logo. Wendy's gets a slightly larger size. */}
           <div className="hidden md:flex flex-col items-end gap-4">
             {(settings.brand_logo_url || campaign.client_logo_url) && (
               <img
                 src={settings.brand_logo_url || campaign.client_logo_url}
                 alt={campaign.client_name || "Brand"}
-                className="h-24 lg:h-32 object-contain opacity-80"
+                className={`${campaign.client_name?.toLowerCase().includes("wendy") ? "h-32 lg:h-44" : "h-24 lg:h-32"} object-contain opacity-80`}
               />
             )}
           </div>

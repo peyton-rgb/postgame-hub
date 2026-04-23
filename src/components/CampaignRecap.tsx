@@ -576,12 +576,20 @@ export function CampaignRecap({
       {/* ── SECTION 1: HERO HEADER ─────────────────────────── */}
       <div className="relative px-6 md:px-12 pt-10 md:pt-14 pb-10 md:pb-14 bg-gradient-to-b from-white/[0.08] to-transparent">
         <div className="flex flex-col items-center text-center gap-6">
-          {/* Brand logo — big, no container */}
-          {settings.brand_logo_url ? (
-            <img src={settings.brand_logo_url} className="h-24 md:h-36 object-contain" alt={campaign.client_name} />
-          ) : campaign.client_logo_url ? (
-            <img src={campaign.client_logo_url} className="h-20 md:h-32 object-contain" alt={campaign.client_name} />
-          ) : null}
+          {/* Brand logo — big, no container. Wendy's gets a slightly larger
+              size because their round wordmark needs more room to breathe. */}
+          {(() => {
+            const isWendys = campaign.client_name?.toLowerCase().includes("wendy");
+            const primarySize = isWendys ? "h-32 md:h-48" : "h-24 md:h-36";
+            const fallbackSize = isWendys ? "h-28 md:h-44" : "h-20 md:h-32";
+            if (settings.brand_logo_url) {
+              return <img src={settings.brand_logo_url} className={`${primarySize} object-contain`} alt={campaign.client_name} />;
+            }
+            if (campaign.client_logo_url) {
+              return <img src={campaign.client_logo_url} className={`${fallbackSize} object-contain`} alt={campaign.client_name} />;
+            }
+            return null;
+          })()}
 
           <h1 className="text-3xl md:text-5xl font-black uppercase leading-tight">
             {campaign.name}
