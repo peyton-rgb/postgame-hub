@@ -353,6 +353,7 @@ export function CampaignRecap({
   media: Record<string, Media[]>;
 }) {
   const [filter, setFilter] = useState("all");
+  const [galleryExpanded, setGalleryExpanded] = useState(false);
   const [topPerformerMode, setTopPerformerMode] = useState<"engagement" | "impressions">("engagement");
   const [activeSection, setActiveSection] = useState<string>("");
   const settings = campaign.settings || {};
@@ -480,7 +481,7 @@ export function CampaignRecap({
   // the campaign on each signal, then average the two. Featured athletes pin
   // to the top regardless of score (sorted by featured_order among themselves).
   // Roster is then sliced to the first 50; the rest live behind an expand button.
-  const ROSTER_VISIBLE_COUNT = 50;
+  const ROSTER_VISIBLE_COUNT = 10;
   const rosterAthletes = (() => {
     const list = [...fullRoster];
     if (list.length === 0) return list;
@@ -1067,30 +1068,64 @@ export function CampaignRecap({
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
             {(() => {
+              // Collapse to the first 10 items by default; the expand
+              // button below lets users see the full gallery.
+              const GALLERY_VISIBLE_COUNT = 10;
+              const galleryIsTruncated = filtered.length > GALLERY_VISIBLE_COUNT;
+              const visibleGalleryItems = galleryExpanded || !galleryIsTruncated
+                ? filtered
+                : filtered.slice(0, GALLERY_VISIBLE_COUNT);
               // Responsive column count — matches the old breakpointCols.
               // We don't have window width at SSR; use the full `cols` on
               // desktop and rely on CSS @media below to reflow on mobile.
               const distributed = distributeShortestFirst(
-                filtered,
+                visibleGalleryItems,
                 cols,
                 (a, i) => estimateCardHeightRatio(i, (media[a.id] || []).some((m) => m.type === "video")),
               );
               return (
-                <div className="balanced-masonry">
-                  {distributed.map((colItems, colIdx) => (
-                    <div key={colIdx} className="balanced-masonry_col">
-                      {colItems.map(({ item: a, originalIndex }) => (
-                        <MasonryCard
-                          key={a.id}
-                          athlete={a}
-                          items={media[a.id] || []}
-                          activeFilter={filter}
-                          cardIndex={originalIndex}
-                        />
-                      ))}
+                <>
+                  <div className="balanced-masonry">
+                    {distributed.map((colItems, colIdx) => (
+                      <div key={colIdx} className="balanced-masonry_col">
+                        {colItems.map(({ item: a, originalIndex }) => (
+                          <MasonryCard
+                            key={a.id}
+                            athlete={a}
+                            items={media[a.id] || []}
+                            activeFilter={filter}
+                            cardIndex={originalIndex}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  {galleryIsTruncated && (
+                    <div className="mt-6 flex justify-center">
+                      <button
+                        onClick={() => setGalleryExpanded((v) => !v)}
+                        className="px-6 py-3 rounded-full border border-white/[0.20] bg-white/[0.04] hover:bg-white/[0.10] hover:border-white/[0.35] transition-all text-sm font-bold uppercase tracking-wider text-white inline-flex items-center gap-2"
+                      >
+                        {galleryExpanded ? (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="18 15 12 9 6 15" />
+                            </svg>
+                            Collapse Gallery
+                          </>
+                        ) : (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                            Expand to Full Gallery
+                            <span className="ml-1 text-[10px] font-black text-white/50">+{filtered.length - GALLERY_VISIBLE_COUNT}</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               );
             })()}
           </div>
