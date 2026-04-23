@@ -110,7 +110,6 @@ export const EVENTS: TimelineEvent[] = [
 
   // AUGUST
   { id: 'nfl-preseason',             name: 'NFL Preseason',              month: 8, dateLabel: 'Aug 6-30',         emoji: '\uD83C\uDFC8',     isTentpole: false, logoFile: 'nfl-kickoff.png',                  category: 'pro-sports' },
-  { id: 'outside-lands',             name: 'Outside Lands',              month: 8, dateLabel: 'Aug 7-9',          emoji: '\uD83C\uDF01',     isTentpole: false, logoFile: 'outside-lands.png',                category: 'brand-moment' },
   { id: 'd23',                       name: 'D23',                        month: 8, dateLabel: 'Aug 14-16',        emoji: '\u2B50',           isTentpole: false, logoFile: 'd23.png',                          category: 'brand-moment' },
   { id: 'back-to-school',            name: 'Back to School',             month: 8, dateLabel: 'Aug 15-30',        emoji: '\uD83C\uDF92',     isTentpole: true,  logoFile: null,                               category: 'brand-moment' },
   { id: 'little-league-ws',          name: 'Little League WS',           month: 8, dateLabel: 'Aug 19-29',        emoji: '\uD83E\uDD4E',     isTentpole: false, logoFile: 'little-league.png',                category: 'pro-sports' },
@@ -134,7 +133,6 @@ export const EVENTS: TimelineEvent[] = [
   { id: 'halloween',                 name: 'Halloween',                  month: 10, dateLabel: 'Oct 31',           emoji: '\uD83C\uDF83',     isTentpole: true,  logoFile: null,                               category: 'brand-moment' },
 
   // NOVEMBER
-  { id: 'cfda-awards',               name: 'CFDA Awards',                month: 11, dateLabel: 'Nov (TBA)',        emoji: '\uD83D\uDC57',     isTentpole: false, logoFile: 'cfda-awards.png',                  category: 'brand-moment' },
   { id: 'ncaa-field-hockey',         name: 'NCAA Field Hockey Championship', month: 11, dateLabel: 'Nov 13-15',   emoji: '\uD83C\uDFD1',     isTentpole: false, logoFile: 'ncaa-field-hockey.png',            category: 'college' },
   { id: 'f1-finale',                 name: 'F1 Finale',                  month: 11, dateLabel: 'Nov 20 – Dec 6',   emoji: '\uD83C\uDFCE\uFE0F', isTentpole: false, logoFile: 'formula-1.png',                  category: 'pro-sports' },
   { id: 'cfb-rivalry-week',          name: 'CFB Rivalry Week',           month: 11, dateLabel: 'Nov 22-28',        emoji: '\uD83C\uDFC8',     isTentpole: true,  logoFile: 'college-football-rivalry-week.png',category: 'college' },
