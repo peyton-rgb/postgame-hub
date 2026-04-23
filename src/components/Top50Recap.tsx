@@ -6,6 +6,7 @@ import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, computeStats } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { SchoolLogo, getFullSchoolName, getSchoolColor } from "./SchoolBadge";
+import PostgameCalendar from "./PostgameCalendar";
 
 // ── Rich Text Helper ─────────────────────────────────────────
 
@@ -484,6 +485,9 @@ export function Top50Recap({
           <div className="text-center py-16 text-white/20 text-sm">No athletes match your search.</div>
         )}
       </div>
+
+      {/* ── POSTGAME CALENDAR (sits above the footer) ─────── */}
+      <PostgameCalendar />
 
       {/* ── FOOTER ────────────────────────────────────────── */}
       <div className="recap-footer-area px-6 md:px-12 py-10 border-t border-white/[0.06]">

@@ -6,6 +6,7 @@ import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
+import PostgameCalendar from "./PostgameCalendar";
 // Replaced react-masonry-css with a local shortest-column-next implementation
 // (see BalancedMasonry below). react-masonry-css distributes sequentially,
 // which left uneven column bottoms and a lot of dead space.
@@ -1280,6 +1281,9 @@ export function CampaignRecap({
           )}
         </div>
       )}
+
+      {/* ── POSTGAME CALENDAR (sits above the footer) ──────── */}
+      <PostgameCalendar />
 
       {/* ── FOOTER ─────────────────────────────────────────── */}
       <div className="recap-footer-area px-6 md:px-12 py-8 border-t border-white/[0.15]">

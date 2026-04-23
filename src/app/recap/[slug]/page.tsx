@@ -2,8 +2,9 @@ import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
-import PostgameCalendar from "@/components/PostgameCalendar";
 import type { Metadata } from "next";
+// PostgameCalendar is now rendered inside CampaignRecap and Top50Recap
+// (right above their respective footers), so page.tsx no longer imports it.
 
 export const dynamic = "force-dynamic";
 
@@ -77,26 +78,20 @@ export default async function RecapPage({ params }: Props) {
 
   if (isTop50) {
     return (
-      <>
-        <Top50Recap
-          campaign={campaign}
-          athletes={allAthletes}
-          media={mediaByAthlete}
-        />
-        <PostgameCalendar />
-      </>
+      <Top50Recap
+        campaign={campaign}
+        athletes={allAthletes}
+        media={mediaByAthlete}
+      />
     );
   }
 
   return (
-    <>
-      <CampaignRecap
-        campaign={campaign}
-        athletes={galleryAthletes}
-        allAthletes={allAthletes}
-        media={mediaByAthlete}
-      />
-      <PostgameCalendar />
-    </>
+    <CampaignRecap
+      campaign={campaign}
+      athletes={galleryAthletes}
+      allAthletes={allAthletes}
+      media={mediaByAthlete}
+    />
   );
 }
