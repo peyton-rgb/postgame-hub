@@ -6,7 +6,43 @@ import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
-import Masonry from "react-masonry-css";
+// Replaced react-masonry-css with a local shortest-column-next implementation
+// (see BalancedMasonry below). react-masonry-css distributes sequentially,
+// which left uneven column bottoms and a lot of dead space.
+
+// Estimate a card's height relative to width=1, so we can place each
+// card in whichever column is currently shortest.
+function estimateCardHeightRatio(athleteIdx: number, hasVideo: boolean): number {
+  // Mirrors the ratio logic inside MasonryCard: deterministic by cardIndex.
+  const photoRatios = [1, 16 / 9, 5 / 4];      // 1/1, 9/16, 4/5 → h/w
+  const videoRatios = [16 / 9, 5 / 4];         // 9/16, 4/5 → h/w
+  const list = hasVideo ? videoRatios : photoRatios;
+  return list[athleteIdx % list.length];
+}
+
+// Split items into N columns using shortest-column-next. Returns an array
+// of columns, each containing { item, originalIndex } — originalIndex is
+// preserved so MasonryCard can use it as cardIndex for consistent ratios.
+function distributeShortestFirst<T>(
+  items: T[],
+  columnCount: number,
+  heightOf: (item: T, idx: number) => number,
+): Array<Array<{ item: T; originalIndex: number }>> {
+  const cols: Array<Array<{ item: T; originalIndex: number }>> = Array.from(
+    { length: columnCount },
+    () => [],
+  );
+  const heights = new Array(columnCount).fill(0);
+  items.forEach((item, idx) => {
+    let shortestCol = 0;
+    for (let c = 1; c < columnCount; c++) {
+      if (heights[c] < heights[shortestCol]) shortestCol = c;
+    }
+    cols[shortestCol].push({ item, originalIndex: idx });
+    heights[shortestCol] += heightOf(item, idx);
+  });
+  return cols;
+}
 
 // ── Rich Text Helper ─────────────────────────────────────────
 
@@ -1021,27 +1057,60 @@ export function CampaignRecap({
             </div>
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            <Masonry
-              breakpointCols={{ default: cols, 768: 2, 480: 1 }}
-              className="bic-masonry"
-              columnClassName="bic-masonry_col"
-            >
-              {filtered.map((a, i) => (
-                <MasonryCard key={a.id} athlete={a} items={media[a.id] || []} activeFilter={filter} cardIndex={i} />
-              ))}
-            </Masonry>
+            {(() => {
+              // Responsive column count — matches the old breakpointCols.
+              // We don't have window width at SSR; use the full `cols` on
+              // desktop and rely on CSS @media below to reflow on mobile.
+              const distributed = distributeShortestFirst(
+                filtered,
+                cols,
+                (a, i) => estimateCardHeightRatio(i, (media[a.id] || []).some((m) => m.type === "video")),
+              );
+              return (
+                <div className="balanced-masonry">
+                  {distributed.map((colItems, colIdx) => (
+                    <div key={colIdx} className="balanced-masonry_col">
+                      {colItems.map(({ item: a, originalIndex }) => (
+                        <MasonryCard
+                          key={a.id}
+                          athlete={a}
+                          items={media[a.id] || []}
+                          activeFilter={filter}
+                          cardIndex={originalIndex}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
           <style jsx global>{`
-            .bic-masonry {
+            .balanced-masonry {
               display: flex;
-              margin-left: -8px; /* cancel the first column's left padding */
-              width: auto;
+              gap: 8px;
+              width: 100%;
             }
-            .bic-masonry_col {
-              padding-left: 8px; /* gutter */
-              background-clip: padding-box;
+            .balanced-masonry_col {
+              flex: 1 1 0;
+              min-width: 0;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
             }
-            /* MasonryCard already uses mb-2 (8px) as vertical card spacing. */
+            /* Collapse to 2 columns under 768px, 1 column under 480px —
+               matches the old breakpointCols behaviour. */
+            @media (max-width: 767px) {
+              .balanced-masonry { flex-wrap: wrap; }
+              .balanced-masonry_col {
+                flex: 1 1 calc(50% - 4px);
+              }
+            }
+            @media (max-width: 479px) {
+              .balanced-masonry_col {
+                flex: 1 1 100%;
+              }
+            }
           `}</style>
         </div>
       )}
