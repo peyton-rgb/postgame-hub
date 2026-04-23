@@ -25,8 +25,8 @@ const DEFAULT_DESCRIPTION =
   'Every major sports event, NCAA championship, and holiday across the year. Sports sit above the line; holidays hang below. Drag sideways to travel through the calendar.';
 
 // Card geometry for the collision-aware layout
-const CARD_W = 112;
-const CARD_GAP = 10;
+const CARD_W = 96;
+const CARD_GAP = 8;
 const MIN_SPACING_PX = CARD_W + CARD_GAP;
 const MIN_SLOTS = 3;
 

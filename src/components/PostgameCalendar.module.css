@@ -187,7 +187,7 @@
   align-items: stretch;
   position: relative;
   min-width: max-content;
-  min-height: 580px;
+  min-height: 500px;
 }
 .timeline::before {
   content: '';
@@ -239,8 +239,8 @@
 
 .event {
   position: relative;
-  flex: 0 1 112px;
-  max-width: 112px;
+  flex: 0 1 96px;
+  max-width: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -258,8 +258,8 @@
 }
 
 .eventLogoWrap {
-  width: 82px;
-  height: 82px;
+  width: 68px;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -302,8 +302,8 @@
 }
 
 .event.tentpole .eventLogoWrap {
-  width: 100px;
-  height: 100px;
+  width: 84px;
+  height: 84px;
 }
 .event.tentpole .eventLogoWrap::after {
   content: '';
@@ -530,14 +530,15 @@
   .filterBar { padding: 3px; gap: 0; }
   .filterBtn { padding: 9px 10px; font-size: 9px; letter-spacing: 0.1em; }
   .count { display: none; }
-  .scroller { padding: 24px 16px; }
+  .scroller { padding: 20px 14px; }
   .navBtn { display: none; }
-  .timeline { min-height: 440px; }
-  .event { flex: 0 1 88px; max-width: 88px; }
-  .eventLogoWrap { width: 62px; height: 62px; }
-  .event.tentpole .eventLogoWrap { width: 76px; height: 76px; }
-  .monthSection { padding: 0 8px; }
-  .eventDate { font-size: 8px; padding: 2px 7px; letter-spacing: 0.04em; }
-  .eventName { font-size: 11px; min-height: 2.2em; }
+  .timeline { min-height: 380px; }
+  .event { flex: 0 1 72px; max-width: 72px; }
+  .eventLogoWrap { width: 50px; height: 50px; }
+  .event.tentpole .eventLogoWrap { width: 62px; height: 62px; }
+  .monthSection { padding: 0 6px; }
+  .eventDate { font-size: 8px; padding: 2px 6px; letter-spacing: 0.04em; }
+  .eventName { font-size: 10px; min-height: 2em; margin-bottom: 4px; }
+  .emojiFallback { font-size: 34px; }
   .brandLogo { height: 32px; }
 }
