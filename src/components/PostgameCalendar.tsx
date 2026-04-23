@@ -104,7 +104,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
   // Multi-select filter — Set of active categories. Empty set means "All".
   // Default landing selection: College + Holidays pre-selected.
   const [activeFilters, setActiveFilters] = useState<Set<EventCategory>>(
-    new Set(['college', 'brand-moment'])
+    () => new Set<EventCategory>(['college', 'brand-moment'])
   );
   const isAllActive = activeFilters.size === 0;
   function handleTabClick(k: 'all' | EventCategory) {
@@ -237,13 +237,37 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
     if (year > currentYear) return false;
     if (ev.month < currentMonth) return true;
     if (ev.month > currentMonth) return false;
-    return getStartDay(ev.dateLabel, ev.month) < currentDay;
+    // Use the year-specific date label when checking "is past" so 2027's
+    // shifted dates grey out correctly once we're in 2027.
+    const labelForThisYear =
+      year === 2027 && ev.dateLabel2027 ? ev.dateLabel2027 : ev.dateLabel;
+    return getStartDay(labelForThisYear, ev.month) < currentDay;
+  }
+
+  // Pick which dateLabel to display for a given render year.
+  // 2026 renders the base dateLabel; 2027 prefers dateLabel2027 and falls back
+  // to the base label if we haven't supplied a year-specific override.
+  function labelFor(ev: TimelineEvent, year: number): string {
+    if (year === 2027 && ev.dateLabel2027) return ev.dateLabel2027;
+    return ev.dateLabel;
+  }
+
+  // An event is skipped in a given year when it's flagged as not happening
+  // that year (e.g. Winter Olympics / World Cup in 2027).
+  function skipInYear(ev: TimelineEvent, year: number): boolean {
+    return year === 2027 && !!ev.notIn2027;
   }
 
   // Render the 12 month-sections for a given calendar year.
   function renderYear(year: number) {
     return LAYOUT.map((layout) => {
-      const hidden = !sectionVisible(layout);
+      // Filter out any events that don't occur this render year.
+      const aboveForYear = layout.above.filter((i) => !skipInYear(i.ev, year));
+      const belowForYear = layout.below.filter((i) => !skipInYear(i.ev, year));
+      const hasAnyVisible =
+        aboveForYear.some((i) => eventVisible(i.ev)) ||
+        belowForYear.some((i) => eventVisible(i.ev));
+      const hidden = !hasAnyVisible;
       return (
         <div
           key={`${year}-${layout.month}`}
@@ -252,7 +276,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
           className={`${styles.monthSection} ${hidden ? styles.hidden : ''}`}
         >
           <div className={`${styles.monthEvents} ${styles.above}`}>
-            {layout.above.map((item) => (
+            {aboveForYear.map((item) => (
               <EventCard
                 key={`${year}-${item.ev.id}`}
                 ev={item.ev}
@@ -260,6 +284,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
                 posPx={item.finalPx}
                 hidden={!eventVisible(item.ev)}
                 isPast={isPastEvent(item.ev, year)}
+                displayDateLabel={labelFor(item.ev, year)}
               />
             ))}
           </div>
@@ -267,7 +292,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
             <div className={styles.monthLabel}>{MONTH_NAMES[layout.month - 1]}</div>
           </div>
           <div className={`${styles.monthEvents} ${styles.below}`}>
-            {layout.below.map((item) => (
+            {belowForYear.map((item) => (
               <EventCard
                 key={`${year}-${item.ev.id}`}
                 ev={item.ev}
@@ -275,6 +300,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
                 posPx={item.finalPx}
                 hidden={!eventVisible(item.ev)}
                 isPast={isPastEvent(item.ev, year)}
+                displayDateLabel={labelFor(item.ev, year)}
               />
             ))}
           </div>
@@ -383,12 +409,15 @@ function EventCard({
   posPx,
   hidden,
   isPast = false,
+  displayDateLabel,
 }: {
   ev: TimelineEvent;
   placement: 'above' | 'below';
   posPx: number;
   hidden: boolean;
   isPast?: boolean;
+  /** Date string to show under the logo. Optional so old callers still work. */
+  displayDateLabel?: string;
 }) {
   const classes = [
     styles.event,
@@ -425,7 +454,7 @@ function EventCard({
         )}
       </div>
       <div className={styles.eventName}>{ev.name}</div>
-      <div className={styles.eventDate}>{ev.dateLabel}</div>
+      <div className={styles.eventDate}>{displayDateLabel ?? ev.dateLabel}</div>
       <div className={styles.eventStem} />
     </div>
   );
