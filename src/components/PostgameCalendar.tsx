@@ -354,8 +354,6 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
         </div>
       </div>
 
-      <div className={styles.hintTop}>Drag · Swipe · Arrow keys</div>
-
       <div className={styles.scrollerFrame}>
         <button
           type="button"
