@@ -219,37 +219,41 @@
 .monthSection.hidden { display: none; }
 
 .monthEvents {
-  position: relative;
+  display: flex;
+  justify-content: space-evenly;
   height: 100%;
   width: 100%;
+  gap: 12px;
 }
-.above { grid-area: above; }
-.below { grid-area: below; }
+.above {
+  grid-area: above;
+  align-items: flex-end;
+  padding-bottom: 50px;
+}
+.below {
+  grid-area: below;
+  align-items: flex-start;
+  padding-top: 50px;
+}
 
 .event {
-  position: absolute;
-  width: 128px;
+  position: relative;
+  flex: 0 1 128px;
+  max-width: 128px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  left: var(--pos, 50%);
-  transform: translateX(-50%);
-  bottom: 50px;
   transition: transform 0.45s var(--ease-fluid);
   will-change: transform;
 }
-.event.below {
-  bottom: auto;
-  top: 50px;
-}
 .event.hidden { display: none; }
 .event:hover {
-  transform: translateX(-50%) translateY(-8px);
+  transform: translateY(-8px);
   z-index: 5;
 }
 .event.below:hover {
-  transform: translateX(-50%) translateY(8px);
+  transform: translateY(8px);
 }
 
 .eventLogoWrap {

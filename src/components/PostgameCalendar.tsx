@@ -342,12 +342,13 @@ function EventCard({
     .filter(Boolean)
     .join(' ');
 
+  // posPx is no longer used for layout — flex handles even spacing.
+  // The param stays in the signature so the data pipeline doesn't break,
+  // but we ignore it for positioning now.
+  void posPx;
+
   return (
-    <div
-      className={classes}
-      data-category={ev.category}
-      style={{ ['--pos' as string]: `${posPx.toFixed(1)}px` }}
-    >
+    <div className={classes} data-category={ev.category}>
       <div className={styles.eventLogoWrap}>
         {ev.logoFile ? (
           <img
