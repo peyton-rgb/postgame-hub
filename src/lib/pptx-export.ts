@@ -373,6 +373,14 @@ function addHeroMetricsSlide(pres: PptxGenJS, stats: ReturnType<typeof computeSt
   const slide = newSlide(pres);
   addSectionHeading(slide, "Campaign Metrics");
 
+  // Average engagement rate: average only the platforms that actually posted.
+  // (Earlier this was `(ig + tiktok) / 2`, which halved the rate on single-platform
+  // campaigns — e.g. TikTok-only campaigns showed 4% instead of 8%.)
+  const platformRates = [stats.igAvgEngRate, stats.tiktokAvgEngRate].filter((r) => r > 0);
+  const avgEngagementRate = platformRates.length > 0
+    ? platformRates.reduce((sum, r) => sum + r, 0) / platformRates.length
+    : stats.avgEngRate;
+
   const boxes: Array<{ label: string; value: string }> = [
     { label: "ATHLETES", value: fmt(stats.athleteCount) },
     { label: "SCHOOLS", value: fmt(stats.schoolCount) },
@@ -381,7 +389,7 @@ function addHeroMetricsSlide(pres: PptxGenJS, stats: ReturnType<typeof computeSt
     { label: "COMBINED FOLLOWERS", value: fmt(stats.combinedFollowers) },
     { label: "TOTAL IMPRESSIONS", value: fmt(stats.totalImpressions) },
     { label: "TOTAL ENGAGEMENTS", value: fmt(stats.totalEngagements) },
-    { label: "AVG ENGAGEMENT RATE", value: pct((stats.igAvgEngRate + stats.tiktokAvgEngRate) / 2 || stats.avgEngRate) },
+    { label: "AVG ENGAGEMENT RATE", value: pct(avgEngagementRate) },
   ];
 
   // Grid: 4 columns × 2 rows
