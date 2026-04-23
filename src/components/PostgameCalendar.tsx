@@ -191,6 +191,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
     college: EVENTS.filter((e) => e.category === 'college').length,
     'pro-sports': EVENTS.filter((e) => e.category === 'pro-sports').length,
     'brand-moment': EVENTS.filter((e) => e.category === 'brand-moment').length,
+    entertainment: EVENTS.filter((e) => e.category === 'entertainment').length,
   } as const;
 
   const scrollBy = (px: number) => {
@@ -232,6 +233,7 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
               { k: 'college', label: 'College' },
               { k: 'pro-sports', label: 'Pro Sports' },
               { k: 'brand-moment', label: 'Holidays' },
+              { k: 'entertainment', label: 'Other Events' },
             ] as const
           ).map(({ k, label }) => (
             <button
