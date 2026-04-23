@@ -204,6 +204,11 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
 
   return (
     <section id="postgame-calendar" className={styles.wrap}>
+      {/* Hero headline — sits above the Postgame Calendar header */}
+      <div className={styles.hero}>
+        <h2 className={styles.heroHeadline}>What's Next?</h2>
+      </div>
+
       <header className={styles.header}>
         <div className={styles.brandRow}>
           <img
@@ -317,11 +322,6 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
             })}
           </div>
         </div>
-      </div>
-
-      {/* Hero headline below the timeline — the big "so what" moment */}
-      <div className={styles.hero}>
-        <h2 className={styles.heroHeadline}>Let's catch the next one</h2>
       </div>
     </section>
   );

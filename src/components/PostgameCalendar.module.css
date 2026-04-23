@@ -502,11 +502,11 @@
   z-index: 1;
 }
 
-/* ── Hero headline below the timeline ─────────────────────── */
+/* ── Hero headline above the Postgame Calendar header ─────── */
 .hero {
   position: relative;
   z-index: 1;
-  padding: 80px 24px 40px;
+  padding: 20px 24px 32px;
   text-align: center;
 }
 .heroHeadline {
