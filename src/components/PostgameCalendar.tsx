@@ -102,7 +102,10 @@ const LAYOUT = buildLayout();
 export default function PostgameCalendar({ description, focusDate }: PostgameCalendarProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   // Multi-select filter — Set of active categories. Empty set means "All".
-  const [activeFilters, setActiveFilters] = useState<Set<EventCategory>>(new Set());
+  // Default landing selection: College + Holidays pre-selected.
+  const [activeFilters, setActiveFilters] = useState<Set<EventCategory>>(
+    new Set(['college', 'brand-moment'])
+  );
   const isAllActive = activeFilters.size === 0;
   function handleTabClick(k: 'all' | EventCategory) {
     if (k === 'all') {
