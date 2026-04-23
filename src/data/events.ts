@@ -120,7 +120,6 @@ export const EVENTS: TimelineEvent[] = [
   // SEPTEMBER
   { id: 'labor-day',                 name: 'Labor Day',                  month: 9, dateLabel: 'Sep 7',            emoji: '\uD83D\uDEE0\uFE0F', isTentpole: false, logoFile: null,                             category: 'brand-moment' },
   { id: 'nfl-kickoff',               name: 'NFL Kickoff',                month: 9, dateLabel: 'Sep 10',           emoji: '\uD83C\uDFC8',     isTentpole: true,  logoFile: 'nfl-kickoff.png',                  category: 'pro-sports' },
-  { id: 'nyfw-ss27',                 name: 'NY Fashion Week (SS27)',     month: 9, dateLabel: 'Sep 11-16',        emoji: '\uD83D\uDC57',     isTentpole: false, logoFile: 'nyfw.png',                         category: 'brand-moment' },
   { id: 'emmys',                     name: 'Primetime Emmys',            month: 9, dateLabel: 'Sep 14',           emoji: '\uD83C\uDFC6',     isTentpole: false, logoFile: 'emmys.png',                        category: 'brand-moment' },
   { id: 'ryder-cup',                 name: 'Ryder Cup',                  month: 9, dateLabel: 'Sep 25-27 (odd yrs)', emoji: '\u26F3',        isTentpole: false, logoFile: 'ryder-cup.png',                    category: 'pro-sports' },
 
