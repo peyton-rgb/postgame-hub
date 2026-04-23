@@ -349,10 +349,22 @@ export function CampaignRecap({
     show("top_performers") && topPerformers.length > 0 && { key: "top_performers", label: "Top Performers" },
     show("content_gallery") && { key: "content_gallery", label: "Best In Class" },
     show("roster") && { key: "roster", label: "Roster" },
+    { key: "timeline", label: "Timeline" },
   ].filter(Boolean) as { key: string; label: string }[];
 
-  // Scroll to section
+  // Scroll to section. The Postgame Calendar lives OUTSIDE this component
+  // (it's appended after CampaignRecap in src/app/recap/[slug]/page.tsx),
+  // so we can't reach it through sectionRefs — we look it up by DOM id.
   const scrollToSection = (key: string) => {
+    if (key === "timeline") {
+      const cal = document.getElementById("postgame-calendar");
+      if (cal) {
+        const navHeight = 48;
+        const top = cal.getBoundingClientRect().top + window.scrollY - navHeight;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+      return;
+    }
     const el = sectionRefs.current[key];
     if (el) {
       const navHeight = 48;
