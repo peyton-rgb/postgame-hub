@@ -419,6 +419,7 @@ function EventCard({
   /** Date string to show under the logo. Optional so old callers still work. */
   displayDateLabel?: string;
 }) {
+  const isHoliday = ev.category === 'brand-moment';
   const classes = [
     styles.event,
     placement === 'below' ? styles.below : '',
@@ -426,6 +427,7 @@ function EventCard({
     ev.isQuadrennial ? styles.quadrennial : '',
     hidden ? styles.hidden : '',
     isPast ? styles.past : '',
+    isHoliday ? styles.holiday : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -434,6 +436,24 @@ function EventCard({
   // The param stays in the signature so the data pipeline doesn't break,
   // but we ignore it for positioning now.
   void posPx;
+
+  const dateStr = displayDateLabel ?? ev.dateLabel;
+
+  // Holidays render as a compact glass pill — no logo circle, no name/date
+  // stack. They're deliberately a different visual object from sports
+  // events so they stop competing with team logos.
+  if (isHoliday) {
+    return (
+      <div className={classes} data-category={ev.category}>
+        <div className={styles.holidayPill}>
+          <span className={styles.holidayPillName}>{ev.name}</span>
+          <span className={styles.holidayPillSep}>·</span>
+          <span className={styles.holidayPillDate}>{dateStr}</span>
+        </div>
+        <div className={styles.eventStem} />
+      </div>
+    );
+  }
 
   return (
     <div className={classes} data-category={ev.category}>
@@ -454,7 +474,7 @@ function EventCard({
         )}
       </div>
       <div className={styles.eventName}>{ev.name}</div>
-      <div className={styles.eventDate}>{displayDateLabel ?? ev.dateLabel}</div>
+      <div className={styles.eventDate}>{dateStr}</div>
       <div className={styles.eventStem} />
     </div>
   );
