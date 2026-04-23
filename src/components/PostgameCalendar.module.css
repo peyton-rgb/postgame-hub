@@ -490,6 +490,18 @@
   text-transform: uppercase;
 }
 
+/* Hint rendered directly below the filter bar, above the scroller */
+.hintTop {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  margin: -16px 0 16px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+}
+
 /* ── Hero headline below the timeline ─────────────────────── */
 .hero {
   position: relative;
