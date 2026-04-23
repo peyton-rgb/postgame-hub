@@ -490,6 +490,27 @@
   text-transform: uppercase;
 }
 
+/* ── Hero headline below the timeline ─────────────────────── */
+.hero {
+  position: relative;
+  z-index: 1;
+  padding: 80px 24px 40px;
+  text-align: center;
+}
+.heroHeadline {
+  margin: 0;
+  font-size: clamp(44px, 8.5vw, 132px);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.55) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 60px rgba(215, 63, 9, 0.12);
+}
+
 @media (max-width: 640px) {
   .title { font-size: 30px; }
   .header { padding: 0 20px 24px; }

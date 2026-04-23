@@ -317,6 +317,11 @@ export default function PostgameCalendar({ description, focusDate }: PostgameCal
         </div>
         <div className={styles.hint}>Drag · Swipe · Arrow keys</div>
       </div>
+
+      {/* Hero headline below the timeline — the big "so what" moment */}
+      <div className={styles.hero}>
+        <h2 className={styles.heroHeadline}>Let's catch the next one</h2>
+      </div>
     </section>
   );
 }
