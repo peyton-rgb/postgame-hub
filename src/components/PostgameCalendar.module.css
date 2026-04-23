@@ -468,56 +468,40 @@
   top: -4px;
 }
 
-/* Holiday pill variant — brand-moment events render as a compact glass
-   chip instead of a logo circle. They still hang off the spine with a
-   stem, but they're deliberately a different visual object from sports
-   cards so they stop competing with team logos. */
-.event.holiday {
-  /* Let the pill grow to fit its text rather than hard-clamping to 96px. */
-  flex: 0 0 auto;
-  min-width: 88px;
+/* Holiday date-chip variant — brand-moment events render a typographic
+   date stamp (MONTH abbr + DAY number) inside the standard logo circle
+   instead of an image. Keeps the calendar's visual grid consistent but
+   stops pretending holidays have logos. */
+.holidayDateChip {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1;
+  /* Grayscale on a text chip is a no-op; the parent .event.past handles
+     the opacity dim. */
 }
-.holidayPill {
-  background: rgba(255, 255, 255, 0.05);
-  border: 0.5px solid rgba(255, 255, 255, 0.18);
-  border-radius: 100px;
-  padding: 6px 12px;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
-  white-space: nowrap;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: border-color 0.25s var(--ease-soft), background 0.25s var(--ease-soft);
+.holidayChipMonth {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
 }
-.holidayPill .holidayPillSep {
-  color: rgba(255, 255, 255, 0.35);
-  margin: 0 6px;
-}
-.holidayPill .holidayPillDate {
-  color: rgba(255, 255, 255, 0.6);
-}
-.event.holiday:hover .holidayPill {
-  border-color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.08);
-}
-/* Tentpole holidays (Black Friday, Halloween, Christmas, Back to School)
-   get the brand orange accent on their pill border. */
-.event.holiday.tentpole .holidayPill {
-  border-color: rgba(215, 63, 9, 0.55);
-  background: rgba(215, 63, 9, 0.08);
+.holidayChipDay {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   color: rgba(255, 255, 255, 0.96);
 }
-.event.holiday.tentpole:hover .holidayPill {
-  border-color: rgba(215, 63, 9, 0.8);
-  background: rgba(215, 63, 9, 0.12);
-}
-/* Past holidays dim like other past events. Grayscale filter is a no-op
-   on a text pill, so we just drop the opacity. */
-.event.holiday.past {
-  filter: none;
+/* Tentpole holidays (Halloween, Black Friday, Christmas, Back to School)
+   get a brand orange cast on the day number. */
+.event.holiday.tentpole .holidayChipDay {
+  color: var(--brand);
 }
 
 .spineRow {
@@ -637,9 +621,9 @@
   .navBtn { display: none; }
   .timeline { min-height: 380px; }
   .event { flex: 0 1 72px; max-width: 72px; }
-  /* Holiday pills need their natural width on mobile too — don't clamp them. */
-  .event.holiday { flex: 0 0 auto; max-width: none; min-width: 72px; }
-  .holidayPill { font-size: 10px; padding: 4px 9px; }
+  /* Scale the holiday date chip to match the shrunk circle on mobile. */
+  .holidayChipMonth { font-size: 8px; letter-spacing: 0.12em; }
+  .holidayChipDay { font-size: 18px; }
   .eventLogoWrap { width: 50px; height: 50px; }
   .event.tentpole .eventLogoWrap { width: 62px; height: 62px; }
   .monthSection { padding: 0 6px; }

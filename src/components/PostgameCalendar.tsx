@@ -439,26 +439,20 @@ function EventCard({
 
   const dateStr = displayDateLabel ?? ev.dateLabel;
 
-  // Holidays render as a compact glass pill — no logo circle, no name/date
-  // stack. They're deliberately a different visual object from sports
-  // events so they stop competing with team logos.
-  if (isHoliday) {
-    return (
-      <div className={classes} data-category={ev.category}>
-        <div className={styles.holidayPill}>
-          <span className={styles.holidayPillName}>{ev.name}</span>
-          <span className={styles.holidayPillSep}>·</span>
-          <span className={styles.holidayPillDate}>{dateStr}</span>
-        </div>
-        <div className={styles.eventStem} />
-      </div>
-    );
-  }
+  // For holidays, derive a month abbr + start day from the year-appropriate
+  // date label so the chip shows the right day in each render year.
+  const monthAbbr = MONTH_NAMES[ev.month - 1].slice(0, 3).toUpperCase();
+  const startDay = getStartDay(dateStr, ev.month);
 
   return (
     <div className={classes} data-category={ev.category}>
       <div className={styles.eventLogoWrap}>
-        {ev.logoFile ? (
+        {isHoliday ? (
+          <div className={styles.holidayDateChip} aria-label={`${ev.name}, ${dateStr}`}>
+            <span className={styles.holidayChipMonth}>{monthAbbr}</span>
+            <span className={styles.holidayChipDay}>{startDay}</span>
+          </div>
+        ) : ev.logoFile ? (
           <img
             src={LOGO_DIR + ev.logoFile}
             alt={`${ev.name} logo`}
