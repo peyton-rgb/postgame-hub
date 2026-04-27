@@ -737,3 +737,222 @@
               transform 1.1s cubic-bezier(.16,.8,.24,1);
 }
 .pitch-page .fade.in { opacity: 1; transform: none; }
+
+/* ============================================================
+   COLLAGE SECTION
+   Hero collage of athletes (cutout images or vertical placeholders)
+   with name plates underneath. Desktop = single horizontal row;
+   mobile = 2x3 grid.
+   ============================================================ */
+.pitch-page .pitch-collage {
+  background: #0a0a0e;
+  border-bottom: 1px solid var(--glass-border);
+  padding: 24px 0 0;
+}
+.pitch-page .pitch-collage__inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding-left: var(--pad);
+  padding-right: var(--pad);
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-end;
+  min-height: 380px;
+}
+.pitch-page .pitch-collage__athlete {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding-bottom: 18px;
+}
+.pitch-page .pitch-collage__cutout {
+  width: 100%;
+  height: 280px;
+  position: relative;
+  overflow: hidden;
+}
+.pitch-page .pitch-collage__cutout img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+}
+.pitch-page .pitch-collage__placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.08),
+    rgba(255,255,255,0.02)
+  );
+  border-radius: 4px;
+}
+.pitch-page .pitch-collage__plate {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.pitch-page .pitch-collage__bar {
+  width: 2px;
+  background: var(--orange);
+  flex-shrink: 0;
+}
+.pitch-page .pitch-collage__plate-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pitch-page .pitch-collage__name {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pitch-page .pitch-collage__brand {
+  color: var(--text-3);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+  .pitch-page .pitch-collage__inner {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: auto;
+    gap: 14px;
+    min-height: 0;
+    align-items: stretch;
+  }
+  .pitch-page .pitch-collage__athlete {
+    padding-bottom: 8px;
+  }
+  .pitch-page .pitch-collage__cutout {
+    height: 160px;
+  }
+}
+
+/* ============================================================
+   OPPORTUNITIES SECTION
+   "WHAT WE HAVE LINED UP" — stack of cards.
+   ============================================================ */
+.pitch-page .pitch-opportunities {
+  padding: 28px 0 36px;
+}
+.pitch-page .pitch-opportunities__label {
+  color: var(--text-3);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+.pitch-page .pitch-opportunities__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pitch-page .pitch-opportunities__card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 14px;
+}
+.pitch-page .pitch-opportunities__title {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.pitch-page .pitch-opportunities__subtitle {
+  color: var(--text-2);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.pitch-page .pitch-opportunities__desc {
+  color: var(--text-3);
+  font-size: 12px;
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   WHY YOU SECTION
+   Personalized "WHY YOU, [FIRSTNAME]" block with avatar + body copy.
+   ============================================================ */
+.pitch-page .pitch-why-you {
+  padding: 36px 0 32px;
+  border-radius: 4px;
+}
+.pitch-page .pitch-why-you--tinted {
+  background: rgba(215,63,9,0.05);
+}
+.pitch-page .pitch-why-you__label {
+  color: var(--orange);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  font-weight: 500;
+}
+.pitch-page .pitch-why-you__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.pitch-page .pitch-why-you__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.pitch-page .pitch-why-you__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pitch-page .pitch-why-you__name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pitch-page .pitch-why-you__name {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.pitch-page .pitch-why-you__subtitle {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.pitch-page .pitch-why-you__body {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0;
+}

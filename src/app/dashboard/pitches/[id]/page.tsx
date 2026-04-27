@@ -36,7 +36,12 @@ import CapabilitiesEditor from "@/components/pitch/editors/CapabilitiesEditor";
 import IdeasEditor from "@/components/pitch/editors/IdeasEditor";
 import CtaEditor from "@/components/pitch/editors/CtaEditor";
 
-const EDITOR_MAP: Record<PitchSectionData["type"], React.ComponentType<{ data: any; onChange: (d: any) => void }>> = {
+// Editors for new section types (collage, opportunities, whyYou) are
+// deferred to a future session. Until those editor components exist,
+// the dashboard simply won't show those types in the "add section"
+// dropdown. The map is now Partial<Record<...>> so the missing entries
+// don't break the build.
+const EDITOR_MAP: Partial<Record<PitchSectionData["type"], React.ComponentType<{ data: any; onChange: (d: any) => void }>>> = {
   ticker: TickerEditor,
   hero: HeroEditor,
   thesis: ThesisEditor,

@@ -102,6 +102,56 @@ export interface CtaSectionData {
   footerMeta: string;
 }
 
+// ------------------------------------------------------------
+// Sections that read live data from Supabase tables.
+// The page-level fetch in src/app/pitch/[slug]/page.tsx populates
+// the rows; the section components are still pure display.
+// ------------------------------------------------------------
+
+export interface CollageSectionData {
+  type: "collage";
+  visible: boolean;
+  sport?: string;          // if set, prefer pitch_collage_athletes rows where sport matches
+  fallbackToAll?: boolean; // when no sport-match rows, fall back to all active athletes (default true)
+}
+
+export interface OpportunitiesSectionData {
+  type: "opportunities";
+  visible: boolean;
+  heading?: string;        // defaults to "WHAT WE HAVE LINED UP"
+}
+
+export interface WhyYouSectionData {
+  type: "whyYou";
+  visible: boolean;
+  athleteName: string;
+  athleteSubtitle?: string;
+  athletePhotoUrl?: string;
+  paragraph: string;       // the "why you" body copy
+  tinted?: boolean;        // adds the slight orange wash background (default true)
+}
+
+// Row shapes returned by the page-level fetches. Components use these
+// for their fetched-data props.
+export interface PitchCollageAthleteRow {
+  id: string;
+  athlete_name: string;
+  brand_name: string;
+  sport: string;
+  cutout_image_url: string | null;
+  display_order: number | null;
+  is_active: boolean | null;
+}
+
+export interface PitchOpportunityRow {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  is_archived: boolean | null;
+  display_order: number | null; // copied off pitch_page_opportunities for sorting
+}
+
 export type PitchSectionData =
   | TickerSectionData
   | HeroSectionData
@@ -110,7 +160,10 @@ export type PitchSectionData =
   | PullQuoteSectionData
   | CapabilitiesSectionData
   | IdeasSectionData
-  | CtaSectionData;
+  | CtaSectionData
+  | CollageSectionData
+  | OpportunitiesSectionData
+  | WhyYouSectionData;
 
 export interface PitchPageContent {
   sections: PitchSectionData[];
@@ -137,4 +190,7 @@ export const SECTION_TYPE_LABELS: Record<PitchSectionData["type"], string> = {
   capabilities: "Capabilities",
   ideas: "Ideas",
   cta: "CTA",
+  collage: "Collage",
+  opportunities: "Opportunities",
+  whyYou: "Why You",
 };
