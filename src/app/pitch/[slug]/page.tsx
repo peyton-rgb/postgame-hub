@@ -21,6 +21,14 @@ import WhyYouSection from "@/components/pitch/WhyYouSection";
 import "@/styles/pitch.css";
 
 export const dynamic = "force-dynamic";
+// `force-dynamic` opts out of static page caching, but Next.js still
+// has a separate fetch-level Data Cache that caches individual HTTP
+// responses by URL. Supabase REST calls go through that cache. Queries
+// where the URL+params are stable across requests (like the collage
+// athletes query, which has no per-pitch parameter) would otherwise
+// serve stale results forever once the first response is cached.
+// `force-no-store` disables the fetch cache for everything on this page.
+export const fetchCache = "force-no-store";
 
 // Sections that render purely from their `data` prop (no DB lookups).
 // `collage` and `opportunities` are special-cased in the render below
