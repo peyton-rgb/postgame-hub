@@ -137,6 +137,40 @@ export default async function PitchPageRoute({
     }
   }
 
+  // Enrich whyYou.upcomingCampaigns with brand logos from the brands
+  // table. Looks up each campaign title in brands.name and attaches
+  // logo_light_url (preferred for dark backgrounds), falling back
+  // through logo_dark_url and logo_url.
+  const whyYouIdx = sections.findIndex((s) => s.type === "whyYou");
+  if (whyYouIdx >= 0) {
+    const why = sections[whyYouIdx] as Record<string, any>;
+    if (
+      Array.isArray(why.upcomingCampaigns) &&
+      why.upcomingCampaigns.length > 0
+    ) {
+      const titles = why.upcomingCampaigns.map((c: any) => c.title);
+      const { data: brandRows } = await supabase
+        .from("brands")
+        .select("name, logo_light_url, logo_dark_url, logo_url")
+        .in("name", titles);
+      const logoMap = new Map<string, string>();
+      for (const b of brandRows ?? []) {
+        const url =
+          (b as any).logo_light_url ??
+          (b as any).logo_dark_url ??
+          (b as any).logo_url;
+        if (url) logoMap.set((b as any).name, url);
+      }
+      sections[whyYouIdx] = {
+        ...why,
+        upcomingCampaigns: why.upcomingCampaigns.map((c: any) => ({
+          ...c,
+          logoUrl: c.logoUrl ?? logoMap.get(c.title),
+        })),
+      } as PitchSectionData;
+    }
+  }
+
   // Some section types (collage, opportunities) read from auxiliary
   // tables. We only fetch when the pitch actually uses those sections,
   // and we run both fetches in parallel to keep the page snappy.

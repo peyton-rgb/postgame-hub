@@ -1,4 +1,5 @@
 import type { WhyYouSectionData } from "@/types/pitch";
+import CampaignCarousel from "@/components/pitch/CampaignCarousel";
 
 /**
  * Personalized "WHY YOU, [FIRSTNAME]" section.
@@ -138,23 +139,7 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
           <div className="pitch-why-you__campaigns-label">
             HERE&apos;S WHAT WE&apos;D LINE UP
           </div>
-          <div className="pitch-why-you__campaigns-list">
-            {data.upcomingCampaigns.map((c, i) => (
-              <article className="pitch-why-you__campaign" key={i}>
-                <div className="pitch-why-you__campaign-title">{c.title}</div>
-                {c.subtitle ? (
-                  <div className="pitch-why-you__campaign-sub">
-                    {c.subtitle}
-                  </div>
-                ) : null}
-                {c.description ? (
-                  <p className="pitch-why-you__campaign-desc">
-                    {c.description}
-                  </p>
-                ) : null}
-              </article>
-            ))}
-          </div>
+          <CampaignCarousel campaigns={data.upcomingCampaigns} />
         </div>
       ) : null}
     </section>
