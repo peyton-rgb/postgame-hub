@@ -28,9 +28,11 @@ export default function CollageSection({
 }) {
   if (!data.visible) return null;
 
-  // Hero-image mode: render a single pre-composed collage and skip the
-  // per-athlete layout entirely. The rows in pitch_collage_athletes are
-  // ignored for this pitch.
+  // Hero-image mode: render a single pre-composed collage. Underneath
+  // the image, render a horizontal "roster credits" strip of name plates
+  // sourced from pitch_collage_athletes (in display_order). Plates are
+  // not strictly 1:1 aligned with specific athletes in the photo —
+  // they're a credits row.
   if (data.heroImageUrl) {
     return (
       <section className="pitch-collage pitch-collage--hero">
@@ -39,6 +41,19 @@ export default function CollageSection({
           src={data.heroImageUrl}
           alt="Postgame athlete collage"
         />
+        {athletes && athletes.length > 0 ? (
+          <div className="pitch-collage__plates-row">
+            {athletes.map((a) => (
+              <div className="pitch-collage__plate" key={a.id}>
+                <span className="pitch-collage__bar" aria-hidden="true" />
+                <div className="pitch-collage__plate-text">
+                  <div className="pitch-collage__name">{a.athlete_name}</div>
+                  <div className="pitch-collage__brand">{a.brand_name}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
     );
   }

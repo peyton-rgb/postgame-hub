@@ -776,6 +776,30 @@
   filter: sepia(0.18) saturate(1.15) contrast(1.12);
 }
 
+/* Roster credits strip: row of name plates under the hero image. */
+.pitch-page .pitch-collage--hero .pitch-collage__plates-row {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 24px var(--pad) 32px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px 20px;
+}
+.pitch-page .pitch-collage--hero .pitch-collage__plate {
+  flex: 1 1 auto;
+  min-width: 130px;
+}
+@media (max-width: 640px) {
+  .pitch-page .pitch-collage--hero .pitch-collage__plates-row {
+    justify-content: flex-start;
+    gap: 14px 18px;
+  }
+  .pitch-page .pitch-collage--hero .pitch-collage__plate {
+    flex: 1 1 calc(50% - 18px);
+  }
+}
+
 /* Data-driven mode (default styling below). */
 .pitch-page .pitch-collage {
   background: #0a0a0e;
