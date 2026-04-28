@@ -27,6 +27,23 @@ export default function CollageSection({
   athletes: PitchCollageAthleteRow[];
 }) {
   if (!data.visible) return null;
+
+  // Hero-image mode: render a single pre-composed collage and skip the
+  // per-athlete layout entirely. The rows in pitch_collage_athletes are
+  // ignored for this pitch.
+  if (data.heroImageUrl) {
+    return (
+      <section className="pitch-collage pitch-collage--hero">
+        <img
+          className="pitch-collage__hero-img"
+          src={data.heroImageUrl}
+          alt="Postgame athlete collage"
+        />
+      </section>
+    );
+  }
+
+  // Data-driven mode: lay out one tile per active athlete row.
   if (!athletes || athletes.length === 0) return null;
 
   return (

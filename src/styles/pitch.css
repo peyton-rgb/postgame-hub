@@ -740,14 +740,35 @@
 
 /* ============================================================
    COLLAGE SECTION
-   Hero collage of athletes (cutout images or vertical placeholders)
-   with name plates underneath. Desktop = single horizontal row;
-   mobile = 2x3 grid.
+   Two modes:
+   1. Hero-image mode (.pitch-collage--hero) — a single pre-composed
+      collage image rendered full-width.
+   2. Data-driven mode (default) — bigger photos that overlap
+      horizontally and stagger vertically for a magazine-spread feel.
+      Each tile carries a cutout (or gradient placeholder) plus a
+      name plate underneath. Desktop = overlapping wave row;
+      mobile = 2-col grid.
    ============================================================ */
+
+/* Hero-image mode: full-width image, no internal padding/wrapper. */
+.pitch-page .pitch-collage--hero {
+  padding: 0;
+  background: #0a0a0e;
+  border-bottom: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-collage--hero .pitch-collage__hero-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+}
+
+/* Data-driven mode (default styling below). */
 .pitch-page .pitch-collage {
   background: #0a0a0e;
   border-bottom: 1px solid var(--glass-border);
-  padding: 24px 0 0;
+  padding: 32px 0 0;
+  overflow-x: hidden;
 }
 .pitch-page .pitch-collage__inner {
   max-width: var(--max);
@@ -756,23 +777,39 @@
   padding-right: var(--pad);
   display: flex;
   flex-wrap: nowrap;
-  gap: 16px;
-  justify-content: space-between;
+  justify-content: center;
   align-items: flex-end;
-  min-height: 380px;
+  gap: 0;
+  min-height: 620px;
 }
 .pitch-page .pitch-collage__athlete {
-  flex: 1 1 0;
+  flex: 0 0 auto;
+  width: 18%;
+  margin-right: -6%;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 12px;
-  padding-bottom: 18px;
+  gap: 14px;
+  padding-bottom: 20px;
+  position: relative;
+}
+.pitch-page .pitch-collage__athlete:last-child {
+  margin-right: 0;
+}
+/* Even-positioned tiles drop down slightly; odd tiles ride higher
+   and sit on top of their neighbors. Creates the wave + overlap. */
+.pitch-page .pitch-collage__athlete:nth-child(odd) {
+  z-index: 2;
+  transform: translateY(-12px);
+}
+.pitch-page .pitch-collage__athlete:nth-child(even) {
+  z-index: 1;
+  transform: translateY(28px);
 }
 .pitch-page .pitch-collage__cutout {
   width: 100%;
-  height: 280px;
+  height: 540px;
   position: relative;
   overflow: hidden;
 }
@@ -826,19 +863,26 @@
 }
 
 @media (max-width: 640px) {
+  /* Clean 2-column grid on mobile — overlap + wave looks bad
+     in a narrow viewport, so we reset all the desktop transforms. */
   .pitch-page .pitch-collage__inner {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     grid-auto-rows: auto;
     gap: 14px;
     min-height: 0;
     align-items: stretch;
   }
-  .pitch-page .pitch-collage__athlete {
+  .pitch-page .pitch-collage__athlete,
+  .pitch-page .pitch-collage__athlete:nth-child(odd),
+  .pitch-page .pitch-collage__athlete:nth-child(even) {
+    width: auto;
+    margin-right: 0;
+    transform: none;
     padding-bottom: 8px;
   }
   .pitch-page .pitch-collage__cutout {
-    height: 160px;
+    height: 240px;
   }
 }
 

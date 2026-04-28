@@ -111,6 +111,14 @@ export interface CtaSectionData {
 export interface CollageSectionData {
   type: "collage";
   visible: boolean;
+  // ---- Hero-image mode -------------------------------------------------
+  // When `heroImageUrl` is set, the section renders that single image
+  // full-width and skips the per-athlete layout entirely. Use this when
+  // you've manually composed a collage in Photoshop / Figma / Canva and
+  // want to drop it in as-is.
+  heroImageUrl?: string;
+  // ---- Per-athlete layout mode (data-driven) --------------------------
+  // The fields below only apply when `heroImageUrl` is NOT set.
   sport?: string;          // if set, prefer pitch_collage_athletes rows where sport matches
   fallbackToAll?: boolean; // when no sport-match rows, fall back to all active athletes (default true)
 }
