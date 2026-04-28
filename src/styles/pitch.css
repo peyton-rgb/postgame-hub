@@ -95,6 +95,13 @@
   transform: scale(1.55);
   transform-origin: center;
 }
+/* Per-brand color override: Coach's logo is a black wordmark on
+   transparent (no white variant exists in the DB), so we force it to
+   white silhouette via filter. Safe here because Coach's PNG is
+   transparent-background — no white-blob risk. */
+.pitch-ticker__logo[alt="Coach"] {
+  filter: brightness(0) invert(1);
+}
 @keyframes pitch-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* NAV */
