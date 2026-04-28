@@ -47,13 +47,18 @@
 .pitch-page img { display: block; max-width: 100%; }
 .pitch-page .wrap { max-width: var(--max); margin: 0 auto; padding-left: var(--pad); padding-right: var(--pad); }
 
-/* TICKER */
+/* TICKER
+   Note: background + border removed so the logos appear to float
+   directly on the page background as they scroll, instead of inside
+   a visible strip/container. overflow: hidden is kept so the
+   scrolling content beyond the viewport stays clipped. */
 .pitch-ticker {
   position: relative;
-  background: var(--surface);
+  background: transparent;
   color: var(--text-2);
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: none;
   overflow: hidden;
+  padding: 28px 0;
   font-family: var(--sans);
   font-size: 11px;
   letter-spacing: 0.06em;
