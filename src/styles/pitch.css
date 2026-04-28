@@ -1697,10 +1697,16 @@
 .pitch-page .pitch-agency__th--postgame {
   background: var(--orange);
   color: var(--text);
-  font-family: var(--display);
-  font-size: 16px;
-  letter-spacing: 0.04em;
-  text-transform: lowercase;
+  padding: 18px 16px;
+}
+/* The white Postgame logo replaces the 'postgame' wordmark text. */
+.pitch-page .pitch-agency__th-logo {
+  display: block;
+  height: 24px;
+  width: auto;
+  margin: 0 auto;
+  /* The logo file is already white-on-transparent, so the orange tile
+     behind it shows through cleanly. */
 }
 .pitch-page .pitch-agency__row-label {
   padding: 16px;

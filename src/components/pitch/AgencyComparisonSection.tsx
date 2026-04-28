@@ -38,7 +38,11 @@ export default function AgencyComparisonSection({
             <tr>
               <th aria-hidden="true"></th>
               <th className="pitch-agency__th pitch-agency__th--postgame">
-                postgame
+                <img
+                  className="pitch-agency__th-logo"
+                  src="/postgame-logo-white.png"
+                  alt="Postgame"
+                />
               </th>
               <th className="pitch-agency__th">‘Other’ Agency</th>
               <th className="pitch-agency__th">Do It Yourself</th>
