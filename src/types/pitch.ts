@@ -100,13 +100,26 @@ export interface IdeasSectionData {
   ideas: IdeaItem[];
 }
 
+export interface CtaContact {
+  name: string;
+  role?: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface CtaSectionData {
   type: "cta";
   visible: boolean;
   kicker: string;
   heading: string;
-  buttonText: string;
-  buttonHref: string;
+  // Button now optional — for live screen-share decks the CTA is a
+  // closing line, not a click target. When buttonText is empty/null,
+  // the button is suppressed entirely.
+  buttonText?: string;
+  buttonHref?: string;
+  // Footer additions
+  contacts?: CtaContact[];        // NEW — list of named contacts
+  footerLogoUrl?: string;         // NEW — Postgame logo at top of footer
   footerBrand: string;
   footerMeta: string;
 }

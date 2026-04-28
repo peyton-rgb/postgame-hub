@@ -6,25 +6,68 @@ export default function CtaSection({ data }: { data: CtaSectionData }) {
     <>
       <section className="pitch-cta">
         <div className="wrap pitch-cta__inner">
-          <div className="pitch-cta__kicker">
-            <span className="dot" />
-            {data.kicker}
-          </div>
+          {data.kicker ? (
+            <div className="pitch-cta__kicker">
+              <span className="dot" />
+              {data.kicker}
+            </div>
+          ) : null}
           <h2
             className="fade"
             dangerouslySetInnerHTML={{ __html: data.heading }}
           />
-          <a className="pitch-cta__btn" href={data.buttonHref}>
-            {data.buttonText}
-            <span className="arrow">&rarr;</span>
-          </a>
+          {data.buttonText ? (
+            <a className="pitch-cta__btn" href={data.buttonHref ?? "#"}>
+              {data.buttonText}
+              <span className="arrow">&rarr;</span>
+            </a>
+          ) : null}
         </div>
       </section>
 
       <footer className="pitch-foot">
-        <div className="wrap pitch-foot__row">
-          <div className="pitch-foot__brand">{data.footerBrand}</div>
-          <div className="pitch-foot__meta">{data.footerMeta}</div>
+        <div className="wrap pitch-foot__inner">
+          {data.footerLogoUrl ? (
+            <img
+              className="pitch-foot__logo"
+              src={data.footerLogoUrl}
+              alt="Postgame"
+            />
+          ) : null}
+
+          {data.contacts && data.contacts.length > 0 ? (
+            <div className="pitch-foot__contacts">
+              {data.contacts.map((c, i) => (
+                <div className="pitch-foot__contact" key={i}>
+                  <div className="pitch-foot__contact-name">{c.name}</div>
+                  {c.role ? (
+                    <div className="pitch-foot__contact-role">{c.role}</div>
+                  ) : null}
+                  {c.email ? (
+                    <a
+                      className="pitch-foot__contact-link"
+                      href={`mailto:${c.email}`}
+                    >
+                      {c.email}
+                    </a>
+                  ) : null}
+                  {c.phone ? (
+                    <a
+                      className="pitch-foot__contact-link"
+                      href={`tel:${c.phone.replace(/\D/g, "")}`}
+                    >
+                      {c.phone}
+                    </a>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="pitch-foot__row">
+            <div className="pitch-foot__brand">{data.footerBrand}</div>
+            <div className="pitch-foot__meta">{data.footerMeta}</div>
+          </div>
         </div>
       </footer>
     </>
