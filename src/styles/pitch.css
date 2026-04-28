@@ -802,15 +802,19 @@
    ============================================================ */
 
 /* Section heading band — small uppercase label rendered above the
-   hero image or per-athlete layout (e.g. "POSTGAME TALENT"). */
+   hero image or per-athlete layout (e.g. "POSTGAME TALENT").
+   Left-aligned, with content-gutter padding so it lines up with the
+   rest of the page's left edge. */
 .pitch-page .pitch-collage__heading {
-  text-align: center;
+  text-align: left;
   font-size: 13px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text);
   font-weight: 500;
-  padding: 28px 0 22px;
+  padding: 28px var(--pad) 22px;
+  max-width: var(--max);
+  margin: 0 auto;
   background: #000000;
 }
 
@@ -1044,7 +1048,7 @@
   padding: 80px 0 64px;
 }
 .pitch-page .pitch-talent__heading {
-  text-align: center;
+  text-align: left;
   font-size: 13px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -1053,11 +1057,11 @@
   margin-bottom: 16px;
 }
 .pitch-page .pitch-talent__intro {
-  text-align: center;
+  text-align: left;
   color: var(--text-2);
   font-size: 15px;
   line-height: 1.6;
-  margin: 0 auto 56px;
+  margin: 0 0 56px;
   max-width: 760px;
 }
 .pitch-page .pitch-talent__groups {
