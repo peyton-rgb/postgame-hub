@@ -237,6 +237,62 @@ export interface TabbedCapabilitiesSectionData {
   items: CapabilityItem[];
 }
 
+// ------------------------------------------------------------
+// Agency comparison sheet — recreates the "More Than An Agency"
+// printed value-prop page as a real HTML section.
+// ------------------------------------------------------------
+export interface AgencyComparisonRow {
+  criterion: string;       // e.g. "Marketing Deals"
+  postgame: string;        // e.g. "0% commission"   (cell value or check marks)
+  otherAgency: string;     // e.g. "10% – 25% commission"
+  doItYourself: string;    // e.g. "???"
+}
+
+export interface AgencyComparisonBenefit {
+  title: string;
+  description?: string;
+}
+
+export interface AgencyComparisonSectionData {
+  type: "agencyComparison";
+  visible: boolean;
+  heading: string;          // e.g. "More than an agency"
+  subheading?: string;      // e.g. "Your NIL partner"
+  tableLabel?: string;      // e.g. "Agency Comparison"
+  rows: AgencyComparisonRow[];
+  benefitsLabel?: string;   // e.g. "Benefits Overview:"
+  benefitsIntro?: string;   // small intro line above the bullets
+  benefits: AgencyComparisonBenefit[];
+}
+
+// ------------------------------------------------------------
+// Earnings comparison sheet — three side-by-side scenario tables
+// showing the financial difference between Postgame, 'Other' Agency,
+// and DIY representation.
+// ------------------------------------------------------------
+export interface EarningsScenarioRow {
+  item: string;            // e.g. "Player Contract"
+  income: string;          // e.g. "$200,000 x 0% (commission)"
+  playerEarns: string;     // e.g. "$200,000"
+}
+
+export interface EarningsScenario {
+  title: string;           // e.g. "Postgame Representation"
+  emphasized?: boolean;    // when true, this scenario gets the orange highlight
+  rows: EarningsScenarioRow[];
+  totalLabel: string;      // e.g. "Total Earned with Postgame"
+  totalValue: string;      // e.g. "$226,000+"
+  totalNote?: string;      // optional sub-line, e.g. "+ $10,000 brand-building value"
+}
+
+export interface EarningsComparisonSectionData {
+  type: "earningsComparison";
+  visible: boolean;
+  heading?: string;        // e.g. "Example Scenario"
+  intro?: string;
+  scenarios: EarningsScenario[];
+}
+
 // Row shapes returned by the page-level fetches. Components use these
 // for their fetched-data props.
 export interface PitchCollageAthleteRow {
@@ -271,7 +327,9 @@ export type PitchSectionData =
   | OpportunitiesSectionData
   | WhyYouSectionData
   | TalentRosterSectionData
-  | TabbedCapabilitiesSectionData;
+  | TabbedCapabilitiesSectionData
+  | AgencyComparisonSectionData
+  | EarningsComparisonSectionData;
 
 export interface PitchPageContent {
   sections: PitchSectionData[];
@@ -303,4 +361,6 @@ export const SECTION_TYPE_LABELS: Record<PitchSectionData["type"], string> = {
   whyYou: "Why You",
   talentRoster: "Talent Roster",
   tabbedCapabilities: "Capabilities (Tabbed)",
+  agencyComparison: "Agency Comparison",
+  earningsComparison: "Earnings Comparison",
 };

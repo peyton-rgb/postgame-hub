@@ -1548,3 +1548,287 @@
     gap: 16px;
   }
 }
+
+/* ============================================================
+   AGENCY COMPARISON SECTION
+   "More Than An Agency / Your NIL Partner" — comparison table +
+   benefits overview grid. Recreated from the printed value-prop sheet.
+   ============================================================ */
+.pitch-page .pitch-agency {
+  padding: 80px 0 70px;
+}
+.pitch-page .pitch-agency__header {
+  margin-bottom: 36px;
+  max-width: 800px;
+}
+.pitch-page .pitch-agency__heading {
+  font-family: var(--display);
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+.pitch-page .pitch-agency__subheading {
+  font-family: var(--display);
+  font-size: clamp(20px, 2.6vw, 32px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+}
+.pitch-page .pitch-agency__table-label {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.pitch-page .pitch-agency__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+}
+.pitch-page .pitch-agency__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.pitch-page .pitch-agency__th {
+  padding: 18px 16px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-agency__th--postgame {
+  background: var(--orange);
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+.pitch-page .pitch-agency__row-label {
+  padding: 16px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text);
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(255,255,255,0.03);
+  width: 28%;
+}
+.pitch-page .pitch-agency__cell {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--glass-border);
+  border-left: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-agency__cell--postgame {
+  background: rgba(215,63,9,0.12);
+  color: var(--text);
+  font-weight: 600;
+}
+.pitch-page .pitch-agency__table tbody tr:last-child .pitch-agency__cell,
+.pitch-page .pitch-agency__table tbody tr:last-child .pitch-agency__row-label {
+  border-bottom: none;
+}
+
+.pitch-page .pitch-agency__benefits {
+  margin-top: 56px;
+}
+.pitch-page .pitch-agency__benefits-label {
+  font-family: var(--display);
+  font-size: clamp(24px, 3vw, 36px);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.pitch-page .pitch-agency__benefits-intro {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-2);
+  margin: 0 0 28px;
+  max-width: 720px;
+}
+.pitch-page .pitch-agency__benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px 32px;
+}
+.pitch-page .pitch-agency__benefit {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.pitch-page .pitch-agency__benefit-tile {
+  background: var(--orange);
+  color: var(--text);
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.pitch-page .pitch-agency__benefit-title {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+.pitch-page .pitch-agency__benefit-desc {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .pitch-page .pitch-agency__benefits-grid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .pitch-page .pitch-agency__table { font-size: 13px; }
+  .pitch-page .pitch-agency__cell,
+  .pitch-page .pitch-agency__row-label {
+    padding: 12px 10px;
+  }
+}
+
+/* ============================================================
+   EARNINGS COMPARISON SECTION
+   Three side-by-side scenario tables (Postgame / 'Other' Agency /
+   Do It Yourself) showing the financial difference. Recreated from
+   the printed earnings comparison sheet.
+   ============================================================ */
+.pitch-page .pitch-earnings {
+  padding: 60px 0 80px;
+}
+.pitch-page .pitch-earnings__heading {
+  font-family: var(--display);
+  font-size: clamp(28px, 4vw, 48px);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+.pitch-page .pitch-earnings__intro {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text-2);
+  max-width: 820px;
+  margin: 0 0 36px;
+}
+.pitch-page .pitch-earnings__scenarios {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.pitch-page .pitch-earnings__scenario {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pitch-page .pitch-earnings__scenario--emphasized {
+  background: rgba(215,63,9,0.08);
+  border-color: rgba(215,63,9,0.4);
+}
+.pitch-page .pitch-earnings__scenario-title {
+  background: rgba(0,0,0,0.4);
+  padding: 14px 18px;
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+  border-bottom: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-earnings__scenario--emphasized .pitch-earnings__scenario-title {
+  background: var(--orange);
+  border-bottom-color: rgba(0,0,0,0.2);
+}
+.pitch-page .pitch-earnings__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.pitch-page .pitch-earnings__table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-earnings__table tbody th,
+.pitch-page .pitch-earnings__table tbody td {
+  padding: 12px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-earnings__row-label {
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+}
+.pitch-page .pitch-earnings__earns {
+  color: var(--text);
+  font-weight: 500;
+}
+.pitch-page .pitch-earnings__total-label {
+  padding: 14px;
+  text-align: right;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  font-weight: 600;
+  border-top: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-earnings__total-value {
+  padding: 14px;
+  text-align: right;
+  font-family: var(--display);
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: var(--orange);
+  border-top: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-earnings__scenario--emphasized .pitch-earnings__total-value {
+  color: var(--text);
+  font-size: 26px;
+}
+.pitch-page .pitch-earnings__total-note {
+  padding: 0 14px 12px;
+  font-size: 11px;
+  color: var(--text-3);
+  font-style: italic;
+}
+@media (max-width: 900px) {
+  .pitch-page .pitch-earnings__scenarios {
+    grid-template-columns: 1fr;
+  }
+}

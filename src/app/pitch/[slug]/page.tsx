@@ -20,6 +20,8 @@ import OpportunitiesSection from "@/components/pitch/OpportunitiesSection";
 import WhyYouSection from "@/components/pitch/WhyYouSection";
 import TalentRosterSection from "@/components/pitch/TalentRosterSection";
 import TabbedCapabilitiesSection from "@/components/pitch/TabbedCapabilitiesSection";
+import AgencyComparisonSection from "@/components/pitch/AgencyComparisonSection";
+import EarningsComparisonSection from "@/components/pitch/EarningsComparisonSection";
 import "@/styles/pitch.css";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +52,8 @@ const SECTION_MAP: Partial<
   whyYou: WhyYouSection,
   talentRoster: TalentRosterSection,
   tabbedCapabilities: TabbedCapabilitiesSection,
+  agencyComparison: AgencyComparisonSection,
+  earningsComparison: EarningsComparisonSection,
 };
 
 export default async function PitchPageRoute({
