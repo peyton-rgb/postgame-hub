@@ -5,11 +5,14 @@ import type { WhyYouSectionData } from "@/types/pitch";
  *
  * Renders an athlete profile with:
  *  - Section label "WHY YOU, FIRSTNAME"
- *  - Athlete header (avatar circle + optional school logo + name + subtitle)
- *  - Body bio (multi-paragraph if `paragraphs`, falls back to single
- *    `paragraph` for backwards compat)
- *  - Optional social/audience stats row (followers / engagement / views)
- *  - Optional upcoming-campaigns list ("HERE'S WHAT WE'D LINE UP")
+ *  - Athlete header (large avatar + optional school logo + name + meta)
+ *  - Social-icon row — outline platform logos in Postgame orange,
+ *    follower count below each, clickable
+ *  - Multi-paragraph bio
+ *  - Optional pull quote
+ *  - Optional recent-highlights list
+ *  - Optional 3-stat row (followers / engagement / reach)
+ *  - Optional upcoming-campaigns list
  */
 export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
   if (!data.visible) return null;
@@ -17,8 +20,12 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
   const firstName = data.athleteName.trim().split(/\s+/)[0] ?? "";
   const headingFirstName = firstName.toUpperCase();
   const initials = getInitials(data.athleteName);
-
   const tinted = data.tinted !== false;
+
+  // Display name. If a nickname is provided, render "Legal / Nickname".
+  const displayName = data.nickname
+    ? `${data.athleteName} / ${data.nickname}`
+    : data.athleteName;
 
   // Prefer paragraphs[]; fall back to single paragraph.
   const bodyParagraphs: string[] =
@@ -45,7 +52,7 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
           )}
         </div>
         <div className="pitch-why-you__name-block">
-          <div className="pitch-why-you__name">{data.athleteName}</div>
+          <div className="pitch-why-you__name">{displayName}</div>
           {data.athleteSubtitle ? (
             <div className="pitch-why-you__subtitle">
               {data.athleteSubtitle}
@@ -77,11 +84,11 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
               href={h.url}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={`${platformLabel(h.platform)} — @${h.handle}${h.followers ? `, ${h.followers} followers` : ""}`}
             >
-              <span className="pitch-why-you__handle-platform">
-                {platformLabel(h.platform)}
+              <span className="pitch-why-you__handle-icon">
+                <PlatformIcon platform={h.platform} />
               </span>
-              <span className="pitch-why-you__handle-name">@{h.handle}</span>
               {h.followers ? (
                 <span className="pitch-why-you__handle-followers">
                   {h.followers}
@@ -101,10 +108,7 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
       ) : null}
 
       {data.quote ? (
-        <blockquote className="pitch-why-you__quote">
-          <span className="pitch-why-you__quote-mark" aria-hidden="true">“</span>
-          {data.quote}
-        </blockquote>
+        <blockquote className="pitch-why-you__quote">{data.quote}</blockquote>
       ) : null}
 
       {data.highlights && data.highlights.length > 0 ? (
@@ -157,13 +161,91 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
   );
 }
 
+// ---------------------------------------------------------------------
+// Platform icons — outline SVGs that take their color from currentColor
+// (set to Postgame orange via CSS on the parent). Small enough to be
+// inlined here so we don't pull in an icon library for four glyphs.
+// ---------------------------------------------------------------------
+
+function PlatformIcon({ platform }: { platform: string }) {
+  switch (platform) {
+    case "instagram":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="17.5" cy="6.5" r="0.9" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "tiktok":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M14 4v10.5a3.5 3.5 0 1 1-3.5-3.5" />
+          <path d="M14 4c0 2.8 2.2 5 5 5" />
+        </svg>
+      );
+    case "youtube":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="2.5" y="6" width="19" height="12" rx="3" />
+          <path d="M10.5 9.5l4.5 2.5-4.5 2.5z" />
+        </svg>
+      );
+    case "twitter":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4 4l16 16" />
+          <path d="M20 4L4 20" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 function platformLabel(p: string): string {
   switch (p) {
-    case "instagram": return "Instagram";
-    case "twitter":   return "X";
-    case "tiktok":    return "TikTok";
-    case "youtube":   return "YouTube";
-    default:          return p;
+    case "instagram":
+      return "Instagram";
+    case "twitter":
+      return "X";
+    case "tiktok":
+      return "TikTok";
+    case "youtube":
+      return "YouTube";
+    default:
+      return p;
   }
 }
 

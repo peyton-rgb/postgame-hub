@@ -202,13 +202,14 @@ export interface WhyYouSectionData {
   visible: boolean;
 
   // Athlete identity
-  athleteName: string;
+  athleteName: string;               // Legal name (e.g. "Nau'Jour Grainger")
+  nickname?: string;                 // NEW — displayed as "Legal / Nickname"
   athleteSubtitle?: string;
   athletePhotoUrl?: string;
   schoolLogoUrl?: string;
-  hometown?: string;                 // NEW — "Syracuse, NY"
-  classYear?: string;                // NEW — "Senior"
-  position?: string;                 // NEW — "Wide Receiver"
+  hometown?: string;                 // "Syracuse, NY"
+  classYear?: string;                // "Senior"
+  position?: string;                 // "Wide Receiver"
 
   // Body copy. `paragraphs` (multi-paragraph) is preferred; `paragraph`
   // (single) is kept for backwards compatibility with existing pitches.

@@ -1184,8 +1184,8 @@
   margin-bottom: 20px;
 }
 .pitch-page .pitch-why-you__avatar {
-  width: 64px;
-  height: 64px;
+  width: 128px;            /* bumped from 64 → 128 for prominence */
+  height: 128px;
   border-radius: 50%;
   background: rgba(255,255,255,0.06);
   border: 1px solid var(--glass-border);
@@ -1195,7 +1195,7 @@
   overflow: hidden;
   flex-shrink: 0;
   color: var(--text);
-  font-size: 18px;
+  font-size: 36px;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
@@ -1212,9 +1212,10 @@
 }
 .pitch-page .pitch-why-you__name {
   color: var(--text);
-  font-size: 18px;
+  font-size: 26px;          /* bumped from 18 to match the larger avatar */
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 .pitch-page .pitch-why-you__subtitle {
   color: var(--text-3);
@@ -1285,45 +1286,42 @@
   margin-top: 6px;
 }
 
-/* Social handles row — Instagram / X / TikTok with @handle and follower count */
+/* Social handles row — outline platform-logo SVGs in Postgame orange,
+   stacked vertically with the follower count underneath each. The icon
+   inherits color from `currentColor`, set on the link wrapper. */
 .pitch-page .pitch-why-you__handles {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 24px;
+  gap: 28px;
+  margin-top: 28px;
 }
 .pitch-page .pitch-why-you__handle {
-  display: inline-flex;
-  align-items: baseline;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  padding: 10px 14px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 999px;
   text-decoration: none;
-  color: var(--text);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  color: var(--orange);
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 .pitch-page .pitch-why-you__handle:hover {
-  background: rgba(215,63,9,0.1);
-  border-color: rgba(215,63,9,0.3);
+  transform: translateY(-2px);
 }
-.pitch-page .pitch-why-you__handle-platform {
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  font-weight: 600;
+.pitch-page .pitch-why-you__handle-icon {
+  display: block;
+  width: 38px;
+  height: 38px;
 }
-.pitch-page .pitch-why-you__handle-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
+.pitch-page .pitch-why-you__handle-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .pitch-page .pitch-why-you__handle-followers {
-  font-size: 12px;
-  color: var(--orange);
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
 }
 
 /* Pull quote attributed to the athlete */
