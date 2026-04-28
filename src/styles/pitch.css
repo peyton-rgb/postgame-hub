@@ -1017,10 +1017,12 @@
 
 /* ============================================================
    TALENT ROSTER SECTION
-   Sport-grouped list of athletes Postgame has worked with.
+   Sport-grouped athlete lists. Stacked layout — each sport gets a
+   giant display-font headline (Bebas Neue) and the athletes flow as
+   a paragraph of names underneath, separated by middle-dot dividers.
    ============================================================ */
 .pitch-page .pitch-talent {
-  padding: 56px 0 48px;
+  padding: 80px 0 64px;
 }
 .pitch-page .pitch-talent__heading {
   text-align: center;
@@ -1029,44 +1031,46 @@
   text-transform: uppercase;
   color: var(--orange);
   font-weight: 500;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .pitch-page .pitch-talent__intro {
   text-align: center;
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
-  margin: 0 auto 32px;
+  margin: 0 auto 56px;
   max-width: 760px;
 }
 .pitch-page .pitch-talent__groups {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 64px;
 }
 .pitch-page .pitch-talent__group {
   border-top: 1px solid var(--glass-border);
-  padding-top: 18px;
-  display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 18px;
-  align-items: baseline;
+  padding-top: 28px;
 }
 .pitch-page .pitch-talent__sport {
-  color: var(--orange);
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  font-family: var(--display);
+  font-size: clamp(72px, 10vw, 140px);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 22px;
 }
 .pitch-page .pitch-talent__athletes {
   color: var(--text);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 17px;
+  line-height: 1.75;
 }
 .pitch-page .pitch-talent__sep {
-  color: var(--text-3);
-  margin: 0 4px;
+  color: var(--orange);
+  margin: 0 8px;
+  font-weight: 700;
+}
+.pitch-page .pitch-talent__athlete {
+  white-space: nowrap;
 }
 .pitch-page .pitch-talent__name {
   color: var(--text);
@@ -1075,12 +1079,14 @@
 .pitch-page .pitch-talent__team {
   color: var(--text-3);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 13px;
 }
 @media (max-width: 640px) {
-  .pitch-page .pitch-talent__group {
-    grid-template-columns: 1fr;
-    gap: 8px;
+  .pitch-page .pitch-talent__sport {
+    font-size: clamp(56px, 16vw, 96px);
+  }
+  .pitch-page .pitch-talent__athletes {
+    font-size: 15px;
   }
 }
 
