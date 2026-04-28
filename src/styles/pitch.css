@@ -750,6 +750,19 @@
       mobile = 2-col grid.
    ============================================================ */
 
+/* Section heading band — small uppercase label rendered above the
+   hero image or per-athlete layout (e.g. "POSTGAME TALENT"). */
+.pitch-page .pitch-collage__heading {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text);
+  font-weight: 500;
+  padding: 28px 0 22px;
+  background: #000000;
+}
+
 /* Hero-image mode: full-width image, no internal padding/wrapper.
    Background is pure black so it matches the cleaned hero-collage.jpg
    (whose gradient-y dark gray was clamped to #000 during processing). */

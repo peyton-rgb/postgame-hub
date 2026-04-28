@@ -44,6 +44,9 @@ export default function CollageSection({
 
     return (
       <section className="pitch-collage pitch-collage--hero">
+        {data.heading ? (
+          <div className="pitch-collage__heading">{data.heading}</div>
+        ) : null}
         <div className="pitch-collage__hero-frame">
           <img
             className="pitch-collage__hero-img"
@@ -94,6 +97,9 @@ export default function CollageSection({
 
   return (
     <section className="pitch-collage">
+      {data.heading ? (
+        <div className="pitch-collage__heading">{data.heading}</div>
+      ) : null}
       <div className="pitch-collage__inner">
         {athletes.map((a) => (
           <div className="pitch-collage__athlete" key={a.id}>

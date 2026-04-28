@@ -111,6 +111,10 @@ export interface CtaSectionData {
 export interface CollageSectionData {
   type: "collage";
   visible: boolean;
+  // Optional section heading rendered above the hero image / per-athlete
+  // layout. Renders as a centered uppercase label band (e.g. "POSTGAME
+  // TALENT").
+  heading?: string;
   // ---- Hero-image mode -------------------------------------------------
   // When `heroImageUrl` is set, the section renders that single image
   // full-width and skips the per-athlete layout entirely. Use this when
