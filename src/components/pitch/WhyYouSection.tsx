@@ -51,6 +51,13 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
               {data.athleteSubtitle}
             </div>
           ) : null}
+          {(data.position || data.classYear || data.hometown) && (
+            <div className="pitch-why-you__meta">
+              {[data.position, data.classYear, data.hometown]
+                .filter(Boolean)
+                .join(" · ")}
+            </div>
+          )}
         </div>
         {data.schoolLogoUrl ? (
           <img
@@ -61,11 +68,53 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
         ) : null}
       </div>
 
+      {data.socialHandles && data.socialHandles.length > 0 ? (
+        <div className="pitch-why-you__handles">
+          {data.socialHandles.map((h, i) => (
+            <a
+              key={i}
+              className="pitch-why-you__handle"
+              href={h.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="pitch-why-you__handle-platform">
+                {platformLabel(h.platform)}
+              </span>
+              <span className="pitch-why-you__handle-name">@{h.handle}</span>
+              {h.followers ? (
+                <span className="pitch-why-you__handle-followers">
+                  {h.followers}
+                </span>
+              ) : null}
+            </a>
+          ))}
+        </div>
+      ) : null}
+
       {bodyParagraphs.length > 0 ? (
         <div className="pitch-why-you__body">
           {bodyParagraphs.map((p, i) => (
             <p key={i}>{p}</p>
           ))}
+        </div>
+      ) : null}
+
+      {data.quote ? (
+        <blockquote className="pitch-why-you__quote">
+          <span className="pitch-why-you__quote-mark" aria-hidden="true">“</span>
+          {data.quote}
+        </blockquote>
+      ) : null}
+
+      {data.highlights && data.highlights.length > 0 ? (
+        <div className="pitch-why-you__highlights">
+          <div className="pitch-why-you__highlights-label">RECENT HIGHLIGHTS</div>
+          <ul className="pitch-why-you__highlights-list">
+            {data.highlights.map((h, i) => (
+              <li key={i}>{h}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
@@ -106,6 +155,16 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
       ) : null}
     </section>
   );
+}
+
+function platformLabel(p: string): string {
+  switch (p) {
+    case "instagram": return "Instagram";
+    case "twitter":   return "X";
+    case "tiktok":    return "TikTok";
+    case "youtube":   return "YouTube";
+    default:          return p;
+  }
 }
 
 function getInitials(fullName: string): string {

@@ -190,19 +190,38 @@ export interface WhyYouUpcomingCampaign {
   description?: string;     // optional longer description
 }
 
+export interface WhyYouSocialHandle {
+  platform: "instagram" | "twitter" | "tiktok" | "youtube";
+  handle: string;           // e.g. "toosii" (no leading @ — component adds it)
+  url: string;              // e.g. "https://instagram.com/toosii"
+  followers?: string;       // optional, e.g. "4.2M"
+}
+
 export interface WhyYouSectionData {
   type: "whyYou";
   visible: boolean;
+
+  // Athlete identity
   athleteName: string;
   athleteSubtitle?: string;
   athletePhotoUrl?: string;
-  schoolLogoUrl?: string;            // NEW — small logo next to the athlete card
+  schoolLogoUrl?: string;
+  hometown?: string;                 // NEW — "Syracuse, NY"
+  classYear?: string;                // NEW — "Senior"
+  position?: string;                 // NEW — "Wide Receiver"
+
   // Body copy. `paragraphs` (multi-paragraph) is preferred; `paragraph`
   // (single) is kept for backwards compatibility with existing pitches.
   paragraph?: string;
-  paragraphs?: string[];             // NEW
-  socialStats?: WhyYouSocialStat[];  // NEW — row of follower/engagement numbers
-  upcomingCampaigns?: WhyYouUpcomingCampaign[]; // NEW — list of pitches we'll line up
+  paragraphs?: string[];
+
+  // Stats and breakdown
+  socialStats?: WhyYouSocialStat[];
+  socialHandles?: WhyYouSocialHandle[]; // NEW — Instagram / X / TikTok with @handle and url
+  highlights?: string[];                // NEW — bullet-point achievements / recent moments
+  quote?: string;                       // NEW — pull-quote from the athlete
+
+  upcomingCampaigns?: WhyYouUpcomingCampaign[];
   tinted?: boolean;                  // adds the slight orange wash bg (default true)
 }
 
