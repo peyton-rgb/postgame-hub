@@ -1388,9 +1388,19 @@
   margin-bottom: 14px;
 }
 .pitch-page .pitch-why-you__campaigns-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+@media (max-width: 760px) {
+  .pitch-page .pitch-why-you__campaigns-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .pitch-page .pitch-why-you__campaigns-list {
+    grid-template-columns: 1fr;
+  }
 }
 .pitch-page .pitch-why-you__campaign {
   background: rgba(255,255,255,0.04);
