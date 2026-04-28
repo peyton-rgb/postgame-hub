@@ -302,7 +302,7 @@
   border-top: 1px solid var(--glass-border);
 }
 @media (max-width: 720px) { .pitch-thesis__three { grid-template-columns: 1fr; } }
-.pitch-thesis__three > div { padding: 36px 28px 36px 0; border-right: 1px solid var(--glass-border); }
+.pitch-thesis__three > div { padding: 36px 28px; border-right: 1px solid var(--glass-border); text-align: center; }
 .pitch-thesis__three > div:last-child { border-right: none; }
 @media (max-width: 720px) {
   .pitch-thesis__three > div { border-right: none; border-bottom: 1px solid var(--glass-border); padding: 28px 0; }
