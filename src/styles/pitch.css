@@ -76,14 +76,16 @@
 .pitch-ticker__inner span::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--orange); margin-left: 18px; }
 .pitch-ticker__inner span:last-child::after { display: none; }
 /* Brand-logo image inside a ticker item.
-   Uniform-tile approach: every logo sits inside a fixed 130×44 box and
-   scales to fit. This normalizes wildly varying source aspect ratios —
-   tightly cropped wordmarks, square brand marks, logos with built-in
-   padding — so the row reads consistent. No CSS filter (logos are
-   already in their dark-bg variant from logo_dark_url). */
+   Uniform-tile approach: every logo sits inside a fixed 165×60 box and
+   scales to fit. Tile bumped from 130×44 → 165×60 so brands whose
+   source PNG has built-in padding (Armani, Wendy's) appear at a
+   reasonable size rather than getting lost. object-fit: contain
+   normalizes wildly varying source aspect ratios. No CSS filter —
+   each brand's URL is picked per-brand in SQL to ensure the right
+   color variant. */
 .pitch-ticker__logo {
-  height: 44px;
-  width: 130px;
+  height: 60px;
+  width: 165px;
   object-fit: contain;
   display: block;
 }
