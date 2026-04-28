@@ -75,17 +75,19 @@
 .pitch-ticker__inner span { padding: 0 28px; display: inline-flex; align-items: center; gap: 10px; }
 .pitch-ticker__inner span::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--orange); margin-left: 18px; }
 .pitch-ticker__inner span:last-child::after { display: none; }
-/* Brand-logo image inside a ticker item. logo_dark_url variants are
-   designed for dark backgrounds, but a light brightness boost +
-   slight desaturation gives the row a uniform editorial feel even
-   if a few brands ship full-color "dark" logos. */
+/* Brand-logo image inside a ticker item.
+   `brightness(0) invert(1)` is the standard CSS recipe for forcing any
+   image (including black-on-transparent logos) to render as pure white.
+   Any color in the source PNG is flattened to white silhouette, so the
+   row reads uniform on the dark page background regardless of which
+   variant a brand uploaded. opacity 0.9 gives a slight editorial fade. */
 .pitch-ticker__logo {
   height: 26px;
   width: auto;
   max-width: 140px;
   object-fit: contain;
   display: block;
-  filter: brightness(1.05);
+  filter: brightness(0) invert(1) opacity(0.9);
 }
 @keyframes pitch-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
