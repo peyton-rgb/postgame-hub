@@ -18,10 +18,12 @@ export default function CtaSection({ data }: { data: CtaSectionData }) {
                 {data.kicker}
               </div>
             ) : null}
-            <h2
-              className="fade"
-              dangerouslySetInnerHTML={{ __html: data.heading }}
-            />
+            {data.heading ? (
+              <h2
+                className="fade"
+                dangerouslySetInnerHTML={{ __html: data.heading }}
+              />
+            ) : null}
             {data.buttonText ? (
               <a className="pitch-cta__btn" href={data.buttonHref ?? "#"}>
                 {data.buttonText}
