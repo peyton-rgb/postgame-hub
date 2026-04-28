@@ -83,7 +83,59 @@ export default async function PitchPageRoute({
   }
 
   const pitch = data as PitchPage;
-  const sections: PitchSectionData[] = pitch.content?.sections ?? [];
+
+  // Section sourcing — supports two shapes:
+  //
+  //  1. Legacy: `content.sections` is a full array. Each pitch carries
+  //     its own complete sections list. Render directly.
+  //
+  //  2. Template-based: `content.templateName` references a master
+  //     template in pitch_templates; `content.whyYou` (and optionally
+  //     `content.athleteName` / `content.ctaHeading`) override
+  //     athlete-specific bits. The template provides the rest.
+  //
+  // We fall back to legacy if `content.sections` exists.
+  const contentObj = (pitch.content ?? {}) as Record<string, any>;
+  let sections: PitchSectionData[] = [];
+
+  if (Array.isArray(contentObj.sections)) {
+    // Legacy shape — render directly
+    sections = contentObj.sections as PitchSectionData[];
+  } else {
+    // Template-based shape — load template, merge overrides
+    const templateName: string = contentObj.templateName ?? "default";
+    const { data: tmpl } = await supabase
+      .from("pitch_templates")
+      .select("sections")
+      .eq("name", templateName)
+      .single();
+    const tmplSections = (tmpl?.sections as PitchSectionData[]) ?? [];
+    sections = [...tmplSections];
+
+    // Override the whyYou (player profile) with this pitch's data
+    if (contentObj.whyYou) {
+      const idx = sections.findIndex((s) => s.type === "whyYou");
+      if (idx >= 0) sections[idx] = contentObj.whyYou as PitchSectionData;
+    }
+
+    // Override the CTA heading + footer-meta with the athlete name
+    const athleteName: string | undefined = contentObj.athleteName;
+    if (athleteName) {
+      const firstName: string =
+        contentObj.athleteFirstName ?? athleteName.split(/\s+/)[0];
+      const ctaIdx = sections.findIndex((s) => s.type === "cta");
+      if (ctaIdx >= 0) {
+        const existing = sections[ctaIdx] as Record<string, any>;
+        sections[ctaIdx] = {
+          ...existing,
+          heading:
+            contentObj.ctaHeading ??
+            `Welcome to Postgame, <em>${firstName}</em>.`,
+          footerMeta: `Built for ${athleteName}`,
+        } as PitchSectionData;
+      }
+    }
+  }
 
   // Some section types (collage, opportunities) read from auxiliary
   // tables. We only fetch when the pitch actually uses those sections,
