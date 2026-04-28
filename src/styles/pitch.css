@@ -984,6 +984,75 @@
 }
 
 /* ============================================================
+   TALENT ROSTER SECTION
+   Sport-grouped list of athletes Postgame has worked with.
+   ============================================================ */
+.pitch-page .pitch-talent {
+  padding: 56px 0 48px;
+}
+.pitch-page .pitch-talent__heading {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.pitch-page .pitch-talent__intro {
+  text-align: center;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 auto 32px;
+  max-width: 760px;
+}
+.pitch-page .pitch-talent__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.pitch-page .pitch-talent__group {
+  border-top: 1px solid var(--glass-border);
+  padding-top: 18px;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 18px;
+  align-items: baseline;
+}
+.pitch-page .pitch-talent__sport {
+  color: var(--orange);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.pitch-page .pitch-talent__athletes {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.pitch-page .pitch-talent__sep {
+  color: var(--text-3);
+  margin: 0 4px;
+}
+.pitch-page .pitch-talent__name {
+  color: var(--text);
+  font-weight: 500;
+}
+.pitch-page .pitch-talent__team {
+  color: var(--text-3);
+  font-weight: 400;
+  font-size: 12px;
+}
+@media (max-width: 640px) {
+  .pitch-page .pitch-talent__group {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* ============================================================
    OPPORTUNITIES SECTION
    "WHAT WE HAVE LINED UP" — stack of cards.
    ============================================================ */

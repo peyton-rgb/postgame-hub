@@ -149,6 +149,27 @@ export interface OpportunitiesSectionData {
   heading?: string;        // defaults to "WHAT WE HAVE LINED UP"
 }
 
+// Sport-grouped roster of athletes Postgame has worked with.
+// Each group is a sport heading (e.g. FOOTBALL) followed by a list of
+// athlete names, optionally with a team callout in parens.
+export interface TalentRosterAthlete {
+  name: string;
+  team?: string; // e.g. "Browns" — rendered in parens after the name
+}
+
+export interface TalentRosterGroup {
+  sport: string;                  // e.g. "FOOTBALL"
+  athletes: TalentRosterAthlete[];
+}
+
+export interface TalentRosterSectionData {
+  type: "talentRoster";
+  visible: boolean;
+  heading?: string;               // e.g. "TALENT ROSTER"
+  intro?: string;                 // optional one-line intro
+  groups: TalentRosterGroup[];
+}
+
 export interface WhyYouSectionData {
   type: "whyYou";
   visible: boolean;
@@ -191,7 +212,8 @@ export type PitchSectionData =
   | CtaSectionData
   | CollageSectionData
   | OpportunitiesSectionData
-  | WhyYouSectionData;
+  | WhyYouSectionData
+  | TalentRosterSectionData;
 
 export interface PitchPageContent {
   sections: PitchSectionData[];
@@ -221,4 +243,5 @@ export const SECTION_TYPE_LABELS: Record<PitchSectionData["type"], string> = {
   collage: "Collage",
   opportunities: "Opportunities",
   whyYou: "Why You",
+  talentRoster: "Talent Roster",
 };

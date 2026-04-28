@@ -18,6 +18,7 @@ import CtaSection from "@/components/pitch/CtaSection";
 import CollageSection from "@/components/pitch/CollageSection";
 import OpportunitiesSection from "@/components/pitch/OpportunitiesSection";
 import WhyYouSection from "@/components/pitch/WhyYouSection";
+import TalentRosterSection from "@/components/pitch/TalentRosterSection";
 import "@/styles/pitch.css";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,7 @@ const SECTION_MAP: Partial<
   ideas: IdeasSection,
   cta: CtaSection,
   whyYou: WhyYouSection,
+  talentRoster: TalentRosterSection,
 };
 
 export default async function PitchPageRoute({
