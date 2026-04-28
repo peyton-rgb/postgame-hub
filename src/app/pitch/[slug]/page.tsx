@@ -261,7 +261,16 @@ function FadeScript() {
                 if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}
               });
             },{threshold:0.12,rootMargin:'0px 0px -60px 0px'});
-            document.querySelectorAll('.pitch-page .fade').forEach(function(el){io.observe(el);});
+            // Observe both:
+            //  (1) every internal element flagged with .fade
+            //  (2) every top-level <section> (skip the first — it's
+            //      visible on initial paint) and any top-level <footer>
+            var nodes = document.querySelectorAll(
+              '.pitch-page > section:not(:first-of-type), ' +
+              '.pitch-page > footer, ' +
+              '.pitch-page .fade'
+            );
+            nodes.forEach(function(el){io.observe(el);});
           })();
         `,
       }}

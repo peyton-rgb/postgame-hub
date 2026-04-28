@@ -851,6 +851,30 @@
 }
 .pitch-page .fade.in { opacity: 1; transform: none; }
 
+/* Section-level scroll-in animation.
+   Every top-level <section> and <footer> under .pitch-page starts
+   slightly translated down and faded out, then transitions into place
+   when the IntersectionObserver in FadeScript adds .in once the
+   element enters the viewport. */
+.pitch-page > section,
+.pitch-page > footer {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 1.2s cubic-bezier(.16, .8, .24, 1),
+              transform 1.2s cubic-bezier(.16, .8, .24, 1);
+}
+.pitch-page > section.in,
+.pitch-page > footer.in {
+  opacity: 1;
+  transform: none;
+}
+/* Always show the very-first section on initial paint (no animation
+   for the opening hero/thesis — it's already in view). */
+.pitch-page > section:first-of-type {
+  opacity: 1;
+  transform: none;
+}
+
 /* ============================================================
    COLLAGE SECTION
    Two modes:
