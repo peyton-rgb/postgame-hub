@@ -761,6 +761,14 @@
   width: 100%;
   height: auto;
   max-width: none;
+  /* Uniform color treatment so mismatched per-athlete photos read as
+     one piece. Tune individual values to taste:
+       - saturate(0.4) keeps some color but flattens differences
+       - contrast(1.08) gives a bit of editorial punch
+       - brightness(0.95) takes a touch off so the dark bg blends
+     If you want full B&W: filter: grayscale(1) contrast(1.1);
+  */
+  filter: saturate(0.4) contrast(1.08) brightness(0.95);
 }
 
 /* Data-driven mode (default styling below). */
