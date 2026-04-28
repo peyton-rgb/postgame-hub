@@ -1397,7 +1397,7 @@
   padding: 48px 0 0;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 36px;
+  gap: 18px;            /* tightened from 36 — title sits right next to the number */
   align-items: start;
 }
 .pitch-page .pitch-tab-cap__panel-num {
@@ -1409,12 +1409,12 @@
 }
 .pitch-page .pitch-tab-cap__panel-title {
   font-family: var(--display);
-  font-size: clamp(28px, 4vw, 44px);
-  line-height: 1.1;
+  font-size: clamp(44px, 7vw, 88px);   /* bumped from 28-44 → 44-88 */
+  line-height: 1;                       /* tighter so it visually pairs with the number */
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text);
-  margin: 0 0 18px;
+  margin: 0 0 22px;
 }
 .pitch-page .pitch-tab-cap__panel-desc {
   font-size: 15px;
