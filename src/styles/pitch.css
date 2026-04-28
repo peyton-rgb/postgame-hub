@@ -1475,96 +1475,74 @@
   font-weight: 600;
   margin-bottom: 14px;
 }
-/* 3-card auto-rotating carousel for upcoming campaigns. Three cards
-   visible at a time on desktop; the track slides left by one card
-   every tick. Mobile collapses to fewer cards via the @media rules
-   below. */
-.pitch-page .campaign-carousel {
-  margin-top: 12px;
+/* Velocity scroller for upcoming campaigns. Logos roll horizontally
+   on the page background — no cards, no borders. The viewport has
+   a left/right fade mask so logos enter and exit on a soft fade.
+   The doubled-array trick + keyframe -50% gives a seamless loop. */
+.pitch-page .campaign-velocity {
+  margin-top: 16px;
 }
-.pitch-page .campaign-carousel__viewport {
+.pitch-page .campaign-velocity__viewport {
   position: relative;
-  overflow: hidden;
   width: 100%;
+  overflow: hidden;
+  padding: 12px 0;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+          mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
 }
-.pitch-page .campaign-carousel__track {
+.pitch-page .campaign-velocity__track {
   display: flex;
-  gap: 14px;
-  /* transform + transition are set inline by the component */
+  gap: 64px;
+  width: max-content;
+  align-items: center;
+  /* Slow steady velocity. Halfway through the keyframe is one full
+     cycle through the original campaigns (cards are doubled). */
+  animation: campaign-velocity-roll 36s linear infinite;
 }
-.pitch-page .campaign-carousel__card {
-  flex: 0 0 calc((100% - 28px) / 3);  /* 3 cards visible, accounts for 14px gap × 2 */
+@keyframes campaign-velocity-roll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.pitch-page .campaign-velocity__item {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 28px 20px;
-  text-align: center;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
-  height: 200px;
-  justify-content: center;
+  gap: 10px;
+  min-width: 140px;
 }
-@media (max-width: 900px) {
-  .pitch-page .campaign-carousel__card {
-    flex: 0 0 calc((100% - 14px) / 2);    /* 2 visible on tablet */
-  }
-}
-@media (max-width: 600px) {
-  .pitch-page .campaign-carousel__card {
-    flex: 0 0 100%;                       /* 1 visible on mobile */
-  }
-}
-.pitch-page .campaign-carousel__logo {
+.pitch-page .campaign-velocity__logo {
   display: block;
-  height: 60px;
+  height: 56px;
   width: auto;
-  max-width: 220px;
+  max-width: 180px;
   object-fit: contain;
 }
-.pitch-page .campaign-carousel__logo-fallback {
+.pitch-page .campaign-velocity__logo-fallback {
   font-family: var(--display);
   font-size: 36px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text);
 }
-.pitch-page .campaign-carousel__name {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+.pitch-page .campaign-velocity__name {
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text);
-}
-.pitch-page .campaign-carousel__sub {
-  font-size: 12px;
   color: var(--text-3);
-  line-height: 1.4;
-  max-width: 320px;
-}
-.pitch-page .campaign-carousel__dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 18px;
-}
-.pitch-page .campaign-carousel__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-.pitch-page .campaign-carousel__dot:hover {
-  background: rgba(255,255,255,0.35);
-}
-.pitch-page .campaign-carousel__dot--active {
-  background: var(--orange);
-  transform: scale(1.3);
+  font-weight: 600;
 }
 .pitch-page .pitch-why-you__campaign {
   background: rgba(255,255,255,0.04);
