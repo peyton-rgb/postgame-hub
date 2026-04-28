@@ -2,10 +2,19 @@
 // Pitch Page types
 // ============================================================
 
+// Ticker items can be plain text (string) or an image (logo).
+// Backwards compatible: existing pitches with string[] still work.
+export type TickerItem = string | TickerImageItem;
+
+export interface TickerImageItem {
+  logoUrl: string;
+  alt: string;
+}
+
 export interface TickerSectionData {
   type: "ticker";
   visible: boolean;
-  items: string[];
+  items: TickerItem[];
 }
 
 export interface HeroSectionData {
