@@ -1498,12 +1498,20 @@
   gap: 14px;
   padding: 28px 24px;
   text-align: center;
-  /* Keyed re-mount triggers this animation each tick. */
-  animation: campaign-carousel-fade 600ms cubic-bezier(.16, .8, .24, 1);
+  /* Keyed re-mount triggers this slide-in each tick — the new card
+     slides in from the right edge of the viewport. The previous card
+     simply unmounts (clean swap). */
+  animation: campaign-carousel-slide-in 520ms cubic-bezier(.22, .8, .24, 1);
 }
-@keyframes campaign-carousel-fade {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0)   scale(1); }
+@keyframes campaign-carousel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(60%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 .pitch-page .campaign-carousel__logo {
   display: block;
