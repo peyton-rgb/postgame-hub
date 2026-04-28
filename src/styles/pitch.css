@@ -763,6 +763,28 @@
   position: relative;
   width: 100%;
 }
+/* Black-fade gradient overlay at the bottom of the hero image.
+   - Covers the lower 40% of the image
+   - Transparent at the top, fading to near-solid black at the bottom
+   - Sits between the image (z auto) and the floating plates (z 5)
+     so plates stay readable on top of the fade
+   - pointer-events: none so it doesn't block interactions */
+.pitch-page .pitch-collage--hero .pitch-collage__hero-frame::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 40%;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.55) 55%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
 /* Floating plate: same orange-bar + name + brand structure, but
    absolutely positioned over the hero image. `left` and `bottom` come
    from inline styles set per-athlete via heroPlates config. */
