@@ -205,6 +205,7 @@ export interface WhyYouUpcomingCampaign {
   title: string;            // brand or campaign name (e.g. "Crocs")
   subtitle?: string;        // short tagline (e.g. "Spring 2026 capsule")
   description?: string;     // optional longer description
+  logoUrl?: string;         // populated server-side from the brands table
 }
 
 export interface WhyYouSocialHandle {
