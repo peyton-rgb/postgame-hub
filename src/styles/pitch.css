@@ -1475,42 +1475,45 @@
   font-weight: 600;
   margin-bottom: 14px;
 }
-/* Auto-rotating single-card carousel for upcoming campaigns. One card
-   visible at a time, fades between values keyed on the active index. */
+/* 3-card auto-rotating carousel for upcoming campaigns. Three cards
+   visible at a time on desktop; the track slides left by one card
+   every tick. Mobile collapses to fewer cards via the @media rules
+   below. */
 .pitch-page .campaign-carousel {
   margin-top: 12px;
 }
 .pitch-page .campaign-carousel__viewport {
   position: relative;
-  height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
   overflow: hidden;
+  width: 100%;
+}
+.pitch-page .campaign-carousel__track {
+  display: flex;
+  gap: 14px;
+  /* transform + transition are set inline by the component */
 }
 .pitch-page .campaign-carousel__card {
+  flex: 0 0 calc((100% - 28px) / 3);  /* 3 cards visible, accounts for 14px gap × 2 */
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: 28px 24px;
+  padding: 28px 20px;
   text-align: center;
-  /* Keyed re-mount triggers this slide-in each tick — the new card
-     slides in from the right edge of the viewport. The previous card
-     simply unmounts (clean swap). */
-  animation: campaign-carousel-slide-in 520ms cubic-bezier(.22, .8, .24, 1);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  height: 200px;
+  justify-content: center;
 }
-@keyframes campaign-carousel-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(60%);
+@media (max-width: 900px) {
+  .pitch-page .campaign-carousel__card {
+    flex: 0 0 calc((100% - 14px) / 2);    /* 2 visible on tablet */
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+}
+@media (max-width: 600px) {
+  .pitch-page .campaign-carousel__card {
+    flex: 0 0 100%;                       /* 1 visible on mobile */
   }
 }
 .pitch-page .campaign-carousel__logo {
