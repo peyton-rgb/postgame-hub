@@ -2,29 +2,37 @@ import type { CtaSectionData } from "@/types/pitch";
 
 export default function CtaSection({ data }: { data: CtaSectionData }) {
   if (!data.visible) return null;
+
+  const mode = data.mode ?? "full";
+  const showHeading = mode === "full" || mode === "heading";
+  const showFooter = mode === "full" || mode === "footer";
+
   return (
     <>
-      <section className="pitch-cta">
-        <div className="wrap pitch-cta__inner">
-          {data.kicker ? (
-            <div className="pitch-cta__kicker">
-              <span className="dot" />
-              {data.kicker}
-            </div>
-          ) : null}
-          <h2
-            className="fade"
-            dangerouslySetInnerHTML={{ __html: data.heading }}
-          />
-          {data.buttonText ? (
-            <a className="pitch-cta__btn" href={data.buttonHref ?? "#"}>
-              {data.buttonText}
-              <span className="arrow">&rarr;</span>
-            </a>
-          ) : null}
-        </div>
-      </section>
+      {showHeading ? (
+        <section className="pitch-cta">
+          <div className="wrap pitch-cta__inner">
+            {data.kicker ? (
+              <div className="pitch-cta__kicker">
+                <span className="dot" />
+                {data.kicker}
+              </div>
+            ) : null}
+            <h2
+              className="fade"
+              dangerouslySetInnerHTML={{ __html: data.heading }}
+            />
+            {data.buttonText ? (
+              <a className="pitch-cta__btn" href={data.buttonHref ?? "#"}>
+                {data.buttonText}
+                <span className="arrow">&rarr;</span>
+              </a>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
+      {showFooter ? (
       <footer className="pitch-foot">
         <div className="wrap pitch-foot__inner">
           {data.footerLogoUrl ? (
@@ -70,6 +78,7 @@ export default function CtaSection({ data }: { data: CtaSectionData }) {
           </div>
         </div>
       </footer>
+      ) : null}
     </>
   );
 }

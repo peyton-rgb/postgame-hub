@@ -110,16 +110,20 @@ export interface CtaContact {
 export interface CtaSectionData {
   type: "cta";
   visible: boolean;
+  // Render mode — controls which parts of the CTA show:
+  //   "full"    (default) — heading section + footer block
+  //   "heading"           — heading section only (use at top of deck)
+  //   "footer"            — footer block only   (use at bottom of deck)
+  mode?: "full" | "heading" | "footer";
   kicker: string;
   heading: string;
-  // Button now optional — for live screen-share decks the CTA is a
-  // closing line, not a click target. When buttonText is empty/null,
-  // the button is suppressed entirely.
+  // Button optional — for live screen-share decks the CTA is a closing
+  // line, not a click target.
   buttonText?: string;
   buttonHref?: string;
   // Footer additions
-  contacts?: CtaContact[];        // NEW — list of named contacts
-  footerLogoUrl?: string;         // NEW — Postgame logo at top of footer
+  contacts?: CtaContact[];
+  footerLogoUrl?: string;
   footerBrand: string;
   footerMeta: string;
 }
