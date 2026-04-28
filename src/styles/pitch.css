@@ -89,6 +89,12 @@
   object-fit: contain;
   display: block;
 }
+/* Per-brand size override: Armani's source PNG has heavy internal
+   padding so it appears tiny inside the standard tile. Scale up. */
+.pitch-ticker__logo[alt="Armani"] {
+  transform: scale(1.55);
+  transform-origin: center;
+}
 @keyframes pitch-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* NAV */
