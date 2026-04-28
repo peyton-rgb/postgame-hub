@@ -1163,7 +1163,7 @@
    Personalized "WHY YOU, [FIRSTNAME]" block with avatar + body copy.
    ============================================================ */
 .pitch-page .pitch-why-you {
-  padding: 36px 0 32px;
+  padding: 72px 0 64px;
   border-radius: 4px;
 }
 .pitch-page .pitch-why-you--tinted {
@@ -1180,8 +1180,8 @@
 .pitch-page .pitch-why-you__head {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 22px;
+  margin-bottom: 36px;
 }
 .pitch-page .pitch-why-you__avatar {
   width: 128px;            /* bumped from 64 → 128 for prominence */
@@ -1224,11 +1224,12 @@
 }
 .pitch-page .pitch-why-you__body {
   color: var(--text);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.8;
+  margin-top: 36px;
 }
 .pitch-page .pitch-why-you__body p {
-  margin: 0 0 14px;
+  margin: 0 0 20px;
 }
 .pitch-page .pitch-why-you__body p:last-child { margin-bottom: 0; }
 
@@ -1247,9 +1248,9 @@
 .pitch-page .pitch-why-you__stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 28px;
-  padding-top: 24px;
+  gap: 24px;
+  margin-top: 48px;
+  padding-top: 36px;
   border-top: 1px solid var(--glass-border);
 }
 .pitch-page .pitch-why-you__stat {
@@ -1292,8 +1293,8 @@
 .pitch-page .pitch-why-you__handles {
   display: flex;
   flex-wrap: wrap;
-  gap: 28px;
-  margin-top: 28px;
+  gap: 36px;
+  margin-top: 40px;
 }
 .pitch-page .pitch-why-you__handle {
   display: flex;
@@ -1350,8 +1351,8 @@
 
 /* Recent highlights bullet list */
 .pitch-page .pitch-why-you__highlights {
-  margin-top: 32px;
-  padding-top: 24px;
+  margin-top: 48px;
+  padding-top: 36px;
   border-top: 1px solid var(--glass-border);
 }
 .pitch-page .pitch-why-you__highlights-label {
@@ -1366,17 +1367,17 @@
   margin: 0;
   padding-left: 18px;
   color: var(--text);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.8;
 }
 .pitch-page .pitch-why-you__highlights-list li {
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 /* Upcoming campaigns list */
 .pitch-page .pitch-why-you__campaigns {
-  margin-top: 32px;
-  padding-top: 24px;
+  margin-top: 48px;
+  padding-top: 36px;
   border-top: 1px solid var(--glass-border);
 }
 .pitch-page .pitch-why-you__campaigns-label {
@@ -1406,7 +1407,7 @@
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 8px;
-  padding: 14px;
+  padding: 18px 18px 20px;
 }
 .pitch-page .pitch-why-you__campaign-title {
   color: var(--text);
