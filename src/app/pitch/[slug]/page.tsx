@@ -110,6 +110,19 @@ export default async function PitchPageRoute({
         rel="stylesheet"
       />
 
+      {/* Pitch page header — replaces the global SiteNav (hidden on /pitch).
+          Big Postgame logo + agency tagline, centered, on solid black. */}
+      <header className="pitch-header">
+        <img
+          className="pitch-header__logo"
+          src="/postgame-logo-white.png"
+          alt="Postgame"
+        />
+        <div className="pitch-header__tagline">
+          Leading NIL agency in college sports
+        </div>
+      </header>
+
       {sections.map((section, i) => {
         const key = `${section.type}-${i}`;
 
