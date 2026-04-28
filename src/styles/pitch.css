@@ -824,14 +824,19 @@
   flex-wrap: wrap;
   gap: 16px;
 }
-.pitch-foot__brand {
-  font-family: var(--display);
-  font-size: 22px;
-  letter-spacing: 0.04em;
+/* Brand line now matches the meta line — small, muted, uppercase.
+   Explicitly resetting every property the OLD brand rule used to
+   override (font-family, font-size, letter-spacing) so any cached
+   rule can't win. Both __brand and __meta now style identically. */
+.pitch-foot__brand,
+.pitch-foot__meta {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text);
+  color: var(--text-3);
 }
-.pitch-foot__meta { color: var(--text-3); }
 @media (max-width: 760px) {
   .pitch-foot__contacts { grid-template-columns: repeat(2, 1fr); }
 }
