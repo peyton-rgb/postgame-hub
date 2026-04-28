@@ -148,24 +148,27 @@ export default async function PitchPageRoute({
       Array.isArray(why.upcomingCampaigns) &&
       why.upcomingCampaigns.length > 0
     ) {
-      const titles = why.upcomingCampaigns.map((c: any) => c.title);
+      // Fetch all non-archived brands and build a case-insensitive
+      // name → logo map. We do an unfiltered fetch (the brands table
+      // is small, ~80 rows) so case mismatches like "Goodr" vs the
+      // actual stored name "goodr" resolve automatically.
       const { data: brandRows } = await supabase
         .from("brands")
-        .select("name, logo_light_url, logo_dark_url, logo_url")
-        .in("name", titles);
+        .select("name, logo_light_url, logo_dark_url, logo_url");
       const logoMap = new Map<string, string>();
       for (const b of brandRows ?? []) {
         const url =
           (b as any).logo_light_url ??
           (b as any).logo_dark_url ??
           (b as any).logo_url;
-        if (url) logoMap.set((b as any).name, url);
+        const name = (b as any).name as string | undefined;
+        if (url && name) logoMap.set(name.toLowerCase(), url);
       }
       sections[whyYouIdx] = {
         ...why,
         upcomingCampaigns: why.upcomingCampaigns.map((c: any) => ({
           ...c,
-          logoUrl: c.logoUrl ?? logoMap.get(c.title),
+          logoUrl: c.logoUrl ?? logoMap.get((c.title ?? "").toLowerCase()),
         })),
       } as PitchSectionData;
     }
