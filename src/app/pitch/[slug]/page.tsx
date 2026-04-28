@@ -111,14 +111,16 @@ export default async function PitchPageRoute({
       />
 
       {/* Pitch page header — replaces the global SiteNav (hidden on /pitch).
-          Just the centered Postgame logo on solid black. The existing
-          thesis section's H2 below it carries the tagline copy. */}
+          Left-aligned Postgame logo on solid black. .wrap aligns it with
+          the same content gutter the other sections use. */}
       <header className="pitch-header">
-        <img
-          className="pitch-header__logo"
-          src="/postgame-logo-white.png"
-          alt="Postgame"
-        />
+        <div className="wrap">
+          <img
+            className="pitch-header__logo"
+            src="/postgame-logo-white.png"
+            alt="Postgame"
+          />
+        </div>
       </header>
 
       {sections.map((section, i) => {
