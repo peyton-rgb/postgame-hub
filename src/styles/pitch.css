@@ -48,33 +48,23 @@
 .pitch-page .wrap { max-width: var(--max); margin: 0 auto; padding-left: var(--pad); padding-right: var(--pad); }
 
 /* PITCH HEADER
-   Replaces the global SiteNav on /pitch routes. Big Postgame logo
-   centered above an agency-defining tagline. Sits at the top of every
-   pitch page before the section list begins. */
+   Replaces the global SiteNav on /pitch routes. Centered Postgame logo
+   sits at the top of every pitch page before the section list begins.
+   The thesis section's H2 below serves as the tagline copy. */
 .pitch-page .pitch-header {
   text-align: center;
-  padding: 64px var(--pad) 48px;
+  padding: 56px var(--pad) 36px;
   background: #000000;
 }
 .pitch-page .pitch-header__logo {
   height: 64px;
   width: auto;
-  margin: 0 auto 26px;
+  margin: 0 auto;
   display: block;
 }
-.pitch-page .pitch-header__tagline {
-  font-family: var(--display);
-  font-size: clamp(32px, 4.4vw, 56px);
-  line-height: 1.05;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text);
-  max-width: 18ch;
-  margin: 0 auto;
-}
 @media (max-width: 640px) {
-  .pitch-page .pitch-header { padding: 40px var(--pad) 32px; }
-  .pitch-page .pitch-header__logo { height: 48px; margin-bottom: 18px; }
+  .pitch-page .pitch-header { padding: 36px var(--pad) 24px; }
+  .pitch-page .pitch-header__logo { height: 48px; }
 }
 
 /* TICKER
