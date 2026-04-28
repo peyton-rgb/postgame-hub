@@ -750,10 +750,12 @@
       mobile = 2-col grid.
    ============================================================ */
 
-/* Hero-image mode: full-width image, no internal padding/wrapper. */
+/* Hero-image mode: full-width image, no internal padding/wrapper.
+   Background is pure black so it matches the cleaned hero-collage.jpg
+   (whose gradient-y dark gray was clamped to #000 during processing). */
 .pitch-page .pitch-collage--hero {
   padding: 0;
-  background: #0a0a0e;
+  background: #000000;
   border-bottom: 1px solid var(--glass-border);
 }
 .pitch-page .pitch-collage--hero .pitch-collage__hero-img {
