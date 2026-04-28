@@ -337,8 +337,9 @@
 }
 .pitch-thesis__three p {
   font-family: var(--display);
-  font-size: 26px;
-  line-height: 1.15;
+  font-size: clamp(56px, 7vw, 104px);   /* was 26px — much bigger so the
+                                            count-up animation has weight */
+  line-height: 1;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text);

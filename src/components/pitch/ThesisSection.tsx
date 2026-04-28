@@ -1,4 +1,5 @@
 import type { ThesisSectionData } from "@/types/pitch";
+import AnimatedStat from "@/components/pitch/AnimatedStat";
 
 export default function ThesisSection({ data }: { data: ThesisSectionData }) {
   if (!data.visible) return null;
@@ -24,7 +25,9 @@ export default function ThesisSection({ data }: { data: ThesisSectionData }) {
               {data.pillars.map((pillar, i) => (
                 <div key={i}>
                   <h3>{pillar.label}</h3>
-                  <p dangerouslySetInnerHTML={{ __html: pillar.text }} />
+                  <p>
+                    <AnimatedStat value={pillar.text} />
+                  </p>
                 </div>
               ))}
             </div>
