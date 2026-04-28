@@ -76,18 +76,16 @@
 .pitch-ticker__inner span::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--orange); margin-left: 18px; }
 .pitch-ticker__inner span:last-child::after { display: none; }
 /* Brand-logo image inside a ticker item.
-   `brightness(0) invert(1)` is the standard CSS recipe for forcing any
-   image (including black-on-transparent logos) to render as pure white.
-   Any color in the source PNG is flattened to white silhouette, so the
-   row reads uniform on the dark page background regardless of which
-   variant a brand uploaded. opacity 0.9 gives a slight editorial fade. */
+   Uniform-tile approach: every logo sits inside a fixed 130×44 box and
+   scales to fit. This normalizes wildly varying source aspect ratios —
+   tightly cropped wordmarks, square brand marks, logos with built-in
+   padding — so the row reads consistent. No CSS filter (logos are
+   already in their dark-bg variant from logo_dark_url). */
 .pitch-ticker__logo {
-  height: 26px;
-  width: auto;
-  max-width: 140px;
+  height: 44px;
+  width: 130px;
   object-fit: contain;
   display: block;
-  filter: brightness(0) invert(1) opacity(0.9);
 }
 @keyframes pitch-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
