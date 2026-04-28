@@ -3,13 +3,13 @@ import type { WhyYouSectionData } from "@/types/pitch";
 /**
  * Personalized "WHY YOU, [FIRSTNAME]" section.
  *
- * Pulls the athlete's first name out of athleteName (split on whitespace,
- * take the first token) and uppercases it for the section heading.
- *
- * Renders an avatar (photo if athletePhotoUrl, otherwise initials in a
- * 64px circle), the athlete's name + optional subtitle, and a body
- * paragraph. Background tints slightly orange when `tinted` is true
- * (default).
+ * Renders an athlete profile with:
+ *  - Section label "WHY YOU, FIRSTNAME"
+ *  - Athlete header (avatar circle + optional school logo + name + subtitle)
+ *  - Body bio (multi-paragraph if `paragraphs`, falls back to single
+ *    `paragraph` for backwards compat)
+ *  - Optional social/audience stats row (followers / engagement / views)
+ *  - Optional upcoming-campaigns list ("HERE'S WHAT WE'D LINE UP")
  */
 export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
   if (!data.visible) return null;
@@ -18,7 +18,15 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
   const headingFirstName = firstName.toUpperCase();
   const initials = getInitials(data.athleteName);
 
-  const tinted = data.tinted !== false; // default true
+  const tinted = data.tinted !== false;
+
+  // Prefer paragraphs[]; fall back to single paragraph.
+  const bodyParagraphs: string[] =
+    data.paragraphs && data.paragraphs.length > 0
+      ? data.paragraphs
+      : data.paragraph
+      ? [data.paragraph]
+      : [];
 
   return (
     <section
@@ -44,9 +52,58 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
             </div>
           ) : null}
         </div>
+        {data.schoolLogoUrl ? (
+          <img
+            className="pitch-why-you__school"
+            src={data.schoolLogoUrl}
+            alt="School logo"
+          />
+        ) : null}
       </div>
 
-      <p className="pitch-why-you__body">{data.paragraph}</p>
+      {bodyParagraphs.length > 0 ? (
+        <div className="pitch-why-you__body">
+          {bodyParagraphs.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </div>
+      ) : null}
+
+      {data.socialStats && data.socialStats.length > 0 ? (
+        <div className="pitch-why-you__stats">
+          {data.socialStats.map((s, i) => (
+            <div className="pitch-why-you__stat" key={i}>
+              <div className="pitch-why-you__stat-value">{s.value}</div>
+              <div className="pitch-why-you__stat-label">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {data.upcomingCampaigns && data.upcomingCampaigns.length > 0 ? (
+        <div className="pitch-why-you__campaigns">
+          <div className="pitch-why-you__campaigns-label">
+            HERE&apos;S WHAT WE&apos;D LINE UP
+          </div>
+          <div className="pitch-why-you__campaigns-list">
+            {data.upcomingCampaigns.map((c, i) => (
+              <article className="pitch-why-you__campaign" key={i}>
+                <div className="pitch-why-you__campaign-title">{c.title}</div>
+                {c.subtitle ? (
+                  <div className="pitch-why-you__campaign-sub">
+                    {c.subtitle}
+                  </div>
+                ) : null}
+                {c.description ? (
+                  <p className="pitch-why-you__campaign-desc">
+                    {c.description}
+                  </p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

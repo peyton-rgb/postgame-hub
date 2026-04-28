@@ -179,14 +179,42 @@ export interface TalentRosterSectionData {
   groups: TalentRosterGroup[];
 }
 
+export interface WhyYouSocialStat {
+  label: string;            // e.g. "Followers", "Engagement", "30-day views"
+  value: string;            // e.g. "250K", "8.4%", "12M"
+}
+
+export interface WhyYouUpcomingCampaign {
+  title: string;            // brand or campaign name (e.g. "Crocs")
+  subtitle?: string;        // short tagline (e.g. "Spring 2026 capsule")
+  description?: string;     // optional longer description
+}
+
 export interface WhyYouSectionData {
   type: "whyYou";
   visible: boolean;
   athleteName: string;
   athleteSubtitle?: string;
   athletePhotoUrl?: string;
-  paragraph: string;       // the "why you" body copy
-  tinted?: boolean;        // adds the slight orange wash background (default true)
+  schoolLogoUrl?: string;            // NEW — small logo next to the athlete card
+  // Body copy. `paragraphs` (multi-paragraph) is preferred; `paragraph`
+  // (single) is kept for backwards compatibility with existing pitches.
+  paragraph?: string;
+  paragraphs?: string[];             // NEW
+  socialStats?: WhyYouSocialStat[];  // NEW — row of follower/engagement numbers
+  upcomingCampaigns?: WhyYouUpcomingCampaign[]; // NEW — list of pitches we'll line up
+  tinted?: boolean;                  // adds the slight orange wash bg (default true)
+}
+
+// Tabbed variant of the Capabilities section.
+// Same data shape as CapabilitiesSectionData but rendered as an
+// interactive tabs panel (one item visible at a time).
+export interface TabbedCapabilitiesSectionData {
+  type: "tabbedCapabilities";
+  visible: boolean;
+  heading: string;
+  description: string;
+  items: CapabilityItem[];
 }
 
 // Row shapes returned by the page-level fetches. Components use these
@@ -222,7 +250,8 @@ export type PitchSectionData =
   | CollageSectionData
   | OpportunitiesSectionData
   | WhyYouSectionData
-  | TalentRosterSectionData;
+  | TalentRosterSectionData
+  | TabbedCapabilitiesSectionData;
 
 export interface PitchPageContent {
   sections: PitchSectionData[];
@@ -253,4 +282,5 @@ export const SECTION_TYPE_LABELS: Record<PitchSectionData["type"], string> = {
   opportunities: "Opportunities",
   whyYou: "Why You",
   talentRoster: "Talent Roster",
+  tabbedCapabilities: "Capabilities (Tabbed)",
 };
