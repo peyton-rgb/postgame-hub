@@ -117,10 +117,26 @@ export interface CollageSectionData {
   // you've manually composed a collage in Photoshop / Figma / Canva and
   // want to drop it in as-is.
   heroImageUrl?: string;
+  // Optional: per-athlete name plate positions overlaid on the hero
+  // image. When present, plates float at the specified positions and
+  // the credits strip is suppressed. When absent, the credits strip
+  // renders below the image.
+  heroPlates?: HeroPlatePosition[];
   // ---- Per-athlete layout mode (data-driven) --------------------------
   // The fields below only apply when `heroImageUrl` is NOT set.
   sport?: string;          // if set, prefer pitch_collage_athletes rows where sport matches
   fallbackToAll?: boolean; // when no sport-match rows, fall back to all active athletes (default true)
+}
+
+// Position config for a single floating plate overlaid on the hero
+// image. `left` is required (horizontal anchor); `bottom` defaults to
+// near the image's bottom edge if omitted. Both accept any CSS length
+// (e.g. "10%", "12vw", "150px").
+export interface HeroPlatePosition {
+  athleteName: string; // must match pitch_collage_athletes.athlete_name
+  left: string;
+  bottom?: string;
+  align?: "left" | "right" | "center";
 }
 
 export interface OpportunitiesSectionData {
