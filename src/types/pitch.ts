@@ -311,6 +311,45 @@ export interface EarningsComparisonSectionData {
   scenarios: EarningsScenario[];
 }
 
+// ------------------------------------------------------------
+// Case study — a "look at the receipts" slide tailored to the
+// athlete's interests. E.g. Rodney Gallagher runs his own
+// apparel brand, so his pitch shows the Hollister × 6-athlete
+// designer-collab campaign as visual proof Postgame can run
+// that kind of work.
+//
+// Reusable across athletes: same section type, different content.
+// Toosii could get a music-aesthetic case study; the next QB
+// could get something stadium-energy.
+// ------------------------------------------------------------
+export interface CaseStudyAthleteTag {
+  athleteName: string;     // e.g. "Colin Simmons"
+  team: string;            // e.g. "Texas" (school short name)
+}
+
+export interface CaseStudySectionData {
+  type: "caseStudy";
+  visible: boolean;
+  // Tiny label band at top, e.g. "CASE STUDY"
+  sectionLabel?: string;
+  // Smaller subline above the headline, e.g.
+  // "BUILT FOR APPAREL ATHLETES" — this is where the athlete-specific
+  // framing lands.
+  kicker?: string;
+  // Main headline (sales-pitch line).
+  heading: string;
+  // 1–2 sentence description of the campaign.
+  paragraph?: string;
+  // Wide hero image (the actual receipt).
+  heroImageUrl: string;
+  heroImageAlt?: string;
+  // Optional row of athlete + school name tags shown below the hero.
+  athletes?: CaseStudyAthleteTag[];
+  // Optional outbound link (e.g. Glossy article, recap page).
+  linkUrl?: string;
+  linkLabel?: string;
+}
+
 // Row shapes returned by the page-level fetches. Components use these
 // for their fetched-data props.
 export interface PitchCollageAthleteRow {
@@ -347,7 +386,8 @@ export type PitchSectionData =
   | TalentRosterSectionData
   | TabbedCapabilitiesSectionData
   | AgencyComparisonSectionData
-  | EarningsComparisonSectionData;
+  | EarningsComparisonSectionData
+  | CaseStudySectionData;
 
 export interface PitchPageContent {
   sections: PitchSectionData[];
@@ -381,4 +421,5 @@ export const SECTION_TYPE_LABELS: Record<PitchSectionData["type"], string> = {
   tabbedCapabilities: "Capabilities (Tabbed)",
   agencyComparison: "Agency Comparison",
   earningsComparison: "Earnings Comparison",
+  caseStudy: "Case Study",
 };

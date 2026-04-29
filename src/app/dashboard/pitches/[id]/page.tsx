@@ -42,6 +42,7 @@ import TabbedCapabilitiesEditor from "@/components/pitch/editors/TabbedCapabilit
 import AgencyComparisonEditor from "@/components/pitch/editors/AgencyComparisonEditor";
 import EarningsComparisonEditor from "@/components/pitch/editors/EarningsComparisonEditor";
 import OpportunitiesEditor from "@/components/pitch/editors/OpportunitiesEditor";
+import CaseStudyEditor from "@/components/pitch/editors/CaseStudyEditor";
 
 // Editors for new section types (collage, opportunities, whyYou) are
 // deferred to a future session. Until those editor components exist,
@@ -64,6 +65,7 @@ const EDITOR_MAP: Partial<Record<PitchSectionData["type"], React.ComponentType<{
   agencyComparison: AgencyComparisonEditor,
   earningsComparison: EarningsComparisonEditor,
   opportunities: OpportunitiesEditor,
+  caseStudy: CaseStudyEditor,
 };
 
 const ALL_SECTION_TYPES: PitchSectionData["type"][] = [
