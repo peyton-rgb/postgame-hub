@@ -36,6 +36,12 @@ import CapabilitiesEditor from "@/components/pitch/editors/CapabilitiesEditor";
 import IdeasEditor from "@/components/pitch/editors/IdeasEditor";
 import CtaEditor from "@/components/pitch/editors/CtaEditor";
 import WhyYouEditor from "@/components/pitch/editors/WhyYouEditor";
+import CollageEditor from "@/components/pitch/editors/CollageEditor";
+import TalentRosterEditor from "@/components/pitch/editors/TalentRosterEditor";
+import TabbedCapabilitiesEditor from "@/components/pitch/editors/TabbedCapabilitiesEditor";
+import AgencyComparisonEditor from "@/components/pitch/editors/AgencyComparisonEditor";
+import EarningsComparisonEditor from "@/components/pitch/editors/EarningsComparisonEditor";
+import OpportunitiesEditor from "@/components/pitch/editors/OpportunitiesEditor";
 
 // Editors for new section types (collage, opportunities, whyYou) are
 // deferred to a future session. Until those editor components exist,
@@ -52,6 +58,12 @@ const EDITOR_MAP: Partial<Record<PitchSectionData["type"], React.ComponentType<{
   ideas: IdeasEditor,
   cta: CtaEditor,
   whyYou: WhyYouEditor,
+  collage: CollageEditor,
+  talentRoster: TalentRosterEditor,
+  tabbedCapabilities: TabbedCapabilitiesEditor,
+  agencyComparison: AgencyComparisonEditor,
+  earningsComparison: EarningsComparisonEditor,
+  opportunities: OpportunitiesEditor,
 };
 
 const ALL_SECTION_TYPES: PitchSectionData["type"][] = [
@@ -390,8 +402,15 @@ export default function PitchEditor() {
           <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
             Live Preview
           </span>
+          {/* For drafts, append ?preview=1 so the page renders via the
+              service-role client (bypasses the public RLS filter that
+              hides unpublished pitches → otherwise it 404s). */}
           <Link
-            href={`/pitch/${pitch.slug}`}
+            href={
+              pitch.status === "published"
+                ? `/pitch/${pitch.slug}`
+                : `/pitch/${pitch.slug}?preview=1`
+            }
             target="_blank"
             className="text-xs px-3 py-1.5 bg-[#D73F09] text-white font-bold rounded-lg hover:bg-[#B33407] transition-colors"
           >
