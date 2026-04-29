@@ -35,6 +35,7 @@ import PullQuoteEditor from "@/components/pitch/editors/PullQuoteEditor";
 import CapabilitiesEditor from "@/components/pitch/editors/CapabilitiesEditor";
 import IdeasEditor from "@/components/pitch/editors/IdeasEditor";
 import CtaEditor from "@/components/pitch/editors/CtaEditor";
+import WhyYouEditor from "@/components/pitch/editors/WhyYouEditor";
 
 // Editors for new section types (collage, opportunities, whyYou) are
 // deferred to a future session. Until those editor components exist,
@@ -50,6 +51,7 @@ const EDITOR_MAP: Partial<Record<PitchSectionData["type"], React.ComponentType<{
   capabilities: CapabilitiesEditor,
   ideas: IdeasEditor,
   cta: CtaEditor,
+  whyYou: WhyYouEditor,
 };
 
 const ALL_SECTION_TYPES: PitchSectionData["type"][] = [
