@@ -23,6 +23,7 @@ interface UploadedFile {
 }
 
 type CreateTab = "blank" | "ai";
+type PitchType = "athlete" | "brand";
 
 const PROGRESS_STEPS = [
   "Uploading assets...",
@@ -47,6 +48,7 @@ export default function PitchList() {
 
   // Shared form state
   const [createTab, setCreateTab] = useState<CreateTab>("blank");
+  const [pitchType, setPitchType] = useState<PitchType>("athlete");
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [selectedBrandId, setSelectedBrandId] = useState("");
@@ -258,7 +260,10 @@ export default function PitchList() {
         slug: finalSlug,
         brand_id: selectedBrandId || null,
         status: "draft",
-        content: { sections: getDefaultPitchSections() },
+        content: {
+          pitchType,                                   // 'athlete' | 'brand'
+          sections: getDefaultPitchSections(),
+        },
       })
       .select()
       .single();
@@ -336,6 +341,7 @@ export default function PitchList() {
           voiceId: selectedVoiceId,
           userPrompt: aiPrompt,
           uploadedAssets,
+          pitchType,                                   // forwarded for the API to branch on
         }),
       });
 
@@ -508,7 +514,46 @@ export default function PitchList() {
             )}
 
             <div className="p-8">
-              <h3 className="text-lg font-black text-white mb-5">New Pitch Page</h3>
+              <h3 className="text-lg font-black text-white mb-5">
+                New {pitchType === "brand" ? "Brand" : "Athlete"} Pitch
+              </h3>
+
+              {/* Pitch type selector — athlete vs brand. Saved in
+                  content.pitchType for downstream branching. */}
+              <div className="grid grid-cols-2 gap-2 mb-5">
+                <button
+                  type="button"
+                  onClick={() => setPitchType("athlete")}
+                  className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                    pitchType === "athlete"
+                      ? "border-[#D73F09] bg-[#D73F09]/10"
+                      : "border-gray-800 bg-black hover:border-gray-700"
+                  }`}
+                >
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">
+                    Athlete
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Pitching an athlete to sign with Postgame
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPitchType("brand")}
+                  className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                    pitchType === "brand"
+                      ? "border-[#D73F09] bg-[#D73F09]/10"
+                      : "border-gray-800 bg-black hover:border-gray-700"
+                  }`}
+                >
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">
+                    Brand
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Pitching a brand on a campaign concept
+                  </div>
+                </button>
+              </div>
 
               {/* Tab switcher */}
               <div className="flex gap-1 bg-white/5 rounded-lg p-1 mb-6">
