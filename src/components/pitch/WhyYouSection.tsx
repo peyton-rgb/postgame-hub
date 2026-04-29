@@ -1,5 +1,6 @@
 import type { WhyYouSectionData } from "@/types/pitch";
 import CampaignCarousel from "@/components/pitch/CampaignCarousel";
+import { sumFollowerCounts } from "@/lib/pitch/socialFormat";
 
 /**
  * Personalized "WHY YOU, [FIRSTNAME]" section.
@@ -77,27 +78,47 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
       </div>
 
       {data.socialHandles && data.socialHandles.length > 0 ? (
-        <div className="pitch-why-you__handles">
-          {data.socialHandles.map((h, i) => (
-            <a
-              key={i}
-              className="pitch-why-you__handle"
-              href={h.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`${platformLabel(h.platform)} — @${h.handle}${h.followers ? `, ${h.followers} followers` : ""}`}
-            >
-              <span className="pitch-why-you__handle-icon">
-                <PlatformIcon platform={h.platform} />
-              </span>
-              {h.followers ? (
-                <span className="pitch-why-you__handle-followers">
-                  {h.followers}
+        <>
+          <div className="pitch-why-you__handles">
+            {data.socialHandles.map((h, i) => (
+              <a
+                key={i}
+                className="pitch-why-you__handle"
+                href={h.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${platformLabel(h.platform)} — @${h.handle}${h.followers ? `, ${h.followers} followers` : ""}`}
+              >
+                <span className="pitch-why-you__handle-icon">
+                  <PlatformIcon platform={h.platform} />
                 </span>
-              ) : null}
-            </a>
-          ))}
-        </div>
+                {h.followers ? (
+                  <span className="pitch-why-you__handle-followers">
+                    {h.followers}
+                  </span>
+                ) : null}
+              </a>
+            ))}
+          </div>
+          {/* Derived total — auto-summed from per-platform follower
+              counts above. Only shown when at least 2 handles have
+              parseable follower strings, since "total" of 1 handle
+              is just the same number repeated. */}
+          {(() => {
+            const sum = sumFollowerCounts(data.socialHandles);
+            if (sum.parsedCount < 2) return null;
+            return (
+              <div className="pitch-why-you__handles-total">
+                <span className="pitch-why-you__handles-total-value">
+                  {sum.formatted}
+                </span>
+                <span className="pitch-why-you__handles-total-label">
+                  Combined followers
+                </span>
+              </div>
+            );
+          })()}
+        </>
       ) : null}
 
       {bodyParagraphs.length > 0 ? (

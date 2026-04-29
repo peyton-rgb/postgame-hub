@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   WhyYouSectionData,
   WhyYouSocialHandle,
@@ -9,6 +9,7 @@ import type {
 } from "@/types/pitch";
 import CampaignMediaPicker from "@/components/CampaignMediaPicker";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { sumFollowerCounts } from "@/lib/pitch/socialFormat";
 
 interface Props {
   data: WhyYouSectionData;
@@ -22,6 +23,14 @@ const PLATFORMS: { value: WhyYouSocialHandle["platform"]; label: string }[] = [
   { value: "twitter", label: "X / Twitter" },
 ];
 
+// One row of the brands table — only the bits the dropdown needs.
+type BrandOption = {
+  name: string;
+  logo_light_url: string | null;
+  logo_dark_url: string | null;
+  logo_url: string | null;
+};
+
 export default function WhyYouEditor({ data, onChange }: Props) {
   const [pickingPhoto, setPickingPhoto] = useState<
     "athlete" | "school" | null
@@ -30,7 +39,32 @@ export default function WhyYouEditor({ data, onChange }: Props) {
     "athlete" | "school" | null
   >(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Brand dropdown options, fetched once on mount. Used to populate
+  // the "Upcoming Campaigns" brand picker — replaces the old free-text
+  // input so titles always match an existing brand.
+  const [brands, setBrands] = useState<BrandOption[]>([]);
+  const [brandsLoaded, setBrandsLoaded] = useState(false);
   const supabase = createBrowserSupabase();
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("brands")
+        .select("name, logo_light_url, logo_dark_url, logo_url")
+        .or("archived.is.null,archived.eq.false")
+        .order("name", { ascending: true });
+      if (!active) return;
+      setBrands((rows as BrandOption[] | null) ?? []);
+      setBrandsLoaded(true);
+    })();
+    return () => {
+      active = false;
+    };
+    // We only need to load brands once; the supabase client identity
+    // changes per render, so don't include it in the deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Convenience patcher
   const patch = (partial: Partial<WhyYouSectionData>) =>
@@ -333,6 +367,35 @@ export default function WhyYouEditor({ data, onChange }: Props) {
         >
           + Add social handle
         </button>
+
+        {/* Live combined-followers total — auto-summed from the
+            per-platform follower strings above. Shown so Peyton can
+            see the math update as he edits the numbers. The value
+            shown here also appears on the public pitch page below the
+            social icons row (calculated the same way at render time). */}
+        {(() => {
+          const sum = sumFollowerCounts(data.socialHandles);
+          if (sum.parsedCount === 0 && sum.unparseableCount === 0) {
+            return null;
+          }
+          return (
+            <div className="mt-3 px-3 py-2 border border-[#D73F09]/40 rounded-lg bg-[#D73F09]/5 text-xs text-gray-300 flex items-baseline gap-3">
+              <span className="font-bold text-[#D73F09]">
+                {sum.formatted}
+              </span>
+              <span className="text-gray-400 uppercase tracking-wider">
+                Auto-calculated combined followers
+              </span>
+              {sum.unparseableCount > 0 ? (
+                <span className="ml-auto text-[10px] text-yellow-400">
+                  {sum.unparseableCount} entr
+                  {sum.unparseableCount === 1 ? "y" : "ies"} couldn&apos;t
+                  parse
+                </span>
+              ) : null}
+            </div>
+          );
+        })()}
       </Section>
 
       {/* ============== SOCIAL STATS ============== */}
@@ -405,45 +468,70 @@ export default function WhyYouEditor({ data, onChange }: Props) {
         title={`Upcoming Campaigns (${data.upcomingCampaigns?.length ?? 0})`}
       >
         <p className="text-xs text-gray-500 mb-2">
-          Brand logos auto-resolve from the brands table by title — match the
-          brand name exactly. Or paste a logoUrl override.
+          Pick a brand from the dropdown — the logo auto-resolves from
+          the brands table at render time. If a campaign was created
+          before the dropdown existed and its title doesn&apos;t match a
+          brand, it&apos;s shown as &quot;(custom)&quot; so you can keep
+          or replace it.
         </p>
-        {(data.upcomingCampaigns ?? []).map((c, i) => (
-          <div
-            key={i}
-            className="border border-gray-800 rounded-lg p-3 mb-3 space-y-2"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#D73F09]">
-                Campaign {i + 1}
-              </span>
-              <button
-                onClick={() => removeCampaign(i)}
-                className="text-xs text-gray-500 hover:text-red-400"
+        {(data.upcomingCampaigns ?? []).map((c, i) => {
+          // If the existing title doesn't match any active brand, we
+          // still want to render a valid <option> for it so the
+          // <select> shows the current value instead of falling back
+          // to the empty option. We add a synthetic "(custom)" entry.
+          const titleMatchesBrand = brands.some((b) => b.name === c.title);
+          const showCustomOption =
+            !!c.title && !titleMatchesBrand && brandsLoaded;
+          return (
+            <div
+              key={i}
+              className="border border-gray-800 rounded-lg p-3 mb-3 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#D73F09]">
+                  Campaign {i + 1}
+                </span>
+                <button
+                  onClick={() => removeCampaign(i)}
+                  className="text-xs text-gray-500 hover:text-red-400"
+                >
+                  &times; Remove
+                </button>
+              </div>
+              <select
+                value={c.title}
+                onChange={(e) => updateCampaign(i, "title", e.target.value)}
+                className={inputClass}
               >
-                &times; Remove
-              </button>
+                <option value="">
+                  {brandsLoaded ? "— Select a brand —" : "Loading brands…"}
+                </option>
+                {showCustomOption ? (
+                  <option value={c.title}>
+                    {c.title} (custom — not in brands list)
+                  </option>
+                ) : null}
+                {brands.map((b) => (
+                  <option key={b.name} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={c.subtitle ?? ""}
+                onChange={(e) => updateCampaign(i, "subtitle", e.target.value)}
+                placeholder="Subtitle (optional)"
+                className={inputClass}
+              />
+              <input
+                value={c.logoUrl ?? ""}
+                onChange={(e) => updateCampaign(i, "logoUrl", e.target.value)}
+                placeholder="Override logo URL (optional — leave blank to use brand's logo)"
+                className={inputClass}
+              />
             </div>
-            <input
-              value={c.title}
-              onChange={(e) => updateCampaign(i, "title", e.target.value)}
-              placeholder="Brand name (e.g. Hollister)"
-              className={inputClass}
-            />
-            <input
-              value={c.subtitle ?? ""}
-              onChange={(e) => updateCampaign(i, "subtitle", e.target.value)}
-              placeholder="Subtitle (optional)"
-              className={inputClass}
-            />
-            <input
-              value={c.logoUrl ?? ""}
-              onChange={(e) => updateCampaign(i, "logoUrl", e.target.value)}
-              placeholder="Override logo URL (optional)"
-              className={inputClass}
-            />
-          </div>
-        ))}
+          );
+        })}
         <button
           onClick={addCampaign}
           className="text-xs text-[#D73F09] font-bold hover:underline"

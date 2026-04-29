@@ -1412,6 +1412,30 @@
   letter-spacing: 0.01em;
 }
 
+/* Auto-calculated combined followers — sum of all per-platform
+   follower counts above. Sits just below the icon row. */
+.pitch-page .pitch-why-you__handles-total {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 18px;
+}
+.pitch-page .pitch-why-you__handles-total-value {
+  font-family: var(--display);
+  font-size: clamp(28px, 3.5vw, 44px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--orange);
+  line-height: 1;
+}
+.pitch-page .pitch-why-you__handles-total-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted, #9aa0a6);
+}
+
 /* Pull quote attributed to the athlete */
 .pitch-page .pitch-why-you__quote {
   position: relative;
