@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type {
   WhyYouSectionData,
   WhyYouSocialHandle,
@@ -8,6 +8,7 @@ import type {
   WhyYouUpcomingCampaign,
 } from "@/types/pitch";
 import CampaignMediaPicker from "@/components/CampaignMediaPicker";
+import { createBrowserSupabase } from "@/lib/supabase";
 
 interface Props {
   data: WhyYouSectionData;
@@ -25,10 +26,41 @@ export default function WhyYouEditor({ data, onChange }: Props) {
   const [pickingPhoto, setPickingPhoto] = useState<
     "athlete" | "school" | null
   >(null);
+  const [uploadingSlot, setUploadingSlot] = useState<
+    "athlete" | "school" | null
+  >(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const supabase = createBrowserSupabase();
 
   // Convenience patcher
   const patch = (partial: Partial<WhyYouSectionData>) =>
     onChange({ ...data, ...partial });
+
+  // Direct file upload to Supabase Storage (campaign-media bucket).
+  // Generates a unique path under "pitch-uploads/<random-id>/<filename>".
+  async function uploadPhoto(slot: "athlete" | "school", file: File) {
+    setUploadError(null);
+    setUploadingSlot(slot);
+    try {
+      const ext = file.name.split(".").pop() ?? "bin";
+      const random = crypto.randomUUID();
+      const path = `pitch-uploads/${random}/${slot}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("campaign-media")
+        .upload(path, file, { cacheControl: "3600", upsert: false });
+      if (error) throw error;
+      const { data: pub } = supabase.storage
+        .from("campaign-media")
+        .getPublicUrl(path);
+      if (!pub?.publicUrl) throw new Error("No public URL returned");
+      if (slot === "athlete") patch({ athletePhotoUrl: pub.publicUrl });
+      else patch({ schoolLogoUrl: pub.publicUrl });
+    } catch (err: any) {
+      setUploadError(err?.message ?? "Upload failed");
+    } finally {
+      setUploadingSlot(null);
+    }
+  }
 
   // ---- Paragraphs (string[]) — edited as a single textarea, split on
   // blank lines. Empty array becomes empty textarea.
@@ -192,17 +224,24 @@ export default function WhyYouEditor({ data, onChange }: Props) {
         <Field label="Athlete Photo">
           <PhotoSlot
             url={data.athletePhotoUrl}
+            uploading={uploadingSlot === "athlete"}
             onClear={() => patch({ athletePhotoUrl: undefined })}
             onPick={() => setPickingPhoto("athlete")}
+            onUpload={(file) => uploadPhoto("athlete", file)}
           />
         </Field>
         <Field label="School Logo">
           <PhotoSlot
             url={data.schoolLogoUrl}
+            uploading={uploadingSlot === "school"}
             onClear={() => patch({ schoolLogoUrl: undefined })}
             onPick={() => setPickingPhoto("school")}
+            onUpload={(file) => uploadPhoto("school", file)}
           />
         </Field>
+        {uploadError ? (
+          <div className="text-xs text-red-400">{uploadError}</div>
+        ) : null}
       </Section>
 
       {/* ============== BIO ============== */}
@@ -478,13 +517,19 @@ function Field({
 
 function PhotoSlot({
   url,
+  uploading,
   onPick,
+  onUpload,
   onClear,
 }: {
   url?: string;
+  uploading?: boolean;
   onPick: () => void;
+  onUpload: (file: File) => void;
   onClear: () => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   if (url) {
     return (
       <div className="flex items-center gap-2">
@@ -505,12 +550,37 @@ function PhotoSlot({
       </div>
     );
   }
+
   return (
-    <button
-      onClick={onPick}
-      className="text-xs px-3 py-2 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-[#D73F09] hover:border-[#D73F09] transition-colors w-full"
-    >
-      + Select from Media Library
-    </button>
+    <div className="grid grid-cols-2 gap-2">
+      {/* Direct file upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onUpload(file);
+          // Reset so the same file can be re-selected if needed
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }}
+      />
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="text-xs px-3 py-2 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-[#D73F09] hover:border-[#D73F09] transition-colors disabled:opacity-50"
+      >
+        {uploading ? "Uploading..." : "+ Upload File"}
+      </button>
+      {/* Or pick from library */}
+      <button
+        onClick={onPick}
+        disabled={uploading}
+        className="text-xs px-3 py-2 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-[#D73F09] hover:border-[#D73F09] transition-colors disabled:opacity-50"
+      >
+        Media Library
+      </button>
+    </div>
   );
 }
