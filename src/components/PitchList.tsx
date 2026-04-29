@@ -49,6 +49,9 @@ export default function PitchList() {
   // Shared form state
   const [createTab, setCreateTab] = useState<CreateTab>("blank");
   const [pitchType, setPitchType] = useState<PitchType>("athlete");
+  // Athlete-pitch intake fields (only relevant when pitchType='athlete')
+  const [athleteName, setAthleteName] = useState("");
+  const [athleteNickname, setAthleteNickname] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [selectedBrandId, setSelectedBrandId] = useState("");
@@ -244,6 +247,7 @@ export default function PitchList() {
   // ---- Blank create ----
 
   async function createBlankPitch() {
+    if (pitchType === "athlete" && !athleteName.trim()) return;
     if (!newTitle.trim() || !newSlug.trim()) return;
     setCreating(true);
 
@@ -253,17 +257,78 @@ export default function PitchList() {
       return;
     }
 
+    let contentJson: Record<string, unknown>;
+
+    if (pitchType === "athlete") {
+      // Copy sections from the new athlete template (stored in
+      // pitch_templates.default — the Nau'Jour-style deck) and seed
+      // the WhyYou section with the athlete name + nickname.
+      const { data: tmpl } = await supabase
+        .from("pitch_templates")
+        .select("sections")
+        .eq("name", "default")
+        .single();
+
+      const sections: any[] = Array.isArray(tmpl?.sections)
+        ? [...(tmpl!.sections as any[])]
+        : getDefaultPitchSections();
+
+      // Seed the welcome heading (cta heading-mode at index 0) with
+      // the athlete's first name.
+      const firstName = athleteName.trim().split(/\s+/)[0] ?? "";
+      if (sections[0]?.type === "cta" && sections[0]?.mode === "heading") {
+        sections[0] = {
+          ...sections[0],
+          heading: `Welcome to Postgame, <em>${firstName}</em>.`,
+        };
+      }
+      // Seed the whyYou section (typically index 1) with athlete data.
+      const whyYouIdx = sections.findIndex(
+        (s: any) => s?.type === "whyYou",
+      );
+      if (whyYouIdx >= 0) {
+        sections[whyYouIdx] = {
+          ...sections[whyYouIdx],
+          athleteName: athleteName.trim(),
+          nickname: athleteNickname.trim() || undefined,
+        };
+      }
+      // Seed the closing footer's "Built for X" and welcome.
+      const ctaFooterIdx = sections.findIndex(
+        (s: any) => s?.type === "cta" && s?.mode === "footer",
+      );
+      if (ctaFooterIdx >= 0) {
+        sections[ctaFooterIdx] = {
+          ...sections[ctaFooterIdx],
+          footerMeta: `Built for ${athleteName.trim()}`,
+        };
+      }
+
+      contentJson = {
+        pitchType,
+        athleteName: athleteName.trim(),
+        athleteFirstName: firstName,
+        nickname: athleteNickname.trim() || undefined,
+        sections,
+      };
+    } else {
+      // Brand pitch — legacy section-based template for now (until
+      // we build the brand-specific template that mirrors the Crocs
+      // HTML layout).
+      contentJson = {
+        pitchType,
+        sections: getDefaultPitchSections(),
+      };
+    }
+
     const { data, error } = await supabase
       .from("pitch_pages")
       .insert({
         title: newTitle,
         slug: finalSlug,
-        brand_id: selectedBrandId || null,
+        brand_id: pitchType === "brand" ? selectedBrandId || null : null,
         status: "draft",
-        content: {
-          pitchType,                                   // 'athlete' | 'brand'
-          sections: getDefaultPitchSections(),
-        },
+        content: contentJson,
       })
       .select()
       .single();
@@ -565,23 +630,53 @@ export default function PitchList() {
                 </button>
               </div>
 
-              {/* Shared: Brand */}
+              {/* When pitching an athlete: collect athlete intake fields.
+                  When pitching a brand: keep the brand dropdown. */}
               <div className="space-y-5">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                    Brand {createTab === "ai" && <span className="text-[#D73F09]">*</span>}
-                  </label>
-                  <select
-                    value={selectedBrandId}
-                    onChange={(e) => handleBrandChange(e.target.value)}
-                    className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none"
-                  >
-                    <option value="">{createTab === "ai" ? "Select brand (required)" : "Select brand (optional)"}</option>
-                    {brands.map((b) => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
+                {pitchType === "athlete" ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        Athlete Name <span className="text-[#D73F09]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={athleteName}
+                        onChange={(e) => setAthleteName(e.target.value)}
+                        placeholder="e.g. Nau'Jour Grainger"
+                        className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none placeholder-gray-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        Nickname <span className="text-gray-600 normal-case font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={athleteNickname}
+                        onChange={(e) => setAthleteNickname(e.target.value)}
+                        placeholder="e.g. Toosii"
+                        className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none placeholder-gray-600"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                      Brand {createTab === "ai" && <span className="text-[#D73F09]">*</span>}
+                    </label>
+                    <select
+                      value={selectedBrandId}
+                      onChange={(e) => handleBrandChange(e.target.value)}
+                      className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none"
+                    >
+                      <option value="">{createTab === "ai" ? "Select brand (required)" : "Select brand (optional)"}</option>
+                      {brands.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Shared: Title */}
                 <div>
@@ -755,7 +850,12 @@ export default function PitchList() {
                 {createTab === "blank" ? (
                   <button
                     onClick={createBlankPitch}
-                    disabled={!newTitle.trim() || !newSlug.trim() || creating}
+                    disabled={
+                      !newTitle.trim() ||
+                      !newSlug.trim() ||
+                      (pitchType === "athlete" && !athleteName.trim()) ||
+                      creating
+                    }
                     className="flex-1 px-4 py-3 bg-[#D73F09] rounded-xl text-white text-sm font-bold hover:bg-[#B33407] disabled:opacity-40 transition-colors"
                   >
                     {creating ? "Creating..." : "Create Pitch"}
