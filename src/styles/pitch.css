@@ -2356,11 +2356,35 @@
 .pitch-page {
   overflow-x: hidden;
 }
-.pitch-page * {
-  /* Allow long words to break instead of pushing the page wider
-     than the viewport. Affects URLs and other unbroken strings. */
-  overflow-wrap: anywhere;
-  word-break: break-word;
+/* Gentle word-wrapping that only kicks in if a word would otherwise
+   overflow the container — covers URLs and other unbreakable strings.
+   Crucially, currency values like "$216,000+" stay on one line because
+   `break-word` only breaks as a last resort, not aggressively. */
+.pitch-page p,
+.pitch-page span,
+.pitch-page div,
+.pitch-page li,
+.pitch-page td,
+.pitch-page th,
+.pitch-page h1,
+.pitch-page h2,
+.pitch-page h3,
+.pitch-page h4 {
+  overflow-wrap: break-word;
+}
+/* Currency / stat numbers should never break across lines, regardless
+   of how narrow the container gets. They scale via font-size clamps
+   instead. */
+.pitch-page .pitch-earnings__total-value,
+.pitch-page .pitch-earnings__row,
+.pitch-page .pitch-thesis__num,
+.pitch-page .pitch-thesis__three b,
+.pitch-page .pitch-why-you__stat-value,
+.pitch-page .pitch-why-you__handles-total-value,
+.pitch-page .pitch-cta h2 em,
+.pitch-page .pitch-agency__cell {
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 /* ----- ≤900px (tablet portrait, large phone landscape) ----- */
@@ -2478,17 +2502,29 @@
     margin-bottom: 2px;
   }
 
-  /* Earnings comparison — already stacks scenarios at 900px.
-     Tighten the inner row labels at narrower widths. */
-  .pitch-page .pitch-earnings__row {
-    grid-template-columns: 1fr !important;
-    gap: 4px !important;
-    padding: 10px 12px !important;
+  /* Earnings comparison — already stacks scenarios at 900px. On
+     phone we additionally:
+       - Shrink the total dollar amount so it always fits one line
+       - Tighten table cell padding so columns don't get cramped
+     The earnings tables stay as <table>s (didn't collapse to cards
+     like agency comparison) because their label + value pairing is
+     simple enough to read in 3 narrow columns. */
+  .pitch-page .pitch-earnings__total-value,
+  .pitch-page .pitch-earnings__scenario--emphasized .pitch-earnings__total-value {
+    font-size: 17px !important;
+    padding: 12px 10px !important;
   }
-  .pitch-page .pitch-earnings__row-label {
+  .pitch-page .pitch-earnings__table {
     font-size: 11px;
-    color: var(--text-3);
-    letter-spacing: 0.04em;
+  }
+  .pitch-page .pitch-earnings__table thead th,
+  .pitch-page .pitch-earnings__table tbody td,
+  .pitch-page .pitch-earnings__table tbody th {
+    padding: 8px 10px !important;
+  }
+  .pitch-page .pitch-earnings__total-label {
+    padding: 12px 10px !important;
+    font-size: 10px !important;
   }
 
   /* Hero plates over the alum collage — already hidden at 768px,
