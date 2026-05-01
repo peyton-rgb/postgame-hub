@@ -1762,7 +1762,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin-bottom: 36px;
+  margin-bottom: 56px;
   max-width: 720px;
 }
 .pitch-page .pitch-tab-cap__heading {
@@ -1786,32 +1786,93 @@
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   border-top: 1px solid var(--glass-border);
   border-bottom: 1px solid var(--glass-border);
+  /* Subtle hint that the row is interactive — sits above the tabs as
+     a small uppercase label. */
+  position: relative;
 }
+.pitch-page .pitch-tab-cap__tabs::before {
+  content: "TAP TO SWITCH";
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--orange);
+  font-weight: 600;
+}
+/* Each tab is now styled as an obviously-clickable button: orange
+   left bar accent that scales on hover/active, a chevron arrow on
+   the right that flips to a checkmark when active, and stronger
+   color/background contrast on the active state. */
 .pitch-page .pitch-tab-cap__tab {
   appearance: none;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.015);
   border: none;
   color: var(--text-2);
   text-align: left;
-  padding: 22px 24px;
+  padding: 22px 44px 22px 28px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-family: inherit;
   border-right: 1px solid var(--glass-border);
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+  position: relative;
+}
+/* Orange left accent bar — 0px wide by default, 4px on hover, 6px
+   when active. The growth on interaction reads as physical feedback. */
+.pitch-page .pitch-tab-cap__tab::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  background: var(--orange);
+  transition: width 0.2s ease;
+}
+/* Right-side chevron — points right on inactive tabs ("there's more
+   to see"), rotates 90° down when active to create a connected
+   feeling between tab and panel below. */
+.pitch-page .pitch-tab-cap__tab::after {
+  content: "";
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--orange);
+  border-bottom: 2px solid var(--orange);
+  transform: translateY(-75%) rotate(-45deg);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  opacity: 0.5;
 }
 .pitch-page .pitch-tab-cap__tab:last-child { border-right: none; }
 .pitch-page .pitch-tab-cap__tab:hover {
-  background: rgba(255,255,255,0.03);
+  background: rgba(215,63,9,0.06);
   color: var(--text);
+  padding-left: 32px;
+}
+.pitch-page .pitch-tab-cap__tab:hover::before {
+  width: 4px;
+}
+.pitch-page .pitch-tab-cap__tab:hover::after {
+  opacity: 1;
 }
 .pitch-page .pitch-tab-cap__tab--active {
-  background: rgba(215,63,9,0.08);
+  background: rgba(215,63,9,0.14);
   color: var(--text);
-  border-bottom: 2px solid var(--orange);
-  margin-bottom: -1px;
+  padding-left: 34px;
+}
+.pitch-page .pitch-tab-cap__tab--active::before {
+  width: 6px;
+}
+.pitch-page .pitch-tab-cap__tab--active::after {
+  /* Rotated 45° down — points down at the panel below, hinting that
+     the active tab "opens" the content below it. */
+  transform: translateY(-75%) rotate(45deg);
+  opacity: 1;
 }
 .pitch-page .pitch-tab-cap__tab-num {
   font-size: 11px;
