@@ -1511,17 +1511,43 @@
   margin-top: 6px;
 }
 
-/* Full-width fallback when only one of highlights/stats is present.
-   Mirrors body-grid padding so it lines up with the rest of the
-   section. The --row modifier on stat-tiles makes the tiles flow
-   horizontally as a strip instead of stacking vertically. */
+/* Full-width section block — used for both RECENT and BY THE NUMBERS.
+   Eliminates the dead-space problem that the old 2-column body grid
+   caused when one column had much more content than the other. */
 .pitch-page .pitch-why-you__numbers-strip {
   padding: 40px 32px 0;
 }
+/* Horizontal grid of stat tiles — flows across the full width of the
+   block, wrapping into multiple rows only when the row runs out of
+   room. minmax(150px, 1fr) lets ~6-8 tiles fit per row at desktop
+   widths, which absorbs Toosii's seven-tile lineup cleanly. */
 .pitch-page .pitch-why-you__stat-tiles--row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
+}
+/* When highlights have 4+ entries, flow them as a 2-column grid so
+   they take roughly the same vertical room as the stat row below.
+   Removes the long, narrow column of single-line highlights. */
+.pitch-page .pitch-why-you__highlights-numbered--two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  column-gap: 32px;
+  row-gap: 0;
+}
+.pitch-page .pitch-why-you__highlights-numbered--two-col li {
+  border-top: 1px solid var(--glass-border);
+}
+.pitch-page .pitch-why-you__highlights-numbered--two-col li:first-child,
+.pitch-page .pitch-why-you__highlights-numbered--two-col li:nth-child(2) {
+  border-top: none;
+  padding-top: 0;
+}
+@media (max-width: 720px) {
+  .pitch-page .pitch-why-you__highlights-numbered--two-col li:nth-child(2) {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 14px;
+  }
 }
 
 /* PULL QUOTE — orange-bordered editorial block */
