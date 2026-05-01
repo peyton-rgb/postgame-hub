@@ -1310,56 +1310,8 @@
   font-weight: 500;
   z-index: 2;
 }
-.pitch-page .pitch-why-you__hero-badges {
-  position: absolute;
-  top: 22px;
-  right: 28px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 60%;
-  z-index: 2;
-}
-.pitch-page .pitch-why-you__hero-badge {
-  background: rgba(215, 63, 9, 0.18);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 7px 14px 7px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(215, 63, 9, 0.5);
-  text-decoration: none;
-  letter-spacing: 0.04em;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
-}
-.pitch-page .pitch-why-you__hero-badge:hover {
-  background: rgba(215, 63, 9, 0.55);
-  border-color: var(--orange);
-  transform: translateY(-1px);
-}
-.pitch-page .pitch-why-you__hero-badge-icon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  color: var(--orange);
-  flex-shrink: 0;
-}
-.pitch-page .pitch-why-you__hero-badge-icon svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.pitch-page .pitch-why-you__hero-badge-count {
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
+/* Hero badges removed — social handles now render as platform tiles
+   inside the BY THE NUMBERS block below. See .pitch-why-you__stat-tile--platform. */
 
 /* PROFILE + NAMEBLOCK — circle hangs off banner's bottom edge */
 .pitch-page .pitch-why-you__head {
@@ -1509,6 +1461,40 @@
 .pitch-page .pitch-why-you__stat-tile--accent {
   border-color: rgba(215, 63, 9, 0.4);
   background: rgba(215, 63, 9, 0.06);
+}
+/* Platform tile — icon on the left, follower count + platform name
+   stacked on the right. Tile is a clickable link that opens the
+   athlete's profile on that platform. */
+.pitch-page .pitch-why-you__stat-tile--platform {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.pitch-page .pitch-why-you__stat-tile--platform:hover {
+  border-color: rgba(215, 63, 9, 0.6);
+  background: rgba(215, 63, 9, 0.08);
+  transform: translateY(-1px);
+}
+.pitch-page .pitch-why-you__stat-tile-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  color: var(--orange);
+  flex-shrink: 0;
+}
+.pitch-page .pitch-why-you__stat-tile-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.pitch-page .pitch-why-you__stat-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 .pitch-page .pitch-why-you__stat-value {
   font-family: var(--display);
