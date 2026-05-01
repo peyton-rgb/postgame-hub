@@ -964,17 +964,13 @@
   width: 100%;
   height: auto;
   max-width: none;
-  /* Uniform color treatment — keep colors vibrant but pull all photos
-     toward one warm palette via a light sepia pass. This unifies
-     mismatched filters without going dull. Knobs:
-       - sepia(0.18) adds the warm unifying tint (lower = less warmth)
-       - saturate(1.15) keeps colors punchy after sepia
-       - contrast(1.12) adds editorial pop
-     For full B&W:        filter: grayscale(1) contrast(1.1);
-     For more dramatic:   filter: sepia(0.3) saturate(1.25) contrast(1.18);
-     For barely-there:    filter: sepia(0.1) saturate(1.05) contrast(1.05);
+  /* Filter intentionally OMITTED — the new pre-composed alum collage
+     is already color-treated in source (Photoshop), so we render it
+     as-is. Re-enabling the old sepia pass made it look grainy and
+     warm-tinted on top of the already-finished image.
+     If you ever swap to a less-treated source and want unification:
+       filter: sepia(0.18) saturate(1.15) contrast(1.12);
   */
-  filter: sepia(0.18) saturate(1.15) contrast(1.12);
 }
 
 /* Roster credits strip: row of name plates under the hero image. */
