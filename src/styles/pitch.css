@@ -2480,9 +2480,13 @@
   }
 
   /* CTA contract button — full-width on mobile so it doesn't shrink
-     to a tiny pill. */
+     to a tiny pill. The button is `display: inline-flex` so we use
+     `justify-content: center` (not `text-align: center`, which has
+     no effect on flex children) to actually center the text + arrow
+     inside the full-width pill. */
   .pitch-page .pitch-cta__btn {
     width: 100%;
+    justify-content: center;
     text-align: center;
     padding: 18px 20px !important;
     font-size: 15px !important;
