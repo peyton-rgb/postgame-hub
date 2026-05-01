@@ -29,8 +29,6 @@ import { sumFollowerCounts } from "@/lib/pitch/socialFormat";
 export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
   if (!data.visible) return null;
 
-  const firstName = data.athleteName.trim().split(/\s+/)[0] ?? "";
-  const headingFirstName = firstName.toUpperCase();
   const initials = getInitials(data.athleteName);
 
   // Display name. If a nickname is provided, render "Legal / Nickname".
@@ -77,9 +75,9 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
           style={bannerStyle}
         >
           <div className="pitch-why-you__hero-overlay" />
-          <div className="pitch-why-you__label">
-            WHY YOU{headingFirstName ? `, ${headingFirstName}` : ""}
-          </div>
+          {/* Banner label intentionally omitted — Peyton wants a clean
+              hero with no overlaid text. The athlete name still
+              appears below the banner in the nameblock. */}
           {/* Social handles intentionally not rendered here — they live
               in the BY THE NUMBERS block below as platform tiles. */}
         </div>

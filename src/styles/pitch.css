@@ -60,6 +60,9 @@
   height: 64px;
   width: auto;
   display: block;
+  /* Center the logo within its row. The .wrap container handles the
+     content gutter; margin auto centers the inline image inside it. */
+  margin: 0 auto;
 }
 @media (max-width: 640px) {
   .pitch-page .pitch-header { padding: 36px 0 24px; }
@@ -107,6 +110,21 @@
   width: 165px;
   object-fit: contain;
   display: block;
+}
+/* Mobile: shrink the brand ticker logos so more brands fit per
+   horizontal scroll. Each tile gets slightly less padding and the
+   logos themselves drop to ~40px tall. */
+@media (max-width: 640px) {
+  .pitch-page .pitch-ticker__logo {
+    height: 38px;
+    width: 110px;
+  }
+  .pitch-page .pitch-ticker__inner span {
+    padding: 0 18px;
+  }
+  .pitch-page .pitch-ticker__inner span::after {
+    margin-left: 12px;
+  }
 }
 /* Per-brand size override: Armani's source PNG has heavy internal
    padding so it appears tiny inside the standard tile. Scale up. */
@@ -1711,6 +1729,24 @@
   width: auto;
   max-width: 180px;
   object-fit: contain;
+}
+/* Mobile: shrink the "WHAT WE'D LINE UP" carousel logos so more
+   brands fit on screen at once during the scroll loop. */
+@media (max-width: 640px) {
+  .pitch-page .campaign-velocity__item {
+    min-width: 92px;
+    gap: 6px;
+  }
+  .pitch-page .campaign-velocity__logo {
+    height: 36px;
+    max-width: 110px;
+  }
+  .pitch-page .campaign-velocity__track {
+    gap: 36px;
+  }
+  .pitch-page .campaign-velocity__name {
+    font-size: 10px;
+  }
 }
 .pitch-page .campaign-velocity__logo-fallback {
   font-family: var(--display);
