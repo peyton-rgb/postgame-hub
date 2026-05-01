@@ -33,10 +33,10 @@ type BrandOption = {
 
 export default function WhyYouEditor({ data, onChange }: Props) {
   const [pickingPhoto, setPickingPhoto] = useState<
-    "athlete" | "school" | null
+    "athlete" | "school" | "banner" | null
   >(null);
   const [uploadingSlot, setUploadingSlot] = useState<
-    "athlete" | "school" | null
+    "athlete" | "school" | "banner" | null
   >(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // Brand dropdown options, fetched once on mount. Used to populate
@@ -72,7 +72,10 @@ export default function WhyYouEditor({ data, onChange }: Props) {
 
   // Direct file upload to Supabase Storage (campaign-media bucket).
   // Generates a unique path under "pitch-uploads/<random-id>/<filename>".
-  async function uploadPhoto(slot: "athlete" | "school", file: File) {
+  async function uploadPhoto(
+    slot: "athlete" | "school" | "banner",
+    file: File,
+  ) {
     setUploadError(null);
     setUploadingSlot(slot);
     try {
@@ -88,7 +91,8 @@ export default function WhyYouEditor({ data, onChange }: Props) {
         .getPublicUrl(path);
       if (!pub?.publicUrl) throw new Error("No public URL returned");
       if (slot === "athlete") patch({ athletePhotoUrl: pub.publicUrl });
-      else patch({ schoolLogoUrl: pub.publicUrl });
+      else if (slot === "school") patch({ schoolLogoUrl: pub.publicUrl });
+      else patch({ bannerImageUrl: pub.publicUrl });
     } catch (err: any) {
       setUploadError(err?.message ?? "Upload failed");
     } finally {
@@ -255,6 +259,20 @@ export default function WhyYouEditor({ data, onChange }: Props) {
 
       {/* ============== PHOTOS ============== */}
       <Section title="Photos">
+        <Field label="Hero Banner Photo">
+          <PhotoSlot
+            url={data.bannerImageUrl}
+            uploading={uploadingSlot === "banner"}
+            onClear={() => patch({ bannerImageUrl: undefined })}
+            onPick={() => setPickingPhoto("banner")}
+            onUpload={(file) => uploadPhoto("banner", file)}
+          />
+          <p className="text-xs text-gray-500 mt-2">
+            Wide photo behind the profile circle. Aim for 16:7 aspect
+            ratio (e.g. 2400×1050). Leave blank to use the dark gradient
+            fallback.
+          </p>
+        </Field>
         <Field label="Athlete Photo">
           <PhotoSlot
             url={data.athletePhotoUrl}
@@ -550,6 +568,8 @@ export default function WhyYouEditor({ data, onChange }: Props) {
               patch({ athletePhotoUrl: result.url });
             } else if (pickingPhoto === "school") {
               patch({ schoolLogoUrl: result.url });
+            } else if (pickingPhoto === "banner") {
+              patch({ bannerImageUrl: result.url });
             }
             setPickingPhoto(null);
           }}

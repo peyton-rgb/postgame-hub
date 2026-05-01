@@ -229,6 +229,11 @@ export interface WhyYouSectionData {
   classYear?: string;                // "Senior"
   position?: string;                 // "Wide Receiver"
 
+  // Wide hero banner photo behind the profile circle + name. Optional —
+  // when absent, the hero falls back to a dark gradient. Used by the
+  // magazine-cover redesign of WhyYouSection.
+  bannerImageUrl?: string;
+
   // Body copy. `paragraphs` (multi-paragraph) is preferred; `paragraph`
   // (single) is kept for backwards compatibility with existing pitches.
   paragraph?: string;

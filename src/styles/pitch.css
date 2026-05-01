@@ -1246,45 +1246,126 @@
 }
 
 /* ============================================================
-   WHY YOU SECTION
-   Personalized "WHY YOU, [FIRSTNAME]" block with avatar + body copy.
+   WHY YOU SECTION — magazine-cover redesign
+   Hero banner photo behind a profile circle that hangs off the
+   bottom edge, then THE OPENING / RECENT + BY THE NUMBERS / pull
+   quote / THE PITCH / WHAT WE'D LINE UP stacked beneath.
    ============================================================ */
 .pitch-page .pitch-why-you {
-  padding: 72px 0 64px;
-  border-radius: 4px;
+  padding: 64px 0 80px;
 }
-.pitch-page .pitch-why-you--tinted {
-  background: rgba(215,63,9,0.05);
+.pitch-page .pitch-why-you__card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* HERO BANNER — wide photo (or gradient fallback) */
+.pitch-page .pitch-why-you__hero {
+  position: relative;
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+}
+.pitch-page .pitch-why-you__hero--gradient {
+  background: linear-gradient(
+    135deg,
+    #4a1810 0%,
+    #2a0d0d 30%,
+    #1a1a1a 60%,
+    #0a0a0a 100%
+  );
+}
+.pitch-page .pitch-why-you__hero--gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 30% 40%,
+    rgba(215, 63, 9, 0.22) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+.pitch-page .pitch-why-you__hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.2) 0%,
+    transparent 30%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 .pitch-page .pitch-why-you__label {
-  color: var(--orange);
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  font-size: 12px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  margin-bottom: 18px;
+  color: var(--orange);
   font-weight: 500;
+  z-index: 2;
 }
-.pitch-page .pitch-why-you__head {
+.pitch-page .pitch-why-you__hero-badges {
+  position: absolute;
+  top: 22px;
+  right: 28px;
   display: flex;
-  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 60%;
+  z-index: 2;
+}
+.pitch-page .pitch-why-you__hero-badge {
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.pitch-page .pitch-why-you__hero-badge:hover {
+  background: rgba(215, 63, 9, 0.4);
+  transform: translateY(-1px);
+}
+
+/* PROFILE + NAMEBLOCK — circle hangs off banner's bottom edge */
+.pitch-page .pitch-why-you__head {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
   gap: 22px;
-  margin-bottom: 36px;
+  padding: 0 32px 28px;
+  margin-top: -72px;
+  z-index: 3;
 }
 .pitch-page .pitch-why-you__avatar {
-  width: 128px;            /* bumped from 64 → 128 for prominence */
-  height: 128px;
+  width: 144px;
+  height: 144px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid var(--glass-border);
+  background: #1a1a1a;
+  border: 4px solid var(--orange);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
-  color: var(--text);
-  font-size: 36px;
+  font-family: var(--display);
+  font-size: 44px;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  color: var(--orange);
+  letter-spacing: 0.03em;
 }
 .pitch-page .pitch-why-you__avatar img {
   width: 100%;
@@ -1294,210 +1375,222 @@
 .pitch-page .pitch-why-you__name-block {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
+  padding-bottom: 12px;
 }
 .pitch-page .pitch-why-you__name {
-  color: var(--text);
-  font-size: 26px;          /* bumped from 18 to match the larger avatar */
+  font-family: var(--display);
+  font-size: clamp(32px, 4.4vw, 56px);
   font-weight: 500;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  line-height: 0.95;
+  letter-spacing: -0.005em;
+  color: var(--text);
 }
 .pitch-page .pitch-why-you__subtitle {
+  font-size: 14px;
+  color: var(--orange);
+  letter-spacing: 0.04em;
+  margin-top: 8px;
+}
+.pitch-page .pitch-why-you__meta {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--text-3);
-  font-size: 12px;
-  line-height: 1.3;
-}
-.pitch-page .pitch-why-you__body {
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.8;
-  margin-top: 36px;
-}
-.pitch-page .pitch-why-you__body p {
-  margin: 0 0 20px;
-}
-.pitch-page .pitch-why-you__body p:last-child { margin-bottom: 0; }
-
-/* School logo (sits to the right of the athlete name block) */
-.pitch-page .pitch-why-you__head {
-  position: relative;
+  margin-top: 4px;
 }
 .pitch-page .pitch-why-you__school {
-  height: 48px;
+  height: 56px;
   width: auto;
   margin-left: auto;
+  margin-bottom: 14px;
   flex-shrink: 0;
+  opacity: 0.85;
 }
 
-/* Social / audience stats row */
-.pitch-page .pitch-why-you__stats {
+/* MICRO-LABELS — orange uppercase headers above each block */
+.pitch-page .pitch-why-you__block-label {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+
+/* THE OPENING — large feature lead paragraph */
+.pitch-page .pitch-why-you__block {
+  padding: 0 32px;
+  margin-top: 24px;
+}
+.pitch-page .pitch-why-you__lead {
+  font-size: clamp(17px, 1.8vw, 21px);
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: 0.005em;
+}
+
+/* RECENT + BY THE NUMBERS — two-column body grid */
+.pitch-page .pitch-why-you__body-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-top: 48px;
-  padding-top: 36px;
+  grid-template-columns: 3fr 2fr;
+  gap: 36px;
+  padding: 40px 32px 0;
+}
+.pitch-page .pitch-why-you__highlights-col {
+  min-width: 0;
+}
+.pitch-page .pitch-why-you__highlights-numbered {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pitch-page .pitch-why-you__highlights-numbered li {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 14px 0;
   border-top: 1px solid var(--glass-border);
 }
-.pitch-page .pitch-why-you__stat {
-  text-align: center;
+.pitch-page .pitch-why-you__highlights-numbered li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.pitch-page .pitch-why-you__highlight-num {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--orange);
+  line-height: 1;
+  font-weight: 500;
+}
+.pitch-page .pitch-why-you__highlight-text {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.pitch-page .pitch-why-you__stats-col {
+  min-width: 0;
+}
+.pitch-page .pitch-why-you__stat-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pitch-page .pitch-why-you__stat-tile {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.pitch-page .pitch-why-you__stat-tile--accent {
+  border-color: rgba(215, 63, 9, 0.4);
+  background: rgba(215, 63, 9, 0.06);
 }
 .pitch-page .pitch-why-you__stat-value {
   font-family: var(--display);
-  font-size: clamp(28px, 4vw, 44px);
+  font-size: clamp(26px, 3vw, 36px);
   line-height: 1;
+  color: var(--text);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+.pitch-page .pitch-why-you__stat-tile--accent .pitch-why-you__stat-value {
   color: var(--orange);
-  letter-spacing: 0.02em;
-  margin-bottom: 6px;
 }
 .pitch-page .pitch-why-you__stat-label {
   font-size: 11px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-3);
-  font-weight: 500;
-}
-@media (max-width: 640px) {
-  .pitch-page .pitch-why-you__stats {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
-}
-
-/* Athlete meta line — position · class · hometown */
-.pitch-page .pitch-why-you__meta {
-  color: var(--text-3);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   margin-top: 6px;
 }
 
-/* Social handles row — outline platform-logo SVGs in Postgame orange,
-   stacked vertically with the follower count underneath each. The icon
-   inherits color from `currentColor`, set on the link wrapper. */
-.pitch-page .pitch-why-you__handles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 36px;
-  margin-top: 40px;
-}
-.pitch-page .pitch-why-you__handle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  color: var(--orange);
-  transition: transform 0.15s ease, color 0.15s ease;
-}
-.pitch-page .pitch-why-you__handle:hover {
-  transform: translateY(-2px);
-}
-.pitch-page .pitch-why-you__handle-icon {
-  display: block;
-  width: 38px;
-  height: 38px;
-}
-.pitch-page .pitch-why-you__handle-icon svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.pitch-page .pitch-why-you__handle-followers {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 0.01em;
-}
-
-/* Auto-calculated combined followers — sum of all per-platform
-   follower counts above. Sits just below the icon row. */
-.pitch-page .pitch-why-you__handles-total {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-top: 18px;
-}
-.pitch-page .pitch-why-you__handles-total-value {
-  font-family: var(--display);
-  font-size: clamp(28px, 3.5vw, 44px);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--orange);
-  line-height: 1;
-}
-.pitch-page .pitch-why-you__handles-total-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--muted, #9aa0a6);
-}
-
-/* Pull quote attributed to the athlete */
+/* PULL QUOTE — orange-bordered editorial block */
 .pitch-page .pitch-why-you__quote {
-  position: relative;
-  margin: 28px 0 0;
-  padding: 18px 0 18px 28px;
+  margin: 36px 32px 0;
+  padding: 22px 28px;
+  border-left: 3px solid var(--orange);
+  background: rgba(215, 63, 9, 0.05);
+  border-radius: 0 10px 10px 0;
+}
+.pitch-page .pitch-why-you__quote-text {
   font-family: var(--display);
   font-size: clamp(20px, 2.4vw, 28px);
   line-height: 1.35;
-  letter-spacing: 0.01em;
   color: var(--text);
-  border-left: 2px solid var(--orange);
-}
-.pitch-page .pitch-why-you__quote-mark {
-  font-family: var(--display);
-  font-size: clamp(40px, 6vw, 80px);
-  line-height: 0;
-  color: var(--orange);
-  position: absolute;
-  left: 18px;
-  top: 22px;
-  pointer-events: none;
-  display: none; /* hidden by default; can be re-enabled via class */
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  display: block;
 }
 
-/* Recent highlights bullet list */
-.pitch-page .pitch-why-you__highlights {
-  margin-top: 48px;
-  padding-top: 36px;
-  border-top: 1px solid var(--glass-border);
-}
-.pitch-page .pitch-why-you__highlights-label {
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--orange);
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-.pitch-page .pitch-why-you__highlights-list {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--text);
+/* THE PITCH — body copy paragraphs */
+.pitch-page .pitch-why-you__body {
   font-size: 15px;
-  line-height: 1.8;
+  line-height: 1.65;
+  color: var(--text-2, #c8c8c8);
 }
-.pitch-page .pitch-why-you__highlights-list li {
-  margin-bottom: 10px;
+.pitch-page .pitch-why-you__body p {
+  margin: 0 0 14px;
+}
+.pitch-page .pitch-why-you__body p:last-child {
+  margin-bottom: 0;
 }
 
-/* Upcoming campaigns list */
+/* WHAT WE'D LINE UP — campaigns block */
 .pitch-page .pitch-why-you__campaigns {
-  margin-top: 48px;
-  padding-top: 36px;
-  border-top: 1px solid var(--glass-border);
+  margin-top: 36px;
+  padding: 0 32px 32px;
 }
-.pitch-page .pitch-why-you__campaigns-label {
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--orange);
-  font-weight: 600;
-  margin-bottom: 14px;
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .pitch-page .pitch-why-you__body-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .pitch-page .pitch-why-you__hero {
+    aspect-ratio: 16 / 9;
+  }
+  .pitch-page .pitch-why-you__avatar {
+    width: 112px;
+    height: 112px;
+    font-size: 32px;
+    border-width: 3px;
+  }
+  .pitch-page .pitch-why-you__head {
+    margin-top: -56px;
+    padding: 0 22px 22px;
+  }
+  .pitch-page .pitch-why-you__hero-badges {
+    display: none;
+  }
+  .pitch-page .pitch-why-you__block,
+  .pitch-page .pitch-why-you__quote,
+  .pitch-page .pitch-why-you__body-grid,
+  .pitch-page .pitch-why-you__campaigns {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .pitch-page .pitch-why-you__quote {
+    margin-left: 22px;
+    margin-right: 22px;
+  }
+}
+@media (max-width: 640px) {
+  .pitch-page .pitch-why-you__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .pitch-page .pitch-why-you__hero {
+    aspect-ratio: 4 / 3;
+  }
+  .pitch-page .pitch-why-you__school {
+    margin-left: 0;
+  }
 }
 /* Velocity scroller for upcoming campaigns. Logos roll horizontally
    on the page background — no cards, no borders. The viewport has
