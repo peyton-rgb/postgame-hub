@@ -91,8 +91,14 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
                   rel="noopener noreferrer"
                   aria-label={`${platformLabel(h.platform)} — ${h.followers ?? "follow"}`}
                 >
-                  {h.followers ? `${h.followers} ` : ""}
-                  {platformShortLabel(h.platform)}
+                  <span className="pitch-why-you__hero-badge-icon">
+                    <PlatformIcon platform={h.platform} />
+                  </span>
+                  {h.followers ? (
+                    <span className="pitch-why-you__hero-badge-count">
+                      {h.followers}
+                    </span>
+                  ) : null}
                 </a>
               ))}
             </div>
@@ -299,19 +305,73 @@ function platformLabel(p: string): string {
   }
 }
 
-// Short label for the in-banner badges (e.g. "TT", "IG", "YT", "X").
-function platformShortLabel(p: string): string {
-  switch (p) {
+// Outline platform glyphs sized to fit inside the hero badges.
+// They take their color from `currentColor` (set on the badge wrapper),
+// so a single SVG works on both light and dark accent backgrounds.
+function PlatformIcon({ platform }: { platform: string }) {
+  switch (platform) {
     case "instagram":
-      return "IG";
-    case "twitter":
-      return "X";
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="17.5" cy="6.5" r="0.9" fill="currentColor" stroke="none" />
+        </svg>
+      );
     case "tiktok":
-      return "TT";
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M14 4v10.5a3.5 3.5 0 1 1-3.5-3.5" />
+          <path d="M14 4c0 2.8 2.2 5 5 5" />
+        </svg>
+      );
     case "youtube":
-      return "YT";
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="2.5" y="6" width="19" height="12" rx="3" />
+          <path d="M10.5 9.5l4.5 2.5-4.5 2.5z" />
+        </svg>
+      );
+    case "twitter":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4 4l16 16" />
+          <path d="M20 4L4 20" />
+        </svg>
+      );
     default:
-      return p.toUpperCase();
+      return null;
   }
 }
 
