@@ -75,8 +75,23 @@ export default function CollageSection({
               );
             })}
         </div>
-        {!useFloatingPlates && athletes.length > 0 ? (
-          <div className="pitch-collage__plates-row">
+        {/* Plates-row credits strip.
+            Always rendered when athletes exist, but its visibility on
+            desktop vs mobile is toggled by CSS:
+              - When useFloatingPlates is true (heroPlates configured),
+                we tag the row with --mobile-only so it's hidden on
+                desktop (floating plates take over) and shown on mobile
+                (where percentage-based floating plates would overlap).
+              - When useFloatingPlates is false, the row is the only
+                rendering of names — visible on every viewport. */}
+        {athletes.length > 0 ? (
+          <div
+            className={`pitch-collage__plates-row${
+              useFloatingPlates
+                ? " pitch-collage__plates-row--mobile-only"
+                : ""
+            }`}
+          >
             {athletes.map((a) => (
               <div className="pitch-collage__plate" key={a.id}>
                 <span className="pitch-collage__bar" aria-hidden="true" />

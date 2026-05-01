@@ -997,6 +997,29 @@
   }
 }
 
+/* The --mobile-only credits row is hidden by default (desktop) — the
+   floating plates over the image carry the names there. At ≤768px the
+   floating plates are hidden (they'd overlap on a narrow screen) and
+   this credits row takes over. Threshold is 768px so iPad portrait
+   already gets the cleaner layout. */
+.pitch-page .pitch-collage--hero .pitch-collage__plates-row--mobile-only {
+  display: none;
+}
+@media (max-width: 768px) {
+  .pitch-page .pitch-collage--hero .pitch-collage__floating-plate {
+    display: none;
+  }
+  .pitch-page .pitch-collage--hero .pitch-collage__plates-row--mobile-only {
+    display: flex;
+  }
+  /* Bottom-fade gradient on the hero frame is meant to keep floating
+     plates readable; with no plates on top of the image it just dims
+     the bottom of the photo for no reason — turn it off on mobile. */
+  .pitch-page .pitch-collage--hero .pitch-collage__hero-frame::after {
+    display: none;
+  }
+}
+
 /* Data-driven mode (default styling below). */
 .pitch-page .pitch-collage {
   background: #0a0a0e;
