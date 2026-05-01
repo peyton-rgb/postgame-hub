@@ -389,10 +389,15 @@ export function Top50Recap({
               />
             )}
 
-            <div className="flex gap-9 mt-8">
-              <div><div className="text-4xl md:text-[40px] font-black">{stats.athleteCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Athletes</div></div>
-              <div><div className="text-4xl md:text-[40px] font-black">{uniCount}</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Universities</div></div>
-              <div><div className="text-4xl md:text-[40px] font-black">{sports.length}</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Sports</div></div>
+            <div className="mt-8">
+              <div className="text-xs font-bold uppercase tracking-wider text-white/40 mb-4">Q1 2026 By The Numbers</div>
+              <div className="flex flex-wrap gap-9">
+                <div><div className="text-4xl md:text-[40px] font-black">1,077</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Athletes</div></div>
+                <div><div className="text-4xl md:text-[40px] font-black">705</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Schools</div></div>
+                <div><div className="text-4xl md:text-[40px] font-black">5,000+</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Content Pieces</div></div>
+                <div><div className="text-4xl md:text-[40px] font-black">4,000+</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Posts</div></div>
+                <div><div className="text-4xl md:text-[40px] font-black">107M+</div><div className="text-xs font-bold uppercase tracking-widest text-white/50 mt-0.5">Impressions</div></div>
+              </div>
             </div>
 
             <p className="text-lg text-white/50 max-w-2xl leading-relaxed mt-6">
