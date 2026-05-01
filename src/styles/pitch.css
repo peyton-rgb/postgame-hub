@@ -2276,3 +2276,192 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   COMPREHENSIVE MOBILE AUDIT
+   Sweeping responsive overrides applied across the whole pitch
+   deck. Lives at the very end of the file so it can override any
+   earlier section-specific styles.
+
+   Breakpoints used here:
+     ≤900px = small tablet / large phone landscape
+     ≤640px = phone portrait
+     ≤420px = small phone (compact mode)
+   ============================================================ */
+
+/* Page-level: prevent any one section from causing the whole page
+   to scroll horizontally. Anything that overflows clips at the
+   section boundary instead. */
+.pitch-page {
+  overflow-x: hidden;
+}
+.pitch-page * {
+  /* Allow long words to break instead of pushing the page wider
+     than the viewport. Affects URLs and other unbroken strings. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ----- ≤900px (tablet portrait, large phone landscape) ----- */
+@media (max-width: 900px) {
+  /* Reduce vertical padding on every section. The desktop
+     80–150px top/bottom padding is too generous for mobile. */
+  .pitch-page .pitch-cta { padding: 90px 0 70px; }
+  .pitch-page .pitch-thesis { padding: 70px 0 60px; }
+  .pitch-page .pitch-roster { padding: 70px 0 50px; }
+  .pitch-page .pitch-cap,
+  .pitch-page .pitch-tab-cap { padding: 60px 0 50px; }
+  .pitch-page .pitch-ideas { padding: 60px 0 50px; }
+  .pitch-page .pitch-agency,
+  .pitch-page .pitch-earnings { padding: 60px 0 50px; }
+  .pitch-page .pitch-why-you { padding: 50px 0 60px; }
+  .pitch-page .pitch-case-study { padding: 60px 0 70px; }
+  .pitch-page .pitch-pullquote { padding: 60px 0; }
+
+  /* Knock back oversized headings that were sized for desktop hero
+     real estate but feel cramped on a phone. */
+  .pitch-page .pitch-cta h2,
+  .pitch-page .pitch-tab-cap__heading,
+  .pitch-page .pitch-agency__heading,
+  .pitch-page .pitch-case-study__heading {
+    font-size: clamp(28px, 8vw, 44px) !important;
+  }
+  .pitch-page .pitch-tab-cap__panel-num {
+    font-size: clamp(60px, 18vw, 100px) !important;
+  }
+  .pitch-page .pitch-tab-cap__panel-title {
+    font-size: clamp(32px, 9vw, 56px) !important;
+  }
+}
+
+/* ----- ≤640px (phone portrait) ----- */
+@media (max-width: 640px) {
+  /* Talent roster — knock down the 3-column groups to 1 col.
+     Names list reads like a clean stack instead of a grid. */
+  .pitch-page .pitch-talent-roster__groups {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+
+  /* Roster grid (the big athlete tile section) — already collapses
+     to 2-col at 600px in earlier rule, this just tightens spacing. */
+  .pitch-page .pitch-roster__grid {
+    gap: 18px !important;
+  }
+
+  /* CTA contract button — full-width on mobile so it doesn't shrink
+     to a tiny pill. */
+  .pitch-page .pitch-cta__btn {
+    width: 100%;
+    text-align: center;
+    padding: 18px 20px !important;
+    font-size: 15px !important;
+  }
+  /* CTA contacts row stacks vertically. */
+  .pitch-page .pitch-foot__contacts {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+  /* CTA footer brand + meta also stack and recenter. */
+  .pitch-page .pitch-foot__brand,
+  .pitch-page .pitch-foot__meta {
+    text-align: center !important;
+  }
+
+  /* Agency comparison table — collapse the 4-column comparison
+     into stacked cards. Each row becomes its own card with the
+     criterion label on top and 3 cells below. */
+  .pitch-page .pitch-agency__table-wrap {
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .pitch-page .pitch-agency__table,
+  .pitch-page .pitch-agency__table thead,
+  .pitch-page .pitch-agency__table tbody,
+  .pitch-page .pitch-agency__table tr,
+  .pitch-page .pitch-agency__table th,
+  .pitch-page .pitch-agency__table td {
+    display: block;
+    width: 100% !important;
+  }
+  .pitch-page .pitch-agency__table thead {
+    display: none; /* column headers are inlined into each cell below */
+  }
+  .pitch-page .pitch-agency__table tr {
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    background: rgba(255,255,255,0.02);
+  }
+  .pitch-page .pitch-agency__row-label {
+    background: rgba(215,63,9,0.12);
+    color: var(--text);
+    font-weight: 600;
+    border-bottom: 1px solid var(--glass-border) !important;
+    padding: 12px 14px;
+    text-align: left;
+  }
+  .pitch-page .pitch-agency__cell {
+    border-left: none !important;
+    padding: 10px 14px;
+    text-align: left;
+  }
+  .pitch-page .pitch-agency__cell::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 2px;
+  }
+
+  /* Earnings comparison — already stacks scenarios at 900px.
+     Tighten the inner row labels at narrower widths. */
+  .pitch-page .pitch-earnings__row {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+    padding: 10px 12px !important;
+  }
+  .pitch-page .pitch-earnings__row-label {
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+
+  /* Hero plates over the alum collage — already hidden at 768px,
+     belt-and-suspenders here. */
+  .pitch-page .pitch-collage--hero .pitch-collage__floating-plate {
+    display: none !important;
+  }
+}
+
+/* ----- ≤420px (compact phone) ----- */
+@media (max-width: 420px) {
+  /* Smallest screens — pull section padding even tighter. */
+  .pitch-page .pitch-cta { padding: 60px 0 50px; }
+  .pitch-page .pitch-thesis,
+  .pitch-page .pitch-roster,
+  .pitch-page .pitch-cap,
+  .pitch-page .pitch-tab-cap,
+  .pitch-page .pitch-ideas,
+  .pitch-page .pitch-agency,
+  .pitch-page .pitch-earnings,
+  .pitch-page .pitch-case-study,
+  .pitch-page .pitch-pullquote { padding: 48px 0 40px; }
+  .pitch-page .pitch-why-you { padding: 36px 0 48px; }
+
+  /* Hero CTA welcome heading — even smaller. */
+  .pitch-page .pitch-cta h2 {
+    font-size: 24px !important;
+    line-height: 1.1 !important;
+  }
+  /* Tab capability panel title shouldn't dominate the screen. */
+  .pitch-page .pitch-tab-cap__panel-title {
+    font-size: 28px !important;
+  }
+  .pitch-page .pitch-tab-cap__panel-num {
+    font-size: 56px !important;
+  }
+}

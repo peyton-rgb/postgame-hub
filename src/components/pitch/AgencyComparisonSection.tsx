@@ -52,11 +52,22 @@ export default function AgencyComparisonSection({
             {data.rows.map((row, i) => (
               <tr key={i}>
                 <th className="pitch-agency__row-label">{row.criterion}</th>
-                <td className="pitch-agency__cell pitch-agency__cell--postgame">
+                {/* data-label is used by the mobile-stacked layout
+                    (see @media ≤640px in pitch.css) to inline a
+                    column header above each value, since the real
+                    <thead> is hidden on mobile. */}
+                <td
+                  className="pitch-agency__cell pitch-agency__cell--postgame"
+                  data-label="Postgame"
+                >
                   {row.postgame}
                 </td>
-                <td className="pitch-agency__cell">{row.otherAgency}</td>
-                <td className="pitch-agency__cell">{row.doItYourself}</td>
+                <td className="pitch-agency__cell" data-label="'Other' Agency">
+                  {row.otherAgency}
+                </td>
+                <td className="pitch-agency__cell" data-label="Do It Yourself">
+                  {row.doItYourself}
+                </td>
               </tr>
             ))}
           </tbody>
