@@ -844,6 +844,16 @@
   word-break: break-word;
 }
 .pitch-foot__contact-link:hover { color: var(--orange); }
+/* Phone links (any contact-link with an href starting with "tel:")
+   render in Postgame orange so they pop visually below the email
+   address. Matches the brand accent treatment used elsewhere. */
+.pitch-foot__contact-link[href^="tel:"] {
+  color: var(--orange);
+  font-weight: 500;
+}
+.pitch-foot__contact-link[href^="tel:"]:hover {
+  color: #fff;
+}
 .pitch-foot__row {
   display: flex;
   justify-content: space-between;
