@@ -38,7 +38,15 @@
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  /* `clip` instead of `hidden` is critical for iOS scroll behavior:
+     `overflow-x: hidden` creates a scroll container, which on iOS
+     traps touch events and makes the page feel "magnetic" / unable
+     to scroll vertically. `overflow-x: clip` does the same visual
+     clipping without creating a scroll container, so touch scroll
+     passes through cleanly. Supported in Safari 16+, Chrome 90+,
+     Firefox 81+ — falls back gracefully (just no clipping) on older
+     browsers. */
+  overflow-x: clip;
   min-height: 100vh;
 }
 
@@ -2386,12 +2394,13 @@
      ≤420px = small phone (compact mode)
    ============================================================ */
 
-/* Page-level: prevent any one section from causing the whole page
-   to scroll horizontally. Anything that overflows clips at the
-   section boundary instead. */
-.pitch-page {
-  overflow-x: hidden;
-}
+/* Page-level horizontal-overflow guard: see the main .pitch-page
+   declaration earlier in this file for the rationale (using
+   `overflow-x: clip` instead of `hidden` is critical for iOS scroll
+   behavior — `hidden` would create a scroll container that traps
+   touch events). This block is intentionally empty now that the
+   primary declaration handles it; left here as a placeholder so
+   future audits can see the spot. */
 /* Gentle word-wrapping that only kicks in if a word would otherwise
    overflow the container — covers URLs and other unbreakable strings.
    Crucially, currency values like "$216,000+" stay on one line because
