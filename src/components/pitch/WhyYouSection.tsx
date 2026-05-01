@@ -136,55 +136,116 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
           </div>
         ) : null}
 
-        {/* ============== RECENT + BY THE NUMBERS ============== */}
-        {(data.highlights && data.highlights.length > 0) ||
-        followerSum.parsedCount >= 2 ||
-        (data.socialStats && data.socialStats.length > 0) ? (
-          <div className="pitch-why-you__body-grid">
-            {data.highlights && data.highlights.length > 0 ? (
-              <div className="pitch-why-you__highlights-col">
-                <div className="pitch-why-you__block-label">RECENT</div>
-                <ol className="pitch-why-you__highlights-numbered">
-                  {data.highlights.map((h, i) => (
-                    <li key={i}>
-                      <span className="pitch-why-you__highlight-num">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      <span className="pitch-why-you__highlight-text">{h}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ) : (
-              <div />
-            )}
+        {/* ============== RECENT + BY THE NUMBERS ==============
+            Layout switches based on what data is present:
+              - Both highlights AND stats → 2-column grid
+              - Only stats              → full-width horizontal strip
+              - Only highlights         → full-width single column
+              - Neither                 → nothing rendered  */}
+        {(() => {
+          const hasHighlights =
+            !!data.highlights && data.highlights.length > 0;
+          const hasStats =
+            followerSum.parsedCount >= 2 ||
+            !!(data.socialStats && data.socialStats.length > 0);
+          if (!hasHighlights && !hasStats) return null;
 
-            <div className="pitch-why-you__stats-col">
-              <div className="pitch-why-you__block-label">BY THE NUMBERS</div>
-              <div className="pitch-why-you__stat-tiles">
-                {/* Auto-summed combined followers — only when 2+ handles
-                    contributed to the sum (otherwise it's just a single
-                    handle's number repeated). */}
-                {followerSum.parsedCount >= 2 ? (
-                  <div className="pitch-why-you__stat-tile pitch-why-you__stat-tile--accent">
-                    <div className="pitch-why-you__stat-value">
-                      {followerSum.formatted}
-                    </div>
-                    <div className="pitch-why-you__stat-label">
-                      Combined followers
-                    </div>
+          const statTiles = (
+            <div className="pitch-why-you__stat-tiles">
+              {followerSum.parsedCount >= 2 ? (
+                <div className="pitch-why-you__stat-tile pitch-why-you__stat-tile--accent">
+                  <div className="pitch-why-you__stat-value">
+                    {followerSum.formatted}
                   </div>
-                ) : null}
-                {(data.socialStats ?? []).map((s, i) => (
-                  <div className="pitch-why-you__stat-tile" key={i}>
-                    <div className="pitch-why-you__stat-value">{s.value}</div>
-                    <div className="pitch-why-you__stat-label">{s.label}</div>
+                  <div className="pitch-why-you__stat-label">
+                    Combined followers
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : null}
+              {(data.socialStats ?? []).map((s, i) => (
+                <div className="pitch-why-you__stat-tile" key={i}>
+                  <div className="pitch-why-you__stat-value">{s.value}</div>
+                  <div className="pitch-why-you__stat-label">{s.label}</div>
+                </div>
+              ))}
             </div>
-          </div>
-        ) : null}
+          );
+
+          // Two-column layout when both sides have content.
+          if (hasHighlights && hasStats) {
+            return (
+              <div className="pitch-why-you__body-grid">
+                <div className="pitch-why-you__highlights-col">
+                  <div className="pitch-why-you__block-label">RECENT</div>
+                  <ol className="pitch-why-you__highlights-numbered">
+                    {data.highlights!.map((h, i) => (
+                      <li key={i}>
+                        <span className="pitch-why-you__highlight-num">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span className="pitch-why-you__highlight-text">
+                          {h}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+                <div className="pitch-why-you__stats-col">
+                  <div className="pitch-why-you__block-label">
+                    BY THE NUMBERS
+                  </div>
+                  {statTiles}
+                </div>
+              </div>
+            );
+          }
+
+          // Stats only → full-width horizontal strip (tiles in a row).
+          if (hasStats) {
+            return (
+              <div className="pitch-why-you__numbers-strip">
+                <div className="pitch-why-you__block-label">
+                  BY THE NUMBERS
+                </div>
+                <div className="pitch-why-you__stat-tiles pitch-why-you__stat-tiles--row">
+                  {followerSum.parsedCount >= 2 ? (
+                    <div className="pitch-why-you__stat-tile pitch-why-you__stat-tile--accent">
+                      <div className="pitch-why-you__stat-value">
+                        {followerSum.formatted}
+                      </div>
+                      <div className="pitch-why-you__stat-label">
+                        Combined followers
+                      </div>
+                    </div>
+                  ) : null}
+                  {(data.socialStats ?? []).map((s, i) => (
+                    <div className="pitch-why-you__stat-tile" key={i}>
+                      <div className="pitch-why-you__stat-value">{s.value}</div>
+                      <div className="pitch-why-you__stat-label">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
+          // Highlights only → full-width single column.
+          return (
+            <div className="pitch-why-you__numbers-strip">
+              <div className="pitch-why-you__block-label">RECENT</div>
+              <ol className="pitch-why-you__highlights-numbered">
+                {data.highlights!.map((h, i) => (
+                  <li key={i}>
+                    <span className="pitch-why-you__highlight-num">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="pitch-why-you__highlight-text">{h}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          );
+        })()}
 
         {/* ============== PULL QUOTE ============== */}
         {data.quote ? (
