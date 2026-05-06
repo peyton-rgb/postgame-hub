@@ -79,6 +79,56 @@ const CONCEPT_OUTPUT_SCHEMA = {
   required: ['concepts'],
 };
 
+// Normalize whatever Claude returns into a valid production_scope enum.
+// Claude tends to write free-text descriptions ("medium production",
+// "full crew", etc.) instead of the literal enum string, even when the
+// schema specifies it. We map common phrasings to the closest enum,
+// defaulting to 'hybrid' when nothing matches.
+type ProductionScope = 'ugc_only' | 'hybrid' | 'full_production';
+
+function normalizeProductionScope(raw: unknown): ProductionScope {
+  if (typeof raw !== 'string') return 'hybrid';
+  const v = raw.toLowerCase().trim();
+
+  if (v === 'ugc_only' || v === 'hybrid' || v === 'full_production') {
+    return v;
+  }
+
+  // ugc_only: athlete-captured, phone-shot, no crew
+  if (
+    v.includes('ugc') ||
+    v.includes('user generated') ||
+    v.includes('user-generated') ||
+    v.includes('athlete captured') ||
+    v.includes('athlete-captured') ||
+    v.includes('self shot') ||
+    v.includes('self-shot') ||
+    v.includes('phone') ||
+    v.includes('no production') ||
+    v.includes('no crew')
+  ) {
+    return 'ugc_only';
+  }
+
+  // full_production: full crew, cinematic, commercial-grade
+  if (
+    v.includes('full production') ||
+    v.includes('full_production') ||
+    v.includes('full crew') ||
+    v.includes('full-crew') ||
+    v.includes('commercial') ||
+    v.includes('cinematic') ||
+    v.includes('high production') ||
+    v.includes('high-production') ||
+    v.includes('professional production')
+  ) {
+    return 'full_production';
+  }
+
+  // hybrid covers everything in between (mix of UGC + crew, mid-tier, etc.)
+  return 'hybrid';
+}
+
 // Build the system prompt for the Creative Director persona
 function buildSystemPrompt(voiceRules: string | null): string {
   return `You are the Creative Director for Postgame, an NIL (Name, Image, Likeness) marketing agency that runs campaigns where brands sponsor college athletes to create social media content.
@@ -97,6 +147,13 @@ OUTPUT REQUIREMENTS:
 - Generate exactly 3 to 5 concepts. Each must be distinct — different angles, not variations on one idea.
 - Each concept needs: a memorable name, a one-paragraph hook that sells it, an athlete archetype, setting suggestions, production scope, and estimated asset count.
 - If inspo items are provided, reference them by ID in your concepts. Pull visual and tonal inspiration from them.
+
+PRODUCTION SCOPE — STRICT ENUM:
+The "production_scope" field MUST be EXACTLY one of these three literal strings, with no variations, no descriptive text, no extra words:
+  - "ugc_only"         (athlete shoots on their phone, no crew)
+  - "hybrid"           (mix of athlete-captured + light crew/editing)
+  - "full_production"  (full crew, cinematic, commercial-grade)
+Do NOT write "Medium Production", "UGC", "Full Production", or any prose. Use only the lowercase enum string with the underscore exactly as shown above. Any other value will be rejected.
 
 CONSTRAINTS:
 - Do NOT use real athlete names unless they appear in the brief.
@@ -426,7 +483,7 @@ export async function generateConcepts(
     athlete_archetype: (c.athlete_archetype as string) || null,
     settings_suggestions: (c.settings_suggestions as string[]) || [],
     inspo_references: (c.inspo_item_ids as string[]) || [],
-    production_scope: (c.production_scope as string) || 'hybrid',
+    production_scope: normalizeProductionScope(c.production_scope),
     estimated_assets: (c.estimated_assets as number) || null,
     status: 'proposed' as const,
     generated_by: 'claude' as const,
