@@ -15,7 +15,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserSupabase } from '@/lib/supabase';
 import type { InspoItem, TaggingStatus } from '@/lib/types/intake';
 
 // --- Status display helpers ---
@@ -40,7 +40,7 @@ const STATUS_COLORS: Record<TaggingStatus, string> = {
 type Tab = 'upload' | 'queue' | 'brief';
 
 export default function IntakePage() {
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserSupabase();
 
   // --- State ---
   const [activeTab, setActiveTab] = useState<Tab>('upload');
