@@ -323,6 +323,27 @@ export default function CreatorBriefEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
+  // Dropdown data for contacts & videographers
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [vidList, setVidList] = useState<VideographerOption[]>([]);
+  const [staffDropdownOpen, setStaffDropdownOpen] = useState(false);
+  const staffRef = useRef<HTMLDivElement>(null);
+
+  // Load dropdown options once
+  useEffect(() => {
+    fetch('/api/staff').then((r) => r.ok ? r.json() : []).then(setStaffList);
+    fetch('/api/videographers').then((r) => r.ok ? r.json() : []).then(setVidList);
+  }, []);
+
+  // Close staff dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (staffRef.current && !staffRef.current.contains(e.target as Node)) setStaffDropdownOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -430,6 +451,33 @@ export default function CreatorBriefEditorPage() {
   function persistSections() {
     if (!brief) return;
     saveField({ sections: brief.sections });
+  }
+
+  // --- Contact helpers (top-level, not section-level) ---
+  function toggleStaffContact(member: StaffMember) {
+    if (!brief) return;
+    const contacts = brief.postgame_contacts || [];
+    const exists = contacts.some((c) => c.id === member.id);
+    const updated = exists
+      ? contacts.filter((c) => c.id !== member.id)
+      : [...contacts, { id: member.id, name: member.name, phone: member.phone || '', role: member.role || '', email: member.email }];
+    setBrief({ ...brief, postgame_contacts: updated });
+  }
+
+  function removeContact(index: number) {
+    if (!brief) return;
+    setBrief({
+      ...brief,
+      postgame_contacts: (brief.postgame_contacts || []).filter((_, i) => i !== index),
+    });
+  }
+
+  function selectVideographer(v: VideographerOption) {
+    if (!brief) return;
+    setBrief({
+      ...brief,
+      videographer: { id: v.id, name: v.name, phone: v.phone || '', role: 'Videographer', email: v.email || undefined },
+    });
   }
 
   if (loading) {
@@ -608,6 +656,88 @@ export default function CreatorBriefEditorPage() {
             Saving on blur. Slug:{' '}
             <code className="text-gray-400">{brief.slug}</code>
           </p>
+        </section>
+
+        {/* Shoot Contacts */}
+        <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4">Shoot Contacts</h2>
+
+          {/* Postgame Contacts — multi-select dropdown */}
+          <div className="mb-5">
+            <label className="block text-xs text-gray-500 mb-1.5">Postgame Contacts</label>
+            <div ref={staffRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setStaffDropdownOpen(!staffDropdownOpen)}
+                className="w-full text-left px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 flex items-center justify-between"
+              >
+                <span>
+                  {(brief.postgame_contacts || []).length === 0
+                    ? 'Select team members...'
+                    : `${(brief.postgame_contacts || []).length} selected`}
+                </span>
+                <span className="text-gray-500">{staffDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+              {staffDropdownOpen && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                  {staffList.map((s) => {
+                    const isSelected = (brief.postgame_contacts || []).some((c) => c.id === s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => toggleStaffContact(s)}
+                        className={`w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-gray-700 border-b border-gray-700/50 last:border-0 ${
+                          isSelected ? 'bg-gray-700/50' : ''
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-xs ${
+                          isSelected ? 'bg-[#D73F09] border-[#D73F09] text-white' : 'border-gray-600'
+                        }`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                        <div>
+                          <span className="text-sm text-white">{s.name}</span>
+                          {s.phone && <span className="text-xs text-gray-400 ml-2">{s.phone}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Selected contacts shown below */}
+            {(brief.postgame_contacts || []).length > 0 && (
+              <div className="mt-3 space-y-2">
+                {(brief.postgame_contacts || []).map((contact, i) => (
+                  <div key={contact.id || i} className="flex items-center gap-2 bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2">
+                    <span className="text-sm text-white font-medium min-w-[120px]">{contact.name}</span>
+                    <span className="text-xs text-gray-400">{contact.phone}</span>
+                    <button onClick={() => removeContact(i)} className="ml-auto text-gray-500 hover:text-red-400 text-xs">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Videographer — searchable dropdown */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1.5">Videographer</label>
+            <VideographerSearch
+              videographers={vidList}
+              selected={brief.videographer}
+              onSelect={selectVideographer}
+              onClear={() => setBrief({ ...brief, videographer: null })}
+            />
+          </div>
+
+          <button
+            onClick={() => saveField({ postgame_contacts: brief.postgame_contacts, videographer: brief.videographer })}
+            disabled={saving}
+            className="mt-4 px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-sm disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save Contacts'}
+          </button>
         </section>
 
         {/* Sections list */}

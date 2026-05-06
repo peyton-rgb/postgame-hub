@@ -292,6 +292,8 @@ export interface CreatorBrief {
   reference_images: { url: string; caption?: string }[];
   brand_color: string | null;
   brand_logo_url: string | null;
+  postgame_contacts: ShootContact[];
+  videographer: ShootContact | null;
   status: CreatorBriefStatus;
   published_at: string | null;
   created_by: string;
