@@ -1,199 +1,149 @@
 // ============================================================
 // Brief Writer Agent
-// Takes an approved concept + its parent campaign brief, returns
-// a structured creator/videographer brief composed of typed
-// sections (concept, photos, deliverables, do's/don'ts, etc.).
 //
-// Called by POST /api/creator-briefs/generate.
+// Takes an approved concept + its parent campaign brief and
+// generates a structured creator/videographer brief with
+// numbered sections. The output is a JSON array of sections
+// that gets saved to the creator_briefs table.
+//
+// The shoot_logistics section (section 00) is always included
+// as a placeholder — the AM fills in contacts and times via
+// the editor before publishing.
+//
+// Called by POST /api/creator-briefs/generate
 // ============================================================
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createServiceSupabase } from '@/lib/supabase';
-import type { CreatorBriefSection } from '@/lib/types/briefs';
+import { createClient } from '@supabase/supabase-js';
+import type { CreatorBrief, CreatorBriefSection } from '@/lib/types/briefs';
 
-// Lazy clients — same pattern as creative-director.ts so the module
-// can be imported during build-time page-data collection without env
-// vars present.
-let _anthropic: Anthropic | null = null;
-function getAnthropic(): Anthropic {
-  if (!_anthropic) _anthropic = new Anthropic();
-  return _anthropic;
+const anthropic = new Anthropic();
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// ---- System prompt for the Brief Writer ----
+const BRIEF_WRITER_SYSTEM_PROMPT = `You are the Brief Writer for Postgame, an NIL marketing agency. Your job is to take an approved creative concept and its parent campaign brief, then produce a complete, professional videographer/creator brief.
+
+CONTEXT:
+Postgame runs campaigns where brands sponsor college athletes to create social media content. A campaign brief describes what the brand wants. A concept is a specific creative direction approved by the campaign manager. Your job is to turn that concept into a structured, actionable brief that a videographer can follow on set.
+
+YOUR OUTPUT:
+Generate a JSON array of sections. Each section has:
+- "number": a two-digit string ("01", "02", etc.)
+- "title": the section heading
+- "type": one of the defined section types
+- "content": an object matching that section type's schema
+
+SECTION TYPES (generate in this order):
+1. concept — The creative concept overview. Include a description paragraph and optionally a callout for critical info.
+2. photos — Reference photo guidance. Describe what kinds of photos to look for. Include any reference image URLs from the concept.
+3. videos — Reference video guidance. Describe the video style and approach.
+4. deliverables — Required deliverables. Break into video and photography sections with counts, formats, and orientation.
+5. product_reqs — Product/brand requirements. List each product or brand element with its specific requirements.
+6. athlete_reqs — What the athlete needs to do. Bullet list of requirements plus an optional pro tip.
+7. creative_direction — Tone badges, visual style description, and lighting notes.
+8. camera_specs — Technical camera settings for video and photography, plus lens recommendations.
+9. workflow — Step-by-step shoot workflow. Number each step with a title and description.
+10. dos_donts — Do's and Don'ts lists. Be specific and actionable.
+11. file_delivery — File specs, delivery method, and deadline.
+
+RULES:
+- Be specific and actionable. A videographer reads this on their way to a shoot.
+- Pull all mandatories from the campaign brief into the appropriate sections (product_reqs, athlete_reqs, dos_donts).
+- Pull all restrictions into the Don'ts.
+- Match the concept's creative direction — if the concept says "cinematic," the camera specs should reflect that.
+- Generate realistic camera specs appropriate to the production scope (ugc_only = phone-friendly, full_production = pro specs).
+- The workflow should be practical and ordered logically for a real shoot day.
+- Return ONLY valid JSON — an array of section objects. No markdown, no extra text.`;
+
+// ---- Slug generator ----
+function generateSlug(brandName: string, conceptName: string): string {
+  const base = `${brandName}-${conceptName}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50);
+  const shortId = Math.random().toString(36).slice(2, 8);
+  return `${base}-${shortId}`;
 }
 
-let _supabase: ReturnType<typeof createServiceSupabase> | null = null;
-function getSupabase() {
-  if (!_supabase) _supabase = createServiceSupabase();
-  return _supabase;
-}
+// ---- Build the user message ----
+function buildBriefWriterMessage(
+  concept: Record<string, unknown>,
+  brief: Record<string, unknown>,
+  brand: Record<string, unknown>
+): string {
+  let msg = `## APPROVED CONCEPT\n\n`;
+  msg += `**Name:** ${concept.name}\n`;
+  msg += `**Hook:** ${concept.hook}\n`;
+  if (concept.athlete_archetype) msg += `**Athlete Archetype:** ${concept.athlete_archetype}\n`;
+  if (concept.athlete_name) msg += `**Assigned Athlete:** ${concept.athlete_name}\n`;
+  msg += `**Production Scope:** ${concept.production_scope}\n`;
+  msg += `**Estimated Assets:** ${concept.estimated_assets || 'TBD'}\n`;
 
-// What we tell Claude to return — gives the model a precise schema
-// to fill in. We instruct it to generate ALL eleven section types.
-const BRIEF_OUTPUT_SCHEMA = {
-  type: 'object',
-  properties: {
-    sections: {
-      type: 'array',
-      description:
-        'Array of brief sections. Generate one of each type below, in this order, with the matching `number` and `title`.',
-      minItems: 11,
-      maxItems: 11,
-    },
-  },
-  required: ['sections'],
-};
+  const settings = concept.settings_suggestions as string[] | undefined;
+  if (settings && settings.length > 0) {
+    msg += `**Settings:** ${settings.join(', ')}\n`;
+  }
 
-const SECTION_BLUEPRINT = `Generate EXACTLY these 11 sections in this order:
+  const refImages = concept.reference_image_urls as string[] | undefined;
+  if (refImages && refImages.length > 0) {
+    msg += `\n### Reference Images (${refImages.length})\n`;
+    refImages.forEach((url, i) => { msg += `- Ref ${i + 1}: ${url}\n`; });
+  }
 
-01 The Concept (type: "concept")
-   content: { description: string, callout?: { title: string, text: string } }
-
-02 Photo Examples (type: "photos")
-   content: { description: string, images: { url: string, caption?: string }[] }
-
-03 Video Examples (type: "videos")
-   content: { description: string, videos: { url: string, caption?: string }[] }
-
-04 Required Deliverables (type: "deliverables")
-   content: {
-     video?: { title: string, count: string, description: string, orientation: string },
-     photography?: { title: string, minimum: string, style: string }
-   }
-
-05 Product Requirements (type: "product_reqs")
-   content: { items: { name: string, requirements: string[] }[] }
-
-06 Athlete Requirements (type: "athlete_reqs")
-   content: { requirements: string[], tip?: { title: string, text: string } }
-
-07 Creative Direction (type: "creative_direction")
-   content: { tone: string[], visual_style: string, lighting_notes: string }
-
-08 Camera & Technical (type: "camera_specs")
-   content: {
-     video_settings: { frame_rate, resolution, orientation, stabilization, color_profile },
-     photography_settings: { format, shutter_speed, aperture, mode },
-     lens_recommendation: string
-   }
-
-09 Shoot Workflow (type: "workflow")
-   content: { steps: { number: number, title: string, description: string }[] }
-
-10 Do's & Don'ts (type: "dos_donts")
-   content: { dos: string[], donts: string[] }
-
-11 File Delivery (type: "file_delivery")
-   content: {
-     video_specs: { format, resolution, color_profile },
-     photo_specs: { format, color_grading },
-     delivery_method: string,
-     deadline: string
-   }`;
-
-function buildSystemPrompt(): string {
-  return `You are the Brief Writer for Postgame, an NIL marketing agency. You take an approved creative concept and produce a structured, production-ready brief that a videographer and athlete will execute.
-
-PERSONA:
-- Professional, confident, specific. These briefs go to real production crews.
-- You think in concrete deliverables, camera settings, and shot lists — not vibes.
-- You assume the reader is competent but needs explicit direction.
-
-OUTPUT REQUIREMENTS:
-- Return ONLY valid JSON. No prose, no markdown fences, no commentary.
-- The JSON must be: { "sections": [ ...11 section objects... ] }
-- Each section object has: { number, title, type, content }
-- ${SECTION_BLUEPRINT}
-
-CONTENT RULES:
-- Every mandatory from the campaign brief MUST appear in an appropriate section (deliverables, product_reqs, athlete_reqs, or as a callout in the concept).
-- Every restriction MUST appear in the "donts" list of section 10.
-- For section 02 (Photo Examples): if reference image URLs are provided in the input, include them in the images array with thoughtful captions. If none are provided, leave images as an empty array but still write a strong description.
-- For section 03 (Video Examples): leave videos as an empty array unless reference video URLs are provided. Write a description anyway.
-- Camera specs (section 08) must be realistic and specific to the concept's production_scope:
-  - ugc_only → assume athlete's iPhone (1080p, 30fps, vertical 9:16)
-  - hybrid → mix of phone + DSLR/mirrorless (4K, 24-30fps)
-  - full_production → cinema-grade (4K, 24fps, S-Log/LOG color profile, prime lenses)
-- Workflow (section 09) should have 4-7 sequential steps that fit the concept and production scope.
-- Tone array (section 07) is 2-4 short adjective phrases like "Confident & Game-Ready" or "Clean & Cinematic".
-- Be specific. "Use good lighting" is bad. "Shoot during golden hour, last 90 minutes before sunset, with the sun at the athlete's back" is good.`;
-}
-
-function buildUserMessage(args: {
-  concept: Record<string, unknown>;
-  brief: Record<string, unknown>;
-  brand: Record<string, unknown>;
-  referenceImageUrls: string[];
-  athleteName: string | null;
-}): string {
-  const { concept, brief, brand, referenceImageUrls, athleteName } = args;
-  let m = `## CAMPAIGN BRIEF\n\n`;
-  m += `**Brand:** ${brand.name || 'Unknown'}\n`;
-  m += `**Campaign:** ${brief.name}\n`;
-  m += `**Type:** ${brief.campaign_type}\n`;
-  m += `**Production Config:** ${brief.production_config}\n`;
-  if (brief.start_date) m += `**Start Date:** ${brief.start_date}\n`;
-  if (brief.target_launch_date) m += `**Target Launch:** ${brief.target_launch_date}\n`;
-  if (brief.budget) m += `**Budget:** $${brief.budget}\n`;
+  msg += `\n## CAMPAIGN BRIEF\n\n`;
+  msg += `**Brand:** ${brand.name || 'Unknown'}\n`;
+  msg += `**Campaign:** ${brief.name}\n`;
+  msg += `**Type:** ${brief.campaign_type}\n`;
+  msg += `**Production Config:** ${brief.production_config}\n`;
 
   if (brief.brief_content) {
-    m += `\n### Brief Body\n`;
-    m += typeof brief.brief_content === 'string'
+    msg += `\n### Brief Content\n`;
+    msg += typeof brief.brief_content === 'string'
       ? brief.brief_content
       : JSON.stringify(brief.brief_content, null, 2);
-    m += '\n';
+    msg += '\n';
   }
 
   const mandatories = brief.mandatories as string[] | undefined;
-  const restrictions = brief.restrictions as string[] | undefined;
   if (mandatories && mandatories.length > 0) {
-    m += `\n### MANDATORIES\n`;
-    mandatories.forEach((x) => { m += `- ${x}\n`; });
+    msg += `\n### MANDATORIES (must appear in the brief)\n`;
+    mandatories.forEach((m) => { msg += `- ${m}\n`; });
   }
+
+  const restrictions = brief.restrictions as string[] | undefined;
   if (restrictions && restrictions.length > 0) {
-    m += `\n### RESTRICTIONS\n`;
-    restrictions.forEach((x) => { m += `- ${x}\n`; });
+    msg += `\n### RESTRICTIONS (must appear in Don'ts)\n`;
+    restrictions.forEach((r) => { msg += `- ${r}\n`; });
   }
 
-  m += `\n## APPROVED CONCEPT\n`;
-  m += `**Name:** ${concept.name}\n`;
-  m += `**Hook:** ${concept.hook}\n`;
-  if (concept.athlete_archetype) m += `**Athlete Archetype:** ${concept.athlete_archetype}\n`;
-  if (Array.isArray(concept.settings_suggestions) && (concept.settings_suggestions as string[]).length > 0) {
-    m += `**Settings:** ${(concept.settings_suggestions as string[]).join(', ')}\n`;
-  }
-  m += `**Production Scope:** ${concept.production_scope}\n`;
-  if (concept.estimated_assets) m += `**Estimated Assets:** ${concept.estimated_assets}\n`;
-
-  if (athleteName) {
-    m += `\n## ATHLETE\n${athleteName}\n`;
+  if (brief.athlete_targeting) {
+    msg += `\n### Athlete Targeting\n${JSON.stringify(brief.athlete_targeting, null, 2)}\n`;
   }
 
-  if (referenceImageUrls.length > 0) {
-    m += `\n## REFERENCE IMAGE URLS\n`;
-    m += `Use these in section 02 (Photo Examples):\n`;
-    referenceImageUrls.forEach((url) => { m += `- ${url}\n`; });
-  }
+  msg += `\n## OUTPUT\nReturn a JSON array of section objects matching the defined section types. Start with section "01" (concept). Do NOT include a shoot_logistics section — that is added separately.`;
 
-  m += `\n## OUTPUT\nReturn the brief as JSON: { "sections": [...11 sections...] }. No markdown, no prose, no commentary.`;
-  return m;
+  return msg;
 }
 
-// Generate sections for an approved concept. Returns the raw section array
-// (the API route is responsible for inserting the creator_briefs row).
-export async function generateBriefSections(
+/**
+ * Generates a creator brief from an approved concept.
+ *
+ * @param conceptId — UUID of the approved concept
+ * @param userId — UUID of the user triggering generation
+ * @returns The created creator_briefs record
+ */
+export async function generateCreatorBrief(
   conceptId: string,
   userId: string
-): Promise<{
-  sections: CreatorBriefSection[];
-  concept: Record<string, unknown>;
-  campaignBrief: Record<string, unknown>;
-  brand: Record<string, unknown>;
-  agentRunId: string;
-}> {
+): Promise<CreatorBrief> {
   const startTime = Date.now();
-  const supabase = getSupabase();
-  const anthropic = getAnthropic();
 
-  // Step 1: load concept + parent brief + brand
+  // --- Load concept ---
   const { data: concept, error: conceptError } = await supabase
     .from('concepts')
     .select('*')
@@ -205,49 +155,36 @@ export async function generateBriefSections(
   }
 
   if (concept.status !== 'approved') {
-    throw new Error('Only approved concepts can have a creator brief generated.');
+    throw new Error('Only approved concepts can generate creator briefs');
   }
 
-  const { data: brief, error: briefError } = await supabase
+  // --- Load parent brief + brand ---
+  const { data: brief } = await supabase
     .from('campaign_briefs')
     .select('*')
     .eq('id', concept.brief_id)
     .single();
 
-  if (briefError || !brief) {
-    throw new Error(`Campaign brief not found: ${concept.brief_id}`);
-  }
+  if (!brief) throw new Error(`Campaign brief not found: ${concept.brief_id}`);
 
-  const { data: brand, error: brandError } = await supabase
+  const { data: brand } = await supabase
     .from('brands')
     .select('*')
     .eq('id', brief.brand_id)
     .single();
 
-  if (brandError || !brand) {
-    throw new Error(`Brand not found: ${brief.brand_id}`);
-  }
+  if (!brand) throw new Error(`Brand not found: ${brief.brand_id}`);
 
-  // Step 2: build prompts
-  const systemPrompt = buildSystemPrompt();
-  const userMessage = buildUserMessage({
-    concept,
-    brief,
-    brand,
-    referenceImageUrls: (concept.reference_image_urls as string[]) || [],
-    athleteName: (concept.athlete_name as string | null) || null,
-  });
-
-  // Step 3: log run start
+  // --- Create agent run record ---
   const { data: agentRun, error: runError } = await supabase
     .from('agent_runs')
     .insert({
       agent_name: 'brief_writer',
       triggered_by: userId,
       input_payload: {
-        system_prompt: systemPrompt,
-        user_message: userMessage,
         concept_id: conceptId,
+        brief_id: concept.brief_id,
+        brand_id: brief.brand_id,
       },
       model: 'claude-sonnet-4-20250514',
       status: 'running',
@@ -255,17 +192,17 @@ export async function generateBriefSections(
     .select()
     .single();
 
-  if (runError) {
-    throw new Error(`Failed to create agent run: ${runError.message}`);
-  }
+  if (runError) throw new Error(`Failed to create agent run: ${runError.message}`);
 
-  // Step 4: call Claude
+  // --- Call Claude ---
+  const userMessage = buildBriefWriterMessage(concept, brief, brand);
   let response;
+
   try {
     response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8192,
-      system: systemPrompt,
+      system: BRIEF_WRITER_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
     });
   } catch (err) {
@@ -273,87 +210,129 @@ export async function generateBriefSections(
       .from('agent_runs')
       .update({
         status: 'failed',
-        error_message: err instanceof Error ? err.message : 'Claude API call failed',
+        error_message: err instanceof Error ? err.message : 'Claude API failed',
         duration_ms: Date.now() - startTime,
       })
       .eq('id', agentRun.id);
     throw err;
   }
 
-  // Step 5: parse response
+  // --- Parse response ---
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
     await supabase
       .from('agent_runs')
-      .update({
-        status: 'failed',
-        error_message: 'Claude returned no text content',
-        duration_ms: Date.now() - startTime,
-      })
+      .update({ status: 'failed', error_message: 'No text in response', duration_ms: Date.now() - startTime })
       .eq('id', agentRun.id);
-    throw new Error('Claude returned no text content');
+    throw new Error('Claude returned no text');
   }
 
-  let parsed;
+  let sections: CreatorBriefSection[];
   try {
-    let json = textBlock.text.trim();
-    if (json.startsWith('```')) {
-      json = json.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    let jsonText = textBlock.text.trim();
+    if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
     }
-    parsed = JSON.parse(json);
+    sections = JSON.parse(jsonText);
   } catch {
-    // Retry once with a correction prompt
+    // Retry once
     try {
-      const retry = await anthropic.messages.create({
+      const retryResponse = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 8192,
-        system: systemPrompt,
+        system: BRIEF_WRITER_SYSTEM_PROMPT,
         messages: [
           { role: 'user', content: userMessage },
           { role: 'assistant', content: textBlock.text },
-          {
-            role: 'user',
-            content: `Your previous response was not valid JSON. Return ONLY the JSON object: { "sections": [...] }. No markdown fences. No prose. Schema:\n${JSON.stringify(BRIEF_OUTPUT_SCHEMA)}`,
-          },
+          { role: 'user', content: 'Not valid JSON. Return ONLY a JSON array of section objects. No markdown.' },
         ],
       });
-      const retryBlock = retry.content.find((b) => b.type === 'text');
-      if (!retryBlock || retryBlock.type !== 'text') throw new Error('retry empty');
-      let json = retryBlock.text.trim();
-      if (json.startsWith('```')) {
-        json = json.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+      const retryBlock = retryResponse.content.find((b) => b.type === 'text');
+      if (retryBlock && retryBlock.type === 'text') {
+        let retryJson = retryBlock.text.trim();
+        if (retryJson.startsWith('```')) {
+          retryJson = retryJson.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+        }
+        sections = JSON.parse(retryJson);
+        response = retryResponse;
+      } else {
+        throw new Error('Retry returned no text');
       }
-      parsed = JSON.parse(json);
-      response = retry;
     } catch {
       await supabase
         .from('agent_runs')
         .update({
           status: 'failed',
-          error_message: 'Failed to parse Brief Writer response as JSON after 2 attempts',
-          output_payload: { raw_response: textBlock.text },
+          error_message: 'Failed to parse JSON after 2 attempts',
+          output_payload: { raw: textBlock.text },
           duration_ms: Date.now() - startTime,
         })
         .eq('id', agentRun.id);
-      throw new Error('Brief Writer returned malformed JSON twice. Please try again.');
+      throw new Error('Brief Writer returned malformed JSON twice');
     }
   }
 
-  const sections = parsed.sections || parsed;
   if (!Array.isArray(sections) || sections.length === 0) {
     await supabase
       .from('agent_runs')
-      .update({
-        status: 'failed',
-        error_message: 'Response did not contain a sections array',
-        output_payload: parsed,
-        duration_ms: Date.now() - startTime,
-      })
+      .update({ status: 'failed', error_message: 'Empty sections array', duration_ms: Date.now() - startTime })
       .eq('id', agentRun.id);
-    throw new Error('Brief Writer did not return any sections');
+    throw new Error('Brief Writer returned no sections');
   }
 
-  // Step 6: log run complete
+  // --- Prepend the shoot_logistics placeholder (section 00) ---
+  // The AM fills this in via the editor before publishing.
+  const shootLogisticsSection: CreatorBriefSection = {
+    number: '00',
+    title: 'Shoot Logistics',
+    type: 'shoot_logistics',
+    content: {
+      shoot_date: null,
+      shoot_time: null,
+      location: null,
+      postgame_contacts: [],
+      videographer: null,
+    },
+  };
+
+  // Re-number the AI-generated sections starting at 01
+  const numberedSections = sections.map((s, i) => ({
+    ...s,
+    number: String(i + 1).padStart(2, '0'),
+  }));
+
+  const allSections = [shootLogisticsSection, ...numberedSections];
+
+  // --- Build title ---
+  const title = concept.athlete_name
+    ? `${brief.name} (${concept.athlete_name}) — ${concept.name}`
+    : `${brief.name} — ${concept.name}`;
+
+  // --- Save to database ---
+  const slug = generateSlug(brand.name || 'brand', concept.name || 'brief');
+
+  const { data: creatorBrief, error: saveError } = await supabase
+    .from('creator_briefs')
+    .insert({
+      concept_id: conceptId,
+      brief_id: concept.brief_id,
+      brand_id: brief.brand_id,
+      slug,
+      title,
+      athlete_name: concept.athlete_name || null,
+      sections: allSections,
+      reference_images: concept.reference_image_urls || [],
+      brand_color: null, // AM sets this in the editor
+      brand_logo_url: null,
+      status: 'draft',
+      created_by: userId,
+    })
+    .select()
+    .single();
+
+  if (saveError) throw new Error(`Failed to save creator brief: ${saveError.message}`);
+
+  // --- Log success ---
   const inputTokens = response.usage?.input_tokens || 0;
   const outputTokens = response.usage?.output_tokens || 0;
   const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
@@ -362,7 +341,7 @@ export async function generateBriefSections(
     .from('agent_runs')
     .update({
       status: 'complete',
-      output_payload: parsed,
+      output_payload: { sections: allSections, slug, creator_brief_id: creatorBrief.id },
       input_tokens: inputTokens,
       output_tokens: outputTokens,
       cost_usd: costUsd,
@@ -370,11 +349,5 @@ export async function generateBriefSections(
     })
     .eq('id', agentRun.id);
 
-  return {
-    sections: sections as CreatorBriefSection[],
-    concept,
-    campaignBrief: brief,
-    brand,
-    agentRunId: agentRun.id,
-  };
+  return creatorBrief as CreatorBrief;
 }

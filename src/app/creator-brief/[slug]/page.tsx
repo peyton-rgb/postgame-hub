@@ -1,113 +1,595 @@
 // ============================================================
 // Public Creator Brief — /creator-brief/[slug]
-// No auth required. Renders a published creator_briefs row as a
-// numbered mood-board. Server component (force-dynamic so we always
-// serve the latest published content without manual revalidation).
+//
+// The money page. A beautiful, visual mood board that the
+// videographer opens on their phone on the way to a shoot.
+// No auth required — RLS allows public SELECT on published briefs.
+//
+// Section 00 (Shoot Logistics) renders as a header card with
+// date, time, location, and contact info front and center.
 // ============================================================
 
-import { notFound } from 'next/navigation';
-import type { Metadata } from 'next';
-import { createPlainSupabase } from '@/lib/supabase';
-import type { CreatorBrief, CreatorBriefSection } from '@/lib/types/briefs';
-import BriefSections from './sections';
+'use client';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import { useEffect, useState } from 'react';
+import type {
+  CreatorBrief,
+  CreatorBriefSection,
+  ShootLogisticsContent,
+  ConceptSectionContent,
+  PhotosSectionContent,
+  VideosSectionContent,
+  DeliverablesSectionContent,
+  ProductReqsSectionContent,
+  AthleteReqsSectionContent,
+  CreativeDirectionSectionContent,
+  CameraSpecsSectionContent,
+  WorkflowSectionContent,
+  DosDontsSectionContent,
+  FileDeliverySectionContent,
+} from '@/lib/types/briefs';
 
-interface Props {
-  params: { slug: string };
-}
+// ---- Section Renderers ----
 
-async function loadBrief(slug: string): Promise<CreatorBrief | null> {
-  const supabase = createPlainSupabase();
-  const { data } = await supabase
-    .from('creator_briefs')
-    .select('*, brand:brands(id, name)')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .single();
-  return (data as CreatorBrief) || null;
-}
+function ShootLogisticsSection({ content, color }: { content: ShootLogisticsContent; color: string }) {
+  const hasContacts = content.postgame_contacts.length > 0 || content.videographer;
+  const hasSchedule = content.shoot_date || content.shoot_time || content.location;
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const brief = await loadBrief(params.slug);
-  if (!brief) {
-    return { title: 'Brief Not Found' };
-  }
-  return {
-    title: `${brief.title} — Creator Brief`,
-    description: brief.athlete_name
-      ? `Postgame creator brief for ${brief.athlete_name}.`
-      : 'Postgame creator brief.',
-  };
-}
+  if (!hasSchedule && !hasContacts) return null;
 
-export default async function PublicCreatorBriefPage({ params }: Props) {
-  const brief = await loadBrief(params.slug);
-  if (!brief) {
-    notFound();
-  }
+  // Format the date nicely
+  const formattedDate = content.shoot_date
+    ? new Date(content.shoot_date + 'T12:00:00').toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+      })
+    : null;
 
-  const brandColor = brief.brand_color || '#D73F09';
-  const brandName = brief.brand?.name || 'Brand';
+  // Format time to 12-hour
+  const formattedTime = content.shoot_time
+    ? new Date(`2000-01-01T${content.shoot_time}`).toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      })
+    : null;
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: '#f5f5f0', color: '#1a1a1a' }}
-    >
-      {/* Hero */}
-      <header className="px-6 sm:px-10 pt-12 pb-10 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-4">
-            {brief.brand_logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={brief.brand_logo_url}
-                alt={brandName}
-                className="h-10 w-auto object-contain"
-              />
-            )}
-            <div className="text-sm font-bold tracking-widest text-gray-500">
-              POSTGAME
+    <div>
+      {/* Date / Time / Location */}
+      {hasSchedule && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          {formattedDate && (
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Date</div>
+              <div className="text-gray-900 font-semibold">{formattedDate}</div>
             </div>
+          )}
+          {formattedTime && (
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Call Time</div>
+              <div className="text-gray-900 font-semibold">{formattedTime}</div>
+            </div>
+          )}
+          {content.location && (
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Location</div>
+              <div className="text-gray-900 font-semibold">{content.location}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Contacts */}
+      {hasContacts && (
+        <div>
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Contacts</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {content.postgame_contacts.map((c) => (
+              <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm">
+                <div className="font-semibold text-gray-900">{c.name}</div>
+                <div className="text-sm text-gray-500">{c.role || 'Postgame'}</div>
+                {c.phone && (
+                  <a href={`tel:${c.phone}`} className="text-sm font-medium mt-1 block" style={{ color }}>
+                    {c.phone}
+                  </a>
+                )}
+              </div>
+            ))}
+            {content.videographer && (
+              <div className="bg-white rounded-xl p-4 shadow-sm border-2" style={{ borderColor: color }}>
+                <div className="font-semibold text-gray-900">{content.videographer.name}</div>
+                <div className="text-sm text-gray-500">{content.videographer.role || 'Videographer'}</div>
+                {content.videographer.phone && (
+                  <a href={`tel:${content.videographer.phone}`} className="text-sm font-medium mt-1 block" style={{ color }}>
+                    {content.videographer.phone}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
-          <span
-            className="px-3 py-1 rounded-full text-xs font-bold tracking-widest text-white"
-            style={{ backgroundColor: brandColor }}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConceptSection({ content, color }: { content: ConceptSectionContent; color: string }) {
+  return (
+    <div>
+      <p className="text-gray-700 leading-relaxed">{content.description}</p>
+      {content.callout && (
+        <div className="mt-4 rounded-xl p-5 text-white" style={{ backgroundColor: color }}>
+          <div className="font-bold text-sm uppercase tracking-wide mb-2 opacity-90">{content.callout.title}</div>
+          <div className="text-sm leading-relaxed opacity-95">{content.callout.text}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhotosSection({ content }: { content: PhotosSectionContent }) {
+  return (
+    <div>
+      <p className="text-gray-700 leading-relaxed mb-4">{content.description}</p>
+      {content.images && content.images.length > 0 && (
+        <div className="grid grid-cols-2 gap-4">
+          {content.images.map((img, i) => (
+            <div key={i} className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.url} alt={img.caption || `Reference ${i + 1}`} className="w-full h-48 object-cover" />
+              {img.caption && (
+                <p className="text-xs text-gray-500 p-2 text-center">{img.caption}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VideosSection({ content }: { content: VideosSectionContent }) {
+  return (
+    <div>
+      <p className="text-gray-700 leading-relaxed mb-4">{content.description}</p>
+      {content.videos && content.videos.length > 0 && (
+        <div className="grid grid-cols-2 gap-4">
+          {content.videos.map((vid, i) => (
+            <div key={i} className="border-2 border-dashed border-gray-300 rounded-xl p-4">
+              <a href={vid.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline break-all">
+                {vid.caption || vid.url}
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeliverablesSection({ content, color }: { content: DeliverablesSectionContent; color: string }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {content.video && (
+        <div className="bg-gray-50 rounded-xl p-5">
+          <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>VIDEO</div>
+          <div className="font-semibold text-gray-900">{content.video.title}</div>
+          {content.video.count && <div className="text-sm text-gray-500 mt-1">{content.video.count}</div>}
+          <p className="text-sm text-gray-600 mt-2">{content.video.description}</p>
+          {content.video.orientation && (
+            <div className="text-xs text-gray-500 mt-2">{content.video.orientation}</div>
+          )}
+        </div>
+      )}
+      {content.photography && (
+        <div className="bg-gray-50 rounded-xl p-5">
+          <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>PHOTOGRAPHY</div>
+          <div className="font-semibold text-gray-900">{content.photography.title}</div>
+          {content.photography.minimum && <div className="text-sm text-gray-500 mt-1">{content.photography.minimum}</div>}
+          {content.photography.style && <p className="text-sm text-gray-600 mt-2">{content.photography.style}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductReqsSection({ content }: { content: ProductReqsSectionContent }) {
+  return (
+    <div className="space-y-4">
+      {content.items.map((item, i) => (
+        <div key={i} className="bg-gray-50 rounded-xl p-4">
+          <div className="font-semibold text-gray-900 mb-2">{item.name}</div>
+          <ul className="space-y-1">
+            {item.requirements.map((req, j) => (
+              <li key={j} className="text-sm text-gray-600 flex items-start gap-2">
+                <span className="text-gray-400 mt-0.5">&times;</span>
+                {req}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AthleteReqsSection({ content }: { content: AthleteReqsSectionContent }) {
+  return (
+    <div>
+      <ul className="space-y-2 mb-4">
+        {content.requirements.map((req, i) => (
+          <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+            <span className="text-gray-400 mt-0.5">&times;</span>
+            {req}
+          </li>
+        ))}
+      </ul>
+      {content.tip && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="font-semibold text-amber-700 text-sm">{content.tip.title}</div>
+          <div className="text-amber-600 text-sm mt-1">{content.tip.text}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreativeDirectionSection({ content, color }: { content: CreativeDirectionSectionContent; color: string }) {
+  return (
+    <div>
+      {content.tone && content.tone.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {content.tone.map((t, i) => (
+            <span key={i} className="px-3 py-1 rounded-full text-sm font-medium text-white" style={{ backgroundColor: color }}>
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
+      {content.visual_style && (
+        <p className="text-gray-700 leading-relaxed mb-3">{content.visual_style}</p>
+      )}
+      {content.lighting_notes && (
+        <div>
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lighting Notes</div>
+          <p className="text-gray-600 text-sm">{content.lighting_notes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CameraSpecsSection({ content, color }: { content: CameraSpecsSectionContent; color: string }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="bg-gray-50 rounded-xl p-5">
+        <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>VIDEO SETTINGS</div>
+        {Object.entries(content.video_settings).map(([k, v]) => (
+          <div key={k} className="flex justify-between text-sm mb-1">
+            <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
+            <span className="text-gray-900 font-medium">{v}</span>
+          </div>
+        ))}
+      </div>
+      {content.photography_settings && (
+        <div className="bg-gray-50 rounded-xl p-5">
+          <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>PHOTO SETTINGS</div>
+          {Object.entries(content.photography_settings).map(([k, v]) => (
+            <div key={k} className="flex justify-between text-sm mb-1">
+              <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
+              <span className="text-gray-900 font-medium">{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {content.lens_recommendation && (
+        <div className="sm:col-span-2">
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lens Recommendation</div>
+          <p className="text-gray-700 text-sm">{content.lens_recommendation}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkflowSection({ content, color }: { content: WorkflowSectionContent; color: string }) {
+  return (
+    <div className="space-y-3">
+      {content.steps.map((step) => (
+        <div key={step.number} className="flex gap-4">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+            style={{ backgroundColor: color }}
           >
-            CREATOR BRIEF
+            {step.number}
+          </div>
+          <div className="flex-1">
+            <div className="font-semibold text-gray-900">{step.title}</div>
+            <p className="text-sm text-gray-600 mt-0.5">{step.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DosDontsSection({ content }: { content: DosDontsSectionContent }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div>
+        <div className="text-green-600 font-semibold text-sm mb-3">Do&apos;s</div>
+        <ul className="space-y-2">
+          {content.dos.map((d, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+              <span className="text-green-500 mt-0.5">✓</span>
+              {d}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <div className="text-red-600 font-semibold text-sm mb-3">Don&apos;ts</div>
+        <ul className="space-y-2">
+          {content.donts.map((d, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+              <span className="text-red-500 mt-0.5">✗</span>
+              {d}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function FileDeliverySection({ content, color }: { content: FileDeliverySectionContent; color: string }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="bg-gray-50 rounded-xl p-5">
+        <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>VIDEO SPECS</div>
+        {Object.entries(content.video_specs).map(([k, v]) => (
+          <div key={k} className="flex justify-between text-sm mb-1">
+            <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
+            <span className="text-gray-900 font-medium">{v}</span>
+          </div>
+        ))}
+      </div>
+      {content.photo_specs && (
+        <div className="bg-gray-50 rounded-xl p-5">
+          <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>PHOTO SPECS</div>
+          {Object.entries(content.photo_specs).map(([k, v]) => (
+            <div key={k} className="flex justify-between text-sm mb-1">
+              <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
+              <span className="text-gray-900 font-medium">{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {content.delivery_method && (
+        <div>
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Delivery Method</div>
+          <p className="text-gray-700 text-sm">{content.delivery_method}</p>
+        </div>
+      )}
+      {content.deadline && (
+        <div>
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Deadline</div>
+          <p className="text-gray-700 text-sm font-medium">{content.deadline}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Legacy shoot details renderer ----
+// Existing briefs store shoot details as a "concept" section with
+// plain text description + callout. This renders them as structured cards.
+function LegacyShootDetailsSection({ content, color }: { content: ConceptSectionContent; color: string }) {
+  // Parse the plain-text description into labeled fields
+  // Format is usually: "Videographer: X. Athlete: Y. Mom (talent): Z. Shoot date TBD."
+  const description = content.description || '';
+  const lines = description.split(/\.\s*/).filter(Boolean);
+
+  // Parse key-value pairs from the description
+  const fields: { label: string; value: string }[] = [];
+  for (const line of lines) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx > 0 && colonIdx < 30) {
+      fields.push({
+        label: line.slice(0, colonIdx).trim(),
+        value: line.slice(colonIdx + 1).trim(),
+      });
+    } else if (line.trim()) {
+      fields.push({ label: 'Note', value: line.trim() });
+    }
+  }
+
+  return (
+    <div>
+      {/* Parsed fields as a clean grid */}
+      {fields.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          {fields.map((f, i) => (
+            <div key={i} className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{f.label}</div>
+              <div className="text-gray-900 font-medium">{f.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Callout (logistics / day-of info) */}
+      {content.callout && (
+        <div className="rounded-xl p-5 text-white" style={{ backgroundColor: color }}>
+          <div className="font-bold text-sm mb-2 uppercase tracking-wide opacity-90">
+            {content.callout.title}
+          </div>
+          <div className="text-sm leading-relaxed opacity-95">{content.callout.text}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Route a section to its renderer ----
+function SectionRenderer({ section, color }: { section: CreatorBriefSection; color: string }) {
+  // Detect legacy shoot details: type=concept but title contains "Shoot"
+  const isLegacyShootDetails =
+    section.type === 'concept' &&
+    (section.title.toLowerCase().includes('shoot') || section.number === '00');
+
+  if (isLegacyShootDetails) {
+    return <LegacyShootDetailsSection content={section.content as ConceptSectionContent} color={color} />;
+  }
+
+  switch (section.type) {
+    case 'shoot_logistics':
+      return <ShootLogisticsSection content={section.content as ShootLogisticsContent} color={color} />;
+    case 'concept':
+      return <ConceptSection content={section.content as ConceptSectionContent} color={color} />;
+    case 'photos':
+      return <PhotosSection content={section.content as PhotosSectionContent} />;
+    case 'videos':
+      return <VideosSection content={section.content as VideosSectionContent} />;
+    case 'deliverables':
+      return <DeliverablesSection content={section.content as DeliverablesSectionContent} color={color} />;
+    case 'product_reqs':
+      return <ProductReqsSection content={section.content as ProductReqsSectionContent} />;
+    case 'athlete_reqs':
+      return <AthleteReqsSection content={section.content as AthleteReqsSectionContent} />;
+    case 'creative_direction':
+      return <CreativeDirectionSection content={section.content as CreativeDirectionSectionContent} color={color} />;
+    case 'camera_specs':
+      return <CameraSpecsSection content={section.content as CameraSpecsSectionContent} color={color} />;
+    case 'workflow':
+      return <WorkflowSection content={section.content as WorkflowSectionContent} color={color} />;
+    case 'dos_donts':
+      return <DosDontsSection content={section.content as DosDontsSectionContent} />;
+    case 'file_delivery':
+      return <FileDeliverySection content={section.content as FileDeliverySectionContent} color={color} />;
+    default:
+      return <pre className="text-xs text-gray-500">{JSON.stringify(section.content, null, 2)}</pre>;
+  }
+}
+
+// ---- Main Page ----
+export default function PublicCreatorBriefPage({ params }: { params: { slug: string } }) {
+  const [brief, setBrief] = useState<CreatorBrief | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch(`/api/creator-briefs/public/${params.slug}`);
+      if (res.ok) {
+        setBrief(await res.json());
+      } else {
+        setNotFound(true);
+      }
+      setLoading(false);
+    }
+    load();
+  }, [params.slug]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound || !brief) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center">
+        <p className="text-gray-500 text-lg">Brief not found or not yet published.</p>
+      </div>
+    );
+  }
+
+  const color = brief.brand_color || '#D73F09';
+
+  // Separate shoot logistics from content sections.
+  // Handle both new format (type=shoot_logistics) and legacy (type=concept with "Shoot" in title or number=00)
+  const isShootSection = (s: CreatorBriefSection) =>
+    s.type === 'shoot_logistics' ||
+    (s.type === 'concept' && (s.title.toLowerCase().includes('shoot') || s.number === '00'));
+
+  const shootSection = brief.sections.find(isShootSection);
+  const contentSections = brief.sections.filter((s) => !isShootSection(s));
+
+  return (
+    <div className="min-h-screen bg-[#f5f5f0]">
+      {/* Hero — pt-20 accounts for the fixed Postgame navbar */}
+      <div className="bg-white border-b border-gray-200 pt-20">
+        <div className="max-w-3xl mx-auto px-6 py-8">
+          <div className="flex items-center gap-4 mb-4">
+            {brief.brand_logo_url && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={brief.brand_logo_url} alt="Brand" className="h-10 object-contain" />
+            )}
+            <span className="text-gray-400 text-sm">×</span>
+            <span className="font-bold text-gray-900 tracking-tight">postgame</span>
+          </div>
+
+          <span
+            className="inline-block text-xs font-bold tracking-widest uppercase px-3 py-1 rounded-full text-white mb-4"
+            style={{ backgroundColor: color }}
+          >
+            Videographer Creative Brief
           </span>
+
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
+            {brief.title}
+          </h1>
+
+          {brief.athlete_name && (
+            <p className="text-gray-500 text-lg mt-2">Athlete: {brief.athlete_name}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        {/* Shoot Details / Logistics — rendered as a special top card */}
+        {shootSection && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <span
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                style={{ backgroundColor: color }}
+              >
+                {shootSection.number}
+              </span>
+              <h2 className="text-xl font-bold text-gray-900">{shootSection.title}</h2>
+            </div>
+            <hr className="mb-4" style={{ borderColor: color, opacity: 0.3 }} />
+            <SectionRenderer section={shootSection} color={color} />
+          </div>
+        )}
+
+        {/* Numbered sections */}
+        <div className="space-y-8">
+          {contentSections.map((section) => (
+            <div key={`${section.type}-${section.number}`} className="bg-white rounded-2xl shadow-sm p-6 sm:p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <span
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                  style={{ backgroundColor: color }}
+                >
+                  {section.number}
+                </span>
+                <h2 className="text-xl font-bold text-gray-900">{section.title}</h2>
+              </div>
+              <hr className="mb-4" style={{ borderColor: color, opacity: 0.3 }} />
+              <SectionRenderer section={section} color={color} />
+            </div>
+          ))}
         </div>
 
-        <h1
-          className="text-4xl sm:text-5xl font-black leading-tight tracking-tight"
-          style={{ color: '#0c0c0c' }}
-        >
-          {brief.title}
-        </h1>
-        {brief.athlete_name && (
-          <p className="mt-4 text-lg text-gray-600">
-            Featuring <span className="font-semibold" style={{ color: brandColor }}>{brief.athlete_name}</span>
-          </p>
-        )}
-      </header>
-
-      {/* Sections */}
-      <main className="px-6 sm:px-10 pb-20 max-w-4xl mx-auto space-y-6">
-        <BriefSections
-          sections={(brief.sections as CreatorBriefSection[]) || []}
-          brandColor={brandColor}
-        />
-      </main>
-
-      {/* Footer */}
-      <footer
-        className="px-6 sm:px-10 py-8 text-center text-xs text-gray-500 border-t"
-        style={{ borderColor: 'rgba(0,0,0,0.08)' }}
-      >
-        Postgame — {brandName} {brief.campaign_brief?.name || ''} Creative Brief — Confidential
-      </footer>
+        {/* Footer */}
+        <div className="text-center text-gray-400 text-xs mt-12 pb-8">
+          Postgame — {brief.title} — Confidential
+        </div>
+      </div>
     </div>
   );
 }

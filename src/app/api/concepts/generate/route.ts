@@ -4,26 +4,21 @@
 // for a published brief.
 //
 // Body:
-//   {
-//     brief_id: string (required),
-//     athlete_name?: string,
-//     reference_image_urls?: string[],
-//     creative_seeds?: { name: string, description: string }[]
-//   }
+//   { brief_id: string }                          — Start Fresh mode
+//   { brief_id, athlete_name, shoot_date,          — Collaborate mode
+//     location, reference_image_urls,
+//     creative_seeds, iteration_feedback }
 //
-// Returns: { concepts: Concept[] }
+// Returns: { concepts: Concept[], agentRunId: string }
 // ============================================================
 
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
-import { generateConcepts } from '@/lib/agents/creative-director';
-import type { CreativeSeed } from '@/lib/types/briefs';
-
-export const runtime = 'nodejs';
-export const maxDuration = 90;
+import { generateConcepts, type CollaborateInputs } from '@/lib/agents/creative-director';
 
 export async function POST(request: NextRequest) {
-  const supabase = await createServerSupabase();
+  const supabase = createRouteHandlerClient({ cookies });
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -31,17 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const {
-    brief_id,
-    athlete_name,
-    reference_image_urls,
-    creative_seeds,
-  } = body as {
-    brief_id?: string;
-    athlete_name?: string;
-    reference_image_urls?: string[];
-    creative_seeds?: CreativeSeed[];
-  };
+  const { brief_id } = body;
 
   if (!brief_id) {
     return NextResponse.json(
@@ -50,12 +35,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Extract optional Collaborate mode inputs
+  const collaborateInputs: CollaborateInputs = {
+    athleteName: body.athlete_name || undefined,
+    shootDate: body.shoot_date || undefined,
+    location: body.location || undefined,
+    referenceImageUrls: body.reference_image_urls || undefined,
+    creativeSeeds: body.creative_seeds || undefined,
+  };
+
   try {
-    const concepts = await generateConcepts(brief_id, user.id, {
-      athleteName: athlete_name,
-      referenceImageUrls: Array.isArray(reference_image_urls) ? reference_image_urls : undefined,
-      creativeSeeds: Array.isArray(creative_seeds) ? creative_seeds : undefined,
-    });
+    const concepts = await generateConcepts(
+      brief_id,
+      user.id,
+      body.iteration_feedback,
+      collaborateInputs
+    );
     return NextResponse.json({ concepts });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Concept generation failed';

@@ -14,33 +14,18 @@
 // ============================================================
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createServiceSupabase } from '@/lib/supabase';
-import type { Concept, CreativeSeed } from '@/lib/types/briefs';
+import { createClient } from '@supabase/supabase-js';
+import type { Concept, AgentRun } from '@/lib/types/briefs';
 
-// Optional inputs that bias generation toward CM-supplied direction.
-// All optional — if nothing's set, the agent runs exactly like Phase 2.
-export interface GenerateConceptsOptions {
-  iterationFeedback?: string;
-  athleteName?: string;
-  referenceImageUrls?: string[];
-  creativeSeeds?: CreativeSeed[];
-}
+// Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
+const anthropic = new Anthropic();
 
-// Lazy clients — instantiated on first use, not at module load.
-// This keeps Next.js build-time page-data collection from crashing
-// when env vars (ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY) are
-// absent in the build environment.
-let _anthropic: Anthropic | null = null;
-function getAnthropic(): Anthropic {
-  if (!_anthropic) _anthropic = new Anthropic();
-  return _anthropic;
-}
-
-let _supabase: ReturnType<typeof createServiceSupabase> | null = null;
-function getSupabase() {
-  if (!_supabase) _supabase = createServiceSupabase();
-  return _supabase;
-}
+// We use the Supabase admin client here (not the auth-helpers one)
+// because agent runs happen server-side and need full access.
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // The JSON schema we tell Claude to follow for its output.
 // Claude will return an array of concept objects matching this shape.
@@ -88,56 +73,6 @@ const CONCEPT_OUTPUT_SCHEMA = {
   required: ['concepts'],
 };
 
-// Normalize whatever Claude returns into a valid production_scope enum.
-// Claude tends to write free-text descriptions ("medium production",
-// "full crew", etc.) instead of the literal enum string, even when the
-// schema specifies it. We map common phrasings to the closest enum,
-// defaulting to 'hybrid' when nothing matches.
-type ProductionScope = 'ugc_only' | 'hybrid' | 'full_production';
-
-function normalizeProductionScope(raw: unknown): ProductionScope {
-  if (typeof raw !== 'string') return 'hybrid';
-  const v = raw.toLowerCase().trim();
-
-  if (v === 'ugc_only' || v === 'hybrid' || v === 'full_production') {
-    return v;
-  }
-
-  // ugc_only: athlete-captured, phone-shot, no crew
-  if (
-    v.includes('ugc') ||
-    v.includes('user generated') ||
-    v.includes('user-generated') ||
-    v.includes('athlete captured') ||
-    v.includes('athlete-captured') ||
-    v.includes('self shot') ||
-    v.includes('self-shot') ||
-    v.includes('phone') ||
-    v.includes('no production') ||
-    v.includes('no crew')
-  ) {
-    return 'ugc_only';
-  }
-
-  // full_production: full crew, cinematic, commercial-grade
-  if (
-    v.includes('full production') ||
-    v.includes('full_production') ||
-    v.includes('full crew') ||
-    v.includes('full-crew') ||
-    v.includes('commercial') ||
-    v.includes('cinematic') ||
-    v.includes('high production') ||
-    v.includes('high-production') ||
-    v.includes('professional production')
-  ) {
-    return 'full_production';
-  }
-
-  // hybrid covers everything in between (mix of UGC + crew, mid-tier, etc.)
-  return 'hybrid';
-}
-
 // Build the system prompt for the Creative Director persona
 function buildSystemPrompt(voiceRules: string | null): string {
   return `You are the Creative Director for Postgame, an NIL (Name, Image, Likeness) marketing agency that runs campaigns where brands sponsor college athletes to create social media content.
@@ -157,18 +92,22 @@ OUTPUT REQUIREMENTS:
 - Each concept needs: a memorable name, a one-paragraph hook that sells it, an athlete archetype, setting suggestions, production scope, and estimated asset count.
 - If inspo items are provided, reference them by ID in your concepts. Pull visual and tonal inspiration from them.
 
-PRODUCTION SCOPE — STRICT ENUM:
-The "production_scope" field MUST be EXACTLY one of these three literal strings, with no variations, no descriptive text, no extra words:
-  - "ugc_only"         (athlete shoots on their phone, no crew)
-  - "hybrid"           (mix of athlete-captured + light crew/editing)
-  - "full_production"  (full crew, cinematic, commercial-grade)
-Do NOT write "Medium Production", "UGC", "Full Production", or any prose. Use only the lowercase enum string with the underscore exactly as shown above. Any other value will be rejected.
-
 CONSTRAINTS:
 - Do NOT use real athlete names unless they appear in the brief.
 - ALWAYS respect the brief's mandatories (must-include items) and restrictions (do-not-mention items).
 - Lean on the inspo references — they're Postgame's creative memory from prior campaigns.
 - Consider the brand's history if provided. What worked before? What didn't?`;
+}
+
+// Optional inputs from the "Collaborate" panel on the concepts page.
+// When an AM provides these, they get woven into the prompt so the
+// Creative Director agent tailors its concepts to a specific shoot.
+export interface CollaborateInputs {
+  athleteName?: string;
+  shootDate?: string;
+  location?: string;
+  referenceImageUrls?: string[];
+  creativeSeeds?: string[];
 }
 
 // Build the user message with the actual brief data
@@ -177,9 +116,9 @@ function buildUserMessage(
   brand: Record<string, unknown>,
   priorCampaigns: Record<string, unknown>[],
   inspoItems: Record<string, unknown>[],
-  options: GenerateConceptsOptions = {}
+  iterationFeedback?: string,
+  collaborateInputs?: CollaborateInputs
 ): string {
-  const { iterationFeedback, athleteName, referenceImageUrls, creativeSeeds } = options;
   let message = `## BRAND BRIEF\n\n`;
   message += `**Brand:** ${brand.name || 'Unknown'}\n`;
   message += `**Campaign:** ${brief.name}\n`;
@@ -243,27 +182,36 @@ function buildUserMessage(
     });
   }
 
-  // CM-supplied athlete name — bias concepts toward this athlete specifically.
-  if (athleteName && athleteName.trim()) {
-    message += `\n## ATHLETE: ${athleteName.trim()}\n`;
-    message += `Concepts should be tailored for this specific athlete. Lean into what makes them distinctive on social.\n`;
-  }
+  // Collaborate inputs — AM-provided shoot details that make concepts
+  // more specific and actionable for the videographer brief.
+  if (collaborateInputs) {
+    const ci = collaborateInputs;
+    const hasAny = ci.athleteName || ci.shootDate || ci.location ||
+      (ci.referenceImageUrls && ci.referenceImageUrls.length > 0) ||
+      (ci.creativeSeeds && ci.creativeSeeds.length > 0);
 
-  // CM-supplied reference images — Claude can't see them, but knowing they exist
-  // lets it write concepts assuming the visual direction is partially set.
-  if (referenceImageUrls && referenceImageUrls.length > 0) {
-    message += `\n## REFERENCE IMAGES: ${referenceImageUrls.length} image${referenceImageUrls.length === 1 ? '' : 's'} provided by the campaign manager\n`;
-    message += `The CM has uploaded visual references. You can't see them, but assume they establish the look/vibe — write concepts that would match a curated visual mood board.\n`;
-  }
-
-  // CM-supplied creative seeds — collaborate, don't replace.
-  if (creativeSeeds && creativeSeeds.length > 0) {
-    message += `\n## CAMPAIGN MANAGER'S CREATIVE IDEAS\n`;
-    creativeSeeds.forEach((seed, i) => {
-      message += `\n### Seed ${i + 1}: ${seed.name || '(untitled)'}\n`;
-      if (seed.description) message += `${seed.description}\n`;
-    });
-    message += `\nBuild on these ideas. The CM wants you to collaborate and elaborate, not replace their thinking. Generate concepts that develop these seeds further while also proposing fresh angles.\n`;
+    if (hasAny) {
+      message += `\n## SHOOT DETAILS (provided by AM)\n`;
+      message += `Tailor every concept to these specifics.\n\n`;
+      if (ci.athleteName) message += `**Athlete:** ${ci.athleteName}\n`;
+      if (ci.shootDate) message += `**Shoot Date:** ${ci.shootDate}\n`;
+      if (ci.location) message += `**Location:** ${ci.location}\n`;
+      if (ci.referenceImageUrls && ci.referenceImageUrls.length > 0) {
+        message += `\n### Reference Images\n`;
+        message += `The AM uploaded ${ci.referenceImageUrls.length} reference image(s). `;
+        message += `Draw visual/tonal inspiration from these.\n`;
+        ci.referenceImageUrls.forEach((url, i) => {
+          message += `- Ref ${i + 1}: ${url}\n`;
+        });
+      }
+      if (ci.creativeSeeds && ci.creativeSeeds.length > 0) {
+        message += `\n### Creative Seeds\n`;
+        message += `The AM's own creative ideas — build on these, don't ignore them:\n`;
+        ci.creativeSeeds.forEach((seed) => {
+          message += `- "${seed}"\n`;
+        });
+      }
+    }
   }
 
   // Iteration feedback (when an AM asks for changes to a concept)
@@ -284,19 +232,16 @@ function buildUserMessage(
  *
  * @param briefId - The UUID of the published brief
  * @param userId - The UUID of the user who triggered the generation
- * @param options - Optional collaborative inputs (iteration feedback, athlete,
- *                  reference image URLs, creative seeds)
+ * @param iterationFeedback - Optional feedback for re-generating concepts
  * @returns Array of created concept records
  */
 export async function generateConcepts(
   briefId: string,
   userId: string,
-  options: GenerateConceptsOptions = {}
+  iterationFeedback?: string,
+  collaborateInputs?: CollaborateInputs
 ): Promise<Concept[]> {
-  const { iterationFeedback, athleteName, referenceImageUrls, creativeSeeds } = options;
   const startTime = Date.now();
-  const supabase = getSupabase();
-  const anthropic = getAnthropic();
 
   // --- Step 1: Load the brief ---
   const { data: brief, error: briefError } = await supabase
@@ -378,7 +323,8 @@ export async function generateConcepts(
     brand,
     priorCampaigns || [],
     inspoItems,
-    options
+    iterationFeedback,
+    collaborateInputs
   );
 
   // Create the agent_runs record BEFORE calling Claude (status: running)
@@ -393,9 +339,7 @@ export async function generateConcepts(
         brief_id: briefId,
         inspo_count: inspoItems.length,
         iteration_feedback: iterationFeedback || null,
-        athlete_name: athleteName || null,
-        reference_image_count: referenceImageUrls?.length || 0,
-        creative_seed_count: creativeSeeds?.length || 0,
+        collaborate_inputs: collaborateInputs || null,
       },
       model: 'claude-sonnet-4-20250514',
       status: 'running',
@@ -521,14 +465,11 @@ export async function generateConcepts(
     athlete_archetype: (c.athlete_archetype as string) || null,
     settings_suggestions: (c.settings_suggestions as string[]) || [],
     inspo_references: (c.inspo_item_ids as string[]) || [],
-    production_scope: normalizeProductionScope(c.production_scope),
+    production_scope: (c.production_scope as string) || 'hybrid',
     estimated_assets: (c.estimated_assets as number) || null,
     status: 'proposed' as const,
     generated_by: 'claude' as const,
     claude_run_id: agentRun.id,
-    // CM-supplied inputs propagate to every concept generated in this run.
-    athlete_name: athleteName?.trim() || null,
-    reference_image_urls: referenceImageUrls || [],
     iteration_history: iterationFeedback
       ? [{ prompt: iterationFeedback, response: JSON.stringify(c), timestamp: new Date().toISOString() }]
       : [],

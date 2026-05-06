@@ -1,17 +1,20 @@
 // ============================================================
-// GET    /api/creator-briefs/[id] — Fetch a single creator brief
-// PATCH  /api/creator-briefs/[id] — Update sections / metadata
-// DELETE /api/creator-briefs/[id] — Soft-delete (status = archived)
+// /api/creator-briefs/[id]
+//
+// GET  — Fetch a single creator brief (full sections)
+// PATCH — Update sections, metadata, or shoot logistics
+// DELETE — Delete a creator brief
 // ============================================================
 
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createRouteHandlerClient({ cookies });
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -20,12 +23,15 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('creator_briefs')
-    .select('*, brand:brands(id, name), campaign_brief:campaign_briefs(id, name)')
+    .select('*')
     .eq('id', params.id)
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: 'Creator brief not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: error?.message || 'Creator brief not found' },
+      { status: error ? 500 : 404 }
+    );
   }
 
   return NextResponse.json(data);
@@ -35,7 +41,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createRouteHandlerClient({ cookies });
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -44,18 +50,16 @@ export async function PATCH(
 
   const body = await request.json();
 
-  // Whitelist of fields the editor can modify
-  const allowed = [
-    'title',
-    'athlete_name',
-    'sections',
-    'reference_images',
-    'brand_color',
-    'brand_logo_url',
+  // Only allow updating these fields
+  const allowedFields = [
+    'title', 'athlete_name', 'sections', 'reference_images',
+    'brand_color', 'brand_logo_url',
   ];
   const updates: Record<string, unknown> = {};
-  for (const key of allowed) {
-    if (body[key] !== undefined) updates[key] = body[key];
+  for (const key of allowedFields) {
+    if (body[key] !== undefined) {
+      updates[key] = body[key];
+    }
   }
 
   if (Object.keys(updates).length === 0) {
@@ -66,7 +70,7 @@ export async function PATCH(
     .from('creator_briefs')
     .update(updates)
     .eq('id', params.id)
-    .select('*, brand:brands(id, name), campaign_brief:campaign_briefs(id, name)')
+    .select()
     .single();
 
   if (error) {
@@ -80,23 +84,21 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createRouteHandlerClient({ cookies });
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('creator_briefs')
-    .update({ status: 'archived' })
-    .eq('id', params.id)
-    .select()
-    .single();
+    .delete()
+    .eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({ success: true });
 }

@@ -1,17 +1,19 @@
 // ============================================================
 // POST /api/creator-briefs/[id]/publish
-// Sets status to 'published' and stamps published_at. Once
-// published, the public page at /creator-brief/[slug] becomes live.
+//
+// Sets status to 'published' and records published_at timestamp.
+// The brief then becomes visible at /creator-brief/[slug].
 // ============================================================
 
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createRouteHandlerClient({ cookies });
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -25,14 +27,11 @@ export async function POST(
       published_at: new Date().toISOString(),
     })
     .eq('id', params.id)
-    .select('*, brand:brands(id, name), campaign_brief:campaign_briefs(id, name)')
+    .select()
     .single();
 
-  if (error || !data) {
-    return NextResponse.json(
-      { error: error?.message || 'Creator brief not found' },
-      { status: 404 }
-    );
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json(data);
