@@ -945,6 +945,17 @@ export default function CreatorBriefEditorPage() {
   );
 }
 
+// ---- Rich HTML renderer (renders HTML from the rich text editor) ----
+function RichContent({ html, className = '' }: { html: string; className?: string }) {
+  if (!html || html === '<p></p>') return null;
+  return (
+    <div
+      className={`prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900 prose-blockquote:border-gray-300 prose-blockquote:text-gray-600 ${className}`}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 // ---- Section Preview (read-only, mirrors public page renderers) ----
 function SectionPreview({
   section,
@@ -961,7 +972,7 @@ function SectionPreview({
       const callout = c.callout as { title: string; text: string } | undefined;
       return (
         <div>
-          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{description}</p>
+          <RichContent html={description} />
           {callout && (
             <div className="mt-4 rounded-xl p-5 text-white" style={{ backgroundColor: color }}>
               <div className="font-bold text-sm uppercase tracking-wide mb-2 opacity-90">{callout.title}</div>
@@ -977,7 +988,7 @@ function SectionPreview({
       const images = (c.images as { url: string; caption?: string }[]) || [];
       return (
         <div>
-          <p className="text-gray-700 leading-relaxed mb-4">{description}</p>
+          <RichContent html={description} className="mb-4" />
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
               {images.map((img, i) => (
@@ -998,7 +1009,7 @@ function SectionPreview({
       const videos = (c.videos as { url: string; caption?: string }[]) || [];
       return (
         <div>
-          <p className="text-gray-700 leading-relaxed mb-4">{description}</p>
+          <RichContent html={description} className="mb-4" />
           {videos.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
               {videos.map((vid, i) => (
@@ -1097,11 +1108,11 @@ function SectionPreview({
               ))}
             </div>
           )}
-          {visual_style && <p className="text-gray-700 leading-relaxed mb-3">{visual_style}</p>}
+          {visual_style && <RichContent html={visual_style} className="mb-3" />}
           {lighting_notes && (
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lighting Notes</div>
-              <p className="text-gray-600 text-sm">{lighting_notes}</p>
+              <RichContent html={lighting_notes} className="text-sm" />
             </div>
           )}
         </div>
@@ -1137,7 +1148,7 @@ function SectionPreview({
           {lens_recommendation && (
             <div className="sm:col-span-2">
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lens Recommendation</div>
-              <p className="text-gray-700 text-sm">{lens_recommendation}</p>
+              <RichContent html={lens_recommendation} className="text-sm" />
             </div>
           )}
         </div>
@@ -1155,7 +1166,7 @@ function SectionPreview({
               </div>
               <div className="flex-1">
                 <div className="font-semibold text-gray-900">{step.title}</div>
-                <p className="text-sm text-gray-600 mt-0.5">{step.description}</p>
+                <RichContent html={step.description} className="text-sm mt-0.5" />
               </div>
             </div>
           ))}
@@ -1222,7 +1233,7 @@ function SectionPreview({
           {delivery_method && (
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Delivery Method</div>
-              <p className="text-gray-700 text-sm">{delivery_method}</p>
+              <RichContent html={delivery_method} className="text-sm" />
             </div>
           )}
           {deadline && (

@@ -1,12 +1,20 @@
 // ============================================================
 // SectionEditor — per-type inline edit form for a CreatorBriefSection.
-// Mirrors the public renderer's dispatch logic but every leaf is an
-// input. Parent owns state; we just emit the next section via onChange.
+// Uses RichTextEditor for long-form text fields (description,
+// visual style, lighting notes, etc.) and plain inputs for short
+// values like titles, counts, URLs.
 // ============================================================
 
 'use client';
 
+import dynamic from 'next/dynamic';
 import type { CreatorBriefSection } from '@/lib/types/briefs';
+
+// Dynamically import RichTextEditor to avoid SSR issues with Tiptap
+const RichTextEditor = dynamic(
+  () => import('@/components/RichTextEditor'),
+  { ssr: false, loading: () => <div className="h-32 bg-gray-50 rounded-xl animate-pulse" /> },
+);
 
 function Field({
   label,
@@ -17,7 +25,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1">
+      <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
         {label}
       </label>
       {children}
@@ -40,29 +48,7 @@ function TextInput({
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-[#D73F09]"
-    />
-  );
-}
-
-function TextArea({
-  value,
-  onChange,
-  rows = 3,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  rows?: number;
-  placeholder?: string;
-}) {
-  return (
-    <textarea
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      rows={rows}
-      placeholder={placeholder}
-      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-[#D73F09] resize-y"
+      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#D73F09]/30"
     />
   );
 }
@@ -89,20 +75,20 @@ function StringList({
               onChange(next);
             }}
             placeholder={placeholder}
-            className="flex-1 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-[#D73F09]"
+            className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#D73F09]/30"
           />
           <button
             onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-            className="text-gray-500 hover:text-red-400 px-2 text-sm"
+            className="text-gray-400 hover:text-red-500 px-2 text-sm"
             aria-label="Remove"
           >
-            ×
+            &times;
           </button>
         </div>
       ))}
       <button
         onClick={() => onChange([...(items || []), ''])}
-        className="text-xs text-[#D73F09] hover:text-[#b33507]"
+        className="text-xs text-[#D73F09] hover:text-[#b33507] font-medium"
       >
         + Add
       </button>
@@ -116,9 +102,6 @@ interface Props {
 }
 
 export default function SectionEditor({ section, onChange }: Props) {
-  // Helper that swaps in new content while preserving the section's
-  // discriminator. The cast is safe because the caller always passes
-  // a `content` shaped like the section's own type.
   function setContent(content: unknown) {
     onChange({ ...section, content } as CreatorBriefSection);
   }
@@ -127,12 +110,13 @@ export default function SectionEditor({ section, onChange }: Props) {
     case 'concept': {
       const { description, callout } = section.content;
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Field label="Description">
-            <TextArea
+            <RichTextEditor
               value={description}
               onChange={(v) => setContent({ ...section.content, description: v })}
-              rows={4}
+              variant="light"
+              placeholder="Describe the concept..."
             />
           </Field>
           <Field label="Callout (optional)">
@@ -163,7 +147,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                     const { callout: _omit, ...rest } = section.content;
                     setContent(rest);
                   }}
-                  className="text-xs text-gray-500 hover:text-red-400"
+                  className="text-xs text-gray-400 hover:text-red-500"
                 >
                   Remove callout
                 </button>
@@ -177,11 +161,13 @@ export default function SectionEditor({ section, onChange }: Props) {
     case 'photos': {
       const { description, images } = section.content;
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Field label="Description">
-            <TextArea
+            <RichTextEditor
               value={description}
               onChange={(v) => setContent({ ...section.content, description: v })}
+              variant="light"
+              minHeight="80px"
             />
           </Field>
           <Field label="Images">
@@ -198,7 +184,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                         setContent({ ...section.content, images: next });
                       }}
                       placeholder="https://..."
-                      className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-sm font-mono"
+                      className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm font-mono"
                     />
                     <input
                       type="text"
@@ -209,7 +195,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                         setContent({ ...section.content, images: next });
                       }}
                       placeholder="Caption (optional)"
-                      className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-sm"
+                      className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm"
                     />
                   </div>
                   <button
@@ -219,9 +205,9 @@ export default function SectionEditor({ section, onChange }: Props) {
                         images: images.filter((_, idx) => idx !== i),
                       })
                     }
-                    className="text-gray-500 hover:text-red-400 px-2"
+                    className="text-gray-400 hover:text-red-500 px-2"
                   >
-                    ×
+                    &times;
                   </button>
                 </div>
               ))}
@@ -232,7 +218,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                     images: [...(images || []), { url: '', caption: '' }],
                   })
                 }
-                className="text-xs text-[#D73F09] hover:text-[#b33507]"
+                className="text-xs text-[#D73F09] hover:text-[#b33507] font-medium"
               >
                 + Add image
               </button>
@@ -245,11 +231,13 @@ export default function SectionEditor({ section, onChange }: Props) {
     case 'videos': {
       const { description, videos } = section.content;
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Field label="Description">
-            <TextArea
+            <RichTextEditor
               value={description}
               onChange={(v) => setContent({ ...section.content, description: v })}
+              variant="light"
+              minHeight="80px"
             />
           </Field>
           <Field label="Videos">
@@ -266,7 +254,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                         setContent({ ...section.content, videos: next });
                       }}
                       placeholder="https://..."
-                      className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-sm font-mono"
+                      className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm font-mono"
                     />
                     <input
                       type="text"
@@ -277,7 +265,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                         setContent({ ...section.content, videos: next });
                       }}
                       placeholder="Caption (optional)"
-                      className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-sm"
+                      className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm"
                     />
                   </div>
                   <button
@@ -287,9 +275,9 @@ export default function SectionEditor({ section, onChange }: Props) {
                         videos: videos.filter((_, idx) => idx !== i),
                       })
                     }
-                    className="text-gray-500 hover:text-red-400 px-2"
+                    className="text-gray-400 hover:text-red-500 px-2"
                   >
-                    ×
+                    &times;
                   </button>
                 </div>
               ))}
@@ -300,7 +288,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                     videos: [...(videos || []), { url: '', caption: '' }],
                   })
                 }
-                className="text-xs text-[#D73F09] hover:text-[#b33507]"
+                className="text-xs text-[#D73F09] hover:text-[#b33507] font-medium"
               >
                 + Add video
               </button>
@@ -314,83 +302,18 @@ export default function SectionEditor({ section, onChange }: Props) {
       const { video, photography } = section.content;
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-gray-800/50 rounded p-3 space-y-2">
-            <div className="text-xs font-bold text-gray-400">VIDEO</div>
-            <TextInput
-              value={video?.title || ''}
-              onChange={(v) =>
-                setContent({
-                  ...section.content,
-                  video: { ...(video || { title: '', count: '', description: '', orientation: '' }), title: v },
-                })
-              }
-              placeholder="Title"
-            />
-            <TextInput
-              value={video?.count || ''}
-              onChange={(v) =>
-                setContent({
-                  ...section.content,
-                  video: { ...(video || { title: '', count: '', description: '', orientation: '' }), count: v },
-                })
-              }
-              placeholder="Count (e.g. 1 x Video)"
-            />
-            <TextArea
-              value={video?.description || ''}
-              onChange={(v) =>
-                setContent({
-                  ...section.content,
-                  video: { ...(video || { title: '', count: '', description: '', orientation: '' }), description: v },
-                })
-              }
-              rows={2}
-              placeholder="Description"
-            />
-            <TextInput
-              value={video?.orientation || ''}
-              onChange={(v) =>
-                setContent({
-                  ...section.content,
-                  video: { ...(video || { title: '', count: '', description: '', orientation: '' }), orientation: v },
-                })
-              }
-              placeholder="Orientation (e.g. 9:16 vertical)"
-            />
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+            <div className="text-xs font-bold text-[#D73F09] uppercase tracking-wider">VIDEO</div>
+            <TextInput value={video?.title || ''} onChange={(v) => setContent({ ...section.content, video: { ...(video || { title: '', count: '', description: '', orientation: '' }), title: v } })} placeholder="Title" />
+            <TextInput value={video?.count || ''} onChange={(v) => setContent({ ...section.content, video: { ...(video || { title: '', count: '', description: '', orientation: '' }), count: v } })} placeholder="Count (e.g. 1 x Video)" />
+            <TextInput value={video?.description || ''} onChange={(v) => setContent({ ...section.content, video: { ...(video || { title: '', count: '', description: '', orientation: '' }), description: v } })} placeholder="Description" />
+            <TextInput value={video?.orientation || ''} onChange={(v) => setContent({ ...section.content, video: { ...(video || { title: '', count: '', description: '', orientation: '' }), orientation: v } })} placeholder="Orientation (e.g. 9:16 vertical)" />
           </div>
-          <div className="bg-gray-800/50 rounded p-3 space-y-2">
-            <div className="text-xs font-bold text-gray-400">PHOTOGRAPHY</div>
-            <TextInput
-              value={photography?.title || ''}
-              onChange={(v) =>
-                setContent({
-                  ...section.content,
-                  photography: { ...(photography || { title: '', minimum: '', style: '' }), title: v },
-                })
-              }
-              placeholder="Title"
-            />
-            <TextInput
-              value={photography?.minimum || ''}
-              onChange={(v) =>
-                setContent({
-                  ...section.content,
-                  photography: { ...(photography || { title: '', minimum: '', style: '' }), minimum: v },
-                })
-              }
-              placeholder="Minimum (e.g. 15-25 photos)"
-            />
-            <TextArea
-              value={photography?.style || ''}
-              onChange={(v) =>
-                setContent({
-                  ...section.content,
-                  photography: { ...(photography || { title: '', minimum: '', style: '' }), style: v },
-                })
-              }
-              rows={2}
-              placeholder="Style"
-            />
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+            <div className="text-xs font-bold text-[#D73F09] uppercase tracking-wider">PHOTOGRAPHY</div>
+            <TextInput value={photography?.title || ''} onChange={(v) => setContent({ ...section.content, photography: { ...(photography || { title: '', minimum: '', style: '' }), title: v } })} placeholder="Title" />
+            <TextInput value={photography?.minimum || ''} onChange={(v) => setContent({ ...section.content, photography: { ...(photography || { title: '', minimum: '', style: '' }), minimum: v } })} placeholder="Minimum (e.g. 15-25 photos)" />
+            <TextInput value={photography?.style || ''} onChange={(v) => setContent({ ...section.content, photography: { ...(photography || { title: '', minimum: '', style: '' }), style: v } })} placeholder="Style" />
           </div>
         </div>
       );
@@ -401,7 +324,7 @@ export default function SectionEditor({ section, onChange }: Props) {
       return (
         <div className="space-y-3">
           {(items || []).map((item, i) => (
-            <div key={i} className="bg-gray-800/50 rounded p-3 space-y-2">
+            <div key={i} className="bg-gray-50 rounded-xl p-4 space-y-2">
               <div className="flex gap-2 items-center">
                 <input
                   type="text"
@@ -412,18 +335,13 @@ export default function SectionEditor({ section, onChange }: Props) {
                     setContent({ ...section.content, items: next });
                   }}
                   placeholder="Product name"
-                  className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
+                  className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm"
                 />
                 <button
-                  onClick={() =>
-                    setContent({
-                      ...section.content,
-                      items: items.filter((_, idx) => idx !== i),
-                    })
-                  }
-                  className="text-gray-500 hover:text-red-400 px-2"
+                  onClick={() => setContent({ ...section.content, items: items.filter((_, idx) => idx !== i) })}
+                  className="text-gray-400 hover:text-red-500 px-2"
                 >
-                  ×
+                  &times;
                 </button>
               </div>
               <Field label="Requirements">
@@ -440,13 +358,8 @@ export default function SectionEditor({ section, onChange }: Props) {
             </div>
           ))}
           <button
-            onClick={() =>
-              setContent({
-                ...section.content,
-                items: [...(items || []), { name: '', requirements: [] }],
-              })
-            }
-            className="text-xs text-[#D73F09] hover:text-[#b33507]"
+            onClick={() => setContent({ ...section.content, items: [...(items || []), { name: '', requirements: [] }] })}
+            className="text-xs text-[#D73F09] hover:text-[#b33507] font-medium"
           >
             + Add product
           </button>
@@ -457,7 +370,7 @@ export default function SectionEditor({ section, onChange }: Props) {
     case 'athlete_reqs': {
       const { requirements, tip } = section.content;
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Field label="Requirements">
             <StringList
               items={requirements || []}
@@ -469,31 +382,18 @@ export default function SectionEditor({ section, onChange }: Props) {
             <div className="space-y-2">
               <TextInput
                 value={tip?.title || ''}
-                onChange={(v) =>
-                  setContent({
-                    ...section.content,
-                    tip: { ...(tip || { title: '', text: '' }), title: v },
-                  })
-                }
+                onChange={(v) => setContent({ ...section.content, tip: { ...(tip || { title: '', text: '' }), title: v } })}
                 placeholder="Tip title (e.g. Pro Tip)"
               />
               <TextInput
                 value={tip?.text || ''}
-                onChange={(v) =>
-                  setContent({
-                    ...section.content,
-                    tip: { ...(tip || { title: '', text: '' }), text: v },
-                  })
-                }
+                onChange={(v) => setContent({ ...section.content, tip: { ...(tip || { title: '', text: '' }), text: v } })}
                 placeholder="Tip body"
               />
               {tip && (
                 <button
-                  onClick={() => {
-                    const { tip: _omit, ...rest } = section.content;
-                    setContent(rest);
-                  }}
-                  className="text-xs text-gray-500 hover:text-red-400"
+                  onClick={() => { const { tip: _omit, ...rest } = section.content; setContent(rest); }}
+                  className="text-xs text-gray-400 hover:text-red-500"
                 >
                   Remove tip
                 </button>
@@ -507,7 +407,7 @@ export default function SectionEditor({ section, onChange }: Props) {
     case 'creative_direction': {
       const { tone, visual_style, lighting_notes } = section.content;
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Field label="Tone (badges)">
             <StringList
               items={tone || []}
@@ -516,17 +416,19 @@ export default function SectionEditor({ section, onChange }: Props) {
             />
           </Field>
           <Field label="Visual Style">
-            <TextArea
+            <RichTextEditor
               value={visual_style}
               onChange={(v) => setContent({ ...section.content, visual_style: v })}
-              rows={3}
+              variant="light"
+              minHeight="80px"
             />
           </Field>
           <Field label="Lighting Notes">
-            <TextArea
+            <RichTextEditor
               value={lighting_notes}
               onChange={(v) => setContent({ ...section.content, lighting_notes: v })}
-              rows={3}
+              variant="light"
+              minHeight="80px"
             />
           </Field>
         </div>
@@ -535,25 +437,25 @@ export default function SectionEditor({ section, onChange }: Props) {
 
     case 'camera_specs': {
       const { video_settings, photography_settings, lens_recommendation } = section.content;
-      function setVS(key: keyof typeof video_settings, v: string) {
+      function setVS(key: string, v: string) {
         setContent({ ...section.content, video_settings: { ...video_settings, [key]: v } });
       }
-      function setPS(key: keyof typeof photography_settings, v: string) {
+      function setPS(key: string, v: string) {
         setContent({ ...section.content, photography_settings: { ...photography_settings, [key]: v } });
       }
       return (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-800/50 rounded p-3 space-y-2">
-              <div className="text-xs font-bold text-gray-400">VIDEO SETTINGS</div>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div className="text-xs font-bold text-[#D73F09] uppercase tracking-wider">VIDEO SETTINGS</div>
               <TextInput value={video_settings?.frame_rate || ''} onChange={(v) => setVS('frame_rate', v)} placeholder="Frame rate" />
               <TextInput value={video_settings?.resolution || ''} onChange={(v) => setVS('resolution', v)} placeholder="Resolution" />
               <TextInput value={video_settings?.orientation || ''} onChange={(v) => setVS('orientation', v)} placeholder="Orientation" />
               <TextInput value={video_settings?.stabilization || ''} onChange={(v) => setVS('stabilization', v)} placeholder="Stabilization" />
               <TextInput value={video_settings?.color_profile || ''} onChange={(v) => setVS('color_profile', v)} placeholder="Color profile" />
             </div>
-            <div className="bg-gray-800/50 rounded p-3 space-y-2">
-              <div className="text-xs font-bold text-gray-400">PHOTO SETTINGS</div>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div className="text-xs font-bold text-[#D73F09] uppercase tracking-wider">PHOTO SETTINGS</div>
               <TextInput value={photography_settings?.format || ''} onChange={(v) => setPS('format', v)} placeholder="Format" />
               <TextInput value={photography_settings?.shutter_speed || ''} onChange={(v) => setPS('shutter_speed', v)} placeholder="Shutter speed" />
               <TextInput value={photography_settings?.aperture || ''} onChange={(v) => setPS('aperture', v)} placeholder="Aperture" />
@@ -561,10 +463,11 @@ export default function SectionEditor({ section, onChange }: Props) {
             </div>
           </div>
           <Field label="Lens Recommendation">
-            <TextArea
+            <RichTextEditor
               value={lens_recommendation}
               onChange={(v) => setContent({ ...section.content, lens_recommendation: v })}
-              rows={2}
+              variant="light"
+              minHeight="60px"
             />
           </Field>
         </div>
@@ -576,7 +479,7 @@ export default function SectionEditor({ section, onChange }: Props) {
       return (
         <div className="space-y-3">
           {(steps || []).map((step, i) => (
-            <div key={i} className="bg-gray-800/50 rounded p-3 space-y-2">
+            <div key={i} className="bg-gray-50 rounded-xl p-4 space-y-2">
               <div className="flex gap-2 items-center">
                 <input
                   type="number"
@@ -586,7 +489,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                     next[i] = { ...step, number: Number(e.target.value) };
                     setContent({ ...section.content, steps: next });
                   }}
-                  className="w-16 px-2 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
+                  className="w-16 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm"
                 />
                 <input
                   type="text"
@@ -597,29 +500,24 @@ export default function SectionEditor({ section, onChange }: Props) {
                     setContent({ ...section.content, steps: next });
                   }}
                   placeholder="Step title"
-                  className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
+                  className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm"
                 />
                 <button
-                  onClick={() =>
-                    setContent({
-                      ...section.content,
-                      steps: steps.filter((_, idx) => idx !== i),
-                    })
-                  }
-                  className="text-gray-500 hover:text-red-400 px-2"
+                  onClick={() => setContent({ ...section.content, steps: steps.filter((_, idx) => idx !== i) })}
+                  className="text-gray-400 hover:text-red-500 px-2"
                 >
-                  ×
+                  &times;
                 </button>
               </div>
-              <TextArea
+              <RichTextEditor
                 value={step.description}
                 onChange={(v) => {
                   const next = [...steps];
                   next[i] = { ...step, description: v };
                   setContent({ ...section.content, steps: next });
                 }}
-                rows={2}
-                placeholder="What to do"
+                variant="light"
+                minHeight="60px"
               />
             </div>
           ))}
@@ -633,7 +531,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                 ],
               })
             }
-            className="text-xs text-[#D73F09] hover:text-[#b33507]"
+            className="text-xs text-[#D73F09] hover:text-[#b33507] font-medium"
           >
             + Add step
           </button>
@@ -668,31 +566,32 @@ export default function SectionEditor({ section, onChange }: Props) {
       return (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-800/50 rounded p-3 space-y-2">
-              <div className="text-xs font-bold text-gray-400">VIDEO SPECS</div>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div className="text-xs font-bold text-[#D73F09] uppercase tracking-wider">VIDEO SPECS</div>
               <TextInput value={video_specs?.format || ''} onChange={(v) => setContent({ ...section.content, video_specs: { ...video_specs, format: v } })} placeholder="Format" />
               <TextInput value={video_specs?.resolution || ''} onChange={(v) => setContent({ ...section.content, video_specs: { ...video_specs, resolution: v } })} placeholder="Resolution" />
               <TextInput value={video_specs?.color_profile || ''} onChange={(v) => setContent({ ...section.content, video_specs: { ...video_specs, color_profile: v } })} placeholder="Color profile" />
             </div>
-            <div className="bg-gray-800/50 rounded p-3 space-y-2">
-              <div className="text-xs font-bold text-gray-400">PHOTO SPECS</div>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div className="text-xs font-bold text-[#D73F09] uppercase tracking-wider">PHOTO SPECS</div>
               <TextInput value={photo_specs?.format || ''} onChange={(v) => setContent({ ...section.content, photo_specs: { ...photo_specs, format: v } })} placeholder="Format" />
               <TextInput value={photo_specs?.color_grading || ''} onChange={(v) => setContent({ ...section.content, photo_specs: { ...photo_specs, color_grading: v } })} placeholder="Color grading" />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Delivery Method">
-              <TextArea
+              <RichTextEditor
                 value={delivery_method}
                 onChange={(v) => setContent({ ...section.content, delivery_method: v })}
-                rows={2}
+                variant="light"
+                minHeight="60px"
               />
             </Field>
             <Field label="Deadline">
               <TextInput
                 value={deadline}
                 onChange={(v) => setContent({ ...section.content, deadline: v })}
-                placeholder="e.g. 7 days from shoot"
+                placeholder="e.g. Same-day upload mandatory"
               />
             </Field>
           </div>
@@ -702,7 +601,7 @@ export default function SectionEditor({ section, onChange }: Props) {
 
     default:
       return (
-        <p className="text-xs text-gray-500">
+        <p className="text-sm text-gray-400 italic">
           Unknown section type. Edit raw JSON if needed.
         </p>
       );
