@@ -40,7 +40,17 @@ export default function CreatorBriefEditorPage() {
         const list = (await res.json()) as CreatorBrief[];
         // Latest non-archived first; otherwise newest archived.
         const active = list.find((b) => b.status !== 'archived');
-        setBrief(active || list[0] || null);
+        const match = active || list[0] || null;
+        if (match) {
+          // The list endpoint only returns summary fields (no sections).
+          // Fetch the full brief by ID to get sections + reference_images.
+          const fullRes = await fetch(`/api/creator-briefs/${match.id}`);
+          if (fullRes.ok) {
+            setBrief(await fullRes.json());
+          } else {
+            setBrief(match);
+          }
+        }
       }
       setLoading(false);
     }
