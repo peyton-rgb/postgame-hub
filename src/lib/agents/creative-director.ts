@@ -15,7 +15,16 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServiceSupabase } from '@/lib/supabase';
-import type { Concept } from '@/lib/types/briefs';
+import type { Concept, CreativeSeed } from '@/lib/types/briefs';
+
+// Optional inputs that bias generation toward CM-supplied direction.
+// All optional — if nothing's set, the agent runs exactly like Phase 2.
+export interface GenerateConceptsOptions {
+  iterationFeedback?: string;
+  athleteName?: string;
+  referenceImageUrls?: string[];
+  creativeSeeds?: CreativeSeed[];
+}
 
 // Lazy clients — instantiated on first use, not at module load.
 // This keeps Next.js build-time page-data collection from crashing
@@ -168,8 +177,9 @@ function buildUserMessage(
   brand: Record<string, unknown>,
   priorCampaigns: Record<string, unknown>[],
   inspoItems: Record<string, unknown>[],
-  iterationFeedback?: string
+  options: GenerateConceptsOptions = {}
 ): string {
+  const { iterationFeedback, athleteName, referenceImageUrls, creativeSeeds } = options;
   let message = `## BRAND BRIEF\n\n`;
   message += `**Brand:** ${brand.name || 'Unknown'}\n`;
   message += `**Campaign:** ${brief.name}\n`;
@@ -233,6 +243,29 @@ function buildUserMessage(
     });
   }
 
+  // CM-supplied athlete name — bias concepts toward this athlete specifically.
+  if (athleteName && athleteName.trim()) {
+    message += `\n## ATHLETE: ${athleteName.trim()}\n`;
+    message += `Concepts should be tailored for this specific athlete. Lean into what makes them distinctive on social.\n`;
+  }
+
+  // CM-supplied reference images — Claude can't see them, but knowing they exist
+  // lets it write concepts assuming the visual direction is partially set.
+  if (referenceImageUrls && referenceImageUrls.length > 0) {
+    message += `\n## REFERENCE IMAGES: ${referenceImageUrls.length} image${referenceImageUrls.length === 1 ? '' : 's'} provided by the campaign manager\n`;
+    message += `The CM has uploaded visual references. You can't see them, but assume they establish the look/vibe — write concepts that would match a curated visual mood board.\n`;
+  }
+
+  // CM-supplied creative seeds — collaborate, don't replace.
+  if (creativeSeeds && creativeSeeds.length > 0) {
+    message += `\n## CAMPAIGN MANAGER'S CREATIVE IDEAS\n`;
+    creativeSeeds.forEach((seed, i) => {
+      message += `\n### Seed ${i + 1}: ${seed.name || '(untitled)'}\n`;
+      if (seed.description) message += `${seed.description}\n`;
+    });
+    message += `\nBuild on these ideas. The CM wants you to collaborate and elaborate, not replace their thinking. Generate concepts that develop these seeds further while also proposing fresh angles.\n`;
+  }
+
   // Iteration feedback (when an AM asks for changes to a concept)
   if (iterationFeedback) {
     message += `\n## ITERATION REQUEST\n`;
@@ -251,14 +284,16 @@ function buildUserMessage(
  *
  * @param briefId - The UUID of the published brief
  * @param userId - The UUID of the user who triggered the generation
- * @param iterationFeedback - Optional feedback for re-generating concepts
+ * @param options - Optional collaborative inputs (iteration feedback, athlete,
+ *                  reference image URLs, creative seeds)
  * @returns Array of created concept records
  */
 export async function generateConcepts(
   briefId: string,
   userId: string,
-  iterationFeedback?: string
+  options: GenerateConceptsOptions = {}
 ): Promise<Concept[]> {
+  const { iterationFeedback, athleteName, referenceImageUrls, creativeSeeds } = options;
   const startTime = Date.now();
   const supabase = getSupabase();
   const anthropic = getAnthropic();
@@ -343,7 +378,7 @@ export async function generateConcepts(
     brand,
     priorCampaigns || [],
     inspoItems,
-    iterationFeedback
+    options
   );
 
   // Create the agent_runs record BEFORE calling Claude (status: running)
@@ -358,6 +393,9 @@ export async function generateConcepts(
         brief_id: briefId,
         inspo_count: inspoItems.length,
         iteration_feedback: iterationFeedback || null,
+        athlete_name: athleteName || null,
+        reference_image_count: referenceImageUrls?.length || 0,
+        creative_seed_count: creativeSeeds?.length || 0,
       },
       model: 'claude-sonnet-4-20250514',
       status: 'running',
@@ -488,6 +526,9 @@ export async function generateConcepts(
     status: 'proposed' as const,
     generated_by: 'claude' as const,
     claude_run_id: agentRun.id,
+    // CM-supplied inputs propagate to every concept generated in this run.
+    athlete_name: athleteName?.trim() || null,
+    reference_image_urls: referenceImageUrls || [],
     iteration_history: iterationFeedback
       ? [{ prompt: iterationFeedback, response: JSON.stringify(c), timestamp: new Date().toISOString() }]
       : [],
