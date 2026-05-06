@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Brief } from '@/lib/types/briefs';
+import type { Brief, CreatorBrief } from '@/lib/types/briefs';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
@@ -31,16 +31,19 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
   const [brief, setBrief] = useState<Brief | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [creatorBriefs, setCreatorBriefs] = useState<CreatorBrief[]>([]);
 
   useEffect(() => {
-    async function fetchBrief() {
-      const res = await fetch(`/api/campaign-briefs/${params.id}`);
-      if (res.ok) {
-        setBrief(await res.json());
-      }
+    async function fetchData() {
+      const [briefRes, cbRes] = await Promise.all([
+        fetch(`/api/campaign-briefs/${params.id}`),
+        fetch(`/api/creator-briefs?brief_id=${params.id}`),
+      ]);
+      if (briefRes.ok) setBrief(await briefRes.json());
+      if (cbRes.ok) setCreatorBriefs((await cbRes.json()) as CreatorBrief[]);
       setLoading(false);
     }
-    fetchBrief();
+    fetchData();
   }, [params.id]);
 
   async function handleRequestChanges() {
@@ -279,6 +282,62 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
             </div>
           )}
         </div>
+
+        {/* Creator briefs spawned from this campaign brief's concepts */}
+        {creatorBriefs.length > 0 && (
+          <section className="mt-8 bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Creator Briefs</h2>
+            <ul className="space-y-2">
+              {creatorBriefs.map((cb) => (
+                <li
+                  key={cb.id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{cb.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {cb.athlete_name && <>Athlete: {cb.athlete_name} · </>}
+                      Status:{' '}
+                      <span
+                        className={
+                          cb.status === 'published'
+                            ? 'text-green-400 font-medium'
+                            : cb.status === 'archived'
+                            ? 'text-gray-500'
+                            : 'text-yellow-400 font-medium'
+                        }
+                      >
+                        {cb.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/dashboard/campaign-briefs/${brief.id}/concepts/${cb.concept_id}/creator-brief`
+                        )
+                      }
+                      className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-xs"
+                    >
+                      Edit
+                    </button>
+                    {cb.status === 'published' && (
+                      <a
+                        href={`/creator-brief/${cb.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-[#D73F09] hover:bg-[#b33507] text-white rounded text-xs"
+                      >
+                        View ↗
+                      </a>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <div className="mt-8 text-xs text-gray-600">
           Created {new Date(brief.created_at).toLocaleString()}

@@ -510,6 +510,21 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
                 </div>
               )}
 
+              {concept.status === 'approved' && (
+                <div className="flex gap-3 pt-4 border-t border-gray-800">
+                  <button
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/campaign-briefs/${briefId}/concepts/${concept.id}/creator-brief`
+                      )
+                    }
+                    className="px-4 py-2 bg-[#D73F09] hover:bg-[#b33507] text-white rounded-lg text-sm font-semibold"
+                  >
+                    Open Creator Brief
+                  </button>
+                </div>
+              )}
+
               {concept.status === 'proposed' && (
                 <div className="flex gap-3 pt-4 border-t border-gray-800">
                   <button
