@@ -3,7 +3,20 @@
 // a mood-board styled article. Used by the public page only.
 // ============================================================
 
-import type { CreatorBriefSection } from '@/lib/types/briefs';
+import type {
+  CreatorBriefSection,
+  ConceptSectionContent,
+  PhotosSectionContent,
+  VideosSectionContent,
+  DeliverablesSectionContent,
+  ProductReqsSectionContent,
+  AthleteReqsSectionContent,
+  CreativeDirectionSectionContent,
+  CameraSpecsSectionContent,
+  WorkflowSectionContent,
+  DosDontsSectionContent,
+  FileDeliverySectionContent,
+} from '@/lib/types/briefs';
 
 function SectionShell({
   number,
@@ -137,41 +150,46 @@ function SectionBody({
   brandColor: string;
 }) {
   switch (section.type) {
-    case 'concept':
+    case 'concept': {
+      const c = section.content as ConceptSectionContent;
       return (
         <>
           <p className="text-base leading-relaxed text-gray-800">
-            {section.content.description}
+            {c.description}
           </p>
-          {section.content.callout && (
+          {c.callout && (
             <Callout
-              title={section.content.callout.title}
-              text={section.content.callout.text}
+              title={c.callout.title}
+              text={c.callout.text}
               brandColor={brandColor}
             />
           )}
         </>
       );
+    }
 
-    case 'photos':
+    case 'photos': {
+      const c = section.content as PhotosSectionContent;
       return (
         <>
           <p className="text-base leading-relaxed text-gray-800">
-            {section.content.description}
+            {c.description}
           </p>
-          <PhotoGrid images={section.content.images || []} />
+          <PhotoGrid images={c.images || []} />
         </>
       );
+    }
 
-    case 'videos':
+    case 'videos': {
+      const c = section.content as VideosSectionContent;
       return (
         <>
           <p className="text-base leading-relaxed text-gray-800">
-            {section.content.description}
+            {c.description}
           </p>
-          {(section.content.videos || []).length > 0 && (
+          {(c.videos || []).length > 0 && (
             <ul className="mt-5 space-y-2">
-              {section.content.videos.map((v, i) => (
+              {c.videos.map((v: { url: string; caption?: string }, i: number) => (
                 <li key={i}>
                   <a
                     href={v.url}
@@ -188,11 +206,13 @@ function SectionBody({
           )}
         </>
       );
+    }
 
-    case 'deliverables':
+    case 'deliverables': {
+      const c = section.content as DeliverablesSectionContent;
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {section.content.video && (
+          {c.video && (
             <div className="bg-gray-50 rounded-xl p-5 border border-black/5">
               <div
                 className="text-xs font-black tracking-widest"
@@ -200,15 +220,15 @@ function SectionBody({
               >
                 VIDEO
               </div>
-              <h3 className="text-lg font-bold mt-1">{section.content.video.title}</h3>
-              <p className="text-sm text-gray-700 mt-1">{section.content.video.count}</p>
-              <p className="text-sm text-gray-600 mt-3">{section.content.video.description}</p>
+              <h3 className="text-lg font-bold mt-1">{c.video.title}</h3>
+              <p className="text-sm text-gray-700 mt-1">{c.video.count}</p>
+              <p className="text-sm text-gray-600 mt-3">{c.video.description}</p>
               <p className="text-xs text-gray-500 mt-3 uppercase tracking-wider">
-                Orientation: {section.content.video.orientation}
+                Orientation: {c.video.orientation}
               </p>
             </div>
           )}
-          {section.content.photography && (
+          {c.photography && (
             <div className="bg-gray-50 rounded-xl p-5 border border-black/5">
               <div
                 className="text-xs font-black tracking-widest"
@@ -216,24 +236,26 @@ function SectionBody({
               >
                 PHOTOGRAPHY
               </div>
-              <h3 className="text-lg font-bold mt-1">{section.content.photography.title}</h3>
+              <h3 className="text-lg font-bold mt-1">{c.photography.title}</h3>
               <p className="text-sm text-gray-700 mt-1">
-                Minimum: {section.content.photography.minimum}
+                Minimum: {c.photography.minimum}
               </p>
-              <p className="text-sm text-gray-600 mt-3">{section.content.photography.style}</p>
+              <p className="text-sm text-gray-600 mt-3">{c.photography.style}</p>
             </div>
           )}
         </div>
       );
+    }
 
-    case 'product_reqs':
+    case 'product_reqs': {
+      const c = section.content as ProductReqsSectionContent;
       return (
         <ul className="space-y-5">
-          {section.content.items.map((item, i) => (
+          {c.items.map((item: { name: string; requirements: string[] }, i: number) => (
             <li key={i}>
               <div className="font-bold">{item.name}</div>
               <ul className="mt-2 space-y-1.5 text-sm text-gray-700 list-disc pl-5">
-                {item.requirements.map((r, j) => (
+                {item.requirements.map((r: string, j: number) => (
                   <li key={j}>{r}</li>
                 ))}
               </ul>
@@ -241,35 +263,39 @@ function SectionBody({
           ))}
         </ul>
       );
+    }
 
-    case 'athlete_reqs':
+    case 'athlete_reqs': {
+      const c = section.content as AthleteReqsSectionContent;
       return (
         <>
           <ul className="space-y-1.5 text-sm text-gray-700 list-disc pl-5">
-            {section.content.requirements.map((r, i) => (
+            {c.requirements.map((r: string, i: number) => (
               <li key={i}>{r}</li>
             ))}
           </ul>
-          {section.content.tip && (
+          {c.tip && (
             <div
               className="mt-5 rounded-xl p-5 border-l-4"
               style={{ backgroundColor: '#fff7ed', borderColor: brandColor }}
             >
               <div className="text-xs font-black tracking-widest" style={{ color: brandColor }}>
-                {section.content.tip.title.toUpperCase()}
+                {c.tip.title.toUpperCase()}
               </div>
-              <div className="mt-1 text-sm text-gray-800">{section.content.tip.text}</div>
+              <div className="mt-1 text-sm text-gray-800">{c.tip.text}</div>
             </div>
           )}
         </>
       );
+    }
 
-    case 'creative_direction':
+    case 'creative_direction': {
+      const c = section.content as CreativeDirectionSectionContent;
       return (
         <>
-          {section.content.tone?.length > 0 && (
+          {c.tone?.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-5">
-              {section.content.tone.map((t, i) => (
+              {c.tone.map((t: string, i: number) => (
                 <span
                   key={i}
                   className="px-3 py-1.5 rounded-full text-xs font-bold border"
@@ -280,62 +306,68 @@ function SectionBody({
               ))}
             </div>
           )}
-          {section.content.visual_style && (
+          {c.visual_style && (
             <div className="mb-4">
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Visual Style
               </div>
-              <p className="text-sm text-gray-800">{section.content.visual_style}</p>
+              <p className="text-sm text-gray-800">{c.visual_style}</p>
             </div>
           )}
-          {section.content.lighting_notes && (
+          {c.lighting_notes && (
             <div>
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Lighting
               </div>
-              <p className="text-sm text-gray-800">{section.content.lighting_notes}</p>
+              <p className="text-sm text-gray-800">{c.lighting_notes}</p>
             </div>
           )}
         </>
       );
+    }
 
-    case 'camera_specs':
+    case 'camera_specs': {
+      const c = section.content as CameraSpecsSectionContent;
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="bg-gray-50 rounded-xl p-5 border border-black/5">
             <div className="text-xs font-black tracking-widest mb-3" style={{ color: brandColor }}>
               VIDEO SETTINGS
             </div>
-            <SpecRow label="Frame Rate" value={section.content.video_settings?.frame_rate} />
-            <SpecRow label="Resolution" value={section.content.video_settings?.resolution} />
-            <SpecRow label="Orientation" value={section.content.video_settings?.orientation} />
-            <SpecRow label="Stabilization" value={section.content.video_settings?.stabilization} />
-            <SpecRow label="Color Profile" value={section.content.video_settings?.color_profile} />
+            <SpecRow label="Frame Rate" value={c.video_settings?.frame_rate} />
+            <SpecRow label="Resolution" value={c.video_settings?.resolution} />
+            <SpecRow label="Orientation" value={c.video_settings?.orientation} />
+            <SpecRow label="Stabilization" value={c.video_settings?.stabilization} />
+            <SpecRow label="Color Profile" value={c.video_settings?.color_profile} />
           </div>
           <div className="bg-gray-50 rounded-xl p-5 border border-black/5">
             <div className="text-xs font-black tracking-widest mb-3" style={{ color: brandColor }}>
               PHOTO SETTINGS
             </div>
-            <SpecRow label="Format" value={section.content.photography_settings?.format} />
-            <SpecRow label="Shutter" value={section.content.photography_settings?.shutter_speed} />
-            <SpecRow label="Aperture" value={section.content.photography_settings?.aperture} />
-            <SpecRow label="Mode" value={section.content.photography_settings?.mode} />
+            <SpecRow label="Format" value={c.photography_settings?.format} />
+            <SpecRow label="Shutter" value={c.photography_settings?.shutter_speed} />
+            <SpecRow label="Aperture" value={c.photography_settings?.aperture} />
+            <SpecRow label="Mode" value={c.photography_settings?.mode} />
           </div>
-          {section.content.lens_recommendation && (
+          {c.lens_recommendation && (
             <div className="md:col-span-2">
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Lens Recommendation
               </div>
-              <p className="text-sm text-gray-800">{section.content.lens_recommendation}</p>
+              <p className="text-sm text-gray-800">{c.lens_recommendation}</p>
             </div>
           )}
         </div>
       );
+    }
 
-    case 'workflow':
-      return <StepList items={section.content.steps || []} brandColor={brandColor} />;
+    case 'workflow': {
+      const c = section.content as WorkflowSectionContent;
+      return <StepList items={c.steps || []} brandColor={brandColor} />;
+    }
 
-    case 'dos_donts':
+    case 'dos_donts': {
+      const c = section.content as DosDontsSectionContent;
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -343,7 +375,7 @@ function SectionBody({
               DO
             </div>
             <ul className="space-y-2">
-              {section.content.dos.map((d, i) => (
+              {c.dos.map((d: string, i: number) => (
                 <li key={i} className="flex gap-3 text-sm text-gray-800">
                   <span style={{ color: '#16a34a' }} className="font-black">✓</span>
                   <span>{d}</span>
@@ -356,7 +388,7 @@ function SectionBody({
               DON&apos;T
             </div>
             <ul className="space-y-2">
-              {section.content.donts.map((d, i) => (
+              {c.donts.map((d: string, i: number) => (
                 <li key={i} className="flex gap-3 text-sm text-gray-800">
                   <span style={{ color: '#dc2626' }} className="font-black">✕</span>
                   <span>{d}</span>
@@ -366,8 +398,10 @@ function SectionBody({
           </div>
         </div>
       );
+    }
 
-    case 'file_delivery':
+    case 'file_delivery': {
+      const c = section.content as FileDeliverySectionContent;
       return (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -375,16 +409,16 @@ function SectionBody({
               <div className="text-xs font-black tracking-widest mb-3" style={{ color: brandColor }}>
                 VIDEO SPECS
               </div>
-              <SpecRow label="Format" value={section.content.video_specs?.format} />
-              <SpecRow label="Resolution" value={section.content.video_specs?.resolution} />
-              <SpecRow label="Color" value={section.content.video_specs?.color_profile} />
+              <SpecRow label="Format" value={c.video_specs?.format} />
+              <SpecRow label="Resolution" value={c.video_specs?.resolution} />
+              <SpecRow label="Color" value={c.video_specs?.color_profile} />
             </div>
             <div className="bg-gray-50 rounded-xl p-5 border border-black/5">
               <div className="text-xs font-black tracking-widest mb-3" style={{ color: brandColor }}>
                 PHOTO SPECS
               </div>
-              <SpecRow label="Format" value={section.content.photo_specs?.format} />
-              <SpecRow label="Color Grading" value={section.content.photo_specs?.color_grading} />
+              <SpecRow label="Format" value={c.photo_specs?.format} />
+              <SpecRow label="Color Grading" value={c.photo_specs?.color_grading} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
@@ -392,19 +426,20 @@ function SectionBody({
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Delivery Method
               </div>
-              <p className="text-sm text-gray-800">{section.content.delivery_method}</p>
+              <p className="text-sm text-gray-800">{c.delivery_method}</p>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Deadline
               </div>
               <p className="text-sm font-bold" style={{ color: brandColor }}>
-                {section.content.deadline}
+                {c.deadline}
               </p>
             </div>
           </div>
         </>
       );
+    }
 
     default:
       // Forward-compat: an unknown section type is rendered as JSON.

@@ -63,7 +63,7 @@ export async function POST(
     const newConcepts = await generateConcepts(
       concept.brief_id,
       user.id,
-      { iterationFeedback: feedback }
+      feedback
     );
 
     return NextResponse.json({ concepts: newConcepts });

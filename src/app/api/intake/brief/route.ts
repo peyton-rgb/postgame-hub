@@ -17,9 +17,8 @@
 // reviews and confirms before the structured record is saved.
 // ============================================================
 
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import type { ParsedBriefFields } from '@/lib/types/intake';
@@ -83,7 +82,16 @@ const BRIEF_PARSE_SCHEMA = {
 
 export async function POST(request: NextRequest) {
   // Auth check
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll() {},
+      },
+    }
+  );
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

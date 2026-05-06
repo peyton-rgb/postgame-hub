@@ -12,13 +12,21 @@
 // Returns: { concepts: Concept[], agentRunId: string }
 // ============================================================
 
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateConcepts, type CollaborateInputs } from '@/lib/agents/creative-director';
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll() {},
+      },
+    }
+  );
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {

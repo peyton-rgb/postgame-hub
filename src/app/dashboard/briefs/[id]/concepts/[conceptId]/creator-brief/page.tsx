@@ -608,9 +608,9 @@ export default function CreatorBriefEditorPage({
               ) : (
                 /* Generic section editor — JSON for now, will upgrade to typed editors */
                 <GenericSectionEditor
-                  content={section.content}
+                  content={section.content as Record<string, unknown>}
                   onChange={(updated) =>
-                    updateSection(index, { ...section, content: updated })
+                    updateSection(index, { ...section, content: updated as typeof section.content })
                   }
                 />
               )}

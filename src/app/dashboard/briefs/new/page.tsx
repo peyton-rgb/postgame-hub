@@ -586,9 +586,9 @@ export default function NewBriefPage() {
                       {parsedBrief.confidence_flags && (parsedBrief.confidence_flags as unknown[]).length > 0 && (
                         <div className="mb-3 space-y-1">
                           <span className="text-yellow-400 text-xs font-medium">Heads up — the AI flagged these:</span>
-                          {(parsedBrief.confidence_flags as { field: string; reason: string }[]).map((flag, i) => (
+                          {(parsedBrief.confidence_flags as { field: string; reason: string }[]).map((flag: { field: string; reason: string }, i: number) => (
                             <div key={i} className="text-xs text-yellow-300/70 bg-yellow-900/20 rounded px-2 py-1">
-                              <span className="font-medium">{flag.field}:</span> {flag.reason}
+                              <span className="font-medium">{flag.field as string}:</span> {flag.reason as string}
                             </div>
                           ))}
                         </div>
