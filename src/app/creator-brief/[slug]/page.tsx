@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import type {
   CreatorBrief,
   CreatorBriefSection,
+  AthleteProfile,
   ShootLogisticsContent,
   ConceptSectionContent,
   PhotosSectionContent,
@@ -28,6 +29,72 @@ import type {
   DosDontsSectionContent,
   FileDeliverySectionContent,
 } from '@/lib/types/briefs';
+
+// ---- Rich HTML renderer (renders HTML from the rich text editor) ----
+function RichContent({ html, className = '' }: { html: string; className?: string }) {
+  if (!html || html === '<p></p>') return null;
+  return (
+    <div
+      className={`prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900 prose-blockquote:border-gray-300 prose-blockquote:text-gray-600 ${className}`}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+// ---- Athlete Profile Card ----
+function AthleteProfileCard({ profile, color }: { profile: AthleteProfile; color: string }) {
+  if (!profile.name && !profile.photo_url) return null;
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mb-8">
+      <div className="flex items-center gap-3 mb-4">
+        <span
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+          style={{ backgroundColor: color }}
+        >
+          ★
+        </span>
+        <h2 className="text-xl font-bold text-gray-900">Athlete Profile</h2>
+      </div>
+      <hr className="mb-5" style={{ borderColor: color, opacity: 0.3 }} />
+      <div className="flex flex-col sm:flex-row gap-6">
+        {profile.photo_url && (
+          <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={profile.photo_url}
+              alt={profile.name || 'Athlete'}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+        <div className="flex-1 space-y-2">
+          {profile.name && (
+            <h3 className="text-xl font-bold text-gray-900">{profile.name}</h3>
+          )}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+            {profile.sport && <span>{profile.sport}</span>}
+            {profile.school && <span>{profile.school}</span>}
+            {profile.year && <span>{profile.year}</span>}
+          </div>
+          {profile.instagram && (
+            <a
+              href={`https://instagram.com/${profile.instagram}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-medium hover:underline"
+              style={{ color }}
+            >
+              @{profile.instagram}
+            </a>
+          )}
+          {profile.bio && (
+            <p className="text-gray-600 text-sm leading-relaxed mt-2">{profile.bio}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ---- Section Renderers ----
 
@@ -114,7 +181,7 @@ function ShootLogisticsSection({ content, color }: { content: ShootLogisticsCont
 function ConceptSection({ content, color }: { content: ConceptSectionContent; color: string }) {
   return (
     <div>
-      <p className="text-gray-700 leading-relaxed">{content.description}</p>
+      <RichContent html={content.description} />
       {content.callout && (
         <div className="mt-4 rounded-xl p-5 text-white" style={{ backgroundColor: color }}>
           <div className="font-bold text-sm uppercase tracking-wide mb-2 opacity-90">{content.callout.title}</div>
@@ -128,7 +195,7 @@ function ConceptSection({ content, color }: { content: ConceptSectionContent; co
 function PhotosSection({ content }: { content: PhotosSectionContent }) {
   return (
     <div>
-      <p className="text-gray-700 leading-relaxed mb-4">{content.description}</p>
+      <RichContent html={content.description} className="mb-4" />
       {content.images && content.images.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
           {content.images.map((img, i) => (
@@ -149,7 +216,7 @@ function PhotosSection({ content }: { content: PhotosSectionContent }) {
 function VideosSection({ content }: { content: VideosSectionContent }) {
   return (
     <div>
-      <p className="text-gray-700 leading-relaxed mb-4">{content.description}</p>
+      <RichContent html={content.description} className="mb-4" />
       {content.videos && content.videos.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
           {content.videos.map((vid, i) => (
@@ -244,13 +311,11 @@ function CreativeDirectionSection({ content, color }: { content: CreativeDirecti
           ))}
         </div>
       )}
-      {content.visual_style && (
-        <p className="text-gray-700 leading-relaxed mb-3">{content.visual_style}</p>
-      )}
+      {content.visual_style && <RichContent html={content.visual_style} className="mb-3" />}
       {content.lighting_notes && (
         <div>
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lighting Notes</div>
-          <p className="text-gray-600 text-sm">{content.lighting_notes}</p>
+          <RichContent html={content.lighting_notes} className="text-sm" />
         </div>
       )}
     </div>
@@ -283,7 +348,7 @@ function CameraSpecsSection({ content, color }: { content: CameraSpecsSectionCon
       {content.lens_recommendation && (
         <div className="sm:col-span-2">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lens Recommendation</div>
-          <p className="text-gray-700 text-sm">{content.lens_recommendation}</p>
+          <RichContent html={content.lens_recommendation} className="text-sm" />
         </div>
       )}
     </div>
@@ -303,7 +368,7 @@ function WorkflowSection({ content, color }: { content: WorkflowSectionContent; 
           </div>
           <div className="flex-1">
             <div className="font-semibold text-gray-900">{step.title}</div>
-            <p className="text-sm text-gray-600 mt-0.5">{step.description}</p>
+            <RichContent html={step.description} className="text-sm mt-0.5" />
           </div>
         </div>
       ))}
@@ -366,7 +431,7 @@ function FileDeliverySection({ content, color }: { content: FileDeliverySectionC
       {content.delivery_method && (
         <div>
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Delivery Method</div>
-          <p className="text-gray-700 text-sm">{content.delivery_method}</p>
+          <RichContent html={content.delivery_method} className="text-sm" />
         </div>
       )}
       {content.deadline && (
@@ -564,6 +629,11 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
             <hr className="mb-4" style={{ borderColor: color, opacity: 0.3 }} />
             <SectionRenderer section={shootSection} color={color} />
           </div>
+        )}
+
+        {/* Athlete Profile */}
+        {brief.athlete_profile && (
+          <AthleteProfileCard profile={brief.athlete_profile} color={color} />
         )}
 
         {/* Numbered sections */}
