@@ -70,7 +70,9 @@ export async function PATCH(
   // Only allow updating these fields
   const allowedFields = [
     'title', 'athlete_name', 'sections', 'reference_images',
-    'brand_color', 'brand_logo_url', 'postgame_contacts', 'videographer',
+    'brand_color', 'brand_logo_url', 'athlete_photo_url',
+    'shoot_date', 'shoot_time', 'location',
+    'postgame_contacts', 'videographer',
   ];
   const updates: Record<string, unknown> = {};
   for (const key of allowedFields) {

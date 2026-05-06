@@ -292,6 +292,10 @@ export interface CreatorBrief {
   reference_images: { url: string; caption?: string }[];
   brand_color: string | null;
   brand_logo_url: string | null;
+  athlete_photo_url: string | null;
+  shoot_date: string | null;
+  shoot_time: string | null;
+  location: string | null;
   postgame_contacts: ShootContact[];
   videographer: ShootContact | null;
   status: CreatorBriefStatus;
