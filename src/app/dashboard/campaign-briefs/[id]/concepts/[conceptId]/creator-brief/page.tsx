@@ -10,13 +10,303 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type {
   CreatorBrief,
   CreatorBriefSection,
+  ShootLogisticsContent,
+  ShootContact,
 } from '@/lib/types/briefs';
 import SectionEditor from './section-editor';
+
+// --- Staff / Videographer types for dropdowns ---
+interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+interface VideographerOption {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null; // city, state
+}
+
+// --- Searchable Videographer Dropdown ---
+function VideographerSearch({
+  videographers,
+  selected,
+  onSelect,
+  onClear,
+}: {
+  videographers: VideographerOption[];
+  selected: ShootContact | null;
+  onSelect: (v: VideographerOption) => void;
+  onClear: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const filtered = videographers.filter((v) =>
+    v.name.toLowerCase().includes(query.toLowerCase()) ||
+    (v.notes || '').toLowerCase().includes(query.toLowerCase())
+  ).slice(0, 20); // Show max 20 results
+
+  if (selected) {
+    return (
+      <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+        <div className="flex-1">
+          <div className="text-sm font-medium text-white">{selected.name}</div>
+          {selected.phone && <div className="text-xs text-gray-400">{selected.phone}</div>}
+        </div>
+        <button onClick={onClear} className="text-gray-500 hover:text-red-400 text-xs">✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search videographers by name or city..."
+        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500"
+      />
+      {open && query.length > 0 && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+          ) : (
+            filtered.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => { onSelect(v); setQuery(''); setOpen(false); }}
+                className="w-full text-left px-3 py-2 hover:bg-gray-700 border-b border-gray-700/50 last:border-0"
+              >
+                <div className="text-sm text-white">{v.name}</div>
+                <div className="text-xs text-gray-400">
+                  {[v.notes, v.phone].filter(Boolean).join(' · ')}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Shoot Logistics Editor ---
+function ShootLogisticsEditor({
+  content,
+  onChange,
+}: {
+  content: ShootLogisticsContent;
+  onChange: (updated: ShootLogisticsContent) => void;
+}) {
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [videographers, setVideographers] = useState<VideographerOption[]>([]);
+  const [staffDropdownOpen, setStaffDropdownOpen] = useState(false);
+  const staffRef = useRef<HTMLDivElement>(null);
+
+  // Load dropdown data
+  useEffect(() => {
+    fetch('/api/staff').then((r) => r.ok ? r.json() : []).then(setStaff);
+    fetch('/api/videographers').then((r) => r.ok ? r.json() : []).then(setVideographers);
+  }, []);
+
+  // Close staff dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (staffRef.current && !staffRef.current.contains(e.target as Node)) setStaffDropdownOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  function toggleStaffContact(member: StaffMember) {
+    const exists = content.postgame_contacts.some((c) => c.id === member.id);
+    if (exists) {
+      onChange({
+        ...content,
+        postgame_contacts: content.postgame_contacts.filter((c) => c.id !== member.id),
+      });
+    } else {
+      onChange({
+        ...content,
+        postgame_contacts: [
+          ...content.postgame_contacts,
+          { id: member.id, name: member.name, phone: '', role: member.role || '', email: member.email },
+        ],
+      });
+    }
+  }
+
+  function updateContactPhone(index: number, phone: string) {
+    const updated = [...content.postgame_contacts];
+    updated[index] = { ...updated[index], phone };
+    onChange({ ...content, postgame_contacts: updated });
+  }
+
+  function updateContactRole(index: number, role: string) {
+    const updated = [...content.postgame_contacts];
+    updated[index] = { ...updated[index], role };
+    onChange({ ...content, postgame_contacts: updated });
+  }
+
+  function removeContact(index: number) {
+    onChange({
+      ...content,
+      postgame_contacts: content.postgame_contacts.filter((_, i) => i !== index),
+    });
+  }
+
+  function selectVideographer(v: VideographerOption) {
+    onChange({
+      ...content,
+      videographer: {
+        id: v.id,
+        name: v.name,
+        phone: v.phone || '',
+        role: 'Videographer',
+        email: v.email || undefined,
+      },
+    });
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Date / Time / Location */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Shoot Date</label>
+          <input
+            type="date"
+            value={content.shoot_date || ''}
+            onChange={(e) => onChange({ ...content, shoot_date: e.target.value || null })}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Shoot Time</label>
+          <input
+            type="time"
+            value={content.shoot_time || ''}
+            onChange={(e) => onChange({ ...content, shoot_time: e.target.value || null })}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Location</label>
+          <input
+            type="text"
+            value={content.location || ''}
+            onChange={(e) => onChange({ ...content, location: e.target.value || null })}
+            placeholder="Address or venue"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500"
+          />
+        </div>
+      </div>
+
+      {/* Postgame Contacts — multi-select dropdown */}
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Postgame Contacts</label>
+        <div ref={staffRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setStaffDropdownOpen(!staffDropdownOpen)}
+            className="w-full text-left px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 flex items-center justify-between"
+          >
+            <span>
+              {content.postgame_contacts.length === 0
+                ? 'Select team members...'
+                : `${content.postgame_contacts.length} selected`}
+            </span>
+            <span className="text-gray-500">{staffDropdownOpen ? '▲' : '▼'}</span>
+          </button>
+          {staffDropdownOpen && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+              {staff.map((s) => {
+                const isSelected = content.postgame_contacts.some((c) => c.id === s.id);
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => toggleStaffContact(s)}
+                    className={`w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-gray-700 border-b border-gray-700/50 last:border-0 ${
+                      isSelected ? 'bg-gray-700/50' : ''
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded border flex items-center justify-center text-xs ${
+                      isSelected ? 'bg-[#D73F09] border-[#D73F09] text-white' : 'border-gray-600'
+                    }`}>
+                      {isSelected ? '✓' : ''}
+                    </span>
+                    <div>
+                      <span className="text-sm text-white">{s.name}</span>
+                      {s.role && <span className="text-xs text-gray-400 ml-2">{s.role}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Selected contacts with phone + role fields */}
+        {content.postgame_contacts.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {content.postgame_contacts.map((contact, i) => (
+              <div key={contact.id} className="flex items-center gap-2 bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2">
+                <span className="text-sm text-white font-medium min-w-[120px]">{contact.name}</span>
+                <input
+                  type="text"
+                  value={contact.role || ''}
+                  onChange={(e) => updateContactRole(i, e.target.value)}
+                  placeholder="Role"
+                  className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs placeholder-gray-500"
+                />
+                <input
+                  type="tel"
+                  value={contact.phone || ''}
+                  onChange={(e) => updateContactPhone(i, e.target.value)}
+                  placeholder="Phone"
+                  className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs placeholder-gray-500"
+                />
+                <button onClick={() => removeContact(i)} className="text-gray-500 hover:text-red-400 text-xs">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Videographer — searchable dropdown */}
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Videographer</label>
+        <VideographerSearch
+          videographers={videographers}
+          selected={content.videographer}
+          onSelect={selectVideographer}
+          onClear={() => onChange({ ...content, videographer: null })}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function CreatorBriefEditorPage() {
   const router = useRouter();
@@ -370,10 +660,30 @@ export default function CreatorBriefEditorPage() {
                 </div>
               </div>
               <div className="p-4">
-                <SectionEditor
-                  section={section}
-                  onChange={(next) => updateSection(idx, next)}
-                />
+                {section.type === 'shoot_logistics' ? (
+                  <ShootLogisticsEditor
+                    content={
+                      (section.content as ShootLogisticsContent) || {
+                        shoot_date: null,
+                        shoot_time: null,
+                        location: null,
+                        postgame_contacts: [],
+                        videographer: null,
+                      }
+                    }
+                    onChange={(updated) =>
+                      updateSection(idx, {
+                        ...section,
+                        content: updated,
+                      } as CreatorBriefSection)
+                    }
+                  />
+                ) : (
+                  <SectionEditor
+                    section={section}
+                    onChange={(next) => updateSection(idx, next)}
+                  />
+                )}
               </div>
             </div>
           ))}

@@ -45,10 +45,10 @@ export async function GET(request: NextRequest) {
     .map((u) => ({
       id: u.id,
       email: u.email || '',
-      // Derive a display name from the email prefix, capitalized
       name: u.user_metadata?.full_name ||
         (u.email?.split('@')[0] || '').charAt(0).toUpperCase() +
         (u.email?.split('@')[0] || '').slice(1),
+      role: u.user_metadata?.role || '',
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
