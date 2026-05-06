@@ -26,6 +26,7 @@ interface StaffMember {
   name: string;
   email: string;
   role: string;
+  phone: string | null;
 }
 interface VideographerOption {
   id: string;
@@ -151,7 +152,7 @@ function ShootLogisticsEditor({
         ...content,
         postgame_contacts: [
           ...content.postgame_contacts,
-          { id: member.id, name: member.name, phone: '', role: member.role || '', email: member.email },
+          { id: member.id, name: member.name, phone: member.phone || '', role: member.role || '', email: member.email },
         ],
       });
     }
@@ -258,7 +259,7 @@ function ShootLogisticsEditor({
                     </span>
                     <div>
                       <span className="text-sm text-white">{s.name}</span>
-                      {s.role && <span className="text-xs text-gray-400 ml-2">{s.role}</span>}
+                      {s.phone && <span className="text-xs text-gray-400 ml-2">{s.phone}</span>}
                     </div>
                   </button>
                 );
