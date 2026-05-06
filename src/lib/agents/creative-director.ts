@@ -17,12 +17,21 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServiceSupabase } from '@/lib/supabase';
 import type { Concept } from '@/lib/types/briefs';
 
-// Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
-const anthropic = new Anthropic();
+// Lazy clients — instantiated on first use, not at module load.
+// This keeps Next.js build-time page-data collection from crashing
+// when env vars (ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY) are
+// absent in the build environment.
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!_anthropic) _anthropic = new Anthropic();
+  return _anthropic;
+}
 
-// Service-role client (bypasses RLS) — agent runs happen server-side
-// and need full access to write audit rows + concept records.
-const supabase = createServiceSupabase();
+let _supabase: ReturnType<typeof createServiceSupabase> | null = null;
+function getSupabase() {
+  if (!_supabase) _supabase = createServiceSupabase();
+  return _supabase;
+}
 
 // The JSON schema we tell Claude to follow for its output.
 // Claude will return an array of concept objects matching this shape.
@@ -194,6 +203,8 @@ export async function generateConcepts(
   iterationFeedback?: string
 ): Promise<Concept[]> {
   const startTime = Date.now();
+  const supabase = getSupabase();
+  const anthropic = getAnthropic();
 
   // --- Step 1: Load the brief ---
   const { data: brief, error: briefError } = await supabase
