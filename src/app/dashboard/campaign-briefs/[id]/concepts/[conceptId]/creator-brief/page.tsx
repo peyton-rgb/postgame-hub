@@ -19,6 +19,18 @@ import type {
 } from '@/lib/types/briefs';
 import SectionEditor from './section-editor';
 
+// Format a 10-digit phone string as (XXX) XXX-XXXX
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits[0] === '1') {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return raw; // return as-is if not a standard US number
+}
+
 // ---- Types for dropdowns ----
 interface StaffMember {
   id: string;
@@ -721,99 +733,120 @@ export default function CreatorBriefEditorPage() {
               </button>
             </div>
           ) : (
-            // ---- VIEW MODE (mirrors public page) ----
-            <div>
-              {/* Date / Time / Location */}
-              {(formattedDate || formattedTime || brief.location) && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            // ---- VIEW MODE (Run of Show style) ----
+            <div className="space-y-6">
+              {/* Date / Time row */}
+              {(formattedDate || formattedTime) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {formattedDate && (
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    <div className="border border-gray-200 rounded-xl p-5">
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
                         Date
                       </div>
-                      <div className="text-gray-900 font-semibold">
+                      <div className="text-lg font-bold text-gray-900">
                         {formattedDate}
                       </div>
                     </div>
                   )}
                   {formattedTime && (
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                        Call Time
+                    <div className="border border-gray-200 rounded-xl p-5">
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                        Event Start Time
                       </div>
-                      <div className="text-gray-900 font-semibold">
+                      <div className="text-lg font-bold text-gray-900">
                         {formattedTime}
                       </div>
                     </div>
                   )}
-                  {brief.location && (
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                        Location
-                      </div>
-                      <div className="text-gray-900 font-semibold">
-                        {brief.location}
-                      </div>
+                </div>
+              )}
+
+              {/* Location */}
+              {brief.location && (
+                <div className="border border-gray-200 rounded-xl p-5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    Location
+                  </div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {brief.location}
+                  </div>
+                </div>
+              )}
+
+              {/* Assigned Videographer */}
+              {brief.videographer && (
+                <div className="border border-gray-200 rounded-xl p-5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+                    Assigned Videographer
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                      style={{ backgroundColor: color }}
+                    >
+                      {brief.videographer.name
+                        .split(' ')
+                        .map((w) => w[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* Contacts */}
-              {((brief.postgame_contacts || []).length > 0 ||
-                brief.videographer) && (
-                <div>
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-                    Contacts
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(brief.postgame_contacts || []).map((c) => (
-                      <div
-                        key={c.id}
-                        className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm"
-                      >
-                        <div className="font-semibold text-gray-900">
-                          {c.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {c.role || 'Postgame'}
-                        </div>
-                        {c.phone && (
-                          <div
-                            className="text-sm font-medium mt-1"
-                            style={{ color }}
-                          >
-                            {c.phone}
-                          </div>
-                        )}
+                    <div>
+                      <div className="font-bold text-gray-900">
+                        {brief.videographer.name}
                       </div>
-                    ))}
-                    {brief.videographer && (
-                      <div
-                        className="bg-white rounded-xl p-4 shadow-sm border-2"
-                        style={{ borderColor: color }}
-                      >
-                        <div className="font-semibold text-gray-900">
-                          {brief.videographer.name}
-                        </div>
+                      {brief.videographer.phone && (
                         <div className="text-sm text-gray-500">
-                          {brief.videographer.role || 'Videographer'}
+                          {formatPhone(brief.videographer.phone)}
                         </div>
-                        {brief.videographer.phone && (
-                          <div
-                            className="text-sm font-medium mt-1"
-                            style={{ color }}
-                          >
-                            {brief.videographer.phone}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Empty state if nothing set */}
+              {/* Postgame Points of Contact */}
+              {(brief.postgame_contacts || []).length > 0 && (
+                <div className="border border-gray-200 rounded-xl p-5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+                    Postgame Points of Contact
+                  </div>
+                  <div className="space-y-4">
+                    {(brief.postgame_contacts || []).map((c, i) => {
+                      // Generate a consistent color per contact
+                      const avatarColors = ['#D73F09', '#2563eb', '#059669', '#7c3aed', '#db2777', '#d97706', '#0891b2'];
+                      const avatarColor = avatarColors[i % avatarColors.length];
+                      return (
+                        <div key={c.id} className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                            style={{ backgroundColor: avatarColor }}
+                          >
+                            {c.name
+                              .split(' ')
+                              .map((w) => w[0])
+                              .join('')
+                              .toUpperCase()
+                              .slice(0, 2)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-gray-900">
+                              {c.name}
+                            </div>
+                            {c.phone && (
+                              <div className="text-sm text-gray-500">
+                                {formatPhone(c.phone)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
               {!formattedDate &&
                 !formattedTime &&
                 !brief.location &&
