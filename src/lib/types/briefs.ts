@@ -279,6 +279,17 @@ export interface CreatorBriefSection {
     | FileDeliverySectionContent;
 }
 
+// Athlete profile — short bio card shown on the creator brief
+export interface AthleteProfile {
+  name: string;
+  school: string;
+  sport: string;
+  year: string;           // e.g. "Sophomore", "Junior"
+  instagram: string;      // handle without @
+  bio: string;            // short blurb
+  photo_url: string | null;
+}
+
 // The full creator brief record from Supabase
 export interface CreatorBrief {
   id: string;
@@ -298,6 +309,7 @@ export interface CreatorBrief {
   location: string | null;
   postgame_contacts: ShootContact[];
   videographer: ShootContact | null;
+  athlete_profile: AthleteProfile | null;
   status: CreatorBriefStatus;
   published_at: string | null;
   created_by: string;

@@ -16,7 +16,9 @@ import type {
   CreatorBrief,
   CreatorBriefSection,
   ShootContact,
+  AthleteProfile,
 } from '@/lib/types/briefs';
+import { createBrowserSupabase } from '@/lib/supabase';
 import SectionEditor from './section-editor';
 
 // Format a 10-digit phone string as (XXX) XXX-XXXX
@@ -145,6 +147,8 @@ export default function CreatorBriefEditorPage() {
   // Which top-level card is in edit mode
   const [editingHeader, setEditingHeader] = useState(false);
   const [editingShoot, setEditingShoot] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Dropdown data
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
@@ -296,6 +300,50 @@ export default function CreatorBriefEditorPage() {
         email: v.email || undefined,
       },
     });
+  }
+
+  // ---- Athlete Profile helpers ----
+
+  const emptyProfile: AthleteProfile = {
+    name: '',
+    school: '',
+    sport: '',
+    year: '',
+    instagram: '',
+    bio: '',
+    photo_url: null,
+  };
+
+  function updateProfile(field: keyof AthleteProfile, value: string | null) {
+    if (!brief) return;
+    const current = brief.athlete_profile || emptyProfile;
+    setBrief({
+      ...brief,
+      athlete_profile: { ...current, [field]: value },
+    });
+  }
+
+  async function handlePhotoUpload(file: File) {
+    if (!brief) return;
+    setUploadingPhoto(true);
+    try {
+      const supabase = createBrowserSupabase();
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `athlete-photos/${brief.id}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('brief-assets')
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage
+        .from('brief-assets')
+        .getPublicUrl(path);
+      updateProfile('photo_url', urlData.publicUrl);
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+      setError('Photo upload failed');
+    } finally {
+      setUploadingPhoto(false);
+    }
   }
 
   // ---- Rendering ----
@@ -857,6 +905,213 @@ export default function CreatorBriefEditorPage() {
                     contacts.
                   </p>
                 )}
+            </div>
+          )}
+        </div>
+
+        {/* ---- ATHLETE PROFILE CARD ---- */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mb-8 relative group">
+          <button
+            onClick={() => setEditingProfile(!editingProfile)}
+            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded-lg text-xs font-medium z-10"
+          >
+            {editingProfile ? 'Done' : 'Edit'}
+          </button>
+
+          <div className="flex items-center gap-3 mb-4">
+            <span
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              style={{ backgroundColor: color }}
+            >
+              ★
+            </span>
+            <h2 className="text-xl font-bold text-gray-900">Athlete Profile</h2>
+          </div>
+          <hr className="mb-5" style={{ borderColor: color, opacity: 0.3 }} />
+
+          {editingProfile ? (
+            /* ---- EDIT MODE ---- */
+            <div className="space-y-5">
+              {/* Photo upload */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">Athlete Photo</label>
+                <div className="flex items-start gap-4">
+                  {(brief.athlete_profile?.photo_url) && (
+                    <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={brief.athlete_profile.photo_url}
+                        alt="Athlete"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="text"
+                      value={brief.athlete_profile?.photo_url || ''}
+                      onChange={(e) => updateProfile('photo_url', e.target.value || null)}
+                      placeholder="Paste image URL..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                        {uploadingPhoto ? (
+                          <span className="animate-pulse">Uploading...</span>
+                        ) : (
+                          <>
+                            <span>📷</span> Upload file
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingPhoto}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handlePhotoUpload(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={brief.athlete_profile?.name || ''}
+                    onChange={(e) => updateProfile('name', e.target.value)}
+                    placeholder="Full name"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">School</label>
+                  <input
+                    type="text"
+                    value={brief.athlete_profile?.school || ''}
+                    onChange={(e) => updateProfile('school', e.target.value)}
+                    placeholder="University name"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Sport</label>
+                  <input
+                    type="text"
+                    value={brief.athlete_profile?.sport || ''}
+                    onChange={(e) => updateProfile('sport', e.target.value)}
+                    placeholder="e.g. Football, Basketball"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Year</label>
+                  <input
+                    type="text"
+                    value={brief.athlete_profile?.year || ''}
+                    onChange={(e) => updateProfile('year', e.target.value)}
+                    placeholder="e.g. Sophomore, Junior"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Instagram</label>
+                  <div className="flex items-center">
+                    <span className="text-gray-400 text-sm mr-1">@</span>
+                    <input
+                      type="text"
+                      value={brief.athlete_profile?.instagram || ''}
+                      onChange={(e) => updateProfile('instagram', e.target.value.replace('@', ''))}
+                      placeholder="handle"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Bio Blurb</label>
+                <textarea
+                  value={brief.athlete_profile?.bio || ''}
+                  onChange={(e) => updateProfile('bio', e.target.value)}
+                  placeholder="Short bio about the athlete..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm resize-none"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  saveField({ athlete_profile: brief.athlete_profile });
+                  setEditingProfile(false);
+                }}
+                className="px-4 py-1.5 bg-[#D73F09] text-white rounded-lg text-sm font-medium"
+              >
+                Save Profile
+              </button>
+            </div>
+          ) : (
+            /* ---- VIEW MODE ---- */
+            <div>
+              {brief.athlete_profile &&
+              (brief.athlete_profile.name || brief.athlete_profile.photo_url) ? (
+                <div className="flex flex-col sm:flex-row gap-6">
+                  {brief.athlete_profile.photo_url && (
+                    <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={brief.athlete_profile.photo_url}
+                        alt={brief.athlete_profile.name || 'Athlete'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-2">
+                    {brief.athlete_profile.name && (
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {brief.athlete_profile.name}
+                      </h3>
+                    )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+                      {brief.athlete_profile.sport && (
+                        <span>{brief.athlete_profile.sport}</span>
+                      )}
+                      {brief.athlete_profile.school && (
+                        <span>{brief.athlete_profile.school}</span>
+                      )}
+                      {brief.athlete_profile.year && (
+                        <span>{brief.athlete_profile.year}</span>
+                      )}
+                    </div>
+                    {brief.athlete_profile.instagram && (
+                      <a
+                        href={`https://instagram.com/${brief.athlete_profile.instagram}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm font-medium hover:underline"
+                        style={{ color }}
+                      >
+                        @{brief.athlete_profile.instagram}
+                      </a>
+                    )}
+                    {brief.athlete_profile.bio && (
+                      <p className="text-gray-600 text-sm leading-relaxed mt-2">
+                        {brief.athlete_profile.bio}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-sm italic">
+                  No athlete profile yet — click Edit to add photo, name, and bio.
+                </p>
+              )}
             </div>
           )}
         </div>
