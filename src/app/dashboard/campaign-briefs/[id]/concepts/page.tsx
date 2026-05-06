@@ -6,9 +6,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Concept, Brief } from '@/lib/types/briefs';
+import type { Concept, Brief, CreativeSeed } from '@/lib/types/briefs';
+
+type GenerationMode = 'fresh' | 'collaborate';
 
 const SCOPE_LABELS: Record<string, string> = {
   ugc_only: 'UGC Only',
@@ -50,6 +52,53 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Concept>>({});
 
+  // --- Creative Input panel state (Phase 3) ---
+  // 'fresh' = old behavior (no extra context). 'collaborate' = exposes panel.
+  const [mode, setMode] = useState<GenerationMode>('fresh');
+  const [athleteName, setAthleteName] = useState('');
+  const [refImageUrls, setRefImageUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [seeds, setSeeds] = useState<CreativeSeed[]>([{ name: '', description: '' }]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function addSeed() {
+    setSeeds((prev) => [...prev, { name: '', description: '' }]);
+  }
+
+  function removeSeed(idx: number) {
+    setSeeds((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)));
+  }
+
+  function updateSeed(idx: number, patch: Partial<CreativeSeed>) {
+    setSeeds((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+  }
+
+  async function handleFileUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append('brief_id', briefId);
+      Array.from(files).forEach((f) => form.append('file', f));
+
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Upload failed');
+      }
+      const data = (await res.json()) as { urls: string[] };
+      setRefImageUrls((prev) => [...prev, ...data.urls]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    }
+    setUploading(false);
+  }
+
+  function removeRefImage(url: string) {
+    setRefImageUrls((prev) => prev.filter((u) => u !== url));
+  }
+
   useEffect(() => {
     async function fetchData() {
       const [briefRes, conceptsRes] = await Promise.all([
@@ -68,10 +117,23 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
     setGenerating(true);
     setError(null);
     try {
+      // Only send collab fields when collaborate mode is on AND something
+      // was actually filled in. Empty seeds are filtered so the agent
+      // doesn't get noise.
+      const payload: Record<string, unknown> = { brief_id: briefId };
+      if (mode === 'collaborate') {
+        if (athleteName.trim()) payload.athlete_name = athleteName.trim();
+        if (refImageUrls.length > 0) payload.reference_image_urls = refImageUrls;
+        const cleanedSeeds = seeds
+          .map((s) => ({ name: s.name.trim(), description: s.description.trim() }))
+          .filter((s) => s.name || s.description);
+        if (cleanedSeeds.length > 0) payload.creative_seeds = cleanedSeeds;
+      }
+
       const res = await fetch('/api/concepts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brief_id: briefId }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -182,14 +244,14 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
           &larr; Back to Brief
         </button>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Creative Concepts</h1>
             <p className="text-gray-400 mt-1">{brief?.name}</p>
           </div>
           <button
             onClick={handleGenerate}
-            disabled={generating || brief?.status === 'draft'}
+            disabled={generating || uploading || brief?.status === 'draft'}
             className="px-6 py-3 bg-[#D73F09] hover:bg-[#b33507] text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {generating ? (
@@ -201,6 +263,144 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
               'Generate Concepts'
             )}
           </button>
+        </div>
+
+        {/* Creative Input panel — Phase 3 collaborative mode */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl mb-8 overflow-hidden">
+          <div className="flex items-center gap-2 p-4 border-b border-gray-800">
+            <button
+              onClick={() => setMode('fresh')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                mode === 'fresh'
+                  ? 'bg-white text-[#07070a]'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              Start Fresh
+            </button>
+            <button
+              onClick={() => setMode('collaborate')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                mode === 'collaborate'
+                  ? 'bg-[#D73F09] text-white'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              Collaborate
+            </button>
+            <span className="text-xs text-gray-500 ml-3">
+              {mode === 'fresh'
+                ? 'Generate concepts from the brief alone.'
+                : 'Add athlete, references, or seed ideas to bias generation.'}
+            </span>
+          </div>
+
+          {mode === 'collaborate' && (
+            <div className="p-6 space-y-6">
+              {/* Athlete */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Athlete Name (optional)</label>
+                <input
+                  type="text"
+                  value={athleteName}
+                  onChange={(e) => setAthleteName(e.target.value)}
+                  placeholder="e.g. Caitlin Clark"
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                />
+              </div>
+
+              {/* Reference images */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Reference Images (optional)
+                </label>
+                <div
+                  onDragOver={(e) => { e.preventDefault(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleFileUpload(e.dataTransfer.files);
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-700 hover:border-gray-600 rounded-lg p-6 text-center cursor-pointer transition-colors"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e.target.files)}
+                  />
+                  <p className="text-gray-400 text-sm">
+                    {uploading ? 'Uploading...' : 'Drag images here or click to upload'}
+                  </p>
+                  <p className="text-gray-600 text-xs mt-1">PNG / JPG / WEBP — up to 15 MB each</p>
+                </div>
+
+                {refImageUrls.length > 0 && (
+                  <div className="grid grid-cols-4 gap-3 mt-3">
+                    {refImageUrls.map((url) => (
+                      <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border border-gray-800">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="reference" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeRefImage(url)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Creative seeds */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Your Creative Ideas (optional)
+                </label>
+                <div className="space-y-3">
+                  {seeds.map((seed, idx) => (
+                    <div key={idx} className="bg-gray-800 border border-gray-700 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={seed.name}
+                          onChange={(e) => updateSeed(idx, { name: e.target.value })}
+                          placeholder="Concept name"
+                          className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] text-sm"
+                        />
+                        {seeds.length > 1 && (
+                          <button
+                            onClick={() => removeSeed(idx)}
+                            className="text-gray-500 hover:text-red-400 px-2"
+                            aria-label="Remove idea"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={seed.description}
+                        onChange={(e) => updateSeed(idx, { description: e.target.value })}
+                        placeholder="Describe the angle, vibe, or visual direction..."
+                        rows={2}
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] text-sm resize-y"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={addSeed}
+                  className="mt-3 text-sm text-[#D73F09] hover:text-[#b33507]"
+                >
+                  + Add another idea
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (
