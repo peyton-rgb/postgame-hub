@@ -251,11 +251,11 @@ function SectionBody({
       const c = section.content as ProductReqsSectionContent;
       return (
         <ul className="space-y-5">
-          {c.items.map((item: { name: string; requirements: string[] }, i: number) => (
+          {(c.items || []).map((item: { name: string; requirements: string[] }, i: number) => (
             <li key={i}>
               <div className="font-bold">{item.name}</div>
               <ul className="mt-2 space-y-1.5 text-sm text-gray-700 list-disc pl-5">
-                {item.requirements.map((r: string, j: number) => (
+                {(item.requirements || []).map((r: string, j: number) => (
                   <li key={j}>{r}</li>
                 ))}
               </ul>
@@ -270,7 +270,7 @@ function SectionBody({
       return (
         <>
           <ul className="space-y-1.5 text-sm text-gray-700 list-disc pl-5">
-            {c.requirements.map((r: string, i: number) => (
+            {(c.requirements || []).map((r: string, i: number) => (
               <li key={i}>{r}</li>
             ))}
           </ul>

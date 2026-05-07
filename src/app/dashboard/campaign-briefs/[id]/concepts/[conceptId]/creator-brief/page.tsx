@@ -1225,7 +1225,7 @@ function SectionPreview({
             <div key={i} className="bg-gray-50 rounded-xl p-4">
               <div className="font-semibold text-gray-900 mb-2">{item.name}</div>
               <ul className="space-y-1">
-                {item.requirements.map((req, j) => (
+                {(item.requirements || []).map((req, j) => (
                   <li key={j} className="text-sm text-gray-600 flex items-start gap-2">
                     <span className="text-gray-400 mt-0.5">&bull;</span>{req}
                   </li>
