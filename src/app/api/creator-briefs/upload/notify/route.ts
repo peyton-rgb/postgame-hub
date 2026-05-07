@@ -17,6 +17,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import nodemailer from 'nodemailer';
 
 const getAdminSupabase = () =>
   createClient(
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Don't fail the whole request if Slack fails
   }
 
-  // --- 2. Send email notification ---
+  // --- 2. Send email notification via Gmail SMTP ---
   try {
     // Get contacts from the brief to email
     const contacts = (brief.postgame_contacts || []) as Array<{
@@ -119,47 +120,48 @@ export async function POST(request: NextRequest) {
     }
 
     if (emailRecipients.length > 0) {
-      // Use Supabase Edge Function or a simple email service
-      // For now, we'll use Supabase's built-in email via the auth system
-      // or a webhook. We'll log it and you can wire up SendGrid/Resend later.
+      const gmailUser = process.env.GMAIL_USER;
+      const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
 
-      // Simple approach: store the notification in a notifications table
-      // so the dashboard can show it, and send email via a service
-      console.log(
-        `EMAIL NOTIFICATION: To: ${emailRecipients.join(', ')} | ` +
-        `Subject: New footage uploaded - ${athleteName} | ` +
-        `Body: ${fileCount} files uploaded for ${briefTitle}`
-      );
-
-      // If Resend API key is available, send the email
-      if (process.env.RESEND_API_KEY) {
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      if (gmailUser && gmailAppPassword) {
+        // Create a nodemailer "transporter" — this is the thing that
+        // actually connects to Gmail's mail servers and sends the email.
+        // We use SMTP (Simple Mail Transfer Protocol) on port 465 with SSL.
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: gmailUser,        // e.g. hub@pstgm.com
+            pass: gmailAppPassword, // Google App Password (not the regular password)
           },
-          body: JSON.stringify({
-            from: 'Postgame Hub <notifications@pstgm.com>',
-            to: emailRecipients,
-            subject: `📸 New footage: ${athleteName} — ${briefTitle}`,
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 500px;">
-                <h2 style="color: #D73F09;">New Footage Uploaded</h2>
-                <p><strong>Athlete:</strong> ${athleteName}</p>
-                <p><strong>Campaign:</strong> ${briefTitle}</p>
-                <p><strong>Files:</strong> ${fileCount || 0} file${(fileCount || 0) !== 1 ? 's' : ''}</p>
-                ${fileList ? `<p style="color: #666; font-size: 14px;">${fileList}${moreFiles}</p>` : ''}
-                <br/>
-                <a href="${intakeUrl}" style="background: #D73F09; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">Review in Intake Queue</a>
-                <br/><br/>
-                <p style="color: #999; font-size: 12px;">
-                  Uploaded via <a href="${briefUrl}" style="color: #D73F09;">creative brief</a>
-                </p>
-              </div>
-            `,
-          }),
         });
+
+        await transporter.sendMail({
+          from: `"Postgame Hub" <${gmailUser}>`,
+          to: emailRecipients.join(', '),
+          subject: `New footage: ${athleteName} — ${briefTitle}`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 500px;">
+              <h2 style="color: #D73F09;">New Footage Uploaded</h2>
+              <p><strong>Athlete:</strong> ${athleteName}</p>
+              <p><strong>Campaign:</strong> ${briefTitle}</p>
+              <p><strong>Files:</strong> ${fileCount || 0} file${(fileCount || 0) !== 1 ? 's' : ''}</p>
+              ${fileList ? `<p style="color: #666; font-size: 14px;">${fileList}${moreFiles}</p>` : ''}
+              <br/>
+              <a href="${intakeUrl}" style="background: #D73F09; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">Review in Intake Queue</a>
+              <br/><br/>
+              <p style="color: #999; font-size: 12px;">
+                Uploaded via <a href="${briefUrl}" style="color: #D73F09;">creative brief</a>
+              </p>
+            </div>
+          `,
+        });
+      } else {
+        console.log(
+          `EMAIL NOTIFICATION (no Gmail credentials configured): ` +
+          `To: ${emailRecipients.join(', ')} | ` +
+          `Subject: New footage uploaded - ${athleteName} | ` +
+          `Body: ${fileCount} files uploaded for ${briefTitle}`
+        );
       }
     }
   } catch (err) {
