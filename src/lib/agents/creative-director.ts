@@ -458,6 +458,16 @@ export async function generateConcepts(
   }
 
   // --- Step 7: Save concepts to Supabase ---
+  const VALID_SCOPES = ['ugc_only', 'hybrid', 'full_production'] as const;
+  function sanitizeScope(raw: unknown): 'ugc_only' | 'hybrid' | 'full_production' {
+    const s = String(raw || '').toLowerCase();
+    if (VALID_SCOPES.includes(s as typeof VALID_SCOPES[number])) return s as typeof VALID_SCOPES[number];
+    // Fuzzy match: if the AI wrote a description, guess from keywords
+    if (s.includes('ugc') || s.includes('user generated')) return 'ugc_only';
+    if (s.includes('full') || s.includes('studio') || s.includes('high')) return 'full_production';
+    return 'hybrid'; // safe default
+  }
+
   const conceptRecords = conceptsArray.map((c: Record<string, unknown>) => ({
     brief_id: briefId,
     name: c.name as string,
@@ -465,7 +475,7 @@ export async function generateConcepts(
     athlete_archetype: (c.athlete_archetype as string) || null,
     settings_suggestions: (c.settings_suggestions as string[]) || [],
     inspo_references: (c.inspo_item_ids as string[]) || [],
-    production_scope: (c.production_scope as string) || 'hybrid',
+    production_scope: sanitizeScope(c.production_scope),
     estimated_assets: (c.estimated_assets as number) || null,
     status: 'proposed' as const,
     generated_by: 'claude' as const,
