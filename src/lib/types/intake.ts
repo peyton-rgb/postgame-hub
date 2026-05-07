@@ -50,12 +50,20 @@ export interface ContextTags {
 // --- The full tag output from Claude Vision ---
 
 export interface IntakeTagResult {
+  // Original 13 creative tags
   pro_tags: ProTags;
   social_tags: SocialTags;
   context_tags: ContextTags;
   vibe_words: string[];         // stored in search_phrases column
   visual_description: string;   // Claude's written description of the content
   brief_fit: string[];          // what kind of briefs this content could serve
+  // Postgame-specific tags for the editing agent
+  shot_type: string;            // close_up, medium, wide, aerial, pov, etc.
+  scene_setting: string;        // outdoor_field, restaurant, locker_room, etc.
+  action_description: string;   // one sentence describing the primary action
+  mood_tags: string[];          // hype, focused, candid, cinematic, etc.
+  people_count: number;         // number of people visible
+  content_quality: string;      // a_roll_hero, b_roll_support, bts_candid, filler
 }
 
 // --- Tagging status for inspo_items ---
@@ -123,8 +131,32 @@ export interface InspoItem {
   clip_end_seconds: number | null;
   is_atomic_clip: boolean | null;
   tagging_status: TaggingStatus;
-  triage_status: string | null;
+  triage_status: 'pending' | 'approved' | 'flagged' | 'rejected' | 'auto_approved' | null;
   notes: string | null;
+  // File metadata (auto-extracted)
+  resolution: string | null;
+  frame_rate: string | null;
+  codec: string | null;
+  color_space: string | null;
+  camera_model: string | null;
+  // Postgame-specific tags
+  athlete_tier: number | null;       // 1 (highest) to 3 (lowest)
+  mood_tags: string[] | null;
+  shot_type: string | null;
+  scene_setting: string | null;
+  action_description: string | null;
+  people_count: number | null;
+  content_quality: string | null;    // a_roll_hero, b_roll_support, bts_candid, filler
+  // Gate 1: Postgame internal approval
+  approved_by: string | null;
+  approved_at: string | null;
+  // Gate 2: Brand approval
+  brand_approval_status: 'pending' | 'approved' | 'changes_requested' | null;
+  brand_approved_by: string | null;
+  brand_approved_at: string | null;
+  brand_feedback: string | null;
+  // Editing
+  editing_status: 'pending' | 'in_progress' | 'complete' | null;
 }
 
 // --- What we send when creating a new inspo_item from an upload ---

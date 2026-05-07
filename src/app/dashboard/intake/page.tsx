@@ -36,8 +36,25 @@ const STATUS_COLORS: Record<TaggingStatus, string> = {
   reviewed: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
 };
 
+// --- Triage status helpers ---
+const TRIAGE_LABELS: Record<string, string> = {
+  pending: 'Needs Review',
+  approved: 'Approved',
+  auto_approved: 'Auto-Approved',
+  flagged: 'Flagged',
+  rejected: 'Rejected',
+};
+
+const TRIAGE_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
+  approved: 'bg-green-600/20 text-green-300 border-green-600/30',
+  auto_approved: 'bg-emerald-600/20 text-emerald-300 border-emerald-600/30',
+  flagged: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
+  rejected: 'bg-red-600/20 text-red-300 border-red-600/30',
+};
+
 // --- Tab types ---
-type Tab = 'upload' | 'queue' | 'brief';
+type Tab = 'upload' | 'queue' | 'approval' | 'brief';
 
 export default function IntakePage() {
   const supabase = createBrowserSupabase();
@@ -55,6 +72,10 @@ export default function IntakePage() {
   const [selectedItem, setSelectedItem] = useState<InspoItem | null>(null);
   const [briefParsing, setBriefParsing] = useState(false);
   const [parsedBrief, setParsedBrief] = useState<Record<string, unknown> | null>(null);
+  const [approvalItems, setApprovalItems] = useState<InspoItem[]>([]);
+  const [approvalFilter, setApprovalFilter] = useState<string>('pending');
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  const [approvalCounts, setApprovalCounts] = useState({ pending: 0, approved: 0, auto_approved: 0, flagged: 0, rejected: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const briefInputRef = useRef<HTMLInputElement>(null);
 
@@ -272,6 +293,83 @@ export default function IntakePage() {
     setBriefParsing(false);
   };
 
+  // --- Fetch approval queue (tagged items needing triage) ---
+  const fetchApproval = useCallback(async () => {
+    setApprovalLoading(true);
+    // Fetch tagged items, filtered by triage_status
+    const { data, error } = await supabase
+      .from('inspo_items')
+      .select('*')
+      .eq('tagging_status', 'tagged')
+      .eq('triage_status', approvalFilter)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      setApprovalItems(data as InspoItem[]);
+    }
+
+    // Fetch counts for all triage statuses
+    const countStatuses = ['pending', 'approved', 'auto_approved', 'flagged', 'rejected'];
+    const newCounts: Record<string, number> = {};
+    for (const s of countStatuses) {
+      const { count } = await supabase
+        .from('inspo_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('tagging_status', 'tagged')
+        .eq('triage_status', s);
+      newCounts[s] = count || 0;
+    }
+    setApprovalCounts(newCounts as typeof approvalCounts);
+    setApprovalLoading(false);
+  }, [approvalFilter, supabase]);
+
+  useEffect(() => {
+    if (activeTab === 'approval') {
+      fetchApproval();
+    }
+  }, [activeTab, approvalFilter, fetchApproval]);
+
+  // --- Approve / reject / flag an item (Gate 1) ---
+  const handleTriage = async (itemId: string, action: 'approved' | 'rejected' | 'flagged') => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('inspo_items')
+      .update({
+        triage_status: action,
+        approved_by: action === 'approved' ? (user?.email || 'unknown') : null,
+        approved_at: action === 'approved' ? new Date().toISOString() : null,
+        // If approved, also set editing_status to pending so it enters the editing queue
+        ...(action === 'approved' ? { editing_status: 'pending' } : {}),
+      })
+      .eq('id', itemId);
+
+    if (!error) {
+      fetchApproval();
+      // Deselect if it was selected
+      if (selectedItem?.id === itemId) setSelectedItem(null);
+    }
+  };
+
+  // --- Batch approve all visible items ---
+  const handleBatchApprove = async () => {
+    const ids = approvalItems.map((i) => i.id);
+    if (ids.length === 0) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('inspo_items')
+      .update({
+        triage_status: 'approved',
+        approved_by: user?.email || 'unknown',
+        approved_at: new Date().toISOString(),
+        editing_status: 'pending',
+      })
+      .in('id', ids);
+
+    if (!error) fetchApproval();
+  };
+
   // ==========================================================
   // RENDER
   // ==========================================================
@@ -291,6 +389,7 @@ export default function IntakePage() {
         {([
           { key: 'upload' as Tab, label: 'Upload Footage', icon: '↑' },
           { key: 'queue' as Tab, label: 'Tag Queue', icon: '◎' },
+          { key: 'approval' as Tab, label: 'Approval Queue', icon: '✓' },
           { key: 'brief' as Tab, label: 'Parse Brief', icon: '✦' },
         ]).map(({ key, label, icon }) => (
           <button
@@ -638,7 +737,272 @@ export default function IntakePage() {
       )}
 
       {/* ============================================ */}
-      {/* TAB 3: Parse Brief                          */}
+      {/* TAB 3: Approval Queue (Gate 1)              */}
+      {/* ============================================ */}
+      {activeTab === 'approval' && (
+        <div>
+          {/* Approval stats */}
+          <div className="grid grid-cols-5 gap-3 mb-6">
+            {([
+              { key: 'pending', label: 'Needs Review', color: 'text-yellow-400' },
+              { key: 'approved', label: 'Approved', color: 'text-green-400' },
+              { key: 'auto_approved', label: 'Auto-Approved', color: 'text-emerald-400' },
+              { key: 'flagged', label: 'Flagged', color: 'text-orange-400' },
+              { key: 'rejected', label: 'Rejected', color: 'text-red-400' },
+            ] as const).map(({ key, label, color }) => (
+              <button
+                key={key}
+                onClick={() => setApprovalFilter(key)}
+                className={`p-4 rounded-lg border transition-all ${
+                  approvalFilter === key
+                    ? 'bg-white/10 border-[#D73F09]'
+                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                }`}
+              >
+                <p className={`text-2xl font-bold ${color}`}>
+                  {approvalCounts[key as keyof typeof approvalCounts]}
+                </p>
+                <p className="text-xs text-gray-400">{label}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Batch actions */}
+          {approvalFilter === 'pending' && approvalItems.length > 0 && (
+            <div className="mb-4 flex gap-3">
+              <button
+                onClick={handleBatchApprove}
+                className="px-4 py-2 bg-green-700 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Approve All ({approvalItems.length})
+              </button>
+              <button
+                onClick={fetchApproval}
+                className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-sm rounded-lg transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+          )}
+
+          {/* Approval grid */}
+          {approvalLoading ? (
+            <div className="text-center py-12 text-gray-500">Loading...</div>
+          ) : approvalItems.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg mb-2">No items {approvalFilter === 'pending' ? 'needing review' : `with status "${approvalFilter}"`}</p>
+              <p className="text-sm">Tag content first, then it appears here for approval</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {approvalItems.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
+                  className={`rounded-lg border overflow-hidden cursor-pointer transition-all ${
+                    selectedItem?.id === item.id
+                      ? 'border-[#D73F09] ring-1 ring-[#D73F09]'
+                      : 'border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  {/* Thumbnail */}
+                  <div className="aspect-video bg-black/50 relative">
+                    {(item.thumbnail_url || (item.file_url && item.mime_type?.startsWith('image/'))) ? (
+                      <img
+                        src={item.thumbnail_url || item.file_url || ''}
+                        alt="Content preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-600">
+                        <span className="text-3xl">{item.mime_type?.startsWith('video/') ? '🎬' : '📷'}</span>
+                      </div>
+                    )}
+                    {/* Triage status badge */}
+                    <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full border ${TRIAGE_COLORS[item.triage_status || 'pending']}`}>
+                      {TRIAGE_LABELS[item.triage_status || 'pending']}
+                    </span>
+                    {/* Athlete tier badge */}
+                    {item.athlete_tier && (
+                      <span className={`absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full border ${
+                        item.athlete_tier === 1 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                        item.athlete_tier === 2 ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                        'bg-gray-500/20 text-gray-300 border-gray-500/30'
+                      }`}>
+                        Tier {item.athlete_tier}
+                      </span>
+                    )}
+                    {/* Content quality badge */}
+                    {item.content_quality && (
+                      <span className="absolute bottom-2 left-2 text-xs px-2 py-0.5 rounded-full bg-black/60 text-gray-300">
+                        {item.content_quality.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-3 bg-white/5">
+                    {/* Athlete + brand */}
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium text-white truncate">
+                        {item.athlete_name || 'Unknown Athlete'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    {/* Mood tags */}
+                    {item.mood_tags && (item.mood_tags as string[]).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {(item.mood_tags as string[]).slice(0, 3).map((tag: string) => (
+                          <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Action description */}
+                    {item.action_description && (
+                      <p className="text-xs text-gray-400 line-clamp-2 mb-2">{item.action_description}</p>
+                    )}
+
+                    {/* Approval actions */}
+                    {item.triage_status === 'pending' && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleTriage(item.id, 'approved'); }}
+                          className="flex-1 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleTriage(item.id, 'flagged'); }}
+                          className="px-3 py-1.5 bg-orange-700/50 hover:bg-orange-600/50 text-orange-300 text-xs font-medium rounded transition-colors"
+                        >
+                          Flag
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleTriage(item.id, 'rejected'); }}
+                          className="px-3 py-1.5 bg-red-700/50 hover:bg-red-600/50 text-red-300 text-xs font-medium rounded transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Detail panel for selected approval item */}
+          {selectedItem && activeTab === 'approval' && (
+            <div className="mt-6 p-6 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Content Details</h3>
+                <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-white text-sm">Close</button>
+              </div>
+
+              {/* Identity info */}
+              <div className="grid grid-cols-4 gap-4 mb-4">
+                <div><p className="text-xs text-gray-500">Athlete</p><p className="text-sm text-white">{selectedItem.athlete_name || '—'}</p></div>
+                <div><p className="text-xs text-gray-500">Tier</p><p className="text-sm text-white">{selectedItem.athlete_tier ? `Tier ${selectedItem.athlete_tier}` : '—'}</p></div>
+                <div><p className="text-xs text-gray-500">Shot Type</p><p className="text-sm text-white">{selectedItem.shot_type?.replace(/_/g, ' ') || '—'}</p></div>
+                <div><p className="text-xs text-gray-500">Setting</p><p className="text-sm text-white">{selectedItem.scene_setting?.replace(/_/g, ' ') || '—'}</p></div>
+              </div>
+
+              {/* Action + description */}
+              {selectedItem.action_description && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Action</p>
+                  <p className="text-sm text-gray-300">{selectedItem.action_description}</p>
+                </div>
+              )}
+              {selectedItem.visual_description && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Visual Description</p>
+                  <p className="text-sm text-gray-300">{selectedItem.visual_description}</p>
+                </div>
+              )}
+
+              {/* Mood + quality + vibe */}
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Mood</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(selectedItem.mood_tags as string[] || []).map((tag: string) => (
+                      <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-700/30">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Quality</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    selectedItem.content_quality === 'a_roll_hero' ? 'bg-yellow-900/40 text-yellow-300 border border-yellow-700/30' :
+                    selectedItem.content_quality === 'b_roll_support' ? 'bg-blue-900/40 text-blue-300 border border-blue-700/30' :
+                    'bg-gray-900/40 text-gray-300 border border-gray-700/30'
+                  }`}>
+                    {selectedItem.content_quality?.replace(/_/g, ' ') || '—'}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">People</p>
+                  <p className="text-sm text-white">{selectedItem.people_count ?? '—'}</p>
+                </div>
+              </div>
+
+              {/* Technical info */}
+              <div className="grid grid-cols-4 gap-4 mb-4 p-3 rounded-lg bg-white/5">
+                <div><p className="text-xs text-gray-500">Resolution</p><p className="text-sm text-white">{selectedItem.resolution || '—'}</p></div>
+                <div><p className="text-xs text-gray-500">Frame Rate</p><p className="text-sm text-white">{selectedItem.frame_rate || '—'}</p></div>
+                <div><p className="text-xs text-gray-500">Codec</p><p className="text-sm text-white">{selectedItem.codec || '—'}</p></div>
+                <div><p className="text-xs text-gray-500">Format</p><p className="text-sm text-white">{selectedItem.format?.toUpperCase() || '—'}</p></div>
+              </div>
+
+              {/* Vibe words */}
+              {selectedItem.search_phrases?.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Vibe Words</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedItem.search_phrases.map((word: string) => (
+                      <span key={word} className="text-xs px-2 py-0.5 rounded-full bg-[#D73F09]/20 text-orange-300 border border-[#D73F09]/30">{word}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Approval actions */}
+              {selectedItem.triage_status === 'pending' && (
+                <div className="flex gap-3 mt-4 pt-4 border-t border-white/10">
+                  <button
+                    onClick={() => handleTriage(selectedItem.id, 'approved')}
+                    className="px-6 py-2.5 bg-green-700 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Approve → Send to Editing
+                  </button>
+                  <button
+                    onClick={() => handleTriage(selectedItem.id, 'flagged')}
+                    className="px-6 py-2.5 bg-orange-700/50 hover:bg-orange-600/50 text-orange-300 font-medium rounded-lg transition-colors"
+                  >
+                    Flag for Review
+                  </button>
+                  <button
+                    onClick={() => handleTriage(selectedItem.id, 'rejected')}
+                    className="px-6 py-2.5 bg-red-700/50 hover:bg-red-600/50 text-red-300 font-medium rounded-lg transition-colors"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* TAB 4: Parse Brief                          */}
       {/* ============================================ */}
       {activeTab === 'brief' && (
         <div className="max-w-3xl">

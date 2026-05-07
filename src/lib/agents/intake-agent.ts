@@ -44,9 +44,12 @@ const supabase = createClient(
 
 // The JSON schema Claude must follow when tagging content.
 // This tells Claude exactly what shape to return.
+// Organized into the original 13 creative categories PLUS new
+// Postgame-specific categories for the two-gate approval flow.
 const TAG_OUTPUT_SCHEMA = {
   type: 'object' as const,
   properties: {
+    // --- ORIGINAL 13 CREATIVE TAGS (how it was shot + platform feel) ---
     pro_tags: {
       type: 'object' as const,
       properties: {
@@ -125,6 +128,35 @@ const TAG_OUTPUT_SCHEMA = {
       },
       required: ['sport', 'setting', 'product_category', 'athlete_identity', 'content_purpose'],
     },
+
+    // --- NEW POSTGAME-SPECIFIC TAGS (what the editing agent needs) ---
+    shot_type: {
+      type: 'string' as const,
+      description: 'Primary shot type. One of: close_up, medium, wide, aerial, pov, overhead, detail, full_body',
+    },
+    scene_setting: {
+      type: 'string' as const,
+      description: 'Primary scene location. One of: outdoor_field, indoor_gym, locker_room, restaurant, campus, studio, urban_street, home, car, stadium, weight_room, pool, court',
+    },
+    action_description: {
+      type: 'string' as const,
+      description: 'One sentence describing the primary action. e.g. "Athlete eating chicken fingers at Raising Cane\'s counter" or "Running drills on practice field at sunset"',
+    },
+    mood_tags: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+      description: 'Mood and vibe of the content. 2-5 tags. Examples: hype, focused, candid, cinematic, playful, intimate, gritty, energetic, relaxed, confident, intense, joyful',
+    },
+    people_count: {
+      type: 'number' as const,
+      description: 'Number of people clearly visible in the frame. Use 0 if no people visible.',
+    },
+    content_quality: {
+      type: 'string' as const,
+      description: 'Quality tier of this content. One of: a_roll_hero (best shots, hero moments), b_roll_support (good supporting footage), bts_candid (behind the scenes, raw moments), filler (background, transition material)',
+    },
+
+    // --- KEPT FROM ORIGINAL ---
     vibe_words: {
       type: 'array' as const,
       items: { type: 'string' as const },
@@ -140,7 +172,7 @@ const TAG_OUTPUT_SCHEMA = {
       description: 'What kinds of campaign briefs this content could serve. 3-5 keywords. Examples: athletic_lifestyle, product_launch, social_first, premium_brand, ugc_style, game_day, off_court_vibe',
     },
   },
-  required: ['pro_tags', 'social_tags', 'context_tags', 'vibe_words', 'visual_description', 'brief_fit'],
+  required: ['pro_tags', 'social_tags', 'context_tags', 'shot_type', 'scene_setting', 'action_description', 'mood_tags', 'people_count', 'content_quality', 'vibe_words', 'visual_description', 'brief_fit'],
 };
 
 // The system prompt that establishes the Intake agent persona
@@ -366,15 +398,69 @@ export async function tagInspoItem(
   }
 
   // --- Step 6: Save tags to inspo_items ---
+  // Save both the original 13 creative tags AND the new Postgame-specific tags.
+  // Also look up the athlete's tier from the brief/roster if available.
+  let athleteTier: number | null = null;
+  if (item.brand_id) {
+    // Try to find athlete tier from campaign_briefs athlete_roster
+    const { data: briefs } = await supabase
+      .from('campaign_briefs')
+      .select('athlete_roster')
+      .eq('brand_id', item.brand_id)
+      .not('athlete_roster', 'is', null);
+
+    if (briefs) {
+      for (const brief of briefs) {
+        const roster = (brief.athlete_roster || []) as Array<{ name: string; tier?: number }>;
+        const match = roster.find((a) =>
+          a.name && item.athlete_name &&
+          a.name.toLowerCase() === item.athlete_name.toLowerCase()
+        );
+        if (match?.tier) {
+          athleteTier = match.tier;
+          break;
+        }
+      }
+    }
+  }
+
+  // Check brand approval settings to determine if auto-approve applies
+  let triageStatus = 'pending';
+  if (athleteTier && item.brand_id) {
+    const { data: brand } = await supabase
+      .from('brands')
+      .select('approval_settings')
+      .eq('id', item.brand_id)
+      .single();
+
+    if (brand?.approval_settings) {
+      const settings = brand.approval_settings as { auto_approve_tiers?: number[] };
+      if (settings.auto_approve_tiers?.includes(athleteTier)) {
+        triageStatus = 'auto_approved';
+      }
+    }
+  }
+
   const { error: updateError } = await supabase
     .from('inspo_items')
     .update({
+      // Original creative tags
       pro_tags: tagResult.pro_tags,
       social_tags: tagResult.social_tags,
       context_tags: tagResult.context_tags,
       search_phrases: tagResult.vibe_words,
       brief_fit: tagResult.brief_fit,
       visual_description: tagResult.visual_description,
+      // New Postgame-specific tags
+      shot_type: tagResult.shot_type,
+      scene_setting: tagResult.scene_setting,
+      action_description: tagResult.action_description,
+      mood_tags: tagResult.mood_tags,
+      people_count: tagResult.people_count,
+      content_quality: tagResult.content_quality,
+      // Tier + approval
+      athlete_tier: athleteTier,
+      triage_status: triageStatus,
       tagging_status: 'tagged',
     })
     .eq('id', inspoItemId);
