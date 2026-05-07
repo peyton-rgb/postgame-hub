@@ -1,580 +1,467 @@
 // ============================================================
-// Editing Queue — /dashboard/ai-editing
+// AI Editing Studio — /dashboard/ai-editing
 //
-// This page shows all content that has passed Gate 1
-// (Postgame internal approval) and is waiting to be edited.
+// CMs pick an asset from the inspo library, describe what they
+// want changed in plain language, and the pipeline (Gemini scene
+// map → Claude edit plan → ffmpeg + AI tools) produces an edited
+// version. This page is the front-end: form, queue, polling,
+// per-status actions.
 //
-// Think of it as the editor's to-do list:
-//   - Content arrives here after being approved in the Intake
-//     Approval Queue (triage_status = 'approved' or 'auto_approved')
-//   - Editors can see the AI tags, mood, shot type, and quality
-//     tier to understand what they're working with
-//   - Content is grouped by campaign → athlete for easy scanning
-//   - Editors update the editing_status as they work:
-//     pending → in_progress → complete
-//   - Once editing is complete, content moves to Gate 2
-//     (Brand Approval Queue) for client review
+// API endpoints used:
+//   POST   /api/editing/jobs                  — create + start pipeline
+//   GET    /api/editing/jobs?status=...       — list jobs
+//   POST   /api/editing/jobs/[id]/confirm     — approve plan, run edits
+//   POST   /api/editing/jobs/[id]/retry       — retry failed
+//
+// While the integration code is still being assembled, the API
+// routes return 501 — the UI surfaces the error instead of crashing.
 // ============================================================
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { createBrowserSupabase } from '@/lib/supabase';
+import InspoPickerModal, { SelectedInspoItem } from '@/components/InspoPickerModal';
+import type { EditJob, EditJobStatus } from '@/lib/types/editing';
 
-// --- Types ---
-
-interface EditingItem {
-  id: string;
-  file_url: string | null;
-  thumbnail_url: string | null;
-  mime_type: string | null;
-  athlete_name: string | null;
-  athlete_tier: number | null;
-  sport: string | null;
-  content_type: string;
-  campaign_id: string | null;
-  brand_id: string | null;
-  shot_type: string | null;
-  scene_setting: string | null;
-  action_description: string | null;
-  mood_tags: string[] | null;
-  content_quality: string | null;
-  visual_description: string | null;
-  editing_status: 'pending' | 'in_progress' | 'complete' | null;
-  triage_status: string | null;
-  approved_by: string | null;
-  approved_at: string | null;
-  duration_seconds: number | null;
-  created_at: string;
-  notes: string | null;
-  // Joined fields
-  campaign_name?: string;
-  brand_name?: string;
+interface StatusMeta {
+  label: string;
+  color: string;     // tailwind color classes for the badge
+  icon: string;      // single-char glyph used in the badge
 }
 
-// What each editing status means for the editor
-const EDITING_STATUS_LABELS: Record<string, string> = {
-  pending: 'Ready to Edit',
-  in_progress: 'Editing',
-  complete: 'Edit Complete',
+const STATUS_CONFIG: Record<EditJobStatus, StatusMeta> = {
+  pending:    { label: 'Pending',           color: 'bg-gray-700 text-gray-200',     icon: '·' },
+  analyzing:  { label: 'Analyzing',         color: 'bg-blue-900/60 text-blue-200',  icon: '◐' },
+  planning:   { label: 'Planning',          color: 'bg-blue-900/60 text-blue-200',  icon: '◑' },
+  confirming: { label: 'Awaiting Approval', color: 'bg-amber-900/60 text-amber-200',icon: '?' },
+  editing:    { label: 'Editing',           color: 'bg-orange-900/60 text-orange-200', icon: '✶' },
+  review:     { label: 'Ready for Review',  color: 'bg-emerald-900/60 text-emerald-200', icon: '✓' },
+  approved:   { label: 'Approved',          color: 'bg-green-700 text-green-100',   icon: '✓' },
+  rejected:   { label: 'Rejected',          color: 'bg-red-900/60 text-red-200',    icon: '✕' },
+  failed:     { label: 'Failed',            color: 'bg-red-900/60 text-red-200',    icon: '!' },
 };
 
-const EDITING_STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
-  in_progress: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  complete: 'bg-green-600/20 text-green-300 border-green-600/30',
-};
+const FILTER_TABS: { key: 'all' | 'awaiting' | 'review' | 'in_progress' | 'approved' | 'failed'; label: string; statuses: EditJobStatus[] }[] = [
+  { key: 'all',         label: 'All',                statuses: [] },
+  { key: 'awaiting',    label: 'Awaiting Approval',  statuses: ['confirming'] },
+  { key: 'review',      label: 'Ready for Review',   statuses: ['review'] },
+  { key: 'in_progress', label: 'In Progress',        statuses: ['pending', 'analyzing', 'planning', 'editing'] },
+  { key: 'approved',    label: 'Approved',           statuses: ['approved'] },
+  { key: 'failed',      label: 'Failed',             statuses: ['failed', 'rejected'] },
+];
 
-const QUALITY_COLORS: Record<string, string> = {
-  a_roll_hero: 'bg-purple-600/20 text-purple-300',
-  b_roll_support: 'bg-blue-600/20 text-blue-300',
-  bts_candid: 'bg-orange-600/20 text-orange-300',
-  filler: 'bg-zinc-600/20 text-zinc-400',
-};
+const ACTIVE_STATUSES: EditJobStatus[] = ['pending', 'analyzing', 'planning', 'editing'];
 
-const QUALITY_LABELS: Record<string, string> = {
-  a_roll_hero: 'A-Roll Hero',
-  b_roll_support: 'B-Roll Support',
-  bts_candid: 'BTS Candid',
-  filler: 'Filler',
-};
+export default function AIEditingStudioPage() {
+  // form state
+  const [showForm, setShowForm] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [chosenAsset, setChosenAsset] = useState<SelectedInspoItem | null>(null);
+  const [instruction, setInstruction] = useState('');
+  const [referenceUrl, setReferenceUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-const TIER_COLORS: Record<number, string> = {
-  1: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-  2: 'bg-slate-400/20 text-slate-300 border-slate-400/40',
-  3: 'bg-orange-700/20 text-orange-400 border-orange-700/40',
-};
+  // queue state
+  const [jobs, setJobs] = useState<EditJob[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [filter, setFilter] = useState<typeof FILTER_TABS[number]['key']>('all');
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-export default function EditingQueuePage() {
-  const [items, setItems] = useState<EditingItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'complete'>('all');
-  const [groupBy, setGroupBy] = useState<'campaign' | 'athlete' | 'quality'>('campaign');
-  const [selectedItem, setSelectedItem] = useState<EditingItem | null>(null);
-  const [counts, setCounts] = useState({ pending: 0, in_progress: 0, complete: 0, total: 0 });
-
-  const supabase = createBrowserSupabase();
-
-  // --- Fetch all approved content that's in the editing pipeline ---
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
-
-    // We want everything that passed Gate 1 (approved or auto_approved)
-    // These are the items the editing team needs to work on
-    let query = supabase
-      .from('inspo_items')
-      .select('*')
-      .in('triage_status', ['approved', 'auto_approved'])
-      .order('created_at', { ascending: false });
-
-    // Filter by editing status if not "all"
-    if (filter !== 'all') {
-      query = query.eq('editing_status', filter);
+  const loadJobs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/editing/jobs');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        // 501 just means the backend isn't wired yet — render an empty list.
+        if (res.status === 501) {
+          setJobs([]);
+          setError('Editing pipeline is not yet connected. UI is live; backend stubs return 501.');
+          setLoadingJobs(false);
+          return;
+        }
+        throw new Error(body.error || `Failed to load jobs (${res.status})`);
+      }
+      const data = await res.json();
+      setJobs(Array.isArray(data) ? (data as EditJob[]) : (data.jobs as EditJob[]) || []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load jobs');
     }
+    setLoadingJobs(false);
+  }, []);
 
-    const { data, error } = await query;
+  useEffect(() => {
+    loadJobs();
+  }, [loadJobs]);
 
-    if (error) {
-      console.error('Failed to fetch editing queue:', error);
-      setLoading(false);
+  // Poll while any job is in an active state.
+  const hasActive = useMemo(
+    () => jobs.some((j) => ACTIVE_STATUSES.includes(j.status)),
+    [jobs]
+  );
+
+  useEffect(() => {
+    if (!hasActive) return;
+    const id = setInterval(() => { loadJobs(); }, 5000);
+    return () => clearInterval(id);
+  }, [hasActive, loadJobs]);
+
+  async function handleSubmit() {
+    if (!chosenAsset || !instruction.trim()) {
+      setError('Pick an asset and describe what you want changed.');
       return;
     }
-
-    // Get campaign names for grouping
-    const campaignIds = [...new Set((data || []).map(d => d.campaign_id).filter(Boolean))];
-    let campaignMap: Record<string, string> = {};
-
-    if (campaignIds.length > 0) {
-      const { data: campaigns } = await supabase
-        .from('campaign_briefs')
-        .select('id, title')
-        .in('id', campaignIds);
-
-      if (campaigns) {
-        campaignMap = Object.fromEntries(campaigns.map(c => [c.id, c.title]));
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/editing/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset_id: chosenAsset.id,
+          source_url: chosenAsset.file_url,
+          content_type: chosenAsset.content_type,
+          instruction: instruction.trim(),
+          reference_image_url: referenceUrl.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Create failed (${res.status})`);
       }
+      // Reset form, refresh queue
+      setShowForm(false);
+      setChosenAsset(null);
+      setInstruction('');
+      setReferenceUrl('');
+      await loadJobs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create edit job');
     }
+    setSubmitting(false);
+  }
 
-    // Get brand names
-    const brandIds = [...new Set((data || []).map(d => d.brand_id).filter(Boolean))];
-    let brandMap: Record<string, string> = {};
-
-    if (brandIds.length > 0) {
-      const { data: brands } = await supabase
-        .from('brands')
-        .select('id, name')
-        .in('id', brandIds);
-
-      if (brands) {
-        brandMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
+  async function handleConfirm(jobId: string) {
+    setActionLoading(jobId);
+    try {
+      const res = await fetch(`/api/editing/jobs/${jobId}/confirm`, { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Confirm failed (${res.status})`);
       }
+      await loadJobs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to confirm job');
     }
+    setActionLoading(null);
+  }
 
-    const enriched: EditingItem[] = (data || []).map(item => ({
-      ...item,
-      editing_status: item.editing_status || 'pending',
-      campaign_name: item.campaign_id ? campaignMap[item.campaign_id] || 'Unknown Campaign' : 'No Campaign',
-      brand_name: item.brand_id ? brandMap[item.brand_id] || 'Unknown Brand' : 'No Brand',
-    }));
-
-    setItems(enriched);
-
-    // Count by editing status
-    const pending = enriched.filter(i => i.editing_status === 'pending').length;
-    const in_progress = enriched.filter(i => i.editing_status === 'in_progress').length;
-    const complete = enriched.filter(i => i.editing_status === 'complete').length;
-    setCounts({ pending, in_progress, complete, total: enriched.length });
-
-    setLoading(false);
-  }, [filter]);
-
-  useEffect(() => { fetchItems(); }, [fetchItems]);
-
-  // --- Update editing status on an item ---
-  const handleStatusChange = async (itemId: string, newStatus: 'pending' | 'in_progress' | 'complete') => {
-    const { error } = await supabase
-      .from('inspo_items')
-      .update({ editing_status: newStatus })
-      .eq('id', itemId);
-
-    if (error) {
-      console.error('Failed to update editing status:', error);
-      return;
+  async function handleRetry(jobId: string) {
+    setActionLoading(jobId);
+    try {
+      const res = await fetch(`/api/editing/jobs/${jobId}/retry`, { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Retry failed (${res.status})`);
+      }
+      await loadJobs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to retry job');
     }
+    setActionLoading(null);
+  }
 
-    // Update local state so the UI reflects the change instantly
-    setItems(prev => prev.map(item =>
-      item.id === itemId ? { ...item, editing_status: newStatus } : item
-    ));
-
-    // Update selected item too
-    if (selectedItem?.id === itemId) {
-      setSelectedItem(prev => prev ? { ...prev, editing_status: newStatus } : null);
-    }
-
-    // Recount
-    const updated = items.map(item =>
-      item.id === itemId ? { ...item, editing_status: newStatus } : item
+  // Stash a thumbnail map keyed by asset_id so the queue can show a preview
+  // without an extra fetch per job. Filled lazily as we encounter assets.
+  const [thumbMap, setThumbMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(jobs.map((j) => j.asset_id).filter((x): x is string => !!x && !thumbMap[x]))
     );
-    setCounts({
-      pending: updated.filter(i => i.editing_status === 'pending').length,
-      in_progress: updated.filter(i => i.editing_status === 'in_progress').length,
-      complete: updated.filter(i => i.editing_status === 'complete').length,
-      total: updated.length,
-    });
-  };
+    if (ids.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createBrowserSupabase();
+      const { data } = await supabase
+        .from('inspo_items')
+        .select('id, thumbnail_url')
+        .in('id', ids);
+      if (cancelled || !data) return;
+      const next: Record<string, string> = {};
+      (data as { id: string; thumbnail_url: string | null }[]).forEach((row) => {
+        if (row.thumbnail_url) next[row.id] = row.thumbnail_url;
+      });
+      setThumbMap((prev) => ({ ...prev, ...next }));
+    })();
+    return () => { cancelled = true; };
+  }, [jobs, thumbMap]);
 
-  // --- Group items for display ---
-  const groupedItems = (): Record<string, EditingItem[]> => {
-    const groups: Record<string, EditingItem[]> = {};
-
-    for (const item of items) {
-      let key: string;
-
-      if (groupBy === 'campaign') {
-        key = item.campaign_name || 'No Campaign';
-      } else if (groupBy === 'athlete') {
-        key = item.athlete_name || 'Unknown Athlete';
-      } else {
-        key = QUALITY_LABELS[item.content_quality || 'filler'] || 'Unscored';
-      }
-
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
-    }
-
-    return groups;
-  };
-
-  // --- Render a single content card ---
-  const renderCard = (item: EditingItem) => {
-    const isVideo = item.mime_type?.startsWith('video/');
-
-    return (
-      <div
-        key={item.id}
-        onClick={() => setSelectedItem(item)}
-        className={`
-          relative rounded-xl overflow-hidden cursor-pointer border transition-all
-          ${selectedItem?.id === item.id
-            ? 'border-orange-500 ring-2 ring-orange-500/30'
-            : 'border-zinc-700/50 hover:border-zinc-600'
-          }
-        `}
-      >
-        {/* Thumbnail */}
-        <div className="aspect-video bg-zinc-800 relative">
-          {item.thumbnail_url || item.file_url ? (
-            isVideo ? (
-              <video
-                src={item.file_url || ''}
-                className="w-full h-full object-cover"
-                muted
-                playsInline
-                onMouseOver={e => (e.target as HTMLVideoElement).play().catch(() => {})}
-                onMouseOut={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-              />
-            ) : (
-              <img
-                src={item.thumbnail_url || item.file_url || ''}
-                alt={item.action_description || 'Content'}
-                className="w-full h-full object-cover"
-              />
-            )
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-600">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="2" y="2" width="20" height="20" rx="2" />
-                <circle cx="8" cy="8" r="2" />
-                <path d="M21 15l-5-5L5 21" />
-              </svg>
-            </div>
-          )}
-
-          {/* Duration badge for videos */}
-          {item.duration_seconds && (
-            <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-              {Math.floor(item.duration_seconds / 60)}:{String(Math.floor(item.duration_seconds % 60)).padStart(2, '0')}
-            </span>
-          )}
-
-          {/* Athlete tier badge */}
-          {item.athlete_tier && (
-            <span className={`absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-full border ${TIER_COLORS[item.athlete_tier] || ''}`}>
-              T{item.athlete_tier}
-            </span>
-          )}
-
-          {/* Content quality badge */}
-          {item.content_quality && (
-            <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full ${QUALITY_COLORS[item.content_quality] || ''}`}>
-              {QUALITY_LABELS[item.content_quality] || item.content_quality}
-            </span>
-          )}
-        </div>
-
-        {/* Info bar */}
-        <div className="p-3 bg-zinc-900/80">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-white font-medium truncate">
-              {item.athlete_name || 'Unknown'}
-            </span>
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${EDITING_STATUS_COLORS[item.editing_status || 'pending']}`}>
-              {EDITING_STATUS_LABELS[item.editing_status || 'pending']}
-            </span>
-          </div>
-
-          {/* Mood tags */}
-          {item.mood_tags && item.mood_tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {item.mood_tags.slice(0, 3).map(tag => (
-                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-400">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Action description */}
-          {item.action_description && (
-            <p className="text-xs text-zinc-500 mt-1 truncate">{item.action_description}</p>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const groups = groupedItems();
+  const filteredJobs = useMemo(() => {
+    const tab = FILTER_TABS.find((t) => t.key === filter);
+    if (!tab || tab.statuses.length === 0) return jobs;
+    return jobs.filter((j) => tab.statuses.includes(j.status));
+  }, [filter, jobs]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="max-w-6xl mx-auto p-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Editing Queue</h1>
-          <p className="text-zinc-400">
-            Content approved in Gate 1 — ready for editing. Once complete, moves to Brand Approval.
-          </p>
-        </div>
-
-        {/* Stats bar */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-            <div className="text-2xl font-bold">{counts.total}</div>
-            <div className="text-sm text-zinc-400">Total Items</div>
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">AI Editing Studio</h1>
+            <p className="text-gray-400 mt-1 text-sm">
+              Describe what you want changed — the AI handles the rest.
+            </p>
           </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-yellow-900/30">
-            <div className="text-2xl font-bold text-yellow-300">{counts.pending}</div>
-            <div className="text-sm text-zinc-400">Ready to Edit</div>
-          </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-blue-900/30">
-            <div className="text-2xl font-bold text-blue-300">{counts.in_progress}</div>
-            <div className="text-sm text-zinc-400">In Progress</div>
-          </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-green-900/30">
-            <div className="text-2xl font-bold text-green-300">{counts.complete}</div>
-            <div className="text-sm text-zinc-400">Edits Complete</div>
-          </div>
-        </div>
-
-        {/* Filter & Group controls */}
-        <div className="flex items-center justify-between mb-6">
-          {/* Status filter tabs */}
           <div className="flex gap-2">
-            {(['all', 'pending', 'in_progress', 'complete'] as const).map(status => (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === status
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                }`}
-              >
-                {status === 'all' ? 'All' : EDITING_STATUS_LABELS[status]}
-              </button>
-            ))}
-          </div>
-
-          {/* Group by selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-zinc-500">Group by:</span>
-            {(['campaign', 'athlete', 'quality'] as const).map(g => (
-              <button
-                key={g}
-                onClick={() => setGroupBy(g)}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  groupBy === g
-                    ? 'bg-zinc-700 text-white'
-                    : 'text-zinc-500 hover:text-white'
-                }`}
-              >
-                {g.charAt(0).toUpperCase() + g.slice(1)}
-              </button>
-            ))}
+            <Link
+              href="/dashboard/inspo"
+              className="px-4 py-2 bg-[#141414] hover:bg-[#1f1f1f] border border-[#262626] text-gray-200 rounded-lg text-sm"
+            >
+              Inspo Library
+            </Link>
+            <button
+              onClick={() => setShowForm((s) => !s)}
+              className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-semibold"
+            >
+              {showForm ? 'Cancel' : '+ New Edit'}
+            </button>
           </div>
         </div>
 
-        {/* Main content area */}
-        <div className="flex gap-6">
-          {/* Content grid */}
-          <div className={`flex-1 ${selectedItem ? 'w-2/3' : 'w-full'}`}>
-            {loading ? (
-              <div className="text-center py-20 text-zinc-500">Loading editing queue...</div>
-            ) : items.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="text-zinc-500 text-lg mb-2">No content in the editing queue</div>
-                <p className="text-zinc-600 text-sm">
-                  Content appears here after being approved in the Intake → Approval Queue.
-                </p>
-              </div>
-            ) : (
-              Object.entries(groups).map(([groupName, groupItems]) => (
-                <div key={groupName} className="mb-8">
-                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    {groupName}
-                    <span className="text-sm text-zinc-500 font-normal">({groupItems.length})</span>
-                  </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {groupItems.map(renderCard)}
-                  </div>
-                </div>
-              ))
-            )}
+        {error && (
+          <div className="bg-red-900/40 border border-red-800 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm flex items-start justify-between gap-3">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200 text-xs">Dismiss</button>
           </div>
+        )}
 
-          {/* Detail panel (slides in when an item is selected) */}
-          {selectedItem && (
-            <div className="w-1/3 min-w-[340px] bg-zinc-900 rounded-xl border border-zinc-800 p-5 sticky top-8 self-start max-h-[calc(100vh-6rem)] overflow-y-auto">
-              {/* Close button */}
-              <button
-                onClick={() => setSelectedItem(null)}
-                className="absolute top-3 right-3 text-zinc-500 hover:text-white"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+        {/* Form */}
+        {showForm && (
+          <section className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8">
+            <h2 className="text-lg font-bold mb-4">New Edit</h2>
 
-              {/* Preview */}
-              <div className="aspect-video bg-zinc-800 rounded-lg overflow-hidden mb-4">
-                {selectedItem.mime_type?.startsWith('video/') ? (
-                  <video
-                    src={selectedItem.file_url || ''}
-                    controls
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <img
-                    src={selectedItem.thumbnail_url || selectedItem.file_url || ''}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-
-              {/* Athlete & Campaign info */}
-              <h3 className="text-lg font-bold mb-1">{selectedItem.athlete_name || 'Unknown Athlete'}</h3>
-              <p className="text-sm text-zinc-400 mb-4">{selectedItem.campaign_name || 'No Campaign'} · {selectedItem.brand_name || 'No Brand'}</p>
-
-              {/* Editing status controls */}
-              <div className="mb-5">
-                <label className="text-xs text-zinc-500 uppercase tracking-wide mb-2 block">Editing Status</label>
-                <div className="flex gap-2">
-                  {(['pending', 'in_progress', 'complete'] as const).map(status => (
-                    <button
-                      key={status}
-                      onClick={() => handleStatusChange(selectedItem.id, status)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        selectedItem.editing_status === status
-                          ? EDITING_STATUS_COLORS[status]
-                          : 'border-zinc-700 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
-                      }`}
-                    >
-                      {EDITING_STATUS_LABELS[status]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tags & AI info */}
-              <div className="space-y-4">
-                {/* Shot type & scene */}
-                {(selectedItem.shot_type || selectedItem.scene_setting) && (
-                  <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Shot Details</label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedItem.shot_type && (
-                        <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-300">
-                          📷 {selectedItem.shot_type.replace(/_/g, ' ')}
-                        </span>
-                      )}
-                      {selectedItem.scene_setting && (
-                        <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-300">
-                          📍 {selectedItem.scene_setting.replace(/_/g, ' ')}
-                        </span>
-                      )}
+            {/* Asset picker */}
+            <div className="mb-4">
+              <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">Source Asset</label>
+              {chosenAsset ? (
+                <div className="flex items-center gap-3 p-3 bg-[#0a0a0a] border border-[#262626] rounded-lg">
+                  {chosenAsset.thumbnail_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={chosenAsset.thumbnail_url} alt="" className="w-16 h-16 object-cover rounded" />
+                  ) : (
+                    <div className="w-16 h-16 bg-[#262626] rounded" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {chosenAsset.athlete_name || chosenAsset.sport || 'Inspo asset'}
                     </div>
+                    <div className="text-xs text-gray-500 truncate">{chosenAsset.visual_description || ''}</div>
                   </div>
-                )}
-
-                {/* Action description */}
-                {selectedItem.action_description && (
-                  <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Action</label>
-                    <p className="text-sm text-zinc-300">{selectedItem.action_description}</p>
-                  </div>
-                )}
-
-                {/* Mood tags */}
-                {selectedItem.mood_tags && selectedItem.mood_tags.length > 0 && (
-                  <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Mood</label>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedItem.mood_tags.map(tag => (
-                        <span key={tag} className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Content quality */}
-                {selectedItem.content_quality && (
-                  <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Quality Tier</label>
-                    <span className={`text-xs px-2 py-1 rounded ${QUALITY_COLORS[selectedItem.content_quality] || ''}`}>
-                      {QUALITY_LABELS[selectedItem.content_quality] || selectedItem.content_quality}
-                    </span>
-                  </div>
-                )}
-
-                {/* Athlete tier */}
-                {selectedItem.athlete_tier && (
-                  <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Athlete Tier</label>
-                    <span className={`text-xs px-2 py-1 rounded-full border ${TIER_COLORS[selectedItem.athlete_tier] || ''}`}>
-                      Tier {selectedItem.athlete_tier}
-                    </span>
-                  </div>
-                )}
-
-                {/* Visual description from Claude */}
-                {selectedItem.visual_description && (
-                  <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">AI Description</label>
-                    <p className="text-xs text-zinc-400 leading-relaxed">{selectedItem.visual_description}</p>
-                  </div>
-                )}
-
-                {/* Approval info */}
-                <div className="border-t border-zinc-800 pt-4 mt-4">
-                  <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Gate 1 Approval</label>
-                  <p className="text-xs text-zinc-400">
-                    {selectedItem.triage_status === 'auto_approved'
-                      ? 'Auto-approved (brand settings)'
-                      : selectedItem.approved_by
-                        ? `Approved by ${selectedItem.approved_by}`
-                        : 'Approved'
-                    }
-                    {selectedItem.approved_at && ` · ${new Date(selectedItem.approved_at).toLocaleDateString()}`}
-                  </p>
+                  <button
+                    onClick={() => setPickerOpen(true)}
+                    className="text-xs text-orange-600 hover:text-orange-500"
+                  >
+                    Change
+                  </button>
                 </div>
-
-                {/* Notes */}
-                {selectedItem.notes && (
-                  <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Notes</label>
-                    <p className="text-xs text-zinc-400">{selectedItem.notes}</p>
-                  </div>
-                )}
-              </div>
+              ) : (
+                <button
+                  onClick={() => setPickerOpen(true)}
+                  className="w-full p-4 border-2 border-dashed border-[#262626] hover:border-[#404040] rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  Pick from Inspo Library
+                </button>
+              )}
             </div>
-          )}
+
+            {/* Instruction */}
+            <div className="mb-4">
+              <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">Instruction</label>
+              <textarea
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder='e.g. "Make this 9:16, brighten the subject, add a Postgame logo bottom-right at 30% opacity"'
+                rows={4}
+                className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#262626] rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-600 resize-y"
+              />
+            </div>
+
+            {/* Reference image (optional) */}
+            <div className="mb-4">
+              <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">Reference Image URL (optional)</label>
+              <input
+                type="text"
+                value={referenceUrl}
+                onChange={(e) => setReferenceUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#262626] rounded-lg text-white text-sm font-mono placeholder-gray-600 focus:outline-none focus:border-orange-600"
+              />
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !chosenAsset || !instruction.trim()}
+              className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Submitting…' : 'Run Edit'}
+            </button>
+          </section>
+        )}
+
+        {/* Status filter tabs */}
+        <div className="flex gap-1 border-b border-[#262626] mb-6 overflow-x-auto">
+          {FILTER_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                filter === tab.key
+                  ? 'text-white border-orange-600'
+                  : 'text-gray-500 hover:text-gray-300 border-transparent'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {/* Queue */}
+        {loadingJobs ? (
+          <div className="text-center text-gray-500 py-12">Loading jobs…</div>
+        ) : filteredJobs.length === 0 ? (
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-12 text-center">
+            <p className="text-gray-300 font-medium">
+              {filter === 'all' ? 'No edits yet' : 'Nothing in this filter'}
+            </p>
+            <p className="text-gray-500 text-sm mt-1">
+              {filter === 'all'
+                ? 'Click "+ New Edit" to start your first AI edit.'
+                : 'Try a different status tab.'}
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {filteredJobs.map((job) => {
+              const meta = STATUS_CONFIG[job.status];
+              const thumb = job.asset_id ? thumbMap[job.asset_id] : null;
+              return (
+                <li key={job.id} className="bg-[#141414] border border-[#262626] rounded-xl p-4 flex items-start gap-4">
+                  {/* Thumb */}
+                  <div className="w-24 h-24 flex-shrink-0 bg-[#0a0a0a] rounded-lg overflow-hidden">
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumb} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-700 text-xs">
+                        no thumb
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Body */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-2">
+                      <p className="text-sm text-gray-200 flex-1 line-clamp-2">{job.instruction}</p>
+                      <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${meta.color}`}>
+                        <span className="mr-1">{meta.icon}</span>{meta.label}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-600 mt-1">
+                      Created {new Date(job.created_at).toLocaleString()}
+                      {job.estimated_cost_usd != null && (
+                        <> · est ${Number(job.estimated_cost_usd).toFixed(2)}</>
+                      )}
+                      {job.actual_cost_usd != null && (
+                        <> · actual ${Number(job.actual_cost_usd).toFixed(2)}</>
+                      )}
+                    </div>
+
+                    {/* Plan preview while confirming */}
+                    {job.status === 'confirming' && job.edit_plan && (
+                      <div className="mt-3 p-3 bg-[#0a0a0a] border border-[#262626] rounded-lg">
+                        <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">
+                          Proposed Plan
+                          {job.edit_plan.estimated_total_cost_usd != null && (
+                            <span className="text-gray-400 normal-case font-normal ml-2">
+                              · est ${job.edit_plan.estimated_total_cost_usd.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                        <ol className="space-y-1 text-sm text-gray-300">
+                          {job.edit_plan.steps.map((step, i) => (
+                            <li key={step.id || i} className="flex gap-2">
+                              <span className="text-gray-600 w-5 flex-shrink-0">{i + 1}.</span>
+                              <span className="flex-1">
+                                {step.description}
+                                <span className="ml-2 text-xs text-gray-600">[{step.tool}/{step.action}]</span>
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* Action row */}
+                    <div className="flex items-center gap-2 mt-3">
+                      {job.status === 'confirming' && (
+                        <button
+                          onClick={() => handleConfirm(job.id)}
+                          disabled={actionLoading === job.id}
+                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-semibold disabled:opacity-50"
+                        >
+                          {actionLoading === job.id ? 'Confirming…' : 'Confirm & Run'}
+                        </button>
+                      )}
+                      {job.status === 'review' && (
+                        <Link
+                          href={`/dashboard/ai-editing/${job.id}/review`}
+                          className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs font-semibold"
+                        >
+                          Review →
+                        </Link>
+                      )}
+                      {(job.status === 'failed' || job.status === 'rejected') && (
+                        <button
+                          onClick={() => handleRetry(job.id)}
+                          disabled={actionLoading === job.id}
+                          className="px-3 py-1.5 bg-[#262626] hover:bg-[#333] text-gray-200 rounded text-xs disabled:opacity-50"
+                        >
+                          {actionLoading === job.id ? 'Retrying…' : 'Retry'}
+                        </button>
+                      )}
+                      {(job.status === 'approved' || job.status === 'review') && job.output_url && (
+                        <a
+                          href={job.output_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-[#262626] hover:bg-[#333] text-gray-200 rounded text-xs"
+                        >
+                          Open Output ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
+
+      <InspoPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(items) => {
+          if (items[0]) setChosenAsset(items[0]);
+        }}
+        contentType="video"
+        title="Pick a video to edit"
+      />
     </div>
   );
 }
