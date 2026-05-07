@@ -1,5 +1,5 @@
 // ============================================================
-// Editing Queue — /dashboard/editing
+// Editing Queue — /dashboard/ai-editing
 //
 // This page shows all content that has passed Gate 1
 // (Postgame internal approval) and is waiting to be edited.
