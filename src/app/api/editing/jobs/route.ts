@@ -11,9 +11,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { createServiceSupabase } from '@/lib/supabase';
-import type { EditJob, EditJobStatus, ContentType } from '@/lib/types/editing';
+import { evaluateVideo } from '@/lib/agents/video-evaluator';
+import { createEditPlan } from '@/lib/agents/edit-planner';
+import type {
+  EditJob,
+  EditJobStatus,
+  ContentType,
+  SceneMap,
+} from '@/lib/types/editing';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const VALID_STATUSES: EditJobStatus[] = [
   'pending', 'analyzing', 'planning', 'confirming',
@@ -133,5 +141,48 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(data as EditJob, { status: 201 });
+  const job = data as EditJob;
+
+  // Fire the pipeline async — analyze with Gemini, then plan with Claude.
+  // Errors mark the job 'failed' so the queue UI surfaces them.
+  void (async () => {
+    try {
+      await evaluateVideo(
+        {
+          jobId: job.id,
+          sourceUrl: job.source_url,
+          contentType: job.content_type,
+          instruction: job.instruction,
+        },
+        user.id
+      );
+      // evaluator left status='planning' and saved scene_map; refetch it.
+      const { data: refreshed } = await db
+        .from('edit_jobs')
+        .select('scene_map')
+        .eq('id', job.id)
+        .single();
+      const sceneMap = (refreshed?.scene_map as SceneMap | null) ?? null;
+      if (sceneMap) {
+        await createEditPlan(
+          {
+            jobId: job.id,
+            sceneMap,
+            instruction: job.instruction,
+            contentType: job.content_type,
+          },
+          user.id
+        );
+      }
+    } catch (err) {
+      console.error('[editing-pipeline]', err);
+      try {
+        await db.from('edit_jobs').update({ status: 'failed' }).eq('id', job.id);
+      } catch {
+        // already logged
+      }
+    }
+  })();
+
+  return NextResponse.json(job, { status: 201 });
 }

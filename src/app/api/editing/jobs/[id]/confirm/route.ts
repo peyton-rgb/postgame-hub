@@ -8,6 +8,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { createServiceSupabase } from '@/lib/supabase';
+import { executeEditPlan } from '@/lib/agents/editing-orchestrator';
+
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,6 +55,16 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
+
+  // Fire the orchestrator async — it walks the EDL, executes ffmpeg
+  // steps inline, and pauses on AI-tool steps for MCP processing.
+  void (async () => {
+    try {
+      await executeEditPlan(params.id, user.id);
+    } catch (err) {
+      console.error('[orchestrator]', err);
+    }
+  })();
 
   return NextResponse.json({ success: true });
 }
