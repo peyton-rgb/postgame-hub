@@ -79,6 +79,9 @@ function buildSystemPrompt(voiceRules: string | null): string {
 
 Your job: take a brand brief and produce 3 to 5 distinct creative concept proposals. Each concept should be a complete creative direction — not just a title, but a full pitch with reasoning.
 
+POSTGAME'S STYLE — "ELEVATED BTS":
+Postgame's signature content style is called "Elevated BTS" — behind-the-scenes footage that is intentionally shot and edited to feel polished and brand-ready. It's NOT raw phone-behind-the-camera content. It's cinematic, styled, and captures authentic moments with professional quality. Every concept you propose should reflect this Elevated BTS aesthetic.
+
 PERSONA:
 - You are confident, brand-savvy, and slightly opinionated. Creative Directors have taste.
 - You think in terms of visual storytelling, athlete authenticity, and platform-native content.
@@ -209,13 +212,39 @@ function buildUserMessage(
       message += `\n## CAMPAIGN STRUCTURE\n`;
       switch (ci.campaignStructure) {
         case 'individual':
-          message += `This is an **Individual Athlete** campaign. Generate concepts that work as standalone creative briefs for EACH athlete. Every concept should be adaptable to any single athlete on the roster. Think: personalized content angles that highlight individual personality, story, and style.\n`;
+          message += `This is an **Individual Athlete** campaign.
+
+DELIVERABLE STRUCTURE:
+- Each athlete gets their OWN standalone creative brief and content package
+- Concepts should be adaptable to any single athlete on the roster
+- Each concept = a personalized content angle highlighting that athlete's personality, story, and style
+- No master/group cut — everything is individual
+
+Generate concepts that work as repeatable templates any athlete on the roster could star in.\n`;
           break;
         case 'team_collab':
-          message += `This is a **Team Collaboration** campaign. Athletes will be grouped together for shoots. Generate concepts around group dynamics, team energy, and collaborative moments. Think: relay-style challenges, group meals, squad energy.\n`;
+          message += `This is a **Team Collaboration** campaign.
+
+DELIVERABLE STRUCTURE:
+- Athletes are grouped together for shoots (duos, trios, or full squad)
+- Concepts should be built around group dynamics, chemistry, and collaborative moments
+- Deliverables include group content AND individual moments captured during the group shoot
+- Think: relay-style challenges, group meals, squad energy, competitive segments
+
+Generate concepts centered on group energy and interaction.\n`;
           break;
         case 'multi_athlete_cohesive':
-          message += `This is a **Multi-Athlete Cohesive** campaign. Many athletes participate but under ONE unified creative template. Every athlete gets the same visual treatment/format with their own individual content. Think: consistent set design, repeated format, cohesive campaign look across all athletes.\n`;
+          message += `This is a **Multi-Athlete Cohesive** campaign.
+
+DELIVERABLE STRUCTURE — THIS IS CRITICAL:
+1. **Individual athlete highlight videos** — EACH athlete on the roster gets their own personalized highlight video to post on their own socials. Same visual template/format, but featuring that specific athlete.
+2. **Master cut** — ONE hero video that highlights ALL athletes together as a campaign sizzle reel. This is the brand's main deliverable.
+
+So every concept you propose must work at BOTH levels:
+- As a repeatable individual format (filmed the same way for each athlete)
+- As a combined master cut that stitches the best moments from every athlete into one cohesive piece
+
+Think: consistent set design, repeated format per athlete, then a master edit that weaves everyone together. The Raising Cane's example: each athlete gets their own studio moment + field workout clip, and the master cut is a hype reel of all athletes.\n`;
           break;
       }
     }
