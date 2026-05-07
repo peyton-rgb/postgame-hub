@@ -794,6 +794,20 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
         folderSuccess += results.filter(Boolean).length;
       }
       totalSuccess += folderSuccess;
+
+      // Notify the campaign manager that this athlete's footage is in
+      if (folderSuccess > 0) {
+        fetch('/api/creator-briefs/upload/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug: params.slug,
+            athleteName: folder.folderName,
+            fileCount: folderSuccess,
+            fileNames: folder.files.map((f) => f.name),
+          }),
+        }).catch(() => {}); // Fire and forget — don't block the UI
+      }
     }
 
     // Upload loose files (no athlete name override)
