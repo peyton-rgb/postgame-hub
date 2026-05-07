@@ -240,7 +240,7 @@ export default function CreatorBriefEditorPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Generation failed');
-      setBrief(data.creatorBrief as CreatorBrief);
+      setBrief(data as CreatorBrief);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate brief');
     }

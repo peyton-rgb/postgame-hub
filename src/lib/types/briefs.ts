@@ -4,6 +4,12 @@
 // so the editor can catch mistakes before they hit production.
 // ============================================================
 
+// --- Creative seed (user-provided idea for concept generation) ---
+export interface CreativeSeed {
+  name: string;
+  description: string;
+}
+
 // --- Brief types ---
 
 export type BriefCampaignType =
