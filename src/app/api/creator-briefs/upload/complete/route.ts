@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       thumbnail_url: thumbnailUrl,
       mime_type: mimeType,
       file_size_bytes: fileSize || null,
-      format: fileName.split('.').pop()?.toLowerCase() || null,
+      format: 'unknown',  // aspect ratio — detected later during tagging
       brand_id: brief.brand_id || null,
       athlete_name: athleteName || brief.athlete_name || null,
       tagging_status: 'pending',
