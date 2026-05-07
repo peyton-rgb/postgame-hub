@@ -110,7 +110,8 @@ function AthleteProfileCard({ profile, color }: { profile: AthleteProfile; color
 // ---- Section Renderers ----
 
 function ShootLogisticsSection({ content, color }: { content: ShootLogisticsContent; color: string }) {
-  const hasContacts = content.postgame_contacts.length > 0 || content.videographer;
+  const contacts = content.postgame_contacts || [];
+  const hasContacts = contacts.length > 0 || content.videographer;
   const hasSchedule = content.shoot_date || content.shoot_time || content.location;
 
   if (!hasSchedule && !hasContacts) return null;
@@ -160,7 +161,7 @@ function ShootLogisticsSection({ content, color }: { content: ShootLogisticsCont
         <div>
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Contacts</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {content.postgame_contacts.map((c) => (
+            {contacts.map((c) => (
               <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm">
                 <div className="font-semibold text-gray-900">{c.name}</div>
                 <div className="text-sm text-gray-500">{c.role || 'Postgame'}</div>
@@ -272,11 +273,11 @@ function DeliverablesSection({ content, color }: { content: DeliverablesSectionC
 function ProductReqsSection({ content }: { content: ProductReqsSectionContent }) {
   return (
     <div className="space-y-4">
-      {content.items.map((item, i) => (
+      {(content.items || []).map((item, i) => (
         <div key={i} className="bg-gray-50 rounded-xl p-4">
           <div className="font-semibold text-gray-900 mb-2">{item.name}</div>
           <ul className="space-y-1">
-            {item.requirements.map((req, j) => (
+            {(item.requirements || []).map((req, j) => (
               <li key={j} className="text-sm text-gray-600 flex items-start gap-2">
                 <span className="text-gray-400 mt-0.5">&times;</span>
                 {req}
@@ -293,7 +294,7 @@ function AthleteReqsSection({ content }: { content: AthleteReqsSectionContent })
   return (
     <div>
       <ul className="space-y-2 mb-4">
-        {content.requirements.map((req, i) => (
+        {(content.requirements || []).map((req, i) => (
           <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
             <span className="text-gray-400 mt-0.5">&times;</span>
             {req}
@@ -338,7 +339,7 @@ function CameraSpecsSection({ content, color }: { content: CameraSpecsSectionCon
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="bg-gray-50 rounded-xl p-5">
         <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>VIDEO SETTINGS</div>
-        {Object.entries(content.video_settings).map(([k, v]) => (
+        {Object.entries(content.video_settings || {}).map(([k, v]) => (
           <div key={k} className="flex justify-between text-sm mb-1">
             <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
             <span className="text-gray-900 font-medium">{v}</span>
@@ -348,7 +349,7 @@ function CameraSpecsSection({ content, color }: { content: CameraSpecsSectionCon
       {content.photography_settings && (
         <div className="bg-gray-50 rounded-xl p-5">
           <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>PHOTO SETTINGS</div>
-          {Object.entries(content.photography_settings).map(([k, v]) => (
+          {Object.entries(content.photography_settings || {}).map(([k, v]) => (
             <div key={k} className="flex justify-between text-sm mb-1">
               <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
               <span className="text-gray-900 font-medium">{v}</span>
@@ -369,7 +370,7 @@ function CameraSpecsSection({ content, color }: { content: CameraSpecsSectionCon
 function WorkflowSection({ content, color }: { content: WorkflowSectionContent; color: string }) {
   return (
     <div className="space-y-3">
-      {content.steps.map((step) => (
+      {(content.steps || []).map((step) => (
         <div key={step.number} className="flex gap-4">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
@@ -393,7 +394,7 @@ function DosDontsSection({ content }: { content: DosDontsSectionContent }) {
       <div>
         <div className="text-green-600 font-semibold text-sm mb-3">Do&apos;s</div>
         <ul className="space-y-2">
-          {content.dos.map((d, i) => (
+          {(content.dos || []).map((d, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
               <span className="text-green-500 mt-0.5">✓</span>
               {d}
@@ -404,7 +405,7 @@ function DosDontsSection({ content }: { content: DosDontsSectionContent }) {
       <div>
         <div className="text-red-600 font-semibold text-sm mb-3">Don&apos;ts</div>
         <ul className="space-y-2">
-          {content.donts.map((d, i) => (
+          {(content.donts || []).map((d, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
               <span className="text-red-500 mt-0.5">✗</span>
               {d}
@@ -421,7 +422,7 @@ function FileDeliverySection({ content, color }: { content: FileDeliverySectionC
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="bg-gray-50 rounded-xl p-5">
         <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>VIDEO SPECS</div>
-        {Object.entries(content.video_specs).map(([k, v]) => (
+        {Object.entries(content.video_specs || {}).map(([k, v]) => (
           <div key={k} className="flex justify-between text-sm mb-1">
             <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
             <span className="text-gray-900 font-medium">{v}</span>
@@ -431,7 +432,7 @@ function FileDeliverySection({ content, color }: { content: FileDeliverySectionC
       {content.photo_specs && (
         <div className="bg-gray-50 rounded-xl p-5">
           <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>PHOTO SPECS</div>
-          {Object.entries(content.photo_specs).map(([k, v]) => (
+          {Object.entries(content.photo_specs || {}).map(([k, v]) => (
             <div key={k} className="flex justify-between text-sm mb-1">
               <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
               <span className="text-gray-900 font-medium">{v}</span>
