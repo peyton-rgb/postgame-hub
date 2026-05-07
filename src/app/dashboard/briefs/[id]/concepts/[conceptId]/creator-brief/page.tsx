@@ -488,7 +488,7 @@ export default function CreatorBriefEditorPage({
 
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Creator Brief</h1>
+            <h1 className="text-2xl font-bold">Creative Brief</h1>
             <p className="text-gray-400 text-sm mt-1">{creatorBrief.title}</p>
             {creatorBrief.status === 'published' && (
               <div className="flex items-center gap-3 mt-2">
@@ -518,15 +518,27 @@ export default function CreatorBriefEditorPage({
             {lastSaved && !saving && (
               <span className="text-gray-600 text-xs">Saved {lastSaved}</span>
             )}
-            {creatorBrief.status === 'draft' && (
-              <button
-                onClick={handlePublish}
-                disabled={publishing}
-                className="px-6 py-2.5 bg-[#D73F09] hover:bg-[#b33507] text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+            {creatorBrief.status === 'published' && (
+              <a
+                href={`/creator-brief/${creatorBrief.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors text-sm"
               >
-                {publishing ? 'Publishing...' : 'Publish'}
-              </button>
+                View Live →
+              </a>
             )}
+            <button
+              onClick={handlePublish}
+              disabled={publishing}
+              className="px-6 py-2.5 bg-[#D73F09] hover:bg-[#b33507] text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {publishing
+                ? 'Publishing...'
+                : creatorBrief.status === 'published'
+                ? 'Republish'
+                : 'Publish'}
+            </button>
           </div>
         </div>
 

@@ -283,10 +283,10 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
           )}
         </div>
 
-        {/* Creator briefs spawned from this campaign brief's concepts */}
+        {/* Creative briefs spawned from this brand brief's concepts */}
         {creatorBriefs.length > 0 && (
           <section className="mt-8 bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Creator Briefs</h2>
+            <h2 className="text-lg font-semibold mb-4">Creative Briefs</h2>
             <ul className="space-y-2">
               {creatorBriefs.map((cb) => (
                 <li

@@ -520,7 +520,7 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
                     }
                     className="px-4 py-2 bg-[#D73F09] hover:bg-[#b33507] text-white rounded-lg text-sm font-semibold"
                   >
-                    Open Creator Brief
+                    Open Creative Brief
                   </button>
                 </div>
               )}

@@ -241,7 +241,7 @@ export default function NewCampaignBriefPage() {
           &larr; Back to Briefs
         </button>
 
-        <h1 className="text-3xl font-bold mb-2">New Campaign Brief</h1>
+        <h1 className="text-3xl font-bold mb-2">New Brand Brief</h1>
 
         {/* Progress bar */}
         <div className="flex items-center gap-2 mb-8 mt-6">

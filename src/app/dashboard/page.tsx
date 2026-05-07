@@ -109,7 +109,61 @@ function DashboardContent() {
                 <line x1="9" y1="13" x2="15" y2="13" />
                 <line x1="9" y1="17" x2="15" y2="17" />
               </svg>
-              Campaign Briefs
+              Brand Briefs
+            </Link>
+            <Link
+              href="/dashboard/reviews"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+              </svg>
+              Reviews
+            </Link>
+            <Link
+              href="/dashboard/assets"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" />
+              </svg>
+              Assets
+            </Link>
+            <Link
+              href="/dashboard/captions"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Captions
+            </Link>
+            <Link
+              href="/dashboard/publishing"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+              Publishing
+            </Link>
+            <Link
+              href="/dashboard/performance"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+              Performance
+            </Link>
+            <Link
+              href="/dashboard/roi"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#D73F09] hover:text-white border border-[#D73F09]/40 hover:border-[#D73F09] hover:bg-[#D73F09]/10 rounded-lg transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+              ROI
             </Link>
             <Link
               href="/dashboard/website"

@@ -56,9 +56,9 @@ export default function CampaignBriefListPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Campaign Briefs</h1>
+          <h1 className="text-3xl font-bold">Brand Briefs</h1>
           <p className="text-gray-400 mt-1">
-            All campaign briefs across every brand
+            All brand briefs across every campaign
           </p>
         </div>
         <button
@@ -93,7 +93,7 @@ export default function CampaignBriefListPage() {
         <div className="text-center py-20">
           <p className="text-gray-400 text-lg">No briefs yet</p>
           <p className="text-gray-500 mt-2">
-            Click &quot;New Brief&quot; to create your first campaign brief.
+            Click &quot;New Brief&quot; to create your first brand brief.
           </p>
         </div>
       ) : (

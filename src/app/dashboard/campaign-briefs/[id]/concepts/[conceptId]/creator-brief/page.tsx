@@ -382,7 +382,7 @@ export default function CreatorBriefEditorPage() {
           </button>
           <div className="bg-white rounded-2xl shadow-sm p-12">
             <h1 className="text-2xl font-bold text-gray-900">
-              No creator brief yet
+              No creative brief yet
             </h1>
             <p className="text-gray-500 mt-2 mb-6 text-sm">
               Generate a structured brief for the videographer + athlete based on
@@ -398,7 +398,7 @@ export default function CreatorBriefEditorPage() {
               disabled={generating}
               className="px-8 py-3 bg-[#D73F09] hover:bg-[#b33507] text-white font-bold rounded-xl disabled:opacity-50"
             >
-              {generating ? 'Generating...' : 'Generate Creator Brief'}
+              {generating ? 'Generating...' : 'Generate Creative Brief'}
             </button>
           </div>
         </div>
@@ -465,6 +465,15 @@ export default function CreatorBriefEditorPage() {
               {brief.status}
             </span>
             {isPublished && (
+              <a
+                href={`/creator-brief/${brief.slug}`}
+                target="_blank"
+                className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg text-sm"
+              >
+                View Live →
+              </a>
+            )}
+            {isPublished && (
               <button
                 onClick={copyPublicUrl}
                 className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium"
@@ -474,13 +483,13 @@ export default function CreatorBriefEditorPage() {
             )}
             <button
               onClick={handlePublish}
-              disabled={publishing || isPublished}
+              disabled={publishing}
               className="px-4 py-1.5 bg-[#D73F09] hover:bg-[#b33507] text-white font-semibold rounded-lg text-sm disabled:opacity-50"
             >
-              {isPublished
-                ? 'Published'
-                : publishing
+              {publishing
                 ? 'Publishing...'
+                : isPublished
+                ? 'Republish'
                 : 'Publish'}
             </button>
           </div>
