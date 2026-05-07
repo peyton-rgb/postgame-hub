@@ -839,10 +839,7 @@ export default function CreatorBriefEditorPage() {
                     Assigned Videographer
                   </div>
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                      style={{ backgroundColor: color }}
-                    >
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm font-bold flex-shrink-0">
                       {brief.videographer.name
                         .split(' ')
                         .map((w) => w[0])
@@ -871,16 +868,10 @@ export default function CreatorBriefEditorPage() {
                     Postgame Points of Contact
                   </div>
                   <div className="space-y-4">
-                    {(brief.postgame_contacts || []).map((c, i) => {
-                      // Generate a consistent color per contact
-                      const avatarColors = ['#D73F09', '#2563eb', '#059669', '#7c3aed', '#db2777', '#d97706', '#0891b2'];
-                      const avatarColor = avatarColors[i % avatarColors.length];
+                    {(brief.postgame_contacts || []).map((c) => {
                       return (
                         <div key={c.id} className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                            style={{ backgroundColor: avatarColor }}
-                          >
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-bold flex-shrink-0">
                             {c.name
                               .split(' ')
                               .map((w) => w[0])
