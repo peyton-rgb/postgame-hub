@@ -25,8 +25,21 @@ const getAdminSupabase = () =>
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-// Slack channel for upload notifications
-const SLACK_CHANNEL_ID = 'C093WTTJ7QS'; // #postgame-productions
+// Helper: look up a Slack user ID by their email address.
+// Uses the Slack Web API's users.lookupByEmail method.
+// Returns the user ID (like "U12345") or null if not found.
+async function getSlackUserIdByEmail(email: string, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const data = await res.json();
+    return data.ok ? data.user.id : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   const adminSupabase = getAdminSupabase();
@@ -67,7 +80,7 @@ export async function POST(request: NextRequest) {
     ? ` and ${(fileNames || []).length - 5} more`
     : '';
 
-  // --- 1. Send Slack notification ---
+  // --- 1. Send Slack DMs to each contact on the brief ---
   try {
     const slackText =
       `📸 *New footage uploaded*\n\n` +
@@ -77,21 +90,44 @@ export async function POST(request: NextRequest) {
       (fileList ? `*Names:* ${fileList}${moreFiles}\n` : '') +
       `\n<${intakeUrl}|View in Intake Queue> · <${briefUrl}|View Brief>`;
 
-    // Use Slack Bot Token to post via the Slack Web API
     const slackToken = process.env.SLACK_BOT_TOKEN;
     if (slackToken) {
-      await fetch('https://slack.com/api/chat.postMessage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${slackToken}`,
-        },
-        body: JSON.stringify({
-          channel: SLACK_CHANNEL_ID,
-          text: slackText,
-          unfurl_links: false,
-        }),
-      });
+      // Get email addresses from the brief's contacts
+      const contacts = (brief.postgame_contacts || []) as Array<{
+        name: string;
+        email?: string;
+        role: string;
+      }>;
+
+      const contactEmails = contacts
+        .filter((c) => c.email)
+        .map((c) => c.email as string);
+
+      // Always include admin
+      const adminEmail = process.env.NOTIFICATION_EMAIL || 'peyton@pstgm.com';
+      if (!contactEmails.includes(adminEmail)) {
+        contactEmails.push(adminEmail);
+      }
+
+      // Look up each contact's Slack user ID by email, then DM them
+      for (const email of contactEmails) {
+        const slackUserId = await getSlackUserIdByEmail(email, slackToken);
+        if (slackUserId) {
+          // Sending a DM: use the user's ID as the "channel"
+          await fetch('https://slack.com/api/chat.postMessage', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${slackToken}`,
+            },
+            body: JSON.stringify({
+              channel: slackUserId,
+              text: slackText,
+              unfurl_links: false,
+            }),
+          });
+        }
+      }
     } else {
       console.log('SLACK NOTIFICATION (no bot token configured):', slackText);
     }
