@@ -733,14 +733,22 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     setUploadComplete(false);
     setUploadProgress([]);
 
-    // Walk the dropped items and group files by top-level folder name
+    // IMPORTANT: Grab all entries SYNCHRONOUSLY first!
+    // The browser invalidates the DataTransferItemList after any
+    // async operation, so if we await inside the loop, items 2-22
+    // would silently disappear. We snapshot everything up front,
+    // then process them asynchronously after.
+    const entries: FileSystemEntry[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const entry = items[i].webkitGetAsEntry?.();
+      if (entry) entries.push(entry);
+    }
+
+    // Now process all entries asynchronously
     const folderFiles: { folderName: string; files: File[] }[] = [];
     const looseFiles: File[] = [];
 
-    for (let i = 0; i < items.length; i++) {
-      const entry = items[i].webkitGetAsEntry?.();
-      if (!entry) continue;
-
+    for (const entry of entries) {
       if (entry.isDirectory) {
         const files = await readEntryFiles(entry);
         const mediaFiles = files.filter(
