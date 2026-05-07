@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type {
   CreatorBrief,
   CreatorBriefSection,
@@ -553,6 +553,13 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // --- Upload state ---
+  const [uploadDragActive, setUploadDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ name: string; status: 'uploading' | 'done' | 'error'; error?: string }[]>([]);
+  const [uploadComplete, setUploadComplete] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     async function load() {
       const res = await fetch(`/api/creator-briefs/public/${params.slug}`);
@@ -565,6 +572,67 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     }
     load();
   }, [params.slug]);
+
+  // --- Upload handlers ---
+  const handleUploadFiles = useCallback(async (files: FileList | File[]) => {
+    if (!brief) return;
+    setUploading(true);
+    setUploadComplete(false);
+
+    // Show each file as "uploading" in the progress list
+    const fileArray = Array.from(files);
+    setUploadProgress(fileArray.map((f) => ({ name: f.name, status: 'uploading' })));
+
+    const formData = new FormData();
+    formData.append('slug', params.slug);
+    fileArray.forEach((file) => formData.append('files', file));
+
+    try {
+      const res = await fetch('/api/creator-briefs/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      // Update progress based on results
+      const uploaded = new Set((data.uploaded || []).map((u: { file: string }) => u.file));
+      const errorMap = new Map<string, string>((data.errors || []).map((e: { file: string; error: string }) => [e.file, e.error]));
+
+      setUploadProgress(fileArray.map((f) => ({
+        name: f.name,
+        status: uploaded.has(f.name) ? 'done' as const : 'error' as const,
+        error: errorMap.get(f.name) || undefined,
+      })));
+
+      if (data.successful > 0) {
+        setUploadComplete(true);
+      }
+    } catch {
+      setUploadProgress(fileArray.map((f) => ({ name: f.name, status: 'error', error: 'Upload failed' })));
+    }
+
+    setUploading(false);
+  }, [brief, params.slug]);
+
+  const handleUploadDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setUploadDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setUploadDragActive(false);
+    }
+  }, []);
+
+  const handleUploadDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setUploadDragActive(false);
+    if (e.dataTransfer.files?.length > 0) {
+      handleUploadFiles(e.dataTransfer.files);
+    }
+  }, [handleUploadFiles]);
 
   if (loading) {
     return (
@@ -702,6 +770,126 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
               <SectionRenderer section={section} color={color} />
             </div>
           ))}
+        </div>
+
+        {/* ---- Upload Zone ---- */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mt-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              style={{ backgroundColor: color }}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </span>
+            <h2 className="text-2xl font-bold text-gray-900">Upload Footage</h2>
+          </div>
+          <hr className="mb-4" style={{ borderColor: color, opacity: 0.3 }} />
+
+          <p className="text-gray-500 text-[15px] mb-4">
+            Drop your photos and videos here when you&apos;re done shooting. Files are automatically
+            tagged and organized — no login needed.
+          </p>
+
+          {/* Drop zone */}
+          <div
+            onDragEnter={handleUploadDrag}
+            onDragLeave={handleUploadDrag}
+            onDragOver={handleUploadDrag}
+            onDrop={handleUploadDrop}
+            onClick={() => uploadInputRef.current?.click()}
+            className={`
+              relative border-2 border-dashed rounded-xl p-8 sm:p-12 text-center cursor-pointer
+              transition-all duration-200
+              ${uploadDragActive
+                ? 'border-[#D73F09] bg-[#D73F09]/5'
+                : 'border-gray-300 hover:border-gray-400 bg-gray-50/50'
+              }
+              ${uploading ? 'pointer-events-none opacity-60' : ''}
+            `}
+          >
+            <input
+              ref={uploadInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) {
+                  handleUploadFiles(e.target.files);
+                  e.target.value = '';
+                }
+              }}
+            />
+
+            {uploading ? (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-4 border-gray-300 border-t-[#D73F09] rounded-full animate-spin" />
+                <p className="text-gray-600 font-medium">Uploading...</p>
+              </div>
+            ) : uploadComplete ? (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <p className="text-gray-900 font-semibold">Upload complete!</p>
+                <p className="text-gray-500 text-sm">Files are being tagged automatically. Drop more to continue.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-gray-900 font-semibold">Drag &amp; drop files here</p>
+                  <p className="text-gray-500 text-sm mt-1">or click to browse — photos and videos accepted</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* File progress list */}
+          {uploadProgress.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {uploadProgress.map((file, i) => (
+                <div
+                  key={`${file.name}-${i}`}
+                  className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 rounded-lg text-sm"
+                >
+                  {file.status === 'uploading' && (
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-[#D73F09] rounded-full animate-spin flex-shrink-0" />
+                  )}
+                  {file.status === 'done' && (
+                    <svg className="w-4 h-4 text-green-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                  {file.status === 'error' && (
+                    <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  )}
+                  <span className="text-gray-700 truncate flex-1">{file.name}</span>
+                  {file.status === 'done' && (
+                    <span className="text-green-600 text-xs font-medium">Done</span>
+                  )}
+                  {file.status === 'error' && (
+                    <span className="text-red-500 text-xs">{file.error || 'Failed'}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
