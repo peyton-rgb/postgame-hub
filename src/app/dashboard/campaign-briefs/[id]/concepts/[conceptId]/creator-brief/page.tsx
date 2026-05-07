@@ -33,6 +33,17 @@ function formatPhone(raw: string): string {
   return raw; // return as-is if not a standard US number
 }
 
+// Instagram icon (inline SVG so we don't need an icon library)
+function InstagramIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
 // ---- Types for dropdowns ----
 interface StaffMember {
   id: string;
@@ -844,9 +855,9 @@ export default function CreatorBriefEditorPage() {
                         {brief.videographer.name}
                       </div>
                       {brief.videographer.phone && (
-                        <div className="text-sm text-gray-500">
+                        <a href={`tel:${brief.videographer.phone}`} className="text-sm font-medium text-[#D73F09] hover:underline">
                           {formatPhone(brief.videographer.phone)}
-                        </div>
+                        </a>
                       )}
                     </div>
                   </div>
@@ -882,9 +893,9 @@ export default function CreatorBriefEditorPage() {
                               {c.name}
                             </div>
                             {c.phone && (
-                              <div className="text-sm text-gray-500">
+                              <a href={`tel:${c.phone}`} className="text-sm font-medium text-[#D73F09] hover:underline">
                                 {formatPhone(c.phone)}
-                              </div>
+                              </a>
                             )}
                           </div>
                         </div>
@@ -1094,9 +1105,9 @@ export default function CreatorBriefEditorPage() {
                         href={`https://instagram.com/${brief.athlete_profile.instagram}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm font-medium hover:underline"
-                        style={{ color }}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D73F09] hover:underline"
                       >
+                        <InstagramIcon className="w-4 h-4" />
                         @{brief.athlete_profile.instagram}
                       </a>
                     )}
