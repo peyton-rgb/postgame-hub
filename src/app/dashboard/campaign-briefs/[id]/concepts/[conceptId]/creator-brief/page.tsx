@@ -598,9 +598,16 @@ export default function CreatorBriefEditorPage() {
                 Edit
               </button>
 
-              <div className="mb-4">
+              <div className="flex items-center gap-4 mb-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/postgame-logo-black.png" alt="Postgame" className="h-7 object-contain" />
+                {brief.brand_logo_url && (
+                  <>
+                    <span className="text-gray-300 text-sm">×</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={brief.brand_logo_url} alt="Brand" className="h-8 object-contain" />
+                  </>
+                )}
               </div>
 
               <span
