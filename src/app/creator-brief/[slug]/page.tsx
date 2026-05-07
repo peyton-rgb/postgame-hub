@@ -888,8 +888,34 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     s.type === 'shoot_logistics' ||
     (s.type === 'concept' && (s.title.toLowerCase().includes('shoot') || s.number === '00'));
 
-  const shootSection = brief.sections.find(isShootSection);
+  const rawShootSection = brief.sections.find(isShootSection);
   const contentSections = brief.sections.filter((s) => !isShootSection(s));
+
+  // The editor saves contacts/schedule as top-level brief columns,
+  // but the ShootLogisticsSection renderer reads from section.content.
+  // Merge them so the public page always shows the latest data.
+  // Build merged shoot logistics content from brief-level fields
+  const mergedShootContent: ShootLogisticsContent = {
+    shoot_date: brief.shoot_date || (rawShootSection?.content as ShootLogisticsContent)?.shoot_date || null,
+    shoot_time: brief.shoot_time || (rawShootSection?.content as ShootLogisticsContent)?.shoot_time || null,
+    location: brief.location || (rawShootSection?.content as ShootLogisticsContent)?.location || null,
+    postgame_contacts: brief.postgame_contacts?.length
+      ? brief.postgame_contacts
+      : (rawShootSection?.content as ShootLogisticsContent)?.postgame_contacts || [],
+    videographer: brief.videographer ?? (rawShootSection?.content as ShootLogisticsContent)?.videographer ?? null,
+  };
+
+  // If we have a real shoot section, merge our data into it.
+  // If not, but we have contacts/schedule, create a synthetic one.
+  const hasShootData = mergedShootContent.shoot_date || mergedShootContent.shoot_time
+    || mergedShootContent.location || mergedShootContent.postgame_contacts.length > 0
+    || mergedShootContent.videographer;
+
+  const shootSection = rawShootSection
+    ? { ...rawShootSection, content: mergedShootContent }
+    : hasShootData
+      ? { number: '00', title: 'Shoot Details', type: 'shoot_logistics' as const, content: mergedShootContent }
+      : null;
 
   return (
     <div className="min-h-screen bg-[#f5f5f0]">
