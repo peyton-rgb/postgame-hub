@@ -911,8 +911,12 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     || mergedShootContent.location || mergedShootContent.postgame_contacts.length > 0
     || mergedShootContent.videographer;
 
+  // Always force the type to 'shoot_logistics' so the SectionRenderer
+  // uses the structured renderer (not the legacy plain-text one).
+  // Many briefs were created with type='concept' for section 00,
+  // but the editor now saves contacts/schedule as top-level brief columns.
   const shootSection = rawShootSection
-    ? { ...rawShootSection, content: mergedShootContent }
+    ? { ...rawShootSection, type: 'shoot_logistics' as const, content: mergedShootContent }
     : hasShootData
       ? { number: '00', title: 'Shoot Details', type: 'shoot_logistics' as const, content: mergedShootContent }
       : null;
