@@ -9,8 +9,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Concept, Brief, CreativeSeed } from '@/lib/types/briefs';
+import type { CampaignStructure, RosterAthlete } from '@/lib/agents/creative-director';
 
 type GenerationMode = 'fresh' | 'collaborate';
+
+const CAMPAIGN_STRUCTURES: { value: CampaignStructure; label: string; description: string }[] = [
+  {
+    value: 'individual',
+    label: 'Individual',
+    description: 'One brief per athlete — personalized content angles',
+  },
+  {
+    value: 'team_collab',
+    label: 'Team Collab',
+    description: 'Athletes grouped for shoots — squad energy, challenges',
+  },
+  {
+    value: 'multi_athlete_cohesive',
+    label: 'Multi-Athlete Cohesive',
+    description: 'One unified campaign look — same template, every athlete',
+  },
+];
 
 const SCOPE_LABELS: Record<string, string> = {
   ugc_only: 'UGC Only',
@@ -60,6 +79,97 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
   const [uploading, setUploading] = useState(false);
   const [seeds, setSeeds] = useState<CreativeSeed[]>([{ name: '', description: '' }]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const rosterInputRef = useRef<HTMLInputElement>(null);
+
+  // Campaign structure & athlete roster
+  const [campaignStructure, setCampaignStructure] = useState<CampaignStructure>('multi_athlete_cohesive');
+  const [athleteRoster, setAthleteRoster] = useState<RosterAthlete[]>([]);
+  const [rosterParsing, setRosterParsing] = useState(false);
+
+  function parseCSVRoster(csvText: string) {
+    setRosterParsing(true);
+    try {
+      const lines = csvText.split('\n').filter((l) => l.trim());
+      // Find the header row (contains "Athlete" or "athlete")
+      const headerIdx = lines.findIndex((l) => /athlete/i.test(l));
+      if (headerIdx === -1) {
+        setError('Could not find an "Athlete" column in the CSV');
+        setRosterParsing(false);
+        return;
+      }
+      const headers = lines[headerIdx].split(',').map((h) => h.trim().toLowerCase());
+      const athleteCol = headers.findIndex((h) => h === 'athlete' || h === 'name' || h === 'athlete name');
+      const schoolCol = headers.findIndex((h) => h === 'school' || h === 'university');
+      const posCol = headers.findIndex((h) => h === 'position' || h === 'pos');
+      const igHandleCol = headers.findIndex((h) => h.includes('instagram') && h.includes('handle'));
+      const igCol = headers.findIndex((h) => (h.includes('instagram') && h.includes('follower')) || h === 'instagram followers');
+      const ttCol = headers.findIndex((h) => h.includes('tiktok') && h.includes('follower'));
+      const twCol = headers.findIndex((h) => (h.includes('twitter') || h.includes('x ')) && h.includes('follower'));
+      const totalCol = headers.findIndex((h) => h.includes('total') && h.includes('follower'));
+
+      const parsed: RosterAthlete[] = [];
+      // Rows after header — handle multi-line school cells
+      let currentSchool = '';
+      for (let i = headerIdx + 1; i < lines.length; i++) {
+        const raw = lines[i];
+        // If the line doesn't have enough commas, it might be a school line
+        const cells = raw.split(',').map((c) => c.trim().replace(/^"/, '').replace(/"$/, ''));
+        // Check if the athlete column has a value
+        const athleteVal = athleteCol >= 0 ? cells[athleteCol] : '';
+        if (!athleteVal || athleteVal === '') {
+          // This might be a school/info line — capture it
+          if (cells[0] && !cells[0].match(/^\d/)) currentSchool = cells[0];
+          continue;
+        }
+        // Extract school — might be in the first column if it's a multi-line format
+        let school = schoolCol >= 0 ? cells[schoolCol] : '';
+        if (!school && currentSchool) school = currentSchool;
+        // Clean school — remove "Pre-Season Ranking" etc.
+        school = school.split('\n')[0].trim();
+
+        const parseNum = (val: string | undefined) => {
+          if (!val) return undefined;
+          return parseInt(val.replace(/,/g, ''), 10) || undefined;
+        };
+
+        parsed.push({
+          name: athleteVal.replace(/\*$/, '').trim(),
+          school: school || undefined,
+          position: posCol >= 0 ? cells[posCol] || undefined : undefined,
+          instagram_handle: igHandleCol >= 0 ? cells[igHandleCol]?.replace('@', '') || undefined : undefined,
+          instagram_followers: parseNum(igCol >= 0 ? cells[igCol] : undefined),
+          tiktok_followers: parseNum(ttCol >= 0 ? cells[ttCol] : undefined),
+          twitter_followers: parseNum(twCol >= 0 ? cells[twCol] : undefined),
+          total_followers: parseNum(totalCol >= 0 ? cells[totalCol] : undefined),
+        });
+      }
+
+      if (parsed.length === 0) {
+        setError('No athletes found in the CSV. Make sure there\'s an "Athlete" column.');
+      } else {
+        setAthleteRoster(parsed);
+        setError(null);
+      }
+    } catch (err) {
+      setError('Failed to parse CSV. Check the format.');
+    }
+    setRosterParsing(false);
+  }
+
+  function handleRosterUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (text) parseCSVRoster(text);
+    };
+    reader.readAsText(file);
+  }
+
+  function removeAthlete(idx: number) {
+    setAthleteRoster((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   function addSeed() {
     setSeeds((prev) => [...prev, { name: '', description: '' }]);
@@ -128,6 +238,8 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
           .map((s) => ({ name: s.name.trim(), description: s.description.trim() }))
           .filter((s) => s.name || s.description);
         if (cleanedSeeds.length > 0) payload.creative_seeds = cleanedSeeds;
+        if (campaignStructure) payload.campaign_structure = campaignStructure;
+        if (athleteRoster.length > 0) payload.athlete_roster = athleteRoster;
       }
 
       const res = await fetch('/api/concepts/generate', {
@@ -297,9 +409,121 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
 
           {mode === 'collaborate' && (
             <div className="p-6 space-y-6">
-              {/* Athlete */}
+              {/* Campaign Structure */}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Athlete Name (optional)</label>
+                <label className="block text-sm text-gray-400 mb-2">Campaign Structure</label>
+                <p className="text-xs text-gray-500 mb-3">How should the Creative Director scope the concepts?</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {CAMPAIGN_STRUCTURES.map((cs) => (
+                    <button
+                      key={cs.value}
+                      onClick={() => setCampaignStructure(cs.value)}
+                      className={`text-left px-4 py-3 rounded-lg border transition-colors ${
+                        campaignStructure === cs.value
+                          ? 'border-[#D73F09] bg-[#D73F09]/10 text-white'
+                          : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="font-medium text-sm">{cs.label}</div>
+                      <div className="text-xs text-gray-500 mt-1">{cs.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Athlete Roster Upload */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Athlete Roster {athleteRoster.length > 0 && <span className="text-[#D73F09]">({athleteRoster.length} athletes)</span>}
+                </label>
+                {athleteRoster.length === 0 ? (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleRosterUpload(e.dataTransfer.files);
+                    }}
+                    onClick={() => rosterInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-700 hover:border-gray-600 rounded-lg p-6 text-center cursor-pointer transition-colors"
+                  >
+                    <input
+                      ref={rosterInputRef}
+                      type="file"
+                      accept=".csv,.tsv,.txt"
+                      className="hidden"
+                      onChange={(e) => handleRosterUpload(e.target.files)}
+                    />
+                    <p className="text-gray-400 text-sm">
+                      {rosterParsing ? 'Parsing roster...' : 'Drop a CSV roster here or click to upload'}
+                    </p>
+                    <p className="text-gray-600 text-xs mt-1">Needs an &quot;Athlete&quot; column — School, Position, and socials are optional</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+                      <div className="max-h-60 overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-900 sticky top-0">
+                            <tr className="text-gray-400 text-xs">
+                              <th className="text-left px-3 py-2">Athlete</th>
+                              <th className="text-left px-3 py-2">School</th>
+                              <th className="text-left px-3 py-2">Pos</th>
+                              <th className="text-right px-3 py-2">Followers</th>
+                              <th className="px-2 py-2 w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {athleteRoster.map((a, idx) => (
+                              <tr key={idx} className="border-t border-gray-700/50 hover:bg-gray-700/30">
+                                <td className="px-3 py-2 text-white font-medium">{a.name}</td>
+                                <td className="px-3 py-2 text-gray-400">{a.school || '—'}</td>
+                                <td className="px-3 py-2 text-gray-400">{a.position || '—'}</td>
+                                <td className="px-3 py-2 text-gray-400 text-right">
+                                  {a.total_followers ? a.total_followers.toLocaleString() : '—'}
+                                </td>
+                                <td className="px-2 py-2">
+                                  <button
+                                    onClick={() => removeAthlete(idx)}
+                                    className="text-gray-600 hover:text-red-400 text-xs"
+                                    aria-label="Remove athlete"
+                                  >
+                                    ×
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => setAthleteRoster([])}
+                        className="text-xs text-gray-500 hover:text-red-400"
+                      >
+                        Clear roster
+                      </button>
+                      <button
+                        onClick={() => rosterInputRef.current?.click()}
+                        className="text-xs text-[#D73F09] hover:text-[#b33507]"
+                      >
+                        Replace CSV
+                      </button>
+                      <input
+                        ref={rosterInputRef}
+                        type="file"
+                        accept=".csv,.tsv,.txt"
+                        className="hidden"
+                        onChange={(e) => handleRosterUpload(e.target.files)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Athlete Name (single, for backward compat) */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Athlete Name (optional — for single-athlete focus)</label>
                 <input
                   type="text"
                   value={athleteName}

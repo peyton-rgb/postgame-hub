@@ -99,6 +99,21 @@ CONSTRAINTS:
 - Consider the brand's history if provided. What worked before? What didn't?`;
 }
 
+// Campaign structure types — how the brief maps to athletes
+export type CampaignStructure = 'individual' | 'team_collab' | 'multi_athlete_cohesive';
+
+// Parsed athlete from the uploaded roster CSV
+export interface RosterAthlete {
+  name: string;
+  school?: string;
+  position?: string;
+  instagram_handle?: string;
+  instagram_followers?: number;
+  tiktok_followers?: number;
+  twitter_followers?: number;
+  total_followers?: number;
+}
+
 // Optional inputs from the "Collaborate" panel on the concepts page.
 // When an AM provides these, they get woven into the prompt so the
 // Creative Director agent tailors its concepts to a specific shoot.
@@ -108,6 +123,8 @@ export interface CollaborateInputs {
   location?: string;
   referenceImageUrls?: string[];
   creativeSeeds?: string[];
+  campaignStructure?: CampaignStructure;
+  athleteRoster?: RosterAthlete[];
 }
 
 // Build the user message with the actual brief data
@@ -186,11 +203,42 @@ function buildUserMessage(
   // more specific and actionable for the videographer brief.
   if (collaborateInputs) {
     const ci = collaborateInputs;
-    const hasAny = ci.athleteName || ci.shootDate || ci.location ||
+
+    // Campaign structure — tells the agent how to scope concepts
+    if (ci.campaignStructure) {
+      message += `\n## CAMPAIGN STRUCTURE\n`;
+      switch (ci.campaignStructure) {
+        case 'individual':
+          message += `This is an **Individual Athlete** campaign. Generate concepts that work as standalone creative briefs for EACH athlete. Every concept should be adaptable to any single athlete on the roster. Think: personalized content angles that highlight individual personality, story, and style.\n`;
+          break;
+        case 'team_collab':
+          message += `This is a **Team Collaboration** campaign. Athletes will be grouped together for shoots. Generate concepts around group dynamics, team energy, and collaborative moments. Think: relay-style challenges, group meals, squad energy.\n`;
+          break;
+        case 'multi_athlete_cohesive':
+          message += `This is a **Multi-Athlete Cohesive** campaign. Many athletes participate but under ONE unified creative template. Every athlete gets the same visual treatment/format with their own individual content. Think: consistent set design, repeated format, cohesive campaign look across all athletes.\n`;
+          break;
+      }
+    }
+
+    // Athlete roster — the approved list of athletes for this campaign
+    if (ci.athleteRoster && ci.athleteRoster.length > 0) {
+      message += `\n## APPROVED ATHLETE ROSTER (${ci.athleteRoster.length} athletes)\n`;
+      message += `These are the confirmed athletes for this campaign. Use their real names, schools, and social stats to inform your concepts.\n\n`;
+      ci.athleteRoster.forEach((a, i) => {
+        message += `${i + 1}. **${a.name}**`;
+        if (a.position) message += ` — ${a.position}`;
+        if (a.school) message += ` @ ${a.school}`;
+        if (a.instagram_handle) message += ` | IG: @${a.instagram_handle}`;
+        if (a.total_followers) message += ` | ${(a.total_followers).toLocaleString()} total followers`;
+        message += '\n';
+      });
+    }
+
+    const hasShootDetails = ci.athleteName || ci.shootDate || ci.location ||
       (ci.referenceImageUrls && ci.referenceImageUrls.length > 0) ||
       (ci.creativeSeeds && ci.creativeSeeds.length > 0);
 
-    if (hasAny) {
+    if (hasShootDetails) {
       message += `\n## SHOOT DETAILS (provided by AM)\n`;
       message += `Tailor every concept to these specifics.\n\n`;
       if (ci.athleteName) message += `**Athlete:** ${ci.athleteName}\n`;
