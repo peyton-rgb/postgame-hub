@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const slug = formData.get('slug') as string | null;
   const files = formData.getAll('files') as File[];
+  // Optional: override athlete name per upload batch (e.g. from folder name)
+  const athleteNameOverride = formData.get('athlete_name') as string | null;
 
   if (!slug) {
     return NextResponse.json({ error: 'slug is required' }, { status: 400 });
@@ -48,10 +50,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No files provided' }, { status: 400 });
   }
 
-  // Cap at 20 files per request to prevent abuse
-  if (files.length > 20) {
+  // Cap at 50 files per request to prevent abuse
+  if (files.length > 50) {
     return NextResponse.json(
-      { error: 'Maximum 20 files per upload' },
+      { error: 'Maximum 50 files per upload' },
       { status: 400 }
     );
   }
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
           file_size_bytes: file.size,
           format: file.name.split('.').pop()?.toLowerCase() || null,
           brand_id: brief.brand_id || null,
-          athlete_name: brief.athlete_name || null,
+          athlete_name: athleteNameOverride || brief.athlete_name || null,
           tagging_status: 'pending',
           notes: `Uploaded by videographer via creative brief: ${slug}`,
           // Initialize empty tag objects

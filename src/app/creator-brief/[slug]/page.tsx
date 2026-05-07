@@ -573,47 +573,164 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     load();
   }, [params.slug]);
 
-  // --- Upload handlers ---
-  const handleUploadFiles = useCallback(async (files: FileList | File[]) => {
-    if (!brief) return;
-    setUploading(true);
-    setUploadComplete(false);
+  // --- Upload helpers ---
 
-    // Show each file as "uploading" in the progress list
-    const fileArray = Array.from(files);
-    setUploadProgress(fileArray.map((f) => ({ name: f.name, status: 'uploading' })));
+  // Recursively read all files from a dropped folder entry.
+  // "entry" is a FileSystemEntry — a browser API object that
+  // represents a file or folder from a drag-and-drop event.
+  const readEntryFiles = (entry: FileSystemEntry): Promise<File[]> => {
+    return new Promise((resolve) => {
+      if (entry.isFile) {
+        (entry as FileSystemFileEntry).file((f) => resolve([f]), () => resolve([]));
+      } else if (entry.isDirectory) {
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        const allFiles: File[] = [];
+        const readBatch = () => {
+          reader.readEntries(async (entries) => {
+            if (entries.length === 0) {
+              resolve(allFiles);
+              return;
+            }
+            for (const child of entries) {
+              const childFiles = await readEntryFiles(child);
+              allFiles.push(...childFiles);
+            }
+            readBatch(); // Keep reading until empty (batched API)
+          }, () => resolve(allFiles));
+        };
+        readBatch();
+      } else {
+        resolve([]);
+      }
+    });
+  };
 
+  // Upload a batch of files, optionally tagged with an athlete name
+  const uploadBatch = useCallback(async (
+    files: File[],
+    athleteName?: string,
+    displayPrefix?: string,
+  ): Promise<{ successful: number; failed: number }> => {
     const formData = new FormData();
     formData.append('slug', params.slug);
-    fileArray.forEach((file) => formData.append('files', file));
+    if (athleteName) formData.append('athlete_name', athleteName);
+    files.forEach((file) => formData.append('files', file));
 
     try {
       const res = await fetch('/api/creator-briefs/upload', {
         method: 'POST',
         body: formData,
       });
-
       const data = await res.json();
 
-      // Update progress based on results
+      // Update progress for these files
       const uploaded = new Set((data.uploaded || []).map((u: { file: string }) => u.file));
-      const errorMap = new Map<string, string>((data.errors || []).map((e: { file: string; error: string }) => [e.file, e.error]));
+      const errorMap = new Map<string, string>(
+        (data.errors || []).map((e: { file: string; error: string }) => [e.file, e.error])
+      );
 
-      setUploadProgress(fileArray.map((f) => ({
-        name: f.name,
-        status: uploaded.has(f.name) ? 'done' as const : 'error' as const,
-        error: errorMap.get(f.name) || undefined,
-      })));
+      setUploadProgress((prev) =>
+        prev.map((item) => {
+          const matchName = displayPrefix ? `${displayPrefix}/${item.name.split('/').pop()}` : item.name;
+          const rawName = item.name.split('/').pop() || item.name;
+          if (files.some((f) => f.name === rawName) && item.status === 'uploading') {
+            return {
+              ...item,
+              status: uploaded.has(rawName) ? 'done' as const : 'error' as const,
+              error: errorMap.get(rawName) || undefined,
+            };
+          }
+          return item;
+        })
+      );
 
-      if (data.successful > 0) {
-        setUploadComplete(true);
-      }
+      return { successful: data.successful || 0, failed: data.failed || 0 };
     } catch {
-      setUploadProgress(fileArray.map((f) => ({ name: f.name, status: 'error', error: 'Upload failed' })));
+      setUploadProgress((prev) =>
+        prev.map((item) =>
+          item.status === 'uploading' ? { ...item, status: 'error' as const, error: 'Upload failed' } : item
+        )
+      );
+      return { successful: 0, failed: files.length };
+    }
+  }, [params.slug]);
+
+  // Main handler: accepts either loose files or folder drops
+  const handleUploadFiles = useCallback(async (files: File[]) => {
+    if (!brief || files.length === 0) return;
+    setUploading(true);
+    setUploadComplete(false);
+
+    setUploadProgress(files.map((f) => ({ name: f.name, status: 'uploading' as const })));
+
+    const result = await uploadBatch(files);
+
+    if (result.successful > 0) setUploadComplete(true);
+    setUploading(false);
+  }, [brief, uploadBatch]);
+
+  // Handler for folder drops — groups files by folder (athlete) name
+  const handleFolderDrop = useCallback(async (items: DataTransferItemList) => {
+    if (!brief) return;
+    setUploading(true);
+    setUploadComplete(false);
+
+    // Walk the dropped items and group files by top-level folder name
+    const folderFiles: { folderName: string; files: File[] }[] = [];
+    const looseFiles: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const entry = items[i].webkitGetAsEntry?.();
+      if (!entry) continue;
+
+      if (entry.isDirectory) {
+        const files = await readEntryFiles(entry);
+        // Filter to only image/video files
+        const mediaFiles = files.filter(
+          (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
+        );
+        if (mediaFiles.length > 0) {
+          folderFiles.push({ folderName: entry.name, files: mediaFiles });
+        }
+      } else if (entry.isFile) {
+        const file = await new Promise<File | null>((resolve) => {
+          (entry as FileSystemFileEntry).file((f) => resolve(f), () => resolve(null));
+        });
+        if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+          looseFiles.push(file);
+        }
+      }
     }
 
+    // Build the progress list showing folder/file structure
+    const allProgress: { name: string; status: 'uploading' | 'done' | 'error'; error?: string }[] = [];
+    for (const folder of folderFiles) {
+      for (const file of folder.files) {
+        allProgress.push({ name: `${folder.folderName}/${file.name}`, status: 'uploading' });
+      }
+    }
+    for (const file of looseFiles) {
+      allProgress.push({ name: file.name, status: 'uploading' });
+    }
+    setUploadProgress(allProgress);
+
+    let totalSuccess = 0;
+
+    // Upload each folder as a batch with the folder name as athlete_name
+    for (const folder of folderFiles) {
+      const result = await uploadBatch(folder.files, folder.folderName, folder.folderName);
+      totalSuccess += result.successful;
+    }
+
+    // Upload loose files (no athlete override)
+    if (looseFiles.length > 0) {
+      const result = await uploadBatch(looseFiles);
+      totalSuccess += result.successful;
+    }
+
+    if (totalSuccess > 0) setUploadComplete(true);
     setUploading(false);
-  }, [brief, params.slug]);
+  }, [brief, uploadBatch]);
 
   const handleUploadDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -629,10 +746,28 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     e.preventDefault();
     e.stopPropagation();
     setUploadDragActive(false);
-    if (e.dataTransfer.files?.length > 0) {
-      handleUploadFiles(e.dataTransfer.files);
+
+    // Check if any dropped items are folders
+    const items = e.dataTransfer.items;
+    let hasFolder = false;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry?.();
+        if (entry?.isDirectory) {
+          hasFolder = true;
+          break;
+        }
+      }
     }
-  }, [handleUploadFiles]);
+
+    if (hasFolder) {
+      // Use the folder-aware handler
+      handleFolderDrop(items);
+    } else if (e.dataTransfer.files?.length > 0) {
+      // Plain file drop
+      handleUploadFiles(Array.from(e.dataTransfer.files));
+    }
+  }, [handleFolderDrop, handleUploadFiles]);
 
   if (loading) {
     return (
@@ -790,8 +925,9 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
           <hr className="mb-4" style={{ borderColor: color, opacity: 0.3 }} />
 
           <p className="text-gray-500 text-[15px] mb-4">
-            Drop your photos and videos here when you&apos;re done shooting. Files are automatically
-            tagged and organized — no login needed.
+            Drop your photos and videos here when you&apos;re done shooting. You can drag
+            entire folders — the folder name will be used as the athlete name. Files are
+            automatically tagged and organized — no login needed.
           </p>
 
           {/* Drop zone */}
@@ -819,7 +955,7 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
               className="hidden"
               onChange={(e) => {
                 if (e.target.files?.length) {
-                  handleUploadFiles(e.target.files);
+                  handleUploadFiles(Array.from(e.target.files));
                   e.target.value = '';
                 }
               }}
@@ -850,8 +986,8 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
                   </svg>
                 </div>
                 <div>
-                  <p className="text-gray-900 font-semibold">Drag &amp; drop files here</p>
-                  <p className="text-gray-500 text-sm mt-1">or click to browse — photos and videos accepted</p>
+                  <p className="text-gray-900 font-semibold">Drag &amp; drop files or folders here</p>
+                  <p className="text-gray-500 text-sm mt-1">or click to browse — drop athlete folders to auto-tag by name</p>
                 </div>
               </div>
             )}
