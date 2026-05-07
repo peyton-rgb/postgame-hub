@@ -35,7 +35,7 @@ function RichContent({ html, className = '' }: { html: string; className?: strin
   if (!html || html === '<p></p>') return null;
   return (
     <div
-      className={`prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900 prose-blockquote:border-gray-300 prose-blockquote:text-gray-600 ${className}`}
+      className={`prose max-w-none text-gray-700 text-[15px] leading-relaxed font-[450] prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900 prose-blockquote:border-gray-300 prose-blockquote:text-gray-600 ${className}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -149,7 +149,7 @@ function ShootLogisticsSection({ content, color }: { content: ShootLogisticsCont
           {content.location && (
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Location</div>
-              <div className="text-gray-900 font-semibold">{content.location}</div>
+              <div className="text-[#D73F09] font-semibold">{content.location}</div>
             </div>
           )}
         </div>
@@ -581,7 +581,8 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     );
   }
 
-  const color = brief.brand_color || '#D73F09';
+  // Always Postgame orange — no brand colors
+  const color = '#D73F09';
 
   // Separate shoot logistics from content sections.
   // Handle both new format (type=shoot_logistics) and legacy (type=concept with "Shoot" in title or number=00)
@@ -597,13 +598,9 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
       {/* Hero — pt-20 accounts for the fixed Postgame navbar */}
       <div className="bg-white border-b border-gray-200 pt-20">
         <div className="max-w-3xl mx-auto px-6 py-8">
-          <div className="flex items-center gap-4 mb-4">
-            {brief.brand_logo_url && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={brief.brand_logo_url} alt="Brand" className="h-10 object-contain" />
-            )}
-            <span className="text-gray-400 text-sm">×</span>
-            <span className="font-bold text-gray-900 tracking-tight">postgame</span>
+          <div className="mb-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/postgame-logo-black.png" alt="Postgame" className="h-7 object-contain" />
           </div>
 
           <span
@@ -635,16 +632,49 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
               >
                 {shootSection.number}
               </span>
-              <h2 className="text-xl font-bold text-gray-900">{shootSection.title}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{shootSection.title}</h2>
             </div>
             <hr className="mb-4" style={{ borderColor: color, opacity: 0.3 }} />
             <SectionRenderer section={shootSection} color={color} />
-          </div>
-        )}
 
-        {/* Athlete Profile */}
-        {brief.athlete_profile && (
-          <AthleteProfileCard profile={brief.athlete_profile} color={color} />
+            {/* Athlete inside shoot details */}
+            {brief.athlete_profile && (brief.athlete_profile.name || brief.athlete_profile.photo_url) && (
+              <div className="mt-6 border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-[#D73F09]/5 px-5 py-3 border-b border-gray-200">
+                  <div className="text-[10px] font-bold text-[#D73F09] uppercase tracking-widest">Athlete</div>
+                </div>
+                <div className="p-5">
+                  <div className="flex items-center gap-5">
+                    {brief.athlete_profile.photo_url && (
+                      <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#D73F09]/20">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={brief.athlete_profile.photo_url} alt={brief.athlete_profile.name || 'Athlete'} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      {brief.athlete_profile.name && (
+                        <div className="text-lg font-bold text-gray-900">{brief.athlete_profile.name}</div>
+                      )}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[15px] text-gray-500 mt-0.5">
+                        {brief.athlete_profile.sport && <span>{brief.athlete_profile.sport}</span>}
+                        {brief.athlete_profile.school && <span>· {brief.athlete_profile.school}</span>}
+                        {brief.athlete_profile.year && <span>· {brief.athlete_profile.year}</span>}
+                      </div>
+                      {brief.athlete_profile.instagram && (
+                        <a href={`https://instagram.com/${brief.athlete_profile.instagram}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D73F09] hover:underline mt-1">
+                          <InstagramIcon className="w-3.5 h-3.5" />
+                          @{brief.athlete_profile.instagram}
+                        </a>
+                      )}
+                      {brief.athlete_profile.bio && (
+                        <p className="text-gray-500 text-[15px] mt-1.5 leading-relaxed">{brief.athlete_profile.bio}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Numbered sections */}
@@ -658,7 +688,7 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
                 >
                   {section.number}
                 </span>
-                <h2 className="text-xl font-bold text-gray-900">{section.title}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
               </div>
               <hr className="mb-4" style={{ borderColor: color, opacity: 0.3 }} />
               <SectionRenderer section={section} color={color} />
@@ -667,8 +697,10 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
         </div>
 
         {/* Footer */}
-        <div className="text-center text-gray-400 text-xs mt-12 pb-8">
-          Postgame — {brief.title} — Confidential
+        <div className="flex flex-col items-center mt-12 pb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/postgame-logo-black.png" alt="Postgame" className="h-5 object-contain opacity-40 mb-2" />
+          <div className="text-gray-400 text-xs">{brief.title} — Confidential</div>
         </div>
       </div>
     </div>

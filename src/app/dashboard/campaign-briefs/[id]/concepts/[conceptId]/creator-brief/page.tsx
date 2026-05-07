@@ -406,7 +406,8 @@ export default function CreatorBriefEditorPage() {
     );
   }
 
-  const color = brief.brand_color || '#D73F09';
+  // Always Postgame orange — no brand colors
+  const color = '#D73F09';
   const isPublished = brief.status === 'published';
 
   // Separate shoot-related sections from content sections (skip them, we show contacts at top level)
@@ -597,19 +598,9 @@ export default function CreatorBriefEditorPage() {
                 Edit
               </button>
 
-              <div className="flex items-center gap-4 mb-4">
-                {brief.brand_logo_url && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={brief.brand_logo_url}
-                    alt="Brand"
-                    className="h-10 object-contain"
-                  />
-                )}
-                <span className="text-gray-400 text-sm">&times;</span>
-                <span className="font-bold text-gray-900 tracking-tight">
-                  postgame
-                </span>
+              <div className="mb-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/postgame-logo-black.png" alt="Postgame" className="h-7 object-contain" />
               </div>
 
               <span
@@ -665,7 +656,7 @@ export default function CreatorBriefEditorPage() {
             >
               00
             </span>
-            <h2 className="text-xl font-bold text-gray-900">Shoot Details</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Shoot Details</h2>
           </div>
           <hr className="mb-5" style={{ borderColor: color, opacity: 0.3 }} />
 
@@ -826,7 +817,7 @@ export default function CreatorBriefEditorPage() {
                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
                     Location
                   </div>
-                  <div className="text-lg font-bold text-gray-900">
+                  <div className="text-lg font-bold text-[#D73F09]">
                     {brief.location}
                   </div>
                 </div>
@@ -896,224 +887,124 @@ export default function CreatorBriefEditorPage() {
                 </div>
               )}
 
+              {/* ---- ATHLETE (inside shoot details) ---- */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-[#D73F09]/5 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <div className="text-[10px] font-bold text-[#D73F09] uppercase tracking-widest">
+                    Athlete
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditingProfile(!editingProfile); }}
+                    className="text-[10px] font-medium text-gray-400 hover:text-gray-600 uppercase tracking-wide"
+                  >
+                    {editingProfile ? 'Done' : 'Edit'}
+                  </button>
+                </div>
+                <div className="p-5">
+                  {editingProfile ? (
+                    <div className="space-y-4">
+                      {/* Photo upload */}
+                      <div className="flex items-start gap-4">
+                        {brief.athlete_profile?.photo_url && (
+                          <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={brief.athlete_profile.photo_url} alt="Athlete" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1 space-y-2">
+                          <input
+                            type="text"
+                            value={brief.athlete_profile?.photo_url || ''}
+                            onChange={(e) => updateProfile('photo_url', e.target.value || null)}
+                            placeholder="Paste image URL..."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+                          />
+                          <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                            {uploadingPhoto ? <span className="animate-pulse">Uploading...</span> : <><span>📷</span> Upload file</>}
+                            <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto}
+                              onChange={(e) => { const file = e.target.files?.[0]; if (file) handlePhotoUpload(file); }} />
+                          </label>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Name</label>
+                          <input type="text" value={brief.athlete_profile?.name || ''} onChange={(e) => updateProfile('name', e.target.value)} placeholder="Full name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">School</label>
+                          <input type="text" value={brief.athlete_profile?.school || ''} onChange={(e) => updateProfile('school', e.target.value)} placeholder="University name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Sport</label>
+                          <input type="text" value={brief.athlete_profile?.sport || ''} onChange={(e) => updateProfile('sport', e.target.value)} placeholder="e.g. Football" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Year</label>
+                          <input type="text" value={brief.athlete_profile?.year || ''} onChange={(e) => updateProfile('year', e.target.value)} placeholder="e.g. Sophomore" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Instagram</label>
+                          <div className="flex items-center">
+                            <span className="text-gray-400 text-sm mr-1">@</span>
+                            <input type="text" value={brief.athlete_profile?.instagram || ''} onChange={(e) => updateProfile('instagram', e.target.value.replace('@', ''))} placeholder="handle" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Bio Blurb</label>
+                        <textarea value={brief.athlete_profile?.bio || ''} onChange={(e) => updateProfile('bio', e.target.value)} placeholder="Short bio..." rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm resize-none" />
+                      </div>
+                      <button onClick={() => { saveField({ athlete_profile: brief.athlete_profile }); setEditingProfile(false); }} className="px-4 py-1.5 bg-[#D73F09] text-white rounded-lg text-sm font-medium">
+                        Save
+                      </button>
+                    </div>
+                  ) : brief.athlete_profile && (brief.athlete_profile.name || brief.athlete_profile.photo_url) ? (
+                    <div className="flex items-center gap-5">
+                      {brief.athlete_profile.photo_url && (
+                        <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#D73F09]/20">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={brief.athlete_profile.photo_url} alt={brief.athlete_profile.name || 'Athlete'} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        {brief.athlete_profile.name && (
+                          <div className="text-lg font-bold text-gray-900">{brief.athlete_profile.name}</div>
+                        )}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-500 mt-0.5">
+                          {brief.athlete_profile.sport && <span>{brief.athlete_profile.sport}</span>}
+                          {brief.athlete_profile.school && <span>· {brief.athlete_profile.school}</span>}
+                          {brief.athlete_profile.year && <span>· {brief.athlete_profile.year}</span>}
+                        </div>
+                        {brief.athlete_profile.instagram && (
+                          <a href={`https://instagram.com/${brief.athlete_profile.instagram}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D73F09] hover:underline mt-1">
+                            <InstagramIcon className="w-3.5 h-3.5" />
+                            @{brief.athlete_profile.instagram}
+                          </a>
+                        )}
+                        {brief.athlete_profile.bio && (
+                          <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">{brief.athlete_profile.bio}</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm italic">No athlete yet — click Edit above.</p>
+                  )}
+                </div>
+              </div>
+
               {/* Empty state */}
               {!formattedDate &&
                 !formattedTime &&
                 !brief.location &&
                 (brief.postgame_contacts || []).length === 0 &&
-                !brief.videographer && (
+                !brief.videographer &&
+                !(brief.athlete_profile?.name || brief.athlete_profile?.photo_url) && (
                   <p className="text-gray-400 text-sm italic">
                     No shoot details yet — click Edit to add date, location, and
                     contacts.
                   </p>
                 )}
-            </div>
-          )}
-        </div>
-
-        {/* ---- ATHLETE PROFILE CARD ---- */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mb-8 relative group">
-          <button
-            onClick={() => setEditingProfile(!editingProfile)}
-            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded-lg text-xs font-medium z-10"
-          >
-            {editingProfile ? 'Done' : 'Edit'}
-          </button>
-
-          <div className="flex items-center gap-3 mb-4">
-            <span
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-              style={{ backgroundColor: color }}
-            >
-              ★
-            </span>
-            <h2 className="text-xl font-bold text-gray-900">Athlete Profile</h2>
-          </div>
-          <hr className="mb-5" style={{ borderColor: color, opacity: 0.3 }} />
-
-          {editingProfile ? (
-            /* ---- EDIT MODE ---- */
-            <div className="space-y-5">
-              {/* Photo upload */}
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">Athlete Photo</label>
-                <div className="flex items-start gap-4">
-                  {(brief.athlete_profile?.photo_url) && (
-                    <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={brief.athlete_profile.photo_url}
-                        alt="Athlete"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={brief.athlete_profile?.photo_url || ''}
-                      onChange={(e) => updateProfile('photo_url', e.target.value || null)}
-                      placeholder="Paste image URL..."
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-                    />
-                    <div className="flex items-center gap-2">
-                      <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                        {uploadingPhoto ? (
-                          <span className="animate-pulse">Uploading...</span>
-                        ) : (
-                          <>
-                            <span>📷</span> Upload file
-                          </>
-                        )}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          disabled={uploadingPhoto}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handlePhotoUpload(file);
-                          }}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bio fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={brief.athlete_profile?.name || ''}
-                    onChange={(e) => updateProfile('name', e.target.value)}
-                    placeholder="Full name"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">School</label>
-                  <input
-                    type="text"
-                    value={brief.athlete_profile?.school || ''}
-                    onChange={(e) => updateProfile('school', e.target.value)}
-                    placeholder="University name"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Sport</label>
-                  <input
-                    type="text"
-                    value={brief.athlete_profile?.sport || ''}
-                    onChange={(e) => updateProfile('sport', e.target.value)}
-                    placeholder="e.g. Football, Basketball"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Year</label>
-                  <input
-                    type="text"
-                    value={brief.athlete_profile?.year || ''}
-                    onChange={(e) => updateProfile('year', e.target.value)}
-                    placeholder="e.g. Sophomore, Junior"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Instagram</label>
-                  <div className="flex items-center">
-                    <span className="text-gray-400 text-sm mr-1">@</span>
-                    <input
-                      type="text"
-                      value={brief.athlete_profile?.instagram || ''}
-                      onChange={(e) => updateProfile('instagram', e.target.value.replace('@', ''))}
-                      placeholder="handle"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Bio Blurb</label>
-                <textarea
-                  value={brief.athlete_profile?.bio || ''}
-                  onChange={(e) => updateProfile('bio', e.target.value)}
-                  placeholder="Short bio about the athlete..."
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm resize-none"
-                />
-              </div>
-
-              <button
-                onClick={() => {
-                  saveField({ athlete_profile: brief.athlete_profile });
-                  setEditingProfile(false);
-                }}
-                className="px-4 py-1.5 bg-[#D73F09] text-white rounded-lg text-sm font-medium"
-              >
-                Save Profile
-              </button>
-            </div>
-          ) : (
-            /* ---- VIEW MODE ---- */
-            <div>
-              {brief.athlete_profile &&
-              (brief.athlete_profile.name || brief.athlete_profile.photo_url) ? (
-                <div className="flex flex-col sm:flex-row gap-6">
-                  {brief.athlete_profile.photo_url && (
-                    <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={brief.athlete_profile.photo_url}
-                        alt={brief.athlete_profile.name || 'Athlete'}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex-1 space-y-2">
-                    {brief.athlete_profile.name && (
-                      <h3 className="text-xl font-bold text-gray-900">
-                        {brief.athlete_profile.name}
-                      </h3>
-                    )}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                      {brief.athlete_profile.sport && (
-                        <span>{brief.athlete_profile.sport}</span>
-                      )}
-                      {brief.athlete_profile.school && (
-                        <span>{brief.athlete_profile.school}</span>
-                      )}
-                      {brief.athlete_profile.year && (
-                        <span>{brief.athlete_profile.year}</span>
-                      )}
-                    </div>
-                    {brief.athlete_profile.instagram && (
-                      <a
-                        href={`https://instagram.com/${brief.athlete_profile.instagram}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D73F09] hover:underline"
-                      >
-                        <InstagramIcon className="w-4 h-4" />
-                        @{brief.athlete_profile.instagram}
-                      </a>
-                    )}
-                    {brief.athlete_profile.bio && (
-                      <p className="text-gray-600 text-sm leading-relaxed mt-2">
-                        {brief.athlete_profile.bio}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-400 text-sm italic">
-                  No athlete profile yet — click Edit to add photo, name, and bio.
-                </p>
-              )}
             </div>
           )}
         </div>
@@ -1156,10 +1047,10 @@ export default function CreatorBriefEditorPage() {
                           title: e.target.value,
                         } as CreatorBriefSection)
                       }
-                      className="text-xl font-bold text-gray-900 bg-transparent border-b-2 border-[#D73F09] focus:outline-none"
+                      className="text-2xl font-bold text-gray-900 bg-transparent border-b-2 border-[#D73F09] focus:outline-none"
                     />
                   ) : (
-                    <h2 className="text-xl font-bold text-gray-900">
+                    <h2 className="text-2xl font-bold text-gray-900">
                       {section.title}
                     </h2>
                   )}
@@ -1194,8 +1085,10 @@ export default function CreatorBriefEditorPage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-gray-400 text-xs mt-12 pb-8">
-          Postgame — {brief.title} — Editor View
+        <div className="flex flex-col items-center mt-12 pb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/postgame-logo-black.png" alt="Postgame" className="h-5 object-contain opacity-40 mb-2" />
+          <div className="text-gray-400 text-xs">{brief.title}</div>
         </div>
       </div>
     </div>
@@ -1207,7 +1100,7 @@ function RichContent({ html, className = '' }: { html: string; className?: strin
   if (!html || html === '<p></p>') return null;
   return (
     <div
-      className={`prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900 prose-blockquote:border-gray-300 prose-blockquote:text-gray-600 ${className}`}
+      className={`prose max-w-none text-gray-700 text-[15px] leading-relaxed font-[450] prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900 prose-blockquote:border-gray-300 prose-blockquote:text-gray-600 ${className}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
