@@ -21,7 +21,7 @@ export async function GET(
 ) {
   const { data, error } = await supabase
     .from('creator_briefs')
-    .select('*')
+    .select('*, location_2')
     .eq('slug', params.slug)
     .eq('status', 'published')
     .single();
