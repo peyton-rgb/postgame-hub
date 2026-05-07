@@ -336,30 +336,36 @@ function CreativeDirectionSection({ content, color }: { content: CreativeDirecti
 
 function CameraSpecsSection({ content, color }: { content: CameraSpecsSectionContent; color: string }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="bg-gray-50 rounded-xl p-5">
-        <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>VIDEO SETTINGS</div>
-        {Object.entries(content.video_settings || {}).map(([k, v]) => (
-          <div key={k} className="flex justify-between text-sm mb-1">
-            <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
-            <span className="text-gray-900 font-medium">{v}</span>
-          </div>
-        ))}
-      </div>
-      {content.photography_settings && (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-gray-50 rounded-xl p-5">
-          <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>PHOTO SETTINGS</div>
-          {Object.entries(content.photography_settings || {}).map(([k, v]) => (
-            <div key={k} className="flex justify-between text-sm mb-1">
-              <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
-              <span className="text-gray-900 font-medium">{v}</span>
-            </div>
-          ))}
+          <div className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color }}>VIDEO SETTINGS</div>
+          <div className="space-y-3">
+            {Object.entries(content.video_settings || {}).map(([k, v]) => (
+              <div key={k}>
+                <div className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</div>
+                <div className="text-sm text-gray-900 font-medium leading-snug">{v}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+        {content.photography_settings && (
+          <div className="bg-gray-50 rounded-xl p-5">
+            <div className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color }}>PHOTO SETTINGS</div>
+            <div className="space-y-3">
+              {Object.entries(content.photography_settings || {}).map(([k, v]) => (
+                <div key={k}>
+                  <div className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</div>
+                  <div className="text-sm text-gray-900 font-medium leading-snug">{v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       {content.lens_recommendation && (
-        <div className="sm:col-span-2">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lens Recommendation</div>
+        <div className="bg-gray-50 rounded-xl p-5">
+          <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>LENS RECOMMENDATION</div>
           <RichContent html={content.lens_recommendation} className="text-sm" />
         </div>
       )}
@@ -419,37 +425,47 @@ function DosDontsSection({ content }: { content: DosDontsSectionContent }) {
 
 function FileDeliverySection({ content, color }: { content: FileDeliverySectionContent; color: string }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="bg-gray-50 rounded-xl p-5">
-        <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>VIDEO SPECS</div>
-        {Object.entries(content.video_specs || {}).map(([k, v]) => (
-          <div key={k} className="flex justify-between text-sm mb-1">
-            <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
-            <span className="text-gray-900 font-medium">{v}</span>
-          </div>
-        ))}
-      </div>
-      {content.photo_specs && (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-gray-50 rounded-xl p-5">
-          <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>PHOTO SPECS</div>
-          {Object.entries(content.photo_specs || {}).map(([k, v]) => (
-            <div key={k} className="flex justify-between text-sm mb-1">
-              <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
-              <span className="text-gray-900 font-medium">{v}</span>
+          <div className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color }}>VIDEO SPECS</div>
+          <div className="space-y-3">
+            {Object.entries(content.video_specs || {}).map(([k, v]) => (
+              <div key={k}>
+                <div className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</div>
+                <div className="text-sm text-gray-900 font-medium leading-snug">{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {content.photo_specs && (
+          <div className="bg-gray-50 rounded-xl p-5">
+            <div className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color }}>PHOTO SPECS</div>
+            <div className="space-y-3">
+              {Object.entries(content.photo_specs || {}).map(([k, v]) => (
+                <div key={k}>
+                  <div className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</div>
+                  <div className="text-sm text-gray-900 font-medium leading-snug">{v}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-      {content.delivery_method && (
-        <div>
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Delivery Method</div>
-          <RichContent html={content.delivery_method} className="text-sm" />
-        </div>
-      )}
-      {content.deadline && (
-        <div>
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Deadline</div>
-          <p className="text-gray-700 text-sm font-medium">{content.deadline}</p>
+          </div>
+        )}
+      </div>
+      {(content.delivery_method || content.deadline) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {content.delivery_method && (
+            <div className="bg-gray-50 rounded-xl p-5">
+              <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>DELIVERY METHOD</div>
+              <RichContent html={content.delivery_method} className="text-sm" />
+            </div>
+          )}
+          {content.deadline && (
+            <div className="bg-gray-50 rounded-xl p-5">
+              <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>DEADLINE</div>
+              <p className="text-gray-900 text-sm font-medium">{content.deadline}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
