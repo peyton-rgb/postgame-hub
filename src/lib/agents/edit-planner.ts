@@ -161,7 +161,7 @@ export async function createEditPlan(
   const { data: agentRun, error: runError } = await db
     .from('agent_runs')
     .insert({
-      agent_name: 'editor',
+      agent_name: 'edit_planner',
       triggered_by: userId,
       input_payload: {
         scope: 'edit_planner',

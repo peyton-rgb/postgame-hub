@@ -40,7 +40,7 @@ export async function executeEditPlan(jobId: string, userId: string): Promise<vo
   const { data: agentRun } = await db
     .from('agent_runs')
     .insert({
-      agent_name: 'editor',
+      agent_name: 'editing_orchestrator',
       triggered_by: userId,
       input_payload: { scope: 'editing_orchestrator', job_id: jobId },
       model: 'orchestrator',

@@ -5,8 +5,7 @@
 // Pro for a detailed scene map, and saves it on the edit_jobs row.
 // On exit, the job is in 'planning' so the Edit Planner can pick up.
 //
-// Logs run start/finish to agent_runs (agent_name='editor' until the
-// agent_name enum is extended to include 'video_evaluator').
+// Logs run start/finish to agent_runs under agent_name='video_evaluator'.
 // ============================================================
 
 import { createServiceSupabase } from '@/lib/supabase';
@@ -52,7 +51,7 @@ export async function evaluateVideo(
   const { data: agentRun, error: runError } = await db
     .from('agent_runs')
     .insert({
-      agent_name: 'editor',
+      agent_name: 'video_evaluator',
       triggered_by: userId,
       input_payload: {
         scope: 'video_evaluator',
