@@ -921,7 +921,7 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     shoot_date: brief.shoot_date || (rawShootSection?.content as ShootLogisticsContent)?.shoot_date || null,
     shoot_time: brief.shoot_time || (rawShootSection?.content as ShootLogisticsContent)?.shoot_time || null,
     location: brief.location || (rawShootSection?.content as ShootLogisticsContent)?.location || null,
-    location_2: (brief as Record<string, unknown>).location_2 as string | null || (rawShootSection?.content as ShootLogisticsContent)?.location_2 || null,
+    location_2: brief.location_2 || (rawShootSection?.content as ShootLogisticsContent)?.location_2 || null,
     postgame_contacts: brief.postgame_contacts?.length
       ? brief.postgame_contacts
       : (rawShootSection?.content as ShootLogisticsContent)?.postgame_contacts || [],
