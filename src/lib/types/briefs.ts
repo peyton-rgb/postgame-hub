@@ -187,6 +187,7 @@ export interface ShootLogisticsContent {
   shoot_date: string | null;     // ISO date "2026-06-15"
   shoot_time: string | null;     // e.g. "10:00 AM"
   location: string | null;       // free-text address/venue
+  location_2: string | null;     // optional second location (e.g. follow-up spot)
   postgame_contacts: ShootContact[];  // up to 2-3 Postgame team members
   videographer: ShootContact | null;  // the assigned videographer
 }
@@ -313,6 +314,7 @@ export interface CreatorBrief {
   shoot_date: string | null;
   shoot_time: string | null;
   location: string | null;
+  location_2: string | null;
   postgame_contacts: ShootContact[];
   videographer: ShootContact | null;
   athlete_profile: AthleteProfile | null;

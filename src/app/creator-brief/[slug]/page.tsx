@@ -134,7 +134,7 @@ function ShootLogisticsSection({ content, color }: { content: ShootLogisticsCont
     <div>
       {/* Date / Time / Location */}
       {hasSchedule && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
           {formattedDate && (
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Date</div>
@@ -151,6 +151,12 @@ function ShootLogisticsSection({ content, color }: { content: ShootLogisticsCont
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Location</div>
               <div className="text-[#D73F09] font-semibold">{content.location}</div>
+            </div>
+          )}
+          {content.location_2 && (
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Follow-up Location</div>
+              <div className="text-[#D73F09] font-semibold">{content.location_2}</div>
             </div>
           )}
         </div>
@@ -915,6 +921,7 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     shoot_date: brief.shoot_date || (rawShootSection?.content as ShootLogisticsContent)?.shoot_date || null,
     shoot_time: brief.shoot_time || (rawShootSection?.content as ShootLogisticsContent)?.shoot_time || null,
     location: brief.location || (rawShootSection?.content as ShootLogisticsContent)?.location || null,
+    location_2: (brief as Record<string, unknown>).location_2 as string | null || (rawShootSection?.content as ShootLogisticsContent)?.location_2 || null,
     postgame_contacts: brief.postgame_contacts?.length
       ? brief.postgame_contacts
       : (rawShootSection?.content as ShootLogisticsContent)?.postgame_contacts || [],
