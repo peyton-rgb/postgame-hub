@@ -605,75 +605,133 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
     });
   };
 
-  // Upload a batch of files, optionally tagged with an athlete name
-  const uploadBatch = useCallback(async (
-    files: File[],
+  // Upload a single file using the two-step signed URL flow:
+  //   Step 1: Ask our API for a signed upload URL (small JSON request)
+  //   Step 2: PUT the file directly to Supabase Storage (no size limit)
+  //   Step 3: Tell our API the upload is done (creates DB record + tags)
+  const uploadSingleFile = useCallback(async (
+    file: File,
+    displayName: string,
     athleteName?: string,
-    displayPrefix?: string,
-  ): Promise<{ successful: number; failed: number }> => {
-    const formData = new FormData();
-    formData.append('slug', params.slug);
-    if (athleteName) formData.append('athlete_name', athleteName);
-    files.forEach((file) => formData.append('files', file));
-
+  ): Promise<boolean> => {
     try {
-      const res = await fetch('/api/creator-briefs/upload', {
+      // Step 1 — get signed URL
+      const step1 = await fetch('/api/creator-briefs/upload', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: params.slug,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+        }),
       });
-      const data = await res.json();
 
-      // Update progress for these files
-      const uploaded = new Set((data.uploaded || []).map((u: { file: string }) => u.file));
-      const errorMap = new Map<string, string>(
-        (data.errors || []).map((e: { file: string; error: string }) => [e.file, e.error])
-      );
+      if (!step1.ok) {
+        const err = await step1.json();
+        throw new Error(err.error || 'Failed to get upload URL');
+      }
 
-      setUploadProgress((prev) =>
-        prev.map((item) => {
-          const matchName = displayPrefix ? `${displayPrefix}/${item.name.split('/').pop()}` : item.name;
-          const rawName = item.name.split('/').pop() || item.name;
-          if (files.some((f) => f.name === rawName) && item.status === 'uploading') {
-            return {
-              ...item,
-              status: uploaded.has(rawName) ? 'done' as const : 'error' as const,
-              error: errorMap.get(rawName) || undefined,
-            };
-          }
-          return item;
-        })
-      );
+      const { signedUrl, token, storagePath } = await step1.json();
 
-      return { successful: data.successful || 0, failed: data.failed || 0 };
-    } catch {
+      // Step 2 — upload file directly to Supabase Storage
+      // This bypasses Vercel entirely — the file goes straight
+      // from the browser to Supabase's servers, so there's no
+      // size limit from our serverless function.
+      const uploadRes = await fetch(signedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+          ...(token ? { 'x-upsert': 'false' } : {}),
+        },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`Storage upload failed: ${uploadRes.status}`);
+      }
+
+      // Step 3 — register the file in the database
+      const step3 = await fetch('/api/creator-briefs/upload/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: params.slug,
+          storagePath,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+          athleteName: athleteName || undefined,
+        }),
+      });
+
+      if (!step3.ok) {
+        const err = await step3.json();
+        throw new Error(err.error || 'Failed to register upload');
+      }
+
+      // Mark this file as done in the progress list
       setUploadProgress((prev) =>
         prev.map((item) =>
-          item.status === 'uploading' ? { ...item, status: 'error' as const, error: 'Upload failed' } : item
+          item.name === displayName && item.status === 'uploading'
+            ? { ...item, status: 'done' as const }
+            : item
         )
       );
-      return { successful: 0, failed: files.length };
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setUploadProgress((prev) =>
+        prev.map((item) =>
+          item.name === displayName && item.status === 'uploading'
+            ? { ...item, status: 'error' as const, error: message }
+            : item
+        )
+      );
+      return false;
     }
   }, [params.slug]);
 
-  // Main handler: accepts either loose files or folder drops
-  const handleUploadFiles = useCallback(async (files: File[]) => {
+  // Main handler: uploads a list of files (with optional athlete name)
+  const handleUploadFiles = useCallback(async (
+    files: File[],
+    athleteName?: string,
+    displayPrefix?: string,
+  ) => {
     if (!brief || files.length === 0) return;
     setUploading(true);
     setUploadComplete(false);
 
-    setUploadProgress(files.map((f) => ({ name: f.name, status: 'uploading' as const })));
+    // Build progress list
+    const progressItems = files.map((f) => ({
+      name: displayPrefix ? `${displayPrefix}/${f.name}` : f.name,
+      status: 'uploading' as const,
+    }));
+    setUploadProgress((prev) => [...prev, ...progressItems]);
 
-    const result = await uploadBatch(files);
+    // Upload files concurrently in batches of 3
+    let successCount = 0;
+    for (let i = 0; i < files.length; i += 3) {
+      const batch = files.slice(i, i + 3);
+      const results = await Promise.all(
+        batch.map((file) => {
+          const display = displayPrefix ? `${displayPrefix}/${file.name}` : file.name;
+          return uploadSingleFile(file, display, athleteName);
+        })
+      );
+      successCount += results.filter(Boolean).length;
+    }
 
-    if (result.successful > 0) setUploadComplete(true);
+    if (successCount > 0) setUploadComplete(true);
     setUploading(false);
-  }, [brief, uploadBatch]);
+  }, [brief, uploadSingleFile]);
 
   // Handler for folder drops — groups files by folder (athlete) name
   const handleFolderDrop = useCallback(async (items: DataTransferItemList) => {
     if (!brief) return;
     setUploading(true);
     setUploadComplete(false);
+    setUploadProgress([]);
 
     // Walk the dropped items and group files by top-level folder name
     const folderFiles: { folderName: string; files: File[] }[] = [];
@@ -685,7 +743,6 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
 
       if (entry.isDirectory) {
         const files = await readEntryFiles(entry);
-        // Filter to only image/video files
         const mediaFiles = files.filter(
           (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
         );
@@ -702,7 +759,7 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
       }
     }
 
-    // Build the progress list showing folder/file structure
+    // Build progress list for all files at once
     const allProgress: { name: string; status: 'uploading' | 'done' | 'error'; error?: string }[] = [];
     for (const folder of folderFiles) {
       for (const file of folder.files) {
@@ -716,21 +773,35 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
 
     let totalSuccess = 0;
 
-    // Upload each folder as a batch with the folder name as athlete_name
+    // Upload folder files with athlete name = folder name
     for (const folder of folderFiles) {
-      const result = await uploadBatch(folder.files, folder.folderName, folder.folderName);
-      totalSuccess += result.successful;
+      let folderSuccess = 0;
+      for (let i = 0; i < folder.files.length; i += 3) {
+        const batch = folder.files.slice(i, i + 3);
+        const results = await Promise.all(
+          batch.map((file) =>
+            uploadSingleFile(file, `${folder.folderName}/${file.name}`, folder.folderName)
+          )
+        );
+        folderSuccess += results.filter(Boolean).length;
+      }
+      totalSuccess += folderSuccess;
     }
 
-    // Upload loose files (no athlete override)
+    // Upload loose files (no athlete name override)
     if (looseFiles.length > 0) {
-      const result = await uploadBatch(looseFiles);
-      totalSuccess += result.successful;
+      for (let i = 0; i < looseFiles.length; i += 3) {
+        const batch = looseFiles.slice(i, i + 3);
+        const results = await Promise.all(
+          batch.map((file) => uploadSingleFile(file, file.name))
+        );
+        totalSuccess += results.filter(Boolean).length;
+      }
     }
 
     if (totalSuccess > 0) setUploadComplete(true);
     setUploading(false);
-  }, [brief, uploadBatch]);
+  }, [brief, uploadSingleFile]);
 
   const handleUploadDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -764,7 +835,8 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
       // Use the folder-aware handler
       handleFolderDrop(items);
     } else if (e.dataTransfer.files?.length > 0) {
-      // Plain file drop
+      // Plain file drop — reset progress and upload
+      setUploadProgress([]);
       handleUploadFiles(Array.from(e.dataTransfer.files));
     }
   }, [handleFolderDrop, handleUploadFiles]);
@@ -955,6 +1027,7 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
               className="hidden"
               onChange={(e) => {
                 if (e.target.files?.length) {
+                  setUploadProgress([]);
                   handleUploadFiles(Array.from(e.target.files));
                   e.target.value = '';
                 }
