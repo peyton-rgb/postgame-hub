@@ -71,6 +71,7 @@ export async function PATCH(
   const allowedFields = [
     'title', 'athlete_name', 'sections', 'reference_images',
     'brand_color', 'brand_logo_url', 'athlete_photo_url',
+    'athlete_photo_focal_point',
     'shoot_date', 'shoot_time', 'location', 'location_2',
     'postgame_contacts', 'videographer', 'athlete_profile',
   ];

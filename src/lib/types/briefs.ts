@@ -311,6 +311,7 @@ export interface CreatorBrief {
   brand_color: string | null;
   brand_logo_url: string | null;
   athlete_photo_url: string | null;
+  athlete_photo_focal_point: string | null;
   shoot_date: string | null;
   shoot_time: string | null;
   location: string | null;

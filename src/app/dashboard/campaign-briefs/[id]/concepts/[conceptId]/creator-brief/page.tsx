@@ -649,6 +649,7 @@ export default function CreatorBriefEditorPage() {
               src={brief.athlete_photo_url}
               alt={brief.athlete_name || 'Athlete'}
               className="w-full h-72 sm:h-96 object-cover"
+              style={{ objectPosition: brief.athlete_photo_focal_point || '50% 50%' }}
             />
           </div>
         </div>
