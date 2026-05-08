@@ -356,3 +356,71 @@ export async function getDriveThumbnail(
     return null;
   }
 }
+
+// ── Create folders ────────────────────────────────────────────
+// Used when publishing creator briefs to set up the brand →
+// campaign → athlete folder hierarchy. Save the returned IDs
+// to the database so we don't recreate folders next time.
+
+/**
+ * Create a new folder in Google Drive inside `parentFolderId`.
+ * Returns the new folder's ID. Throws if Drive doesn't return one.
+ */
+export async function createFolder(
+  name: string,
+  parentFolderId: string
+): Promise<string> {
+  const drive = getDriveClient();
+  const res = await drive.files.create({
+    supportsAllDrives: true,
+    requestBody: {
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentFolderId],
+    },
+    fields: "id",
+  });
+
+  if (!res.data.id) {
+    throw new Error(`createFolder: Drive returned no ID for "${name}"`);
+  }
+  return res.data.id;
+}
+
+/**
+ * Find a folder by exact name inside `parentFolderId`.
+ * Returns the folder ID if found, or null. Pairs with
+ * `createFolder` to make `ensureFolder`.
+ */
+export async function findFolderByName(
+  name: string,
+  parentFolderId: string
+): Promise<string | null> {
+  const drive = getDriveClient();
+  const safeName = name.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q: `'${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and name = '${safeName}' and trashed = false`,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: "allDrives",
+    fields: "files(id)",
+    pageSize: 1,
+  });
+
+  return res.data.files?.[0]?.id ?? null;
+}
+
+/**
+ * Find a folder by name, or create it if missing. Idempotent —
+ * safe to call repeatedly. Returns the folder ID and whether
+ * it was newly created (useful for logging).
+ */
+export async function ensureFolder(
+  name: string,
+  parentFolderId: string
+): Promise<{ id: string; created: boolean }> {
+  const existing = await findFolderByName(name, parentFolderId);
+  if (existing) return { id: existing, created: false };
+  const id = await createFolder(name, parentFolderId);
+  return { id, created: true };
+}
