@@ -302,10 +302,20 @@ export function Top50Recap({
   const stats = computeStats(athletes);
   const [search, setSearch] = useState("");
   const [sportFilter, setSportFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState("all");
+
+  const defaultCampaignName = `${campaign.client_name} Top 50`;
 
   // Compute unique sports and universities
   const sports = useMemo(() => [...new Set(athletes.map((a) => a.sport).filter(Boolean))].sort(), [athletes]);
   const uniCount = useMemo(() => new Set(athletes.map((a) => a.school)).size, [athletes]);
+
+  // Unique campaign names — untagged athletes bucket under the page default
+  const campaigns = useMemo(() => {
+    const set = new Set<string>();
+    athletes.forEach((a) => set.add(a.metrics?.campaign_tag || defaultCampaignName));
+    return [...set].sort();
+  }, [athletes, defaultCampaignName]);
 
   // Featured athletes: those with is_featured flag, sorted by featured_order
   const top3 = useMemo(() => {
@@ -328,6 +338,9 @@ export function Top50Recap({
     if (sportFilter !== "all") {
       list = list.filter((a) => a.sport === sportFilter);
     }
+    if (campaignFilter !== "all") {
+      list = list.filter((a) => (a.metrics?.campaign_tag || defaultCampaignName) === campaignFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -339,19 +352,22 @@ export function Top50Recap({
       );
     }
     return list;
-  }, [rest, sportFilter, search]);
+  }, [rest, sportFilter, campaignFilter, search, defaultCampaignName]);
 
   // Filter featured too
   const filteredTop3 = useMemo(() => {
-    if (sportFilter === "all" && !search.trim()) return top3;
+    if (sportFilter === "all" && campaignFilter === "all" && !search.trim()) return top3;
     let list = top3;
     if (sportFilter !== "all") list = list.filter((a) => a.sport === sportFilter);
+    if (campaignFilter !== "all") {
+      list = list.filter((a) => (a.metrics?.campaign_tag || defaultCampaignName) === campaignFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((a) => a.name.toLowerCase().includes(q) || a.school.toLowerCase().includes(q));
     }
     return list;
-  }, [top3, sportFilter, search]);
+  }, [top3, sportFilter, campaignFilter, search, defaultCampaignName]);
 
   return (
     <div className="recap-container min-h-screen bg-[#050505] text-white font-sans">
@@ -430,25 +446,49 @@ export function Top50Recap({
             className="pl-10 pr-4 py-2.5 bg-white/[0.05] border border-white/10 rounded-lg text-white text-base font-medium outline-none w-56 placeholder:text-white/20 focus:border-brand/50"
           />
         </div>
-        <button
-          onClick={() => setSportFilter("all")}
-          className={`px-4 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${
-            sportFilter === "all" ? "bg-brand border-brand text-white" : "bg-white/[0.04] border border-white/[0.08] text-white/35 hover:border-white/20 hover:text-white/70"
-          }`}
-        >
-          All
-        </button>
-        {sports.map((s) => (
-          <button
-            key={s}
-            onClick={() => setSportFilter(s)}
-            className={`px-4 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${
-              sportFilter === s ? "bg-brand border-brand text-white" : "bg-white/[0.04] border border-white/[0.08] text-white/35 hover:border-white/20 hover:text-white/70"
+
+        {/* Sport dropdown */}
+        <div className="relative">
+          <select
+            value={sportFilter}
+            onChange={(e) => setSportFilter(e.target.value)}
+            className={`pl-4 pr-10 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all outline-none appearance-none cursor-pointer ${
+              sportFilter === "all"
+                ? "bg-white/[0.04] border border-white/[0.08] text-white/60 hover:border-white/20 hover:text-white"
+                : "bg-brand border border-brand text-white"
             }`}
           >
-            {s}
-          </button>
-        ))}
+            <option value="all" style={{ backgroundColor: "#050505", color: "white" }}>All Sports</option>
+            {sports.map((s) => (
+              <option key={s} value={s} style={{ backgroundColor: "#050505", color: "white" }}>{s}</option>
+            ))}
+          </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+
+        {/* Campaign dropdown */}
+        <div className="relative">
+          <select
+            value={campaignFilter}
+            onChange={(e) => setCampaignFilter(e.target.value)}
+            className={`pl-4 pr-10 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all outline-none appearance-none cursor-pointer max-w-[260px] truncate ${
+              campaignFilter === "all"
+                ? "bg-white/[0.04] border border-white/[0.08] text-white/60 hover:border-white/20 hover:text-white"
+                : "bg-brand border border-brand text-white"
+            }`}
+          >
+            <option value="all" style={{ backgroundColor: "#050505", color: "white" }}>All Campaigns</option>
+            {campaigns.map((c) => (
+              <option key={c} value={c} style={{ backgroundColor: "#050505", color: "white" }}>{c}</option>
+            ))}
+          </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+
         <div className="ml-auto">
           <button
             onClick={() => {
