@@ -152,9 +152,12 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
     }
   };
 
+  const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
+
   return (
     <div
-      className="media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
+      className="break-inside-avoid mb-2 rounded-lg overflow-hidden"
+      style={{ background: "#141418", border: "1px solid #2a2a30" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onMouseMove={keepControlsVisible}
@@ -200,11 +203,6 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex-1">
               <div className="text-xs font-black uppercase text-white truncate">{athlete.name}</div>
-              <div className="text-[10px] text-white/70 font-semibold flex items-center gap-1.5">
-                {athlete.school}
-                {athlete.ig_followers ? <span className="text-white/70 inline-flex items-center gap-0.5">&middot; <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>{fmt(athlete.ig_followers)}</span> : null}
-                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white">{athlete.sport}</span>
-              </div>
             </div>
             {/* Download + Link buttons */}
             <div className="flex gap-1 ml-2 flex-shrink-0">
@@ -262,6 +260,39 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
           </div>
         )}
       </div>
+
+      {/* Footer panel */}
+      <div style={{ background: "#141418", borderTop: "1px solid #222226", padding: "11px 12px 13px" }}>
+        <div style={{ color: "#666", fontSize: 11, fontWeight: 600 }}>
+          {athlete.sport} · {athlete.school}
+        </div>
+        <div className="flex" style={{ borderTop: "1px solid #1e1e22", marginTop: 9, paddingTop: 9, gap: 14 }}>
+          <div>
+            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+              {pct(getBestEngRate(athlete))}
+            </div>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+              Eng. Rate
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+              {fmt(getTotalImpressions(athlete))}
+            </div>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+              Views
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+              {fmt(athlete.ig_followers ?? 0)}
+            </div>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+              Followers
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -278,6 +309,12 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
   const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
   const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
 
+  const hasVideo = rawItems.some((m) => m.type === "video");
+  const defaultRatio = hasVideo
+    ? VIDEO_SAFE_RATIOS[0]
+    : DEFAULT_RATIOS[0];
+  const [cardRatio, setCardRatio] = useState<string>(defaultRatio);
+
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -286,15 +323,56 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
   const coverImage = items.find((m) => m.type === "image");
   const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : coverImage?.file_url ?? null);
 
-  const groupAthletes = group.athleteNames.map((name) => athletes.find((a) => a.name === name) ?? null);
-  const firstAthlete = groupAthletes[0];
+  useEffect(() => {
+    if (hasVideo) {
+      const vid = rawItems.find((m) => m.type === "video");
+      if (!vid) return;
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        if (video.videoWidth > video.videoHeight * 1.2) setCardRatio("16/9");
+      };
+      video.src = vid.file_url;
+    } else {
+      const cover = rawItems.find((m) => m.type === "image");
+      if (!cover) return;
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth > img.naturalHeight * 1.2) setCardRatio("16/9");
+      };
+      img.src = cover.file_url;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const groupName = group.athleteNames.join(" + ");
+  const firstAthlete = athletes.find((a) => a.name === group.athleteNames[0]) ?? null;
 
   const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
+  const handleDownload = async () => {
+    if (!current?.file_url) return;
+    try {
+      const res = await fetch(current.file_url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${groupName.replace(/\s+/g, "-")}.${isVideo ? "mp4" : "jpg"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(current.file_url, "_blank");
+    }
+  };
+
   return (
-    <div className="w-full max-w-[900px] mx-auto rounded-xl overflow-hidden border border-[rgba(215,63,9,0.2)] flex flex-col md:grid md:grid-cols-[55%_1fr] md:h-[520px]">
-      {/* LEFT: media */}
-      <div className="relative overflow-hidden bg-black aspect-[9/16] md:aspect-auto md:h-full">
+    <div
+      className="break-inside-avoid mb-2 rounded-lg overflow-hidden"
+      style={{ background: "#141418", border: "1px solid rgba(215,63,9,0.4)" }}
+    >
+      <div className="relative overflow-hidden">
         {isVideo && playing ? (
           <video
             ref={videoRef}
@@ -302,15 +380,17 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
             autoPlay
             controls
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full block relative z-[1] object-cover"
+            style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
             onEnded={() => setPlaying(false)}
           />
         ) : displaySrc ? (
           <img
             src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
-            className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+            className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
+            style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
             draggable={false}
-            alt={group.athleteNames.join(" + ")}
+            alt={groupName}
             loading="lazy"
             onError={(e) => {
               const img = e.currentTarget;
@@ -319,138 +399,120 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
               }
             }}
           />
+        ) : isVideo ? (
+          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }} onClick={() => setPlaying(true)}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
         ) : (
-          <div className="w-full h-full bg-black flex items-center justify-center">
+          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }}>
             <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
           </div>
         )}
 
         {isVideo && !playing && (
-          <div
-            onClick={() => setPlaying(true)}
-            className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]"
-          >
+          <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
             <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
             </div>
           </div>
         )}
 
-        {/* Right-edge fade into info panel (desktop only) */}
-        <div
-          className="absolute top-0 right-0 bottom-0 pointer-events-none hidden md:block"
-          style={{ width: 200, background: "linear-gradient(to right, transparent 0%, #0f0f12 100%)" }}
-        />
+        {/* Top overlay: name + collab flag + buttons */}
+        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-black uppercase text-white truncate">{groupName}</div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#D73F09" }}>
+                  Collab · {platformLabel(group.platform)}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-1 ml-2 flex-shrink-0">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
+                title="Download"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
+              {group.url && (
+                <a
+                  href={group.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
+                  title="View Post"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                  </svg>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* RIGHT: info panel */}
-      <div className="relative flex flex-col p-6" style={{ backgroundColor: "#0f0f12" }}>
-        {group.url && (
-          <a
-            href={group.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute top-3 right-3 w-6 h-6 rounded bg-black/30 flex items-center justify-center hover:bg-brand transition-colors z-[1]"
-            title="View Post"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-              <polyline points="15 3 21 3 21 9"/>
-              <line x1="10" y1="14" x2="21" y2="3"/>
-            </svg>
-          </a>
-        )}
-
-        {/* Flag line */}
-        <div
-          className="flex items-center gap-1.5 pb-2 mb-4"
-          style={{ borderBottom: "1px solid rgba(215,63,9,0.2)" }}
-        >
-          <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
-          <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 2.5, textTransform: "uppercase", color: "#D73F09" }}>
-            Collab Post · {platformLabel(group.platform)}
-          </span>
-        </div>
-
-        {/* School + sport */}
+      {/* Footer panel */}
+      <div style={{ background: "#141418", borderTop: "1px solid #222226", padding: "11px 12px 13px" }}>
         {firstAthlete && (
-          <div
-            className="mb-4"
-            style={{ fontSize: 9, color: "#444", textTransform: "uppercase", letterSpacing: 1.2 }}
-          >
-            {firstAthlete.school} · {firstAthlete.sport}
+          <div style={{ color: "#666", fontSize: 11, fontWeight: 600 }}>
+            {firstAthlete.sport} · {firstAthlete.school}
           </div>
         )}
 
-        {/* Athlete list */}
-        <div className="flex flex-col gap-3" style={{ marginBottom: "auto" }}>
-          {group.athleteNames.map((name, idx) => {
-            const ath = groupAthletes[idx];
-            const parts = name.trim().split(/\s+/);
-            const first = parts[0]?.[0] ?? "";
-            const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : parts[0]?.[1] ?? "";
-            const initials = (first + last).toUpperCase();
-            const handle = ath?.ig_handle;
-            const followers = ath?.ig_followers;
-            return (
-              <div key={`${name}-${idx}`} className="flex items-center gap-3">
-                <div
-                  className="flex items-center justify-center rounded-full flex-shrink-0"
-                  style={{
-                    width: 30,
-                    height: 30,
-                    backgroundColor: "#1a1a20",
-                    border: "1px solid #252530",
-                    fontFamily: bebas,
-                    fontSize: 10,
-                    color: "#666",
-                  }}
-                >
-                  {initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div
-                    className="truncate"
-                    style={{ fontSize: 11, fontWeight: 700, color: "#e0ddd8", textTransform: "uppercase", letterSpacing: 0.3 }}
-                  >
-                    {name}
-                  </div>
-                  <div className="truncate" style={{ fontSize: 9, color: "#3a3a42" }}>
-                    {handle ? `@${handle}` : ""}
-                    {handle && followers ? " · " : ""}
-                    {followers ? `${fmt(followers)} followers` : ""}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* Athlete pills */}
+        <div className="flex flex-wrap" style={{ gap: 5, marginTop: 8 }}>
+          {group.athleteNames.map((name) => (
+            <span
+              key={name}
+              style={{
+                padding: "2px 9px",
+                borderRadius: 20,
+                background: "#1e1e22",
+                border: "1px solid #2a2a2e",
+                fontSize: 10,
+                fontWeight: 700,
+                color: "#bbb",
+                textTransform: "uppercase",
+                letterSpacing: 0.3,
+              }}
+            >
+              {name}
+            </span>
+          ))}
         </div>
 
-        {/* Stats row */}
-        <div className="flex" style={{ paddingTop: 18, borderTop: "1px solid #1a1a1e", gap: 18 }}>
+        <div className="flex" style={{ borderTop: "1px solid #1e1e22", marginTop: 9, paddingTop: 9, gap: 14 }}>
           <div>
-            <div style={{ fontFamily: bebas, fontSize: 20, color: "#D73F09", lineHeight: 1 }}>
+            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
               {pct(group.combinedEngagementRate)}
             </div>
-            <div style={{ fontSize: 8, color: "#383838", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 4 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
               Combined ER
             </div>
           </div>
           <div>
-            <div style={{ fontFamily: bebas, fontSize: 20, color: "#D73F09", lineHeight: 1 }}>
+            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
               {fmt(group.metrics.views ?? 0)}
             </div>
-            <div style={{ fontSize: 8, color: "#383838", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 4 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
               Views
             </div>
           </div>
           <div>
-            <div style={{ fontFamily: bebas, fontSize: 20, color: "#D73F09", lineHeight: 1 }}>
+            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
               {fmt(group.combinedFollowers)}
             </div>
-            <div style={{ fontSize: 8, color: "#383838", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 4 }}>
-              Combined Followers
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+              Followers
             </div>
           </div>
         </div>
