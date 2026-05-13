@@ -1,4 +1,4 @@
-import type { Athlete, AthleteMetrics, Campaign, MetricOverrides, HeroMetricOverrideKey, Media } from "@/lib/types";
+import type { Athlete, AthleteMetrics, Campaign, MetricOverrides, HeroMetricOverrideKey, Media, CollabGroup } from "@/lib/types";
 
 // ─── Display formatters (unchanged) ──────────────────────────────────────────
 
@@ -110,10 +110,19 @@ export interface ComputedStats {
   hasSales: boolean;
 }
 
-export function computeStats(athletes: Athlete[]): ComputedStats {
+export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = []): ComputedStats {
   // Filter out blank/whitespace strings when counting uniques (was a bug — blanks counted as a unique value).
   const schools = new Set(athletes.map((a) => (a.school || "").trim()).filter(Boolean));
   const sports = new Set(athletes.map((a) => (a.sport || "").trim()).filter(Boolean));
+
+  // Build a quick "is this athlete+platform a collab participant?" lookup.
+  // Skipping the per-athlete metric block when its URL is in a collab keeps us
+  // from counting the same post 5× when 5 athletes share it; the collab's
+  // metrics are then added back once below.
+  const collabUrlPlatforms = new Set<string>();
+  for (const g of collabGroups) collabUrlPlatforms.add(`${g.platform}|${g.url}`);
+  const isCollabPost = (platform: "ig_feed" | "ig_reel" | "tiktok", url: string | undefined) =>
+    !!url && collabUrlPlatforms.has(`${platform}|${url}`);
 
   let totalPosts = 0;
   let totalImpressions = 0;
@@ -141,81 +150,86 @@ export function computeStats(athletes: Athlete[]): ComputedStats {
     const m = a.metrics || {};
 
     // ── Combined Followers (IG + TikTok per the Definitions doc) ──
+    // Per-athlete value — not affected by collab dedupe; we still sum every
+    // participating athlete's followers.
     combinedFollowers += (a.ig_followers || 0) + (m.tiktok?.followers || 0);
 
-    // ── Post counting ──
-    if (m.ig_feed?.post_url) { igFeedPosts++; totalPosts++; }
-    if (m.ig_reel?.post_url) { igReelPosts++; totalPosts++; }
-    if (m.tiktok?.post_url) { tiktokPosts++; totalPosts++; }
+    const feedIsCollab = isCollabPost("ig_feed", m.ig_feed?.post_url);
+    const reelIsCollab = isCollabPost("ig_reel", m.ig_reel?.post_url);
+    const tiktokIsCollab = isCollabPost("tiktok", m.tiktok?.post_url);
+
+    // ── Post counting (skip collab posts here — added once below) ──
+    if (m.ig_feed?.post_url && !feedIsCollab) { igFeedPosts++; totalPosts++; }
+    if (m.ig_reel?.post_url && !reelIsCollab) { igReelPosts++; totalPosts++; }
+    if (m.tiktok?.post_url && !tiktokIsCollab) { tiktokPosts++; totalPosts++; }
     if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
     // ── Total Impressions: Feed + Story + Reel + TikTok ──
-    // Story impressions: prefer the explicit "Total IG Story Impressions" column
-    // (the multiplied-out value entered in the spreadsheet). If absent, fall back
-    // to per-story × count. If neither is present, contributes 0.
     const storyTotalImp = m.ig_story?.total_impressions
       ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
     totalImpressions +=
-      (m.ig_feed?.impressions || 0) +
+      (feedIsCollab ? 0 : (m.ig_feed?.impressions || 0)) +
       storyTotalImp +
-      (m.ig_reel?.views || 0) +
-      (m.tiktok?.views || 0);
+      (reelIsCollab ? 0 : (m.ig_reel?.views || 0)) +
+      (tiktokIsCollab ? 0 : (m.tiktok?.views || 0));
 
     // ── Total Engagements: Feed + Reel + TikTok (Story has no engagements) ──
     totalEngagements +=
-      (m.ig_feed?.total_engagements || 0) +
-      (m.ig_reel?.total_engagements || 0) +
-      (m.tiktok?.total_engagements || 0);
+      (feedIsCollab ? 0 : (m.ig_feed?.total_engagements || 0)) +
+      (reelIsCollab ? 0 : (m.ig_reel?.total_engagements || 0)) +
+      (tiktokIsCollab ? 0 : (m.tiktok?.total_engagements || 0));
 
     // ── Reach (legacy display field) ──
-    totalReach += (m.ig_feed?.reach || 0) + (a.ig_followers || 0);
+    totalReach += (feedIsCollab ? 0 : (m.ig_feed?.reach || 0)) + (a.ig_followers || 0);
 
     // ── Per-platform aggregations ──
-    igFeed.reach += m.ig_feed?.reach || 0;
-    igFeed.impressions += m.ig_feed?.impressions || 0;
-    igFeed.likes += m.ig_feed?.likes || 0;
-    igFeed.comments += m.ig_feed?.comments || 0;
-    igFeed.shares += m.ig_feed?.shares || 0;
-    igFeed.reposts += m.ig_feed?.reposts || 0;
-    igFeed.engagements += m.ig_feed?.total_engagements || 0;
-    {
+    if (!feedIsCollab) {
+      igFeed.reach += m.ig_feed?.reach || 0;
+      igFeed.impressions += m.ig_feed?.impressions || 0;
+      igFeed.likes += m.ig_feed?.likes || 0;
+      igFeed.comments += m.ig_feed?.comments || 0;
+      igFeed.shares += m.ig_feed?.shares || 0;
+      igFeed.reposts += m.ig_feed?.reposts || 0;
+      igFeed.engagements += m.ig_feed?.total_engagements || 0;
       const r = bestRateForPlatform(m, "ig_feed");
       if (r > 0) { igFeed.engRateSum += r; igFeed.engRateCount++; }
     }
 
-    // FIX: prefer explicit total_impressions column, fall back to per-story × count.
     igStory.count += m.ig_story?.count || 0;
     igStory.impressions += m.ig_story?.total_impressions
       ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
 
-    igReel.views += m.ig_reel?.views || 0;
-    igReel.likes += m.ig_reel?.likes || 0;
-    igReel.comments += m.ig_reel?.comments || 0;
-    igReel.shares += m.ig_reel?.shares || 0;
-    igReel.reposts += m.ig_reel?.reposts || 0;
-    igReel.engagements += m.ig_reel?.total_engagements || 0;
-    {
+    if (!reelIsCollab) {
+      igReel.views += m.ig_reel?.views || 0;
+      igReel.likes += m.ig_reel?.likes || 0;
+      igReel.comments += m.ig_reel?.comments || 0;
+      igReel.shares += m.ig_reel?.shares || 0;
+      igReel.reposts += m.ig_reel?.reposts || 0;
+      igReel.engagements += m.ig_reel?.total_engagements || 0;
       const r = bestRateForPlatform(m, "ig_reel");
       if (r > 0) { igReel.engRateSum += r; igReel.engRateCount++; }
     }
 
     tiktok.followers += m.tiktok?.followers || 0;
-    tiktok.views += m.tiktok?.views || 0;
-    tiktok.likes += m.tiktok?.likes || 0;
-    tiktok.comments += m.tiktok?.comments || 0;
-    tiktok.saves += m.tiktok?.saves || 0;
-    tiktok.likes_comments += m.tiktok?.likes_comments || 0;
-    tiktok.saves_shares += m.tiktok?.saves_shares || 0;
-    tiktok.engagements += m.tiktok?.total_engagements || 0;
-    {
+    if (!tiktokIsCollab) {
+      tiktok.views += m.tiktok?.views || 0;
+      tiktok.likes += m.tiktok?.likes || 0;
+      tiktok.comments += m.tiktok?.comments || 0;
+      tiktok.saves += m.tiktok?.saves || 0;
+      tiktok.likes_comments += m.tiktok?.likes_comments || 0;
+      tiktok.saves_shares += m.tiktok?.saves_shares || 0;
+      tiktok.engagements += m.tiktok?.total_engagements || 0;
       const r = bestRateForPlatform(m, "tiktok");
       if (r > 0) { tiktok.engRateSum += r; tiktok.engRateCount++; }
     }
 
     // ── Hero Avg Engagement Rate inputs (per-platform aggregation) ──
-    // Rule: average of each platform's higher of (vs Followers, vs Impressions),
-    // averaged across the platforms the athlete posted on.
     for (const p of ["ig_feed", "ig_reel", "tiktok"] as const) {
+      if (
+        (p === "ig_feed" && feedIsCollab) ||
+        (p === "ig_reel" && reelIsCollab) ||
+        (p === "tiktok" && tiktokIsCollab)
+      ) continue;
       if (athletePostedOn(m, p)) {
         const r = bestRateForPlatform(m, p);
         if (r > 0) {
@@ -247,6 +261,52 @@ export function computeStats(athletes: Athlete[]): ComputedStats {
       if (s.conversion_rate != null && s.conversion_rate > 0) { sales.conversion_rate_sum += s.conversion_rate; sales.conversion_rate_count++; }
       if (s.cost_per_acquisition != null && s.cost_per_acquisition > 0) { sales.cost_per_acquisition_sum += s.cost_per_acquisition; sales.cost_per_acquisition_count++; }
       if (s.roas != null && s.roas > 0) { sales.roas_sum += s.roas; sales.roas_count++; }
+    }
+  }
+
+  // ── Collab groups: add each one's metrics exactly once. ──
+  for (const g of collabGroups) {
+    const gm = g.metrics;
+    const views = gm.views || 0;
+    const impressions = gm.impressions || 0;
+    const engagements = gm.totalEngagements || 0;
+    const likes = gm.likes || 0;
+    const comments = gm.comments || 0;
+    const shares = gm.shares || 0;
+    const reposts = gm.reposts || 0;
+    const rate = g.combinedEngagementRate;
+
+    if (g.platform === "ig_feed") {
+      igFeedPosts++; totalPosts++;
+      totalImpressions += impressions;
+      totalEngagements += engagements;
+      igFeed.impressions += impressions;
+      igFeed.likes += likes;
+      igFeed.comments += comments;
+      igFeed.shares += shares;
+      igFeed.reposts += reposts;
+      igFeed.engagements += engagements;
+      if (rate > 0) { igFeed.engRateSum += rate; igFeed.engRateCount++; platformRateSum.ig_feed += rate; platformRateCount.ig_feed += 1; }
+    } else if (g.platform === "ig_reel") {
+      igReelPosts++; totalPosts++;
+      totalImpressions += views;
+      totalEngagements += engagements;
+      igReel.views += views;
+      igReel.likes += likes;
+      igReel.comments += comments;
+      igReel.shares += shares;
+      igReel.reposts += reposts;
+      igReel.engagements += engagements;
+      if (rate > 0) { igReel.engRateSum += rate; igReel.engRateCount++; platformRateSum.ig_reel += rate; platformRateCount.ig_reel += 1; }
+    } else {
+      tiktokPosts++; totalPosts++;
+      totalImpressions += views;
+      totalEngagements += engagements;
+      tiktok.views += views;
+      tiktok.likes += likes;
+      tiktok.comments += comments;
+      tiktok.engagements += engagements;
+      if (rate > 0) { tiktok.engRateSum += rate; tiktok.engRateCount++; platformRateSum.tiktok += rate; platformRateCount.tiktok += 1; }
     }
   }
 
@@ -329,9 +389,18 @@ export function applyOverrides(stats: ComputedStats, overrides?: MetricOverrides
 }
 
 /** Convenience: compute + apply overrides in one call. */
-export function computeStatsWithOverrides(athletes: Athlete[], campaign?: { metric_overrides?: MetricOverrides | null } | null): AppliedStats {
-  const stats = computeStats(athletes);
+export function computeStatsWithOverrides(
+  athletes: Athlete[],
+  campaign?: { metric_overrides?: MetricOverrides | null } | null,
+  collabGroups: CollabGroup[] = [],
+): AppliedStats {
+  const stats = computeStats(athletes, collabGroups);
   return applyOverrides(stats, campaign?.metric_overrides);
+}
+
+/** Returns the collab group's combined engagement rate (already in % form). */
+export function getCollabEngRate(group: CollabGroup): number {
+  return group.combinedEngagementRate;
 }
 
 // ─── Top performers (uses the new dual-rate engagement model) ────────────────

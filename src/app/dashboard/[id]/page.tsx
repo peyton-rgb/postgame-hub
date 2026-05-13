@@ -19,6 +19,27 @@ import { computeStats, pct } from "@/lib/recap-helpers";
 import dynamic from "next/dynamic";
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
 
+// Drag-and-drop reordering for the Step 3 (Select Posts) athletes list.
+// @dnd-kit was already in package.json (used on the pitch editor page);
+// this just wires the same primitives into the recap dashboard.
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Overview" },
   { key: "key_takeaways", label: "Key Takeaways" },
@@ -611,10 +632,148 @@ function Top50RosterEditor({
   );
 }
 
+// One row in the Step 3 (Select Posts) athletes list. Lifted into its own
+// component because @dnd-kit's `useSortable` is a hook, and hooks have to
+// be called at the top level of a component — they can't live inside a
+// .map() callback. Each row registers itself with its parent's
+// SortableContext via the athlete's id.
+function SortableAthleteRow({
+  athlete: a,
+  isSelected,
+  showFeaturedStar,
+  isFeatured,
+  onToggleSelected,
+  onToggleFeatured,
+}: {
+  athlete: any;
+  isSelected: boolean;
+  showFeaturedStar: boolean;
+  isFeatured: boolean;
+  onToggleSelected: () => void;
+  onToggleFeatured: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: a.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    // While being dragged, lift the row above its neighbors and dim it
+    // slightly so the user can see the drop target underneath.
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 50 : "auto",
+    position: "relative",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-4 p-3 rounded-lg border ${
+        isSelected
+          ? "bg-[#D73F09]/5 border-[#D73F09]/30"
+          : "bg-[#111] border-gray-800"
+      }`}
+    >
+      {/* Drag handle (six-dot grip) — only this element starts a drag,
+          so clicks on the rest of the row still toggle the checkbox. */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0 px-1 -mx-1"
+        title="Drag to reorder"
+        aria-label={`Drag to reorder ${a.name}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="8" cy="5" r="2" />
+          <circle cx="16" cy="5" r="2" />
+          <circle cx="8" cy="12" r="2" />
+          <circle cx="16" cy="12" r="2" />
+          <circle cx="8" cy="19" r="2" />
+          <circle cx="16" cy="19" r="2" />
+        </svg>
+      </div>
+
+      {/* Featured star (Top 50 only) */}
+      {showFeaturedStar && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFeatured();
+          }}
+          className="flex-shrink-0"
+          title={isFeatured ? "Remove from featured" : "Add to featured"}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill={isFeatured ? "#D73F09" : "none"}
+            stroke={isFeatured ? "#D73F09" : "#555"}
+            strokeWidth="2"
+          >
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+        </button>
+      )}
+
+      <div
+        onClick={onToggleSelected}
+        className="flex items-center gap-4 flex-1 cursor-pointer"
+      >
+        <div
+          className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+            isSelected ? "bg-[#D73F09] border-[#D73F09]" : "border-gray-600"
+          }`}
+        >
+          {isSelected && (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#fff"
+              strokeWidth="3"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
+        </div>
+        <SchoolBadge school={a.school} size={32} />
+        <div className="flex-1">
+          <div className="text-sm font-black uppercase">{a.name}</div>
+          <div className="text-xs text-gray-500">
+            {a.school} · {a.sport}
+          </div>
+        </div>
+        {a.ig_followers ? (
+          <span className="text-xs text-gray-500 font-bold">
+            {a.ig_followers.toLocaleString()}
+          </span>
+        ) : null}
+        <span className="text-xs text-gray-600 font-bold uppercase">
+          {a.post_type}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function CampaignEditor() {
   const params = useParams();
   const id = params.id as string;
   const supabase = createBrowserSupabase();
+
+  // Sensors for the Step 3 athletes drag-and-drop. PointerSensor handles
+  // mouse + touch; the 5px activation distance means a quick click on the
+  // drag handle won't accidentally trigger a drag. KeyboardSensor lets users
+  // reorder via keyboard (Tab to handle, Space to lift, arrow keys to move).
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [media, setMedia] = useState<Record<string, Media[]>>({});
@@ -1213,6 +1372,42 @@ export default function CampaignEditor() {
   async function removeMedia(athleteId: string, mediaId: string) {
     await supabase.from("media").delete().eq("id", mediaId);
     setMedia((prev) => ({ ...prev, [athleteId]: (prev[athleteId] || []).filter((m) => m.id !== mediaId) }));
+  }
+
+  // Step 3 athletes drag-and-drop. Fires when a row is dropped in a new
+  // position. Steps:
+  //   1. Reorder the local `athletes` array in memory (so the UI updates
+  //      instantly — no waiting on the database).
+  //   2. For every row whose index actually changed, write its new index
+  //      to the `sort_order` column in Supabase. We only update the rows
+  //      between the old and new index; everything outside that range
+  //      kept its position so we don't need to touch them.
+  // The recap page reads athletes ordered by `sort_order`, so this
+  // single column drives the Content Gallery + Roster ordering.
+  async function handleAthletesDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = athletes.findIndex((x) => x.id === active.id);
+    const newIndex = athletes.findIndex((x) => x.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(athletes, oldIndex, newIndex);
+    setAthletes(reordered);
+
+    // Only the rows between the old and new index actually moved, so just
+    // update their sort_order. Supabase query builders are thenable, so
+    // Promise.all happily awaits them all in parallel.
+    const start = Math.min(oldIndex, newIndex);
+    const end = Math.max(oldIndex, newIndex);
+    const updates = [];
+    for (let i = start; i <= end; i++) {
+      const row = reordered[i];
+      updates.push(
+        supabase.from("athletes").update({ sort_order: i }).eq("id", row.id),
+      );
+    }
+    await Promise.all(updates);
   }
 
   async function setCoverPhoto(athleteId: string, mediaId: string) {
@@ -2186,45 +2381,69 @@ export default function CampaignEditor() {
               </div>
             )}
 
-            {/* All athletes list */}
-            {athletes.map((a: any) => {
-              const on = selected.includes(a.id);
-              const isFeatured = campaignType === "top_50" && a.is_featured;
-              return (
-                <div key={a.id} className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer border ${on ? "bg-[#D73F09]/5 border-[#D73F09]/30" : "bg-[#111] border-gray-800"}`}>
-                  {/* Featured star (Top 50 only) */}
-                  {campaignType === "top_50" && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const newFeatured = !a.is_featured;
-                        const featuredCount = athletes.filter((x: any) => x.is_featured).length;
-                        const newOrder = newFeatured ? featuredCount + 1 : 0;
-                        await supabase.from("athletes").update({ is_featured: newFeatured, featured_order: newOrder }).eq("id", a.id);
-                        setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, is_featured: newFeatured, featured_order: newOrder } : x));
-                      }}
-                      className="flex-shrink-0"
-                      title={isFeatured ? "Remove from featured" : "Add to featured"}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill={isFeatured ? "#D73F09" : "none"} stroke={isFeatured ? "#D73F09" : "#555"} strokeWidth="2">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    </button>
-                  )}
-                  <div onClick={() => setSelected((prev) => on ? prev.filter((x) => x !== a.id) : [...prev, a.id])} className="flex items-center gap-4 flex-1">
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${on ? "bg-[#D73F09] border-[#D73F09]" : "border-gray-600"}`}>
-                      {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
-                    </div>
-                    <SchoolBadge school={a.school} size={32} />
-                    <div className="flex-1">
-                      <div className="text-sm font-black uppercase">{a.name}</div>
-                      <div className="text-xs text-gray-500">{a.school} · {a.sport}</div>
-                    </div>
-                    {a.ig_followers ? <span className="text-xs text-gray-500 font-bold">{a.ig_followers.toLocaleString()}</span> : null}
-                    <span className="text-xs text-gray-600 font-bold uppercase">{a.post_type}</span>
-                  </div>
+            {/* All athletes list — drag the six-dot grip on the left of any
+                row to reorder. The new order is saved as `sort_order` and
+                drives the Content Gallery + Roster on the public recap. */}
+            <DndContext
+              sensors={dndSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleAthletesDragEnd}
+            >
+              <SortableContext
+                items={athletes.map((a) => a.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-1">
+                  {athletes.map((a: any) => {
+                    const on = selected.includes(a.id);
+                    const isFeatured = campaignType === "top_50" && a.is_featured;
+                    return (
+                      <SortableAthleteRow
+                        key={a.id}
+                        athlete={a}
+                        isSelected={on}
+                        showFeaturedStar={campaignType === "top_50"}
+                        isFeatured={isFeatured}
+                        onToggleSelected={() =>
+                          setSelected((prev) =>
+                            on
+                              ? prev.filter((x) => x !== a.id)
+                              : [...prev, a.id],
+                          )
+                        }
+                        onToggleFeatured={async () => {
+                          const newFeatured = !a.is_featured;
+                          const featuredCount = athletes.filter(
+                            (x: any) => x.is_featured,
+                          ).length;
+                          const newOrder = newFeatured
+                            ? featuredCount + 1
+                            : 0;
+                          await supabase
+                            .from("athletes")
+                            .update({
+                              is_featured: newFeatured,
+                              featured_order: newOrder,
+                            })
+                            .eq("id", a.id);
+                          setAthletes((p: any[]) =>
+                            p.map((x) =>
+                              x.id === a.id
+                                ? {
+                                    ...x,
+                                    is_featured: newFeatured,
+                                    featured_order: newOrder,
+                                  }
+                                : x,
+                            ),
+                          );
+                        }}
+                      />
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </SortableContext>
+            </DndContext>
           </div>
         )}
 

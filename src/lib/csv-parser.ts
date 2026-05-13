@@ -1,4 +1,4 @@
-import type { AthleteMetrics } from "./types";
+import type { AthleteMetrics, CollabGroup } from "./types";
 
 export interface ParsedAthlete {
   first: string;
@@ -13,6 +13,125 @@ export interface ParsedAthlete {
   gender: string;
   notes: string;
   metrics: AthleteMetrics;
+  /** IDs of the collab groups this athlete belongs to (set by collab detection). */
+  collabGroupIds?: string[];
+}
+
+/** Minimal shape needed to detect collab groups — works on both
+ *  ParsedAthlete (parse-time, no DB id) and Athlete (render-time, DB id). */
+type CollabSource = {
+  name: string;
+  ig_followers?: number;
+  metrics?: AthleteMetrics;
+};
+
+// djb2-style hash, plenty for generating stable short IDs from a URL.
+function hashString(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
+/**
+ * Detect collab posts — any post URL shared across 2+ athlete rows.
+ * Returns the groups plus a map from "<id-of-athlete>" → array of collab
+ * group IDs that athlete participates in, so callers can stamp athletes
+ * with their collab membership.
+ *
+ * `getId` lets the caller decide which stable identifier to use. At parse
+ * time the only thing available is the athlete name (ParsedAthlete has no
+ * DB id). At render time the recap page passes the DB id.
+ */
+export function detectCollabGroups<T extends CollabSource>(
+  athletes: T[],
+  getId: (a: T, i: number) => string,
+): { collabGroups: CollabGroup[]; idToGroupIds: Map<string, string[]> } {
+  const platforms: { key: "ig_feed" | "ig_reel" | "tiktok" }[] = [
+    { key: "ig_feed" }, { key: "ig_reel" }, { key: "tiktok" },
+  ];
+
+  // url+platform → list of { athlete, index }
+  type Bucket = { athlete: T; index: number }[];
+  const buckets = new Map<string, Bucket>();
+  const keyFor = (platform: string, url: string) => `${platform}|${url}`;
+
+  athletes.forEach((a, i) => {
+    for (const { key } of platforms) {
+      const url = a.metrics?.[key]?.post_url?.trim();
+      if (!url) continue;
+      const k = keyFor(key, url);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k)!.push({ athlete: a, index: i });
+    }
+  });
+
+  const collabGroups: CollabGroup[] = [];
+  const idToGroupIds = new Map<string, string[]>();
+
+  // Use forEach (not for-of) to avoid downlevelIteration on Map under the
+  // project's current TS target.
+  buckets.forEach((bucket: Bucket, k: string) => {
+    if (bucket.length < 2) return;
+    const [platform, url] = k.split("|") as ["ig_feed" | "ig_reel" | "tiktok", string];
+    const groupId = `${platform}-${hashString(url)}`;
+
+    const athleteIds = bucket.map((b: { athlete: T; index: number }) => getId(b.athlete, b.index));
+    const athleteNames = bucket.map((b: { athlete: T; index: number }) => b.athlete.name);
+    const combinedFollowers = bucket.reduce<number>(
+      (sum, b) => sum + (b.athlete.ig_followers || 0),
+      0,
+    );
+
+    // Source platform-block from the first athlete that has any numeric metric
+    // for this URL. Per the spec, the metrics are identical across all
+    // participants — we just need one populated copy.
+    const sourceBlock = (() => {
+      for (const b of bucket) {
+        const block = b.athlete.metrics?.[platform];
+        if (!block) continue;
+        const anyNumeric = ["views", "impressions", "likes", "comments", "shares", "reposts", "total_engagements"]
+          .some((k) => (block as Record<string, unknown>)[k] != null);
+        if (anyNumeric) return block;
+      }
+      return bucket[0].athlete.metrics?.[platform] ?? {};
+    })();
+
+    const block = sourceBlock as Record<string, number | undefined>;
+    const totalEngagements = block.total_engagements;
+    const combinedEngagementRate = combinedFollowers > 0 && totalEngagements != null
+      ? (totalEngagements / combinedFollowers) * 100
+      : 0;
+
+    collabGroups.push({
+      id: groupId,
+      url,
+      platform,
+      athleteIds,
+      athleteNames,
+      combinedFollowers,
+      metrics: {
+        views: block.views,
+        impressions: block.impressions,
+        likes: block.likes,
+        comments: block.comments,
+        shares: block.shares,
+        reposts: block.reposts,
+        totalEngagements: block.total_engagements,
+        engagementRateFol: block.engagement_rate_followers,
+        engagementRateImp: block.engagement_rate_impressions,
+      },
+      combinedEngagementRate,
+    });
+
+    for (const id of athleteIds) {
+      if (!idToGroupIds.has(id)) idToGroupIds.set(id, []);
+      idToGroupIds.get(id)!.push(groupId);
+    }
+  });
+
+  return { collabGroups, idToGroupIds };
 }
 
 function parseNum(val: string | undefined): number | undefined {
@@ -348,9 +467,9 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
  *      cross-platform data leakage where, e.g., the IG Feed "Total Engagements" column
  *      was being read into metrics.tiktok.total_engagements.
  */
-export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
+export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; collabGroups: CollabGroup[] } {
   const lines = splitCSVRows(csvText);
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return { athletes: [], collabGroups: [] };
 
   // Detect delimiter from the first line
   const _delimiter = lines[0].includes("\t") && lines[0].split("\t").length > lines[0].split(",").length ? "\t" : ",";
@@ -684,7 +803,15 @@ export function parseMetricsCSV(csvText: string): ParsedAthlete[] {
     });
   }
 
-  return athletes;
+  // Collab detection. ParsedAthlete has no DB id, so we identify each row by
+  // its name — that's what merges/lookups already use elsewhere in the parser.
+  const { collabGroups, idToGroupIds } = detectCollabGroups(athletes, (a) => a.name);
+  for (const a of athletes) {
+    const ids = idToGroupIds.get(a.name);
+    if (ids && ids.length) a.collabGroupIds = ids;
+  }
+
+  return { athletes, collabGroups };
 }
 
 // Normalize name for matching — strips extra spaces, lowercases, handles suffixes
@@ -746,6 +873,6 @@ export function mergeAthleteData(info: ParsedAthlete[], metrics: ParsedAthlete[]
 }
 
 // Legacy function — kept for backward compatibility
-export function parsePerformanceCSV(csvText: string): ParsedAthlete[] {
+export function parsePerformanceCSV(csvText: string): { athletes: ParsedAthlete[]; collabGroups: CollabGroup[] } {
   return parseMetricsCSV(csvText);
 }

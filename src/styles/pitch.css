@@ -1058,7 +1058,7 @@
 
 /* Data-driven mode (default styling below). */
 .pitch-page .pitch-collage {
-  background: #0a0a0e;
+  background: #000000;
   border-bottom: 1px solid var(--glass-border);
   padding: 32px 0 0;
   overflow-x: hidden;

@@ -2,6 +2,7 @@
 
 import { CampaignRecap } from "./CampaignRecap";
 import { Top50Recap } from "./Top50Recap";
+import { detectCollabGroups } from "@/lib/csv-parser";
 import type { Campaign, Athlete, Media } from "@/lib/types";
 
 export function MasonryPreview({
@@ -71,7 +72,13 @@ export function MasonryPreview({
       {campaign.settings?.campaign_type === "top_50" ? (
         <Top50Recap campaign={campaign} athletes={allAthletes || athletes} media={media} />
       ) : (
-        <CampaignRecap campaign={campaign} athletes={athletes} allAthletes={allAthletes} media={media} />
+        <CampaignRecap
+          campaign={campaign}
+          athletes={athletes}
+          allAthletes={allAthletes}
+          media={media}
+          collabGroups={detectCollabGroups<Athlete>(allAthletes || athletes, (a) => a.id).collabGroups}
+        />
       )}
     </div>
   );

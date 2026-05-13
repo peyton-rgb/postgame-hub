@@ -224,6 +224,39 @@ export interface Media {
   created_at: string;
 }
 
+/**
+ * A post URL that appears on two or more athlete rows — i.e. a collab post.
+ * Detected at parse-time from the metrics CSV (and rederivable at render-time
+ * from athletes already in the DB). Used to (a) avoid double-counting
+ * collab metrics across all participants and (b) render collab treatment in
+ * the recap UI (stacked names, COLLAB badge, combined ER).
+ *
+ * `athleteIds` carries whatever stable identifier the caller has — DB id
+ * (Athlete.id) at render-time, athlete name at parse-time (ParsedAthlete has
+ * no id yet). `athleteNames` is always populated so name-based UI works
+ * regardless of which identifier `athleteIds` holds.
+ */
+export interface CollabGroup {
+  id: string;
+  url: string;
+  platform: "ig_feed" | "ig_reel" | "tiktok";
+  athleteIds: string[];
+  athleteNames: string[];
+  combinedFollowers: number;
+  metrics: {
+    views?: number;
+    impressions?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    reposts?: number;
+    totalEngagements?: number;
+    engagementRateFol?: number;
+    engagementRateImp?: number;
+  };
+  combinedEngagementRate: number;
+}
+
 // Run of Show Types
 
 export interface RosContact {

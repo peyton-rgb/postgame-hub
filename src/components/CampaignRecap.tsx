@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey } from "@/lib/types";
+import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey, CollabGroup } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements } from "@/lib/recap-helpers";
+import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import PostgameCalendar from "./PostgameCalendar";
@@ -266,6 +266,150 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
   );
 }
 
+// ── Collab Card ───────────────────────────────────────────────
+
+function CollabCard({ group, items: rawItems, activeFilter, cardIndex }: { group: CollabGroup; items: Media[]; activeFilter: string; cardIndex: number }) {
+  const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
+  const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
+
+  const hasVideo = rawItems.some((m) => m.type === "video");
+  const defaultRatio: string = hasVideo
+    ? VIDEO_SAFE_RATIOS[cardIndex % VIDEO_SAFE_RATIOS.length]
+    : DEFAULT_RATIOS[cardIndex % DEFAULT_RATIOS.length];
+
+  const [cardRatio, setCardRatio] = useState<string>(defaultRatio);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (hasVideo) {
+      const vid = rawItems.find((m) => m.type === "video");
+      if (!vid) return;
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        if (video.videoWidth > video.videoHeight * 1.2) setCardRatio("16/9");
+      };
+      video.src = vid.file_url;
+    } else {
+      const coverImg = rawItems.find((m) => m.type === "image");
+      if (!coverImg) return;
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth > img.naturalHeight * 1.2) setCardRatio("16/9");
+      };
+      img.src = coverImg.file_url;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const current = items[slideIdx];
+  const isVideo = current?.type === "video";
+  const coverImage = items.find((m) => m.type === "image");
+  const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : coverImage?.file_url ?? null);
+
+  // Stacked names: first 2, then "+ N more"
+  const names = group.athleteNames;
+  const primaryNames = names.slice(0, 2).join(" + ");
+  const remaining = Math.max(0, names.length - 2);
+  const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
+
+  const er = getCollabEngRate(group);
+
+  return (
+    <div
+      className="media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="relative overflow-hidden">
+        {isVideo && playing ? (
+          <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1] object-cover" style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }} onEnded={() => setPlaying(false)} />
+        ) : displaySrc ? (
+          <img
+            src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
+            className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
+            style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
+            draggable={false}
+            alt={nameLabel}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }}>
+            <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
+          </div>
+        )}
+
+        {isVideo && !playing && (
+          <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
+            <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
+            </div>
+          </div>
+        )}
+
+        {/* Creator overlay — top of card */}
+        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
+                {er > 0 && <span className="text-[10px] text-brand font-bold">{pct(er)} ER</span>}
+              </div>
+              <div className="text-xs font-black uppercase text-white truncate">{nameLabel}</div>
+              <div className="text-[10px] text-white/70 font-semibold">
+                {fmt(group.combinedFollowers)} combined followers
+              </div>
+            </div>
+            <div className="flex gap-1 ml-2 flex-shrink-0">
+              {group.url && (
+                <a
+                  href={group.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
+                  title="View Post"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <span className="absolute bottom-2 right-2 z-[3] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-black/65 text-white backdrop-blur">
+          {getMediaLabel(items)}
+        </span>
+
+        {items.length > 1 && hovered && (
+          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
+            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+        )}
+
+        {items.length > 1 && !playing && (
+          <div className={`absolute bottom-11 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
+            {items.map((_, i) => (
+              <div key={i} onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full cursor-pointer ${slideIdx === i ? "bg-white" : "bg-white/35"}`} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Export as PowerPoint button ───────────────────────────────
 
 function ExportPptxButton({ slug, campaignName }: { slug: string; campaignName: string }) {
@@ -346,11 +490,13 @@ export function CampaignRecap({
   athletes,
   allAthletes,
   media,
+  collabGroups = [],
 }: {
   campaign: Campaign;
   athletes: Athlete[];
   allAthletes?: Athlete[];
   media: Record<string, Media[]>;
+  collabGroups?: CollabGroup[];
 }) {
   const [filter, setFilter] = useState("all");
   const [galleryExpanded, setGalleryExpanded] = useState(false);
@@ -371,7 +517,12 @@ export function CampaignRecap({
   // Gallery athletes for Content Gallery only
   const fullRoster = allAthletes || athletes;
 
-  const stats = computeStatsWithOverrides(fullRoster, campaign);
+  const stats = computeStatsWithOverrides(fullRoster, campaign, collabGroups);
+  // Per-platform URL set for fast "is this post a collab?" lookup in the roster.
+  const collabUrlSet = new Set<string>();
+  for (const g of collabGroups) collabUrlSet.add(`${g.platform}|${g.url}`);
+  const isCollabUrl = (platform: "ig_feed" | "ig_reel" | "tiktok", url: string | null | undefined) =>
+    !!url && collabUrlSet.has(`${platform}|${url}`);
   const topPerformers = topPerformerMode === "engagement"
     ? getTopPerformers(fullRoster)
     : getTopPerformersByImpressions(fullRoster);
@@ -1078,24 +1229,53 @@ export function CampaignRecap({
               // Responsive column count — matches the old breakpointCols.
               // We don't have window width at SSR; use the full `cols` on
               // desktop and rely on CSS @media below to reflow on mobile.
+              // Pick the media list for a collab group: use the first
+              // participating athlete that actually has uploaded media.
+              const collabMediaItems = (g: CollabGroup): Media[] => {
+                for (const id of g.athleteIds) {
+                  const items = media[id];
+                  if (items && items.length) return items;
+                }
+                return [];
+              };
+              // Tag each gallery item so distributeShortestFirst can mix
+              // solo and collab cards together. Solo cards appear first,
+              // then collab cards (per spec).
+              type GalleryEntry =
+                | { kind: "solo"; athlete: Athlete; items: Media[] }
+                | { kind: "collab"; group: CollabGroup; items: Media[] };
+              const galleryEntries: GalleryEntry[] = [
+                ...visibleGalleryItems.map<GalleryEntry>((a) => ({ kind: "solo", athlete: a, items: media[a.id] || [] })),
+                ...collabGroups.map<GalleryEntry>((g) => ({ kind: "collab", group: g, items: collabMediaItems(g) })),
+              ];
               const distributed = distributeShortestFirst(
-                visibleGalleryItems,
+                galleryEntries,
                 cols,
-                (a, i) => estimateCardHeightRatio(i, (media[a.id] || []).some((m) => m.type === "video")),
+                (entry, i) => estimateCardHeightRatio(i, entry.items.some((m) => m.type === "video")),
               );
               return (
                 <>
                   <div className="balanced-masonry">
                     {distributed.map((colItems, colIdx) => (
                       <div key={colIdx} className="balanced-masonry_col">
-                        {colItems.map(({ item: a, originalIndex }) => (
-                          <MasonryCard
-                            key={a.id}
-                            athlete={a}
-                            items={media[a.id] || []}
-                            activeFilter={filter}
-                            cardIndex={originalIndex}
-                          />
+                        {colItems.map(({ item: entry, originalIndex }) => (
+                          entry.kind === "solo" ? (
+                            <MasonryCard
+                              key={entry.athlete.id}
+                              athlete={entry.athlete}
+                              items={entry.items}
+                              activeFilter={filter}
+                              cardIndex={originalIndex}
+                            />
+                          ) : (
+                            <CollabCard
+                              key={`collab-${entry.group.id}`}
+                              group={entry.group}
+                              items={entry.items}
+                              activeFilter={filter}
+                              cardIndex={originalIndex}
+                            />
+                          )
                         ))}
                       </div>
                     ))}
@@ -1221,9 +1401,14 @@ export function CampaignRecap({
                     {hasAnyFeedUrl && (
                       <td className="px-3 py-3 text-center">
                         {feedUrl ? (
-                          <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                          </a>
+                          <span className="inline-flex items-center justify-center gap-1.5">
+                            <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            </a>
+                            {isCollabUrl("ig_feed", feedUrl) && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
+                            )}
+                          </span>
                         ) : (
                           <span className="text-white/35">&mdash;</span>
                         )}
@@ -1232,9 +1417,14 @@ export function CampaignRecap({
                     {hasAnyReelUrl && (
                       <td className="px-3 py-3 text-center">
                         {reelUrl ? (
-                          <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                          </a>
+                          <span className="inline-flex items-center justify-center gap-1.5">
+                            <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                            </a>
+                            {isCollabUrl("ig_reel", reelUrl) && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
+                            )}
+                          </span>
                         ) : (
                           <span className="text-white/35">&mdash;</span>
                         )}
@@ -1277,16 +1467,26 @@ export function CampaignRecap({
                     </div>
                   )}
                 </div>
-                <div className="flex gap-1.5 flex-shrink-0">
+                <div className="flex gap-1.5 flex-shrink-0 items-center">
                   {feedUrl && (
-                    <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    </a>
+                    <span className="inline-flex items-center gap-1">
+                      <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                      </a>
+                      {isCollabUrl("ig_feed", feedUrl) && (
+                        <span className="px-1 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
+                      )}
+                    </span>
                   )}
                   {reelUrl && (
-                    <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                    </a>
+                    <span className="inline-flex items-center gap-1">
+                      <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                      </a>
+                      {isCollabUrl("ig_reel", reelUrl) && (
+                        <span className="px-1 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
+                      )}
+                    </span>
                   )}
                 </div>
               </div>

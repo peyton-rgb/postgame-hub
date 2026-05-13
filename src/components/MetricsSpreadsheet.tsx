@@ -396,7 +396,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const parsed = parseMetricsCSV(text);
+      const { athletes: parsed } = parseMetricsCSV(text);
       console.log("CSV PARSED:", parsed.length, "rows, first row:", JSON.stringify(parsed[0]));
       if (!parsed.length) return;
 

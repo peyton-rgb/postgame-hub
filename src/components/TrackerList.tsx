@@ -81,7 +81,7 @@ export default function TrackerList() {
       if (csvFile) {
         try {
           const text = await csvFile.text();
-          const parsed = parseMetricsCSV(text);
+          const { athletes: parsed } = parseMetricsCSV(text);
 
           if (parsed.length > 0) {
             const athleteRows = parsed.map((pa, i) => ({

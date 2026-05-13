@@ -2,6 +2,8 @@ import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
+import { detectCollabGroups } from "@/lib/csv-parser";
+import type { Athlete } from "@/lib/types";
 import type { Metadata } from "next";
 // PostgameCalendar is now rendered inside CampaignRecap and Top50Recap
 // (right above their respective footers), so page.tsx no longer imports it.
@@ -86,12 +88,21 @@ export default async function RecapPage({ params }: Props) {
     );
   }
 
+  // Recompute collab groups from the persisted athletes (the CSV-time groups
+  // aren't stored in the DB). The `id` getter ties group.athleteIds back to
+  // Athlete.id so the recap can do media[group.athleteIds[0]] lookups.
+  const { collabGroups } = detectCollabGroups<Athlete>(
+    allAthletes as Athlete[],
+    (a) => a.id,
+  );
+
   return (
     <CampaignRecap
       campaign={campaign}
       athletes={galleryAthletes}
       allAthletes={allAthletes}
       media={mediaByAthlete}
+      collabGroups={collabGroups}
     />
   );
 }
