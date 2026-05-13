@@ -4,11 +4,11 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import type { Campaign, Athlete, Media, VisibleSections, KpiTargets, HeroMetricOverrideKey } from "@/lib/types";
+import type { Campaign, Athlete, Media, VisibleSections, KpiTargets, HeroMetricOverrideKey, CollabGroup } from "@/lib/types";
 import { SchoolBadge } from "@/components/SchoolBadge";
 import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { MasonryPreview } from "@/components/MasonryPreview";
-import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
+import { parseMetricsCSV, mergeAthleteData, detectCollabGroups, type ParsedAthlete } from "@/lib/csv-parser";
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 // heic2any is browser-only; imported dynamically inside convertHeicIfNeeded()
@@ -783,7 +783,12 @@ export default function CampaignEditor() {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
-  const [pendingVideo, setPendingVideo] = useState<{ athleteId: string; file: File } | null>(null);
+  const [pendingVideo, setPendingVideo] = useState<{ athleteId: string; file: File; isCollab?: boolean } | null>(null);
+
+  const collabGroups = useMemo<CollabGroup[]>(
+    () => detectCollabGroups(athletes, (a) => a.id).collabGroups,
+    [athletes],
+  );
   const [publishing, setPublishing] = useState(false);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -876,6 +881,15 @@ export default function CampaignEditor() {
 
     const grouped: Record<string, Media[]> = {};
     (med || []).forEach((m: Media) => {
+      // Collab media has athlete_id = NULL and drive_file_id = "collab:<groupId>"
+      // (groupId is a synthetic string like "ig_reel-abc123f", not a UUID).
+      if (m.drive_file_id?.startsWith("collab:")) {
+        const groupId = m.drive_file_id.slice("collab:".length);
+        if (!grouped[groupId]) grouped[groupId] = [];
+        grouped[groupId].push(m);
+        return;
+      }
+      if (!m.athlete_id) return;
       if (!grouped[m.athlete_id]) grouped[m.athlete_id] = [];
       grouped[m.athlete_id].push(m);
     });
@@ -1043,6 +1057,13 @@ export default function CampaignEditor() {
         .order("sort_order");
       const grouped: Record<string, Media[]> = {};
       for (const m of (allMedia || [])) {
+        if (m.drive_file_id?.startsWith("collab:")) {
+          const groupId = m.drive_file_id.slice("collab:".length);
+          if (!grouped[groupId]) grouped[groupId] = [];
+          grouped[groupId].push(m);
+          continue;
+        }
+        if (!m.athlete_id) continue;
         if (!grouped[m.athlete_id]) grouped[m.athlete_id] = [];
         grouped[m.athlete_id].push(m);
       }
@@ -1265,20 +1286,60 @@ export default function CampaignEditor() {
     if (data) setMedia((prev) => ({ ...prev, [athleteId]: [...(prev[athleteId] || []), data] }));
   }
 
+  // Collab groups don't have UUID ids — the synthetic group id (e.g.
+  // "ig_reel-abc123f") is stamped into drive_file_id as "collab:<groupId>"
+  // and athlete_id is left NULL.
+  async function handleCollabFiles(groupId: string, fileList: FileList | null) {
+    if (!fileList) return;
+    for (const file of Array.from(fileList)) {
+      const name = file.name.toLowerCase();
+      const isHeic = name.endsWith(".heic") || name.endsWith(".heif");
+      if (file.type.startsWith("image/") || isHeic) {
+        await uploadCollabMedia(groupId, file);
+      } else if (file.type.startsWith("video/")) {
+        setPendingVideo({ athleteId: groupId, file, isCollab: true });
+      }
+    }
+  }
+
+  async function uploadCollabMedia(groupId: string, file: File) {
+    const converted = await convertHeicIfNeeded(file);
+    const path = `${id}/collab-${groupId}/${Date.now()}-${converted.name}`;
+    const url = await uploadFile(converted, path);
+    if (!url) return;
+    const existing = media[groupId] || [];
+    const { data } = await supabase
+      .from("media")
+      .insert({
+        athlete_id: null,
+        campaign_id: id,
+        type: "image",
+        file_url: url,
+        sort_order: existing.length,
+        drive_file_id: `collab:${groupId}`,
+      })
+      .select().single();
+    if (data) setMedia((prev) => ({ ...prev, [groupId]: [...(prev[groupId] || []), data] }));
+  }
+
   async function uploadVideoWithThumbnail(thumbnailFile: File) {
     if (!pendingVideo) return;
-    const { athleteId, file: videoFile } = pendingVideo;
-    const videoPath = `${id}/${athleteId}/${Date.now()}-${videoFile.name}`;
+    const { athleteId, file: videoFile, isCollab } = pendingVideo;
+    const pathPrefix = isCollab ? `collab-${athleteId}` : athleteId;
+    const videoPath = `${id}/${pathPrefix}/${Date.now()}-${videoFile.name}`;
     const videoUrl = await uploadFile(videoFile, videoPath);
     if (!videoUrl) { setPendingVideo(null); return; }
     const convertedThumb = await convertHeicIfNeeded(thumbnailFile);
-    const thumbPath = `${id}/${athleteId}/${Date.now()}-thumb-${convertedThumb.name}`;
+    const thumbPath = `${id}/${pathPrefix}/${Date.now()}-thumb-${convertedThumb.name}`;
     const thumbUrl = await uploadFile(convertedThumb, thumbPath);
     if (!thumbUrl) { setPendingVideo(null); return; }
     const existing = media[athleteId] || [];
+    const insertRow = isCollab
+      ? { athlete_id: null, campaign_id: id, type: "video" as const, file_url: videoUrl, thumbnail_url: thumbUrl, sort_order: 0, drive_file_id: `collab:${athleteId}` }
+      : { athlete_id: athleteId, campaign_id: id, type: "video" as const, file_url: videoUrl, thumbnail_url: thumbUrl, sort_order: 0 };
     const { data } = await supabase
       .from("media")
-      .insert({ athlete_id: athleteId, campaign_id: id, type: "video", file_url: videoUrl, thumbnail_url: thumbUrl, sort_order: 0 })
+      .insert(insertRow)
       .select().single();
     if (data) {
       const newMedia = [data, ...existing];
@@ -1633,6 +1694,7 @@ export default function CampaignEditor() {
         athletes={athletes.filter((a) => selected.includes(a.id))}
         allAthletes={athletes}
         media={media}
+        collabGroups={collabGroups}
         onBack={() => setShowPreview(false)}
         onPublish={togglePublish}
         publishing={publishing}
@@ -1666,7 +1728,11 @@ export default function CampaignEditor() {
     <div className="min-h-screen">
       {pendingVideo && (
         <ThumbnailModal
-          athleteName={athletes.find((a) => a.id === pendingVideo.athleteId)?.name || ""}
+          athleteName={
+            pendingVideo.isCollab
+              ? (collabGroups.find((g) => g.id === pendingVideo.athleteId)?.athleteNames.slice(0, 2).join(" + ") || "Collab Post")
+              : (athletes.find((a) => a.id === pendingVideo.athleteId)?.name || "")
+          }
           onUpload={async (file) => await uploadVideoWithThumbnail(file)}
           onCancel={() => setPendingVideo(null)}
           videoFile={pendingVideo.file}
@@ -2537,6 +2603,145 @@ export default function CampaignEditor() {
                 </>
               )}
             </div>
+
+            {/* Collab Posts Grid — one card per detected collab group (same
+                content shared by 2+ featured athletes). Stored in the media
+                table with athlete_id = NULL and drive_file_id = "collab:<id>". */}
+            {collabGroups.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-black uppercase tracking-wider">Collab Posts</h3>
+                  <span className="text-xs text-gray-500 font-bold">
+                    {collabGroups.filter((g) => (media[g.id] || []).length > 0).length} / {collabGroups.length} assigned
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                  {collabGroups.map((g) => {
+                    const items = media[g.id] || [];
+                    const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
+                    const cover = firstImage || items[0];
+                    const coverSrc = cover?.type !== "video" ? cover?.file_url : cover?.thumbnail_url;
+
+                    const primaryNames = g.athleteNames.slice(0, 2).join(" + ");
+                    const remaining = Math.max(0, g.athleteNames.length - 2);
+                    const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
+                    const platformLabel = g.platform === "ig_feed" ? "IG Feed" : g.platform === "ig_reel" ? "IG Reel" : "TikTok";
+
+                    return (
+                      <div key={g.id} className="group relative">
+                        <div
+                          onClick={() => fileRefs.current[g.id]?.click()}
+                          onDrop={(e) => { e.preventDefault(); handleCollabFiles(g.id, e.dataTransfer?.files); }}
+                          onDragOver={(e) => e.preventDefault()}
+                          className={`aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                            coverSrc
+                              ? "border-transparent hover:border-[#D73F09]"
+                              : "border-dashed border-gray-700 hover:border-gray-500 bg-[#0a0a0a]"
+                          }`}
+                        >
+                          {coverSrc ? (
+                            <img
+                              src={supabaseImageUrl(coverSrc, 600) ?? coverSrc}
+                              className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+                              alt={nameLabel}
+                              loading="lazy"
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                if (img.src.includes("/render/image/public/")) {
+                                  img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                              </svg>
+                            </div>
+                          )}
+                          <input ref={(el: HTMLInputElement | null) => { fileRefs.current[g.id] = el; }}
+                            type="file" accept="image/*,video/*,.heic,.heif" multiple
+                            onChange={(e) => handleCollabFiles(g.id, e.target.files)} className="hidden" />
+                        </div>
+
+                        {coverSrc && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (cover) removeMedia(g.id, cover.id); }}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white text-[10px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          >×</button>
+                        )}
+
+                        <div className="flex gap-0.5 mt-1 overflow-x-auto scrollbar-none">
+                          {items.map((m) => {
+                            const thumbSrc = m.thumbnail_url || (m.type !== "video" ? m.file_url : null);
+                            return (
+                              <div key={m.id} className="relative flex-shrink-0 group/thumb">
+                                <div
+                                  className={`w-9 h-9 rounded overflow-hidden border-2 transition-all ${
+                                    m.type === "video"
+                                      ? "border-purple-500/50"
+                                      : "border-gray-700"
+                                  }`}
+                                >
+                                  {thumbSrc ? (
+                                    <img
+                                      src={supabaseImageUrl(thumbSrc, 100) ?? thumbSrc}
+                                      className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+                                      alt=""
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        const img = e.currentTarget;
+                                        if (img.src.includes("/render/image/public/")) {
+                                          img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+                                        }
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
+                                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                    </div>
+                                  )}
+                                </div>
+                                {m.type === "video" && (
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="w-4 h-4 rounded-full bg-black/60 flex items-center justify-center">
+                                      <svg width="7" height="7" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="8 5 19 12 8 19 8 5"/></svg>
+                                    </div>
+                                  </div>
+                                )}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); removeMedia(g.id, m.id); }}
+                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-black/80 text-white text-[7px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-10"
+                                >×</button>
+                              </div>
+                            );
+                          })}
+                          <div
+                            className="flex-shrink-0 w-7 h-7 rounded border border-dashed border-gray-600 hover:border-[#D73F09] flex items-center justify-center cursor-pointer transition-colors"
+                            onClick={(e) => { e.stopPropagation(); fileRefs.current[g.id]?.click(); }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        <div className="mt-1.5 px-0.5">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <span className="px-1 py-0.5 rounded text-[7px] font-black uppercase bg-[#D73F09] text-white tracking-wider">Collab</span>
+                            <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">{platformLabel}</span>
+                          </div>
+                          <div className="text-[10px] font-bold uppercase truncate text-gray-300" title={g.athleteNames.join(", ")}>{nameLabel}</div>
+                          <div className="text-[9px] text-gray-600 truncate">{fmt(g.combinedFollowers)} combined</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Cover Photo Grid */}
             <div>

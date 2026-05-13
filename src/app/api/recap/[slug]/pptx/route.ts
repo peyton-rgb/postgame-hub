@@ -60,6 +60,10 @@ export async function GET(
   // 3. Group media by athlete (same shape CampaignRecap expects)
   const mediaByAthlete: Record<string, Media[]> = {};
   (mediaRows || []).forEach((m: Media) => {
+    // Skip rows with no athlete_id (e.g. collab-group media, which has
+    // drive_file_id = "collab:<groupId>"). The pptx export doesn't currently
+    // render collab posts separately.
+    if (!m.athlete_id) return;
     if (!mediaByAthlete[m.athlete_id]) mediaByAthlete[m.athlete_id] = [];
     mediaByAthlete[m.athlete_id].push(m);
   });

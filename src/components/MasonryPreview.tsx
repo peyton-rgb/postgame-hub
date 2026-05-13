@@ -3,13 +3,14 @@
 import { CampaignRecap } from "./CampaignRecap";
 import { Top50Recap } from "./Top50Recap";
 import { detectCollabGroups } from "@/lib/csv-parser";
-import type { Campaign, Athlete, Media } from "@/lib/types";
+import type { Campaign, Athlete, Media, CollabGroup } from "@/lib/types";
 
 export function MasonryPreview({
   campaign,
   athletes,
   allAthletes,
   media,
+  collabGroups,
   onBack,
   onPublish,
   publishing,
@@ -18,6 +19,7 @@ export function MasonryPreview({
   athletes: Athlete[];
   allAthletes?: Athlete[];
   media: Record<string, Media[]>;
+  collabGroups?: CollabGroup[];
   onBack: () => void;
   onPublish: () => void;
   publishing: boolean;
@@ -77,7 +79,7 @@ export function MasonryPreview({
           athletes={athletes}
           allAthletes={allAthletes}
           media={media}
-          collabGroups={detectCollabGroups<Athlete>(allAthletes || athletes, (a) => a.id).collabGroups}
+          collabGroups={collabGroups ?? detectCollabGroups<Athlete>(allAthletes || athletes, (a) => a.id).collabGroups}
         />
       )}
     </div>

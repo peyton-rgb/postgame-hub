@@ -65,6 +65,13 @@ export default async function RecapPage({ params }: Props) {
 
   const mediaByAthlete: Record<string, any[]> = {};
   (media || []).forEach((m: any) => {
+    if (typeof m.drive_file_id === "string" && m.drive_file_id.startsWith("collab:")) {
+      const groupId = m.drive_file_id.slice("collab:".length);
+      if (!mediaByAthlete[groupId]) mediaByAthlete[groupId] = [];
+      mediaByAthlete[groupId].push(m);
+      return;
+    }
+    if (!m.athlete_id) return;
     if (!mediaByAthlete[m.athlete_id]) mediaByAthlete[m.athlete_id] = [];
     mediaByAthlete[m.athlete_id].push(m);
   });

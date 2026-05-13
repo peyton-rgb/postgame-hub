@@ -1229,9 +1229,14 @@ export function CampaignRecap({
               // Responsive column count — matches the old breakpointCols.
               // We don't have window width at SSR; use the full `cols` on
               // desktop and rely on CSS @media below to reflow on mobile.
-              // Pick the media list for a collab group: use the first
-              // participating athlete that actually has uploaded media.
+              // Pick the media list for a collab group. Prefer media
+              // uploaded directly against the collab group (keyed by g.id);
+              // fall back to media uploaded against any participating
+              // athlete so legacy campaigns without collab-specific media
+              // still render.
               const collabMediaItems = (g: CollabGroup): Media[] => {
+                const own = media[g.id];
+                if (own && own.length) return own;
                 for (const id of g.athleteIds) {
                   const items = media[id];
                   if (items && items.length) return items;

@@ -213,7 +213,7 @@ export interface Athlete {
 
 export interface Media {
   id: string;
-  athlete_id: string;
+  athlete_id: string | null;
   campaign_id: string;
   type: "image" | "video";
   file_url: string;
