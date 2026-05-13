@@ -292,7 +292,7 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
   const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
   return (
-    <div className="w-full rounded-xl overflow-hidden border border-[rgba(215,63,9,0.2)] flex flex-col md:grid md:grid-cols-[55%_1fr] md:h-[520px]">
+    <div className="w-full max-w-[900px] mx-auto rounded-xl overflow-hidden border border-[rgba(215,63,9,0.2)] flex flex-col md:grid md:grid-cols-[55%_1fr] md:h-[520px]">
       {/* LEFT: media */}
       <div className="relative overflow-hidden bg-black aspect-[9/16] md:aspect-auto md:h-full">
         {isVideo && playing ? (
