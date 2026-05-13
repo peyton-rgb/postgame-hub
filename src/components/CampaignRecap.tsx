@@ -1443,42 +1443,34 @@ export function CampaignRecap({
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
             {(() => {
-              const visibleCollabs = collabGroups
-                .map((g) => ({ group: g, items: collabMediaItems(g) }))
+              type GalleryEntry =
+                | { kind: "solo"; athlete: Athlete; items: Media[] }
+                | { kind: "collab"; group: CollabGroup; items: Media[] };
+
+              const collabEntries: GalleryEntry[] = collabGroups
+                .map((g) => ({ kind: "collab" as const, group: g, items: collabMediaItems(g) }))
                 .filter(({ items }) => {
                   if (filter === "all") return true;
                   if (filter === "photo") return items.some((m) => m.type === "image");
                   return items.some((m) => m.type === "video");
                 });
-              if (visibleCollabs.length === 0) return null;
-              return (
-                <div className="flex flex-col gap-4 mb-6">
-                  {visibleCollabs.map(({ group, items }) => (
-                    <CollabCard
-                      key={`collab-${group.id}`}
-                      group={group}
-                      items={items}
-                      activeFilter={filter}
-                      athletes={fullRoster}
-                    />
-                  ))}
-                </div>
-              );
-            })()}
-            {(() => {
-              // Collapse to the first 10 solo items by default; the expand
-              // button below lets users see the full gallery.
-              const GALLERY_VISIBLE_COUNT = 10;
-              const galleryIsTruncated = filtered.length > GALLERY_VISIBLE_COUNT;
-              const visibleGalleryItems = galleryExpanded || !galleryIsTruncated
-                ? filtered
-                : filtered.slice(0, GALLERY_VISIBLE_COUNT);
-              const soloEntries = visibleGalleryItems.map((a) => ({
+
+              const soloEntries: GalleryEntry[] = filtered.map((a) => ({
+                kind: "solo" as const,
                 athlete: a,
                 items: media[a.id] || [],
               }));
+
+              const allEntries: GalleryEntry[] = [...collabEntries, ...soloEntries];
+
+              const GALLERY_VISIBLE_COUNT = 10;
+              const galleryIsTruncated = allEntries.length > GALLERY_VISIBLE_COUNT;
+              const visibleEntries = galleryExpanded || !galleryIsTruncated
+                ? allEntries
+                : allEntries.slice(0, GALLERY_VISIBLE_COUNT);
+
               const distributed = distributeShortestFirst(
-                soloEntries,
+                visibleEntries,
                 cols,
                 (entry, i) => estimateCardHeightRatio(i, entry.items.some((m) => m.type === "video")),
               );
@@ -1488,13 +1480,23 @@ export function CampaignRecap({
                     {distributed.map((colItems, colIdx) => (
                       <div key={colIdx} className="balanced-masonry_col">
                         {colItems.map(({ item: entry, originalIndex }) => (
-                          <MasonryCard
-                            key={entry.athlete.id}
-                            athlete={entry.athlete}
-                            items={entry.items}
-                            activeFilter={filter}
-                            cardIndex={originalIndex}
-                          />
+                          entry.kind === "collab" ? (
+                            <CollabCard
+                              key={`collab-${entry.group.id}`}
+                              group={entry.group}
+                              items={entry.items}
+                              activeFilter={filter}
+                              athletes={fullRoster}
+                            />
+                          ) : (
+                            <MasonryCard
+                              key={entry.athlete.id}
+                              athlete={entry.athlete}
+                              items={entry.items}
+                              activeFilter={filter}
+                              cardIndex={originalIndex}
+                            />
+                          )
                         ))}
                       </div>
                     ))}
@@ -1518,7 +1520,7 @@ export function CampaignRecap({
                               <polyline points="6 9 12 15 18 9" />
                             </svg>
                             Expand to Full Gallery
-                            <span className="ml-1 text-[10px] font-black text-white/50">+{filtered.length - GALLERY_VISIBLE_COUNT}</span>
+                            <span className="ml-1 text-[10px] font-black text-white/50">+{allEntries.length - GALLERY_VISIBLE_COUNT}</span>
                           </>
                         )}
                       </button>
