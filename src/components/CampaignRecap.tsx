@@ -268,143 +268,195 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
 
 // ── Collab Card ───────────────────────────────────────────────
 
-function CollabCard({ group, items: rawItems, activeFilter, cardIndex }: { group: CollabGroup; items: Media[]; activeFilter: string; cardIndex: number }) {
+function platformLabel(platform: "ig_feed" | "ig_reel" | "tiktok"): string {
+  if (platform === "ig_feed") return "IG Feed";
+  if (platform === "ig_reel") return "IG Reel";
+  return "TikTok";
+}
+
+function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group: CollabGroup; items: Media[]; activeFilter: string; athletes: Athlete[] }) {
   const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
   const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
 
-  const hasVideo = rawItems.some((m) => m.type === "video");
-  const defaultRatio: string = hasVideo
-    ? VIDEO_SAFE_RATIOS[cardIndex % VIDEO_SAFE_RATIOS.length]
-    : DEFAULT_RATIOS[cardIndex % DEFAULT_RATIOS.length];
-
-  const [cardRatio, setCardRatio] = useState<string>(defaultRatio);
-  const [slideIdx, setSlideIdx] = useState(0);
-  const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  useEffect(() => {
-    if (hasVideo) {
-      const vid = rawItems.find((m) => m.type === "video");
-      if (!vid) return;
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.onloadedmetadata = () => {
-        if (video.videoWidth > video.videoHeight * 1.2) setCardRatio("16/9");
-      };
-      video.src = vid.file_url;
-    } else {
-      const coverImg = rawItems.find((m) => m.type === "image");
-      if (!coverImg) return;
-      const img = new Image();
-      img.onload = () => {
-        if (img.naturalWidth > img.naturalHeight * 1.2) setCardRatio("16/9");
-      };
-      img.src = coverImg.file_url;
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const current = items[slideIdx];
+  const current = items[0];
   const isVideo = current?.type === "video";
   const coverImage = items.find((m) => m.type === "image");
   const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : coverImage?.file_url ?? null);
 
-  // Stacked names: first 2, then "+ N more"
-  const names = group.athleteNames;
-  const primaryNames = names.slice(0, 2).join(" + ");
-  const remaining = Math.max(0, names.length - 2);
-  const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
+  const groupAthletes = group.athleteNames.map((name) => athletes.find((a) => a.name === name) ?? null);
+  const firstAthlete = groupAthletes[0];
 
-  const er = getCollabEngRate(group);
+  const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
   return (
     <div
-      className="media-card break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className="col-span-2 break-inside-avoid mb-2 rounded-xl overflow-hidden border border-[rgba(215,63,9,0.2)] grid"
+      style={{ gridTemplateColumns: "55% 1fr", height: 520 }}
     >
-      <div className="relative overflow-hidden">
+      {/* LEFT: media */}
+      <div className="relative overflow-hidden bg-black">
         {isVideo && playing ? (
-          <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1] object-cover" style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }} onEnded={() => setPlaying(false)} />
+          <video
+            ref={videoRef}
+            src={current.file_url}
+            autoPlay
+            controls
+            playsInline
+            className="w-full h-full object-cover"
+            onEnded={() => setPlaying(false)}
+          />
         ) : displaySrc ? (
           <img
             src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
-            className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
-            style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
+            className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
             draggable={false}
-            alt={nameLabel}
+            alt={group.athleteNames.join(" + ")}
             loading="lazy"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.src.includes("/render/image/public/")) {
+                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+              }
+            }}
           />
         ) : (
-          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }}>
+          <div className="w-full h-full bg-black flex items-center justify-center">
             <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
           </div>
         )}
 
         {isVideo && !playing && (
-          <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
+          <div
+            onClick={() => setPlaying(true)}
+            className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]"
+          >
             <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
             </div>
           </div>
         )}
 
-        {/* Creator overlay — top of card */}
-        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
-          <div className="flex items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
-                {er > 0 && <span className="text-[10px] text-brand font-bold">{pct(er)} ER</span>}
-              </div>
-              <div className="text-xs font-black uppercase text-white truncate">{nameLabel}</div>
-              <div className="text-[10px] text-white/70 font-semibold">
-                {fmt(group.combinedFollowers)} combined followers
-              </div>
-            </div>
-            <div className="flex gap-1 ml-2 flex-shrink-0">
-              {group.url && (
-                <a
-                  href={group.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
-                  title="View Post"
+        {/* Right-edge fade into info panel */}
+        <div
+          className="absolute top-0 right-0 bottom-0 pointer-events-none"
+          style={{ width: 200, background: "linear-gradient(to right, transparent 0%, #0f0f12 100%)" }}
+        />
+      </div>
+
+      {/* RIGHT: info panel */}
+      <div className="relative flex flex-col p-6" style={{ backgroundColor: "#0f0f12" }}>
+        {group.url && (
+          <a
+            href={group.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-3 right-3 w-6 h-6 rounded bg-black/30 flex items-center justify-center hover:bg-brand transition-colors z-[1]"
+            title="View Post"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </a>
+        )}
+
+        {/* Flag line */}
+        <div
+          className="flex items-center gap-1.5 pb-2 mb-4"
+          style={{ borderBottom: "1px solid rgba(215,63,9,0.2)" }}
+        >
+          <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
+          <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 2.5, textTransform: "uppercase", color: "#D73F09" }}>
+            Collab Post · {platformLabel(group.platform)}
+          </span>
+        </div>
+
+        {/* School + sport */}
+        {firstAthlete && (
+          <div
+            className="mb-4"
+            style={{ fontSize: 9, color: "#444", textTransform: "uppercase", letterSpacing: 1.2 }}
+          >
+            {firstAthlete.school} · {firstAthlete.sport}
+          </div>
+        )}
+
+        {/* Athlete list */}
+        <div className="flex flex-col gap-3" style={{ marginBottom: "auto" }}>
+          {group.athleteNames.map((name, idx) => {
+            const ath = groupAthletes[idx];
+            const parts = name.trim().split(/\s+/);
+            const first = parts[0]?.[0] ?? "";
+            const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : parts[0]?.[1] ?? "";
+            const initials = (first + last).toUpperCase();
+            const handle = ath?.ig_handle;
+            const followers = ath?.ig_followers;
+            return (
+              <div key={`${name}-${idx}`} className="flex items-center gap-3">
+                <div
+                  className="flex items-center justify-center rounded-full flex-shrink-0"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    backgroundColor: "#1a1a20",
+                    border: "1px solid #252530",
+                    fontFamily: bebas,
+                    fontSize: 10,
+                    color: "#666",
+                  }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                    <polyline points="15 3 21 3 21 9"/>
-                    <line x1="10" y1="14" x2="21" y2="3"/>
-                  </svg>
-                </a>
-              )}
+                  {initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="truncate"
+                    style={{ fontSize: 11, fontWeight: 700, color: "#e0ddd8", textTransform: "uppercase", letterSpacing: 0.3 }}
+                  >
+                    {name}
+                  </div>
+                  <div className="truncate" style={{ fontSize: 9, color: "#3a3a42" }}>
+                    {handle ? `@${handle}` : ""}
+                    {handle && followers ? " · " : ""}
+                    {followers ? `${fmt(followers)} followers` : ""}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Stats row */}
+        <div className="flex" style={{ paddingTop: 18, borderTop: "1px solid #1a1a1e", gap: 18 }}>
+          <div>
+            <div style={{ fontFamily: bebas, fontSize: 20, color: "#D73F09", lineHeight: 1 }}>
+              {pct(group.combinedEngagementRate)}
+            </div>
+            <div style={{ fontSize: 8, color: "#383838", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 4 }}>
+              Combined ER
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: bebas, fontSize: 20, color: "#D73F09", lineHeight: 1 }}>
+              {fmt(group.metrics.views ?? 0)}
+            </div>
+            <div style={{ fontSize: 8, color: "#383838", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 4 }}>
+              Views
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: bebas, fontSize: 20, color: "#D73F09", lineHeight: 1 }}>
+              {fmt(group.combinedFollowers)}
+            </div>
+            <div style={{ fontSize: 8, color: "#383838", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 4 }}>
+              Combined Followers
             </div>
           </div>
         </div>
-
-        <span className="absolute bottom-2 right-2 z-[3] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-black/65 text-white backdrop-blur">
-          {getMediaLabel(items)}
-        </span>
-
-        {items.length > 1 && hovered && (
-          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
-          </div>
-        )}
-
-        {items.length > 1 && !playing && (
-          <div className={`absolute bottom-11 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
-            {items.map((_, i) => (
-              <div key={i} onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full cursor-pointer ${slideIdx === i ? "bg-white" : "bg-white/35"}`} />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1377,7 +1429,7 @@ export function CampaignRecap({
                               group={entry.group}
                               items={entry.items}
                               activeFilter={filter}
-                              cardIndex={originalIndex}
+                              athletes={fullRoster}
                             />
                           )
                         ))}
