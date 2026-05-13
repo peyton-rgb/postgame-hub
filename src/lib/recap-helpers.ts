@@ -419,25 +419,122 @@ function bestEngWithPlatform(m: AthleteMetrics | undefined): { rate: number; pla
   return best;
 }
 
-export function getTopPerformers(athletes: Athlete[], count = 5) {
-  return [...athletes]
+type AthleteTopPerformerEntry = Athlete & {
+  kind: "athlete";
+  bestEngRate: number;
+  bestPlatform: string;
+  totalImpressions: number;
+};
+
+type CollabTopPerformerEntry = CollabGroup & {
+  kind: "collab";
+  bestEngRate: number;
+  bestPlatform: string;
+  totalImpressions: number;
+};
+
+export type TopPerformerEntry = AthleteTopPerformerEntry | CollabTopPerformerEntry;
+
+function collabPlatformLabel(p: CollabGroup["platform"]): string {
+  if (p === "ig_feed") return "IG Feed";
+  if (p === "ig_reel") return "IG Reel";
+  return "TikTok";
+}
+
+function bestPlatformKey(label: string): Platform | null {
+  if (label === "IG Feed") return "ig_feed";
+  if (label === "IG Reel") return "ig_reel";
+  if (label === "TikTok") return "tiktok";
+  return null;
+}
+
+function buildCollabUrlSet(collabGroups: CollabGroup[]): Set<string> {
+  const set = new Set<string>();
+  for (const g of collabGroups) {
+    if (g.url) set.add(g.url);
+  }
+  return set;
+}
+
+function collabTotalImpressions(g: CollabGroup): number {
+  return g.metrics.views ?? g.metrics.impressions ?? 0;
+}
+
+function athleteHasAnyCollabPost(a: Athlete, collabUrls: Set<string>): boolean {
+  const m = a.metrics;
+  if (!m) return false;
+  return (
+    (!!m.ig_feed?.post_url && collabUrls.has(m.ig_feed.post_url)) ||
+    (!!m.ig_reel?.post_url && collabUrls.has(m.ig_reel.post_url)) ||
+    (!!m.tiktok?.post_url && collabUrls.has(m.tiktok.post_url))
+  );
+}
+
+export function getTopPerformers(
+  athletes: Athlete[],
+  collabGroups: CollabGroup[] = [],
+  count = 5,
+): TopPerformerEntry[] {
+  const collabUrls = buildCollabUrlSet(collabGroups);
+
+  const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
-      return { ...a, bestEngRate: rate, bestPlatform: platform, totalImpressions: getTotalImpressions(a) };
+      const key = bestPlatformKey(platform);
+      const url = key ? a.metrics?.[key]?.post_url : undefined;
+      const onCollab = !!url && collabUrls.has(url);
+      return {
+        ...a,
+        kind: "athlete" as const,
+        bestEngRate: onCollab ? 0 : rate,
+        bestPlatform: platform,
+        totalImpressions: getTotalImpressions(a),
+      };
     })
-    .filter((a) => a.bestEngRate > 0)
+    .filter((e) => e.bestEngRate > 0);
+
+  const collabEntries: CollabTopPerformerEntry[] = collabGroups.map((g) => ({
+    ...g,
+    kind: "collab" as const,
+    bestEngRate: g.combinedEngagementRate,
+    bestPlatform: collabPlatformLabel(g.platform),
+    totalImpressions: collabTotalImpressions(g),
+  }));
+
+  return [...athleteEntries, ...collabEntries]
     .sort((a, b) => b.bestEngRate - a.bestEngRate)
     .slice(0, count);
 }
 
-export function getTopPerformersByImpressions(athletes: Athlete[], count = 5) {
-  return [...athletes]
+export function getTopPerformersByImpressions(
+  athletes: Athlete[],
+  collabGroups: CollabGroup[] = [],
+  count = 5,
+): TopPerformerEntry[] {
+  const collabUrls = buildCollabUrlSet(collabGroups);
+
+  const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
-      const total = getTotalImpressions(a);
-      return { ...a, bestEngRate: rate, bestPlatform: platform, totalImpressions: total };
+      return {
+        ...a,
+        kind: "athlete" as const,
+        bestEngRate: rate,
+        bestPlatform: platform,
+        totalImpressions: getTotalImpressions(a),
+      };
     })
-    .filter((a) => a.totalImpressions > 0)
+    .filter((e) => e.totalImpressions > 0 && !athleteHasAnyCollabPost(e, collabUrls));
+
+  const collabEntries: CollabTopPerformerEntry[] = collabGroups.map((g) => ({
+    ...g,
+    kind: "collab" as const,
+    bestEngRate: g.combinedEngagementRate,
+    bestPlatform: collabPlatformLabel(g.platform),
+    totalImpressions: collabTotalImpressions(g),
+  }));
+
+  return [...athleteEntries, ...collabEntries]
     .sort((a, b) => b.totalImpressions - a.totalImpressions)
     .slice(0, count);
 }

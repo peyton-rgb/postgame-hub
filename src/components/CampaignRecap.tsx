@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey, CollabGroup } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate } from "@/lib/recap-helpers";
+import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate, type TopPerformerEntry } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import PostgameCalendar from "./PostgameCalendar";
@@ -523,9 +523,23 @@ export function CampaignRecap({
   for (const g of collabGroups) collabUrlSet.add(`${g.platform}|${g.url}`);
   const isCollabUrl = (platform: "ig_feed" | "ig_reel" | "tiktok", url: string | null | undefined) =>
     !!url && collabUrlSet.has(`${platform}|${url}`);
-  const topPerformers = topPerformerMode === "engagement"
-    ? getTopPerformers(fullRoster)
-    : getTopPerformersByImpressions(fullRoster);
+  // Pick the media list for a collab group. Prefer media uploaded directly
+  // against the collab group (keyed by g.id); fall back to media uploaded
+  // against any participating athlete so legacy campaigns without
+  // collab-specific media still render. Used by both Top Performers and
+  // Content Gallery sections.
+  const collabMediaItems = (g: CollabGroup): Media[] => {
+    const own = media[g.id];
+    if (own && own.length) return own;
+    for (const id of g.athleteIds) {
+      const items = media[id];
+      if (items && items.length) return items;
+    }
+    return [];
+  };
+  const topPerformers: TopPerformerEntry[] = topPerformerMode === "engagement"
+    ? getTopPerformers(fullRoster, collabGroups)
+    : getTopPerformersByImpressions(fullRoster, collabGroups);
   const cols = settings.columns || 4;
 
   // Build nav tabs dynamically based on visible sections + data availability
@@ -1109,11 +1123,60 @@ export function CampaignRecap({
 
           {/* Desktop: all same size, #1 highlighted in orange */}
           <div className="hidden md:flex items-end justify-center gap-4">
-            {topPerformers.map((a, i) => {
-              const items = media[a.id] || [];
-              const isFirst = i === 0;
-              const metricValue = topPerformerMode === "engagement" ? pct(a.bestEngRate) : fmt(a.totalImpressions);
+            {topPerformers.map((entry, i) => {
+              const metricValue = topPerformerMode === "engagement" ? pct(entry.bestEngRate) : fmt(entry.totalImpressions);
               const metricLabel = topPerformerMode === "engagement" ? "Engagement Rate" : "Impressions";
+
+              if (entry.kind === "collab") {
+                const items = collabMediaItems(entry);
+                const names = entry.athleteNames;
+                const primaryNames = names.slice(0, 2).join(" + ");
+                const remaining = Math.max(0, names.length - 2);
+                const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
+                return (
+                  <div key={`collab-${entry.id}`} className="flex-1 max-w-[280px]">
+                    <div className="text-center mb-2">
+                      <div className="text-2xl font-black text-brand">{metricValue}</div>
+                      <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
+                      {topPerformerMode === "engagement" && entry.bestPlatform && (
+                        <div className="text-[10px] text-white/40 font-medium mt-0.5">{entry.bestPlatform}</div>
+                      )}
+                    </div>
+                    <div className="relative rounded-xl overflow-hidden h-[380px] border-2 border-brand shadow-[0_0_25px_rgba(215,63,9,0.3)]">
+                      {items.length > 0 ? (
+                        <TopPerformerMedia items={items} name={nameLabel} />
+                      ) : (
+                        <div className="absolute inset-0 bg-[#1a1a1a] flex items-center justify-center">
+                          <span className="text-xs text-white/35 font-bold uppercase">No content</span>
+                        </div>
+                      )}
+                      <div className="absolute top-3 left-3 w-9 h-9 rounded-full text-white text-base font-black flex items-center justify-center z-10 bg-brand">
+                        {i + 1}
+                      </div>
+                    </div>
+                    <div className="mt-3 px-1 text-center">
+                      <div className="text-base font-black uppercase truncate">{nameLabel}</div>
+                      <div className="mt-1">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
+                      </div>
+                      <div className="text-xs text-white/70 mt-1">{fmt(entry.combinedFollowers)} combined followers</div>
+                      {entry.url && (
+                        <a href={entry.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-xs text-white/50 hover:text-brand transition-colors">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                          </svg>
+                          View Post
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              const a = entry;
+              const items = media[a.id] || [];
               return (
                 <div key={a.id} className="flex-1 max-w-[280px]">
                   {/* Number above image */}
@@ -1154,11 +1217,61 @@ export function CampaignRecap({
 
           {/* Mobile: #1 full-width + orange highlight, rest 2-col */}
           <div className="md:hidden grid grid-cols-2 gap-3">
-            {topPerformers.map((a, i) => {
-              const items = media[a.id] || [];
+            {topPerformers.map((entry, i) => {
               const isFirst = i === 0;
-              const metricValue = topPerformerMode === "engagement" ? pct(a.bestEngRate) : fmt(a.totalImpressions);
+              const metricValue = topPerformerMode === "engagement" ? pct(entry.bestEngRate) : fmt(entry.totalImpressions);
               const metricLabel = topPerformerMode === "engagement" ? "Engagement Rate" : "Impressions";
+
+              if (entry.kind === "collab") {
+                const items = collabMediaItems(entry);
+                const names = entry.athleteNames;
+                const primaryNames = names.slice(0, 2).join(" + ");
+                const remaining = Math.max(0, names.length - 2);
+                const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
+                return (
+                  <div key={`collab-${entry.id}`} className={isFirst ? "col-span-2" : ""}>
+                    <div className="text-center mb-1.5">
+                      <div className={`${isFirst ? "text-xl" : "text-lg"} font-black text-brand`}>{metricValue}</div>
+                      <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
+                      {topPerformerMode === "engagement" && entry.bestPlatform && (
+                        <div className="text-[10px] text-white/40 font-medium mt-0.5">{entry.bestPlatform}</div>
+                      )}
+                    </div>
+                    <div className={`relative rounded-xl overflow-hidden border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)] ${isFirst ? "h-[280px]" : "h-[220px]"}`}>
+                      {items.length > 0 ? (
+                        <TopPerformerMedia items={items} name={nameLabel} />
+                      ) : (
+                        <div className="absolute inset-0 bg-[#1a1a1a] flex items-center justify-center">
+                          <span className="text-xs text-white/35 font-bold uppercase">No content</span>
+                        </div>
+                      )}
+                      <div className="absolute top-2.5 left-2.5 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 bg-brand">
+                        {i + 1}
+                      </div>
+                    </div>
+                    <div className="mt-2.5 px-1 text-center">
+                      <div className="text-sm font-black uppercase truncate">{nameLabel}</div>
+                      <div className="mt-1">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
+                      </div>
+                      <div className="text-xs text-white/70 mt-1">{fmt(entry.combinedFollowers)} combined followers</div>
+                      {entry.url && (
+                        <a href={entry.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-[10px] text-white/50 hover:text-brand transition-colors">
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                          </svg>
+                          View Post
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              const a = entry;
+              const items = media[a.id] || [];
               return (
                 <div key={a.id} className={isFirst ? "col-span-2" : ""}>
                   {/* Number above image */}
@@ -1229,20 +1342,6 @@ export function CampaignRecap({
               // Responsive column count — matches the old breakpointCols.
               // We don't have window width at SSR; use the full `cols` on
               // desktop and rely on CSS @media below to reflow on mobile.
-              // Pick the media list for a collab group. Prefer media
-              // uploaded directly against the collab group (keyed by g.id);
-              // fall back to media uploaded against any participating
-              // athlete so legacy campaigns without collab-specific media
-              // still render.
-              const collabMediaItems = (g: CollabGroup): Media[] => {
-                const own = media[g.id];
-                if (own && own.length) return own;
-                for (const id of g.athleteIds) {
-                  const items = media[id];
-                  if (items && items.length) return items;
-                }
-                return [];
-              };
               // Tag each gallery item so distributeShortestFirst can mix
               // solo and collab cards together. Solo cards appear first,
               // then collab cards (per spec).

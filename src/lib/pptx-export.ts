@@ -507,7 +507,9 @@ function addPlatformBreakdownSlide(pres: PptxGenJS, stats: ReturnType<typeof com
 }
 
 function addTopPerformersSlide(pres: PptxGenJS, athletes: Athlete[]) {
-  const top = getTopPerformers(athletes, 5);
+  const top = getTopPerformers(athletes, [], 5).filter(
+    (e): e is Extract<typeof e, { kind: "athlete" }> => e.kind === "athlete",
+  );
   if (top.length === 0) return;
 
   const slide = newSlide(pres);
