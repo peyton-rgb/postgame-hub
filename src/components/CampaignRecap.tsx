@@ -292,12 +292,9 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
   const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
   return (
-    <div
-      className="col-span-2 break-inside-avoid mb-2 rounded-xl overflow-hidden border border-[rgba(215,63,9,0.2)] grid"
-      style={{ gridTemplateColumns: "55% 1fr", height: 520 }}
-    >
+    <div className="w-full rounded-xl overflow-hidden border border-[rgba(215,63,9,0.2)] flex flex-col md:grid md:grid-cols-[55%_1fr] md:h-[520px]">
       {/* LEFT: media */}
-      <div className="relative overflow-hidden bg-black">
+      <div className="relative overflow-hidden bg-black aspect-[9/16] md:aspect-auto md:h-full">
         {isVideo && playing ? (
           <video
             ref={videoRef}
@@ -339,9 +336,9 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
           </div>
         )}
 
-        {/* Right-edge fade into info panel */}
+        {/* Right-edge fade into info panel (desktop only) */}
         <div
-          className="absolute top-0 right-0 bottom-0 pointer-events-none"
+          className="absolute top-0 right-0 bottom-0 pointer-events-none hidden md:block"
           style={{ width: 200, background: "linear-gradient(to right, transparent 0%, #0f0f12 100%)" }}
         />
       </div>
@@ -1384,28 +1381,42 @@ export function CampaignRecap({
           </div>
           <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
             {(() => {
-              // Collapse to the first 10 items by default; the expand
+              const visibleCollabs = collabGroups
+                .map((g) => ({ group: g, items: collabMediaItems(g) }))
+                .filter(({ items }) => {
+                  if (filter === "all") return true;
+                  if (filter === "photo") return items.some((m) => m.type === "image");
+                  return items.some((m) => m.type === "video");
+                });
+              if (visibleCollabs.length === 0) return null;
+              return (
+                <div className="flex flex-col gap-4 mb-6">
+                  {visibleCollabs.map(({ group, items }) => (
+                    <CollabCard
+                      key={`collab-${group.id}`}
+                      group={group}
+                      items={items}
+                      activeFilter={filter}
+                      athletes={fullRoster}
+                    />
+                  ))}
+                </div>
+              );
+            })()}
+            {(() => {
+              // Collapse to the first 10 solo items by default; the expand
               // button below lets users see the full gallery.
               const GALLERY_VISIBLE_COUNT = 10;
               const galleryIsTruncated = filtered.length > GALLERY_VISIBLE_COUNT;
               const visibleGalleryItems = galleryExpanded || !galleryIsTruncated
                 ? filtered
                 : filtered.slice(0, GALLERY_VISIBLE_COUNT);
-              // Responsive column count — matches the old breakpointCols.
-              // We don't have window width at SSR; use the full `cols` on
-              // desktop and rely on CSS @media below to reflow on mobile.
-              // Tag each gallery item so distributeShortestFirst can mix
-              // solo and collab cards together. Solo cards appear first,
-              // then collab cards (per spec).
-              type GalleryEntry =
-                | { kind: "solo"; athlete: Athlete; items: Media[] }
-                | { kind: "collab"; group: CollabGroup; items: Media[] };
-              const galleryEntries: GalleryEntry[] = [
-                ...visibleGalleryItems.map<GalleryEntry>((a) => ({ kind: "solo", athlete: a, items: media[a.id] || [] })),
-                ...collabGroups.map<GalleryEntry>((g) => ({ kind: "collab", group: g, items: collabMediaItems(g) })),
-              ];
+              const soloEntries = visibleGalleryItems.map((a) => ({
+                athlete: a,
+                items: media[a.id] || [],
+              }));
               const distributed = distributeShortestFirst(
-                galleryEntries,
+                soloEntries,
                 cols,
                 (entry, i) => estimateCardHeightRatio(i, entry.items.some((m) => m.type === "video")),
               );
@@ -1415,23 +1426,13 @@ export function CampaignRecap({
                     {distributed.map((colItems, colIdx) => (
                       <div key={colIdx} className="balanced-masonry_col">
                         {colItems.map(({ item: entry, originalIndex }) => (
-                          entry.kind === "solo" ? (
-                            <MasonryCard
-                              key={entry.athlete.id}
-                              athlete={entry.athlete}
-                              items={entry.items}
-                              activeFilter={filter}
-                              cardIndex={originalIndex}
-                            />
-                          ) : (
-                            <CollabCard
-                              key={`collab-${entry.group.id}`}
-                              group={entry.group}
-                              items={entry.items}
-                              activeFilter={filter}
-                              athletes={fullRoster}
-                            />
-                          )
+                          <MasonryCard
+                            key={entry.athlete.id}
+                            athlete={entry.athlete}
+                            items={entry.items}
+                            activeFilter={filter}
+                            cardIndex={originalIndex}
+                          />
                         ))}
                       </div>
                     ))}
