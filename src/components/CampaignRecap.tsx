@@ -276,7 +276,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {pct(getBestEngRate(athlete))}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Eng. Rate
             </div>
           </div>
@@ -284,7 +284,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(getTotalImpressions(athlete))}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Views
             </div>
           </div>
@@ -292,7 +292,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(athlete.ig_followers ?? 0)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Followers
             </div>
           </div>
@@ -502,7 +502,7 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {pct(group.combinedEngagementRate)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Combined ER
             </div>
           </div>
@@ -510,7 +510,7 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(group.metrics.views ?? 0)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Views
             </div>
           </div>
@@ -518,7 +518,7 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(group.combinedFollowers)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
+            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Followers
             </div>
           </div>
