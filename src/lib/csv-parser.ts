@@ -552,7 +552,7 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // Try platform-scoped first (handles bare-name layouts), then fall back to prefixed search.
   const iIgFeedUrl = findColInPlatform(headers, platformMap, "ig_feed", "post url", "url")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "post url", "url")
-    : findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
+    : findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post", "post 1", "post1");
   const iIgFeedReach = findColInPlatform(headers, platformMap, "ig_feed", "reach")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "reach")
     : findCol(headers, "ig feed reach", "feed reach");
@@ -612,7 +612,7 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // ── IG Reel columns ──
   const iIgReelUrl = findColInPlatform(headers, platformMap, "ig_reel", "post url", "url")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "post url", "url")
-    : findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post");
+    : findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post", "post 1", "post1");
   const iIgReelViews = findColInPlatform(headers, platformMap, "ig_reel", "views")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "views")
     : findCol(headers, "ig reel views", "reel views", "ig reels views", "reels views");
@@ -646,7 +646,7 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // ── TikTok columns ──
   const iTiktokUrl = findColInPlatform(headers, platformMap, "tiktok", "post url", "url")
     !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "post url", "url")
-    : findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url");
+    : findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url", "post 1", "post1");
   const iTiktokViews = findColInPlatform(headers, platformMap, "tiktok", "views")
     !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "views")
     : findCol(headers, "tiktok views", "tt views", "tiktok video views");
@@ -690,7 +690,7 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // ── IG Reel POST 2 columns ──
   // findColInPlatformNth with occurrence=1 finds the SECOND column with that name
   // inside the ig_reel platform group — i.e. the Post 2 columns.
-  const iIgReelUrl2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "post url", "url");
+  const iIgReelUrl2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "post url", "url", "post 2", "post2");
   const iIgReelViews2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "views");
   const iIgReelLikes2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "likes");
   const iIgReelComments2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "comments");
@@ -701,7 +701,7 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   const iIgReelEngRateImpressions2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "engagement rate impressions", "eng rate impressions");
 
   // ── IG Feed POST 2 columns ──
-  const iIgFeedUrl2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "post url", "url");
+  const iIgFeedUrl2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "post url", "url", "post 2", "post2");
   const iIgFeedReach2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "reach");
   const iIgFeedImpressions2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "impressions");
   const iIgFeedLikes2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "likes");
@@ -714,7 +714,7 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
 
   // ── TikTok POST 2 columns ──
   const iTiktokFollowers2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "followers");
-  const iTiktokUrl2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "post url", "url");
+  const iTiktokUrl2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "post url", "url", "post 2", "post2");
   const iTiktokViews2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "views");
   const iTiktokLikes2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "likes");
   const iTiktokComments2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "comments");
@@ -879,47 +879,62 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
       } : {}),
     };
 
-    // ── Post 2 slots — populated only when the Post 2 URL column is non-empty. ──
-    // These are typed as mutable object properties so we can assign after const decl.
-    const reelUrl2 = iIgReelUrl2 !== -1 ? getVal(iIgReelUrl2)?.trim() : undefined;
-    if (reelUrl2) {
+    // ── Post 2 slots — populated when the Post 2 URL column is non-empty OR
+    //    when any metric column has a value (handles CSVs with metrics but no links). ──
+    const reelUrl2Raw = iIgReelUrl2 !== -1 ? getVal(iIgReelUrl2)?.trim() : undefined;
+    const reelUrl2 = reelUrl2Raw?.startsWith("http") ? reelUrl2Raw : undefined;
+    const reelViews2 = parseNum(getVal(iIgReelViews2));
+    const reelLikes2 = parseNum(getVal(iIgReelLikes2));
+    const reelComments2 = parseNum(getVal(iIgReelComments2));
+    const reelEngagements2 = parseNum(getVal(iIgReelEngagements2));
+    if (reelUrl2 || reelViews2 || reelLikes2 || reelComments2 || reelEngagements2) {
       metrics.ig_reel_2 = {
         post_url: reelUrl2,
-        views: parseNum(getVal(iIgReelViews2)),
-        likes: parseNum(getVal(iIgReelLikes2)),
-        comments: parseNum(getVal(iIgReelComments2)),
+        views: reelViews2,
+        likes: reelLikes2,
+        comments: reelComments2,
         shares: parseNum(getVal(iIgReelShares2)),
         reposts: parseNum(getVal(iIgReelReposts2)),
-        total_engagements: parseNum(getVal(iIgReelEngagements2)),
+        total_engagements: reelEngagements2,
         engagement_rate_followers: parseRate(getVal(iIgReelEngRateFollowers2)),
         engagement_rate_impressions: parseRate(getVal(iIgReelEngRateImpressions2)),
       };
     }
-    const feedUrl2 = iIgFeedUrl2 !== -1 ? getVal(iIgFeedUrl2)?.trim() : undefined;
-    if (feedUrl2) {
+    const feedUrl2Raw = iIgFeedUrl2 !== -1 ? getVal(iIgFeedUrl2)?.trim() : undefined;
+    const feedUrl2 = feedUrl2Raw?.startsWith("http") ? feedUrl2Raw : undefined;
+    const feedImpressions2 = parseNum(getVal(iIgFeedImpressions2));
+    const feedLikes2 = parseNum(getVal(iIgFeedLikes2));
+    const feedComments2 = parseNum(getVal(iIgFeedComments2));
+    const feedEngagements2 = parseNum(getVal(iIgFeedEngagements2));
+    if (feedUrl2 || feedImpressions2 || feedLikes2 || feedComments2 || feedEngagements2) {
       metrics.ig_feed_2 = {
         post_url: feedUrl2,
         reach: parseNum(getVal(iIgFeedReach2)),
-        impressions: parseNum(getVal(iIgFeedImpressions2)),
-        likes: parseNum(getVal(iIgFeedLikes2)),
-        comments: parseNum(getVal(iIgFeedComments2)),
+        impressions: feedImpressions2,
+        likes: feedLikes2,
+        comments: feedComments2,
         shares: parseNum(getVal(iIgFeedShares2)),
         reposts: parseNum(getVal(iIgFeedReposts2)),
-        total_engagements: parseNum(getVal(iIgFeedEngagements2)),
+        total_engagements: feedEngagements2,
         engagement_rate_followers: parseRate(getVal(iIgFeedEngRateFollowers2)),
         engagement_rate_impressions: parseRate(getVal(iIgFeedEngRateImpressions2)),
       };
     }
-    const tiktokUrl2 = iTiktokUrl2 !== -1 ? getVal(iTiktokUrl2)?.trim() : undefined;
-    if (tiktokUrl2) {
+    const tiktokUrl2Raw = iTiktokUrl2 !== -1 ? getVal(iTiktokUrl2)?.trim() : undefined;
+    const tiktokUrl2 = tiktokUrl2Raw?.startsWith("http") ? tiktokUrl2Raw : undefined;
+    const tiktokViews2 = parseNum(getVal(iTiktokViews2));
+    const tiktokLikes2 = parseNum(getVal(iTiktokLikes2));
+    const tiktokComments2 = parseNum(getVal(iTiktokComments2));
+    const tiktokEngagements2 = parseNum(getVal(iTiktokEngagements2));
+    if (tiktokUrl2 || tiktokViews2 || tiktokLikes2 || tiktokComments2 || tiktokEngagements2) {
       metrics.tiktok_2 = {
         post_url: tiktokUrl2,
         followers: parseNum(getVal(iTiktokFollowers2)),
-        views: parseNum(getVal(iTiktokViews2)),
-        likes: parseNum(getVal(iTiktokLikes2)),
-        comments: parseNum(getVal(iTiktokComments2)),
+        views: tiktokViews2,
+        likes: tiktokLikes2,
+        comments: tiktokComments2,
         saves: parseNum(getVal(iTiktokSaves2)),
-        total_engagements: parseNum(getVal(iTiktokEngagements2)),
+        total_engagements: tiktokEngagements2,
         engagement_rate_followers: parseRate(getVal(iTiktokEngRateFollowers2)),
         engagement_rate_impressions: parseRate(getVal(iTiktokEngRateImpressions2)),
       };
