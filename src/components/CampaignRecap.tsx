@@ -198,47 +198,52 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
           </div>
         )}
 
-        {/* Creator overlay — top of card */}
-        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
-          <div className="flex items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-black uppercase text-white truncate">{athlete.name}</div>
-            </div>
-            {/* Download + Link buttons */}
-            <div className="flex gap-1 ml-2 flex-shrink-0">
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+        {/* Top overlay — buttons only (download + post link) */}
+        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-4 bg-gradient-to-b from-black/75 to-transparent">
+          <div className="flex justify-end gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+              className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
+              title="Download"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
+            {postUrl && (
+              <a
+                href={postUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
                 className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
-                title="Download"
+                title="View Post"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
                 </svg>
-              </button>
-              {postUrl && (
-                <a
-                  href={postUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
-                  title="View Post"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                  </svg>
-                </a>
-              )}
-            </div>
+              </a>
+            )}
           </div>
         </div>
 
-        {/* Media type badge — uses actual media type, not CSV post_type */}
-        <span className="absolute bottom-2 right-2 z-[3] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-black/65 text-white backdrop-blur">
-          {getMediaLabel(items)}
-        </span>
+        {/* Bottom overlay — name + school · sport */}
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[2]"
+          style={{
+            padding: "40px 14px 12px",
+            background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 55%, transparent 100%)",
+          }}
+        >
+          <div style={{ fontFamily: bebas, fontSize: 22, letterSpacing: 1, color: "#fff", lineHeight: 1, marginBottom: 3 }}>
+            {athlete.name}
+          </div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+            {athlete.school} · {athlete.sport}
+          </div>
+        </div>
 
         {/* Carousel arrows */}
         {items.length > 1 && hovered && (
@@ -261,33 +266,33 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
         )}
       </div>
 
-      {/* Footer panel */}
-      <div style={{ background: "#141418", borderTop: "1px solid #222226", padding: "11px 12px 13px" }}>
-        <div style={{ color: "#666", fontSize: 11, fontWeight: 600 }}>
-          {athlete.sport} · {athlete.school}
+      {/* Footer panel — media-type tag + three centered stat columns */}
+      <div style={{ background: "#141418", borderTop: "1px solid #222226" }}>
+        <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, padding: "8px 14px 0" }}>
+          {getMediaLabel(items)}
         </div>
-        <div className="flex" style={{ borderTop: "1px solid #1e1e22", marginTop: 9, paddingTop: 9, gap: 14 }}>
-          <div>
-            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+        <div className="flex" style={{ padding: "10px 0 12px" }}>
+          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
+            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {pct(getBestEngRate(athlete))}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Eng. Rate
             </div>
           </div>
-          <div>
-            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
+            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(getTotalImpressions(athlete))}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Views
             </div>
           </div>
-          <div>
-            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(athlete.ig_followers ?? 0)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Followers
             </div>
           </div>
