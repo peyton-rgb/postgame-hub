@@ -65,6 +65,22 @@ export function detectCollabGroups<T extends CollabSource>(
       if (!buckets.has(k)) buckets.set(k, []);
       buckets.get(k)!.push({ athlete: a, index: i });
     }
+    // Also scan Post 2 slots so multi-post collabs are detected: a URL shared
+    // between two athletes' Post 2 (or between one athlete's Post 1 and another's
+    // Post 2) is still a collab and should be deduplicated.
+    const m2 = a.metrics;
+    if (m2?.ig_feed_2?.post_url) {
+      const url = m2.ig_feed_2.post_url.trim();
+      if (url) { const k = keyFor("ig_feed", url); if (!buckets.has(k)) buckets.set(k, []); buckets.get(k)!.push({ athlete: a, index: i }); }
+    }
+    if (m2?.ig_reel_2?.post_url) {
+      const url = m2.ig_reel_2.post_url.trim();
+      if (url) { const k = keyFor("ig_reel", url); if (!buckets.has(k)) buckets.set(k, []); buckets.get(k)!.push({ athlete: a, index: i }); }
+    }
+    if (m2?.tiktok_2?.post_url) {
+      const url = m2.tiktok_2.post_url.trim();
+      if (url) { const k = keyFor("tiktok", url); if (!buckets.has(k)) buckets.set(k, []); buckets.get(k)!.push({ athlete: a, index: i }); }
+    }
   });
 
   const collabGroups: CollabGroup[] = [];
@@ -88,14 +104,18 @@ export function detectCollabGroups<T extends CollabSource>(
     // for this URL. Per the spec, the metrics are identical across all
     // participants — we just need one populated copy.
     const sourceBlock = (() => {
+      // The _2 slot key that corresponds to this platform (for Post 2 collab metrics).
+      const p2Key: "ig_feed_2" | "ig_reel_2" | "tiktok_2" =
+        platform === "ig_feed" ? "ig_feed_2" : platform === "ig_reel" ? "ig_reel_2" : "tiktok_2";
       for (const b of bucket) {
-        const block = b.athlete.metrics?.[platform];
+        // Check Post 1 slot first; fall through to Post 2 slot if Post 1 is empty.
+        const block = b.athlete.metrics?.[platform] ?? b.athlete.metrics?.[p2Key];
         if (!block) continue;
         const anyNumeric = ["views", "impressions", "likes", "comments", "shares", "reposts", "total_engagements"]
           .some((k) => (block as Record<string, unknown>)[k] != null);
         if (anyNumeric) return block;
       }
-      return bucket[0].athlete.metrics?.[platform] ?? {};
+      return bucket[0].athlete.metrics?.[platform] ?? bucket[0].athlete.metrics?.[p2Key] ?? {};
     })();
 
     const block = sourceBlock as Record<string, number | undefined>;
@@ -370,6 +390,42 @@ function findColInPlatform(
 }
 
 /**
+ * Like findColInPlatform, but finds the Nth occurrence (0-based) of a column
+ * within the given platform group. Used to distinguish Post 1 vs Post 2 columns
+ * in v2 templates where the same metric names repeat for each post under the same
+ * platform group tag (e.g. "ig_reel" → "IG REEL POST 1" and "IG REEL POST 2").
+ *
+ * When no group row is present, only occurrence=0 is supported (equivalent to
+ * findCol); occurrence>0 returns -1 (no Post 2 data for single-post templates).
+ */
+function findColInPlatformNth(
+  headers: string[],
+  platformMap: PlatformTag[],
+  platform: PlatformTag,
+  occurrence: number,
+  ...names: string[]
+): number {
+  const hasGroupRow = platformMap.some((p) => p !== "identity");
+  if (!hasGroupRow) return occurrence === 0 ? findCol(headers, ...names) : -1;
+
+  for (const name of names) {
+    const lower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!lower) continue;
+    let count = 0;
+    for (let i = 0; i < headers.length; i++) {
+      if (platformMap[i] !== platform) continue;
+      const hClean = headers[i].toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!hClean) continue;
+      if (hClean === lower || hClean.includes(lower)) {
+        if (count === occurrence) return i;
+        count++;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
  * Parse an Info/Roster CSV — athlete identity data
  * Expected columns: First, Last, IG Handle, School, Sport, Gender, Notes (flexible matching)
  */
@@ -631,6 +687,42 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
         : findCol(headers, "tiktok engagement rate", "tiktok eng rate", "tt engagement rate", "tt eng rate"))
     : -1;
 
+  // ── IG Reel POST 2 columns ──
+  // findColInPlatformNth with occurrence=1 finds the SECOND column with that name
+  // inside the ig_reel platform group — i.e. the Post 2 columns.
+  const iIgReelUrl2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "post url", "url");
+  const iIgReelViews2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "views");
+  const iIgReelLikes2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "likes");
+  const iIgReelComments2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "comments");
+  const iIgReelShares2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "shares");
+  const iIgReelReposts2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "reposts");
+  const iIgReelEngagements2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "total engagements", "engagements");
+  const iIgReelEngRateFollowers2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "engagement rate followers", "eng rate followers");
+  const iIgReelEngRateImpressions2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "engagement rate impressions", "eng rate impressions");
+
+  // ── IG Feed POST 2 columns ──
+  const iIgFeedUrl2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "post url", "url");
+  const iIgFeedReach2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "reach");
+  const iIgFeedImpressions2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "impressions");
+  const iIgFeedLikes2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "likes");
+  const iIgFeedComments2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "comments");
+  const iIgFeedShares2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "shares");
+  const iIgFeedReposts2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "reposts");
+  const iIgFeedEngagements2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "total engagements", "engagements");
+  const iIgFeedEngRateFollowers2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "engagement rate followers", "eng rate followers");
+  const iIgFeedEngRateImpressions2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "engagement rate impressions", "eng rate impressions");
+
+  // ── TikTok POST 2 columns ──
+  const iTiktokFollowers2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "followers");
+  const iTiktokUrl2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "post url", "url");
+  const iTiktokViews2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "views");
+  const iTiktokLikes2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "likes");
+  const iTiktokComments2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "comments");
+  const iTiktokSaves2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "saves");
+  const iTiktokEngagements2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "total engagements", "engagements");
+  const iTiktokEngRateFollowers2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "engagement rate followers", "eng rate followers");
+  const iTiktokEngRateImpressions2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "engagement rate impressions", "eng rate impressions");
+
   // ── Other / Clicks / Sales / Targets columns ──
   // These are global because they're typically not duplicated across platforms,
   // but we still scope to "other" first when a group row exists.
@@ -786,6 +878,52 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
         },
       } : {}),
     };
+
+    // ── Post 2 slots — populated only when the Post 2 URL column is non-empty. ──
+    // These are typed as mutable object properties so we can assign after const decl.
+    const reelUrl2 = iIgReelUrl2 !== -1 ? getVal(iIgReelUrl2)?.trim() : undefined;
+    if (reelUrl2) {
+      metrics.ig_reel_2 = {
+        post_url: reelUrl2,
+        views: parseNum(getVal(iIgReelViews2)),
+        likes: parseNum(getVal(iIgReelLikes2)),
+        comments: parseNum(getVal(iIgReelComments2)),
+        shares: parseNum(getVal(iIgReelShares2)),
+        reposts: parseNum(getVal(iIgReelReposts2)),
+        total_engagements: parseNum(getVal(iIgReelEngagements2)),
+        engagement_rate_followers: parseRate(getVal(iIgReelEngRateFollowers2)),
+        engagement_rate_impressions: parseRate(getVal(iIgReelEngRateImpressions2)),
+      };
+    }
+    const feedUrl2 = iIgFeedUrl2 !== -1 ? getVal(iIgFeedUrl2)?.trim() : undefined;
+    if (feedUrl2) {
+      metrics.ig_feed_2 = {
+        post_url: feedUrl2,
+        reach: parseNum(getVal(iIgFeedReach2)),
+        impressions: parseNum(getVal(iIgFeedImpressions2)),
+        likes: parseNum(getVal(iIgFeedLikes2)),
+        comments: parseNum(getVal(iIgFeedComments2)),
+        shares: parseNum(getVal(iIgFeedShares2)),
+        reposts: parseNum(getVal(iIgFeedReposts2)),
+        total_engagements: parseNum(getVal(iIgFeedEngagements2)),
+        engagement_rate_followers: parseRate(getVal(iIgFeedEngRateFollowers2)),
+        engagement_rate_impressions: parseRate(getVal(iIgFeedEngRateImpressions2)),
+      };
+    }
+    const tiktokUrl2 = iTiktokUrl2 !== -1 ? getVal(iTiktokUrl2)?.trim() : undefined;
+    if (tiktokUrl2) {
+      metrics.tiktok_2 = {
+        post_url: tiktokUrl2,
+        followers: parseNum(getVal(iTiktokFollowers2)),
+        views: parseNum(getVal(iTiktokViews2)),
+        likes: parseNum(getVal(iTiktokLikes2)),
+        comments: parseNum(getVal(iTiktokComments2)),
+        saves: parseNum(getVal(iTiktokSaves2)),
+        total_engagements: parseNum(getVal(iTiktokEngagements2)),
+        engagement_rate_followers: parseRate(getVal(iTiktokEngRateFollowers2)),
+        engagement_rate_impressions: parseRate(getVal(iTiktokEngRateImpressions2)),
+      };
+    }
 
     athletes.push({
       first: titleCase(first),

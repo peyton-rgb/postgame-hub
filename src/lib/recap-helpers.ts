@@ -157,32 +157,45 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     const feedIsCollab = isCollabPost("ig_feed", m.ig_feed?.post_url);
     const reelIsCollab = isCollabPost("ig_reel", m.ig_reel?.post_url);
     const tiktokIsCollab = isCollabPost("tiktok", m.tiktok?.post_url);
+    // Post 2 collab checks — same URL space, so a Post 2 URL in a collab group is skipped.
+    const feed2IsCollab = isCollabPost("ig_feed", m.ig_feed_2?.post_url);
+    const reel2IsCollab = isCollabPost("ig_reel", m.ig_reel_2?.post_url);
+    const tiktok2IsCollab = isCollabPost("tiktok", m.tiktok_2?.post_url);
 
     // ── Post counting (skip collab posts here — added once below) ──
     if (m.ig_feed?.post_url && !feedIsCollab) { igFeedPosts++; totalPosts++; }
+    if (m.ig_feed_2?.post_url && !feed2IsCollab) { igFeedPosts++; totalPosts++; }
     if (m.ig_reel?.post_url && !reelIsCollab) { igReelPosts++; totalPosts++; }
+    if (m.ig_reel_2?.post_url && !reel2IsCollab) { igReelPosts++; totalPosts++; }
     if (m.tiktok?.post_url && !tiktokIsCollab) { tiktokPosts++; totalPosts++; }
+    if (m.tiktok_2?.post_url && !tiktok2IsCollab) { tiktokPosts++; totalPosts++; }
     if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
-    // ── Total Impressions: Feed + Story + Reel + TikTok ──
+    // ── Total Impressions: Feed + Story + Reel + TikTok (Post 1 + Post 2) ──
     const storyTotalImp = m.ig_story?.total_impressions
       ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
     totalImpressions +=
       (feedIsCollab ? 0 : (m.ig_feed?.impressions || 0)) +
+      (feed2IsCollab ? 0 : (m.ig_feed_2?.impressions || 0)) +
       storyTotalImp +
       (reelIsCollab ? 0 : (m.ig_reel?.views || 0)) +
-      (tiktokIsCollab ? 0 : (m.tiktok?.views || 0));
+      (reel2IsCollab ? 0 : (m.ig_reel_2?.views || 0)) +
+      (tiktokIsCollab ? 0 : (m.tiktok?.views || 0)) +
+      (tiktok2IsCollab ? 0 : (m.tiktok_2?.views || 0));
 
-    // ── Total Engagements: Feed + Reel + TikTok (Story has no engagements) ──
+    // ── Total Engagements: Feed + Reel + TikTok (Post 1 + Post 2; Story has none) ──
     totalEngagements +=
       (feedIsCollab ? 0 : (m.ig_feed?.total_engagements || 0)) +
+      (feed2IsCollab ? 0 : (m.ig_feed_2?.total_engagements || 0)) +
       (reelIsCollab ? 0 : (m.ig_reel?.total_engagements || 0)) +
-      (tiktokIsCollab ? 0 : (m.tiktok?.total_engagements || 0));
+      (reel2IsCollab ? 0 : (m.ig_reel_2?.total_engagements || 0)) +
+      (tiktokIsCollab ? 0 : (m.tiktok?.total_engagements || 0)) +
+      (tiktok2IsCollab ? 0 : (m.tiktok_2?.total_engagements || 0));
 
     // ── Reach (legacy display field) ──
     totalReach += (feedIsCollab ? 0 : (m.ig_feed?.reach || 0)) + (a.ig_followers || 0);
 
-    // ── Per-platform aggregations ──
+    // ── Per-platform aggregations (Post 1) ──
     if (!feedIsCollab) {
       igFeed.reach += m.ig_feed?.reach || 0;
       igFeed.impressions += m.ig_feed?.impressions || 0;
@@ -193,6 +206,18 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
       igFeed.engagements += m.ig_feed?.total_engagements || 0;
       const r = bestRateForPlatform(m, "ig_feed");
       if (r > 0) { igFeed.engRateSum += r; igFeed.engRateCount++; }
+    }
+    // Post 2
+    if (!feed2IsCollab && m.ig_feed_2?.post_url) {
+      igFeed.reach += m.ig_feed_2.reach || 0;
+      igFeed.impressions += m.ig_feed_2.impressions || 0;
+      igFeed.likes += m.ig_feed_2.likes || 0;
+      igFeed.comments += m.ig_feed_2.comments || 0;
+      igFeed.shares += m.ig_feed_2.shares || 0;
+      igFeed.reposts += m.ig_feed_2.reposts || 0;
+      igFeed.engagements += m.ig_feed_2.total_engagements || 0;
+      const r2f = Math.max(m.ig_feed_2.engagement_rate_followers ?? 0, m.ig_feed_2.engagement_rate_impressions ?? 0);
+      if (r2f > 0) { igFeed.engRateSum += r2f; igFeed.engRateCount++; }
     }
 
     igStory.count += m.ig_story?.count || 0;
@@ -209,6 +234,17 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
       const r = bestRateForPlatform(m, "ig_reel");
       if (r > 0) { igReel.engRateSum += r; igReel.engRateCount++; }
     }
+    // Post 2
+    if (!reel2IsCollab && m.ig_reel_2?.post_url) {
+      igReel.views += m.ig_reel_2.views || 0;
+      igReel.likes += m.ig_reel_2.likes || 0;
+      igReel.comments += m.ig_reel_2.comments || 0;
+      igReel.shares += m.ig_reel_2.shares || 0;
+      igReel.reposts += m.ig_reel_2.reposts || 0;
+      igReel.engagements += m.ig_reel_2.total_engagements || 0;
+      const r2r = Math.max(m.ig_reel_2.engagement_rate_followers ?? 0, m.ig_reel_2.engagement_rate_impressions ?? 0);
+      if (r2r > 0) { igReel.engRateSum += r2r; igReel.engRateCount++; }
+    }
 
     tiktok.followers += m.tiktok?.followers || 0;
     if (!tiktokIsCollab) {
@@ -222,8 +258,19 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
       const r = bestRateForPlatform(m, "tiktok");
       if (r > 0) { tiktok.engRateSum += r; tiktok.engRateCount++; }
     }
+    // Post 2
+    if (!tiktok2IsCollab && m.tiktok_2?.post_url) {
+      tiktok.followers += m.tiktok_2.followers || 0;
+      tiktok.views += m.tiktok_2.views || 0;
+      tiktok.likes += m.tiktok_2.likes || 0;
+      tiktok.comments += m.tiktok_2.comments || 0;
+      tiktok.saves += m.tiktok_2.saves || 0;
+      tiktok.engagements += m.tiktok_2.total_engagements || 0;
+      const r2t = Math.max(m.tiktok_2.engagement_rate_followers ?? 0, m.tiktok_2.engagement_rate_impressions ?? 0);
+      if (r2t > 0) { tiktok.engRateSum += r2t; tiktok.engRateCount++; }
+    }
 
-    // ── Hero Avg Engagement Rate inputs (per-platform aggregation) ──
+    // ── Hero Avg Engagement Rate inputs (per-platform aggregation, Post 1) ──
     for (const p of ["ig_feed", "ig_reel", "tiktok"] as const) {
       if (
         (p === "ig_feed" && feedIsCollab) ||
@@ -237,6 +284,19 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
           platformRateCount[p] += 1;
         }
       }
+    }
+    // Post 2 ER contributions to platform averages.
+    if (!feed2IsCollab && m.ig_feed_2?.post_url) {
+      const r2f = Math.max(m.ig_feed_2.engagement_rate_followers ?? 0, m.ig_feed_2.engagement_rate_impressions ?? 0);
+      if (r2f > 0) { platformRateSum.ig_feed += r2f; platformRateCount.ig_feed += 1; }
+    }
+    if (!reel2IsCollab && m.ig_reel_2?.post_url) {
+      const r2r = Math.max(m.ig_reel_2.engagement_rate_followers ?? 0, m.ig_reel_2.engagement_rate_impressions ?? 0);
+      if (r2r > 0) { platformRateSum.ig_reel += r2r; platformRateCount.ig_reel += 1; }
+    }
+    if (!tiktok2IsCollab && m.tiktok_2?.post_url) {
+      const r2t = Math.max(m.tiktok_2.engagement_rate_followers ?? 0, m.tiktok_2.engagement_rate_impressions ?? 0);
+      if (r2t > 0) { platformRateSum.tiktok += r2t; platformRateCount.tiktok += 1; }
     }
 
     // ── Clicks (unchanged) ──
@@ -416,6 +476,19 @@ function bestEngWithPlatform(m: AthleteMetrics | undefined): { rate: number; pla
     const r = bestRateForPlatform(m, key);
     if (r > best.rate) best = { rate: r, platform: label };
   }
+  // Also check Post 2 blocks so multi-post athletes get credit for their best slot.
+  if (m?.ig_feed_2?.post_url) {
+    const r2 = Math.max(m.ig_feed_2.engagement_rate_followers ?? 0, m.ig_feed_2.engagement_rate_impressions ?? 0);
+    if (r2 > best.rate) best = { rate: r2, platform: "IG Feed" };
+  }
+  if (m?.ig_reel_2?.post_url) {
+    const r2 = Math.max(m.ig_reel_2.engagement_rate_followers ?? 0, m.ig_reel_2.engagement_rate_impressions ?? 0);
+    if (r2 > best.rate) best = { rate: r2, platform: "IG Reel" };
+  }
+  if (m?.tiktok_2?.post_url) {
+    const r2 = Math.max(m.tiktok_2.engagement_rate_followers ?? 0, m.tiktok_2.engagement_rate_impressions ?? 0);
+    if (r2 > best.rate) best = { rate: r2, platform: "TikTok" };
+  }
   return best;
 }
 
@@ -466,7 +539,10 @@ function athleteHasAnyCollabPost(a: Athlete, collabUrls: Set<string>): boolean {
   return (
     (!!m.ig_feed?.post_url && collabUrls.has(m.ig_feed.post_url)) ||
     (!!m.ig_reel?.post_url && collabUrls.has(m.ig_reel.post_url)) ||
-    (!!m.tiktok?.post_url && collabUrls.has(m.tiktok.post_url))
+    (!!m.tiktok?.post_url && collabUrls.has(m.tiktok.post_url)) ||
+    (!!m.ig_feed_2?.post_url && collabUrls.has(m.ig_feed_2.post_url)) ||
+    (!!m.ig_reel_2?.post_url && collabUrls.has(m.ig_reel_2.post_url)) ||
+    (!!m.tiktok_2?.post_url && collabUrls.has(m.tiktok_2.post_url))
   );
 }
 
@@ -563,12 +639,20 @@ export function getTotalImpressions(athlete: Athlete): number {
   const storyTotal = m.ig_story?.total_impressions
     ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
   return (m.ig_feed?.impressions || 0)
+    + (m.ig_feed_2?.impressions || 0)
     + storyTotal
     + (m.ig_reel?.views || 0)
-    + (m.tiktok?.views || 0);
+    + (m.ig_reel_2?.views || 0)
+    + (m.tiktok?.views || 0)
+    + (m.tiktok_2?.views || 0);
 }
 
 export function getTotalEngagements(athlete: Athlete): number {
   const m = athlete.metrics || {};
-  return (m.ig_feed?.total_engagements || 0) + (m.ig_reel?.total_engagements || 0) + (m.tiktok?.total_engagements || 0);
+  return (m.ig_feed?.total_engagements || 0)
+    + (m.ig_feed_2?.total_engagements || 0)
+    + (m.ig_reel?.total_engagements || 0)
+    + (m.ig_reel_2?.total_engagements || 0)
+    + (m.tiktok?.total_engagements || 0)
+    + (m.tiktok_2?.total_engagements || 0);
 }

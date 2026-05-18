@@ -164,6 +164,42 @@ export interface AthleteMetrics {
     engagement_rate_followers?: number;
     engagement_rate_impressions?: number;
   };
+  // Multi-post support: Post 2 slots. Same shape as Post 1 counterparts.
+  // Only populated when the CSV has a second post URL for that platform.
+  ig_feed_2?: {
+    post_url?: string;
+    reach?: number;
+    impressions?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    reposts?: number;
+    total_engagements?: number;
+    engagement_rate_followers?: number;
+    engagement_rate_impressions?: number;
+  };
+  ig_reel_2?: {
+    post_url?: string;
+    views?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    reposts?: number;
+    total_engagements?: number;
+    engagement_rate_followers?: number;
+    engagement_rate_impressions?: number;
+  };
+  tiktok_2?: {
+    post_url?: string;
+    followers?: number;
+    views?: number;
+    likes?: number;
+    comments?: number;
+    saves?: number;
+    total_engagements?: number;
+    engagement_rate_followers?: number;
+    engagement_rate_impressions?: number;
+  };
   clicks?: {
     link_clicks?: number;
     click_through_rate?: number;

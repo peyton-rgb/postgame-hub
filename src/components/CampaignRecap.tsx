@@ -89,6 +89,13 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
   const [slideIdx, setSlideIdx] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [playing, setPlaying] = useState(false);
+  // Multi-post: does this athlete have a second post on any platform?
+  const hasPost2 = !!(
+    athlete.metrics?.ig_reel_2?.post_url ||
+    athlete.metrics?.ig_feed_2?.post_url ||
+    athlete.metrics?.tiktok_2?.post_url
+  );
+  const [postSlot, setPostSlot] = useState(0); // 0 = Post 1, 1 = Post 2
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Detect wide content: use 16:9 if video is landscape, or if all photos are wide
@@ -121,7 +128,12 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
   const isVideo = current?.type === "video";
   const coverImage = items.find((m) => m.type === "image");
   const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : coverImage?.file_url ?? null);
-  const postUrl = getPostUrl(athlete);
+  // When viewing Post 2, link to that slot's URL; otherwise use Post 1.
+  const postUrl = postSlot === 0
+    ? getPostUrl(athlete)
+    : (athlete.metrics?.ig_reel_2?.post_url ||
+       athlete.metrics?.ig_feed_2?.post_url ||
+       athlete.metrics?.tiktok_2?.post_url || null);
 
   const keepControlsVisible = useCallback(() => {
     if (playing && videoRef.current) {
@@ -245,8 +257,18 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
           </div>
         </div>
 
-        {/* Carousel arrows */}
-        {items.length > 1 && hovered && (
+        {/* Carousel arrows — Post 1/2 switch when multi-post; media slide otherwise */}
+        {hasPost2 && hovered && (
+          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
+            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setPostSlot((s) => (s <= 0 ? 1 : 0)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setPostSlot((s) => (s >= 1 ? 0 : 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+        )}
+        {!hasPost2 && items.length > 1 && hovered && (
           <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
             <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -264,12 +286,30 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
             ))}
           </div>
         )}
+
+        {/* POST 1 / POST 2 badge — bottom-right of image when multi-post */}
+        {hasPost2 && !playing && (
+          <div className="absolute bottom-14 right-3 z-[3]" style={{
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            padding: "3px 8px",
+            borderRadius: 4,
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: 1,
+            textTransform: "uppercase" as const,
+            color: "rgba(255,255,255,0.85)",
+          }}>
+            POST {postSlot + 1} OF 2
+          </div>
+        )}
       </div>
 
       {/* Footer panel — media-type tag + three centered stat columns */}
       <div style={{ background: "#141418", borderTop: "1px solid #222226" }}>
         <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, padding: "8px 14px 0" }}>
-          {getMediaLabel(items)}
+          {hasPost2 ? `Post ${postSlot + 1} · ${getMediaLabel(items)}` : getMediaLabel(items)}
         </div>
         <div className="flex" style={{ padding: "10px 0 12px" }}>
           <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
@@ -1765,11 +1805,16 @@ export function CampaignRecap({
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleRosterAthletes.map((a, i) => {
+                  {visibleRosterAthletes.flatMap((a, i) => {
                     const m = a.metrics || {};
                     const feedUrl = m.ig_feed?.post_url || null;
                     const reelUrl = m.ig_reel?.post_url || null;
-                    return (
+                    const hasReel2 = !!(m.ig_reel_2?.post_url);
+                    const hasFeed2 = !!(m.ig_feed_2?.post_url);
+                    const hasTiktok2 = !!(m.tiktok_2?.post_url);
+                    const hasAnyPost2 = hasReel2 || hasFeed2 || hasTiktok2;
+
+                    const mainRow = (
                     <tr key={a.id} className="border-b border-white/[0.10] hover:bg-white/[0.04]">
                       <td className="px-3 py-3 text-sm font-black text-white/45">{i + 1}</td>
                       <td className="px-3 py-3 text-sm font-black uppercase">{a.name}</td>
@@ -1813,6 +1858,71 @@ export function CampaignRecap({
                       )}
                     </tr>
                     );
+
+                    if (!hasAnyPost2) return [mainRow];
+
+                    // Build Post 1 + Post 2 sub-rows for each platform that has a second post.
+                    // Sub-rows are desktop-only (hidden md:table-row) and show per-post metrics.
+                    const subTdStyle: React.CSSProperties = { borderLeft: "2px solid rgba(215,63,9,0.15)" };
+                    const subRowBg: React.CSSProperties = { background: "rgba(215,63,9,0.025)" };
+
+                    type PostSlotData = { label: string; impressions?: number; engagements?: number; erFol?: number; erImp?: number; url?: string | null; };
+                    const slots: PostSlotData[] = [];
+
+                    if (hasReel2) {
+                      slots.push({ label: "Reel Post 1", impressions: m.ig_reel?.views, engagements: m.ig_reel?.total_engagements, erFol: m.ig_reel?.engagement_rate_followers, erImp: m.ig_reel?.engagement_rate_impressions, url: m.ig_reel?.post_url });
+                      slots.push({ label: "Reel Post 2", impressions: m.ig_reel_2?.views, engagements: m.ig_reel_2?.total_engagements, erFol: m.ig_reel_2?.engagement_rate_followers, erImp: m.ig_reel_2?.engagement_rate_impressions, url: m.ig_reel_2?.post_url });
+                    }
+                    if (hasFeed2) {
+                      slots.push({ label: "Feed Post 1", impressions: m.ig_feed?.impressions, engagements: m.ig_feed?.total_engagements, erFol: m.ig_feed?.engagement_rate_followers, erImp: m.ig_feed?.engagement_rate_impressions, url: m.ig_feed?.post_url });
+                      slots.push({ label: "Feed Post 2", impressions: m.ig_feed_2?.impressions, engagements: m.ig_feed_2?.total_engagements, erFol: m.ig_feed_2?.engagement_rate_followers, erImp: m.ig_feed_2?.engagement_rate_impressions, url: m.ig_feed_2?.post_url });
+                    }
+                    if (hasTiktok2) {
+                      slots.push({ label: "TikTok Post 1", impressions: m.tiktok?.views, engagements: m.tiktok?.total_engagements, erFol: m.tiktok?.engagement_rate_followers, erImp: m.tiktok?.engagement_rate_impressions, url: m.tiktok?.post_url });
+                      slots.push({ label: "TikTok Post 2", impressions: m.tiktok_2?.views, engagements: m.tiktok_2?.total_engagements, erFol: m.tiktok_2?.engagement_rate_followers, erImp: m.tiktok_2?.engagement_rate_impressions, url: m.tiktok_2?.post_url });
+                    }
+
+                    const subRows = slots.map((slot) => {
+                      const er = Math.max(slot.erFol ?? 0, slot.erImp ?? 0);
+                      const isFeed = slot.label.startsWith("Feed");
+                      const isReel = slot.label.startsWith("Reel");
+                      return (
+                        <tr key={`${a.id}-${slot.label}`} className="hidden md:table-row border-b border-white/[0.06]" style={subRowBg}>
+                          <td className="px-3 py-2" style={subTdStyle} />
+                          <td className="px-3 py-2" style={{ ...subTdStyle, fontSize: 10, color: "#666" }}>\u21b3 {slot.label}</td>
+                          {showCol("school") && <td className="px-3 py-2" style={subTdStyle} />}
+                          {showCol("sport") && <td className="px-3 py-2" style={subTdStyle} />}
+                          {showCol("ig_handle") && <td className="px-3 py-2" style={subTdStyle} />}
+                          {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-2" style={subTdStyle} />}
+                          {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{slot.impressions ? fmt(slot.impressions) : "\u2014"}</td>}
+                          {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{slot.engagements ? fmt(slot.engagements) : "\u2014"}</td>}
+                          {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{er > 0 ? pct(er) : "\u2014"}</td>}
+                          {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-2" style={subTdStyle} />}
+                          {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-2" style={subTdStyle} />}
+                          {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-2" style={subTdStyle} />}
+                          {hasAnyFeedUrl && (
+                            <td className="px-3 py-2 text-center" style={subTdStyle}>
+                              {isFeed && slot.url ? (
+                                <a href={slot.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand/10 text-brand hover:bg-brand/25 transition-colors">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                </a>
+                              ) : null}
+                            </td>
+                          )}
+                          {hasAnyReelUrl && (
+                            <td className="px-3 py-2 text-center" style={subTdStyle}>
+                              {isReel && slot.url ? (
+                                <a href={slot.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-white hover:bg-white/25 transition-colors">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                                </a>
+                              ) : null}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    });
+
+                    return [mainRow, ...subRows];
                   })}
                 </tbody>
               </table>
