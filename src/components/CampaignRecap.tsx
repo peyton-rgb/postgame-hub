@@ -634,6 +634,11 @@ export function CampaignRecap({
   for (const g of collabGroups) collabUrlSet.add(`${g.platform}|${g.url}`);
   const isCollabUrl = (platform: "ig_feed" | "ig_reel" | "tiktok", url: string | null | undefined) =>
     !!url && collabUrlSet.has(`${platform}|${url}`);
+  // Names of all athletes participating in any collab group. Collab athletes
+  // render in bracket blocks above the solo roster table — not as individual
+  // rows — so we filter them out of the solo list below.
+  const collabAthleteNameSet = new Set<string>();
+  for (const g of collabGroups) for (const n of g.athleteNames) collabAthleteNameSet.add(n);
   // Pick the media list for a collab group. Prefer media uploaded directly
   // against the collab group (keyed by g.id); fall back to media uploaded
   // against any participating athlete so legacy campaigns without
@@ -759,7 +764,8 @@ export function CampaignRecap({
   // Roster is then sliced to the first 50; the rest live behind an expand button.
   const ROSTER_VISIBLE_COUNT = 10;
   const rosterAthletes = (() => {
-    const list = [...fullRoster];
+    // Exclude collab participants — they render in bracket blocks, not solo rows.
+    const list = fullRoster.filter((a) => !collabAthleteNameSet.has(a.name));
     if (list.length === 0) return list;
 
     // Compute total engagements for each athlete (sum across IG Feed + Reel + TikTok)
@@ -1572,147 +1578,297 @@ export function CampaignRecap({
             const hasAnyFeedUrl = fullRoster.some(a => a.metrics?.ig_feed?.post_url);
             const hasAnyReelUrl = fullRoster.some(a => a.metrics?.ig_reel?.post_url);
             const hasAnyFollowers = fullRoster.some(a => a.ig_followers && a.ig_followers > 0);
+            const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
+
+            const collabBracketTitle = (group: CollabGroup) => {
+              const first = fullRoster.find((a) => a.name === group.athleteNames[0]);
+              return first ? `${first.school} ${first.sport} Collab Post` : "Collab Post";
+            };
+
+            const renderBracketHeader = (group: CollabGroup, compact: boolean) => (
+              <div
+                style={{
+                  background: "rgba(215,63,9,0.07)",
+                  borderBottom: "1px solid rgba(215,63,9,0.2)",
+                  padding: compact ? "10px 12px" : "10px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexWrap: compact ? "wrap" : "nowrap",
+                }}
+              >
+                <div className="flex items-center min-w-0" style={{ gap: 10 }}>
+                  <span style={{ fontFamily: bebas, fontSize: compact ? 13 : 14, letterSpacing: 1.5, color: "#f0ede8" }}>
+                    {collabBracketTitle(group)}
+                  </span>
+                  <span style={{
+                    fontSize: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
+                    color: "#D73F09", background: "rgba(215,63,9,0.15)",
+                    border: "1px solid rgba(215,63,9,0.3)", padding: "2px 8px", borderRadius: 3,
+                  }}>
+                    {platformLabel(group.platform)}
+                  </span>
+                </div>
+                <div className="flex" style={{ gap: compact ? 14 : 20 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{pct(group.combinedEngagementRate)}</div>
+                    <div style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined ER</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.metrics.views ?? 0)}</div>
+                    <div style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Views</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.combinedFollowers)}</div>
+                    <div style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined Followers</div>
+                  </div>
+                </div>
+              </div>
+            );
+
+            const renderBracketDesktop = (group: CollabGroup) => {
+              const rows = group.athleteNames
+                .map((name) => fullRoster.find((x) => x.name === name))
+                .filter((a): a is typeof fullRoster[number] => !!a);
+              return (
+                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                  {renderBracketHeader(group, false)}
+                  <table className="w-full text-left">
+                    <tbody>
+                      {rows.map((a, idx) => {
+                        const isLast = idx === rows.length - 1;
+                        const rowStyle = {
+                          background: "rgba(215,63,9,0.03)",
+                          borderLeft: "2px solid #D73F09",
+                          borderBottom: isLast ? "none" : "1px solid rgba(215,63,9,0.07)",
+                        } as const;
+                        return (
+                          <tr key={a.id} style={rowStyle}>
+                            <td className="px-3 py-3 w-10" style={{ color: "rgba(215,63,9,0.25)", fontSize: 10, fontWeight: 900 }}>{idx + 1}</td>
+                            <td className="px-3 py-3" style={{ color: "#e8e5e0", fontWeight: 700, textTransform: "uppercase", fontSize: 12 }}>{a.name}</td>
+                            {showCol("school") && <td className="px-3 py-3" style={{ fontSize: 10, color: "#555" }}>{a.school}</td>}
+                            {showCol("sport") && <td className="px-3 py-3">
+                              <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">{a.sport}</span>
+                            </td>}
+                            {showCol("ig_handle") && <td className="px-3 py-3 text-sm">{a.ig_handle ? (
+                              <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
+                            ) : "\u2014"}</td>}
+                            {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
+                            {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {hasAnyFeedUrl && (
+                              <td className="px-3 py-3 text-center">
+                                {group.platform === "ig_feed" ? (
+                                  <a href={group.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                  </a>
+                                ) : (
+                                  <span className="text-white/35">&mdash;</span>
+                                )}
+                              </td>
+                            )}
+                            {hasAnyReelUrl && (
+                              <td className="px-3 py-3 text-center">
+                                {group.platform === "ig_reel" ? (
+                                  <a href={group.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                                  </a>
+                                ) : (
+                                  <span className="text-white/35">&mdash;</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            };
+
+            const renderBracketMobile = (group: CollabGroup) => {
+              const rows = group.athleteNames
+                .map((name) => fullRoster.find((x) => x.name === name))
+                .filter((a): a is typeof fullRoster[number] => !!a);
+              return (
+                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                  {renderBracketHeader(group, true)}
+                  {rows.map((a, idx) => {
+                    const isLast = idx === rows.length - 1;
+                    return (
+                      <div key={a.id} className="flex items-center" style={{
+                        background: "rgba(215,63,9,0.03)",
+                        borderLeft: "2px solid #D73F09",
+                        borderBottom: isLast ? "none" : "1px solid rgba(215,63,9,0.07)",
+                        padding: "10px 12px",
+                        gap: 10,
+                      }}>
+                        <span style={{ color: "rgba(215,63,9,0.45)", fontSize: 10, fontWeight: 900, width: 16, textAlign: "right" }}>{idx + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "#e8e5e0" }}>{a.name}</div>
+                          {a.ig_handle && (
+                            <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-brand transition-colors" style={{ fontSize: 10 }}>@{a.ig_handle}</a>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            };
+
+            const divider = (
+              <div className="flex items-center" style={{ gap: 12, margin: "20px 0" }}>
+                <div className="flex-1" style={{ height: 1, background: "#141416" }} />
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#2a2a2e" }}>Individual Posts</span>
+                <div className="flex-1" style={{ height: 1, background: "#141416" }} />
+              </div>
+            );
+
             return (<>
-          {/* Desktop: full table with headers */}
+          {/* Desktop: collab brackets, divider, solo athlete table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/[0.15]">
-                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
-                  <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</th>
-                  {showCol("school") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>}
-                  {showCol("sport") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Sport</th>}
-                  {showCol("ig_handle") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">IG Handle</th>}
-                  {showCol("ig_followers") && hasAnyFollowers && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Followers</th>}
-                  {showCol("ig_feed_impressions") && hasAnyImpressions && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
-                  {showCol("ig_feed_total") && hasAnyEngagements && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
-                  {showCol("ig_feed_rate") && hasAnyEngRate && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
-                  {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
-                  {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
-                  {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
-                  {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
-                  {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {visibleRosterAthletes.map((a, i) => {
-                  const m = a.metrics || {};
-                  const feedUrl = m.ig_feed?.post_url || null;
-                  const reelUrl = m.ig_reel?.post_url || null;
-                  return (
-                  <tr key={a.id} className="border-b border-white/[0.10] hover:bg-white/[0.04]">
-                    <td className="px-3 py-3 text-sm font-black text-white/45">{i + 1}</td>
-                    <td className="px-3 py-3 text-sm font-black uppercase">{a.name}</td>
-                    {showCol("school") && <td className="px-3 py-3 text-sm text-white/70">{a.school}</td>}
-                    {showCol("sport") && <td className="px-3 py-3">
-                      <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">
-                        {a.sport}
-                      </span>
-                    </td>}
-                    {showCol("ig_handle") && <td className="px-3 py-3 text-sm">{a.ig_handle ? (
-                      <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
-                    ) : "\u2014"}</td>}
-                    {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
-                    {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>}
-                    {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>}
-                    {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
-                    {hasAnyFeedUrl && (
-                      <td className="px-3 py-3 text-center">
-                        {feedUrl ? (
-                          <span className="inline-flex items-center justify-center gap-1.5">
+            {collabGroups.length > 0 && (
+              <>
+                {collabGroups.map(renderBracketDesktop)}
+                {divider}
+              </>
+            )}
+            {visibleRosterAthletes.length > 0 && (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/[0.15]">
+                    <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
+                    <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</th>
+                    {showCol("school") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>}
+                    {showCol("sport") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Sport</th>}
+                    {showCol("ig_handle") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">IG Handle</th>}
+                    {showCol("ig_followers") && hasAnyFollowers && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Followers</th>}
+                    {showCol("ig_feed_impressions") && hasAnyImpressions && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
+                    {showCol("ig_feed_total") && hasAnyEngagements && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
+                    {showCol("ig_feed_rate") && hasAnyEngRate && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
+                    {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
+                    {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRosterAthletes.map((a, i) => {
+                    const m = a.metrics || {};
+                    const feedUrl = m.ig_feed?.post_url || null;
+                    const reelUrl = m.ig_reel?.post_url || null;
+                    return (
+                    <tr key={a.id} className="border-b border-white/[0.10] hover:bg-white/[0.04]">
+                      <td className="px-3 py-3 text-sm font-black text-white/45">{i + 1}</td>
+                      <td className="px-3 py-3 text-sm font-black uppercase">{a.name}</td>
+                      {showCol("school") && <td className="px-3 py-3 text-sm text-white/70">{a.school}</td>}
+                      {showCol("sport") && <td className="px-3 py-3">
+                        <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">
+                          {a.sport}
+                        </span>
+                      </td>}
+                      {showCol("ig_handle") && <td className="px-3 py-3 text-sm">{a.ig_handle ? (
+                        <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
+                      ) : "\u2014"}</td>}
+                      {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
+                      {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>}
+                      {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>}
+                      {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>}
+                      {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
+                      {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
+                      {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
+                      {hasAnyFeedUrl && (
+                        <td className="px-3 py-3 text-center">
+                          {feedUrl ? (
                             <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
                               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
-                            {isCollabUrl("ig_feed", feedUrl) && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-white/35">&mdash;</span>
-                        )}
-                      </td>
-                    )}
-                    {hasAnyReelUrl && (
-                      <td className="px-3 py-3 text-center">
-                        {reelUrl ? (
-                          <span className="inline-flex items-center justify-center gap-1.5">
+                          ) : (
+                            <span className="text-white/35">&mdash;</span>
+                          )}
+                        </td>
+                      )}
+                      {hasAnyReelUrl && (
+                        <td className="px-3 py-3 text-center">
+                          {reelUrl ? (
                             <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
                               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                             </a>
-                            {isCollabUrl("ig_reel", reelUrl) && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-white/35">&mdash;</span>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          ) : (
+                            <span className="text-white/35">&mdash;</span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
 
-          {/* Mobile: compact cards */}
-          <div className="md:hidden space-y-1">
-            {visibleRosterAthletes.map((a, i) => {
-              const m = a.metrics || {};
-              const feedUrl = m.ig_feed?.post_url || null;
-              const reelUrl = m.ig_reel?.post_url || null;
-              return (
-              <div key={a.id} className="flex items-center gap-3 py-3 px-3 rounded-lg bg-white/[0.05] border border-white/[0.10]">
-                <span className="text-sm font-black text-white/45 w-6 text-right">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-black uppercase">{a.name}</div>
-                  <div className="text-xs text-white/70">{a.school} &middot; {a.sport}</div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  {showCol("ig_followers") && hasAnyFollowers && <div className="text-sm font-bold text-white/70">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>}
-                  {showCol("ig_feed_rate") && hasAnyEngRate && getBestEngRate(a) > 0 && (
-                    <div className="text-xs font-bold text-brand">{pct(getBestEngRate(a))}</div>
-                  )}
-                  {stats.hasClicks && show("clicks") && (
-                    (showCol("clicks_link_clicks") && m.clicks?.link_clicks) ||
-                    (showCol("clicks_orders") && m.clicks?.orders) ||
-                    (showCol("clicks_sales") && m.clicks?.sales)
-                  ) && (
-                    <div className="flex gap-2 justify-end mt-0.5">
-                      {showCol("clicks_link_clicks") && m.clicks?.link_clicks ? <span className="text-[10px] text-white/50">{fmt(m.clicks.link_clicks)} clicks</span> : null}
-                      {showCol("clicks_orders") && m.clicks?.orders ? <span className="text-[10px] text-white/50">{fmt(m.clicks.orders)} orders</span> : null}
-                      {showCol("clicks_sales") && m.clicks?.sales ? <span className="text-[10px] font-bold text-emerald-400">{dollar(m.clicks.sales)}</span> : null}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-1.5 flex-shrink-0 items-center">
-                  {feedUrl && (
-                    <span className="inline-flex items-center gap-1">
+          {/* Mobile: collab brackets, divider, solo athlete cards */}
+          <div className="md:hidden">
+            {collabGroups.length > 0 && (
+              <>
+                {collabGroups.map(renderBracketMobile)}
+                {divider}
+              </>
+            )}
+            <div className="space-y-1">
+              {visibleRosterAthletes.map((a, i) => {
+                const m = a.metrics || {};
+                const feedUrl = m.ig_feed?.post_url || null;
+                const reelUrl = m.ig_reel?.post_url || null;
+                return (
+                <div key={a.id} className="flex items-center gap-3 py-3 px-3 rounded-lg bg-white/[0.05] border border-white/[0.10]">
+                  <span className="text-sm font-black text-white/45 w-6 text-right">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-black uppercase">{a.name}</div>
+                    <div className="text-xs text-white/70">{a.school} &middot; {a.sport}</div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    {showCol("ig_followers") && hasAnyFollowers && <div className="text-sm font-bold text-white/70">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>}
+                    {showCol("ig_feed_rate") && hasAnyEngRate && getBestEngRate(a) > 0 && (
+                      <div className="text-xs font-bold text-brand">{pct(getBestEngRate(a))}</div>
+                    )}
+                    {stats.hasClicks && show("clicks") && (
+                      (showCol("clicks_link_clicks") && m.clicks?.link_clicks) ||
+                      (showCol("clicks_orders") && m.clicks?.orders) ||
+                      (showCol("clicks_sales") && m.clicks?.sales)
+                    ) && (
+                      <div className="flex gap-2 justify-end mt-0.5">
+                        {showCol("clicks_link_clicks") && m.clicks?.link_clicks ? <span className="text-[10px] text-white/50">{fmt(m.clicks.link_clicks)} clicks</span> : null}
+                        {showCol("clicks_orders") && m.clicks?.orders ? <span className="text-[10px] text-white/50">{fmt(m.clicks.orders)} orders</span> : null}
+                        {showCol("clicks_sales") && m.clicks?.sales ? <span className="text-[10px] font-bold text-emerald-400">{dollar(m.clicks.sales)}</span> : null}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-1.5 flex-shrink-0 items-center">
+                    {feedUrl && (
                       <a href={feedUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                       </a>
-                      {isCollabUrl("ig_feed", feedUrl) && (
-                        <span className="px-1 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
-                      )}
-                    </span>
-                  )}
-                  {reelUrl && (
-                    <span className="inline-flex items-center gap-1">
+                    )}
+                    {reelUrl && (
                       <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                       </a>
-                      {isCollabUrl("ig_reel", reelUrl) && (
-                        <span className="px-1 py-0.5 rounded text-[8px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
-                      )}
-                    </span>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
             </>);
           })()}
