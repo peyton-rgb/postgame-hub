@@ -552,6 +552,23 @@ export default function CampaignList() {
                     )}
                   </div>
                 </div>
+                {c.published && (
+                  <Link
+                    href={`/recap/${c.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="relative z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#D73F09] hover:bg-[#D73F09]/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    title="View live recap"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 3h6v6" />
+                      <path d="M10 14L21 3" />
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                    </svg>
+                    View Live
+                  </Link>
+                )}
                 <button
                   onClick={(e) => {
                     e.preventDefault();
