@@ -1620,15 +1620,15 @@ export function CampaignRecap({
                 <div className="flex" style={{ gap: compact ? 14 : 20 }}>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{pct(group.combinedEngagementRate)}</div>
-                    <div style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined ER</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined ER</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.metrics.views ?? 0)}</div>
-                    <div style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Views</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Views</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.combinedFollowers)}</div>
-                    <div style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined Followers</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined Followers</div>
                   </div>
                 </div>
               </div>
@@ -1654,10 +1654,6 @@ export function CampaignRecap({
                           <tr key={a.id} style={rowStyle}>
                             <td className="px-3 py-3 w-10" style={{ color: "rgba(215,63,9,0.25)", fontSize: 10, fontWeight: 900 }}>{idx + 1}</td>
                             <td className="px-3 py-3" style={{ color: "#e8e5e0", fontWeight: 700, textTransform: "uppercase", fontSize: 12 }}>{a.name}</td>
-                            {showCol("school") && <td className="px-3 py-3" style={{ fontSize: 10, color: "#555" }}>{a.school}</td>}
-                            {showCol("sport") && <td className="px-3 py-3">
-                              <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">{a.sport}</span>
-                            </td>}
                             {showCol("ig_handle") && <td className="px-3 py-3 text-sm">{a.ig_handle ? (
                               <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
                             ) : "\u2014"}</td>}
