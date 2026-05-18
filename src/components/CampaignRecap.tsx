@@ -237,7 +237,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
             background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 55%, transparent 100%)",
           }}
         >
-          <div style={{ fontFamily: bebas, fontSize: 22, letterSpacing: 1, color: "#fff", lineHeight: 1, marginBottom: 3 }}>
+          <div style={{ fontFamily: bebas, fontSize: 24, fontWeight: 900, letterSpacing: 1, color: "#fff", lineHeight: 1, marginBottom: 3 }}>
             {athlete.name}
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
