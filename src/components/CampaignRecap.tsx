@@ -351,11 +351,6 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
 
   const groupName = group.athleteNames.join(" + ");
   const firstAthlete = athletes.find((a) => a.name === group.athleteNames[0]) ?? null;
-  // Card-top overlay title: list names for duos, switch to school + sport once
-  // the group hits 3+ athletes (names get too long to fit on one line).
-  const displayTitle = group.athleteNames.length >= 3 && firstAthlete
-    ? `${firstAthlete.school} ${firstAthlete.sport}`
-    : groupName;
 
   const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
@@ -427,19 +422,16 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
           </div>
         )}
 
-        {/* Top overlay: name + collab flag + buttons */}
-        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
-          <div className="flex items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-black uppercase text-white truncate">{displayTitle}</div>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#D73F09" }}>
-                  Collab · {platformLabel(group.platform)}
-                </span>
-              </div>
+        {/* Top overlay — collab flag (left) + buttons (right) */}
+        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-4 bg-gradient-to-b from-black/75 to-transparent">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#D73F09" }}>
+                Collab · {platformLabel(group.platform)}
+              </span>
             </div>
-            <div className="flex gap-1 ml-2 flex-shrink-0">
+            <div className="flex gap-1 flex-shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); handleDownload(); }}
                 className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
@@ -468,60 +460,65 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
             </div>
           </div>
         </div>
+
+        {/* Bottom overlay — school · sport line + athlete name pills */}
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[2]"
+          style={{
+            padding: "50px 14px 12px",
+            background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 55%, transparent 100%)",
+          }}
+        >
+          {firstAthlete && (
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500, marginBottom: 6 }}>
+              {firstAthlete.school} · {firstAthlete.sport}
+            </div>
+          )}
+          <div className="flex flex-wrap" style={{ gap: 4 }}>
+            {group.athleteNames.map((name) => (
+              <span
+                key={name}
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: 20,
+                  background: "rgba(255,255,255,0.12)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#fff",
+                  textTransform: "uppercase",
+                }}
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Footer panel */}
-      <div style={{ background: "#141418", borderTop: "1px solid #222226", padding: "11px 12px 13px" }}>
-        {firstAthlete && (
-          <div style={{ color: "#666", fontSize: 11, fontWeight: 600 }}>
-            {firstAthlete.sport} · {firstAthlete.school}
-          </div>
-        )}
-
-        {/* Athlete pills */}
-        <div className="flex flex-wrap" style={{ gap: 5, marginTop: 8 }}>
-          {group.athleteNames.map((name) => (
-            <span
-              key={name}
-              style={{
-                padding: "2px 9px",
-                borderRadius: 20,
-                background: "#1e1e22",
-                border: "1px solid #2a2a2e",
-                fontSize: 10,
-                fontWeight: 700,
-                color: "#bbb",
-                textTransform: "uppercase",
-                letterSpacing: 0.3,
-              }}
-            >
-              {name}
-            </span>
-          ))}
-        </div>
-
-        <div className="flex" style={{ borderTop: "1px solid #1e1e22", marginTop: 9, paddingTop: 9, gap: 14 }}>
-          <div>
-            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+      {/* Footer panel — three centered stat columns */}
+      <div style={{ background: "#141418", borderTop: "1px solid #222226" }}>
+        <div className="flex" style={{ padding: "10px 0 12px" }}>
+          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
+            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {pct(group.combinedEngagementRate)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Combined ER
             </div>
           </div>
-          <div>
-            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
+            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(group.metrics.views ?? 0)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Views
             </div>
           </div>
-          <div>
-            <div style={{ fontFamily: bebas, fontSize: 16, color: "#D73F09", lineHeight: 1 }}>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
               {fmt(group.combinedFollowers)}
             </div>
-            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>
+            <div style={{ fontSize: 7, color: "#444", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Followers
             </div>
           </div>
