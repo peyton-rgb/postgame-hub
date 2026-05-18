@@ -1889,7 +1889,7 @@ export function CampaignRecap({
                       return (
                         <tr key={`${a.id}-${slot.label}`} className="hidden md:table-row border-b border-white/[0.06]" style={subRowBg}>
                           <td className="px-3 py-2" style={subTdStyle} />
-                          <td className="px-3 py-2" style={{ ...subTdStyle, fontSize: 10, color: "#666" }}>\u21b3 {slot.label}</td>
+                          <td className="px-3 py-2" style={{ ...subTdStyle, fontSize: 10, color: "#666" }}>↳ {slot.label}</td>
                           {showCol("school") && <td className="px-3 py-2" style={subTdStyle} />}
                           {showCol("sport") && <td className="px-3 py-2" style={subTdStyle} />}
                           {showCol("ig_handle") && <td className="px-3 py-2" style={subTdStyle} />}
