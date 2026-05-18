@@ -346,6 +346,11 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
 
   const groupName = group.athleteNames.join(" + ");
   const firstAthlete = athletes.find((a) => a.name === group.athleteNames[0]) ?? null;
+  // Card-top overlay title: list names for duos, switch to school + sport once
+  // the group hits 3+ athletes (names get too long to fit on one line).
+  const displayTitle = group.athleteNames.length >= 3 && firstAthlete
+    ? `${firstAthlete.school} ${firstAthlete.sport}`
+    : groupName;
 
   const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
@@ -421,7 +426,7 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
         <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-black uppercase text-white truncate">{groupName}</div>
+              <div className="text-xs font-black uppercase text-white truncate">{displayTitle}</div>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
                 <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#D73F09" }}>
