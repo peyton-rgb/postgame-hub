@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cane's Basketball Shoot — Style Mood Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #0a0a0a;
+    color: #f5f5f5;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 600px) { .container { padding: 0 20px; } }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 120px 0 72px;
+    border-bottom: 1px solid #1f1f1f;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, #dc2626 40%, transparent);
+    opacity: 0.6;
+  }
+  .hero-eyebrow {
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 2px;
+    background: #dc2626;
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 9vw, 128px);
+    line-height: 0.92;
+    letter-spacing: -0.01em;
+    margin-bottom: 32px;
+  }
+  .hero-title .accent { color: #dc2626; }
+  .hero-meta {
+    display: flex;
+    gap: 0;
+    flex-wrap: wrap;
+    color: #6b7280;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 40px;
+  }
+  .hero-meta-item {
+    padding-right: 24px;
+    margin-right: 24px;
+    border-right: 1px solid #2a2a2a;
+    line-height: 1.4;
+  }
+  .hero-meta-item:last-child { border-right: none; }
+  .hero-meta-item strong {
+    display: block;
+    color: #f5f5f5;
+    font-size: 15px;
+    letter-spacing: 0;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  @media (max-width: 700px) {
+    .hero { padding: 80px 0 48px; }
+    .hero-meta-item { margin-bottom: 12px; }
+  }
+
+  /* ── INTRO ── */
+  .intro {
+    padding: 80px 0;
+    border-bottom: 1px solid #1f1f1f;
+  }
+  .intro-inner { max-width: 800px; }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #4b5563;
+    margin-bottom: 24px;
+  }
+  .intro h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 4vw, 40px);
+    letter-spacing: 0.02em;
+    margin-bottom: 24px;
+    line-height: 1.1;
+  }
+  .intro p { color: #d1d5db; font-size: 17px; margin-bottom: 16px; line-height: 1.7; }
+  .lean-callout {
+    margin-top: 36px;
+    padding: 20px 24px;
+    border-left: 3px solid #dc2626;
+    background: #0f0a0a;
+    font-size: 15px;
+    color: #e5e7eb;
+    line-height: 1.65;
+    border-radius: 0 4px 4px 0;
+  }
+  .lean-callout strong { color: #dc2626; }
+
+  /* ── STYLE CARDS ── */
+  .styles { padding: 0; }
+  .style-card {
+    padding: 80px 0;
+    border-bottom: 1px solid #1f1f1f;
+    position: relative;
+  }
+  .style-card:last-child { border-bottom: none; }
+
+  /* leaning treatment */
+  .style-card.is-leaning {
+    background: linear-gradient(180deg, #0f0a0a 0%, #0a0a0a 100%);
+  }
+  .lean-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 2px;
+    margin-bottom: 24px;
+  }
+  .lean-badge::before {
+    content: '▶';
+    font-size: 8px;
+  }
+
+  .style-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 64px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .style-grid { grid-template-columns: 1fr; gap: 36px; }
+    .style-card { padding: 56px 0; }
+  }
+
+  /* media area */
+  .style-media-col {}
+  .style-media-main {
+    position: relative;
+    background: #141110;
+    border: 1px solid #1f1f1f;
+    border-radius: 6px;
+    overflow: hidden;
+    aspect-ratio: 4/5;
+  }
+  .style-media-main img,
+  .style-media-main iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    object-fit: cover;
+  }
+  /* video container – 16:9 for landscape video */
+  .style-media-main.is-video {
+    aspect-ratio: 16/9;
+  }
+  /* vertical video – 9:16 */
+  .style-media-main.is-vertical {
+    aspect-ratio: 9/16;
+    max-height: 560px;
+    width: auto;
+  }
+  .placeholder-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    font-size: 13px;
+    text-align: center;
+    padding: 24px;
+    gap: 12px;
+    pointer-events: none;
+  }
+  .placeholder-icon { font-size: 32px; opacity: 0.4; }
+
+  /* secondary image strip */
+  .style-media-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .style-media-thumb {
+    background: #141110;
+    border: 1px solid #1f1f1f;
+    border-radius: 4px;
+    overflow: hidden;
+    aspect-ratio: 1;
+  }
+  .style-media-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* secondary video strip */
+  .style-video-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .style-video-thumb {
+    background: #141110;
+    border: 1px solid #1f1f1f;
+    border-radius: 4px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+    position: relative;
+  }
+  .style-video-thumb iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  /* copy area */
+  .style-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    color: #4b5563;
+    letter-spacing: 0.2em;
+    margin-bottom: 10px;
+  }
+  .is-leaning .style-number { color: #dc2626; }
+  .style-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 5vw, 64px);
+    line-height: 0.95;
+    letter-spacing: -0.005em;
+    margin-bottom: 14px;
+  }
+  .style-tagline {
+    color: #6b7280;
+    font-size: 15px;
+    font-style: italic;
+    margin-bottom: 28px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid #1f1f1f;
+  }
+  .style-desc {
+    color: #d1d5db;
+    font-size: 16px;
+    margin-bottom: 32px;
+    line-height: 1.75;
+  }
+  .style-meta { display: grid; gap: 20px; }
+  .style-meta-row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 20px;
+    align-items: start;
+    padding-top: 16px;
+    border-top: 1px solid #1a1a1a;
+  }
+  .style-meta-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #dc2626;
+    padding-top: 3px;
+  }
+  .style-meta-value {
+    color: #9ca3af;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  /* ── COMPARISON ── */
+  .comparison {
+    padding: 100px 0;
+    border-top: 1px solid #1f1f1f;
+  }
+  .comparison h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 5vw, 56px);
+    letter-spacing: 0.02em;
+    margin-bottom: 10px;
+  }
+  .comparison .subtitle {
+    color: #6b7280;
+    font-size: 15px;
+    margin-bottom: 48px;
+  }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 600px;
+  }
+  .comparison-table th {
+    text-align: left;
+    padding: 14px 16px;
+    border-bottom: 2px solid #dc2626;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+  .comparison-table td {
+    padding: 16px;
+    border-bottom: 1px solid #1a1a1a;
+    color: #d1d5db;
+    vertical-align: middle;
+  }
+  .comparison-table tr:hover td { background: #0d0d0d; }
+  .comparison-table td:first-child { color: #f5f5f5; font-weight: 600; }
+  .comparison-table tr.leaning td { background: #0f0a0a !important; }
+  .comparison-table tr.leaning td:first-child { color: #dc2626; }
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .pill-low { background: #1a1a1a; color: #6b7280; }
+  .pill-med { background: #1f1a0d; color: #f59e0b; }
+  .pill-high { background: #200f0f; color: #f87171; }
+  .pill-best { background: #0f1f0f; color: #4ade80; }
+
+  /* ── BLENDS ── */
+  .blends {
+    border-top: 1px solid #1f1f1f;
+    padding: 72px 0;
+    background: linear-gradient(180deg, #0d0a0a, #0a0a0a);
+  }
+  .blends h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(32px, 4vw, 48px);
+    letter-spacing: 0.02em;
+    margin-bottom: 40px;
+  }
+  .blends-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 700px) { .blends-grid { grid-template-columns: 1fr; } }
+  .blend-card {
+    padding: 28px;
+    border: 1px solid #1f1f1f;
+    border-radius: 6px;
+    background: #0d0d0d;
+  }
+  .blend-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: #dc2626;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+  .blend-desc { color: #9ca3af; font-size: 14px; line-height: 1.7; }
+  .blend-desc strong { color: #e5e7eb; }
+
+  /* ── FOOTER ── */
+  .footer {
+    padding: 56px 0 72px;
+    border-top: 1px solid #1f1f1f;
+    color: #4b5563;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .footer-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .footer-brand { color: #6b7280; }
+  .footer-note {
+    font-size: 12px;
+    color: #374151;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #161616;
+  }
+  .footer-note a { color: #4b5563; text-decoration: underline; }
+
+  /* ── DRIVE MEDIA NOTE ── */
+  .media-note {
+    background: #0d0d0d;
+    border: 1px solid #1f1f1f;
+    border-left: 3px solid #f59e0b;
+    padding: 14px 20px;
+    font-size: 13px;
+    color: #9ca3af;
+    margin-bottom: 48px;
+    border-radius: 0 4px 4px 0;
+  }
+  .media-note strong { color: #f59e0b; }
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────────────── HERO ─────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-eyebrow">Postgame × Raising Cane's</div>
+    <h1 class="hero-title">Basketball Shoot<br><span class="accent">Mood Board</span></h1>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <strong>June 8–12, 2026</strong>
+        Dallas, TX
+      </div>
+      <div class="hero-meta-item">
+        <strong>43 Athletes</strong>
+        42 Basketball + 1 Football
+      </div>
+      <div class="hero-meta-item">
+        <strong>SC Pictures</strong>
+        Studio (Locked)
+      </div>
+      <div class="hero-meta-item">
+        <strong>5 Days</strong>
+        2 Lanes · 4–5 Athletes/Day
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────── INTRO ────────────────────────────────── -->
+<section class="intro">
+  <div class="container">
+    <div class="intro-inner">
+      <div class="section-label">Creative Overview</div>
+      <h2>Five Directions on the Table</h2>
+      <p>These are five distinct ways the June shoot could go. Each has a different feel, a different production style, and would result in a different final deliverable.</p>
+      <p>They live on a spectrum from <strong style="color:#f5f5f5">most raw</strong> (Style 1) to <strong style="color:#f5f5f5">most polished</strong> (Style 4), with Style 5 as a hybrid wildcard. The shoot doesn't have to be 100% one style — realistic blends are at the bottom.</p>
+      <div class="lean-callout">
+        <strong>Where we're leaning:</strong> Style 1 (Raw BTS Documentary Compilation) is the direction the master reference doc is currently built around. This page exists so that lean can be validated, not assumed.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────── STYLES ───────────────────────────────── -->
+<div class="styles">
+
+  <!-- ── STYLE 1 ── -->
+  <div class="style-card is-leaning" id="style-1">
+    <div class="container">
+      <div class="lean-badge">Team is leaning here</div>
+      <div class="style-grid">
+
+        <!-- MEDIA -->
+        <div class="style-media-col">
+          <div class="style-media-main">
+            <img
+              src="https://drive.google.com/uc?export=view&id=1UmmpK0t9NvXldWTJEjLsoBYUmnHJd12X"
+              alt="Raw BTS reference — athlete in backseat, Postgame hat, Cane's tee"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            >
+            <div class="placeholder-overlay" style="display:none">
+              <div class="placeholder-icon">🎬</div>
+              <div>Car BTS hero reference<br><small>Share Drive file to "Anyone with link" to load</small></div>
+            </div>
+          </div>
+          <!-- supplemental photo strip -->
+          <div class="style-media-strip">
+            <div class="style-media-thumb">
+              <img
+                src="https://drive.google.com/uc?export=view&id=1osMVseUxdbGdheXLASfVuIhLf_nKYvQW"
+                alt="BTS ref 2"
+                onerror="this.parentElement.style.opacity='0.3';"
+              >
+            </div>
+            <div class="style-media-thumb">
+              <img
+                src="https://drive.google.com/uc?export=view&id=1I6vFZK0Cjut8jtojEmY3tgJIbttRl5Uc"
+                alt="BTS ref 3"
+                onerror="this.parentElement.style.opacity='0.3';"
+              >
+            </div>
+            <div class="style-media-thumb">
+              <img
+                src="https://drive.google.com/uc?export=view&id=1mtpFnP0qGJsPeo5cbHCm1LEzXFHEssF9"
+                alt="BTS ref 4"
+                onerror="this.parentElement.style.opacity='0.3';"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- COPY -->
+        <div>
+          <div class="style-number">Style 01</div>
+          <h2 class="style-name">Raw BTS<br>Documentary<br>Compilation</h2>
+          <p class="style-tagline">"The Players' Tribune mini-doc approach"</p>
+          <p class="style-desc">A chronicled day in the life of an athlete moving through the Cane's production day — arrival, studio, car ride, court, refuel. Handheld. Natural light. No posing. The athlete feels real, not packaged. The texture of effort: sweat, breath, focus, the moments between the hero shots.</p>
+          <div class="style-meta">
+            <div class="style-meta-row">
+              <div class="style-meta-label">Best For</div>
+              <div class="style-meta-value">Long-form social compilation cuts. Brand storytelling that feels authentic, not transactional. Letting athlete personality drive the content.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Tradeoffs</div>
+              <div class="style-meta-value">Less iconic single-frame content for OOH or standees. Requires strong editing to feel cohesive across 43 athletes.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Final Cut</div>
+              <div class="style-meta-value">A 60-second TikTok/IG Reel: athlete arrives at studio, brief studio moments, car ride conversation, court workout, refuel with Cane's. Music carries it. No narration.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STYLE 2 ── -->
+  <div class="style-card" id="style-2">
+    <div class="container">
+      <div class="style-grid">
+
+        <!-- MEDIA -->
+        <div class="style-media-col">
+          <div class="style-media-main">
+            <img
+              src="https://drive.google.com/uc?export=view&id=1tdRhPilZq4CF80NugNFj9trxwpsJj6cH"
+              alt="Cinematic hero reference"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            >
+            <div class="placeholder-overlay" style="display:none">
+              <div class="placeholder-icon">🎞️</div>
+              <div>Cinematic hero reference<br><small>Share Drive file to "Anyone with link" to load</small></div>
+            </div>
+          </div>
+          <div class="style-media-strip" style="grid-template-columns: 1fr 1fr;">
+            <div class="style-media-thumb">
+              <img
+                src="https://drive.google.com/uc?export=view&id=1DrJX_qNddLtRxek7f5b2wjS3o5ZX0J8K"
+                alt="Cinematic ref 2"
+                onerror="this.parentElement.style.opacity='0.3';"
+              >
+            </div>
+            <div class="style-media-thumb">
+              <img
+                src="https://drive.google.com/uc?export=view&id=16m_TqlXRRGHtaozfMfKoE5Zh3ZIDJh4V"
+                alt="Cinematic ref 3"
+                onerror="this.parentElement.style.opacity='0.3';"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- COPY -->
+        <div>
+          <div class="style-number">Style 02</div>
+          <h2 class="style-name">Cinematic<br>Hero Showcase</h2>
+          <p class="style-tagline">"The sneaker commercial approach"</p>
+          <p class="style-desc">Each athlete is treated like the subject of their own short film. Slow-motion. Dramatic angles. Rich color grading. The court action is framed to look as cinematic as possible. Less "athlete in their element," more "athlete as iconic figure."</p>
+          <div class="style-meta">
+            <div class="style-meta-row">
+              <div class="style-meta-label">Best For</div>
+              <div class="style-meta-value">Hero stills for OOH, billboards, in-restaurant standees. TV-ready CTV spots. Iconic single-frame moments that scale across mediums.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Tradeoffs</div>
+              <div class="style-meta-value">Loses the authentic feel currently working in Cane's content. More time per athlete (4–6/day vs 8–9). Could read as "another sneaker ad."</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Final Cut</div>
+              <div class="style-meta-value">A 30-second CTV spot: dramatic intro, slow-mo workout sequences, hero portrait moments, ends on Cane's logo. Polished, commercial, network-ready.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STYLE 3 ── -->
+  <div class="style-card" id="style-3">
+    <div class="container">
+      <div class="style-grid">
+
+        <!-- MEDIA -->
+        <div class="style-media-col">
+          <div class="style-media-main is-video">
+            <iframe
+              src="https://drive.google.com/file/d/11pTJwjrXYjm6Nt7Ak6LWtmxdnyeWTo-N/preview"
+              allow="autoplay"
+              allowfullscreen
+            ></iframe>
+          </div>
+          <div class="style-video-strip">
+            <div class="style-video-thumb">
+              <iframe
+                src="https://drive.google.com/file/d/1ERjBkM-QsUehmPk7-63vMY1ZIPSTbdGs/preview"
+                allow="autoplay"
+              ></iframe>
+            </div>
+            <div class="style-video-thumb">
+              <iframe
+                src="https://drive.google.com/file/d/1yLARj-f9r54TwRJYRzHHLd-JMs9WrPYe/preview"
+                allow="autoplay"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- COPY -->
+        <div>
+          <div class="style-number">Style 03</div>
+          <h2 class="style-name">Vertical-First<br>Social Native</h2>
+          <p class="style-tagline">"Built for the algorithm"</p>
+          <p class="style-desc">Every frame conceived for vertical (9:16) first. Fast cuts. On-screen captions and graphics. Designed for TikTok / IG Reels native feel — the kind of content that doesn't look out of place on someone's For You Page. Authentic feel, but stylized for platform engagement.</p>
+          <div class="style-meta">
+            <div class="style-meta-row">
+              <div class="style-meta-label">Best For</div>
+              <div class="style-meta-value">IG Reels, TikTok, YouTube Shorts as primary delivery. Algorithm-friendly content that doesn't feel like an ad. Younger audience engagement.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Tradeoffs</div>
+              <div class="style-meta-value">Hard to repurpose for horizontal CTV or OOH. Trends shift quickly — content can feel dated within months.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Final Cut</div>
+              <div class="style-meta-value">A 30-second IG Reel per athlete: hook in 2 seconds, fast cuts of training/refuel/studio, on-screen captions, trending audio. Designed to live in feed.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STYLE 4 ── -->
+  <div class="style-card" id="style-4">
+    <div class="container">
+      <div class="style-grid">
+
+        <!-- MEDIA -->
+        <div class="style-media-col">
+          <div class="style-media-main">
+            <img
+              src="https://drive.google.com/uc?export=view&id=1zUNi6KXQjPiGImv67-zznw5IiQNMhiw5"
+              alt="Editorial portrait reference"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            >
+            <div class="placeholder-overlay" style="display:none">
+              <div class="placeholder-icon">📷</div>
+              <div>Editorial portrait reference<br><small>Share Drive file to "Anyone with link" to load</small></div>
+            </div>
+          </div>
+          <div class="style-media-strip" style="grid-template-columns: 1fr 1fr;">
+            <div class="style-media-thumb">
+              <img
+                src="https://drive.google.com/uc?export=view&id=16m_TqlXRRGHtaozfMfKoE5Zh3ZIDJh4V"
+                alt="Editorial ref 2"
+                onerror="this.parentElement.style.opacity='0.3';"
+              >
+            </div>
+            <div class="style-media-thumb">
+              <img
+                src="https://drive.google.com/uc?export=view&id=1DrJX_qNddLtRxek7f5b2wjS3o5ZX0J8K"
+                alt="Editorial ref 3"
+                onerror="this.parentElement.style.opacity='0.3';"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- COPY -->
+        <div>
+          <div class="style-number">Style 04</div>
+          <h2 class="style-name">Editorial<br>Portrait</h2>
+          <p class="style-tagline">"The SLAM magazine cover story approach"</p>
+          <p class="style-desc">Magazine-quality stills as the hero deliverable. Deliberate composition, controlled lighting, formal weight to every frame. Less video-forward, more photo-essay. Each athlete is captured with dignity and intentionality, framed like a portrait subject.</p>
+          <div class="style-meta">
+            <div class="style-meta-row">
+              <div class="style-meta-label">Best For</div>
+              <div class="style-meta-value">Print campaigns, magazine ads, in-restaurant signage. "Hall of fame" feel for standees. Building Cane's as a brand that takes its talent seriously.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Tradeoffs</div>
+              <div class="style-meta-value">Heaviest production day (lighting, art direction, time per athlete). Less social-native content out of the same shoot.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Final Cut</div>
+              <div class="style-meta-value">A photo essay published on Cane's social and partner channels: 5–7 stills per athlete, each frame-worthy. Supporting 30-second video. Feels like a magazine spread.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STYLE 5 ── -->
+  <div class="style-card" id="style-5">
+    <div class="container">
+      <div class="style-grid">
+
+        <!-- MEDIA -->
+        <div class="style-media-col">
+          <div class="style-media-main is-video">
+            <iframe
+              src="https://drive.google.com/file/d/1BpvnulG_hyMzE8LsAQYwWXZGvu0p-71_/preview"
+              allow="autoplay"
+              allowfullscreen
+            ></iframe>
+          </div>
+          <div class="style-video-strip">
+            <div class="style-video-thumb">
+              <iframe
+                src="https://drive.google.com/file/d/1IL0nDmvX0IB_U6AtzOoALrabd5iwZ-hZ/preview"
+                allow="autoplay"
+              ></iframe>
+            </div>
+            <div class="style-video-thumb">
+              <iframe
+                src="https://drive.google.com/file/d/11_1vDssBDnTpzvsj0pVqpVqj8bOjvdWV/preview"
+                allow="autoplay"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- COPY -->
+        <div>
+          <div class="style-number">Style 05</div>
+          <h2 class="style-name">UGC × Doc<br>Hybrid</h2>
+          <p class="style-tagline">"The athletes filmed parts of it themselves"</p>
+          <p class="style-desc">Mixes traditional camera coverage with footage that looks like the athlete filmed it on their phone. Voice memos, talking-head moments, vlog energy. Feels intentionally low-fi in spots, polished in others. The brand is in the room, but it doesn't feel like it's directing the room.</p>
+          <div class="style-meta">
+            <div class="style-meta-row">
+              <div class="style-meta-label">Best For</div>
+              <div class="style-meta-value">Authenticity-first marketing. Building athlete-as-collaborator relationship. Content that doesn't feel like content. Multi-platform delivery.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Tradeoffs</div>
+              <div class="style-meta-value">Hardest to control quality/consistency across 43 athletes. Requires athletes to actively participate — some will, some won't.</div>
+            </div>
+            <div class="style-meta-row">
+              <div class="style-meta-label">Final Cut</div>
+              <div class="style-meta-value">A 90-second cut that opens with the athlete filming themselves on the way to the shoot, transitions into traditional coverage, returns to phone-style for the refuel. Feels like a friend documented their day.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .styles -->
+
+
+<!-- ─────────────────────────────── COMPARISON ───────────────────────────────── -->
+<section class="comparison">
+  <div class="container">
+    <div class="section-label">At a Glance</div>
+    <h2>Quick Comparison</h2>
+    <p class="subtitle">Same five styles, scored across what matters for this campaign.</p>
+    <div class="table-wrap">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Style</th>
+            <th>Polish Level</th>
+            <th>Athlete Feel</th>
+            <th>Social-Native</th>
+            <th>Hero Stills</th>
+            <th>Production Load</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="leaning">
+            <td>01 — Raw BTS ★</td>
+            <td><span class="pill pill-low">Low</span></td>
+            <td>Most real</td>
+            <td><span class="pill pill-best">High</span></td>
+            <td><span class="pill pill-low">Low</span></td>
+            <td><span class="pill pill-med">Medium</span></td>
+          </tr>
+          <tr>
+            <td>02 — Cinematic</td>
+            <td><span class="pill pill-high">High</span></td>
+            <td>Iconic</td>
+            <td><span class="pill pill-med">Medium</span></td>
+            <td><span class="pill pill-high">Highest</span></td>
+            <td><span class="pill pill-high">High</span></td>
+          </tr>
+          <tr>
+            <td>03 — Vertical</td>
+            <td><span class="pill pill-med">Medium</span></td>
+            <td>Stylized real</td>
+            <td><span class="pill pill-high">Highest</span></td>
+            <td><span class="pill pill-low">Low</span></td>
+            <td><span class="pill pill-med">Medium</span></td>
+          </tr>
+          <tr>
+            <td>04 — Editorial</td>
+            <td><span class="pill pill-high">Highest</span></td>
+            <td>Dignified</td>
+            <td><span class="pill pill-low">Low</span></td>
+            <td><span class="pill pill-high">Highest</span></td>
+            <td><span class="pill pill-high">Highest</span></td>
+          </tr>
+          <tr>
+            <td>05 — Hybrid</td>
+            <td>Mixed</td>
+            <td>Collaborator</td>
+            <td><span class="pill pill-best">High</span></td>
+            <td><span class="pill pill-low">Low</span></td>
+            <td>Variable</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── BLENDS ───────────────────────────────────── -->
+<section class="blends">
+  <div class="container">
+    <div class="section-label">Strategic Options</div>
+    <h2>Realistic Blends</h2>
+    <div class="blends-grid">
+      <div class="blend-card">
+        <div class="blend-label">01 + 03</div>
+        <p class="blend-desc"><strong>Raw BTS captured, then edited vertical-first for social.</strong> Likely the strongest combo for a Cane's NIL campaign in 2026. You get the authentic documentary footage, and the edit team cuts it for each platform natively.</p>
+      </div>
+      <div class="blend-card">
+        <div class="blend-label">01 + 04</div>
+        <p class="blend-desc"><strong>Documentary video + editorial stills.</strong> Best of both worlds for multi-platform delivery. The BTS doc runs on social; the portrait stills run on OOH, standees, and in-restaurant.</p>
+      </div>
+      <div class="blend-card">
+        <div class="blend-label">01 + 05</div>
+        <p class="blend-desc"><strong>Documentary footage with athlete-generated inserts.</strong> Ask athletes to film 30 seconds of phone content on the way in. Weave it into the doc. Maximum authenticity with professional coverage as the backbone.</p>
+      </div>
+      <div class="blend-card">
+        <div class="blend-label">02 + 04</div>
+        <p class="blend-desc"><strong>Cinematic court footage + editorial stills.</strong> If Cane's wants something that scales to TV and print. Heavier production load, but every frame is gallery-quality. Best for a campaign with OOH ambitions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── FOOTER ───────────────────────────────────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-row">
+      <div class="footer-brand">Postgame × Raising Cane's &nbsp;·&nbsp; Basketball Shoot Mood Board</div>
+      <div>Last updated May 19, 2026</div>
+    </div>
+    <div class="footer-note">
+      Crew: Homero (Studio BTS, local) · Max Thomason (Court Lane 1, local) · Bobby Edwards (Court Lane 2, KC) · Dom Madonna (Car BTS) &nbsp;|&nbsp;
+      Court venue: Vanta Athletics (negotiation in progress as of 5/19) &nbsp;|&nbsp;
+      Studio: SC Pictures (locked) &nbsp;|&nbsp;
+      Client: Raising Cane's
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
