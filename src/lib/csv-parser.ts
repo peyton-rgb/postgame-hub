@@ -552,7 +552,11 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // Try platform-scoped first (handles bare-name layouts), then fall back to prefixed search.
   const iIgFeedUrl = findColInPlatform(headers, platformMap, "ig_feed", "post url", "url")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "post url", "url")
-    : findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post", "post 1", "post1");
+    : (() => {
+      const r = findColInPlatformNth(headers, platformMap, "ig_feed", 0, "post 1", "post1");
+      if (r !== -1) return r;
+      return findCol(headers, "ig feed post url", "ig feed url", "ig feed post", "feed url", "feed post url", "feed post");
+    })();
   const iIgFeedReach = findColInPlatform(headers, platformMap, "ig_feed", "reach")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_feed", "reach")
     : findCol(headers, "ig feed reach", "feed reach");
@@ -612,7 +616,11 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // ── IG Reel columns ──
   const iIgReelUrl = findColInPlatform(headers, platformMap, "ig_reel", "post url", "url")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "post url", "url")
-    : findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post", "post 1", "post1");
+    : (() => {
+      const r = findColInPlatformNth(headers, platformMap, "ig_reel", 0, "post 1", "post1");
+      if (r !== -1) return r;
+      return findCol(headers, "ig reel post url", "ig reel url", "reel url", "reel post url", "ig reels url", "ig reel post", "reel post");
+    })();
   const iIgReelViews = findColInPlatform(headers, platformMap, "ig_reel", "views")
     !== -1 ? findColInPlatform(headers, platformMap, "ig_reel", "views")
     : findCol(headers, "ig reel views", "reel views", "ig reels views", "reels views");
@@ -646,7 +654,11 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // ── TikTok columns ──
   const iTiktokUrl = findColInPlatform(headers, platformMap, "tiktok", "post url", "url")
     !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "post url", "url")
-    : findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url", "post 1", "post1");
+    : (() => {
+      const r = findColInPlatformNth(headers, platformMap, "tiktok", 0, "post 1", "post1");
+      if (r !== -1) return r;
+      return findCol(headers, "tiktok post url", "tiktok url", "tiktok post", "tt post url", "tt url");
+    })();
   const iTiktokViews = findColInPlatform(headers, platformMap, "tiktok", "views")
     !== -1 ? findColInPlatform(headers, platformMap, "tiktok", "views")
     : findCol(headers, "tiktok views", "tt views", "tiktok video views");
@@ -690,7 +702,11 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // ── IG Reel POST 2 columns ──
   // findColInPlatformNth with occurrence=1 finds the SECOND column with that name
   // inside the ig_reel platform group — i.e. the Post 2 columns.
-  const iIgReelUrl2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "post url", "url", "post 2", "post2");
+  const iIgReelUrl2 = (() => {
+    const r = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "post url", "url");
+    if (r !== -1) return r;
+    return findColInPlatformNth(headers, platformMap, "ig_reel", 0, "post 2", "post2");
+  })();
   const iIgReelViews2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "views");
   const iIgReelLikes2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "likes");
   const iIgReelComments2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "comments");
@@ -701,7 +717,11 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   const iIgReelEngRateImpressions2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "engagement rate impressions", "eng rate impressions");
 
   // ── IG Feed POST 2 columns ──
-  const iIgFeedUrl2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "post url", "url", "post 2", "post2");
+  const iIgFeedUrl2 = (() => {
+    const r = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "post url", "url");
+    if (r !== -1) return r;
+    return findColInPlatformNth(headers, platformMap, "ig_feed", 0, "post 2", "post2");
+  })();
   const iIgFeedReach2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "reach");
   const iIgFeedImpressions2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "impressions");
   const iIgFeedLikes2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "likes");
@@ -714,7 +734,11 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
 
   // ── TikTok POST 2 columns ──
   const iTiktokFollowers2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "followers");
-  const iTiktokUrl2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "post url", "url", "post 2", "post2");
+  const iTiktokUrl2 = (() => {
+    const r = findColInPlatformNth(headers, platformMap, "tiktok", 1, "post url", "url");
+    if (r !== -1) return r;
+    return findColInPlatformNth(headers, platformMap, "tiktok", 0, "post 2", "post2");
+  })();
   const iTiktokViews2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "views");
   const iTiktokLikes2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "likes");
   const iTiktokComments2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "comments");
