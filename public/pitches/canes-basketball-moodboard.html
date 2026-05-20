@@ -478,19 +478,68 @@ reference a specific slot when discussing the moodboard.
   }
   @media (max-width: 640px) {
     .container, .nav-inner { padding: 0 20px; }
+
+    /* MOBILE HERO — fully restructured.
+       The desktop hero is a layered composition (absolute video bg + overlaid text).
+       On mobile that fights for space — text gets lost on the video, and
+       the video is too small to feel intentional. So on mobile we STACK:
+         1. Text section on solid black (top)
+         2. Full-width hero video (middle)
+         3. Glass stats card overlapping the bottom of the video (bottom)
+    */
     .hero {
-      padding-block: 110px 40px;
-      padding-inline: max(20px, calc((100vw - 1264px) / 2));
-      min-height: auto;
+      padding: 110px 0 40px;        /* no horizontal padding — video needs to bleed full-width */
+      min-height: auto;             /* content-driven height, not viewport */
+      justify-content: flex-start;  /* override desktop's space-between */
+      gap: 0;
     }
-    /* Smaller, dimmer video on mobile — phone viewports don't have the
-       breathing room desktop has, so the video must recede into the bg. */
+
+    /* Hide the grid pattern + orange glow halo — desktop-only flourishes that
+       crowd the smaller mobile composition. */
+    .hero-grid-bg { display: none; }
+    .hero::after { display: none; }
+
+    /* TEXT SECTION (top) — pinned to its own padded box on solid black,
+       with a soft fade at the bottom so it transitions into the video. */
+    .hero-headline {
+      order: 1;                                              /* first in stack */
+      padding: 0 20px 56px 20px;
+      margin: 0;
+      background: linear-gradient(to bottom, #000 70%, transparent);
+      position: relative; z-index: 3;
+    }
+
+    /* VIDEO (middle) — exit absolute positioning, join the flex flow as a
+       full-width block. Remove the desktop fade mask since the video is now
+       its own focal element, not a background. */
     .hero-bg-video {
-      width: 55%;
-      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 60%);
-      mask-image: linear-gradient(to right, transparent 0%, black 60%);
+      order: 2;                                              /* second in stack */
+      position: relative;                                    /* exit absolute */
+      inset: auto;                                           /* clear top/right/bottom/left */
+      width: 100%;
+      aspect-ratio: 16/10;                                   /* slightly taller than 16:9 for mobile */
+      height: auto;
+      -webkit-mask-image: none;
+      mask-image: none;
     }
-    .hero-bg-video video { opacity: 0.4; }
+    .hero-bg-video video {
+      opacity: 1;                                            /* full visibility — it's the hero now */
+      object-position: center;
+    }
+
+    /* STATS CARD (bottom) — pulled UP with negative margin so it overlaps
+       the bottom of the video. Glass blur reads against the video pixels. */
+    .hero-bottom {
+      order: 3;                                              /* third in stack */
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px 20px;
+      padding: 22px 18px;
+      margin: -56px 20px 0 20px;                             /* negative top = overlap into video */
+      border-radius: 14px;
+      position: relative; z-index: 4;
+    }
+
+    /* Text sizing for mobile */
     .hero-kicker {
       font-size: 9px; letter-spacing: 0.14em;
       margin-bottom: 24px; flex-wrap: wrap;
@@ -498,13 +547,6 @@ reference a specific slot when discussing the moodboard.
     .hero-kicker::before { width: 24px; }
     .hero h1 { font-size: clamp(36px, 11vw, 56px); line-height: 0.92; }
     .hero-sub { font-size: 14px; margin-top: 24px; line-height: 1.6; }
-    .hero-bottom {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 18px 20px;
-      padding: 22px 18px;
-      margin-top: 44px;
-      border-radius: 14px;
-    }
     .stat-num { font-size: 28px; }
     .stat-label { font-size: 9px; margin-top: 8px; letter-spacing: 0.12em; max-width: 100%; }
   }
