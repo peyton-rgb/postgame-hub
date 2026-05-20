@@ -49,7 +49,7 @@ reference a specific slot when discussing the moodboard.
     --mono: 'JetBrains Mono', ui-monospace, monospace;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; overflow-x: hidden; }
   body {
     background: var(--bg); color: var(--ink);
     font-family: var(--body); font-weight: 400; line-height: 1.5;
@@ -98,11 +98,11 @@ reference a specific slot when discussing the moodboard.
     display: flex; flex-direction: column; justify-content: space-between;
     border-bottom: 1px solid var(--line); overflow: hidden;
     /* Break out of .container to span the full viewport width.
-       margin-left pulls the element's left edge to the viewport left;
-       width: 100vw extends it to the viewport right.
-       Padding above re-creates the .container's content inset for inner text. */
-    width: 100vw;
+       Dual negative margins expand the box past the container on both sides;
+       block-level width then naturally fills the new space — no 100vw needed
+       (100vw can compute wider than the visible viewport on iOS Safari). */
     margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
   }
   .hero-grid-bg {
     position: absolute; inset: 0; z-index: 1;
@@ -483,6 +483,14 @@ reference a specific slot when discussing the moodboard.
       padding-inline: max(20px, calc((100vw - 1264px) / 2));
       min-height: auto;
     }
+    /* Smaller, dimmer video on mobile — phone viewports don't have the
+       breathing room desktop has, so the video must recede into the bg. */
+    .hero-bg-video {
+      width: 55%;
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 60%);
+      mask-image: linear-gradient(to right, transparent 0%, black 60%);
+    }
+    .hero-bg-video video { opacity: 0.4; }
     .hero-kicker {
       font-size: 9px; letter-spacing: 0.14em;
       margin-bottom: 24px; flex-wrap: wrap;
