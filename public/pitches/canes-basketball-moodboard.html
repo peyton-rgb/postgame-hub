@@ -212,6 +212,36 @@ reference a specific slot when discussing the moodboard.
     position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; border: 0; display: block;
   }
+
+  /* VENUE REVEAL — wide establishing shot of the court. Reuses ref-tile's
+     border + hover treatment so it feels native to the rest of the page,
+     but preserves the image's natural aspect ratio (no crop) since this is
+     a single hero image rather than a grid tile. */
+  .venue-reveal {
+    margin-top: 56px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    transition: border-color 0.3s ease;
+  }
+  .venue-reveal:hover { border-color: var(--orange); }
+  .venue-reveal img { display: block; width: 100%; height: auto; }
+  /* Address caption beneath the venue photo. Mono uppercase to match
+     bucket-tag/stat-label aesthetic. Address is a clickable Maps link. */
+  .venue-meta {
+    margin-top: 20px;
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .venue-meta .name { color: var(--ink); }
+  .venue-meta .sep { color: var(--orange); }
+  .venue-meta a {
+    color: var(--ink-dim); text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  .venue-meta a:hover { color: var(--ink); border-bottom-color: var(--orange); }
   .ref-fallback {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
@@ -769,6 +799,25 @@ reference a specific slot when discussing the moodboard.
         <li>What does your pre-game ritual look like — and did the studio mess with it?</li>
         <li>Cane's day. Be honest — what's your order?</li>
       </ol>
+    </div>
+  </section>
+
+  <!-- ====================== THE VENUE ====================== -->
+  <section class="bucket reveal" id="venue">
+    <div class="bucket-head">
+      <div class="bucket-tag">The Venue</div>
+      <h2 class="bucket-title">Vanta <em>court.</em></h2>
+    </div>
+    <p class="bucket-lede">
+      Rooftop sports facility on top of Plaza of the Americas in downtown Dallas — minutes from the studio. Same day, different setting: open sky and the city skyline as the backdrop. The shift from controlled studio black-box to wide-open urban rooftop is the visual hook of the back half of the day.
+    </p>
+    <div class="venue-reveal">
+      <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/page-media/Moodboard/vanta%20.jpg" alt="Vanta — Dallas basketball court" loading="lazy">
+    </div>
+    <div class="venue-meta">
+      <span class="name">Vanta Athletics</span>
+      <span class="sep">·</span>
+      <a href="https://maps.google.com/?q=600+N+Pearl+St+Dallas+TX+75201" target="_blank" rel="noopener">600 N Pearl St, Dallas, TX 75201</a>
     </div>
   </section>
 
