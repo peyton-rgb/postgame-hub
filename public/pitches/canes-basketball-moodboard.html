@@ -516,11 +516,28 @@ reference a specific slot when discussing the moodboard.
       order: 2;                                              /* second in stack */
       position: relative;                                    /* exit absolute */
       inset: auto;                                           /* clear top/right/bottom/left */
-      width: 100%;
+      /* Make video larger than viewport so its sides crop off slightly,
+         giving a more cinematic / immersive feel. width: 115% with negative
+         left margin of half the overflow keeps it centered. The .hero's
+         overflow: hidden clips the protruding edges. */
+      width: 115%;
+      margin-left: -7.5%;
       aspect-ratio: 16/10;                                   /* slightly taller than 16:9 for mobile */
       height: auto;
       -webkit-mask-image: none;
       mask-image: none;
+    }
+    /* Black gradient strip overlaying the top of the video so the headline's
+       black background bleeds softly into the video instead of cutting hard.
+       ::before is a CSS-only "ghost div" — no extra HTML required. */
+    .hero-bg-video::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(to bottom, #000 0%, transparent 100%);
+      z-index: 2;
+      pointer-events: none;
     }
     .hero-bg-video video {
       opacity: 1;                                            /* full visibility — it's the hero now */
