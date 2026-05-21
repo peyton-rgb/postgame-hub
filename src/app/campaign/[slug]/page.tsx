@@ -6,7 +6,7 @@ export const revalidate = 120;
 
 type Props = { params: Promise<{ slug: string }> };
 
-/* Ã¢ÂÂÃ¢ÂÂ Supabase helper Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
+/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Supabase helper ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
 function sb() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +14,7 @@ function sb() {
   );
 }
 
-/* Ã¢ÂÂÃ¢ÂÂ SEO metadata Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
+/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ SEO metadata ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const { data: c } = await sb()
@@ -25,12 +25,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .single();
   if (!c) return { title: "Not Found" };
   return {
-    title: `${c.name} Ã¢ÂÂ ${c.client_name} | Postgame`,
+    title: `${c.name} ÃÂ¢ÃÂÃÂ ${c.client_name} | Postgame`,
     description: c.description || `${c.name} campaign by ${c.client_name}`,
   };
 }
 
-/* Ã¢ÂÂÃ¢ÂÂ styles Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
+/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ styles ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,.08);--text:#fff;--muted:rgba(255,255,255,.55);--dim:rgba(255,255,255,.35);}
@@ -51,7 +51,7 @@ body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-ser
 
 /* hero */
 .c-hero{padding:160px 48px 80px;text-align:center;background:radial-gradient(ellipse at 50% 0%,rgba(215,63,9,.08) 0%,transparent 60%);}
-.c-hero-logo{height:64px;width:auto;margin:0 auto 24px;display:block;object-fit:contain;}
+.c-hero-logo{height:96px;width:auto;margin:0 auto 24px;display:block;object-fit:contain;}
 .c-hero-title{font-size:clamp(48px,7vw,72px);line-height:.95;margin:0 0 16px;}
 .c-hero-tags{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:32px;}
 .c-tag{padding:6px 16px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
@@ -80,6 +80,16 @@ body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-ser
 .c-gallery-item img,.c-gallery-item video{width:100%;display:block;}
 .c-gallery-item:hover{transform:scale(1.01);transition:transform .3s;}
 
+
+/* lazy load fade-in */
+.c-gallery-item{opacity:0;animation:fadeIn .4s ease forwards;}
+@keyframes fadeIn{to{opacity:1;}}
+.c-gallery-item:nth-child(1){animation-delay:.05s;}
+.c-gallery-item:nth-child(2){animation-delay:.1s;}
+.c-gallery-item:nth-child(3){animation-delay:.15s;}
+.c-gallery-item:nth-child(4){animation-delay:.2s;}
+.c-gallery-item:nth-child(5){animation-delay:.25s;}
+.c-gallery-item:nth-child(6){animation-delay:.3s;}
 /* cta */
 .c-cta{text-align:center;padding:100px 24px;background:radial-gradient(ellipse at 50% 100%,rgba(215,63,9,.1) 0%,transparent 60%);}
 .c-cta-title{font-size:clamp(36px,5vw,56px);line-height:1;margin:0 0 16px;}
@@ -131,12 +141,12 @@ body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-ser
 }
 `;
 
-/* Ã¢ÂÂÃ¢ÂÂ page component Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
+/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ page component ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
 export default async function CampaignShowcasePage({ params }: Props) {
   const { slug } = await params;
   const supabase = sb();
 
-  // Fetch campaign (public fields only Ã¢ÂÂ no metrics)
+  // Fetch campaign (public fields only ÃÂ¢ÃÂÃÂ no metrics)
   const { data: campaign } = await supabase
     .from("campaign_recaps")
     .select("id, name, slug, description, hero_image_url, client_name, brand_id, settings, tags, public_sections")
@@ -153,7 +163,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
     .eq("id", campaign.brand_id)
     .single();
 
-  // Fetch athletes Ã¢ÂÂ only name, school, sport (NO metrics, NO follower counts)
+  // Fetch athletes ÃÂ¢ÃÂÃÂ only name, school, sport (NO metrics, NO follower counts)
   const { data: allAthletes } = await supabase
     .from("athletes")
     .select("id, name, school, sport, is_featured, featured_order")
@@ -214,7 +224,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
         {description && <p className="c-hero-desc">{description}</p>}
       </section>
 
-      {/* Stats Ã¢ÂÂ safe numbers only: athlete count, schools, sports */}
+      {/* Stats ÃÂ¢ÃÂÃÂ safe numbers only: athlete count, schools, sports */}
       <section className="c-stats">
         <div className="c-stat">
           <div className="d c-stat-val">{athleteCount}</div>
@@ -275,6 +285,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
                     src={m.file_url}
                     alt="Campaign content"
                     loading="lazy"
+                    decoding="async"
                     style={{ width: "100%", display: "block" }}
                   />
                 )}
