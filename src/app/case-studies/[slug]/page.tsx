@@ -93,97 +93,107 @@ function HeroMontage({
   items: MontageItem[];
   brandColor: string;
 }) {
-  // Horizontal filmstrip that auto-scrolls slowly.
-  // We duplicate the items so the strip can loop seamlessly.
-  const stripRef = useRef<HTMLDivElement>(null);
-  const [isPaused, setIsPaused] = useState(false);
+  // Full-bleed hype-reel montage. Each image/video fills the entire hero.
+  // Photos flash by quickly (~2s each) with a hard cut.
+  // Videos play for ~4s. Quick white flash on each transition.
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [flash, setFlash] = useState(false);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  // Double the items for seamless infinite scroll
-  const doubled = [...items, ...items];
+  useEffect(() => {
+    if (items.length <= 1) return;
 
-  // Total width of one set of items (each card ~320px + 12px gap)
-  const cardWidth = 320;
-  const gap = 12;
-  const totalWidth = items.length * (cardWidth + gap);
+    const current = items[activeIndex];
+    const isVideo = current.type === 'video';
 
-  // Speed: pixels per second
-  const speed = 35;
-  const duration = totalWidth / speed;
+    // Videos play longer, photos flash by
+    const duration = isVideo ? 4000 : 2000;
+
+    // Start video playback
+    if (isVideo) {
+      const vid = videoRefs.current[activeIndex];
+      if (vid) {
+        vid.currentTime = 0;
+        vid.play().catch(() => {});
+      }
+    }
+
+    const timer = setTimeout(() => {
+      // Quick white flash on transition
+      setFlash(true);
+      setTimeout(() => {
+        setActiveIndex((prev) => (prev + 1) % items.length);
+        setFlash(false);
+      }, 120);
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [activeIndex, items]);
 
   if (items.length === 0) return null;
 
   return (
-    <div
-      className="absolute inset-0 overflow-hidden"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
-      {/* Dark base so gaps don't flash white */}
-      <div className="absolute inset-0 bg-[#0a0a0a]" />
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Each item is full-bleed, stacked on top of each other */}
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className="absolute inset-0"
+          style={{
+            opacity: i === activeIndex ? 1 : 0,
+            zIndex: i === activeIndex ? 1 : 0,
+          }}
+        >
+          {item.type === 'video' ? (
+            <video
+              ref={(el) => { videoRefs.current[i] = el; }}
+              src={item.url}
+              muted
+              playsInline
+              loop
+              preload={i <= 2 ? 'auto' : 'none'}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <img
+              src={item.url}
+              alt=""
+              loading={i <= 2 ? 'eager' : 'lazy'}
+              className="w-full h-full object-cover"
+              style={{
+                // Slow zoom while visible for subtle motion
+                transform: i === activeIndex ? 'scale(1.05)' : 'scale(1)',
+                transition: 'transform 2.5s ease-out',
+              }}
+            />
+          )}
+        </div>
+      ))}
 
-      {/* Scrolling filmstrip */}
+      {/* White flash on cut */}
       <div
-        ref={stripRef}
-        className="absolute inset-0 flex items-center"
+        className="absolute inset-0 bg-white pointer-events-none"
         style={{
-          animation: `heroScroll ${duration}s linear infinite`,
-          animationPlayState: isPaused ? 'paused' : 'running',
+          opacity: flash ? 0.15 : 0,
+          zIndex: 2,
+          transition: 'opacity 80ms ease-out',
         }}
-      >
-        {doubled.map((item, i) => (
-          <div
-            key={i}
-            className="flex-shrink-0 h-[85%] rounded-xl overflow-hidden border border-white/[0.06]"
-            style={{
-              width: `${cardWidth}px`,
-              marginRight: `${gap}px`,
-            }}
-          >
-            {item.type === 'video' ? (
-              <video
-                src={item.url}
-                muted
-                playsInline
-                autoPlay
-                loop
-                preload={i < items.length ? 'auto' : 'none'}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <img
-                src={item.url}
-                alt=""
-                loading={i < items.length ? 'eager' : 'lazy'}
-                className="w-full h-full object-cover"
-              />
-            )}
-          </div>
-        ))}
-      </div>
+      />
 
-      {/* Gradient overlays for text readability */}
+      {/* Dark overlay for text readability */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: `
-            linear-gradient(90deg, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0.6) 25%, rgba(10,10,10,0.3) 50%, rgba(10,10,10,0.6) 75%, rgba(10,10,10,0.95) 100%),
-            linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.2) 30%, rgba(10,10,10,0.2) 70%, rgba(10,10,10,0.85) 100%)
-          `,
+          zIndex: 3,
+          background: `linear-gradient(180deg, rgba(10,10,10,0.65) 0%, rgba(10,10,10,0.35) 40%, rgba(10,10,10,0.8) 100%)`,
         }}
       />
 
-      {/* Subtle brand color tint */}
+      {/* Subtle brand color wash */}
       <div
-        className="absolute inset-0 opacity-10 mix-blend-overlay pointer-events-none"
-        style={{ backgroundColor: brandColor }}
+        className="absolute inset-0 opacity-15 mix-blend-overlay pointer-events-none"
+        style={{ zIndex: 4, backgroundColor: brandColor }}
       />
-
-      <style>{`
-        @keyframes heroScroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-${totalWidth}px); }
-        }
-      `}</style>
     </div>
   );
 }
