@@ -375,6 +375,8 @@ export default function DashboardSidebar() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    // Clear the auth cookie so middleware redirects to login
+    document.cookie = 'sb-auth-token=; path=/; max-age=0';
     router.push('/login');
   };
 

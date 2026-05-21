@@ -20,6 +20,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import PublicNav from '@/components/PublicNav';
 
 // --- Types ---
 
@@ -387,7 +388,8 @@ export default function PublicReviewPage() {
   const canApprove = isBrandViewer && review.status === 'pending_brand';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-[56px]">
+      <PublicNav variant="light" />
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">

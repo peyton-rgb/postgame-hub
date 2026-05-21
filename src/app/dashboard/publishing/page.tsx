@@ -15,6 +15,18 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createBrowserSupabase } from '@/lib/supabase';
+import dynamic from 'next/dynamic';
+
+// Dynamic import for ContentStrategyPanel (uses browser-only APIs)
+const ContentStrategyPanel = dynamic(
+  () => import('@/components/ContentStrategyPanel'),
+  { ssr: false, loading: () => (
+    <div className="text-center py-16">
+      <div className="animate-spin w-8 h-8 border-2 border-[#D73F09] border-t-transparent rounded-full mx-auto mb-3" />
+      <p className="text-gray-500">Loading Content Strategy...</p>
+    </div>
+  )}
+);
 
 // --- Types ---
 
@@ -97,6 +109,7 @@ export default function PublishingPage() {
   const supabase = createBrowserSupabase();
 
   // --- State ---
+  const [topTab, setTopTab] = useState<'calendar' | 'strategy'>('calendar');
   const [items, setItems] = useState<QueueItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -236,11 +249,11 @@ export default function PublishingPage() {
     <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Publishing Calendar</h1>
+            <h1 className="text-3xl font-bold">Publishing & Strategy</h1>
             <p className="text-gray-400 mt-1">
-              Schedule and track your content across all channels
+              Schedule content and get AI-powered posting suggestions
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -252,6 +265,40 @@ export default function PublishingPage() {
             </a>
           </div>
         </div>
+
+        {/* Top-level tabs: Calendar vs Content Strategy */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setTopTab('calendar')}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition ${
+              topTab === 'calendar'
+                ? 'bg-[#D73F09] text-white'
+                : 'text-gray-400 border border-gray-700 hover:bg-gray-800'
+            }`}
+          >
+            Publishing Calendar
+          </button>
+          <button
+            onClick={() => setTopTab('strategy')}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+              topTab === 'strategy'
+                ? 'bg-[#D73F09] text-white'
+                : 'text-gray-400 border border-gray-700 hover:bg-gray-800'
+            }`}
+          >
+            <span className="text-xs">&#9733;</span>
+            Content Strategy
+          </button>
+        </div>
+
+        {/* Content Strategy Panel */}
+        {topTab === 'strategy' && (
+          <ContentStrategyPanel />
+        )}
+
+        {/* Publishing Calendar Content */}
+        {topTab === 'calendar' && (
+        <>
 
         {/* Channel filter tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
@@ -619,6 +666,9 @@ export default function PublishingPage() {
               </div>
             )}
           </>
+        )}
+
+        </>
         )}
 
         {/* Reschedule modal */}

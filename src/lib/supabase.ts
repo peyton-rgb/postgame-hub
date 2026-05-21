@@ -20,10 +20,26 @@
 import { createClient } from '@supabase/supabase-js';
 
 // --- Used by new Blueprint v2 dashboard pages ---
+// Configured to store auth sessions in cookies (not just localStorage)
+// so the Next.js middleware can check if a user is logged in.
 export function createBrowserSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        // flowType 'pkce' is the recommended secure flow for browser apps
+        flowType: 'pkce',
+        // Store session in cookies so middleware can read it server-side
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        // Automatically refresh the session before it expires
+        autoRefreshToken: true,
+        // Persist the session between page loads
+        persistSession: true,
+        // Detect session from URL (for magic links, OAuth callbacks)
+        detectSessionInUrl: true,
+      },
+    }
   );
 }
 

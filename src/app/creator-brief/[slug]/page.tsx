@@ -12,6 +12,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import PublicNav from '@/components/PublicNav';
 import type {
   CreatorBrief,
   CreatorBriefSection,
@@ -518,6 +519,7 @@ export default function PublicCreatorBriefPage({ params }: { params: { slug: str
 
   return (
     <div className="min-h-screen bg-[#f5f5f0]">
+      <PublicNav variant="light" />
       {/* Hero — pt-20 accounts for the fixed Postgame navbar */}
       <div className="bg-white border-b border-gray-200 pt-20">
         <div className="max-w-3xl mx-auto px-6 py-8">

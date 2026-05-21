@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import PublicNav from '@/components/PublicNav';
 
 // --- Types ---
 
@@ -212,7 +213,8 @@ export default function AthleteDeliveryPage() {
 
   // --- Main render ---
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pt-[56px]">
+      <PublicNav variant="light" />
       {/* Header */}
       <header className="border-b border-gray-200 bg-white">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
