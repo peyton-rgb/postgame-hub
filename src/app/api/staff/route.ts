@@ -1,40 +1,47 @@
 // ============================================================
-// GET /api/staff — List Postgame team contacts for dropdowns
+// GET /api/staff — List Postgame team members for dropdowns
 //
-// Returns all active rows from the postgame_contacts table so
-// the creator brief editor can offer a "select contact" dropdown.
+// Returns all @pstgm.com users from auth.users so the creator
+// brief editor can offer a "select Postgame contact" dropdown.
 // ============================================================
 
-import { createServerClient } from '@supabase/ssr';
-import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase } from '@/lib/supabase-server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+// Admin client needed to read auth.users
+const adminSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function GET() {
   // Auth check — only logged-in staff can see the team list
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll() {},
-      },
-    }
-  );
+  const supabase = createServerSupabase();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  // Fetch active contacts from the postgame_contacts table
-  const { data, error } = await supabase
-    .from('postgame_contacts')
-    .select('id, name, phone, email, role')
-    .eq('is_active', true)
-    .order('name');
+  // Fetch all users (Supabase admin API)
+  const { data, error } = await adminSupabase.auth.admin.listUsers();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data || []);
+  // Filter to @pstgm.com emails and map to a clean shape
+  const staff = (data.users || [])
+    .filter((u) => u.email?.endsWith('@pstgm.com'))
+    .map((u) => ({
+      id: u.id,
+      email: u.email || '',
+      // Derive a display name from the email prefix, capitalized
+      name: u.user_metadata?.full_name ||
+        (u.email?.split('@')[0] || '').charAt(0).toUpperCase() +
+        (u.email?.split('@')[0] || '').slice(1),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return NextResponse.json(staff);
 }

@@ -5,14 +5,14 @@
 // The feedback is logged for future tuning of the Creative Director.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {

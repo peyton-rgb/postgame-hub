@@ -1,265 +1,228 @@
 // ============================================================
-// Gemini 2.5 Pro video analysis tool.
+// Gemini Tool Wrapper
 //
-// Two-step flow:
-//   1) uploadFileToGemini — pulls the file at fileUrl, ships it
-//      to the Gemini File API via the resumable protocol, polls
-//      until the file enters ACTIVE state, returns its URI.
-//   2) analyzeWithGemini — calls generateContent with that URI
-//      and a prompt that asks for a JSON scene map.
+// Handles two things:
+//   1. Uploading a video/image file to Gemini's File API
+//      (temporary storage so Gemini can process it)
+//   2. Sending the file + a prompt to Gemini 2.5 Pro and
+//      getting back structured JSON (the scene map)
 //
-// Native fetch only (no SDK) so we don't add a dependency.
+// Gemini can watch up to 2 hours of video or analyze images
+// natively — no need to split into frames first.
+//
+// Requires: GEMINI_API_KEY in environment variables
 // ============================================================
 
 import type { SceneMap } from '@/lib/types/editing';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com';
 const GEMINI_MODEL = 'gemini-2.5-pro';
-const POLL_INTERVAL_MS = 1500;
-const POLL_MAX_TRIES = 80; // ~2 minutes total
 
-function apiKey(): string {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY is not set');
-  return key;
-}
-
-interface GeminiFileMeta {
-  name: string;
-  uri: string;
-  state: 'PROCESSING' | 'ACTIVE' | 'FAILED' | string;
-  mimeType: string;
-  sizeBytes?: string;
-}
-
-export interface GeminiUploadResult {
-  fileUri: string;
-  name: string;
-}
-
-// Step 1: download the source bytes, then push to the Gemini File API
-// using the resumable upload protocol. We don't actually stream chunks
-// here — the Gemini API accepts a one-shot upload+finalize, which is
-// fine for the file sizes we deal with.
+/**
+ * Upload a file to Gemini's File API for processing.
+ *
+ * Think of this like attaching a file to an email — Gemini needs
+ * the file "in its hands" before it can analyze it. The file is
+ * stored temporarily (48 hours) on Google's servers.
+ *
+ * @param fileUrl - Public URL of the video or image
+ * @param mimeType - e.g. 'video/mp4', 'image/jpeg'
+ * @returns The Gemini file URI (used in the analysis call)
+ */
 export async function uploadFileToGemini(
   fileUrl: string,
   mimeType: string
-): Promise<GeminiUploadResult> {
-  const key = apiKey();
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
 
-  // 1a. Pull bytes
-  const srcResp = await fetch(fileUrl);
-  if (!srcResp.ok) {
-    throw new Error(`Failed to fetch source file: ${srcResp.status} ${srcResp.statusText}`);
+  // Step 1: Download the file from our storage
+  const fileResponse = await fetch(fileUrl);
+  if (!fileResponse.ok) {
+    throw new Error(`Failed to download source file: ${fileResponse.status}`);
   }
-  const buffer = Buffer.from(await srcResp.arrayBuffer());
+  const fileBuffer = await fileResponse.arrayBuffer();
 
-  // 1b. Init resumable upload — returns the upload URL in the
-  //     X-Goog-Upload-URL response header.
-  const initResp = await fetch(
-    `${GEMINI_API_BASE}/upload/v1beta/files?key=${key}`,
+  // Step 2: Start a resumable upload to Gemini
+  const startUploadRes = await fetch(
+    `${GEMINI_API_BASE}/upload/v1beta/files?key=${apiKey}`,
     {
       method: 'POST',
       headers: {
-        'X-Goog-Upload-Protocol': 'resumable',
-        'X-Goog-Upload-Command': 'start',
-        'X-Goog-Upload-Header-Content-Length': String(buffer.length),
-        'X-Goog-Upload-Header-Content-Type': mimeType,
-        'Content-Type': 'application/json',
+        'Content-Type': mimeType,
+        'X-Goog-Upload-Protocol': 'raw',
       },
-      body: JSON.stringify({
-        file: { display_name: `edit-${Date.now()}` },
-      }),
+      body: fileBuffer,
     }
   );
 
-  if (!initResp.ok) {
-    const text = await initResp.text();
-    throw new Error(`Gemini upload init failed: ${initResp.status} ${text}`);
+  if (!startUploadRes.ok) {
+    const errText = await startUploadRes.text();
+    throw new Error(`Gemini file upload failed: ${startUploadRes.status} — ${errText}`);
   }
 
-  const uploadUrl = initResp.headers.get('x-goog-upload-url');
-  if (!uploadUrl) {
-    throw new Error('Gemini upload init returned no upload URL');
+  const uploadResult = await startUploadRes.json();
+
+  // The response contains a file object with a URI we'll use in the analysis call
+  const fileUri = uploadResult?.file?.uri;
+  if (!fileUri) {
+    throw new Error('Gemini upload succeeded but no file URI returned');
   }
 
-  // 1c. Push bytes + finalize in a single request.
-  const uploadResp = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Length': String(buffer.length),
-      'X-Goog-Upload-Offset': '0',
-      'X-Goog-Upload-Command': 'upload, finalize',
-    },
-    body: buffer,
-  });
+  // Step 3: Wait for the file to become ACTIVE (Gemini processes it)
+  // This is especially important for videos — they need to be transcoded
+  const fileName = uploadResult.file.name; // e.g. "files/abc123"
+  let attempts = 0;
+  const maxAttempts = 60; // 5 minutes max wait (5s intervals)
 
-  if (!uploadResp.ok) {
-    const text = await uploadResp.text();
-    throw new Error(`Gemini file upload failed: ${uploadResp.status} ${text}`);
-  }
+  while (attempts < maxAttempts) {
+    const statusRes = await fetch(
+      `${GEMINI_API_BASE}/v1beta/${fileName}?key=${apiKey}`
+    );
+    const statusData = await statusRes.json();
 
-  const uploadJson = (await uploadResp.json()) as { file: GeminiFileMeta };
-  const file = uploadJson.file;
-
-  // 1d. Poll until ACTIVE.
-  if (file.state !== 'ACTIVE') {
-    let active: GeminiFileMeta | null = null;
-    for (let i = 0; i < POLL_MAX_TRIES; i++) {
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-      const checkResp = await fetch(
-        `${GEMINI_API_BASE}/v1beta/${file.name}?key=${key}`
-      );
-      if (!checkResp.ok) {
-        const text = await checkResp.text();
-        throw new Error(`Gemini file poll failed: ${checkResp.status} ${text}`);
-      }
-      const meta = (await checkResp.json()) as GeminiFileMeta;
-      if (meta.state === 'ACTIVE') {
-        active = meta;
-        break;
-      }
-      if (meta.state === 'FAILED') {
-        throw new Error(`Gemini file processing FAILED for ${file.name}`);
-      }
+    if (statusData.state === 'ACTIVE') {
+      return fileUri;
     }
-    if (!active) {
-      throw new Error(`Gemini file did not become ACTIVE within ${POLL_MAX_TRIES * POLL_INTERVAL_MS / 1000}s`);
+
+    if (statusData.state === 'FAILED') {
+      throw new Error(`Gemini file processing failed: ${statusData.error?.message || 'Unknown error'}`);
     }
-    return { fileUri: active.uri, name: active.name };
+
+    // Still processing — wait 5 seconds and check again
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    attempts++;
   }
 
-  return { fileUri: file.uri, name: file.name };
+  throw new Error('Gemini file processing timed out after 5 minutes');
 }
 
-// --- Scene-map prompt + parsing ----------------------------------
-
-const SYSTEM_PROMPT = `You are a senior video editor analyzing footage for an AI editing pipeline.
-
-Produce a SCENE MAP as JSON describing the clip in fine detail. The map must follow this exact shape:
-
-{
-  "duration_seconds": number,
-  "resolution": "<WxH>",
-  "frame_rate": number,
-  "scenes": [
-    {
-      "index": number,
-      "start_time": number,
-      "end_time": number,
-      "description": "what's happening — concise but specific",
-      "visual_tags": ["..."],
-      "audio_tags": ["..."],
-      "shot_type": "wide | medium | close | extreme close | overhead | aerial | etc.",
-      "notable_objects": ["product, logos, text overlays, athletes, environments"]
-    }
-  ],
-  "global_notes": "anything that spans the full clip — voice overs, music, branding, color treatment"
-}
-
-Rules:
-- Every distinct beat or shot change is its own scene.
-- Timestamps in seconds with one decimal of precision.
-- ALWAYS surface visible logos, brand marks, and on-screen text in notable_objects.
-- Return JSON ONLY. No markdown fences, no commentary, nothing outside the JSON object.`;
-
-interface GeminiUsageMetadata {
-  promptTokenCount?: number;
-  candidatesTokenCount?: number;
-  totalTokenCount?: number;
-}
-
-interface GeminiGenerateResponse {
-  candidates?: {
-    content?: { parts?: { text?: string }[] };
-    finishReason?: string;
-  }[];
-  usageMetadata?: GeminiUsageMetadata;
-}
-
-export interface GeminiAnalyzeResult {
-  sceneMap: SceneMap;
-  promptTokens: number;
-  completionTokens: number;
-}
-
-function stripCodeFences(text: string): string {
-  const t = text.trim();
-  if (!t.startsWith('```')) return t;
-  return t.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-}
-
+/**
+ * Ask Gemini to analyze a video or image and return a scene map.
+ *
+ * This is the "Brain" step — Gemini watches the entire video and
+ * identifies every scene, object, person, logo, timestamp, etc.
+ *
+ * @param fileUri - The Gemini file URI from uploadFileToGemini()
+ * @param mimeType - e.g. 'video/mp4', 'image/jpeg'
+ * @param instruction - The user's edit instruction (so Gemini pays
+ *   extra attention to the things the user wants to change)
+ * @returns A structured SceneMap
+ */
 export async function analyzeWithGemini(
   fileUri: string,
   mimeType: string,
   instruction: string
-): Promise<GeminiAnalyzeResult> {
-  const key = apiKey();
+): Promise<{ sceneMap: SceneMap; inputTokens: number; outputTokens: number }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
 
-  const userText = `User's editing instruction: """${instruction}"""\n\nGenerate the scene map for this clip.`;
+  const isVideo = mimeType.startsWith('video/');
 
-  const resp = await fetch(
-    `${GEMINI_API_BASE}/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+  const systemPrompt = isVideo
+    ? `You are a video analysis engine for a professional content editing pipeline.
+
+Watch this video completely and produce a structured JSON scene map.
+
+For each scene, identify:
+- Exact start/end timestamps (HH:MM:SS format)
+- Everything visible: people, logos, text on screen, backgrounds, objects, clothing
+- Where each notable object is located (bounding box estimate in pixels: x, y, w, h)
+- Camera motion (static, pan, zoom, tracking, handheld, dolly, crane, drone)
+- Lighting conditions (indoor/outdoor, natural/artificial, direction, quality)
+
+For each subject (person or animal) that appears across multiple scenes, track them
+with a consistent ID and note which scenes they appear in.
+
+The user wants to make this edit: "${instruction}"
+
+Pay EXTRA attention to any elements the user mentions in their instruction.
+Find every single instance of those elements with precise timestamps and locations.
+If the user mentions logos, find ALL logos. If they mention a person, track them
+through every scene. Be thorough — missed elements mean missed edits.`
+    : `You are an image analysis engine for a professional content editing pipeline.
+
+Analyze this image completely and produce a structured JSON scene map.
+Since this is a single image, return exactly one scene (scene_id: 1) with
+start_time "00:00:00" and end_time "00:00:00".
+
+Identify:
+- Everything visible: people, logos, text, backgrounds, objects, clothing
+- Where each notable object is located (bounding box estimate in pixels: x, y, w, h)
+- Lighting conditions
+- Any subjects (people, animals) with descriptions
+
+The user wants to make this edit: "${instruction}"
+
+Pay EXTRA attention to any elements the user mentions.`;
+
+  const response = await fetch(
+    `${GEMINI_API_BASE}/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [
           {
-            role: 'user',
             parts: [
-              { file_data: { file_uri: fileUri, mime_type: mimeType } },
-              { text: userText },
+              { fileData: { mimeType, fileUri } },
+              { text: systemPrompt },
             ],
           },
         ],
         generationConfig: {
-          temperature: 0.2,
-          response_mime_type: 'application/json',
+          responseMimeType: 'application/json',
+          temperature: 0.1, // low temperature for factual analysis
         },
       }),
     }
   );
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Gemini generateContent failed: ${resp.status} ${text}`);
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini analysis failed: ${response.status} — ${errText}`);
   }
 
-  const data = (await resp.json()) as GeminiGenerateResponse;
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) {
-    throw new Error('Gemini returned no text content');
+  const result = await response.json();
+
+  // Extract token counts for cost tracking
+  const usageMetadata = result.usageMetadata || {};
+  const inputTokens = usageMetadata.promptTokenCount || 0;
+  const outputTokens = usageMetadata.candidatesTokenCount || 0;
+
+  // Parse the JSON response from Gemini
+  const textContent = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textContent) {
+    throw new Error('Gemini returned no content');
   }
 
-  let parsed: SceneMap;
+  let sceneMap: SceneMap;
   try {
-    parsed = JSON.parse(stripCodeFences(rawText)) as SceneMap;
-  } catch (err) {
-    throw new Error(
-      `Failed to parse Gemini JSON: ${err instanceof Error ? err.message : 'unknown'}\n--- raw ---\n${rawText.slice(0, 500)}`
-    );
+    sceneMap = JSON.parse(textContent) as SceneMap;
+  } catch {
+    throw new Error(`Failed to parse Gemini scene map as JSON: ${textContent.slice(0, 200)}`);
   }
 
-  return {
-    sceneMap: parsed,
-    promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
-    completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
-  };
+  // Basic validation — make sure we got the expected structure
+  if (!sceneMap.scenes || !Array.isArray(sceneMap.scenes)) {
+    throw new Error('Gemini scene map missing "scenes" array');
+  }
+
+  return { sceneMap, inputTokens, outputTokens };
 }
 
-// --- Cost estimate -----------------------------------------------
-// Gemini 2.5 Pro pricing varies by mode; this is a working estimate.
-// Tune as needed once we have real usage telemetry.
-const GEMINI_PRO_PER_SECOND = 0.0015; // video token pricing rough average
-const GEMINI_PRO_IMAGE_FLAT = 0.005;
-
+/**
+ * Estimate the cost of a Gemini analysis based on content type and duration.
+ * These are rough estimates — actual cost depends on token counts.
+ */
 export function estimateGeminiCost(
   contentType: 'video' | 'image',
   durationSeconds?: number
 ): number {
-  if (contentType === 'image') return GEMINI_PRO_IMAGE_FLAT;
-  const seconds = durationSeconds && durationSeconds > 0 ? durationSeconds : 30;
-  return Math.max(0.005, seconds * GEMINI_PRO_PER_SECOND);
+  if (contentType === 'image') {
+    return 0.02; // ~$0.02 for a single image analysis
+  }
+  // Video: roughly $0.50-2.00 per minute
+  const minutes = (durationSeconds || 60) / 60;
+  return Math.max(0.10, minutes * 0.75); // $0.75/min average estimate
 }

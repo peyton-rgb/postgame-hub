@@ -1,666 +1,699 @@
-"use client";
+// ============================================================
+// Inspo Library — /dashboard/inspo
+//
+// The Creative Brain's visual memory. Browse, search, and
+// filter every tagged asset in Postgame's library. Assets
+// flow here after being uploaded and tagged in Station 1
+// (the Intake page). From here, assets get pulled into
+// concept generation and creator briefs by the AI agents.
+//
+// Features:
+//   - Masonry-style grid of thumbnails
+//   - Free-text search + tag/vibe/sport/content type filters
+//   - Detail panel showing all 13 tag categories + metadata
+//   - "Re-tag" button to re-run Claude Vision on an item
+//   - Hero toggle to mark standout assets
+// ============================================================
 
-import { useEffect, useState, useCallback } from "react";
-import { createBrowserSupabase } from "@/lib/supabase";
-import Link from "next/link";
+'use client';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { createBrowserSupabase } from '@/lib/supabase';
+import type { InspoItem, ContentType, TaggingStatus } from '@/lib/types/intake';
 
-interface InspoItem {
-  id: string;
-  thumbnail_url: string | null;
-  file_url: string | null;
-  content_type: string | null;
-  source: string | null;
-  sport: string | null;
-  school: string | null;
-  athlete_name: string | null;
-  visual_description: string | null;
-  triage_status: string | null;
-  tagging_status: string | null;
-  performance_tier: string | null;
-  context_tags: Record<string, string> | null;
-  social_tags: Record<string, unknown> | null;
-  pro_tags: Record<string, string> | null;
-  search_phrases: string[] | null;
-  brief_fit: string[] | null;
-  created_at: string | null;
-  brand_id: string | null;
-  campaign_id: string | null;
-  // joined
-  brands?: { id: string; name: string; logo_light_url: string | null; logo_url: string | null } | null;
-}
-
-interface Brand {
-  id: string;
-  name: string;
-  logo_light_url: string | null;
-  logo_url: string | null;
-}
-
-type ContentType = "produced" | "athlete_ugc" | "bts" | "raw_footage" | "photography" | "talking_head" | "inspo_external";
-type Source = "inspo" | "produced_catalog" | "live_athlete_post";
-type PerfTier = "top" | "solid" | "learning" | "unscored";
+// --- Display helpers ---
 
 const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
-  produced: "Produced",
-  athlete_ugc: "Athlete UGC",
-  bts: "BTS",
-  raw_footage: "Raw Footage",
-  photography: "Photography",
-  talking_head: "Talking Head",
-  inspo_external: "External Inspo",
+  produced: 'Produced',
+  athlete_ugc: 'Athlete UGC',
+  bts: 'BTS',
+  raw_footage: 'Raw Footage',
+  photography: 'Photography',
+  talking_head: 'Talking Head',
+  inspo_external: 'External Inspo',
 };
 
-const SOURCE_LABELS: Record<Source, string> = {
-  inspo: "Inspo",
-  produced_catalog: "Produced Catalog",
-  live_athlete_post: "Live Post",
+const CONTENT_TYPE_COLORS: Record<ContentType, string> = {
+  produced: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
+  athlete_ugc: 'bg-green-600/20 text-green-300 border-green-600/30',
+  bts: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
+  raw_footage: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
+  photography: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  talking_head: 'bg-pink-600/20 text-pink-300 border-pink-600/30',
+  inspo_external: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
 };
 
-const TIER_LABELS: Record<PerfTier, string> = {
-  top: "Top",
-  solid: "Solid",
-  learning: "Learning",
-  unscored: "Unscored",
+// Tag category labels for the detail panel
+const TAG_CATEGORIES = {
+  pro_tags: {
+    label: 'Production Tags',
+    fields: {
+      camera_movement: 'Camera Movement',
+      lighting: 'Lighting',
+      lens_shot_type: 'Shot Type',
+      grade_post_style: 'Color/Grade',
+    },
+  },
+  social_tags: {
+    label: 'Social Tags',
+    fields: {
+      trend_format: 'Trend Format',
+      platform_feel: 'Platform Feel',
+      audience_energy: 'Audience Energy',
+    },
+  },
+  context_tags: {
+    label: 'Context Tags',
+    fields: {
+      sport: 'Sport',
+      setting: 'Setting',
+      product_category: 'Product',
+      athlete_identity: 'Athlete Identity',
+      content_purpose: 'Content Purpose',
+    },
+  },
 };
 
-const TIER_COLORS: Record<PerfTier, string> = {
-  top: "#22c55e",
-  solid: "#3b82f6",
-  learning: "#f59e0b",
-  unscored: "rgba(255,255,255,0.3)",
-};
-
-const CONTENT_TYPE_COLORS: Record<string, string> = {
-  produced: "#D73F09",
-  athlete_ugc: "#8b5cf6",
-  bts: "#f59e0b",
-  raw_footage: "#6b7280",
-  photography: "#ec4899",
-  talking_head: "#14b8a6",
-  inspo_external: "#3b82f6",
-};
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Pull up to 3 interesting AI tags from the item for display. */
-function getTopTags(item: InspoItem): string[] {
-  const tags: string[] = [];
-  const ctx = item.context_tags;
-  if (ctx?.mood) tags.push(ctx.mood);
-  if (ctx?.setting) tags.push(ctx.setting);
-  const social = item.social_tags as Record<string, unknown> | null;
-  if (social?.hook_style) tags.push(String(social.hook_style));
-  if (tags.length < 3 && ctx?.lighting) tags.push(ctx.lighting);
-  if (tags.length < 3 && item.sport) tags.push(item.sport);
-  return tags.slice(0, 3);
-}
-
-function formatDate(d: string | null) {
-  if (!d) return "";
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function FilterBar({
-  brands,
-  filters,
-  onFilterChange,
-  searchQuery,
-  onSearch,
-  searching,
-}: {
-  brands: Brand[];
-  filters: { brand_id: string; content_type: string; source: string; performance_tier: string };
-  onFilterChange: (key: string, value: string) => void;
-  searchQuery: string;
-  onSearch: (q: string) => void;
-  searching: boolean;
-}) {
-  const selectStyle: React.CSSProperties = {
-    background: "var(--glass-bg)",
-    border: "1px solid var(--glass-border)",
-    borderRadius: "var(--r-sm)",
-    color: "var(--text-2)",
-    fontSize: 13,
-    fontWeight: 700,
-    fontFamily: "Arial, sans-serif",
-    padding: "8px 12px",
-    outline: "none",
-    cursor: "pointer",
-    minWidth: 130,
-  };
-
-  return (
-    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-      {/* Search */}
-      <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 340 }}>
-        <input
-          type="text"
-          placeholder="Search content..."
-          value={searchQuery}
-          onChange={(e) => onSearch(e.target.value)}
-          style={{
-            ...selectStyle,
-            width: "100%",
-            paddingLeft: 36,
-            minWidth: 0,
-            color: "var(--text)",
-          }}
-        />
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-3)" }}
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path d="M21 21l-4.35-4.35" />
-        </svg>
-        {searching && (
-          <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, border: "2px solid var(--text-3)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-        )}
-      </div>
-
-      {/* Brand */}
-      <select style={selectStyle} value={filters.brand_id} onChange={(e) => onFilterChange("brand_id", e.target.value)}>
-        <option value="">All Brands</option>
-        {brands.map((b) => (
-          <option key={b.id} value={b.id}>{b.name}</option>
-        ))}
-      </select>
-
-      {/* Content Type */}
-      <select style={selectStyle} value={filters.content_type} onChange={(e) => onFilterChange("content_type", e.target.value)}>
-        <option value="">All Types</option>
-        {Object.entries(CONTENT_TYPE_LABELS).map(([k, v]) => (
-          <option key={k} value={k}>{v}</option>
-        ))}
-      </select>
-
-      {/* Source */}
-      <select style={selectStyle} value={filters.source} onChange={(e) => onFilterChange("source", e.target.value)}>
-        <option value="">All Sources</option>
-        {Object.entries(SOURCE_LABELS).map(([k, v]) => (
-          <option key={k} value={k}>{v}</option>
-        ))}
-      </select>
-
-      {/* Performance Tier */}
-      <select style={selectStyle} value={filters.performance_tier} onChange={(e) => onFilterChange("performance_tier", e.target.value)}>
-        <option value="">All Tiers</option>
-        {Object.entries(TIER_LABELS).map(([k, v]) => (
-          <option key={k} value={k}>{v}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function TriageCard({
-  item,
-  onApprove,
-  onReject,
-}: {
-  item: InspoItem;
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-}) {
-  const brandName = item.brands?.name ?? "Unknown Brand";
-  const thumb = item.thumbnail_url || item.file_url;
-
-  return (
-    <div
-      style={{
-        background: "var(--glass-bg)",
-        border: "1px solid var(--glass-border)",
-        borderRadius: "var(--r-md)",
-        overflow: "hidden",
-        display: "flex",
-        gap: 0,
-        minHeight: 100,
-        transition: "border-color 0.15s, background 0.15s",
-      }}
-      className="glass-hover"
-    >
-      {/* Thumbnail */}
-      <div style={{ width: 120, minHeight: 100, background: "var(--bg-3)", flexShrink: 0, position: "relative" }}>
-        {thumb ? (
-          <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", fontSize: 11, fontWeight: 700 }}>
-            NO THUMB
-          </div>
-        )}
-        {item.tagging_status === "processing" && (
-          <div style={{ position: "absolute", top: 6, left: 6, background: "rgba(0,0,0,0.7)", borderRadius: 6, padding: "2px 6px", fontSize: 10, fontWeight: 700, color: "#f59e0b" }}>
-            TAGGING...
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {item.athlete_name || "Unnamed"}
-          </span>
-          <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
-            {brandName}
-          </span>
-        </div>
-        {item.visual_description && (
-          <p style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {item.visual_description}
-          </p>
-        )}
-        <div style={{ display: "flex", gap: 6, marginTop: "auto" }}>
-          <button
-            onClick={() => onApprove(item.id)}
-            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 800, fontFamily: "Arial, sans-serif", background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 8, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em" }}
-          >
-            Approve
-          </button>
-          <button
-            onClick={() => onReject(item.id)}
-            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 800, fontFamily: "Arial, sans-serif", background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em" }}
-          >
-            Reject
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InspoCard({ item }: { item: InspoItem }) {
-  const brandName = item.brands?.name ?? "";
-  const thumb = item.thumbnail_url || item.file_url;
-  const topTags = getTopTags(item);
-  const ctColor = CONTENT_TYPE_COLORS[item.content_type ?? ""] ?? "var(--text-3)";
-  const tierColor = TIER_COLORS[(item.performance_tier as PerfTier) ?? "unscored"] ?? "var(--text-4)";
-
-  return (
-    <div
-      style={{
-        background: "var(--glass-bg)",
-        border: "1px solid var(--glass-border)",
-        borderRadius: "var(--r-md)",
-        overflow: "hidden",
-        transition: "border-color 0.15s, background 0.15s, transform 0.15s",
-        cursor: "pointer",
-        breakInside: "avoid",
-        marginBottom: 12,
-      }}
-      className="glass-hover"
-    >
-      {/* Thumbnail */}
-      <div style={{ position: "relative", background: "var(--bg-3)" }}>
-        {thumb ? (
-          <img
-            src={thumb}
-            alt={item.visual_description || ""}
-            style={{ width: "100%", display: "block", minHeight: 120, objectFit: "cover" }}
-            loading="lazy"
-          />
-        ) : (
-          <div style={{ width: "100%", height: 160, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", fontSize: 12, fontWeight: 700, letterSpacing: "0.05em" }}>
-            NO PREVIEW
-          </div>
-        )}
-
-        {/* Content type badge */}
-        {item.content_type && (
-          <div style={{
-            position: "absolute", top: 8, left: 8,
-            background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
-            borderRadius: 6, padding: "3px 8px",
-            fontSize: 10, fontWeight: 800, fontFamily: "Arial, sans-serif",
-            color: ctColor, textTransform: "uppercase", letterSpacing: "0.05em",
-            border: `1px solid ${ctColor}33`,
-          }}>
-            {CONTENT_TYPE_LABELS[item.content_type as ContentType] ?? item.content_type}
-          </div>
-        )}
-
-        {/* Performance tier dot */}
-        {item.performance_tier && item.performance_tier !== "unscored" && (
-          <div style={{
-            position: "absolute", top: 8, right: 8,
-            width: 10, height: 10, borderRadius: "50%",
-            background: tierColor,
-            boxShadow: `0 0 6px ${tierColor}`,
-            border: "1.5px solid rgba(0,0,0,0.4)",
-          }}
-            title={`Performance: ${TIER_LABELS[item.performance_tier as PerfTier] ?? item.performance_tier}`}
-          />
-        )}
-      </div>
-
-      {/* Card body */}
-      <div style={{ padding: "10px 12px 12px" }}>
-        {/* Brand name */}
-        {brandName && (
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
-            {brandName}
-          </div>
-        )}
-
-        {/* Athlete / title */}
-        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.3, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {item.athlete_name || item.visual_description?.slice(0, 50) || "Untitled"}
-        </div>
-
-        {/* AI tags */}
-        {topTags.length > 0 && (
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {topTags.map((tag) => (
-              <span
-                key={tag}
-                style={{
-                  fontSize: 10, fontWeight: 700, fontFamily: "Arial, sans-serif",
-                  color: "var(--text-3)",
-                  background: "var(--glass-bg-2)",
-                  border: "1px solid var(--glass-border)",
-                  borderRadius: 6, padding: "2px 7px",
-                  textTransform: "lowercase",
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
-
-const SELECT_FIELDS = `
-  id, thumbnail_url, file_url, content_type, source, sport, school,
-  athlete_name, visual_description, triage_status, tagging_status,
-  performance_tier, context_tags, social_tags, pro_tags, search_phrases,
-  brief_fit, created_at, brand_id, campaign_id,
-  brands ( id, name, logo_light_url, logo_url )
-`.replace(/\s+/g, " ").trim();
-
-export default function InspoLibrary() {
+export default function InspoLibraryPage() {
   const supabase = createBrowserSupabase();
 
-  // Data
-  const [triageItems, setTriageItems] = useState<InspoItem[]>([]);
-  const [approvedItems, setApprovedItems] = useState<InspoItem[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  // --- State ---
+  const [items, setItems] = useState<InspoItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<InspoItem | null>(null);
 
   // Filters
-  const [filters, setFilters] = useState({ brand_id: "", content_type: "", source: "", performance_tier: "" });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<InspoItem[] | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [contentTypeFilter, setContentTypeFilter] = useState<string>('');
+  const [sportFilter, setSportFilter] = useState('');
+  const [vibeFilter, setVibeFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [statusFilter, setStatusFilter] = useState('tagged');
 
-  // Counts
-  const [triageCount, setTriageCount] = useState(0);
+  // Pagination
+  const [offset, setOffset] = useState(0);
+  const LIMIT = 50;
 
-  // ── Load brands ──
-  useEffect(() => {
-    supabase
-      .from("brands")
-      .select("id, name, logo_light_url, logo_url")
-      .eq("archived", false)
-      .order("name")
-      .then(({ data }) => setBrands(data || []));
-  }, []);
+  // Debounce timer for search
+  const searchTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // ── Load triage queue ──
-  const loadTriage = useCallback(async () => {
-    const { data, count } = await supabase
-      .from("inspo_items")
-      .select(SELECT_FIELDS, { count: "exact" })
-      .eq("triage_status", "pending")
-      .order("created_at", { ascending: false })
-      .limit(20);
-    setTriageItems((data as unknown as InspoItem[]) || []);
-    setTriageCount(count ?? 0);
-  }, []);
+  // --- Fetch items from the API ---
+  const fetchItems = useCallback(async (currentOffset = 0) => {
+    setLoading(true);
 
-  // ── Load approved items (with filters) ──
-  const loadApproved = useCallback(async () => {
-    let query = supabase
-      .from("inspo_items")
-      .select(SELECT_FIELDS)
-      .eq("triage_status", "approved")
-      .order("created_at", { ascending: false })
-      .limit(60);
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('q', searchQuery);
+    if (contentTypeFilter) params.set('content_type', contentTypeFilter);
+    if (sportFilter) params.set('sport', sportFilter);
+    if (vibeFilter) params.set('vibe', vibeFilter);
+    if (tagFilter) params.set('tag', tagFilter);
+    if (statusFilter) params.set('tagging_status', statusFilter);
+    params.set('sort', sortBy);
+    params.set('limit', String(LIMIT));
+    params.set('offset', String(currentOffset));
 
-    if (filters.brand_id) query = query.eq("brand_id", filters.brand_id);
-    if (filters.content_type) query = query.eq("content_type", filters.content_type);
-    if (filters.source) query = query.eq("source", filters.source);
-    if (filters.performance_tier) query = query.eq("performance_tier", filters.performance_tier);
-
-    const { data } = await query;
-    setApprovedItems((data as unknown as InspoItem[]) || []);
-  }, [filters]);
-
-  // ── Initial load ──
-  useEffect(() => {
-    Promise.all([loadTriage(), loadApproved()]).then(() => setLoading(false));
-  }, []);
-
-  // ── Reload approved when filters change ──
-  useEffect(() => {
-    if (!loading) loadApproved();
-  }, [filters]);
-
-  // ── Search (debounced) ──
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults(null);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch("/api/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: searchQuery, limit: 30 }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults(data.results ?? []);
-        }
-      } catch {
-        // fall back to client-side text match
-        const q = searchQuery.toLowerCase();
-        const matched = approvedItems.filter(
-          (item) =>
-            item.athlete_name?.toLowerCase().includes(q) ||
-            item.visual_description?.toLowerCase().includes(q) ||
-            item.search_phrases?.some((p) => p.toLowerCase().includes(q)) ||
-            item.sport?.toLowerCase().includes(q)
-        );
-        setSearchResults(matched);
-      } finally {
-        setSearching(false);
+    try {
+      const res = await fetch(`/api/inspo?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items || []);
+        setTotal(data.total || 0);
       }
+    } catch (err) {
+      console.error('Failed to fetch inspo items:', err);
+    }
+
+    setLoading(false);
+  }, [searchQuery, contentTypeFilter, sportFilter, vibeFilter, tagFilter, sortBy, statusFilter]);
+
+  // Fetch on mount and when filters change
+  useEffect(() => {
+    setOffset(0);
+    fetchItems(0);
+  }, [fetchItems]);
+
+  // Debounced search — waits 400ms after user stops typing
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      // fetchItems will be triggered by the useEffect above
     }, 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  };
 
-  // ── Triage actions ──
-  async function handleTriage(id: string, status: "approved" | "rejected") {
-    await supabase.from("inspo_items").update({ triage_status: status }).eq("id", id);
-    setTriageItems((prev) => prev.filter((i) => i.id !== id));
-    setTriageCount((c) => Math.max(0, c - 1));
-    if (status === "approved") loadApproved();
-  }
+  // --- Pagination ---
+  const handleNextPage = () => {
+    const newOffset = offset + LIMIT;
+    setOffset(newOffset);
+    fetchItems(newOffset);
+  };
 
-  // ── Filter change ──
-  function handleFilterChange(key: string, value: string) {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }
+  const handlePrevPage = () => {
+    const newOffset = Math.max(0, offset - LIMIT);
+    setOffset(newOffset);
+    fetchItems(newOffset);
+  };
 
-  // ── Which items to show in the grid ──
-  const gridItems = searchResults ?? approvedItems;
+  // --- Re-tag an item ---
+  const [retagging, setRetagging] = useState<string | null>(null);
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "var(--text-3)", fontSize: 14, fontWeight: 700 }}>Loading Inspo Library...</div>
-      </div>
-    );
-  }
+  const handleRetag = async (itemId: string) => {
+    setRetagging(itemId);
+    try {
+      const res = await fetch('/api/intake/tag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inspo_item_id: itemId }),
+      });
 
-  return (
-    <div style={{ minHeight: "100vh", padding: "0 32px 64px" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "28px 0 20px", borderBottom: "1px solid var(--glass-border)", marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-          <h1 className="d" style={{ fontSize: 36, letterSpacing: "0.02em", lineHeight: 1, color: "var(--text)" }}>
-            Inspo Library
-          </h1>
-          <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Content Engine
-          </span>
-        </div>
-        <Link
-          href="/dashboard"
-          style={{
-            fontSize: 12, fontWeight: 800, fontFamily: "Arial, sans-serif",
-            color: "var(--text-3)", textDecoration: "none",
-            padding: "8px 16px",
-            border: "1px solid var(--glass-border)",
-            borderRadius: "var(--r-sm)",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-            transition: "color 0.15s, border-color 0.15s",
-          }}
-          className="glass-hover"
-        >
-          Back to Dashboard
-        </Link>
-      </div>
-
-      {/* ── Triage Queue ── */}
-      {triageCount > 0 && (
-        <section style={{ marginBottom: 36 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <h2 className="d" style={{ fontSize: 22, letterSpacing: "0.03em", color: "var(--text)" }}>
-              Triage Queue
-            </h2>
-            <span style={{
-              fontSize: 11, fontWeight: 800, fontFamily: "Arial, sans-serif",
-              background: "var(--orange-dim)", color: "var(--orange)",
-              border: "1px solid var(--orange-glow)",
-              borderRadius: 20, padding: "2px 10px",
-            }}>
-              {triageCount} pending
-            </span>
-          </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: 10,
-          }}>
-            {triageItems.map((item) => (
-              <TriageCard
-                key={item.id}
-                item={item}
-                onApprove={(id) => handleTriage(id, "approved")}
-                onReject={(id) => handleTriage(id, "rejected")}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Filters ── */}
-      <section style={{ marginBottom: 24 }}>
-        <FilterBar
-          brands={brands}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          searchQuery={searchQuery}
-          onSearch={setSearchQuery}
-          searching={searching}
-        />
-      </section>
-
-      {/* ── Search indicator ── */}
-      {searchResults !== null && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Search results: {searchResults.length}
-          </span>
-          <button
-            onClick={() => { setSearchQuery(""); setSearchResults(null); }}
-            style={{
-              fontSize: 11, fontWeight: 800, fontFamily: "Arial, sans-serif",
-              color: "var(--text-3)", background: "var(--glass-bg)",
-              border: "1px solid var(--glass-border)", borderRadius: 6,
-              padding: "3px 10px", cursor: "pointer",
-            }}
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
-      {/* ── Masonry Grid ── */}
-      {gridItems.length > 0 ? (
-        <div
-          style={{
-            columnCount: 4,
-            columnGap: 12,
-          }}
-        >
-          {gridItems.map((item) => (
-            <InspoCard key={item.id} item={item} />
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block" }}>
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            </div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-3)" }}>
-              {searchResults !== null ? "No results found" : "No approved content yet"}
-            </p>
-            <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 6 }}>
-              {searchResults !== null ? "Try a different search term" : "Approve items from the triage queue above"}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Spin animation for search indicator */}
-      <style jsx>{`
-        @keyframes spin {
-          to { transform: translateY(-50%) rotate(360deg); }
+      if (res.ok) {
+        // Refresh to show new tags
+        fetchItems(offset);
+        // If this item is selected, refresh it
+        if (selectedItem?.id === itemId) {
+          const data = await res.json();
+          if (data.tags) {
+            setSelectedItem((prev) =>
+              prev ? { ...prev, ...data.tags, tagging_status: 'tagged' as TaggingStatus } : null
+            );
+          }
         }
-      `}</style>
+      }
+    } catch (err) {
+      console.error('Re-tag failed:', err);
+    }
+    setRetagging(null);
+  };
+
+  // --- Toggle hero status ---
+  const handleToggleHero = async (item: InspoItem) => {
+    const newHero = !item.is_hero;
+    try {
+      const { error } = await supabase
+        .from('inspo_items')
+        .update({ is_hero: newHero })
+        .eq('id', item.id);
+
+      if (!error) {
+        // Update local state
+        setItems((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, is_hero: newHero } : i))
+        );
+        if (selectedItem?.id === item.id) {
+          setSelectedItem((prev) => (prev ? { ...prev, is_hero: newHero } : null));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle hero:', err);
+    }
+  };
+
+  // --- Format file size ---
+  const formatSize = (bytes: number | null) => {
+    if (!bytes) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // --- Format duration ---
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return null;
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // --- Tag pill component ---
+  const TagPill = ({ label }: { label: string }) => (
+    <span
+      className="inline-block px-2 py-0.5 text-xs rounded-full bg-white/10 text-gray-300 border border-white/10 cursor-pointer hover:bg-white/20 transition-colors"
+      onClick={() => {
+        setTagFilter(label);
+        setSelectedItem(null);
+      }}
+    >
+      {label.replace(/_/g, ' ')}
+    </span>
+  );
+
+  // ---- Render ----
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {/* Header */}
+      <div className="border-b border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Inspo Library</h1>
+            <p className="text-sm text-gray-400 mt-1">
+              {total} asset{total !== 1 ? 's' : ''} in the Creative Brain
+            </p>
+          </div>
+          <a
+            href="/dashboard/intake"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+          >
+            + Upload New
+          </a>
+        </div>
+
+        {/* Search bar */}
+        <div className="mt-4">
+          <input
+            type="text"
+            placeholder="Search assets — try a vibe, sport, athlete name, or description..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all"
+          />
+        </div>
+
+        {/* Filter row */}
+        <div className="flex flex-wrap gap-3 mt-3">
+          {/* Content type filter */}
+          <select
+            value={contentTypeFilter}
+            onChange={(e) => setContentTypeFilter(e.target.value)}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-white/30"
+          >
+            <option value="">All Types</option>
+            {Object.entries(CONTENT_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+
+          {/* Sport filter */}
+          <input
+            type="text"
+            placeholder="Sport..."
+            value={sportFilter}
+            onChange={(e) => setSportFilter(e.target.value)}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-white/30 w-28"
+          />
+
+          {/* Vibe filter */}
+          <input
+            type="text"
+            placeholder="Vibe..."
+            value={vibeFilter}
+            onChange={(e) => setVibeFilter(e.target.value)}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-white/30 w-28"
+          />
+
+          {/* Tag filter */}
+          <input
+            type="text"
+            placeholder="Tag..."
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-white/30 w-28"
+          />
+
+          {/* Status filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-white/30"
+          >
+            <option value="tagged">Tagged</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+            <option value="reviewed">Reviewed</option>
+          </select>
+
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-white/30"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="hero_first">Heroes First</option>
+          </select>
+
+          {/* Clear filters */}
+          {(searchQuery || contentTypeFilter || sportFilter || vibeFilter || tagFilter || statusFilter !== 'tagged' || sortBy !== 'newest') && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setContentTypeFilter('');
+                setSportFilter('');
+                setVibeFilter('');
+                setTagFilter('');
+                setStatusFilter('tagged');
+                setSortBy('newest');
+              }}
+              className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Main content area */}
+      <div className="flex">
+        {/* Grid */}
+        <div className={`flex-1 p-6 ${selectedItem ? 'pr-3' : ''}`}>
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-gray-400">Loading assets...</div>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="text-4xl mb-4">🧠</div>
+              <h3 className="text-lg font-medium text-gray-300 mb-2">
+                {statusFilter === 'tagged' ? 'No tagged assets yet' : 'No assets found'}
+              </h3>
+              <p className="text-sm text-gray-500 max-w-md">
+                {statusFilter === 'tagged'
+                  ? 'Upload footage on the Intake page and tag it with Claude Vision. Tagged assets appear here automatically.'
+                  : 'Try adjusting your filters or search query.'}
+              </p>
+              {statusFilter === 'tagged' && (
+                <a
+                  href="/dashboard/intake"
+                  className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+                >
+                  Go to Intake
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Asset grid — responsive columns */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedItem(item)}
+                    className={`group relative rounded-lg overflow-hidden cursor-pointer border transition-all ${
+                      selectedItem?.id === item.id
+                        ? 'border-white/40 ring-1 ring-white/20'
+                        : 'border-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    {/* Thumbnail */}
+                    <div className="aspect-[4/3] bg-white/5 relative">
+                      {(item.thumbnail_url || item.file_url) ? (
+                        item.mime_type?.startsWith('video/') ? (
+                          item.thumbnail_url ? (
+                            <img
+                              src={item.thumbnail_url}
+                              alt={item.visual_description || 'Video thumbnail'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-500">
+                              <span className="text-3xl">🎬</span>
+                            </div>
+                          )
+                        ) : (
+                          <img
+                            src={item.file_url || item.thumbnail_url || ''}
+                            alt={item.visual_description || 'Asset'}
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                          <span className="text-2xl">📁</span>
+                        </div>
+                      )}
+
+                      {/* Video duration overlay */}
+                      {item.duration_seconds && (
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">
+                          {formatDuration(item.duration_seconds)}
+                        </span>
+                      )}
+
+                      {/* Hero star */}
+                      {item.is_hero && (
+                        <span className="absolute top-1 right-1 text-yellow-400 text-sm">★</span>
+                      )}
+
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                        <p className="text-xs text-white line-clamp-2">
+                          {item.visual_description || item.athlete_name || CONTENT_TYPE_LABELS[item.content_type]}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom strip */}
+                    <div className="p-2 bg-white/[0.02]">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-block px-1.5 py-0.5 text-[10px] rounded border ${CONTENT_TYPE_COLORS[item.content_type]}`}>
+                          {CONTENT_TYPE_LABELS[item.content_type]}
+                        </span>
+                        {item.sport && (
+                          <span className="text-[10px] text-gray-500">{item.sport}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between mt-6 text-sm text-gray-400">
+                <span>
+                  Showing {offset + 1}–{Math.min(offset + LIMIT, total)} of {total}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handlePrevPage}
+                    disabled={offset === 0}
+                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg disabled:opacity-30 hover:bg-white/10 transition-colors"
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    onClick={handleNextPage}
+                    disabled={offset + LIMIT >= total}
+                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg disabled:opacity-30 hover:bg-white/10 transition-colors"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Detail panel — slides in from right */}
+        {selectedItem && (
+          <div className="w-[420px] border-l border-white/10 bg-white/[0.02] overflow-y-auto max-h-[calc(100vh-200px)] sticky top-0">
+            <div className="p-4">
+              {/* Close button */}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-300">Asset Detail</h3>
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Preview */}
+              <div className="rounded-lg overflow-hidden bg-black mb-4">
+                {selectedItem.mime_type?.startsWith('video/') ? (
+                  selectedItem.file_url ? (
+                    <video
+                      src={selectedItem.file_url}
+                      controls
+                      className="w-full"
+                      poster={selectedItem.thumbnail_url || undefined}
+                    />
+                  ) : selectedItem.thumbnail_url ? (
+                    <img src={selectedItem.thumbnail_url} alt="" className="w-full" />
+                  ) : (
+                    <div className="aspect-video flex items-center justify-center text-gray-500">🎬</div>
+                  )
+                ) : (
+                  <img
+                    src={selectedItem.file_url || selectedItem.thumbnail_url || ''}
+                    alt={selectedItem.visual_description || ''}
+                    className="w-full"
+                  />
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => handleRetag(selectedItem.id)}
+                  disabled={retagging === selectedItem.id}
+                  className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors disabled:opacity-50"
+                >
+                  {retagging === selectedItem.id ? 'Re-tagging...' : '🔄 Re-tag'}
+                </button>
+                <button
+                  onClick={() => handleToggleHero(selectedItem)}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    selectedItem.is_hero
+                      ? 'bg-yellow-600/20 text-yellow-300 border border-yellow-600/30 hover:bg-yellow-600/30'
+                      : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                >
+                  {selectedItem.is_hero ? '★ Hero' : '☆ Mark Hero'}
+                </button>
+              </div>
+
+              {/* Visual description */}
+              {selectedItem.visual_description && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                    AI Description
+                  </h4>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    {selectedItem.visual_description}
+                  </p>
+                </div>
+              )}
+
+              {/* Vibe words */}
+              {selectedItem.search_phrases?.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                    Vibe Words
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedItem.search_phrases.map((phrase, i) => (
+                      <TagPill key={i} label={phrase} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Brief fit */}
+              {selectedItem.brief_fit?.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                    Brief Fit
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedItem.brief_fit.map((fit, i) => (
+                      <span
+                        key={i}
+                        className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-600/10 text-green-300 border border-green-600/20"
+                      >
+                        {fit.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All 13 tag categories */}
+              {Object.entries(TAG_CATEGORIES).map(([groupKey, group]) => {
+                const tagGroup = selectedItem[groupKey as keyof InspoItem] as Record<string, string[]> | undefined;
+                if (!tagGroup || typeof tagGroup !== 'object') return null;
+
+                // Check if any tags exist in this group
+                const hasAnyTags = Object.values(tagGroup).some(
+                  (arr) => Array.isArray(arr) && arr.length > 0
+                );
+                if (!hasAnyTags) return null;
+
+                return (
+                  <div key={groupKey} className="mb-4">
+                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                      {group.label}
+                    </h4>
+                    <div className="space-y-2">
+                      {Object.entries(group.fields).map(([fieldKey, fieldLabel]) => {
+                        const tags = tagGroup[fieldKey];
+                        if (!Array.isArray(tags) || tags.length === 0) return null;
+                        return (
+                          <div key={fieldKey}>
+                            <span className="text-[10px] text-gray-500 block mb-1">
+                              {fieldLabel}
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {tags.map((tag, i) => (
+                                <TagPill key={i} label={tag} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Metadata */}
+              <div className="border-t border-white/10 pt-4 mt-4">
+                <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                  File Info
+                </h4>
+                <div className="space-y-1 text-xs text-gray-400">
+                  {selectedItem.content_type && (
+                    <div className="flex justify-between">
+                      <span>Type</span>
+                      <span className="text-gray-300">{CONTENT_TYPE_LABELS[selectedItem.content_type]}</span>
+                    </div>
+                  )}
+                  {selectedItem.mime_type && (
+                    <div className="flex justify-between">
+                      <span>Format</span>
+                      <span className="text-gray-300">{selectedItem.mime_type}</span>
+                    </div>
+                  )}
+                  {selectedItem.file_size_bytes && (
+                    <div className="flex justify-between">
+                      <span>Size</span>
+                      <span className="text-gray-300">{formatSize(selectedItem.file_size_bytes)}</span>
+                    </div>
+                  )}
+                  {selectedItem.duration_seconds && (
+                    <div className="flex justify-between">
+                      <span>Duration</span>
+                      <span className="text-gray-300">{formatDuration(selectedItem.duration_seconds)}</span>
+                    </div>
+                  )}
+                  {selectedItem.athlete_name && (
+                    <div className="flex justify-between">
+                      <span>Athlete</span>
+                      <span className="text-gray-300">{selectedItem.athlete_name}</span>
+                    </div>
+                  )}
+                  {selectedItem.sport && (
+                    <div className="flex justify-between">
+                      <span>Sport</span>
+                      <span className="text-gray-300">{selectedItem.sport}</span>
+                    </div>
+                  )}
+                  {selectedItem.school && (
+                    <div className="flex justify-between">
+                      <span>School</span>
+                      <span className="text-gray-300">{selectedItem.school}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Uploaded</span>
+                    <span className="text-gray-300">
+                      {new Date(selectedItem.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>ID</span>
+                    <span className="text-gray-300 font-mono text-[10px]">
+                      {selectedItem.id.slice(0, 8)}...
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

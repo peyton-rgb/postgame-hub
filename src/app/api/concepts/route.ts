@@ -2,11 +2,11 @@
 // GET /api/concepts — List concepts filtered by brief
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const supabase = await createServerSupabase();
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {

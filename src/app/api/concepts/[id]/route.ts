@@ -3,14 +3,14 @@
 // PATCH /api/concepts/[id] — Update a concept (status, manual edits)
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -34,7 +34,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -43,6 +43,7 @@ export async function PATCH(
 
   const body = await request.json();
 
+  // Only allow updating specific fields
   const allowedFields = [
     'name', 'hook', 'athlete_archetype', 'settings_suggestions',
     'production_scope', 'estimated_assets', 'status',

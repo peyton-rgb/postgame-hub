@@ -9,18 +9,15 @@
 //   3. New concepts replace the archived one
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
 import { generateConcepts } from '@/lib/agents/creative-director';
-
-export const runtime = 'nodejs';
-export const maxDuration = 90;
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createServerSupabase();
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -37,6 +34,7 @@ export async function POST(
     );
   }
 
+  // Fetch the concept to get its brief_id
   const { data: concept, error: fetchError } = await supabase
     .from('concepts')
     .select('id, brief_id, iteration_history')
@@ -47,6 +45,7 @@ export async function POST(
     return NextResponse.json({ error: 'Concept not found' }, { status: 404 });
   }
 
+  // Archive the current concept
   const currentHistory = (concept.iteration_history as unknown[]) || [];
   await supabase
     .from('concepts')
@@ -59,6 +58,7 @@ export async function POST(
     })
     .eq('id', params.id);
 
+  // Re-run the Creative Director with the iteration feedback
   try {
     const newConcepts = await generateConcepts(
       concept.brief_id,
@@ -71,6 +71,7 @@ export async function POST(
     const message = err instanceof Error ? err.message : 'Iteration failed';
     console.error('Concept iteration error:', err);
 
+    // Restore the original concept status if iteration fails
     await supabase
       .from('concepts')
       .update({ status: 'iterating' })

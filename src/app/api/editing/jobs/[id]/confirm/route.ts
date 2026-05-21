@@ -1,70 +1,53 @@
 // ============================================================
-// POST /api/editing/jobs/[id]/confirm
-// Move a job from 'confirming' (plan ready, awaiting CM approval)
-// to 'editing' (orchestrator picks it up next). The actual
-// orchestrator dispatch happens in the agent layer once it lands.
+// Confirm Edit Plan — POST /api/editing/jobs/[id]/confirm
+//
+// Called when the CM reviews the edit plan (EDL) and cost
+// estimate and clicks "Confirm & Run." This kicks off the
+// Editing Orchestrator, which executes each step.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
-import { createServiceSupabase } from '@/lib/supabase';
 import { executeEditPlan } from '@/lib/agents/editing-orchestrator';
 
-export const runtime = 'nodejs';
-export const maxDuration = 60;
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const auth = await createServerSupabase();
-  const { data: { user }, error: authError } = await auth.auth.getUser();
+  const supabase = createServerSupabase();
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  if (!UUID_RE.test(params.id)) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
-  }
+  const jobId = params.id;
 
-  const db = createServiceSupabase();
-  const { data: existing, error: fetchError } = await db
+  // Verify the job exists and is in "confirming" status
+  const { data: job, error: jobError } = await supabase
     .from('edit_jobs')
     .select('id, status')
-    .eq('id', params.id)
+    .eq('id', jobId)
     .single();
 
-  if (fetchError || !existing) {
-    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-  }
-  if (existing.status !== 'confirming') {
+  if (jobError || !job) {
     return NextResponse.json(
-      { error: `Job is in status '${existing.status}'; can only confirm jobs in 'confirming'.` },
-      { status: 409 }
+      { error: 'Edit job not found' },
+      { status: 404 }
     );
   }
 
-  const { error: updateError } = await db
-    .from('edit_jobs')
-    .update({ status: 'editing' })
-    .eq('id', params.id);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  if (job.status !== 'confirming') {
+    return NextResponse.json(
+      { error: `Job is in "${job.status}" status — can only confirm jobs in "confirming" status` },
+      { status: 400 }
+    );
   }
 
-  // Fire the orchestrator async — it walks the EDL, executes ffmpeg
-  // steps inline, and pauses on AI-tool steps for MCP processing.
-  void (async () => {
-    try {
-      await executeEditPlan(params.id, user.id);
-    } catch (err) {
-      console.error('[orchestrator]', err);
-    }
-  })();
+  // Fire off the orchestrator in the background
+  executeEditPlan(jobId, user.id).catch((err) => {
+    console.error('[editing-orchestrator]', err);
+  });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ message: 'Edit execution started', job_id: jobId });
 }
