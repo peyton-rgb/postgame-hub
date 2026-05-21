@@ -350,7 +350,6 @@ const PAGES_SECTION: NavSection = {
   label: 'Pages',
   links: [
     { name: 'Recaps', href: '/dashboard/recaps', icon: PresentationIcon },
-    { name: 'Case Studies', href: '/dashboard/case-studies', icon: BriefcaseIcon },
     { name: 'Performance Trackers', href: '/dashboard/performance-trackers', icon: TrendingUpIcon },
     { name: 'Run of Shows', href: '/dashboard/run-of-shows', icon: ListCheckIcon },
     { name: 'Legacy Briefs', href: '/dashboard/legacy-briefs', icon: NotebookIcon },

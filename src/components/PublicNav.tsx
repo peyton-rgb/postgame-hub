@@ -43,6 +43,14 @@ export default function PublicNav({ variant = 'dark' }: PublicNavProps) {
           Clients
         </Link>
         <Link
+          href="/case-studies"
+          className={`text-xs tracking-wider ${
+            isDark ? 'text-white/50 hover:text-white' : 'text-black/50 hover:text-black'
+          } transition-colors`}
+        >
+          Case Studies
+        </Link>
+        <Link
           href="/campaigns"
           className={`text-xs tracking-wider ${
             isDark ? 'text-white/50 hover:text-white' : 'text-black/50 hover:text-black'
