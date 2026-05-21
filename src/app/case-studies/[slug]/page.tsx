@@ -425,26 +425,30 @@ export default function CaseStudyDetailPage() {
           // Build hero montage: banner videos first, then gallery + campaign media
           const montage: MontageItem[] = [];
 
-          // 1. Pull banner videos from the shared banner_videos table
-          //    These are the high-quality brand banners from Wix
+          // 1. Pull this brand's banner video(s) only
+          const brandName = studyData.brand_name?.toLowerCase() || '';
           const { data: bannerData } = await supabase
             .from('banner_videos')
-            .select('url, brand_name')
+            .select('url')
+            .ilike('brand_name', brandName)
             .order('sort_order');
 
           if (bannerData && bannerData.length > 0) {
-            // Prioritize banners matching this brand, then mix in others
-            const brandName = studyData.brand_name?.toLowerCase() || '';
-            const brandBanners = bannerData.filter(
-              (b: any) => b.brand_name?.toLowerCase() === brandName
-            );
-            const otherBanners = bannerData.filter(
-              (b: any) => b.brand_name?.toLowerCase() !== brandName
-            );
-            // Brand-specific banners first, then shuffle in others
-            [...brandBanners, ...otherBanners].forEach((b: any) => {
+            bannerData.forEach((b: any) => {
               montage.push({ url: b.url, type: 'video' });
             });
+          } else {
+            // No brand-specific banner — fall back to Postgame generic banners
+            const { data: fallbackBanners } = await supabase
+              .from('banner_videos')
+              .select('url')
+              .ilike('brand_name', 'Postgame')
+              .order('sort_order');
+            if (fallbackBanners) {
+              fallbackBanners.forEach((b: any) => {
+                montage.push({ url: b.url, type: 'video' });
+              });
+            }
           }
 
           // 2. Gallery images (hand-picked, curated)
