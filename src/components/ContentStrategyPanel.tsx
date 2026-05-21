@@ -266,12 +266,12 @@ export default function ContentStrategyPanel() {
     try {
       // 45-second timeout so the spinner doesn't run forever
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 45000);
+      const timeout = setTimeout(() => controller.abort(), 60000);
 
       const res = await fetch('/api/content-suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'suggest', platform, count: 8 }),
+        body: JSON.stringify({ action: 'suggest', platform, count: 4 }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -298,7 +298,7 @@ export default function ContentStrategyPanel() {
     setCalendar(null);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 45000);
+      const timeout = setTimeout(() => controller.abort(), 60000);
 
       const res = await fetch('/api/content-suggestions', {
         method: 'POST',
