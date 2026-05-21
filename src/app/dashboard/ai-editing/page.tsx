@@ -28,7 +28,7 @@ const STATUS_CONFIG: Record<EditJobStatus, { label: string; color: string; icon:
   planning: { label: 'Planning', color: 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30', icon: '📋' },
   confirming: { label: 'Awaiting Approval', color: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30', icon: '⚡' },
   editing: { label: 'Editing', color: 'bg-purple-600/20 text-purple-300 border-purple-600/30', icon: '✂️' },
-  review: { label: 'Ready for Review', color: 'bg-orange-600/20 text-orange-300 border-orange-600/30', icon: '👀' },
+  review: { label: 'Ready for Review', color: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30', icon: '👀' },
   approved: { label: 'Approved', color: 'bg-green-600/20 text-green-300 border-green-600/30', icon: '✅' },
   rejected: { label: 'Rejected', color: 'bg-red-600/20 text-red-300 border-red-600/30', icon: '❌' },
   failed: { label: 'Failed', color: 'bg-red-600/20 text-red-300 border-red-600/30', icon: '⚠️' },
@@ -139,7 +139,7 @@ export default function EditingDashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -158,7 +158,7 @@ export default function EditingDashboardPage() {
             </a>
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-5 py-2.5 bg-orange-600 hover:bg-orange-500 rounded-lg font-medium transition"
+              className="px-5 py-2.5 bg-[#D73F09] hover:bg-[#b33507] rounded-lg font-medium transition"
             >
               {showForm ? 'Cancel' : '+ New Edit'}
             </button>
@@ -198,7 +198,7 @@ export default function EditingDashboardPage() {
               ) : (
                 <button
                   onClick={() => setInspoPickerOpen(true)}
-                  className="w-full p-4 border-2 border-dashed border-gray-700 rounded-lg text-gray-400 hover:border-orange-600 hover:text-orange-400 transition text-center"
+                  className="w-full p-4 border-2 border-dashed border-gray-700 rounded-lg text-gray-400 hover:border-[#D73F09] hover:text-[#D73F09] transition text-center"
                 >
                   Click to select an asset from the inspo library
                 </button>
@@ -214,7 +214,7 @@ export default function EditingDashboardPage() {
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
                 placeholder="e.g., Remove all visible logos from the jersey, make it vertical for TikTok, add a cinematic color grade..."
-                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600 resize-none"
+                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] resize-none"
                 rows={3}
               />
             </div>
@@ -229,7 +229,7 @@ export default function EditingDashboardPage() {
                 value={referenceImageUrl}
                 onChange={(e) => setReferenceImageUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-4 py-2.5 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600"
+                className="w-full px-4 py-2.5 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
               />
             </div>
 
@@ -237,7 +237,7 @@ export default function EditingDashboardPage() {
             <button
               onClick={handleSubmit}
               disabled={!selectedAsset || !instruction.trim() || submitting}
-              className="px-6 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
+              className="px-6 py-2.5 bg-[#D73F09] hover:bg-[#b33507] disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
             >
               {submitting ? 'Submitting...' : 'Run Edit'}
             </button>
@@ -252,7 +252,7 @@ export default function EditingDashboardPage() {
               onClick={() => setStatusFilter(tab.key)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                 statusFilter === tab.key
-                  ? 'bg-orange-600/20 text-orange-400 border border-orange-600/30'
+                  ? 'bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30'
                   : 'text-gray-400 border border-gray-800 hover:bg-gray-800'
               }`}
             >
@@ -338,7 +338,7 @@ export default function EditingDashboardPage() {
                       {job.status === 'review' && (
                         <a
                           href={`/dashboard/ai-editing/${job.id}/review`}
-                          className="px-4 py-2 bg-orange-600/20 text-orange-400 border border-orange-600/30 rounded-lg text-sm hover:bg-orange-600/30 transition"
+                          className="px-4 py-2 bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30 rounded-lg text-sm hover:bg-[#D73F09]/30 transition"
                         >
                           Review
                         </a>

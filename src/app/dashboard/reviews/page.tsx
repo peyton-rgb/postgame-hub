@@ -85,7 +85,7 @@ const AUTHOR_COLORS: Record<string, string> = {
   postgame: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
   brand: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
   agency: 'bg-cyan-600/20 text-cyan-300 border-cyan-600/30',
-  editor: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
+  editor: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
 };
 
 // --- Tabs ---
@@ -273,7 +273,7 @@ export default function ReviewsDashboardPage() {
   // ============================================================
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div>
       {/* Header */}
       <div className="border-b border-white/10 px-6 py-6">
         <div className="max-w-7xl mx-auto">

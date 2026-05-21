@@ -304,7 +304,7 @@ export default function NewBriefPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070a] text-white p-8">
+    <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="max-w-3xl mx-auto">
         <button

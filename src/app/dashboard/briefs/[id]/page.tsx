@@ -68,7 +68,7 @@ export default function BriefDetailPage({ params }: { params: { id: string } }) 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07070a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <p className="text-gray-400">Loading brief...</p>
       </div>
     );
@@ -76,7 +76,7 @@ export default function BriefDetailPage({ params }: { params: { id: string } }) 
 
   if (!brief) {
     return (
-      <div className="min-h-screen bg-[#07070a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <p className="text-gray-400">Brief not found</p>
       </div>
     );
@@ -100,7 +100,7 @@ export default function BriefDetailPage({ params }: { params: { id: string } }) 
   }
 
   return (
-    <div className="min-h-screen bg-[#07070a] text-white p-8">
+    <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="max-w-3xl mx-auto">
         {/* Back link */}
         <button
@@ -283,7 +283,7 @@ export default function BriefDetailPage({ params }: { params: { id: string } }) 
                   </span>
                 ))}
                 {(brief.athlete_targeting.schools || []).map((s: string) => (
-                  <span key={s} className="px-3 py-1 bg-orange-900/50 text-orange-300 rounded-full text-xs">
+                  <span key={s} className="px-3 py-1 bg-[#D73F09]/20 text-[#e8663d] rounded-full text-xs">
                     {s}
                   </span>
                 ))}

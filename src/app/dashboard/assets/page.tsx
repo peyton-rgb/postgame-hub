@@ -72,7 +72,7 @@ const STATUS_TABS: { key: StatusTab; label: string }[] = [
 const ASSET_TYPE_COLORS: Record<string, string> = {
   video: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
   photo: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
-  graphic: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
+  graphic: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -137,7 +137,7 @@ function PhotoIcon() {
 
 function GraphicIcon() {
   return (
-    <svg className="w-8 h-8 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="w-8 h-8 text-[#D73F09]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
     </svg>
   );
@@ -378,7 +378,7 @@ export default function FinalAssetsPage() {
   // ============================================================
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div>
       {/* Header */}
       <div className="border-b border-white/10 px-6 py-5">
         <div className="flex items-center justify-between">

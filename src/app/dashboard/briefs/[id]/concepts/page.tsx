@@ -200,14 +200,14 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07070a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <p className="text-gray-400">Loading concepts...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#07070a] text-white p-8">
+    <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <button
@@ -411,12 +411,12 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
                   {creativeSeeds.map((seed, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1.5 bg-orange-900/30 border border-orange-800/50 rounded-lg px-3 py-1.5 text-xs text-orange-300"
+                      className="inline-flex items-center gap-1.5 bg-[#D73F09]/20 border border-[#D73F09]/30 rounded-lg px-3 py-1.5 text-xs text-[#e8663d]"
                     >
                       {seed}
                       <button
                         onClick={() => setCreativeSeeds((prev) => prev.filter((_, j) => j !== i))}
-                        className="text-orange-500 hover:text-red-400"
+                        className="text-[#D73F09] hover:text-red-400"
                       >
                         &times;
                       </button>

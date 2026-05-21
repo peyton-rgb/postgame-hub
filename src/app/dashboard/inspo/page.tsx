@@ -37,7 +37,7 @@ const CONTENT_TYPE_COLORS: Record<ContentType, string> = {
   produced: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
   athlete_ugc: 'bg-green-600/20 text-green-300 border-green-600/30',
   bts: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
-  raw_footage: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
+  raw_footage: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
   photography: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
   talking_head: 'bg-pink-600/20 text-pink-300 border-pink-600/30',
   inspo_external: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
@@ -241,7 +241,7 @@ export default function InspoLibraryPage() {
 
   // ---- Render ----
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div>
       {/* Header */}
       <div className="border-b border-white/10 px-6 py-4">
         <div className="flex items-center justify-between">

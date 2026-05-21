@@ -111,7 +111,7 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
   // --- Render ---
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <p className="text-gray-500">Loading edit job...</p>
       </div>
     );
@@ -119,7 +119,7 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
 
   if (!job) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <p className="text-red-400">Edit job not found</p>
       </div>
     );
@@ -130,7 +130,7 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
   const isDone = job.status === 'approved' || job.status === 'rejected';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -150,7 +150,7 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
           <span
             className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
               job.status === 'review'
-                ? 'bg-orange-600/20 text-orange-400 border-orange-600/30'
+                ? 'bg-[#D73F09]/20 text-[#D73F09] border-[#D73F09]/30'
                 : job.status === 'approved'
                 ? 'bg-green-600/20 text-green-400 border-green-600/30'
                 : job.status === 'rejected'
@@ -230,7 +230,7 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
                   value={changesFeedback}
                   onChange={(e) => setChangesFeedback(e.target.value)}
                   placeholder="e.g., The logo at 0:15 still has a faint outline, please remove it completely..."
-                  className="w-full px-4 py-3 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600 resize-none mb-3"
+                  className="w-full px-4 py-3 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] resize-none mb-3"
                   rows={3}
                 />
                 <div className="flex gap-3">
@@ -399,7 +399,7 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
                   <p className="text-gray-500">Re-edit of</p>
                   <a
                     href={`/dashboard/editing/${job.parent_job_id}/review`}
-                    className="text-orange-400 hover:underline"
+                    className="text-[#D73F09] hover:underline"
                   >
                     Previous version
                   </a>

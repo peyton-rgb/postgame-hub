@@ -450,7 +450,7 @@ export default function CreatorBriefEditorPage({
 
   if (loading || generating) {
     return (
-      <div className="min-h-screen bg-[#07070a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#D73F09]/30 border-t-[#D73F09] rounded-full animate-spin mx-auto mb-4" />
           <p className="text-lg font-medium">
@@ -468,7 +468,7 @@ export default function CreatorBriefEditorPage({
 
   if (!creatorBrief) {
     return (
-      <div className="min-h-screen bg-[#07070a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <p className="text-red-400 text-lg">{error || 'Failed to load creator brief'}</p>
           <button
@@ -483,7 +483,7 @@ export default function CreatorBriefEditorPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#07070a] text-white p-8">
+    <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <button

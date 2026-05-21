@@ -233,7 +233,7 @@ export default function PublishingPage() {
     });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -261,7 +261,7 @@ export default function PublishingPage() {
               onClick={() => setChannelFilter(ch.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                 channelFilter === ch.key
-                  ? 'bg-orange-600/20 text-orange-400 border border-orange-600/30'
+                  ? 'bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30'
                   : 'text-gray-400 border border-gray-800 hover:bg-gray-800'
               }`}
             >
@@ -277,7 +277,7 @@ export default function PublishingPage() {
 
         {loading ? (
           <div className="text-center py-16">
-            <div className="animate-spin w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full mx-auto mb-3" />
+            <div className="animate-spin w-8 h-8 border-2 border-[#D73F09] border-t-transparent rounded-full mx-auto mb-3" />
             <p className="text-gray-500">Loading calendar...</p>
           </div>
         ) : (
@@ -340,11 +340,11 @@ export default function PublishingPage() {
                       key={day}
                       className={`h-20 rounded-lg p-1.5 ${
                         isToday
-                          ? 'bg-orange-600/10 border border-orange-600/30'
+                          ? 'bg-[#D73F09]/10 border border-[#D73F09]/30'
                           : 'bg-[#0f0f0f] border border-transparent hover:border-gray-700'
                       } transition`}
                     >
-                      <span className={`text-xs font-medium ${isToday ? 'text-orange-400' : 'text-gray-500'}`}>
+                      <span className={`text-xs font-medium ${isToday ? 'text-[#D73F09]' : 'text-gray-500'}`}>
                         {day}
                       </span>
                       {/* Channel dots */}
@@ -393,7 +393,7 @@ export default function PublishingPage() {
                   <p className="text-gray-400 font-medium">No upcoming posts</p>
                   <p className="text-gray-600 text-sm mt-1">
                     Head to the{' '}
-                    <a href="/dashboard/captions" className="text-orange-400 hover:text-orange-300">
+                    <a href="/dashboard/captions" className="text-[#D73F09] hover:text-[#e8663d]">
                       Caption Composer
                     </a>{' '}
                     to create and approve content
@@ -634,7 +634,7 @@ export default function PublishingPage() {
                     type="date"
                     value={rescheduleDate}
                     onChange={(e) => setRescheduleDate(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-600"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09]"
                   />
                 </div>
                 <div>
@@ -643,7 +643,7 @@ export default function PublishingPage() {
                     type="time"
                     value={rescheduleTime}
                     onChange={(e) => setRescheduleTime(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-600"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09]"
                   />
                 </div>
               </div>
@@ -662,7 +662,7 @@ export default function PublishingPage() {
                 <button
                   onClick={handleReschedule}
                   disabled={!rescheduleDate}
-                  className="flex-1 px-4 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
+                  className="flex-1 px-4 py-2.5 bg-[#D73F09] hover:bg-[#b33507] disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
                 >
                   Reschedule
                 </button>

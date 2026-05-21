@@ -292,7 +292,7 @@ export default function CaptionsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -326,7 +326,7 @@ export default function CaptionsPage() {
                     onClick={() => setSelectedChannel(ch.key)}
                     className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition text-sm ${
                       selectedChannel === ch.key
-                        ? 'border-orange-600 bg-orange-600/10 text-orange-400'
+                        ? 'border-[#D73F09] bg-[#D73F09]/10 text-[#D73F09]'
                         : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:border-gray-600'
                     }`}
                   >
@@ -351,7 +351,7 @@ export default function CaptionsPage() {
                   value={assetUrl}
                   onChange={(e) => setAssetUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
                 />
               </div>
 
@@ -363,7 +363,7 @@ export default function CaptionsPage() {
                   value={thumbnailUrl}
                   onChange={(e) => setThumbnailUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
                 />
               </div>
 
@@ -374,7 +374,7 @@ export default function CaptionsPage() {
                   value={assetDescription}
                   onChange={(e) => setAssetDescription(e.target.value)}
                   placeholder="e.g., Behind-the-scenes video of a basketball player lacing up Nike shoes before a game, locker room setting, cinematic lighting..."
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600 resize-none"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] resize-none"
                   rows={3}
                 />
               </div>
@@ -388,7 +388,7 @@ export default function CaptionsPage() {
                     value={athleteName}
                     onChange={(e) => setAthleteName(e.target.value)}
                     placeholder="e.g., Jordan Smith"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
                   />
                 </div>
                 <div>
@@ -398,7 +398,7 @@ export default function CaptionsPage() {
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
                     placeholder="e.g., Nike"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
                   />
                 </div>
               </div>
@@ -412,7 +412,7 @@ export default function CaptionsPage() {
                     value={campaignName}
                     onChange={(e) => setCampaignName(e.target.value)}
                     placeholder="e.g., Fall NIL Launch"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
                   />
                 </div>
                 <div>
@@ -422,7 +422,7 @@ export default function CaptionsPage() {
                     value={tone}
                     onChange={(e) => setTone(e.target.value)}
                     placeholder="e.g., hype, chill, professional"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
                   />
                 </div>
               </div>
@@ -431,7 +431,7 @@ export default function CaptionsPage() {
               <button
                 onClick={handleGenerate}
                 disabled={generating || !assetDescription.trim()}
-                className="w-full px-6 py-3 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition text-center"
+                className="w-full px-6 py-3 bg-[#D73F09] hover:bg-[#b33507] disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition text-center"
               >
                 {generating ? 'Generating Captions...' : 'Generate Captions'}
               </button>
@@ -457,7 +457,7 @@ export default function CaptionsPage() {
                   <textarea
                     value={captionShort}
                     onChange={(e) => setCaptionShort(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-600 resize-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09] resize-none"
                     rows={2}
                   />
                 </div>
@@ -471,7 +471,7 @@ export default function CaptionsPage() {
                   <textarea
                     value={captionMedium}
                     onChange={(e) => setCaptionMedium(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-600 resize-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09] resize-none"
                     rows={4}
                   />
                 </div>
@@ -485,7 +485,7 @@ export default function CaptionsPage() {
                   <textarea
                     value={captionLong}
                     onChange={(e) => setCaptionLong(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-600 resize-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09] resize-none"
                     rows={6}
                   />
                 </div>
@@ -516,7 +516,7 @@ export default function CaptionsPage() {
                       onChange={(e) => setNewHashtag(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addHashtag()}
                       placeholder="Add hashtag..."
-                      className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-600 text-sm"
+                      className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] text-sm"
                     />
                     <button
                       onClick={addHashtag}
@@ -570,7 +570,7 @@ export default function CaptionsPage() {
                         onClick={() => setPreviewVariant(v)}
                         className={`px-2.5 py-1 rounded text-xs font-medium transition ${
                           previewVariant === v
-                            ? 'bg-orange-600/20 text-orange-400'
+                            ? 'bg-[#D73F09]/20 text-[#D73F09]'
                             : 'text-gray-500 hover:text-gray-300'
                         }`}
                       >
@@ -665,7 +665,7 @@ export default function CaptionsPage() {
                 onClick={() => setQueueFilter(tab.key)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                   queueFilter === tab.key
-                    ? 'bg-orange-600/20 text-orange-400 border border-orange-600/30'
+                    ? 'bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30'
                     : 'text-gray-400 border border-gray-800 hover:bg-gray-800'
                 }`}
               >
@@ -677,7 +677,7 @@ export default function CaptionsPage() {
           {/* Queue items */}
           {queueLoading ? (
             <div className="text-center py-16">
-              <div className="animate-spin w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full mx-auto mb-3" />
+              <div className="animate-spin w-8 h-8 border-2 border-[#D73F09] border-t-transparent rounded-full mx-auto mb-3" />
               <p className="text-gray-500">Loading queue...</p>
             </div>
           ) : queueItems.length === 0 ? (

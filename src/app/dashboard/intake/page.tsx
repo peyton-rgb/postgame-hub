@@ -310,7 +310,7 @@ export default function IntakePage() {
   // ==========================================================
 
   return (
-    <div className="min-h-screen bg-[#07070a] text-white p-8">
+    <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
@@ -667,7 +667,7 @@ export default function IntakePage() {
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Vibe Words</p>
                   <div className="flex flex-wrap gap-1">
                     {selectedItem.search_phrases.map((word: string) => (
-                      <span key={word} className="text-xs px-2 py-0.5 rounded-full bg-[#D73F09]/20 text-orange-300 border border-[#D73F09]/30">
+                      <span key={word} className="text-xs px-2 py-0.5 rounded-full bg-[#D73F09]/20 text-[#e8663d] border border-[#D73F09]/30">
                         {word}
                       </span>
                     ))}
