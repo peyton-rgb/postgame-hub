@@ -153,6 +153,14 @@ const DollarIcon = () => (
   </Icon>
 );
 
+// Case Studies (briefcase-style icon)
+const BriefcaseIcon = () => (
+  <Icon>
+    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+  </Icon>
+);
+
 // Pages
 const PresentationIcon = () => (
   <Icon>
@@ -341,7 +349,8 @@ const PIPELINE_SECTIONS: NavSection[] = [
 const PAGES_SECTION: NavSection = {
   label: 'Pages',
   links: [
-    { name: 'Recaps', href: '/dashboard', icon: PresentationIcon },
+    { name: 'Recaps', href: '/dashboard/recaps', icon: PresentationIcon },
+    { name: 'Case Studies', href: '/dashboard/case-studies', icon: BriefcaseIcon },
     { name: 'Performance Trackers', href: '/dashboard/performance-trackers', icon: TrendingUpIcon },
     { name: 'Run of Shows', href: '/dashboard/run-of-shows', icon: ListCheckIcon },
     { name: 'Legacy Briefs', href: '/dashboard/legacy-briefs', icon: NotebookIcon },
@@ -380,8 +389,7 @@ export default function DashboardSidebar() {
     router.push('/login');
   };
 
-  // For the "Recaps" link, which goes to /dashboard (the root),
-  // we only highlight it when the path is exactly /dashboard
+  // Highlight a nav link when the current path matches
   const isActive = (href: string) => {
     if (href === '/dashboard') {
       return pathname === '/dashboard';
