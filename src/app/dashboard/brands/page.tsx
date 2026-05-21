@@ -190,21 +190,23 @@ export default function BrandsPage() {
     fetchData();
   }, []);
 
-  // Filter brands
+  // Filter brands, then sort by campaign count (most campaigns first)
   const filtered = useMemo(() => {
-    return brands.filter((b) => {
-      if (!showArchived && b.archived) return false;
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        return (
-          b.name.toLowerCase().includes(term) ||
-          (b.industry || '').toLowerCase().includes(term) ||
-          (b.tagline || '').toLowerCase().includes(term)
-        );
-      }
-      return true;
-    });
-  }, [brands, searchTerm, showArchived]);
+    return brands
+      .filter((b) => {
+        if (!showArchived && b.archived) return false;
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          return (
+            b.name.toLowerCase().includes(term) ||
+            (b.industry || '').toLowerCase().includes(term) ||
+            (b.tagline || '').toLowerCase().includes(term)
+          );
+        }
+        return true;
+      })
+      .sort((a, b) => (campaignCounts[b.id] || 0) - (campaignCounts[a.id] || 0));
+  }, [brands, searchTerm, showArchived, campaignCounts]);
 
   // Stats
   const activeBrands = brands.filter((b) => !b.archived).length;
