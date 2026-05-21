@@ -36,6 +36,18 @@ interface PlatformConfig {
   contentMix: ContentMixItem[];
 }
 
+interface MediaDirection {
+  format: 'photo' | 'video' | 'carousel' | 'reel' | 'story';
+  aspectRatio: string;
+  shotList: string[];
+  visualStyle: string;
+  settingLocation: string;
+  talent: string;
+  props: string[];
+  editingNotes: string;
+  referenceVibe: string;
+}
+
 interface ContentSuggestion {
   id: string;
   platform: string;
@@ -48,7 +60,7 @@ interface ContentSuggestion {
   suggestedDate?: string;
   relatedAthlete?: string;
   relatedBrand?: string;
-  assetNotes: string;
+  mediaDirection: MediaDirection;
   reasoning: string;
 }
 
@@ -80,6 +92,108 @@ const PRIORITY_BADGES: Record<string, { label: string; classes: string }> = {
   medium: { label: 'Med', classes: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30' },
   low: { label: 'Low', classes: 'bg-gray-600/20 text-gray-400 border-gray-600/30' },
 };
+
+// --- Format badge labels ---
+const FORMAT_LABELS: Record<string, { label: string; icon: string }> = {
+  photo: { label: 'Photo', icon: '📷' },
+  video: { label: 'Video', icon: '🎬' },
+  carousel: { label: 'Carousel', icon: '🔲' },
+  reel: { label: 'Reel', icon: '🎞' },
+  story: { label: 'Story', icon: '📱' },
+};
+
+// --- Media Direction Card (sub-component) ---
+function MediaDirectionCard({ media }: { media: MediaDirection }) {
+  const formatInfo = FORMAT_LABELS[media.format] || { label: media.format, icon: '📷' };
+
+  return (
+    <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] rounded-lg border border-gray-700 overflow-hidden">
+      {/* Header bar */}
+      <div className="px-3 py-2 border-b border-gray-700/50 flex items-center gap-2">
+        <span className="text-xs font-semibold text-[#D73F09]">MEDIA DIRECTION</span>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <span className="px-2 py-0.5 rounded bg-[#D73F09]/15 text-[#D73F09] text-[10px] font-medium">
+            {formatInfo.icon} {formatInfo.label}
+          </span>
+          <span className="px-2 py-0.5 rounded bg-gray-700/50 text-gray-300 text-[10px] font-mono">
+            {media.aspectRatio}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-3 space-y-2.5">
+        {/* Shot list — the main event */}
+        {media.shotList.length > 0 && (
+          <div>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Shot List</span>
+            <div className="mt-1 space-y-1">
+              {media.shotList.map((shot, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-[10px] text-[#D73F09] font-mono mt-0.5 flex-shrink-0">{i + 1}.</span>
+                  <p className="text-xs text-gray-300">{shot}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Two-column layout for visual style + setting */}
+        <div className="grid grid-cols-2 gap-2">
+          {media.visualStyle && (
+            <div className="bg-black/20 rounded-md p-2">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-0.5">Visual Style</span>
+              <p className="text-[11px] text-gray-400">{media.visualStyle}</p>
+            </div>
+          )}
+          {media.settingLocation && (
+            <div className="bg-black/20 rounded-md p-2">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-0.5">Setting</span>
+              <p className="text-[11px] text-gray-400">{media.settingLocation}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Talent */}
+        {media.talent && (
+          <div>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Talent</span>
+            <p className="text-xs text-gray-400 mt-0.5">{media.talent}</p>
+          </div>
+        )}
+
+        {/* Props as pills */}
+        {media.props.length > 0 && (
+          <div>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Props / Items</span>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {media.props.map((prop, i) => (
+                <span key={i} className="px-2 py-0.5 bg-gray-700/40 border border-gray-600/30 rounded text-[11px] text-gray-300">
+                  {prop}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Editing notes (only for video/reel/story) */}
+        {media.editingNotes && media.editingNotes !== 'N/A' && (
+          <div className="bg-purple-600/5 border border-purple-600/10 rounded-md p-2">
+            <span className="text-[10px] text-purple-400/70 uppercase tracking-wider font-semibold">Editing Notes</span>
+            <p className="text-[11px] text-gray-400 mt-0.5">{media.editingNotes}</p>
+          </div>
+        )}
+
+        {/* Reference vibe — the creative reference */}
+        {media.referenceVibe && (
+          <div className="bg-[#D73F09]/5 border border-[#D73F09]/10 rounded-md p-2">
+            <span className="text-[10px] text-[#D73F09]/60 uppercase tracking-wider font-semibold">Reference Vibe</span>
+            <p className="text-[11px] text-gray-400 mt-0.5 italic">&ldquo;{media.referenceVibe}&rdquo;</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ContentStrategyPanel() {
   // --- State ---
@@ -166,14 +280,14 @@ export default function ContentStrategyPanel() {
       if (res.ok) {
         setSuggestions(data.suggestions || []);
       } else {
-        setToast({ message: `Error: ${data.error || 'Failed to generate suggestions'}`, type: 'error' });
+        setActionMessage({ text: `Error: ${data.error || 'Failed to generate suggestions'}`, type: 'error' });
       }
     } catch (err: unknown) {
       console.error('Failed to generate suggestions:', err);
       const message = err instanceof Error && err.name === 'AbortError'
         ? 'Request timed out — the AI took too long. Try again.'
         : 'Network error — could not reach the API';
-      setToast({ message, type: 'error' });
+      setActionMessage({ text: message, type: 'error' });
     }
     setLoadingSuggestions(false);
   };
@@ -198,14 +312,14 @@ export default function ContentStrategyPanel() {
       if (res.ok) {
         setCalendar(data.calendar || null);
       } else {
-        setToast({ message: `Error: ${data.error || 'Failed to generate calendar'}`, type: 'error' });
+        setActionMessage({ text: `Error: ${data.error || 'Failed to generate calendar'}`, type: 'error' });
       }
     } catch (err: unknown) {
       console.error('Failed to generate calendar:', err);
       const message = err instanceof Error && err.name === 'AbortError'
         ? 'Request timed out — the AI took too long. Try again.'
         : 'Network error — could not reach the API';
-      setToast({ message, type: 'error' });
+      setActionMessage({ text: message, type: 'error' });
     }
     setLoadingCalendar(false);
   };
@@ -596,12 +710,9 @@ export default function ContentStrategyPanel() {
                                   )}
                                 </div>
 
-                                {/* Asset notes */}
-                                {s.assetNotes && (
-                                  <div>
-                                    <span className="text-xs text-gray-500">Asset needed</span>
-                                    <p className="text-xs text-gray-400 mt-0.5">{s.assetNotes}</p>
-                                  </div>
+                                {/* Media Direction */}
+                                {s.mediaDirection && (
+                                  <MediaDirectionCard media={s.mediaDirection} />
                                 )}
 
                                 {/* Reasoning */}
@@ -800,12 +911,9 @@ export default function ContentStrategyPanel() {
                                 </div>
                               )}
 
-                              {/* Asset notes */}
-                              {s.assetNotes && (
-                                <div>
-                                  <span className="text-xs text-gray-500">Asset needed</span>
-                                  <p className="text-xs text-gray-400 mt-0.5">{s.assetNotes}</p>
-                                </div>
+                              {/* Media Direction */}
+                              {s.mediaDirection && (
+                                <MediaDirectionCard media={s.mediaDirection} />
                               )}
 
                               {/* Reasoning */}

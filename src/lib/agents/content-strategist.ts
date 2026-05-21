@@ -165,6 +165,18 @@ export const PLATFORM_STRATEGY: Record<string, {
 
 // --- Types ---
 
+export interface MediaDirection {
+  format: 'photo' | 'video' | 'carousel' | 'reel' | 'story';
+  aspectRatio: string;             // e.g. "4:5", "9:16", "1:1", "16:9"
+  shotList: string[];              // specific shots needed, like a creative director's list
+  visualStyle: string;             // mood/grade/look description
+  settingLocation: string;         // where to shoot
+  talent: string;                  // who should be in it
+  props: string[];                 // equipment, wardrobe, products to feature
+  editingNotes: string;            // pacing, transitions, text overlays, music direction
+  referenceVibe: string;           // "think X meets Y" — a creative reference point
+}
+
 export interface ContentSuggestion {
   id: string;
   platform: string;
@@ -178,7 +190,7 @@ export interface ContentSuggestion {
   relatedBriefId?: string;
   relatedAthlete?: string;
   relatedBrand?: string;
-  assetNotes: string;
+  mediaDirection: MediaDirection;
   reasoning: string;
 }
 
@@ -278,8 +290,21 @@ Generate ${count} content suggestions ${platform === 'all' ? 'spread across all 
 7. priority (high/medium/low — high = timely or high-profile)
 8. relatedAthlete (if applicable)
 9. relatedBrand (if applicable)
-10. assetNotes (what photo/video is needed)
+10. mediaDirection — THIS IS THE MOST IMPORTANT PART. Act as a creative director giving a detailed shot list. Include ALL of these fields:
+    - format: "photo" | "video" | "carousel" | "reel" | "story"
+    - aspectRatio: "4:5" for feed, "9:16" for stories/reels, "1:1" for carousels, "16:9" for YouTube
+    - shotList: array of 2-4 specific shots needed (be VERY specific — lens angle, framing, action, expression)
+    - visualStyle: the look/grade/mood (e.g. "Warm film tones, slight grain, high contrast blacks, desaturated greens")
+    - settingLocation: where exactly to shoot (e.g. "Stadium tunnel, pre-game, natural overhead lighting from above")
+    - talent: who should appear and what they should be doing
+    - props: array of items needed (wardrobe, equipment, products, signage)
+    - editingNotes: pacing, transitions, text overlays, music direction, or "N/A" for static posts
+    - referenceVibe: a creative reference (e.g. "Think Nike 'You Can't Stop Us' energy but intimate and campus-scale")
 11. reasoning (why this is a good post right now)
+
+MEDIA DIRECTION EXAMPLES:
+- BAD: "Need a photo of the athlete with the product"
+- GOOD: { format: "carousel", aspectRatio: "4:5", shotList: ["Close-up of athlete lacing shoes on bench, eye level, shallow depth of field", "Wide shot of athlete walking onto court from tunnel, backlit by stadium lights", "Detail shot of product logo on shoe, macro lens, dramatic side lighting"], visualStyle: "Clean digital with warm highlights, crushed blacks, Nike commercial feel", settingLocation: "Home arena/gym, 30 min before game, natural + arena lighting", talent: "Athlete in full game-day uniform, focused expression, pre-game energy", props: ["Brand footwear (featured)", "Game-day uniform", "Equipment bag"], editingNotes: "N/A — static carousel, slides should tell a story from close to wide", referenceVibe: "Think ESPN Body Issue meets product launch — athletic but editorial" }
 
 Return ONLY valid JSON array of objects. No markdown code fences.`;
 
@@ -287,7 +312,7 @@ Return ONLY valid JSON array of objects. No markdown code fences.`;
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 4000,
+      max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
     });
     text = response.content[0].type === 'text' ? response.content[0].text : '';
@@ -304,22 +329,48 @@ Return ONLY valid JSON array of objects. No markdown code fences.`;
 
   try {
     const suggestions = JSON.parse(cleaned);
-    return suggestions.map((s: Record<string, unknown>, i: number) => ({
-      id: `suggestion-${Date.now()}-${i}`,
-      platform: s.platform || platform,
-      contentType: s.contentType || 'general',
-      title: s.title || 'Untitled Suggestion',
-      description: s.description || '',
-      caption: s.caption || '',
-      hashtags: Array.isArray(s.hashtags) ? s.hashtags : [],
-      priority: s.priority || 'medium',
-      suggestedDate: s.suggestedDate,
-      relatedBriefId: s.relatedBriefId,
-      relatedAthlete: s.relatedAthlete,
-      relatedBrand: s.relatedBrand,
-      assetNotes: s.assetNotes || '',
-      reasoning: s.reasoning || '',
-    }));
+    return suggestions.map((s: Record<string, unknown>, i: number) => {
+      // Parse mediaDirection — could be an object or a string fallback
+      const rawMedia = s.mediaDirection as Record<string, unknown> | undefined;
+      const mediaDirection: MediaDirection = rawMedia && typeof rawMedia === 'object' ? {
+        format: (rawMedia.format as string) || 'photo',
+        aspectRatio: (rawMedia.aspectRatio as string) || '4:5',
+        shotList: Array.isArray(rawMedia.shotList) ? rawMedia.shotList as string[] : [],
+        visualStyle: (rawMedia.visualStyle as string) || '',
+        settingLocation: (rawMedia.settingLocation as string) || '',
+        talent: (rawMedia.talent as string) || '',
+        props: Array.isArray(rawMedia.props) ? rawMedia.props as string[] : [],
+        editingNotes: (rawMedia.editingNotes as string) || 'N/A',
+        referenceVibe: (rawMedia.referenceVibe as string) || '',
+      } : {
+        format: 'photo',
+        aspectRatio: '4:5',
+        shotList: [typeof s.assetNotes === 'string' ? s.assetNotes : 'See description'],
+        visualStyle: '',
+        settingLocation: '',
+        talent: '',
+        props: [],
+        editingNotes: 'N/A',
+        referenceVibe: '',
+      };
+
+      return {
+        id: `suggestion-${Date.now()}-${i}`,
+        platform: s.platform || platform,
+        contentType: s.contentType || 'general',
+        title: s.title || 'Untitled Suggestion',
+        description: s.description || '',
+        caption: s.caption || '',
+        hashtags: Array.isArray(s.hashtags) ? s.hashtags : [],
+        priority: s.priority || 'medium',
+        suggestedDate: s.suggestedDate,
+        relatedBriefId: s.relatedBriefId,
+        relatedAthlete: s.relatedAthlete,
+        relatedBrand: s.relatedBrand,
+        mediaDirection,
+        reasoning: s.reasoning || '',
+      };
+    });
   } catch {
     console.error('Failed to parse content suggestions. Raw text:', text.slice(0, 500));
     throw new Error('AI returned invalid format — could not parse suggestions');
@@ -368,11 +419,13 @@ ${contextSummary}
 DAYS TO PLAN:
 ${days.map(d => `${d.day}, ${d.date}`).join('\n')}
 
-For each day, suggest 1-2 posts that follow the content mix percentages over the week. Include complete captions, hashtags, and asset notes. Vary the style — don't make every caption follow the same template.
+For each day, suggest 1-2 posts that follow the content mix percentages over the week. Include complete captions, hashtags, and detailed media direction. Vary the style — don't make every caption follow the same template.
 
 For Twitter/X: This is a brand new account. The first week should establish Postgame's presence with a mix of introduction, recent work highlights, and industry commentary.
 
-Return JSON: { "week": [{ "day": "Monday", "date": "2026-05-25", "suggestions": [{ "contentType": "...", "title": "...", "description": "...", "caption": "...", "hashtags": ["..."], "priority": "high|medium|low", "relatedAthlete": "...", "relatedBrand": "...", "assetNotes": "...", "reasoning": "..." }] }] }
+Each suggestion MUST include a "mediaDirection" object with: format ("photo"|"video"|"carousel"|"reel"|"story"), aspectRatio, shotList (array of specific shots), visualStyle, settingLocation, talent, props (array), editingNotes, referenceVibe.
+
+Return JSON: { "week": [{ "day": "Monday", "date": "2026-05-25", "suggestions": [{ "contentType": "...", "title": "...", "description": "...", "caption": "...", "hashtags": ["..."], "priority": "high|medium|low", "relatedAthlete": "...", "relatedBrand": "...", "mediaDirection": { "format": "...", "aspectRatio": "...", "shotList": ["..."], "visualStyle": "...", "settingLocation": "...", "talent": "...", "props": ["..."], "editingNotes": "...", "referenceVibe": "..." }, "reasoning": "..." }] }] }
 
 Return ONLY valid JSON. No markdown code fences.`;
 
@@ -380,7 +433,7 @@ Return ONLY valid JSON. No markdown code fences.`;
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 4000,
+      max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
     });
     text = response.content[0].type === 'text' ? response.content[0].text : '';
@@ -402,21 +455,46 @@ Return ONLY valid JSON. No markdown code fences.`;
         day: day.day || days[dayIdx]?.day,
         date: day.date || days[dayIdx]?.date,
         suggestions: (Array.isArray(day.suggestions) ? day.suggestions : []).map(
-          (s: Record<string, unknown>, i: number) => ({
-            id: `cal-${Date.now()}-${dayIdx}-${i}`,
-            platform,
-            contentType: s.contentType || 'general',
-            title: s.title || '',
-            description: s.description || '',
-            caption: s.caption || '',
-            hashtags: Array.isArray(s.hashtags) ? s.hashtags : [],
-            priority: s.priority || 'medium',
-            suggestedDate: day.date || days[dayIdx]?.date,
-            relatedAthlete: s.relatedAthlete,
-            relatedBrand: s.relatedBrand,
-            assetNotes: s.assetNotes || '',
-            reasoning: s.reasoning || '',
-          }),
+          (s: Record<string, unknown>, i: number) => {
+            const rawMedia = s.mediaDirection as Record<string, unknown> | undefined;
+            const mediaDirection: MediaDirection = rawMedia && typeof rawMedia === 'object' ? {
+              format: (rawMedia.format as string) || 'photo',
+              aspectRatio: (rawMedia.aspectRatio as string) || '4:5',
+              shotList: Array.isArray(rawMedia.shotList) ? rawMedia.shotList as string[] : [],
+              visualStyle: (rawMedia.visualStyle as string) || '',
+              settingLocation: (rawMedia.settingLocation as string) || '',
+              talent: (rawMedia.talent as string) || '',
+              props: Array.isArray(rawMedia.props) ? rawMedia.props as string[] : [],
+              editingNotes: (rawMedia.editingNotes as string) || 'N/A',
+              referenceVibe: (rawMedia.referenceVibe as string) || '',
+            } : {
+              format: 'photo',
+              aspectRatio: '4:5',
+              shotList: [typeof s.assetNotes === 'string' ? s.assetNotes : 'See description'],
+              visualStyle: '',
+              settingLocation: '',
+              talent: '',
+              props: [],
+              editingNotes: 'N/A',
+              referenceVibe: '',
+            };
+
+            return {
+              id: `cal-${Date.now()}-${dayIdx}-${i}`,
+              platform,
+              contentType: s.contentType || 'general',
+              title: s.title || '',
+              description: s.description || '',
+              caption: s.caption || '',
+              hashtags: Array.isArray(s.hashtags) ? s.hashtags : [],
+              priority: s.priority || 'medium',
+              suggestedDate: day.date || days[dayIdx]?.date,
+              relatedAthlete: s.relatedAthlete,
+              relatedBrand: s.relatedBrand,
+              mediaDirection,
+              reasoning: s.reasoning || '',
+            };
+          },
         ),
       })),
     };

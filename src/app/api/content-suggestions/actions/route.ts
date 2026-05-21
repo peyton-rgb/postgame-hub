@@ -47,7 +47,12 @@ export async function POST(request: NextRequest) {
       athlete_name: suggestion.relatedAthlete || null,
       notes: [
         `AI Suggestion: ${suggestion.title}`,
-        suggestion.assetNotes ? `Asset needed: ${suggestion.assetNotes}` : null,
+        suggestion.mediaDirection?.shotList?.length
+          ? `Shot list: ${suggestion.mediaDirection.shotList.join(' | ')}`
+          : null,
+        suggestion.mediaDirection?.referenceVibe
+          ? `Vibe: ${suggestion.mediaDirection.referenceVibe}`
+          : null,
         suggestion.reasoning ? `Reasoning: ${suggestion.reasoning}` : null,
         `Content type: ${suggestion.contentType}`,
       ].filter(Boolean).join('\n'),
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
         assetDescription: [
           suggestion.title,
           suggestion.description,
-          suggestion.assetNotes,
+          suggestion.mediaDirection?.shotList?.join('. '),
         ].filter(Boolean).join('. '),
         campaignName: suggestion.relatedBrand ? `${suggestion.relatedBrand} campaign` : undefined,
       });
