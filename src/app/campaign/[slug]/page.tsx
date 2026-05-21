@@ -6,7 +6,7 @@ export const revalidate = 120;
 
 type Props = { params: Promise<{ slug: string }> };
 
-/* ââ Supabase helper âââââââââââââââââââââââââââââââââââ */
+/* Ã¢ÂÂÃ¢ÂÂ Supabase helper Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 function sb() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +14,7 @@ function sb() {
   );
 }
 
-/* ââ SEO metadata ââââââââââââââââââââââââââââââââââââââ */
+/* Ã¢ÂÂÃ¢ÂÂ SEO metadata Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const { data: c } = await sb()
@@ -25,12 +25,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .single();
   if (!c) return { title: "Not Found" };
   return {
-    title: `${c.name} â ${c.client_name} | Postgame`,
+    title: `${c.name} Ã¢ÂÂ ${c.client_name} | Postgame`,
     description: c.description || `${c.name} campaign by ${c.client_name}`,
   };
 }
 
-/* ââ styles ââââââââââââââââââââââââââââââââââââââââââââ */
+/* Ã¢ÂÂÃ¢ÂÂ styles Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,.08);--text:#fff;--muted:rgba(255,255,255,.55);--dim:rgba(255,255,255,.35);}
@@ -114,6 +114,7 @@ body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-ser
 .c-vid-wrap:hover .c-play-btn{background:rgba(215,63,9,.85);border-color:var(--orange);transform:translate(-50%,-50%) scale(1.1);}
 .c-vid-wrap video{transition:filter .3s;}
 .c-vid-wrap:hover video{filter:brightness(1.05);}
+.c-vid-wrap.playing .c-play-btn{opacity:0;pointer-events:none;}
 
 @media(max-width:900px){
   .nav{padding:14px 24px;} .nav-links{display:none;}
@@ -130,12 +131,12 @@ body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-ser
 }
 `;
 
-/* ââ page component ââââââââââââââââââââââââââââââââââââ */
+/* Ã¢ÂÂÃ¢ÂÂ page component Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 export default async function CampaignShowcasePage({ params }: Props) {
   const { slug } = await params;
   const supabase = sb();
 
-  // Fetch campaign (public fields only â no metrics)
+  // Fetch campaign (public fields only Ã¢ÂÂ no metrics)
   const { data: campaign } = await supabase
     .from("campaign_recaps")
     .select("id, name, slug, description, hero_image_url, client_name, brand_id, settings, tags, public_sections")
@@ -152,7 +153,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
     .eq("id", campaign.brand_id)
     .single();
 
-  // Fetch athletes â only name, school, sport (NO metrics, NO follower counts)
+  // Fetch athletes Ã¢ÂÂ only name, school, sport (NO metrics, NO follower counts)
   const { data: allAthletes } = await supabase
     .from("athletes")
     .select("id, name, school, sport, is_featured, featured_order")
@@ -213,7 +214,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
         {description && <p className="c-hero-desc">{description}</p>}
       </section>
 
-      {/* Stats â safe numbers only: athlete count, schools, sports */}
+      {/* Stats Ã¢ÂÂ safe numbers only: athlete count, schools, sports */}
       <section className="c-stats">
         <div className="c-stat">
           <div className="d c-stat-val">{athleteCount}</div>
@@ -303,21 +304,25 @@ export default async function CampaignShowcasePage({ params }: Props) {
             if (!vid) return;
             wrap.addEventListener('mouseenter', function() {
               vid.muted = false;
+              wrap.classList.add('playing');
               vid.play().catch(function() {
                 vid.muted = true;
-                vid.play().catch(function(){});
+                vid.play().catch(function(){ wrap.classList.remove('playing'); });
               });
             });
             wrap.addEventListener('mouseleave', function() {
               vid.pause();
               vid.currentTime = 0;
+              wrap.classList.remove('playing');
             });
             wrap.addEventListener('click', function() {
               if (vid.paused) {
                 vid.muted = false;
+                wrap.classList.add('playing');
                 vid.play().catch(function(){});
               } else {
                 vid.pause();
+                wrap.classList.remove('playing');
               }
             });
           });
