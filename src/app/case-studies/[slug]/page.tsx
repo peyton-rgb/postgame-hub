@@ -17,7 +17,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import PublicNav from '@/components/PublicNav';
@@ -75,6 +75,115 @@ interface RelatedStudy {
     logo_url: string | null;
     primary_color: string | null;
   } | null;
+}
+
+// ---- Hero Montage ----
+// Auto-playing, silent, looping montage that crossfades between
+// video clips and Ken Burns-style photo moments behind the hero text.
+
+interface MontageItem {
+  url: string;
+  type: 'image' | 'video';
+}
+
+function HeroMontage({
+  items,
+  brandColor,
+}: {
+  items: MontageItem[];
+  brandColor: string;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Duration per slide: videos play for up to 5s, photos show for 4s
+  const PHOTO_DURATION = 4000;
+  const VIDEO_MAX_DURATION = 5000;
+
+  const advance = useCallback(() => {
+    setActiveIndex((prev) => (prev + 1) % items.length);
+  }, [items.length]);
+
+  useEffect(() => {
+    if (items.length <= 1) return;
+
+    const current = items[activeIndex];
+    let duration = PHOTO_DURATION;
+
+    if (current.type === 'video') {
+      // Let the video play a bit, then advance
+      const vid = videoRefs.current[activeIndex];
+      if (vid) {
+        vid.currentTime = 0;
+        vid.play().catch(() => {});
+      }
+      duration = VIDEO_MAX_DURATION;
+    }
+
+    timerRef.current = setTimeout(advance, duration);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [activeIndex, items, advance]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 transition-opacity duration-[1500ms] ease-in-out"
+          style={{ opacity: i === activeIndex ? 1 : 0 }}
+        >
+          {item.type === 'video' ? (
+            <video
+              ref={(el) => { videoRefs.current[i] = el; }}
+              src={item.url}
+              muted
+              playsInline
+              loop
+              preload={i <= 1 ? 'auto' : 'none'}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div
+              className="w-full h-full"
+              style={{
+                backgroundImage: `url(${item.url})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center 20%',
+                animation: i === activeIndex ? 'kenBurns 6s ease-in-out forwards' : 'none',
+              }}
+            />
+          )}
+        </div>
+      ))}
+
+      {/* Dark overlay so text is readable */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.5) 40%, rgba(10,10,10,0.85) 100%)`,
+        }}
+      />
+
+      {/* Brand color tint */}
+      <div
+        className="absolute inset-0 opacity-20 mix-blend-overlay"
+        style={{ backgroundColor: brandColor }}
+      />
+
+      {/* Ken Burns keyframes injected via style tag */}
+      <style>{`
+        @keyframes kenBurns {
+          0% { transform: scale(1) translate(0, 0); }
+          100% { transform: scale(1.08) translate(-1%, -1%); }
+        }
+      `}</style>
+    </div>
+  );
 }
 
 // ---- Metric Card ----
@@ -247,6 +356,7 @@ export default function CaseStudyDetailPage() {
   const slug = params?.slug as string;
   const [study, setStudy] = useState<CaseStudy | null>(null);
   const [campaignMedia, setCampaignMedia] = useState<CampaignMedia[]>([]);
+  const [heroMedia, setHeroMedia] = useState<MontageItem[]>([]);
   const [relatedStudies, setRelatedStudies] = useState<RelatedStudy[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -299,6 +409,23 @@ export default function CaseStudyDetailPage() {
               campaign_id: m.campaign.id,
             }));
           setCampaignMedia(mapped);
+
+          // Build hero montage: pick best videos + photos, interleaved
+          const videos = mapped.filter((m) => m.type === 'video').slice(0, 4);
+          const images = mapped.filter((m) => m.type === 'image').slice(0, 4);
+          const montage: MontageItem[] = [];
+          const maxLen = Math.max(videos.length, images.length);
+          for (let idx = 0; idx < maxLen; idx++) {
+            if (idx < videos.length) montage.push({ url: videos[idx].file_url, type: 'video' });
+            if (idx < images.length) montage.push({ url: images[idx].file_url, type: 'image' });
+          }
+          // Also add gallery images if available
+          if (studyData.gallery_urls) {
+            studyData.gallery_urls.slice(0, 3).forEach((url) => {
+              montage.push({ url, type: 'image' });
+            });
+          }
+          setHeroMedia(montage.slice(0, 8));
         }
       }
 
@@ -375,34 +502,38 @@ export default function CaseStudyDetailPage() {
       <PublicNav variant="dark" />
 
       {/* ====== HERO ====== */}
-      <section className="relative pt-20 pb-20 px-6 overflow-hidden">
-        {/* Multi-layer background */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div
-            className="absolute top-0 left-0 right-0 h-[500px]"
-            style={{
-              background: `linear-gradient(180deg, ${brandColor}12 0%, ${brandColor}06 40%, transparent 100%)`,
-            }}
-          />
-          <div
-            className="absolute top-16 left-[8%] w-80 h-80 rounded-full blur-[150px] opacity-15"
-            style={{ backgroundColor: brandColor }}
-          />
-          <div
-            className="absolute top-32 right-[12%] w-48 h-48 rounded-full blur-[100px] opacity-10"
-            style={{ backgroundColor: brandColor }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.02]"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-              `,
-              backgroundSize: '80px 80px',
-            }}
-          />
-        </div>
+      <section className="relative pt-20 pb-20 px-6 overflow-hidden" style={{ minHeight: heroMedia.length > 0 ? '70vh' : undefined }}>
+        {/* Background — montage if we have media, gradient fallback otherwise */}
+        {heroMedia.length > 0 ? (
+          <HeroMontage items={heroMedia} brandColor={brandColor} />
+        ) : (
+          <div className="absolute inset-0 pointer-events-none">
+            <div
+              className="absolute top-0 left-0 right-0 h-[500px]"
+              style={{
+                background: `linear-gradient(180deg, ${brandColor}12 0%, ${brandColor}06 40%, transparent 100%)`,
+              }}
+            />
+            <div
+              className="absolute top-16 left-[8%] w-80 h-80 rounded-full blur-[150px] opacity-15"
+              style={{ backgroundColor: brandColor }}
+            />
+            <div
+              className="absolute top-32 right-[12%] w-48 h-48 rounded-full blur-[100px] opacity-10"
+              style={{ backgroundColor: brandColor }}
+            />
+            <div
+              className="absolute inset-0 opacity-[0.02]"
+              style={{
+                backgroundImage: `
+                  linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+                `,
+                backgroundSize: '80px 80px',
+              }}
+            />
+          </div>
+        )}
 
         <div className="relative max-w-5xl mx-auto">
           <Link
@@ -486,8 +617,8 @@ export default function CaseStudyDetailPage() {
         </div>
       </section>
 
-      {/* ====== HERO IMAGE ====== */}
-      {study.image_url && (
+      {/* ====== HERO IMAGE (fallback when no montage) ====== */}
+      {heroMedia.length === 0 && study.image_url && (
         <section className="max-w-6xl mx-auto px-6 mb-20">
           <div className="rounded-2xl overflow-hidden border border-white/[0.06] shadow-2xl shadow-black/50">
             <img
