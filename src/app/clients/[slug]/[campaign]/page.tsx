@@ -180,10 +180,6 @@ function GalleryTile({
         />
       )}
 
-      {/* Athlete name — always visible at the bottom */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
-        <p className="text-xs font-medium text-white/80 truncate">{item.filename}</p>
-      </div>
     </div>
   );
 }
