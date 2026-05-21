@@ -283,16 +283,27 @@ Generate ${count} content suggestions ${platform === 'all' ? 'spread across all 
 
 Return ONLY valid JSON array of objects. No markdown code fences.`;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 4000,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  let text = '';
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    text = response.content[0].type === 'text' ? response.content[0].text : '';
+  } catch (err) {
+    console.error('Anthropic API error in generateOnDemandSuggestions:', err);
+    throw new Error(`AI API call failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  }
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  // Strip markdown code fences if the AI wrapped the JSON
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+  }
 
   try {
-    const suggestions = JSON.parse(text.trim());
+    const suggestions = JSON.parse(cleaned);
     return suggestions.map((s: Record<string, unknown>, i: number) => ({
       id: `suggestion-${Date.now()}-${i}`,
       platform: s.platform || platform,
@@ -310,8 +321,8 @@ Return ONLY valid JSON array of objects. No markdown code fences.`;
       reasoning: s.reasoning || '',
     }));
   } catch {
-    console.error('Failed to parse content suggestions:', text.slice(0, 200));
-    return [];
+    console.error('Failed to parse content suggestions. Raw text:', text.slice(0, 500));
+    throw new Error('AI returned invalid format — could not parse suggestions');
   }
 }
 
@@ -365,16 +376,26 @@ Return JSON: { "week": [{ "day": "Monday", "date": "2026-05-25", "suggestions": 
 
 Return ONLY valid JSON. No markdown code fences.`;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 4000,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  let text = '';
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    text = response.content[0].type === 'text' ? response.content[0].text : '';
+  } catch (err) {
+    console.error('Anthropic API error in generateWeeklyCalendar:', err);
+    throw new Error(`AI API call failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  }
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+  }
 
   try {
-    const parsed = JSON.parse(text.trim());
+    const parsed = JSON.parse(cleaned);
     return {
       platform,
       week: parsed.week.map((day: Record<string, unknown>, dayIdx: number) => ({
@@ -400,8 +421,8 @@ Return ONLY valid JSON. No markdown code fences.`;
       })),
     };
   } catch {
-    console.error('Failed to parse weekly calendar:', text.slice(0, 200));
-    return { platform, week: days.map(d => ({ ...d, suggestions: [] })) };
+    console.error('Failed to parse weekly calendar. Raw text:', text.slice(0, 500));
+    throw new Error('AI returned invalid format — could not parse calendar');
   }
 }
 
@@ -440,19 +461,29 @@ Identify the top content gaps across all platforms. For each gap:
 
 Return ONLY a valid JSON array. No markdown code fences.`;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  let text = '';
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    text = response.content[0].type === 'text' ? response.content[0].text : '';
+  } catch (err) {
+    console.error('Anthropic API error in analyzeContentGaps:', err);
+    throw new Error(`AI API call failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  }
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+  }
 
   try {
-    return JSON.parse(text.trim());
+    return JSON.parse(cleaned);
   } catch {
-    console.error('Failed to parse content gaps:', text.slice(0, 200));
-    return [];
+    console.error('Failed to parse content gaps. Raw text:', text.slice(0, 500));
+    throw new Error('AI returned invalid format — could not parse gaps');
   }
 }
 

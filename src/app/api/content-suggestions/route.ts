@@ -107,32 +107,40 @@ export async function GET(request: NextRequest) {
 // --- POST handler ---
 
 export async function POST(request: NextRequest) {
-  const supabase = createServiceSupabase();
+  try {
+    const supabase = createServiceSupabase();
 
-  const body = await request.json();
-  const { action, platform, count, startDate } = body;
+    const body = await request.json();
+    const { action, platform, count, startDate } = body;
 
-  const hubContext = await gatherHubContext(supabase);
+    const hubContext = await gatherHubContext(supabase);
 
-  if (action === 'suggest') {
-    const suggestions = await generateOnDemandSuggestions(
-      platform || 'all',
-      hubContext,
-      count || 5,
-    );
-    return NextResponse.json({ suggestions });
-  }
-
-  if (action === 'calendar') {
-    if (!platform || platform === 'all') {
-      return NextResponse.json(
-        { error: 'Calendar requires a specific platform' },
-        { status: 400 },
+    if (action === 'suggest') {
+      const suggestions = await generateOnDemandSuggestions(
+        platform || 'all',
+        hubContext,
+        count || 5,
       );
+      return NextResponse.json({ suggestions });
     }
-    const calendar = await generateWeeklyCalendar(platform, hubContext, startDate);
-    return NextResponse.json({ calendar });
-  }
 
-  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    if (action === 'calendar') {
+      if (!platform || platform === 'all') {
+        return NextResponse.json(
+          { error: 'Calendar requires a specific platform' },
+          { status: 400 },
+        );
+      }
+      const calendar = await generateWeeklyCalendar(platform, hubContext, startDate);
+      return NextResponse.json({ calendar });
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (err) {
+    console.error('Content suggestions POST error:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { status: 500 },
+    );
+  }
 }
