@@ -162,9 +162,9 @@ function GalleryTile({
             preload="metadata"
             className="absolute inset-0 w-full h-full object-cover"
           />
-          {/* Play icon overlay */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+          {/* Play icon — visible by default, fades out on hover when video plays */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent opacity-100 group-hover:opacity-0 transition-all duration-500">
+            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.344-5.891a1.5 1.5 0 000-2.538L6.3 2.84z" />
               </svg>
@@ -180,9 +180,9 @@ function GalleryTile({
         />
       )}
 
-      {/* Hover overlay with filename */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-        <p className="text-[10px] text-white/70 truncate">{item.filename}</p>
+      {/* Athlete name — always visible at the bottom */}
+      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
+        <p className="text-xs font-medium text-white/80 truncate">{item.filename}</p>
       </div>
     </div>
   );
@@ -249,17 +249,26 @@ export default function CampaignGalleryPage() {
           const mime = f.metadata.mimetype as string || '';
           if (!mime.startsWith('image/') && !mime.startsWith('video/')) continue;
 
-          // Extract human-readable filename (strip timestamp prefix)
+          // Extract athlete name from filename
           // Files look like: 1774484911966-Jonathan_Ward_2.mp4
+          // We strip the timestamp, file extension, underscores, and trailing numbers
           const cleanName = f.name.replace(/^\d+-/, '');
 
           // Deduplicate by clean filename
           if (seen.has(cleanName)) continue;
           seen.add(cleanName);
 
+          // Turn "Jonathan_Ward_2.mp4" into "Jonathan Ward"
+          const athleteName = cleanName
+            .replace(/\.[^.]+$/, '')   // remove extension
+            .replace(/_/g, ' ')        // underscores to spaces
+            .replace(/\s+\d+$/, '')    // remove trailing number like " 2"
+            .replace(/\s+/g, ' ')      // clean up extra spaces
+            .trim();
+
           allMedia.push({
             url: `${CM}/${campaignData.id}/${folder.name}/${f.name}`,
-            filename: cleanName.replace(/_/g, ' ').replace(/\.[^.]+$/, ''),
+            filename: athleteName,
             isVideo: mime.startsWith('video/'),
             sizeBytes: (f.metadata.size as number) || 0,
           });
