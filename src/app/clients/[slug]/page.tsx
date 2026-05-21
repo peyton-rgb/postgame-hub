@@ -370,12 +370,13 @@ export default function BrandGalleryPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {campaigns.map((campaign) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                videos={campaignVideos[campaign.id] || []}
-                brandColor={brand.primaryColor}
-              />
+              <Link key={campaign.id} href={`/clients/${slug}/${campaign.slug}`}>
+                <CampaignCard
+                  campaign={campaign}
+                  videos={campaignVideos[campaign.id] || []}
+                  brandColor={brand.primaryColor}
+                />
+              </Link>
             ))}
           </div>
         )}
