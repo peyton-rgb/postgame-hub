@@ -155,12 +155,15 @@ export default function ContentStrategyPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'suggest', platform, count: 8 }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setSuggestions(data.suggestions || []);
+      } else {
+        setToast({ message: `Error: ${data.error || 'Failed to generate suggestions'}`, type: 'error' });
       }
     } catch (err) {
       console.error('Failed to generate suggestions:', err);
+      setToast({ message: 'Network error — could not reach the API', type: 'error' });
     }
     setLoadingSuggestions(false);
   };
@@ -175,12 +178,15 @@ export default function ContentStrategyPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'calendar', platform }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setCalendar(data.calendar || null);
+      } else {
+        setToast({ message: `Error: ${data.error || 'Failed to generate calendar'}`, type: 'error' });
       }
     } catch (err) {
       console.error('Failed to generate calendar:', err);
+      setToast({ message: 'Network error — could not reach the API', type: 'error' });
     }
     setLoadingCalendar(false);
   };
