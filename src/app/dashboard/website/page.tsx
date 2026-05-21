@@ -90,6 +90,7 @@ const PAGES = [
   { key: "team",           label: "Team / About",    icon: "👥", url: "/about/team",             section: "Public Pages" },
   { key: "clients",        label: "Clients",         icon: "🏢", url: "/clients",                section: "Public Pages" },
   { key: "campaigns",      label: "Campaigns",       icon: "🎬", url: "/campaigns",              section: "Public Pages" },
+  { key: "case-studies",   label: "Case Studies",    icon: "📊", url: "/case-studies",            section: "Public Pages" },
   { key: "deals",          label: "Deal Tracker",    icon: "⭐", url: "/deals",                  section: "Public Pages" },
   { key: "press",          label: "Press",           icon: "📰", url: "/press",                  section: "Public Pages" },
   { key: "contact",        label: "Contact",         icon: "✉",  url: "/contact",                section: "Public Pages" },
