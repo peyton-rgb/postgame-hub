@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getDefaultPitchSections } from "@/lib/pitch/defaultTemplate";
 import { VOICES, DEFAULT_VOICE_ID, type VoiceModule } from "@/lib/pitch/aiPrompts";
@@ -24,6 +25,7 @@ interface UploadedFile {
 
 type CreateTab = "blank" | "ai";
 type PitchType = "athlete" | "brand";
+type PitchFilter = "all" | "brand" | "athlete";
 
 const PROGRESS_STEPS = [
   "Uploading assets...",
@@ -45,6 +47,11 @@ export default function PitchList() {
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<PitchPage | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // URL-driven filter state
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pitchFilter = (searchParams.get("filter") as PitchFilter) || "all";
 
   // Shared form state
   const [createTab, setCreateTab] = useState<CreateTab>("blank");
@@ -93,6 +100,31 @@ export default function PitchList() {
     setBrands(data || []);
   }
 
+  // ---- Filter helpers ----
+
+  function setFilter(filter: PitchFilter) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (filter === "all") {
+      params.delete("filter");
+    } else {
+      params.set("filter", filter);
+    }
+    router.push(`/dashboard?${params.toString()}`, { scroll: false });
+  }
+
+  // Counts computed from the full unfiltered list
+  const brandCount = pitches.filter((p) => p.brand_id !== null).length;
+  const athleteCount = pitches.filter((p) => p.brand_id === null).length;
+
+  // The rows actually shown in the table
+  const filteredPitches = pitches.filter((p) => {
+    if (pitchFilter === "brand") return p.brand_id !== null;
+    if (pitchFilter === "athlete") return p.brand_id === null;
+    return true; // "all"
+  });
+
+  // ---- Create modal helpers ----
+
   function openCreate() {
     setCreateTab("blank");
     setNewTitle("");
@@ -136,7 +168,7 @@ export default function PitchList() {
     if (createTab === "ai" && brandId) {
       const brand = brands.find((b) => b.id === brandId);
       if (brand) {
-        if (!newTitle) setNewTitle(`Postgame \u00d7 ${brand.name}`);
+        if (!newTitle) setNewTitle(`Postgame × ${brand.name}`);
         if (!newSlug) setNewSlug(slugify(brand.name));
       }
     }
@@ -221,7 +253,7 @@ export default function PitchList() {
 
     // Collision — if user manually typed it, block submission
     if (slugManuallyEdited) {
-      setSlugError("This slug is already taken \u2014 try another");
+      setSlugError("This slug is already taken — try another");
       return null;
     }
 
@@ -240,7 +272,7 @@ export default function PitchList() {
       }
     }
 
-    setSlugError("Could not find an available slug \u2014 try a different name");
+    setSlugError("Could not find an available slug — try a different name");
     return null;
   }
 
@@ -358,7 +390,7 @@ export default function PitchList() {
     try {
       // Derive title/slug if not set
       const brand = brands.find((b) => b.id === selectedBrandId);
-      const finalTitle = newTitle || `Postgame \u00d7 ${brand?.name || "Brand"}`;
+      const finalTitle = newTitle || `Postgame × ${brand?.name || "Brand"}`;
       const derivedSlug = newSlug || slugify(brand?.name || "pitch");
 
       // Check slug availability before doing any expensive work
@@ -406,7 +438,7 @@ export default function PitchList() {
           voiceId: selectedVoiceId,
           userPrompt: aiPrompt,
           uploadedAssets,
-          pitchType,                                   // forwarded for the API to branch on
+          pitchType, // forwarded for the API to branch on
         }),
       });
 
@@ -462,11 +494,13 @@ export default function PitchList() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-black text-white">Pitch Pages</h2>
           <p className="text-sm text-gray-500 mt-1">
-            {pitches.length} pitch{pitches.length !== 1 ? "es" : ""}
+            {filteredPitches.length === pitches.length
+              ? `${pitches.length} pitch${pitches.length !== 1 ? "es" : ""}`
+              : `${filteredPitches.length} of ${pitches.length} pitches`}
           </p>
         </div>
         <button
@@ -480,11 +514,48 @@ export default function PitchList() {
         </button>
       </div>
 
+      {/* Filter tabs — All / Brand / Athlete */}
+      <div className="flex gap-0 mb-6 border-b border-gray-800">
+        {(
+          [
+            { key: "all" as PitchFilter, label: "All", count: pitches.length },
+            { key: "brand" as PitchFilter, label: "Brand", count: brandCount },
+            { key: "athlete" as PitchFilter, label: "Athlete", count: athleteCount },
+          ] as const
+        ).map(({ key, label, count }) => {
+          const isActive = pitchFilter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`px-5 py-2.5 text-sm font-bold transition-colors border-b-2 -mb-px ${
+                isActive
+                  ? "text-[#D73F09] border-[#D73F09]"
+                  : "text-gray-500 border-transparent hover:text-gray-300 hover:border-gray-600"
+              }`}
+            >
+              {label}{" "}
+              <span
+                className={`text-xs ml-0.5 ${
+                  isActive ? "text-[#D73F09]/70" : "text-gray-600"
+                }`}
+              >
+                ({count})
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Table */}
-      {pitches.length === 0 ? (
+      {filteredPitches.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <div className="text-4xl mb-4">&#9670;</div>
-          <div className="text-sm">No pitch pages yet. Create your first one.</div>
+          <div className="text-sm">
+            {pitches.length === 0
+              ? "No pitch pages yet. Create your first one."
+              : `No ${pitchFilter} pitches found.`}
+          </div>
         </div>
       ) : (
         <div className="border border-gray-800 rounded-xl overflow-hidden">
@@ -500,7 +571,7 @@ export default function PitchList() {
               </tr>
             </thead>
             <tbody>
-              {pitches.map((pitch) => {
+              {filteredPitches.map((pitch) => {
                 const brand = getBrandForPitch(pitch);
                 return (
                   <tr key={pitch.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
