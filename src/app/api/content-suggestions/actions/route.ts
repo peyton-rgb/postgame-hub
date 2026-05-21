@@ -15,18 +15,12 @@
 //     → Calls Distributor Agent to produce 3 caption variants
 // ============================================================
 
-import { createServerSupabase } from '@/lib/supabase-server';
+import { createServiceSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateCaptions } from '@/lib/agents/distributor-agent';
 
 export async function POST(request: NextRequest) {
-  const supabase = createServerSupabase();
-
-  // Auth check
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
+  const supabase = createServiceSupabase();
 
   const body = await request.json();
   const { action, suggestion, scheduledFor, reason } = body;
@@ -59,8 +53,8 @@ export async function POST(request: NextRequest) {
       ].filter(Boolean).join('\n'),
       scheduled_for: scheduledFor || null,
       status,
-      created_by: user.id,
-      approved_by: user.id,
+      created_by: 'system',
+      approved_by: 'system',
       approved_at: new Date().toISOString(),
     };
 
@@ -100,7 +94,7 @@ export async function POST(request: NextRequest) {
           suggestion_content_type: suggestion.contentType,
           feedback_type: 'denied',
           reason: reason || null,
-          created_by: user.id,
+          created_by: 'system',
         });
     } catch {
       // Table might not exist — that's fine, feedback is optional

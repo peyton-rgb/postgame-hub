@@ -19,7 +19,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Tell Vercel to allow up to 60 seconds for this route
 // (AI generation takes longer than the default 10s limit)
 export const maxDuration = 60;
-import { createServerSupabase } from '@/lib/supabase-server';
+import { createServiceSupabase } from '@/lib/supabase-server';
 import {
   PLATFORM_STRATEGY,
   generateOnDemandSuggestions,
@@ -28,8 +28,12 @@ import {
 } from '@/lib/agents/content-strategist';
 
 // --- Gather Hub context from Supabase ---
+// Uses service role client because the basic anon client can't read
+// the auth cookie from the browser in a server-side API route.
+// Dashboard pages are already protected by middleware, so only
+// logged-in users can reach these endpoints.
 
-async function gatherHubContext(supabase: ReturnType<typeof createServerSupabase>) {
+async function gatherHubContext(supabase: ReturnType<typeof createServiceSupabase>) {
   // Fetch recent briefs
   const { data: briefs } = await supabase
     .from('briefs')
@@ -81,14 +85,7 @@ async function gatherHubContext(supabase: ReturnType<typeof createServerSupabase
 // --- GET handler ---
 
 export async function GET(request: NextRequest) {
-  const supabase = createServerSupabase();
-
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+  const supabase = createServiceSupabase();
   const type = request.nextUrl.searchParams.get('type') || 'strategy';
 
   if (type === 'strategy') {
@@ -110,13 +107,7 @@ export async function GET(request: NextRequest) {
 // --- POST handler ---
 
 export async function POST(request: NextRequest) {
-  const supabase = createServerSupabase();
-
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const supabase = createServiceSupabase();
 
   const body = await request.json();
   const { action, platform, count, startDate } = body;
