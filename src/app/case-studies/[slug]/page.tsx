@@ -422,19 +422,41 @@ export default function CaseStudyDetailPage() {
             }));
           setCampaignMedia(mapped);
 
-          // Build hero filmstrip: gallery images first (curated), then campaign media
+          // Build hero montage: banner videos first, then gallery + campaign media
           const montage: MontageItem[] = [];
 
-          // Gallery images are hand-picked, so prioritize them
+          // 1. Pull banner videos from the shared banner_videos table
+          //    These are the high-quality brand banners from Wix
+          const { data: bannerData } = await supabase
+            .from('banner_videos')
+            .select('url, brand_name')
+            .order('sort_order');
+
+          if (bannerData && bannerData.length > 0) {
+            // Prioritize banners matching this brand, then mix in others
+            const brandName = studyData.brand_name?.toLowerCase() || '';
+            const brandBanners = bannerData.filter(
+              (b: any) => b.brand_name?.toLowerCase() === brandName
+            );
+            const otherBanners = bannerData.filter(
+              (b: any) => b.brand_name?.toLowerCase() !== brandName
+            );
+            // Brand-specific banners first, then shuffle in others
+            [...brandBanners, ...otherBanners].forEach((b: any) => {
+              montage.push({ url: b.url, type: 'video' });
+            });
+          }
+
+          // 2. Gallery images (hand-picked, curated)
           if (studyData.gallery_urls) {
             studyData.gallery_urls.forEach((url) => {
               montage.push({ url, type: 'image' });
             });
           }
 
-          // Then interleave campaign videos + photos
-          const videos = mapped.filter((m) => m.type === 'video').slice(0, 6);
-          const images = mapped.filter((m) => m.type === 'image').slice(0, 8);
+          // 3. Campaign videos + photos as filler
+          const videos = mapped.filter((m) => m.type === 'video').slice(0, 4);
+          const images = mapped.filter((m) => m.type === 'image').slice(0, 4);
           const maxLen = Math.max(videos.length, images.length);
           for (let idx = 0; idx < maxLen; idx++) {
             if (idx < videos.length) montage.push({ url: videos[idx].file_url, type: 'video' });
