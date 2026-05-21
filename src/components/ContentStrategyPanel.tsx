@@ -150,20 +150,30 @@ export default function ContentStrategyPanel() {
     setLoadingSuggestions(true);
     setSuggestions([]);
     try {
+      // 45-second timeout so the spinner doesn't run forever
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+
       const res = await fetch('/api/content-suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'suggest', platform, count: 8 }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
+
       const data = await res.json();
       if (res.ok) {
         setSuggestions(data.suggestions || []);
       } else {
         setToast({ message: `Error: ${data.error || 'Failed to generate suggestions'}`, type: 'error' });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to generate suggestions:', err);
-      setToast({ message: 'Network error — could not reach the API', type: 'error' });
+      const message = err instanceof Error && err.name === 'AbortError'
+        ? 'Request timed out — the AI took too long. Try again.'
+        : 'Network error — could not reach the API';
+      setToast({ message, type: 'error' });
     }
     setLoadingSuggestions(false);
   };
@@ -173,20 +183,29 @@ export default function ContentStrategyPanel() {
     setLoadingCalendar(true);
     setCalendar(null);
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+
       const res = await fetch('/api/content-suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'calendar', platform }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
+
       const data = await res.json();
       if (res.ok) {
         setCalendar(data.calendar || null);
       } else {
         setToast({ message: `Error: ${data.error || 'Failed to generate calendar'}`, type: 'error' });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to generate calendar:', err);
-      setToast({ message: 'Network error — could not reach the API', type: 'error' });
+      const message = err instanceof Error && err.name === 'AbortError'
+        ? 'Request timed out — the AI took too long. Try again.'
+        : 'Network error — could not reach the API';
+      setToast({ message, type: 'error' });
     }
     setLoadingCalendar(false);
   };

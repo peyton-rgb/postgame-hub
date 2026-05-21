@@ -15,6 +15,10 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+
+// Tell Vercel to allow up to 60 seconds for this route
+// (AI generation takes longer than the default 10s limit)
+export const maxDuration = 60;
 import { createServerSupabase } from '@/lib/supabase-server';
 import {
   PLATFORM_STRATEGY,

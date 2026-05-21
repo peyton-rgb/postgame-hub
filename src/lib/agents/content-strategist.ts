@@ -23,6 +23,10 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
 
+// Use Haiku for speed — suggestions don't need the full power of Sonnet,
+// and Vercel serverless functions have tight time limits.
+const MODEL = 'claude-haiku-4-5-20251001';
+
 // --- Platform definitions ---
 // These encode Postgame's specific strategy for each platform.
 
@@ -280,7 +284,7 @@ Generate ${count} content suggestions ${platform === 'all' ? 'spread across all 
 Return ONLY valid JSON array of objects. No markdown code fences.`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: MODEL,
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -362,7 +366,7 @@ Return JSON: { "week": [{ "day": "Monday", "date": "2026-05-25", "suggestions": 
 Return ONLY valid JSON. No markdown code fences.`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: MODEL,
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -437,7 +441,7 @@ Identify the top content gaps across all platforms. For each gap:
 Return ONLY a valid JSON array. No markdown code fences.`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: MODEL,
     max_tokens: 2000,
     messages: [{ role: 'user', content: prompt }],
   });
