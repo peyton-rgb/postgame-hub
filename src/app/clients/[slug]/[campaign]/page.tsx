@@ -269,13 +269,29 @@ export default function CampaignGalleryPage() {
           if (seen.has(cleanName)) continue;
           seen.add(cleanName);
 
-          // Turn "Jonathan_Ward_2.mp4" into "Jonathan Ward"
-          const athleteName = cleanName
-            .replace(/\.[^.]+$/, '')   // remove extension
-            .replace(/_/g, ' ')        // underscores to spaces
-            .replace(/\s+\d+$/, '')    // remove trailing number like " 2"
-            .replace(/\s+/g, ' ')      // clean up extra spaces
-            .trim();
+          // Extract athlete name from various filename formats:
+          //   "Jonathan_Ward_2.mp4"                    → "Jonathan Ward"
+          //   "IMG_9450 - Marcellus Nash.jpeg"         → "Marcellus Nash"
+          //   "thumb-DSC02008 - Makhi Mariee Falkquay" → "Makhi Mariee Falkquay"
+          //   "jaala_thymes.jpg"                       → "Jaala Thymes"
+          let athleteName = cleanName.replace(/\.[^.]+$/, ''); // remove extension
+
+          // If there's a " - " separator, the athlete name is after it
+          if (athleteName.includes(' - ')) {
+            athleteName = athleteName.split(' - ').pop() || athleteName;
+          }
+
+          athleteName = athleteName
+            .replace(/_/g, ' ')         // underscores to spaces
+            .replace(/\s+\d+$/, '')     // remove trailing number like " 2"
+            .replace(/^\d+\s*/, '')     // remove leading numbers
+            .replace(/^(thumb|IMG|DSC|FX)\S*\s*/i, '') // remove camera codes
+            .replace(/\s+/g, ' ')       // clean up extra spaces
+            .trim()
+            // Capitalize each word
+            .split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(' ');
 
           allMedia.push({
             url: `${CM}/${campaignData.id}/${folder.name}/${f.name}`,
