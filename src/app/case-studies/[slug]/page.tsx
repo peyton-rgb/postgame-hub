@@ -2,10 +2,17 @@
 // Case Study Detail Page — /case-studies/[slug]
 //
 // Public-facing detail page for individual case studies.
-// Shows: hero with brand logo + stat, overview, challenge,
-// solution, results, metrics grid, gallery, and CTA.
+// Premium dark design matching /clients.
 //
-// Matches the dark premium design of /clients.
+// Features:
+//   - Full-bleed hero with brand color gradient + hero stat
+//   - Inline campaign media embeds (images + videos from campaign_recaps)
+//   - Structured metrics grid with brand-colored accents
+//   - Quote callout with brand styling
+//   - Campaign gallery pulled from real media assets
+//   - Related case studies carousel
+//   - Athlete name badges
+//   - Numbered content sections with brand-colored labels
 // ============================================================
 
 'use client';
@@ -50,33 +57,186 @@ interface CaseStudy {
   } | null;
 }
 
-// ---- Section Component ----
-// Reusable block for Challenge / Solution / Results sections.
+interface CampaignMedia {
+  file_url: string;
+  type: 'image' | 'video';
+  campaign_name: string;
+  campaign_id: string;
+}
 
-function ContentSection({
+interface RelatedStudy {
+  slug: string;
+  title: string;
+  brand_name: string;
+  category: string | null;
+  hero_stat: string | null;
+  hero_stat_label: string | null;
+  brand: {
+    logo_url: string | null;
+    primary_color: string | null;
+  } | null;
+}
+
+// ---- Metric Card ----
+
+function MetricCard({
   label,
-  title,
-  content,
+  value,
   brandColor,
 }: {
   label: string;
-  title: string;
-  content: string;
+  value: string;
   brandColor: string;
 }) {
   return (
-    <div className="mb-12">
+    <div className="relative group bg-[#111] border border-white/[0.06] rounded-xl p-5 text-center overflow-hidden hover:border-white/10 transition-all duration-500">
       <div
-        className="text-[10px] font-bold tracking-[0.2em] uppercase mb-2"
-        style={{ color: brandColor }}
-      >
-        {label}
-      </div>
-      <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
-      <div className="text-sm text-white/50 leading-relaxed whitespace-pre-line">
-        {content}
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{
+          background: `radial-gradient(ellipse at center, ${brandColor}08 0%, transparent 70%)`,
+        }}
+      />
+      <div className="relative">
+        <div
+          className="text-2xl sm:text-3xl font-black mb-1"
+          style={{ color: brandColor }}
+        >
+          {value}
+        </div>
+        <div className="text-[10px] text-white/30 uppercase tracking-[0.15em] font-semibold">
+          {label.replace(/_/g, ' ')}
+        </div>
       </div>
     </div>
+  );
+}
+
+// ---- Inline Media Embed ----
+
+function InlineMediaEmbed({
+  media,
+  brandColor,
+}: {
+  media: CampaignMedia[];
+  brandColor: string;
+}) {
+  if (media.length === 0) return null;
+
+  // Group by campaign
+  const campaignGroups = media.reduce(
+    (acc, m) => {
+      const key = m.campaign_name;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(m);
+      return acc;
+    },
+    {} as Record<string, CampaignMedia[]>
+  );
+
+  return (
+    <div className="mb-16">
+      <div
+        className="text-[10px] font-bold tracking-[0.2em] uppercase mb-6"
+        style={{ color: brandColor }}
+      >
+        Campaign Content
+      </div>
+
+      {Object.entries(campaignGroups).map(([campaignName, items]) => (
+        <div key={campaignName} className="mb-8">
+          <div className="text-[11px] text-white/30 font-semibold uppercase tracking-wider mb-3">
+            {campaignName}
+          </div>
+
+          {/* Featured video */}
+          {items.filter((i) => i.type === 'video').length > 0 && (
+            <div className="mb-4">
+              {items
+                .filter((i) => i.type === 'video')
+                .slice(0, 1)
+                .map((v, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl overflow-hidden border border-white/[0.06]"
+                  >
+                    <video
+                      src={v.file_url}
+                      controls
+                      className="w-full"
+                      preload="metadata"
+                    />
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Image grid */}
+          {items.filter((i) => i.type === 'image').length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {items
+                .filter((i) => i.type === 'image')
+                .slice(0, 6)
+                .map((img, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg overflow-hidden border border-white/[0.06] aspect-square group cursor-pointer"
+                  >
+                    <img
+                      src={img.file_url}
+                      alt={`${campaignName} content ${i + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Related Case Study Card ----
+
+function RelatedCard({ study }: { study: RelatedStudy }) {
+  const color = study.brand?.primary_color || '#D73F09';
+  return (
+    <Link
+      href={`/case-studies/${study.slug}`}
+      className="group block bg-[#111] border border-white/[0.06] rounded-xl p-5 hover:border-white/15 transition-all duration-300"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        {study.brand?.logo_url ? (
+          <img
+            src={study.brand.logo_url}
+            alt={study.brand_name}
+            className="w-8 h-8 object-contain rounded bg-white/5 p-1"
+          />
+        ) : (
+          <div
+            className="w-8 h-8 rounded flex items-center justify-center text-xs font-bold"
+            style={{ backgroundColor: `${color}15`, color }}
+          >
+            {study.brand_name.charAt(0)}
+          </div>
+        )}
+        <span className="text-xs text-white/40">{study.brand_name}</span>
+      </div>
+      <h3 className="text-sm font-bold text-white mb-2 group-hover:text-white/80 transition-colors line-clamp-2">
+        {study.title}
+      </h3>
+      {study.hero_stat && (
+        <div className="flex items-baseline gap-2">
+          <span className="text-lg font-black" style={{ color }}>
+            {study.hero_stat}
+          </span>
+          <span className="text-[10px] text-white/25 uppercase tracking-wider">
+            {study.hero_stat_label}
+          </span>
+        </div>
+      )}
+    </Link>
   );
 }
 
@@ -86,6 +246,8 @@ export default function CaseStudyDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
   const [study, setStudy] = useState<CaseStudy | null>(null);
+  const [campaignMedia, setCampaignMedia] = useState<CampaignMedia[]>([]);
+  const [relatedStudies, setRelatedStudies] = useState<RelatedStudy[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -93,6 +255,8 @@ export default function CaseStudyDetailPage() {
     async function fetchStudy() {
       if (!slug) return;
       const supabase = createBrowserSupabase();
+
+      // Fetch case study with brand
       const { data, error } = await supabase
         .from('case_studies')
         .select(`
@@ -105,9 +269,54 @@ export default function CaseStudyDetailPage() {
 
       if (error || !data) {
         setNotFound(true);
-      } else {
-        setStudy(data as CaseStudy);
+        setLoading(false);
+        return;
       }
+
+      const studyData = data as CaseStudy;
+      setStudy(studyData);
+
+      // Fetch campaign media for inline embeds
+      if (studyData.brand?.id) {
+        const { data: mediaData } = await supabase
+          .from('media')
+          .select(`
+            file_url,
+            type,
+            campaign:campaign_recaps!inner ( id, name, brand_id )
+          `)
+          .eq('campaign.brand_id', studyData.brand.id)
+          .not('file_url', 'is', null)
+          .limit(30);
+
+        if (mediaData) {
+          const mapped: CampaignMedia[] = mediaData
+            .filter((m: any) => m.campaign)
+            .map((m: any) => ({
+              file_url: m.file_url,
+              type: m.type,
+              campaign_name: m.campaign.name,
+              campaign_id: m.campaign.id,
+            }));
+          setCampaignMedia(mapped);
+        }
+      }
+
+      // Fetch related case studies
+      const { data: related } = await supabase
+        .from('case_studies')
+        .select(`
+          slug, title, brand_name, category, hero_stat, hero_stat_label,
+          brand:brands!case_studies_brand_id_fkey ( logo_url, primary_color )
+        `)
+        .eq('published', true)
+        .neq('slug', slug)
+        .limit(3);
+
+      if (related) {
+        setRelatedStudies(related as RelatedStudy[]);
+      }
+
       setLoading(false);
     }
     fetchStudy();
@@ -116,13 +325,16 @@ export default function CaseStudyDetailPage() {
   const brandColor = study?.brand?.primary_color || '#D73F09';
   const brandLogo = study?.brand?.logo_url || study?.brand_logo_url;
 
-  // Loading state
+  // Loading
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white">
         <PublicNav variant="dark" />
         <div className="pt-28 flex items-center justify-center">
-          <div className="text-white/20 text-sm">Loading...</div>
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full border-2 border-white/20 border-t-transparent animate-spin" />
+            <div className="text-white/20 text-sm">Loading case study...</div>
+          </div>
         </div>
       </div>
     );
@@ -144,7 +356,7 @@ export default function CaseStudyDetailPage() {
             href="/case-studies"
             className="text-[#D73F09] text-sm font-semibold hover:underline"
           >
-            ← Back to all case studies
+            &larr; Back to all case studies
           </Link>
         </div>
       </div>
@@ -163,78 +375,96 @@ export default function CaseStudyDetailPage() {
       <PublicNav variant="dark" />
 
       {/* ====== HERO ====== */}
-      <section className="relative pt-24 pb-16 px-6 overflow-hidden">
-        {/* Background effects */}
+      <section className="relative pt-20 pb-20 px-6 overflow-hidden">
+        {/* Multi-layer background */}
         <div className="absolute inset-0 pointer-events-none">
           <div
-            className="absolute top-0 left-0 right-0 h-[400px]"
+            className="absolute top-0 left-0 right-0 h-[500px]"
             style={{
-              background: `linear-gradient(180deg, ${brandColor}10 0%, transparent 100%)`,
+              background: `linear-gradient(180deg, ${brandColor}12 0%, ${brandColor}06 40%, transparent 100%)`,
             }}
           />
           <div
-            className="absolute top-20 left-[10%] w-64 h-64 rounded-full blur-[120px] opacity-20"
+            className="absolute top-16 left-[8%] w-80 h-80 rounded-full blur-[150px] opacity-15"
             style={{ backgroundColor: brandColor }}
+          />
+          <div
+            className="absolute top-32 right-[12%] w-48 h-48 rounded-full blur-[100px] opacity-10"
+            style={{ backgroundColor: brandColor }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.02]"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '80px 80px',
+            }}
           />
         </div>
 
-        <div className="relative max-w-4xl mx-auto">
-          {/* Back link */}
+        <div className="relative max-w-5xl mx-auto">
           <Link
             href="/case-studies"
-            className="inline-flex items-center gap-2 text-[11px] text-white/30 hover:text-white/60 transition-colors mb-8"
+            className="inline-flex items-center gap-2 text-[11px] text-white/25 hover:text-white/50 transition-colors mb-10 tracking-wider uppercase font-semibold"
           >
-            ← Back to case studies
+            &larr; All Case Studies
           </Link>
 
-          {/* Brand row */}
-          <div className="flex items-center gap-3 mb-6">
-            {brandLogo ? (
-              <img
-                src={brandLogo}
-                alt={study.brand_name}
-                className="w-12 h-12 object-contain rounded-lg bg-white/5 p-1.5"
-              />
-            ) : (
-              <div
-                className="w-12 h-12 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: `${brandColor}15` }}
-              >
-                <span
-                  className="text-lg font-bold"
-                  style={{ color: brandColor }}
+          {/* Brand badge + category */}
+          <div className="flex flex-wrap items-center gap-4 mb-6">
+            <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] rounded-full pl-1.5 pr-4 py-1.5">
+              {brandLogo ? (
+                <img
+                  src={brandLogo}
+                  alt={study.brand_name}
+                  className="w-9 h-9 object-contain rounded-full bg-white/5 p-1"
+                />
+              ) : (
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${brandColor}15` }}
                 >
-                  {initials}
-                </span>
-              </div>
-            )}
-            <div>
-              <div className="text-sm font-semibold text-white">
-                {study.brand_name}
-              </div>
-              {study.category && (
-                <div className="text-[10px] text-white/30 uppercase tracking-wider">
-                  {study.category}
+                  <span className="text-sm font-bold" style={{ color: brandColor }}>
+                    {initials}
+                  </span>
                 </div>
               )}
+              <span className="text-sm font-semibold text-white">
+                {study.brand_name}
+              </span>
             </div>
+
+            {study.category && (
+              <span
+                className="text-[10px] font-bold tracking-[0.15em] uppercase px-3 py-1.5 rounded-full border"
+                style={{
+                  color: `${brandColor}90`,
+                  borderColor: `${brandColor}25`,
+                  backgroundColor: `${brandColor}08`,
+                }}
+              >
+                {study.category}
+              </span>
+            )}
           </div>
 
           {/* Title */}
-          <h1 className="text-3xl sm:text-4xl font-black text-white mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-8 leading-[1.05] max-w-4xl">
             {study.title}
           </h1>
 
           {/* Hero stat */}
           {study.hero_stat && (
-            <div className="flex items-baseline gap-3 mb-8">
+            <div className="flex items-end gap-4 mb-10">
               <span
-                className="text-5xl sm:text-6xl font-black"
+                className="text-7xl sm:text-8xl lg:text-9xl font-black leading-none"
                 style={{ color: brandColor }}
               >
                 {study.hero_stat}
               </span>
-              <span className="text-sm text-white/40 uppercase tracking-wider font-semibold">
+              <span className="text-sm text-white/35 uppercase tracking-[0.15em] font-bold pb-3">
                 {study.hero_stat_label}
               </span>
             </div>
@@ -242,11 +472,11 @@ export default function CaseStudyDetailPage() {
 
           {/* Tags */}
           {study.tags && study.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-8">
+            <div className="flex flex-wrap gap-2">
               {study.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[10px] font-semibold px-3 py-1 rounded-full border border-white/10 text-white/30"
+                  className="text-[10px] font-semibold px-3 py-1.5 rounded-full border border-white/[0.08] text-white/25 hover:text-white/40 hover:border-white/15 transition-all duration-300"
                 >
                   {tag}
                 </span>
@@ -258,209 +488,312 @@ export default function CaseStudyDetailPage() {
 
       {/* ====== HERO IMAGE ====== */}
       {study.image_url && (
-        <section className="max-w-5xl mx-auto px-6 mb-16">
-          <div className="rounded-2xl overflow-hidden border border-white/[0.06]">
+        <section className="max-w-6xl mx-auto px-6 mb-20">
+          <div className="rounded-2xl overflow-hidden border border-white/[0.06] shadow-2xl shadow-black/50">
             <img
               src={study.image_url}
               alt={study.title}
-              className="w-full object-cover"
+              className="w-full object-cover max-h-[500px]"
             />
           </div>
         </section>
       )}
 
-      {/* ====== CONTENT ====== */}
-      <section className="max-w-4xl mx-auto px-6 pb-12">
-        {/* Overview */}
-        {study.overview && (
-          <div className="mb-12 pb-12 border-b border-white/[0.06]">
+      {/* ====== OVERVIEW ====== */}
+      {study.overview && (
+        <section className="max-w-4xl mx-auto px-6 mb-16">
+          <div className="relative">
             <div
-              className="text-[10px] font-bold tracking-[0.2em] uppercase mb-2"
-              style={{ color: brandColor }}
-            >
-              Overview
-            </div>
-            <p className="text-base text-white/60 leading-relaxed">
+              className="absolute -left-4 top-0 bottom-0 w-1 rounded-full"
+              style={{ backgroundColor: `${brandColor}30` }}
+            />
+            <p className="text-lg sm:text-xl text-white/60 leading-relaxed pl-6 font-light">
               {study.overview}
             </p>
           </div>
-        )}
+        </section>
+      )}
 
+      {/* ====== METRICS GRID ====== */}
+      {study.metrics && Object.keys(study.metrics).length > 0 && (
+        <section className="max-w-5xl mx-auto px-6 mb-20">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {Object.entries(study.metrics).map(([key, value]) => (
+              <MetricCard
+                key={key}
+                label={key}
+                value={String(value)}
+                brandColor={brandColor}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ====== CONTENT SECTIONS ====== */}
+      <section className="max-w-4xl mx-auto px-6 pb-12">
         {/* Challenge */}
         {study.challenge && (
-          <ContentSection
-            label="The Challenge"
-            title="What they needed"
-            content={study.challenge}
-            brandColor={brandColor}
-          />
+          <div className="mb-16">
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                style={{ backgroundColor: `${brandColor}12`, color: brandColor }}
+              >
+                01
+              </div>
+              <div
+                className="text-[10px] font-bold tracking-[0.2em] uppercase"
+                style={{ color: brandColor }}
+              >
+                The Challenge
+              </div>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
+              What they needed
+            </h2>
+            <div className="text-sm sm:text-base text-white/45 leading-relaxed">
+              {study.challenge}
+            </div>
+          </div>
         )}
 
         {/* Solution */}
         {study.solution && (
-          <ContentSection
-            label="The Solution"
-            title="How we delivered"
-            content={study.solution}
-            brandColor={brandColor}
-          />
+          <div className="mb-16">
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                style={{ backgroundColor: `${brandColor}12`, color: brandColor }}
+              >
+                02
+              </div>
+              <div
+                className="text-[10px] font-bold tracking-[0.2em] uppercase"
+                style={{ color: brandColor }}
+              >
+                The Solution
+              </div>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
+              How we delivered
+            </h2>
+            <div className="text-sm sm:text-base text-white/45 leading-relaxed">
+              {study.solution}
+            </div>
+          </div>
+        )}
+
+        {/* Inline Campaign Media — between solution and results */}
+        {campaignMedia.length > 0 && (
+          <InlineMediaEmbed media={campaignMedia} brandColor={brandColor} />
         )}
 
         {/* Results */}
         {study.results && (
-          <ContentSection
-            label="The Results"
-            title="What happened"
-            content={study.results}
-            brandColor={brandColor}
-          />
+          <div className="mb-16">
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                style={{ backgroundColor: `${brandColor}12`, color: brandColor }}
+              >
+                03
+              </div>
+              <div
+                className="text-[10px] font-bold tracking-[0.2em] uppercase"
+                style={{ color: brandColor }}
+              >
+                The Results
+              </div>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
+              What happened
+            </h2>
+            <div className="text-sm sm:text-base text-white/45 leading-relaxed">
+              {study.results}
+            </div>
+          </div>
         )}
 
-        {/* Body HTML (if any extra content) */}
+        {/* Body HTML */}
         {study.body_html && (
           <div
-            className="prose prose-invert prose-sm max-w-none mb-12 text-white/50"
+            className="prose prose-invert prose-sm max-w-none mb-12 text-white/45"
             dangerouslySetInnerHTML={{ __html: study.body_html }}
           />
         )}
-
-        {/* Quote */}
-        {study.quote_text && (
-          <div className="mb-12 py-8 px-6 border-l-4 rounded-r-xl bg-white/[0.02]" style={{ borderColor: brandColor }}>
-            <p className="text-base text-white/60 italic leading-relaxed mb-3">
-              &ldquo;{study.quote_text}&rdquo;
-            </p>
-            {study.quote_attribution && (
-              <div className="text-[11px] text-white/30 font-semibold">
-                — {study.quote_attribution}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Metrics grid */}
-        {study.metrics && Object.keys(study.metrics).length > 0 && (
-          <div className="mb-12">
-            <div
-              className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4"
-              style={{ color: brandColor }}
-            >
-              Key Metrics
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {Object.entries(study.metrics).map(([key, value]) => (
-                <div
-                  key={key}
-                  className="bg-[#111] border border-white/[0.06] rounded-xl p-4 text-center"
-                >
-                  <div className="text-xl font-black text-white mb-1">
-                    {String(value)}
-                  </div>
-                  <div className="text-[10px] text-white/30 uppercase tracking-wider">
-                    {key.replace(/_/g, ' ')}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Highlights */}
-        {study.highlights && study.highlights.length > 0 && (
-          <div className="mb-12">
-            <div
-              className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4"
-              style={{ color: brandColor }}
-            >
-              Highlights
-            </div>
-            <div className="space-y-2">
-              {study.highlights.map((h, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 text-sm text-white/50"
-                >
-                  <span style={{ color: brandColor }} className="mt-0.5">
-                    ✦
-                  </span>
-                  {h}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Athletes */}
-        {study.athlete_names && study.athlete_names.length > 0 && (
-          <div className="mb-12">
-            <div
-              className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4"
-              style={{ color: brandColor }}
-            >
-              Athletes Featured
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {study.athlete_names.map((name) => (
-                <span
-                  key={name}
-                  className="text-[11px] text-white/40 bg-white/5 px-3 py-1.5 rounded-full"
-                >
-                  {name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Video */}
-        {study.video_url && (
-          <div className="mb-12">
-            <div
-              className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4"
-              style={{ color: brandColor }}
-            >
-              Campaign Video
-            </div>
-            <div className="rounded-2xl overflow-hidden border border-white/[0.06]">
-              <video
-                src={study.video_url}
-                controls
-                className="w-full"
-                poster={study.image_url || undefined}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Gallery */}
-        {study.gallery_urls && study.gallery_urls.length > 0 && (
-          <div className="mb-12">
-            <div
-              className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4"
-              style={{ color: brandColor }}
-            >
-              Gallery
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {study.gallery_urls.map((url, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl overflow-hidden border border-white/[0.06] aspect-square"
-                >
-                  <img
-                    src={url}
-                    alt={`${study.title} gallery ${i + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </section>
 
+      {/* ====== QUOTE ====== */}
+      {study.quote_text && (
+        <section className="max-w-4xl mx-auto px-6 mb-20">
+          <div
+            className="relative rounded-2xl p-8 sm:p-10 overflow-hidden"
+            style={{
+              background: `linear-gradient(135deg, ${brandColor}08 0%, ${brandColor}04 100%)`,
+              border: `1px solid ${brandColor}15`,
+            }}
+          >
+            <div
+              className="absolute top-4 left-6 text-6xl font-black opacity-10 leading-none"
+              style={{ color: brandColor }}
+            >
+              &ldquo;
+            </div>
+            <div className="relative">
+              <p className="text-lg sm:text-xl text-white/60 italic leading-relaxed mb-4 pl-2">
+                {study.quote_text}
+              </p>
+              {study.quote_attribution && (
+                <div className="flex items-center gap-2 pl-2">
+                  <div
+                    className="w-6 h-[2px] rounded-full"
+                    style={{ backgroundColor: brandColor }}
+                  />
+                  <span className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">
+                    {study.quote_attribution}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ====== HIGHLIGHTS ====== */}
+      {study.highlights && study.highlights.length > 0 && (
+        <section className="max-w-4xl mx-auto px-6 mb-20">
+          <div
+            className="text-[10px] font-bold tracking-[0.2em] uppercase mb-6"
+            style={{ color: brandColor }}
+          >
+            Key Highlights
+          </div>
+          <div className="space-y-3">
+            {study.highlights.map((h, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-4 bg-[#111] border border-white/[0.06] rounded-xl p-4 hover:border-white/10 transition-colors duration-300"
+              >
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold"
+                  style={{ backgroundColor: `${brandColor}12`, color: brandColor }}
+                >
+                  {i + 1}
+                </div>
+                <span className="text-sm text-white/50 leading-relaxed pt-1">
+                  {h}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ====== ATHLETES ====== */}
+      {study.athlete_names && study.athlete_names.length > 0 && (
+        <section className="max-w-4xl mx-auto px-6 mb-20">
+          <div
+            className="text-[10px] font-bold tracking-[0.2em] uppercase mb-6"
+            style={{ color: brandColor }}
+          >
+            Athletes Featured
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {study.athlete_names.map((name) => (
+              <div
+                key={name}
+                className="flex items-center gap-2 bg-[#111] border border-white/[0.06] rounded-full pl-1.5 pr-4 py-1.5 hover:border-white/15 transition-colors duration-300"
+              >
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{ backgroundColor: `${brandColor}12`, color: brandColor }}
+                >
+                  {name.split(' ').map(n => n[0]).join('')}
+                </div>
+                <span className="text-xs text-white/50 font-medium">
+                  {name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ====== VIDEO ====== */}
+      {study.video_url && (
+        <section className="max-w-5xl mx-auto px-6 mb-20">
+          <div
+            className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4"
+            style={{ color: brandColor }}
+          >
+            Campaign Video
+          </div>
+          <div className="rounded-2xl overflow-hidden border border-white/[0.06] shadow-2xl shadow-black/50">
+            <video
+              src={study.video_url}
+              controls
+              className="w-full"
+              poster={study.image_url || undefined}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* ====== GALLERY ====== */}
+      {study.gallery_urls && study.gallery_urls.length > 0 && (
+        <section className="max-w-5xl mx-auto px-6 mb-20">
+          <div
+            className="text-[10px] font-bold tracking-[0.2em] uppercase mb-6"
+            style={{ color: brandColor }}
+          >
+            Gallery
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {study.gallery_urls.map((url, i) => (
+              <div
+                key={i}
+                className="rounded-xl overflow-hidden border border-white/[0.06] aspect-[4/5] group"
+              >
+                <img
+                  src={url}
+                  alt={`${study.title} gallery ${i + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ====== RELATED CASE STUDIES ====== */}
+      {relatedStudies.length > 0 && (
+        <section className="max-w-5xl mx-auto px-6 mb-20">
+          <div className="flex items-center justify-between mb-6">
+            <div
+              className="text-[10px] font-bold tracking-[0.2em] uppercase"
+              style={{ color: brandColor }}
+            >
+              More Case Studies
+            </div>
+            <Link
+              href="/case-studies"
+              className="text-[11px] text-white/25 hover:text-white/50 transition-colors font-semibold uppercase tracking-wider"
+            >
+              View All &rarr;
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {relatedStudies.map((s) => (
+              <RelatedCard key={s.slug} study={s} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ====== CTA ====== */}
-      <section className="relative overflow-hidden py-20 px-6 text-center">
+      <section className="relative overflow-hidden py-24 px-6 text-center">
         <div className="absolute inset-0 bg-gradient-to-br from-[#D73F09] via-[#C53508] to-[#A52D07]" />
         <div
           className="absolute inset-0 opacity-[0.06]"
@@ -472,36 +805,36 @@ export default function CaseStudyDetailPage() {
             backgroundSize: '60px 60px',
           }}
         />
-        <div className="relative">
-          <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">
+        <div className="relative max-w-lg mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">
             Want results like {study.brand_name}?
           </h2>
-          <p className="text-sm text-white/80 mb-8 max-w-md mx-auto">
+          <p className="text-sm text-white/80 mb-10 leading-relaxed">
             Let&apos;s build your next athlete influencer campaign together.
           </p>
           <a
             href="https://www.home.pstgm.com/contactus"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block bg-white text-[#D73F09] font-bold text-sm px-8 py-3.5 rounded-lg hover:bg-white/90 hover:scale-105 transition-all duration-300"
+            className="inline-block bg-white text-[#D73F09] font-bold text-sm px-10 py-4 rounded-xl hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-lg shadow-black/20"
           >
-            Get Started →
+            Get Started &rarr;
           </a>
         </div>
       </section>
 
       {/* ====== FOOTER ====== */}
-      <footer className="bg-black py-10 px-6 text-center border-t border-white/5">
+      <footer className="bg-black py-12 px-6 text-center border-t border-white/5">
         <div className="text-sm font-medium tracking-[0.15em] mb-3">
           P<span className="text-[#D73F09]">+</span>STGAME
         </div>
         <div className="text-[11px] text-white/25 max-w-md mx-auto leading-relaxed">
-          Postgame™ manages the largest sports marketing and influencer
+          Postgame&trade; manages the largest sports marketing and influencer
           campaigns in college sports. Headquartered in Sarasota, FL with
           offices in Philadelphia and Tampa.
         </div>
         <div className="text-[10px] text-white/15 mt-4">
-          © {new Date().getFullYear()} Postgame, LLC. All rights reserved.
+          &copy; {new Date().getFullYear()} Postgame, LLC. All rights reserved.
         </div>
       </footer>
     </div>
