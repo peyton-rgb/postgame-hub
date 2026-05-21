@@ -1,13 +1,12 @@
 // ============================================================
 // Dashboard Layout — wraps all /dashboard/* pages
 //
-// Provides:
-//   - Fixed sidebar navigation (DashboardSidebar)
-//   - Main content area pushed right by sidebar width (240px)
-//   - Consistent dark background
+// Uses DashboardShell to conditionally show the sidebar:
+//   - Blueprint v2 pages → sidebar + content pushed right
+//   - Pre-existing pages → no sidebar (they have their own)
 // ============================================================
 
-import DashboardSidebar from '@/components/DashboardSidebar';
+import DashboardShell from '@/components/DashboardShell';
 
 export default function DashboardLayout({
   children,
@@ -16,10 +15,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <DashboardSidebar />
-      <main className="ml-[240px]">
-        {children}
-      </main>
+      <DashboardShell>{children}</DashboardShell>
     </div>
   );
 }
