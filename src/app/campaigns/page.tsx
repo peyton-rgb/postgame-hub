@@ -116,7 +116,7 @@ export default async function CampaignsPage() {
       <section className="hero">
         <div className="eyebrow">Our Work</div>
         <h1 className="d hero-title">394+ Campaigns.<br />One Playbook.</h1>
-        <p className="hero-desc">From single-athlete posts to full-scale, multi-school activations — this is what athlete-powered marketing looks like at scale.</p>
+        <p className="hero-desc">From single-athlete posts to full-scale, multi-school activations â this is what athlete-powered marketing looks like at scale.</p>
       </section>
 
       <section className="section">
@@ -131,7 +131,7 @@ export default async function CampaignsPage() {
               const hasMedia = !!c.thumbnail_url;
               const isVideo = c.media_type === "video";
               const gradient = GRADIENTS[i % 5];
-              const href = c.slug ? `/recap/${c.slug}` : "#";
+              const href = c.slug ? `/campaign/${c.slug}` : "#";
 
               return (
                 <a key={c.id} className={`camp-card${!hasMedia ? ` ${gradient}` : ""}`} href={href}>
