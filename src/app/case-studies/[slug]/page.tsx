@@ -17,7 +17,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import PublicNav from '@/components/PublicNav';
@@ -93,93 +93,95 @@ function HeroMontage({
   items: MontageItem[];
   brandColor: string;
 }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // Horizontal filmstrip that auto-scrolls slowly.
+  // We duplicate the items so the strip can loop seamlessly.
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
 
-  // Duration per slide: videos play for up to 5s, photos show for 4s
-  const PHOTO_DURATION = 4000;
-  const VIDEO_MAX_DURATION = 5000;
+  // Double the items for seamless infinite scroll
+  const doubled = [...items, ...items];
 
-  const advance = useCallback(() => {
-    setActiveIndex((prev) => (prev + 1) % items.length);
-  }, [items.length]);
+  // Total width of one set of items (each card ~320px + 12px gap)
+  const cardWidth = 320;
+  const gap = 12;
+  const totalWidth = items.length * (cardWidth + gap);
 
-  useEffect(() => {
-    if (items.length <= 1) return;
-
-    const current = items[activeIndex];
-    let duration = PHOTO_DURATION;
-
-    if (current.type === 'video') {
-      // Let the video play a bit, then advance
-      const vid = videoRefs.current[activeIndex];
-      if (vid) {
-        vid.currentTime = 0;
-        vid.play().catch(() => {});
-      }
-      duration = VIDEO_MAX_DURATION;
-    }
-
-    timerRef.current = setTimeout(advance, duration);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [activeIndex, items, advance]);
+  // Speed: pixels per second
+  const speed = 35;
+  const duration = totalWidth / speed;
 
   if (items.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      {items.map((item, i) => (
-        <div
-          key={i}
-          className="absolute inset-0 transition-opacity duration-[1500ms] ease-in-out"
-          style={{ opacity: i === activeIndex ? 1 : 0 }}
-        >
-          {item.type === 'video' ? (
-            <video
-              ref={(el) => { videoRefs.current[i] = el; }}
-              src={item.url}
-              muted
-              playsInline
-              loop
-              preload={i <= 1 ? 'auto' : 'none'}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div
-              className="w-full h-full"
-              style={{
-                backgroundImage: `url(${item.url})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center 20%',
-                animation: i === activeIndex ? 'kenBurns 6s ease-in-out forwards' : 'none',
-              }}
-            />
-          )}
-        </div>
-      ))}
+    <div
+      className="absolute inset-0 overflow-hidden"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {/* Dark base so gaps don't flash white */}
+      <div className="absolute inset-0 bg-[#0a0a0a]" />
 
-      {/* Dark overlay so text is readable */}
+      {/* Scrolling filmstrip */}
       <div
-        className="absolute inset-0"
+        ref={stripRef}
+        className="absolute inset-0 flex items-center"
         style={{
-          background: `linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.5) 40%, rgba(10,10,10,0.85) 100%)`,
+          animation: `heroScroll ${duration}s linear infinite`,
+          animationPlayState: isPaused ? 'paused' : 'running',
+        }}
+      >
+        {doubled.map((item, i) => (
+          <div
+            key={i}
+            className="flex-shrink-0 h-[85%] rounded-xl overflow-hidden border border-white/[0.06]"
+            style={{
+              width: `${cardWidth}px`,
+              marginRight: `${gap}px`,
+            }}
+          >
+            {item.type === 'video' ? (
+              <video
+                src={item.url}
+                muted
+                playsInline
+                autoPlay
+                loop
+                preload={i < items.length ? 'auto' : 'none'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <img
+                src={item.url}
+                alt=""
+                loading={i < items.length ? 'eager' : 'lazy'}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Gradient overlays for text readability */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `
+            linear-gradient(90deg, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0.6) 25%, rgba(10,10,10,0.3) 50%, rgba(10,10,10,0.6) 75%, rgba(10,10,10,0.95) 100%),
+            linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.2) 30%, rgba(10,10,10,0.2) 70%, rgba(10,10,10,0.85) 100%)
+          `,
         }}
       />
 
-      {/* Brand color tint */}
+      {/* Subtle brand color tint */}
       <div
-        className="absolute inset-0 opacity-20 mix-blend-overlay"
+        className="absolute inset-0 opacity-10 mix-blend-overlay pointer-events-none"
         style={{ backgroundColor: brandColor }}
       />
 
-      {/* Ken Burns keyframes injected via style tag */}
       <style>{`
-        @keyframes kenBurns {
-          0% { transform: scale(1) translate(0, 0); }
-          100% { transform: scale(1.08) translate(-1%, -1%); }
+        @keyframes heroScroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-${totalWidth}px); }
         }
       `}</style>
     </div>
@@ -410,22 +412,25 @@ export default function CaseStudyDetailPage() {
             }));
           setCampaignMedia(mapped);
 
-          // Build hero montage: pick best videos + photos, interleaved
-          const videos = mapped.filter((m) => m.type === 'video').slice(0, 4);
-          const images = mapped.filter((m) => m.type === 'image').slice(0, 4);
+          // Build hero filmstrip: gallery images first (curated), then campaign media
           const montage: MontageItem[] = [];
+
+          // Gallery images are hand-picked, so prioritize them
+          if (studyData.gallery_urls) {
+            studyData.gallery_urls.forEach((url) => {
+              montage.push({ url, type: 'image' });
+            });
+          }
+
+          // Then interleave campaign videos + photos
+          const videos = mapped.filter((m) => m.type === 'video').slice(0, 6);
+          const images = mapped.filter((m) => m.type === 'image').slice(0, 8);
           const maxLen = Math.max(videos.length, images.length);
           for (let idx = 0; idx < maxLen; idx++) {
             if (idx < videos.length) montage.push({ url: videos[idx].file_url, type: 'video' });
             if (idx < images.length) montage.push({ url: images[idx].file_url, type: 'image' });
           }
-          // Also add gallery images if available
-          if (studyData.gallery_urls) {
-            studyData.gallery_urls.slice(0, 3).forEach((url) => {
-              montage.push({ url, type: 'image' });
-            });
-          }
-          setHeroMedia(montage.slice(0, 8));
+          setHeroMedia(montage.slice(0, 16));
         }
       }
 
