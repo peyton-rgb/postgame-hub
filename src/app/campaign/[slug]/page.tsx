@@ -6,7 +6,7 @@ export const revalidate = 120;
 
 type Props = { params: Promise<{ slug: string }> };
 
-/* ── Supabase helper ─────────────────────────────────── */
+/* ââ Supabase helper âââââââââââââââââââââââââââââââââââ */
 function sb() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +14,7 @@ function sb() {
   );
 }
 
-/* ── SEO metadata ────────────────────────────────────── */
+/* ââ SEO metadata ââââââââââââââââââââââââââââââââââââââ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const { data: c } = await sb()
@@ -25,12 +25,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .single();
   if (!c) return { title: "Not Found" };
   return {
-    title: `${c.name} — ${c.client_name} | Postgame`,
+    title: `${c.name} â ${c.client_name} | Postgame`,
     description: c.description || `${c.name} campaign by ${c.client_name}`,
   };
 }
 
-/* ── styles ──────────────────────────────────────────── */
+/* ââ styles ââââââââââââââââââââââââââââââââââââââââââââ */
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,.08);--text:#fff;--muted:rgba(255,255,255,.55);--dim:rgba(255,255,255,.35);}
@@ -106,6 +106,15 @@ body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-ser
 .footer-socials a{font-size:12px;color:var(--muted);text-decoration:none;transition:color .2s;}
 .footer-socials a:hover{color:var(--text);}
 
+
+/* video hover play */
+.c-vid-wrap{position:relative;cursor:pointer;}
+.c-play-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.8);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:all .3s;z-index:2;}
+.c-play-btn::after{content:'';display:block;width:0;height:0;border-style:solid;border-width:12px 0 12px 22px;border-color:transparent transparent transparent #fff;margin-left:4px;}
+.c-vid-wrap:hover .c-play-btn{background:rgba(215,63,9,.85);border-color:var(--orange);transform:translate(-50%,-50%) scale(1.1);}
+.c-vid-wrap video{transition:filter .3s;}
+.c-vid-wrap:hover video{filter:brightness(1.05);}
+
 @media(max-width:900px){
   .nav{padding:14px 24px;} .nav-links{display:none;}
   .c-hero{padding:120px 24px 60px;}
@@ -121,12 +130,12 @@ body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-ser
 }
 `;
 
-/* ── page component ──────────────────────────────────── */
+/* ââ page component ââââââââââââââââââââââââââââââââââââ */
 export default async function CampaignShowcasePage({ params }: Props) {
   const { slug } = await params;
   const supabase = sb();
 
-  // Fetch campaign (public fields only — no metrics)
+  // Fetch campaign (public fields only â no metrics)
   const { data: campaign } = await supabase
     .from("campaign_recaps")
     .select("id, name, slug, description, hero_image_url, client_name, brand_id, settings, tags, public_sections")
@@ -143,7 +152,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
     .eq("id", campaign.brand_id)
     .single();
 
-  // Fetch athletes — only name, school, sport (NO metrics, NO follower counts)
+  // Fetch athletes â only name, school, sport (NO metrics, NO follower counts)
   const { data: allAthletes } = await supabase
     .from("athletes")
     .select("id, name, school, sport, is_featured, featured_order")
@@ -204,7 +213,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
         {description && <p className="c-hero-desc">{description}</p>}
       </section>
 
-      {/* Stats — safe numbers only: athlete count, schools, sports */}
+      {/* Stats â safe numbers only: athlete count, schools, sports */}
       <section className="c-stats">
         <div className="c-stat">
           <div className="d c-stat-val">{athleteCount}</div>
@@ -250,14 +259,16 @@ export default async function CampaignShowcasePage({ params }: Props) {
             {media.map((m: any) => (
               <div key={m.id} className="c-gallery-item">
                 {m.type === "video" ? (
-                  <video
-                    src={m.file_url}
-                    poster={m.thumbnail_url || undefined}
-                    controls
-                    playsInline
-                    preload="none"
-                    style={{ width: "100%", display: "block" }}
-                  />
+                  <div className="c-vid-wrap" data-video-wrap>
+                    <div className="c-play-btn" />
+                    <video
+                      src={m.file_url}
+                      poster={m.thumbnail_url || undefined}
+                      playsInline
+                      preload="metadata"
+                      style={{ width: "100%", display: "block" }}
+                    />
+                  </div>
                 ) : (
                   <img
                     src={m.file_url}
@@ -282,6 +293,36 @@ export default async function CampaignShowcasePage({ params }: Props) {
           <a href="/campaigns" className="btn-outline">More Campaigns</a>
         </div>
       </section>
+
+
+      {/* Hover-to-play script */}
+      <script dangerouslySetInnerHTML={{ __html: `
+        document.addEventListener('DOMContentLoaded', function() {
+          document.querySelectorAll('[data-video-wrap]').forEach(function(wrap) {
+            var vid = wrap.querySelector('video');
+            if (!vid) return;
+            wrap.addEventListener('mouseenter', function() {
+              vid.muted = false;
+              vid.play().catch(function() {
+                vid.muted = true;
+                vid.play().catch(function(){});
+              });
+            });
+            wrap.addEventListener('mouseleave', function() {
+              vid.pause();
+              vid.currentTime = 0;
+            });
+            wrap.addEventListener('click', function() {
+              if (vid.paused) {
+                vid.muted = false;
+                vid.play().catch(function(){});
+              } else {
+                vid.pause();
+              }
+            });
+          });
+        });
+      `}} />
 
       {/* Footer */}
       <footer className="footer">
