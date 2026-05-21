@@ -148,8 +148,19 @@ function GalleryTile({
       className="group relative rounded-xl overflow-hidden cursor-pointer bg-white/[0.02] border border-white/[0.06] hover:border-white/20 transition-all duration-300"
       style={{ aspectRatio: item.isVideo ? '9 / 16' : '4 / 5' }}
       onClick={onClick}
-      onMouseEnter={() => { if (videoRef.current) videoRef.current.play().catch(() => {}); }}
-      onMouseLeave={() => { if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; } }}
+      onMouseEnter={() => {
+        if (videoRef.current) {
+          videoRef.current.muted = false;
+          videoRef.current.play().catch(() => {});
+        }
+      }}
+      onMouseLeave={() => {
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          videoRef.current.pause();
+          videoRef.current.currentTime = 0;
+        }
+      }}
     >
       {item.isVideo ? (
         <>
@@ -180,6 +191,10 @@ function GalleryTile({
         />
       )}
 
+      {/* Athlete name banner — drops down from top on hover */}
+      <div className="absolute top-0 left-0 right-0 px-3 py-2 bg-gradient-to-b from-black/70 to-transparent -translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-10">
+        <p className="text-xs font-semibold text-white tracking-wide">{item.filename}</p>
+      </div>
     </div>
   );
 }
