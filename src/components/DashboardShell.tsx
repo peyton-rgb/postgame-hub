@@ -1,55 +1,48 @@
 // ============================================================
-// Dashboard Shell — conditionally renders sidebar
+// Dashboard Shell — renders the unified sidebar on ALL
+// /dashboard/* pages.
 //
-// The sidebar only appears on Blueprint v2 pages (the ones we
-// built). Pre-existing pages (recaps, website editor, brands,
-// etc.) already have their own sidebar built into the page, so
-// we skip ours to avoid a double-sidebar situation.
+// The <style> tag below handles the "double sidebar" problem:
+// Pre-existing pages (Recaps, Website Editor, Brands, etc.)
+// have their own sidebar built into the page component. Instead
+// of modifying every one of those files, we use CSS to:
+//   1. Hide any <aside> nested inside our <main> content area
+//   2. Reset the ml-60 (240px) margin on any nested <main>
+//   3. Remove the min-h-screen from nested wrappers (layout
+//      already provides it)
+//
+// This way the pre-existing pages render their content only,
+// and our unified sidebar handles all the navigation.
 // ============================================================
 
 'use client';
 
-import { usePathname } from 'next/navigation';
 import DashboardSidebar from './DashboardSidebar';
-
-// Blueprint v2 routes — these get our sidebar
-const BLUEPRINT_ROUTES = [
-  '/dashboard/briefs',
-  '/dashboard/intake',
-  '/dashboard/inspo',
-  '/dashboard/ai-editing',
-  '/dashboard/editing',
-  '/dashboard/reviews',
-  '/dashboard/assets',
-  '/dashboard/captions',
-  '/dashboard/publishing',
-  '/dashboard/performance',
-  '/dashboard/roi',
-  '/dashboard/composer',
-];
 
 export default function DashboardShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
-  // Check if current path matches any Blueprint v2 route
-  const showSidebar = BLUEPRINT_ROUTES.some((route) =>
-    pathname?.startsWith(route)
-  );
-
-  if (!showSidebar) {
-    // Pre-existing pages — render without our sidebar
-    return <>{children}</>;
-  }
-
-  // Blueprint v2 pages — render with sidebar
   return (
     <>
       <DashboardSidebar />
-      <main className="ml-[240px]">{children}</main>
+
+      {/* Override styles to suppress old sidebar in pre-existing pages */}
+      <style jsx global>{`
+        .dashboard-content aside {
+          display: none !important;
+        }
+        .dashboard-content > div > main {
+          margin-left: 0 !important;
+          width: 100% !important;
+        }
+        .dashboard-content > .min-h-screen {
+          min-height: auto !important;
+        }
+      `}</style>
+
+      <main className="ml-[240px] dashboard-content">{children}</main>
     </>
   );
 }
