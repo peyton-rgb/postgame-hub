@@ -191,10 +191,17 @@ function GalleryTile({
         />
       )}
 
-      {/* Athlete name banner — drops down from top on hover */}
-      <div className="absolute top-0 left-0 right-0 px-3 py-2 bg-gradient-to-b from-black/70 to-transparent -translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-10">
-        <p className="text-xs font-semibold text-white tracking-wide">{item.filename}</p>
-      </div>
+      {/* Download button — appears in top-right corner on hover */}
+      <a
+        href={item.url}
+        download
+        onClick={(e) => e.stopPropagation()}
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-10 hover:bg-black/70"
+      >
+        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      </a>
     </div>
   );
 }
