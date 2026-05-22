@@ -371,12 +371,19 @@ export default function ClientsPage() {
     () => featuredBrands.filter(matchesFilter),
     [activeFilter]
   );
-  // Full roster = partnerBrands + logoWallBrands, filtered, then alphabetized
+  // Full roster = partnerBrands + logoWallBrands, filtered, then alphabetized.
+  // Brand names that start with a digit (e.g. "1-800 Contacts") get pushed to
+  // the bottom of the list so the A–Z letter brands aren't visually interrupted.
   const filteredRoster = useMemo(
     () =>
       [...partnerBrands, ...logoWallBrands]
         .filter(matchesFilter)
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .sort((a, b) => {
+          const aNum = /^\d/.test(a.name.trim());
+          const bNum = /^\d/.test(b.name.trim());
+          if (aNum !== bNum) return aNum ? 1 : -1; // number-named brands go last
+          return a.name.localeCompare(b.name);
+        }),
     [activeFilter]
   );
 
