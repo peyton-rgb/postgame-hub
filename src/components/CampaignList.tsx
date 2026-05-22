@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Campaign } from "@/lib/types";
 import { parseMetricsCSV } from "@/lib/csv-parser";
@@ -10,6 +10,7 @@ import Link from "next/link";
 
 export default function CampaignList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [brandFilterId, setBrandFilterId] = useState<string>("");
@@ -36,6 +37,13 @@ export default function CampaignList() {
     loadTrackers();
     loadBrands();
   }, []);
+
+  // Open the create-campaign modal automatically when the page is
+  // reached via the "+ New Campaign" button on the cards page
+  // (which links here with ?new=1).
+  useEffect(() => {
+    if (searchParams.get("new") === "1") setShowCreate(true);
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedBrandId) loadBrandCampaigns(selectedBrandId);

@@ -222,7 +222,10 @@ export default function RecapsPage() {
   const [recaps, setRecaps] = useState<CampaignRecap[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  // Default to showing only live (published) recaps so the page isn't
+  // flooded with drafts. The "Draft" / "All" filter pills below let you
+  // pull up drafts and click any card to open it in the editor.
+  const [statusFilter, setStatusFilter] = useState<string | null>('published');
 
   useEffect(() => {
     async function fetchRecaps() {
@@ -264,14 +267,31 @@ export default function RecapsPage() {
   return (
     <DashboardContent>
       {/* Page header */}
-      <div className="mb-8">
-        <div className="text-[10px] font-bold tracking-[0.2em] text-[#D73F09] uppercase mb-1">
-          Campaign Library
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-[10px] font-bold tracking-[0.2em] text-[#D73F09] uppercase mb-1">
+            Campaign Library
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-1">Campaign Recaps</h1>
+          <p className="text-sm text-white/40">
+            {statusFilter
+              ? `${filtered.length} ${statusFilter.replace(/_/g, ' ')} · ${recaps.length} total`
+              : `${recaps.length} campaigns across all brands`}
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-white mb-1">Campaign Recaps</h1>
-        <p className="text-sm text-white/40">
-          {recaps.length} campaigns across all brands
-        </p>
+
+        {/* Create a new campaign. Opens the existing creation flow
+            (modal lives on the legacy dashboard list). */}
+        <Link
+          href="/dashboard?tab=recaps&new=1"
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#D73F09] hover:bg-[#c0370a] text-white text-sm font-semibold transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          New Campaign
+        </Link>
       </div>
 
       {/* Search + filters */}

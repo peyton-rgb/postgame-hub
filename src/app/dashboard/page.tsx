@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import OptInList from "@/components/OptInList";
 import CampaignList from "@/components/CampaignList";
 import RunOfShowList from "@/components/RunOfShowList";
@@ -301,6 +301,17 @@ function DashboardContent() {
   const activeTab = (searchParams.get("tab") as TabKey) || "recaps";
   const [collapsed, setCollapsed] = useState(false);
 
+  // The card grid at /dashboard/recaps is now the canonical Recaps page.
+  // This legacy rows view only stays around as the campaign-creation tool,
+  // so when someone lands on the recaps tab WITHOUT the ?new=1 create flag,
+  // send them to the cards page instead. (?new=1 keeps this view open and
+  // auto-opens the "New Campaign" modal inside CampaignList.)
+  useEffect(() => {
+    if (activeTab === "recaps" && searchParams.get("new") !== "1") {
+      router.replace("/dashboard/recaps");
+    }
+  }, [activeTab, searchParams, router]);
+
   function setTab(key: TabKey) {
     router.push(`/dashboard?tab=${key}`, { scroll: false });
   }
@@ -421,7 +432,9 @@ function DashboardContent() {
 
         {/* Tab content */}
         <div className="p-8">
-          {activeTab === "recaps" && <CampaignList />}
+          {/* Rows view only renders in create mode (?new=1); otherwise the
+              effect above redirects to the /dashboard/recaps card grid. */}
+          {activeTab === "recaps" && searchParams.get("new") === "1" && <CampaignList />}
           {activeTab === "trackers" && <TrackerList />}
           {activeTab === "ros" && <RunOfShowList />}
           {activeTab === "briefs" && <BriefList />}
