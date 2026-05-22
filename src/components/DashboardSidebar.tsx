@@ -430,10 +430,8 @@ export default function DashboardSidebar() {
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-black border-r border-white/10 flex flex-col z-50">
       {/* Logo / Wordmark */}
       <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-white/[0.08]">
-        <Link href="/dashboard" className="flex items-baseline gap-0">
-          <span className="text-white font-medium tracking-wider text-[15px]">
-            P<span className="text-[#D73F09]">+</span>STGAME
-          </span>
+        <Link href="/dashboard" className="flex items-center">
+          <img src="/postgame-logo-white.png" alt="Postgame" className="h-6 object-contain" />
         </Link>
       </div>
 
