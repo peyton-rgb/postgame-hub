@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
 import { getDefaultPitchSections } from "@/lib/pitch/defaultTemplate";
 import { VOICES, DEFAULT_VOICE_ID, type VoiceModule } from "@/lib/pitch/aiPrompts";
@@ -51,6 +51,9 @@ export default function PitchList() {
   // URL-driven filter state
   const searchParams = useSearchParams();
   const router = useRouter();
+  // Current path (e.g. "/dashboard/pitches") so the All/Brand/Athlete
+  // filter buttons stay on whatever page PitchList renders on.
+  const pathname = usePathname();
   const pitchFilter = (searchParams.get("filter") as PitchFilter) || "all";
 
   // Shared form state
@@ -109,7 +112,7 @@ export default function PitchList() {
     } else {
       params.set("filter", filter);
     }
-    router.push(`/dashboard?${params.toString()}`, { scroll: false });
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   // Counts computed from the full unfiltered list
