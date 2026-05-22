@@ -75,7 +75,15 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
     .toUpperCase();
 
   return (
-    <div className="group bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300">
+    <div className="group relative bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300">
+      {/* Full-card link to the recap editor. Stretched across the whole
+          card (absolute inset-0) so clicking anywhere opens the editor. */}
+      <Link
+        href={`/dashboard/${recap.id}`}
+        className="absolute inset-0 z-10"
+        aria-label={`Edit ${recap.name}`}
+      />
+
       {/* Thumbnail / Hero area */}
       <div className="relative aspect-[16/9] bg-[#0a0a0a] overflow-hidden">
         {recap.thumbnail_url || recap.hero_image_url ? (
@@ -120,6 +128,27 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
               Featured
             </span>
           </div>
+        )}
+
+        {/* "View Live" link — opens the public recap in a new tab.
+            Only shown for published recaps. z-10 + stopPropagation keep
+            it above the full-card editor link so its own click wins. */}
+        {recap.published && (
+          <Link
+            href={`/recap/${recap.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-white/70 bg-black/50 backdrop-blur hover:text-[#D73F09] hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-all"
+            title="View live recap"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h6v6" />
+              <path d="M10 14L21 3" />
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+            </svg>
+            View Live
+          </Link>
         )}
       </div>
 
