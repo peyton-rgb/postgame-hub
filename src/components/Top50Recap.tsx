@@ -452,18 +452,21 @@ export function Top50Recap({
           <select
             value={sportFilter}
             onChange={(e) => setSportFilter(e.target.value)}
-            className={`pl-4 pr-10 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all outline-none appearance-none cursor-pointer ${
+            className={`appearance-none pl-4 pr-9 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wide outline-none cursor-pointer transition-all ${
               sportFilter === "all"
-                ? "bg-white/[0.04] border border-white/[0.08] text-white/60 hover:border-white/20 hover:text-white"
-                : "bg-brand border border-brand text-white"
+                ? "bg-white/[0.05] border border-white/10 text-white/70 hover:border-white/20 focus:border-brand/50"
+                : "bg-brand/15 border border-brand/50 text-brand hover:bg-brand/20 focus:border-brand"
             }`}
           >
-            <option value="all" style={{ backgroundColor: "#050505", color: "white" }}>All Sports</option>
+            <option value="all" className="bg-[#050505] text-white">All Sports</option>
             {sports.map((s) => (
-              <option key={s} value={s} style={{ backgroundColor: "#050505", color: "white" }}>{s}</option>
+              <option key={s} value={s} className="bg-[#050505] text-white">{s}</option>
             ))}
           </select>
-          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          >
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </div>
@@ -473,22 +476,24 @@ export function Top50Recap({
           <select
             value={campaignFilter}
             onChange={(e) => setCampaignFilter(e.target.value)}
-            className={`pl-4 pr-10 py-2.5 rounded-md text-sm font-bold uppercase tracking-wide transition-all outline-none appearance-none cursor-pointer max-w-[260px] truncate ${
+            className={`appearance-none pl-4 pr-9 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wide outline-none cursor-pointer transition-all max-w-[260px] truncate ${
               campaignFilter === "all"
-                ? "bg-white/[0.04] border border-white/[0.08] text-white/60 hover:border-white/20 hover:text-white"
-                : "bg-brand border border-brand text-white"
+                ? "bg-white/[0.05] border border-white/10 text-white/70 hover:border-white/20 focus:border-brand/50"
+                : "bg-brand/15 border border-brand/50 text-brand hover:bg-brand/20 focus:border-brand"
             }`}
           >
-            <option value="all" style={{ backgroundColor: "#050505", color: "white" }}>All Campaigns</option>
+            <option value="all" className="bg-[#050505] text-white">All Campaigns</option>
             {campaigns.map((c) => (
-              <option key={c} value={c} style={{ backgroundColor: "#050505", color: "white" }}>{c}</option>
+              <option key={c} value={c} className="bg-[#050505] text-white">{c}</option>
             ))}
           </select>
-          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-70" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          >
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </div>
-
         <div className="ml-auto">
           <button
             onClick={() => {
