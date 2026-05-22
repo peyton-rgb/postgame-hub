@@ -437,7 +437,7 @@ img, video { display: block; max-width: 100%; }
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: var(--text-4);
+  color: var(--orange);
   margin-bottom: 20px;
   font-family: Arial, sans-serif;
 }
@@ -450,7 +450,7 @@ img, video { display: block; max-width: 100%; }
 .pg-footer-links a {
   font-size: 18px;
   line-height: 1.2;
-  color: var(--text-3);
+  color: var(--text-2);
   font-family: Arial, sans-serif;
   transition: color 0.15s;
 }
