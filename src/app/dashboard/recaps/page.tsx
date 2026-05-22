@@ -37,8 +37,12 @@ interface CampaignRecap {
     id: string;
     name: string;
     logo_url: string | null;
+    logo_light_url: string | null;
+    logo_white_url: string | null;
     primary_color: string | null;
   } | null;
+  // Cover image pulled from the recap's media (joined client-side).
+  cover_url?: string | null;
 }
 
 // ---- Status Badge ----
@@ -64,7 +68,17 @@ function StatusBadge({ published }: { published: boolean }) {
 
 function RecapCard({ recap }: { recap: CampaignRecap }) {
   const brandColor = recap.brand?.primary_color || '#D73F09';
+  // For the dark-tinted cover, prefer a white/light logo so it stands out.
+  const coverLogo =
+    recap.brand?.logo_white_url ||
+    recap.brand?.logo_light_url ||
+    recap.brand?.logo_url ||
+    recap.client_logo_url;
+  // Plain logo for the small brand row in the card body.
   const brandLogo = recap.brand?.logo_url || recap.client_logo_url;
+  // The cover photo: a piece of content from the recap, falling back to any
+  // hero/thumbnail set on the recap itself.
+  const coverUrl = recap.cover_url || recap.thumbnail_url || recap.hero_image_url;
   const initials = recap.client_name
     .split(' ')
     .map((w) => w[0])
@@ -84,12 +98,33 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
 
       {/* Thumbnail / Hero area */}
       <div className="relative aspect-[16/9] bg-[#0a0a0a] overflow-hidden">
-        {recap.thumbnail_url || recap.hero_image_url ? (
-          <img
-            src={recap.thumbnail_url || recap.hero_image_url || ''}
-            alt={recap.name}
-            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
-          />
+        {coverUrl ? (
+          <>
+            {/* The content photo */}
+            <img
+              src={coverUrl}
+              alt={recap.name}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            {/* Dark glass tint over the photo */}
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] group-hover:bg-black/45 transition-colors duration-300" />
+            {/* Brand logo sitting on top, centered */}
+            {coverLogo ? (
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <img
+                  src={coverLogo}
+                  alt={recap.client_name}
+                  className="max-h-14 max-w-[55%] object-contain drop-shadow-lg"
+                />
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-3xl font-black tracking-wider text-white/90 drop-shadow-lg">
+                  {initials}
+                </span>
+              </div>
+            )}
+          </>
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
@@ -232,12 +267,32 @@ export default function RecapsPage() {
         .from('campaign_recaps')
         .select(`
           *,
-          brand:brands!campaigns_brand_id_fkey ( id, name, logo_url, primary_color )
+          brand:brands!campaigns_brand_id_fkey ( id, name, logo_url, logo_light_url, logo_white_url, primary_color )
         `)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        setRecaps(data as CampaignRecap[]);
+        const list = data as CampaignRecap[];
+
+        // Pull one cover image per recap from the recap_card_cover view
+        // (one row per campaign, the first content photo) and attach it.
+        const { data: covers } = await supabase
+          .from('recap_card_cover')
+          .select('campaign_id, cover_url');
+
+        if (covers) {
+          const coverMap = new Map<string, string>(
+            covers.map((c: { campaign_id: string; cover_url: string }) => [
+              c.campaign_id,
+              c.cover_url,
+            ])
+          );
+          list.forEach((r) => {
+            r.cover_url = coverMap.get(r.id) ?? null;
+          });
+        }
+
+        setRecaps(list);
       }
       setLoading(false);
     }
