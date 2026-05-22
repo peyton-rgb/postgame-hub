@@ -42,22 +42,20 @@ interface CampaignRecap {
 }
 
 // ---- Status Badge ----
+// Driven by the `published` boolean flag, NOT the `status` text column.
+// During the bulk import every recap got status='published' even when
+// empty, so `published` is the trustworthy "is this actually live?" signal.
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    published: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-    draft: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
-    archived: 'bg-white/10 text-white/40 border-white/10',
-    in_review: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  };
-
+function StatusBadge({ published }: { published: boolean }) {
   return (
     <span
       className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-        colors[status] || colors.draft
+        published
+          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+          : 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20'
       }`}
     >
-      {status.replace(/_/g, ' ')}
+      {published ? 'Live' : 'Draft'}
     </span>
   );
 }
@@ -118,7 +116,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
 
         {/* Status badge overlay */}
         <div className="absolute top-3 right-3">
-          <StatusBadge status={recap.status} />
+          <StatusBadge published={recap.published} />
         </div>
 
         {/* Featured badge */}
@@ -222,10 +220,10 @@ export default function RecapsPage() {
   const [recaps, setRecaps] = useState<CampaignRecap[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  // Default to showing only live (published) recaps so the page isn't
-  // flooded with drafts. The "Draft" / "All" filter pills below let you
-  // pull up drafts and click any card to open it in the editor.
-  const [statusFilter, setStatusFilter] = useState<string | null>('published');
+  // Filter on the `published` flag (Live / Drafts / All), not the unreliable
+  // `status` text column. Default to "Live" so the page isn't flooded with
+  // drafts; the "Drafts" pill pulls them up, and any card opens its editor.
+  const [view, setView] = useState<'live' | 'draft' | null>('live');
 
   useEffect(() => {
     async function fetchRecaps() {
@@ -246,11 +244,7 @@ export default function RecapsPage() {
     fetchRecaps();
   }, []);
 
-  // Get unique statuses for filter pills
-  const statuses = useMemo(() => {
-    const s = new Set(recaps.map((r) => r.status));
-    return Array.from(s).sort();
-  }, [recaps]);
+  const liveCount = useMemo(() => recaps.filter((r) => r.published).length, [recaps]);
 
   // Filtered results
   const filtered = useMemo(() => {
@@ -259,10 +253,13 @@ export default function RecapsPage() {
         !searchTerm ||
         r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.client_name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = !statusFilter || r.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesView =
+        view === null ||
+        (view === 'live' && r.published) ||
+        (view === 'draft' && !r.published);
+      return matchesSearch && matchesView;
     });
-  }, [recaps, searchTerm, statusFilter]);
+  }, [recaps, searchTerm, view]);
 
   return (
     <DashboardContent>
@@ -274,8 +271,10 @@ export default function RecapsPage() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-1">Campaign Recaps</h1>
           <p className="text-sm text-white/40">
-            {statusFilter
-              ? `${filtered.length} ${statusFilter.replace(/_/g, ' ')} · ${recaps.length} total`
+            {view === 'live'
+              ? `${liveCount} live recaps · ${recaps.length} total`
+              : view === 'draft'
+              ? `${filtered.length} drafts · ${recaps.length} total`
               : `${recaps.length} campaigns across all brands`}
           </p>
         </div>
@@ -304,27 +303,21 @@ export default function RecapsPage() {
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#D73F09]/50 transition-colors"
         />
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setStatusFilter(null)}
-            className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${
-              !statusFilter
-                ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
-                : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
-            }`}
-          >
-            All
-          </button>
-          {statuses.map((s) => (
+          {([
+            { key: 'live' as const, label: 'Live' },
+            { key: 'draft' as const, label: 'Drafts' },
+            { key: null, label: 'All' },
+          ]).map(({ key, label }) => (
             <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all capitalize ${
-                statusFilter === s
+              key={label}
+              onClick={() => setView(key)}
+              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${
+                view === key
                   ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
                   : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
               }`}
             >
-              {s.replace(/_/g, ' ')}
+              {label}
             </button>
           ))}
         </div>
@@ -362,12 +355,12 @@ export default function RecapsPage() {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
           <div className="text-white/20 text-lg font-semibold mb-2">
-            {searchTerm || statusFilter
+            {searchTerm || view
               ? 'No matching recaps found'
               : 'No campaign recaps yet'}
           </div>
           <p className="text-sm text-white/15">
-            {searchTerm || statusFilter
+            {searchTerm || view
               ? 'Try adjusting your search or filters'
               : 'Campaign recaps will appear here as campaigns are completed'}
           </p>
