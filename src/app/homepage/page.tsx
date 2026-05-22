@@ -191,9 +191,15 @@ export default async function HomepagePage() {
           <div className="hp-sec">
             {contentStr(fc,"eyebrow") && <div className="pg-eyebrow">{contentStr(fc,"eyebrow")}</div>}
             <h2 className="d pg-section-title">{fc.title || "Campaign Highlights"}</h2>
-            {feat && (
-              <div className={`hp-featured${feat.image_url ? "" : " rc-1"}`}>
-                {feat.image_url && (String(feat.media_type||"")==="video"
+            {feat && (() => {
+              // Apply gradient fallback class when there's no media OR the
+              // media is a video — that way if the video fails to load
+              // the tile shows a branded gradient instead of solid black.
+              const featIsVid = String(feat.media_type||"")==="video";
+              const featNeedsGradient = !feat.image_url || featIsVid;
+              return (
+              <div className={`hp-featured${featNeedsGradient ? " rc-1" : ""}`}>
+                {feat.image_url && (featIsVid
                   ? <ScrollVideo src={String(feat.image_url)} scrollTrigger={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
                   : <Image src={String(feat.image_url)} alt="" fill priority sizes="(max-width:900px) 100vw, 1100px" style={{objectFit:"cover",objectPosition:String(feat.focal_point||"center 20%")}} />
                 )}
@@ -204,14 +210,19 @@ export default async function HomepagePage() {
                   {String(feat.meta||"") && <div className="hp-card-meta">{String(feat.meta||"")}</div>}
                 </div>
               </div>
-            )}
+              );
+            })()}
             {rest.length > 0 && (
               <AnimateIn className="anim-fade-up hp-masonry stagger">
                 {rest.map((item, i) => {
                   const hasMedia = !!item.image_url;
                   const isVid = String(item.media_type||"")==="video";
+                  // Apply gradient class when there's no media OR when it's
+                  // a video — so a broken/blocked video file falls back to
+                  // a branded gradient instead of a solid black tile.
+                  const needsGradient = !hasMedia || isVid;
                   return (
-                    <div key={i} className={`hp-card hover-lift anim-scale-in in-view${!hasMedia?" "+GRADIENTS[i%5]:""}`}>
+                    <div key={i} className={`hp-card hover-lift anim-scale-in in-view${needsGradient?" "+GRADIENTS[i%5]:""}`}>
                       {hasMedia && (isVid
                         ? <ScrollVideo src={String(item.image_url)} style={{width:"100%",display:"block"}} />
                         : <img src={String(item.image_url)} alt="" loading="lazy" decoding="async" style={{width:"100%",display:"block",objectPosition:String(item.focal_point||"center 20%")}}/>

@@ -12,5 +12,9 @@ export default function ScrollVideo({ src, style, scrollTrigger = true }: { src:
     io.observe(v);
     return () => io.disconnect();
   }, [scrollTrigger]);
-  return <video ref={ref} muted loop playsInline preload="metadata" src={src} style={style} />;
+  // Append `#t=0.1` if there is no fragment yet — this tells the browser
+  // to seek to 0.1s and paint that frame as a still, so cards don't
+  // render as solid-black rectangles before the video starts playing.
+  const posterSrc = src.includes("#") ? src : `${src}#t=0.1`;
+  return <video ref={ref} muted loop playsInline preload="metadata" src={posterSrc} style={style} />;
 }
