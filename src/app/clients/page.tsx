@@ -2,12 +2,13 @@
 // Public Clients Page — /clients
 //
 // Showcases every brand Postgame has partnered with, organized
-// into 3 visual tiers so the biggest names hit hardest:
+// into 2 visual tiers so the biggest names hit hardest:
 //
-//   1. Featured  — cinematic motion cards with brand logos,
+//   1. Featured    — cinematic motion cards with brand logos,
 //      animated gradient backgrounds, and hover effects
-//   2. Partners  — compact cards with real brand logos
-//   3. Logo Wall — small logo tiles in a grid
+//   2. Full Roster — compact PartnerCard rows for every other
+//      brand, merged from partnerBrands + logoWallBrands and
+//      sorted alphabetically
 //
 // A filter bar lets visitors browse by industry category.
 // No auth required — this is a public marketing page.
@@ -325,59 +326,6 @@ function PartnerCard({ brand }: { brand: Brand }) {
   );
 }
 
-// ---- Logo Tile ----
-// Small tile with brand logo, colored border accent on hover.
-
-function LogoTile({ brand }: { brand: Brand }) {
-  const [imgError, setImgError] = useState(false);
-
-  const inner = (
-    <div
-      className="group aspect-square bg-[#0e0e0e] border border-white/[0.06] rounded-lg flex flex-col items-center justify-center gap-1.5 hover:bg-[#111] transition-all duration-300 cursor-pointer p-2 relative overflow-hidden"
-      style={{
-        // On hover, add a subtle brand-colored border
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = `${brand.primaryColor}40`;
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.024)';
-      }}
-    >
-      {/* Brand color dot at top */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ backgroundColor: brand.primaryColor }}
-      />
-
-      {brand.logoUrl && !imgError ? (
-        <img
-          src={brand.logoUrl}
-          alt={`${brand.name} logo`}
-          className="w-8 h-8 object-contain opacity-40 group-hover:opacity-70 transition-opacity duration-300"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <span
-          className="text-[11px] font-bold tracking-wider opacity-30 group-hover:opacity-60 transition-opacity duration-300"
-          style={{ color: brand.primaryColor }}
-        >
-          {brand.initials}
-        </span>
-      )}
-      <span className="text-[8px] text-white/15 group-hover:text-white/35 transition-colors text-center leading-tight">
-        {brand.name}
-      </span>
-    </div>
-  );
-
-  return (
-    <Link href={`/clients/${brand.slug}`}>
-      {inner}
-    </Link>
-  );
-}
-
 // ---- Section Header ----
 // Reusable section label + title combo used for each tier.
 
@@ -423,12 +371,12 @@ export default function ClientsPage() {
     () => featuredBrands.filter(matchesFilter),
     [activeFilter]
   );
-  const filteredPartners = useMemo(
-    () => partnerBrands.filter(matchesFilter),
-    [activeFilter]
-  );
-  const filteredLogo = useMemo(
-    () => logoWallBrands.filter(matchesFilter),
+  // Full roster = partnerBrands + logoWallBrands, filtered, then alphabetized
+  const filteredRoster = useMemo(
+    () =>
+      [...partnerBrands, ...logoWallBrands]
+        .filter(matchesFilter)
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [activeFilter]
   );
 
@@ -541,54 +489,36 @@ export default function ClientsPage() {
         </section>
       )}
 
-      {/* ====== PARTNER TIER ====== */}
-      {filteredPartners.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pt-10 pb-6">
+      {/* ====== FULL ROSTER ====== */}
+      {filteredRoster.length > 0 && (
+        <section className="max-w-6xl mx-auto px-6 pt-10 pb-10">
           <SectionHeader
             label="Brand Partners"
             title="Full Roster"
-            count={filteredPartners.length}
+            count={filteredRoster.length}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredPartners.map((brand) => (
+            {filteredRoster.map((brand) => (
               <PartnerCard key={brand.slug} brand={brand} />
             ))}
           </div>
         </section>
       )}
 
-      {/* ====== LOGO WALL ====== */}
-      {filteredLogo.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pt-10 pb-10">
-          <SectionHeader
-            label="Also Partnered With"
-            title={`${logoWallBrands.length}+ More Brands`}
-            count={filteredLogo.length}
-          />
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-            {filteredLogo.map((brand) => (
-              <LogoTile key={brand.slug} brand={brand} />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* ====== EMPTY STATE ====== */}
-      {filteredFeatured.length === 0 &&
-        filteredPartners.length === 0 &&
-        filteredLogo.length === 0 && (
-          <div className="max-w-6xl mx-auto px-6 py-20 text-center">
-            <div className="text-white/20 text-lg font-semibold mb-2">
-              No brands in this category yet
-            </div>
-            <button
-              onClick={() => setActiveFilter(null)}
-              className="text-[#D73F09] text-sm font-semibold hover:underline"
-            >
-              Show all brands →
-            </button>
+      {filteredFeatured.length === 0 && filteredRoster.length === 0 && (
+        <div className="max-w-6xl mx-auto px-6 py-20 text-center">
+          <div className="text-white/20 text-lg font-semibold mb-2">
+            No brands in this category yet
           </div>
-        )}
+          <button
+            onClick={() => setActiveFilter(null)}
+            className="text-[#D73F09] text-sm font-semibold hover:underline"
+          >
+            Show all brands →
+          </button>
+        </div>
+      )}
 
       {/* ====== CTA SECTION ====== */}
       <section className="relative overflow-hidden py-20 px-6 text-center">
