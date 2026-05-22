@@ -2,6 +2,7 @@ import { getHomepage, getBrandLogos, type HomepageData, type PageSection } from 
 import SiteFooter from "@/components/SiteFooter";
 import AnimateIn from "@/components/AnimateIn";
 import Image from "next/image";
+import ScrollVideo from "@/components/ScrollVideo";
 
 export const revalidate = 60;
 
@@ -33,10 +34,6 @@ function contentStr(section: PageSection, key: string): string {
 
 function ScrollScript() {
   return <script dangerouslySetInnerHTML={{ __html: `(function(){var n=document.querySelector('.pg-nav');if(!n)return;function u(){n.classList.toggle('solid',window.scrollY>40);}window.addEventListener('scroll',u,{passive:true});u();})();` }} />;
-}
-
-function MasonryVideoScript() {
-  return <script dangerouslySetInnerHTML={{ __html: `(function(){var vids=document.querySelectorAll('.hp-card video');if(!vids.length||!('IntersectionObserver' in window))return;var io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.play&&e.target.play().catch(function(){});}else{e.target.pause&&e.target.pause();}});},{threshold:0.25});vids.forEach(function(v){io.observe(v);});})();` }} />;
 }
 
 function Fallback() {
@@ -200,7 +197,7 @@ export default async function HomepagePage() {
             {feat && (
               <div className={`hp-featured${feat.image_url ? "" : " rc-1"}`}>
                 {feat.image_url && (String(feat.media_type||"")==="video"
-                  ? <video autoPlay muted loop playsInline preload="metadata" src={String(feat.image_url)} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
+                  ? <ScrollVideo src={String(feat.image_url)} scrollTrigger={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
                   : <Image src={String(feat.image_url)} alt="" fill priority sizes="(max-width:900px) 100vw, 1100px" style={{objectFit:"cover",objectPosition:String(feat.focal_point||"center 20%")}} />
                 )}
                 <div className="hp-featured-overlay"/>
@@ -219,7 +216,7 @@ export default async function HomepagePage() {
                   return (
                     <div key={i} className={`hp-card hover-lift anim-scale-in in-view${!hasMedia?" "+GRADIENTS[i%5]:""}`}>
                       {hasMedia && (isVid
-                        ? <video muted loop playsInline preload="metadata" src={String(item.image_url)} style={{width:"100%",display:"block"}}/>
+                        ? <ScrollVideo src={String(item.image_url)} style={{width:"100%",display:"block"}} />
                         : <img src={String(item.image_url)} alt="" loading="lazy" decoding="async" style={{width:"100%",display:"block",objectPosition:String(item.focal_point||"center 20%")}}/>
                       )}
                       <div className={hasMedia?"hp-card-body":"hp-card-nm"}>
@@ -325,7 +322,6 @@ export default async function HomepagePage() {
 
       <SiteFooter/>
       <ScrollScript/>
-      <MasonryVideoScript/>
     </div>
   );
 }
