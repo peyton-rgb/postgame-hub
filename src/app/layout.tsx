@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import "@/styles/motion.css";
-// import SiteNav from "@/components/SiteNav";  // removed — site not public yet
+import SiteNav from "@/components/SiteNav";
 import PageWrapper from "@/components/PageWrapper";
 
 const bebasNeue = Bebas_Neue({
@@ -55,7 +55,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={bebasNeue.variable}>
       <body>
         <PageWrapper>
-          {/* <SiteNav /> removed — site not public yet */}
+          {/* SiteNav hides itself on /dashboard, /login, /recap, /pitch, etc.
+              via its own HIDDEN_ROUTES check. */}
+          <SiteNav />
           {children}
         </PageWrapper>
       </body>

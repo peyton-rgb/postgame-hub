@@ -22,7 +22,6 @@
 import { useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import PublicNav from '@/components/PublicNav';
 import {
   featuredBrands,
   partnerBrands,
@@ -393,7 +392,7 @@ export default function ClientsPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <PublicNav variant="dark" />
+      {/* Top nav rendered globally by SiteNav in layout.tsx. */}
 
       {/* ====== HERO SECTION ====== */}
       <section className="relative pt-28 pb-16 px-6 text-center overflow-hidden">

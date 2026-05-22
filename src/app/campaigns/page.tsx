@@ -102,16 +102,7 @@ export default async function CampaignsPage() {
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
       <style dangerouslySetInnerHTML={{ __html: styles }} />
 
-      <nav className="nav">
-        <a href="/homepage" className="nav-logo">POSTGAME</a>
-        <div className="nav-links">
-          <a href="/clients">Clients</a>
-          <a href="/campaigns">Campaigns</a>
-          <a href="/about/team">About</a>
-          <a href="/contact" className="btn-outline">Contact</a>
-          <a href="/deals" className="btn-solid">Deal Tracker</a>
-        </div>
-      </nav>
+      {/* Top nav rendered globally by SiteNav in layout.tsx. */}
 
       <section className="hero">
         <div className="eyebrow">Our Work</div>
