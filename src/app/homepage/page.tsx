@@ -1,6 +1,7 @@
 import { getHomepage, getBrandLogos, type HomepageData, type PageSection } from "@/lib/public-site";
 import SiteFooter from "@/components/SiteFooter";
 import AnimateIn from "@/components/AnimateIn";
+import Image from "next/image";
 
 export const revalidate = 60;
 
@@ -32,6 +33,10 @@ function contentStr(section: PageSection, key: string): string {
 
 function ScrollScript() {
   return <script dangerouslySetInnerHTML={{ __html: `(function(){var n=document.querySelector('.pg-nav');if(!n)return;function u(){n.classList.toggle('solid',window.scrollY>40);}window.addEventListener('scroll',u,{passive:true});u();})();` }} />;
+}
+
+function MasonryVideoScript() {
+  return <script dangerouslySetInnerHTML={{ __html: `(function(){var vids=document.querySelectorAll('.hp-card video');if(!vids.length||!('IntersectionObserver' in window))return;var io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.play&&e.target.play().catch(function(){});}else{e.target.pause&&e.target.pause();}});},{threshold:0.25});vids.forEach(function(v){io.observe(v);});})();` }} />;
 }
 
 function Fallback() {
@@ -195,8 +200,8 @@ export default async function HomepagePage() {
             {feat && (
               <div className={`hp-featured${feat.image_url ? "" : " rc-1"}`}>
                 {feat.image_url && (String(feat.media_type||"")==="video"
-                  ? <video autoPlay muted loop playsInline src={String(feat.image_url)} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
-                  : <img src={String(feat.image_url)} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:String(feat.focal_point||"center 20%")}} />
+                  ? <video autoPlay muted loop playsInline preload="metadata" src={String(feat.image_url)} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
+                  : <Image src={String(feat.image_url)} alt="" fill priority sizes="(max-width:900px) 100vw, 1100px" style={{objectFit:"cover",objectPosition:String(feat.focal_point||"center 20%")}} />
                 )}
                 <div className="hp-featured-overlay"/>
                 <div className="hp-featured-content">
@@ -214,8 +219,8 @@ export default async function HomepagePage() {
                   return (
                     <div key={i} className={`hp-card hover-lift anim-scale-in in-view${!hasMedia?" "+GRADIENTS[i%5]:""}`}>
                       {hasMedia && (isVid
-                        ? <video autoPlay muted loop playsInline src={String(item.image_url)} style={{width:"100%",display:"block"}}/>
-                        : <img src={String(item.image_url)} alt="" style={{width:"100%",display:"block",objectPosition:String(item.focal_point||"center 20%")}}/>
+                        ? <video muted loop playsInline preload="metadata" src={String(item.image_url)} style={{width:"100%",display:"block"}}/>
+                        : <img src={String(item.image_url)} alt="" loading="lazy" decoding="async" style={{width:"100%",display:"block",objectPosition:String(item.focal_point||"center 20%")}}/>
                       )}
                       <div className={hasMedia?"hp-card-body":"hp-card-nm"}>
                         {String(item.brand||"") && <div className="hp-card-brand">{String(item.brand||"")}</div>}
@@ -245,7 +250,7 @@ export default async function HomepagePage() {
                 return (
                   <div key={i} className="hp-athlete">
                     {item.image_url
-                      ? <img src={String(item.image_url)} alt={name}/>
+                      ? <Image src={String(item.image_url)} alt={name} fill sizes="(max-width:600px) 50vw, 25vw" style={{objectFit:"cover",objectPosition:"center 15%"}}/>
                       : <div style={{width:"100%",height:"100%",background:"rgba(215,63,9,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48,fontWeight:900,color:"var(--orange)",fontFamily:"var(--font-bebas),'Bebas Neue',Arial,sans-serif"}}>{name.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
                     }
                     <div className="hp-athlete-overlay"/>
@@ -273,7 +278,7 @@ export default async function HomepagePage() {
               {(logos.length ? logos : Array.from({length:8},(_,i)=>({name:`Brand ${i+1}`,logo_url:"",href:"#"}))).map((item,i) => (
                 <a key={i} href={String(item.href||"#")} className="hp-brand-pill hover-lift">
                   {item.logo_url
-                    ? <img src={String(item.logo_url)} alt={String(item.name||"")}/>
+                    ? <img src={String(item.logo_url)} alt={String(item.name||"")} loading="lazy" decoding="async"/>
                     : <span className="hp-brand-txt">{String(item.name||"Brand")}</span>
                   }
                 </a>
@@ -320,6 +325,7 @@ export default async function HomepagePage() {
 
       <SiteFooter/>
       <ScrollScript/>
+      <MasonryVideoScript/>
     </div>
   );
 }
