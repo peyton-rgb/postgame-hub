@@ -1,15 +1,5 @@
 // ============================================================
-// Browser Supabase Client — for 'use client' pages
-//
-// Creates a Supabase client that runs in the browser.
-// Uses the public anon key (safe to expose client-side).
-// ============================================================
-
-// ============================================================
-// Browser Supabase Client — for 'use client' pages
-//
-// Creates Supabase clients that run in the browser.
-// Uses the public anon key (safe to expose client-side).
+// Supabase Clients
 //
 // Exports:
 //   createBrowserSupabase  — new Blueprint v2 pages use this
@@ -17,29 +7,21 @@
 //   createServiceSupabase  — API routes that need admin access
 // ============================================================
 
+import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
 // --- Used by new Blueprint v2 dashboard pages ---
-// Configured to store auth sessions in cookies (not just localStorage)
-// so the Next.js middleware can check if a user is logged in.
+// IMPORTANT: this uses @supabase/ssr's cookie-based browser client so the
+// session is stored in COOKIES — the exact same place the Next.js
+// middleware (src/middleware.ts) reads from. That keeps login, the
+// dashboard data reads, and Sign Out all in sync. (The previous version
+// stored the session in localStorage, which the cookie-based middleware
+// could not see — so data requests went out as "logged out" and only
+// published rows came back.)
 export function createBrowserSupabase() {
-  return createClient(
+  return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        // flowType 'pkce' is the recommended secure flow for browser apps
-        flowType: 'pkce',
-        // Store session in cookies so middleware can read it server-side
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-        // Automatically refresh the session before it expires
-        autoRefreshToken: true,
-        // Persist the session between page loads
-        persistSession: true,
-        // Detect session from URL (for magic links, OAuth callbacks)
-        detectSessionInUrl: true,
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
 
