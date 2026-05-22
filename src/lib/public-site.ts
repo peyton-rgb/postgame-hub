@@ -107,6 +107,35 @@ export async function getBrandLogos() {
   return map;
 }
 
+// Single source of truth for the brand-logos carousel — read from the
+// `default` pitch template's ticker section. The pitch page and the
+// homepage both render <BrandCarousel> using this data, so editing the
+// ticker in the pitch editor updates both places.
+export interface BrandTickerItem {
+  alt: string;
+  logoUrl: string;
+}
+export async function getPitchTickerLogos(): Promise<BrandTickerItem[]> {
+  const { data, error } = await supabase
+    .from("pitch_templates")
+    .select("sections")
+    .eq("name", "default")
+    .single();
+  if (error || !data) return [];
+  const sections = (data.sections as unknown as { type: string; items?: unknown[] }[]) ?? [];
+  const ticker = sections.find((s) => s?.type === "ticker");
+  const items = (ticker?.items ?? []) as unknown[];
+  return items.flatMap((it): BrandTickerItem[] => {
+    if (it && typeof it === "object" && "logoUrl" in it) {
+      const o = it as Record<string, unknown>;
+      const logoUrl = typeof o.logoUrl === "string" ? o.logoUrl : "";
+      const alt = typeof o.alt === "string" ? o.alt : "";
+      if (logoUrl) return [{ logoUrl, alt }];
+    }
+    return [];
+  });
+}
+
 export async function getBrands() {
   const { data } = await supabase
     .from("brands")

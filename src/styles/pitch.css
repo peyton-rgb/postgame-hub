@@ -77,77 +77,9 @@
   .pitch-page .pitch-header__logo { height: 48px; }
 }
 
-/* TICKER
-   Note: background + border removed so the logos appear to float
-   directly on the page background as they scroll, instead of inside
-   a visible strip/container. overflow: hidden is kept so the
-   scrolling content beyond the viewport stays clipped. */
-.pitch-ticker {
-  position: relative;
-  background: transparent;
-  color: var(--text-2);
-  border-bottom: none;
-  overflow: hidden;
-  padding: 28px 0;
-  font-family: var(--sans);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-weight: 700;
-}
-.pitch-ticker__inner {
-  display: flex;
-  white-space: nowrap;
-  padding: 11px 0;
-  animation: pitch-scroll 60s linear infinite;
-  width: max-content;
-}
-.pitch-ticker__inner span { padding: 0 28px; display: inline-flex; align-items: center; gap: 10px; }
-.pitch-ticker__inner span::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--orange); margin-left: 18px; }
-.pitch-ticker__inner span:last-child::after { display: none; }
-/* Brand-logo image inside a ticker item.
-   Uniform-tile approach: every logo sits inside a fixed 165×60 box and
-   scales to fit. Tile bumped from 130×44 → 165×60 so brands whose
-   source PNG has built-in padding (Armani, Wendy's) appear at a
-   reasonable size rather than getting lost. object-fit: contain
-   normalizes wildly varying source aspect ratios. No CSS filter —
-   each brand's URL is picked per-brand in SQL to ensure the right
-   color variant. */
-.pitch-ticker__logo {
-  height: 60px;
-  width: 165px;
-  object-fit: contain;
-  display: block;
-}
-/* Mobile: shrink the brand ticker logos so more brands fit per
-   horizontal scroll. Each tile gets slightly less padding and the
-   logos themselves drop to ~40px tall. */
-@media (max-width: 640px) {
-  .pitch-page .pitch-ticker__logo {
-    height: 38px;
-    width: 110px;
-  }
-  .pitch-page .pitch-ticker__inner span {
-    padding: 0 18px;
-  }
-  .pitch-page .pitch-ticker__inner span::after {
-    margin-left: 12px;
-  }
-}
-/* Per-brand size override: Armani's source PNG has heavy internal
-   padding so it appears tiny inside the standard tile. Scale up. */
-.pitch-ticker__logo[alt="Armani"] {
-  transform: scale(1.55);
-  transform-origin: center;
-}
-/* Per-brand color override: Coach's logo is a black wordmark on
-   transparent (no white variant exists in the DB), so we force it to
-   white silhouette via filter. Safe here because Coach's PNG is
-   transparent-background — no white-blob risk. */
-.pitch-ticker__logo[alt="Coach"] {
-  filter: brightness(0) invert(1);
-}
-@keyframes pitch-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+/* TICKER styles live with the shared <BrandCarousel> component
+   (src/components/BrandCarousel.tsx) so they apply both inside and
+   outside `.pitch-page` (the homepage also renders BrandCarousel). */
 
 /* NAV */
 .pitch-nav {

@@ -1,8 +1,9 @@
-import { getHomepage, getBrandLogos, type HomepageData, type PageSection } from "@/lib/public-site";
+import { getHomepage, getPitchTickerLogos, type HomepageData, type PageSection, type BrandTickerItem } from "@/lib/public-site";
 import SiteFooter from "@/components/SiteFooter";
 import AnimateIn from "@/components/AnimateIn";
 import Image from "next/image";
 import ScrollVideo from "@/components/ScrollVideo";
+import BrandCarousel from "@/components/BrandCarousel";
 
 export const revalidate = 60;
 
@@ -55,8 +56,10 @@ function Fallback() {
 
 export default async function HomepagePage() {
   let data: HomepageData | null = null;
-  let brandLogos = new Map<string, string>();
-  try { [data, brandLogos] = await Promise.all([getHomepage(), getBrandLogos()]); } catch {}
+  let brandTickerItems: BrandTickerItem[] = [];
+  try {
+    [data, brandTickerItems] = await Promise.all([getHomepage(), getPitchTickerLogos()]);
+  } catch {}
   if (!data) return <Fallback />;
 
   const { page, sections } = data;
@@ -112,13 +115,7 @@ export default async function HomepagePage() {
         .hp-athlete-sport{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--orange);margin-bottom:4px;}
         .hp-athlete-name{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:26px;line-height:1;}
         .hp-athlete-school{font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;}
-        .hp-brands-wrap{padding:64px 48px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);}
-        .hp-brands-row{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;margin-top:36px;}
-        .hp-brand-pill{height:48px;min-width:120px;display:flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);transition:all 0.2s;}
-        .hp-brand-pill:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14);}
-        .hp-brand-pill img{max-height:24px;max-width:80px;object-fit:contain;filter:grayscale(1) brightness(2);opacity:0.5;transition:opacity 0.2s,filter 0.2s;}
-        .hp-brand-pill:hover img{opacity:0.9;filter:none;}
-        .hp-brand-txt{font-size:11px;font-weight:800;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:0.06em;}
+        .hp-brands-wrap{padding:64px 48px 48px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);}
         .hp-services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px;}
         .hp-service{padding:36px 28px;border-radius:20px;background:rgba(255,255,255,0.04);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.08);transition:border-color 0.25s,background 0.25s;}
         .hp-service:hover{border-color:rgba(215,63,9,0.4);background:rgba(255,255,255,0.065);}
@@ -264,26 +261,17 @@ export default async function HomepagePage() {
         );
       })()}
 
-      {/* Brands */}
-      {show("brand_partners") && bp && (() => {
-        const logos = contentArr(bp, "logos", "items");
-        return (
-          <div className="hp-brands-wrap">
-            {contentStr(bp,"eyebrow") && <div className="pg-eyebrow">{contentStr(bp,"eyebrow")}</div>}
-            <h2 className="d pg-section-title" style={{margin:"12px 0 0"}}>{bp.title||"Brand Partners"}</h2>
-            <AnimateIn className="anim-fade-in hp-brands-row stagger">
-              {(logos.length ? logos : Array.from({length:8},(_,i)=>({name:`Brand ${i+1}`,logo_url:"",href:"#"}))).map((item,i) => (
-                <a key={i} href={String(item.href||"#")} className="hp-brand-pill hover-lift">
-                  {item.logo_url
-                    ? <img src={String(item.logo_url)} alt={String(item.name||"")} loading="lazy" decoding="async"/>
-                    : <span className="hp-brand-txt">{String(item.name||"Brand")}</span>
-                  }
-                </a>
-              ))}
-            </AnimateIn>
-          </div>
-        );
-      })()}
+      {/* Brands — shared <BrandCarousel> rendering the SAME logo list as
+          the athlete pitch pages. Eyebrow + title still come from the
+          homepage CMS (brand_partners section); logos come from the
+          `default` pitch template's ticker section. */}
+      {show("brand_partners") && bp && (
+        <div className="hp-brands-wrap">
+          {contentStr(bp,"eyebrow") && <div className="pg-eyebrow">{contentStr(bp,"eyebrow")}</div>}
+          <h2 className="d pg-section-title" style={{margin:"12px 0 0"}}>{bp.title||"Brand Partners"}</h2>
+          <BrandCarousel items={brandTickerItems} />
+        </div>
+      )}
 
       {/* Services */}
       {show("services_grid") && sg && (() => {
