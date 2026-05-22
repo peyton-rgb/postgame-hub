@@ -1,156 +1,142 @@
 // ============================================================
-// POST /api/editing/ffmpeg
+// FFmpeg Processing API — POST /api/editing/ffmpeg
 //
-// Body: { input_url: string, command: string[], output_format: string }
-// Auth: a logged-in Postgame session OR an internal token from the
-//       agent layer (orchestrator runs server-side and may not carry
-//       a user cookie).
+// Receives a video URL + FFmpeg arguments, processes the video,
+// uploads the result to Supabase Storage, and returns the
+// output URL.
 //
-// Behavior:
-//   1. Pull the input file bytes from input_url.
-//   2. Boot @ffmpeg/ffmpeg WASM, write input as 'input.<ext>',
-//      run ffmpeg.exec(command), read the resulting 'output.<format>'.
-//   3. Upload the output to the 'media' bucket under
-//      edited/{userId}/{ts}_output.<format>.
-//   4. Return { output_url, storage_path }.
+// This runs as a Vercel serverless function. For large videos,
+// Vercel has a 50MB request body limit and a 60-second timeout
+// on the Hobby plan (300s on Pro). Most quick edits (trim,
+// resize, overlay) finish well within that.
 //
-// Note: @ffmpeg/ffmpeg 0.12.x is browser-first. It may need
-// SharedArrayBuffer + cross-origin headers in production. If the
-// runtime can't load WASM here, swap this route to use
-// fluent-ffmpeg + @ffmpeg-installer (already in the lockfile).
+// Uses @ffmpeg/ffmpeg (WebAssembly) — no binary installation
+// needed. It runs FFmpeg entirely in JavaScript/WASM.
+//
+// NOTE: You need to install the dependency:
+//   npm install @ffmpeg/ffmpeg @ffmpeg/util
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
-import { createServiceSupabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'nodejs';
-export const maxDuration = 300;
-
-function extFromUrl(url: string, fallback = 'mp4'): string {
-  try {
-    const path = new URL(url).pathname;
-    const m = path.match(/\.([a-zA-Z0-9]{2,5})(?:\?|$)/);
-    return (m && m[1].toLowerCase()) || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-async function authorize(request: NextRequest): Promise<{ ok: true; userId: string } | NextResponse> {
-  // Internal calls from the orchestrator running server-side use a
-  // shared secret; user-driven calls use the cookie session.
-  const internalToken = process.env.EDITING_INTERNAL_TOKEN;
-  if (internalToken && request.headers.get('x-postgame-internal') === internalToken) {
-    return { ok: true, userId: 'internal' };
-  }
-
-  const auth = await createServerSupabase();
-  const { data: { user }, error } = await auth.auth.getUser();
-  if (error || !user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-  return { ok: true, userId: user.id };
-}
-
-interface FfmpegBody {
-  input_url?: string;
-  command?: string[];
-  output_format?: string;
-}
+// Admin client for storage uploads
+const adminSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
-  const auth = await authorize(request);
-  if ('ok' in auth === false) return auth as NextResponse;
-  const { userId } = auth as { ok: true; userId: string };
+  // Auth check
+  const supabase = createServerSupabase();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
 
-  let body: FfmpegBody;
+  // Parse request
+  let body: {
+    input_url: string;
+    command: string[];
+    output_format: string;
+  };
+
   try {
-    body = (await request.json()) as FfmpegBody;
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { input_url, command, output_format } = body;
-  if (!input_url || !Array.isArray(command) || command.length === 0 || !output_format) {
+  if (!body.input_url || !body.command) {
     return NextResponse.json(
-      { error: 'input_url, command (string[]), and output_format are required' },
+      { error: 'input_url and command are required' },
       { status: 400 }
     );
   }
 
-  // 1. Pull input bytes
-  const srcResp = await fetch(input_url);
-  if (!srcResp.ok) {
-    return NextResponse.json(
-      { error: `Failed to fetch input_url: ${srcResp.status}` },
-      { status: 400 }
-    );
-  }
-  const inputBytes = new Uint8Array(await srcResp.arrayBuffer());
-  const inputExt = extFromUrl(input_url, 'mp4');
-  const inputName = `input.${inputExt}`;
-  const outputName = `output.${output_format}`;
-
-  // 2. Run WASM ffmpeg
-  let outputBytes: Uint8Array;
   try {
+    // Dynamically import ffmpeg (it's a large WASM module, only load when needed)
     const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+    const { fetchFile } = await import('@ffmpeg/util');
+
+    // Initialize FFmpeg WASM
     const ffmpeg = new FFmpeg();
     await ffmpeg.load();
-    await ffmpeg.writeFile(inputName, inputBytes);
 
-    // The command builder may have used a generic 'input.mp4' literal.
-    // Rewrite it to match the actual extension we wrote into the FS so
-    // commands work regardless of input format.
-    const normalizedCommand = command.map((arg) =>
-      typeof arg === 'string' ? arg.replace(/^input\.[a-zA-Z0-9]+$/, inputName) : arg
-    );
+    // Download the source file
+    const inputFileName = `input.${getExtension(body.input_url)}`;
+    const outputFormat = body.output_format || 'mp4';
+    const outputFileName = `output.${outputFormat}`;
 
-    await ffmpeg.exec(normalizedCommand);
-    const result = await ffmpeg.readFile(outputName);
-    outputBytes = result instanceof Uint8Array ? result : new Uint8Array(0);
-    if (outputBytes.length === 0) {
-      throw new Error(`ffmpeg produced empty output (${outputName})`);
+    const inputData = await fetchFile(body.input_url);
+    await ffmpeg.writeFile(inputFileName, inputData);
+
+    // Run the FFmpeg command
+    // The command array contains the filters/options (e.g. ['-vf', 'scale=1080:1920'])
+    // We wrap it with input/output file references
+    await ffmpeg.exec([
+      '-i', inputFileName,
+      ...body.command,
+      '-y', // overwrite output
+      outputFileName,
+    ]);
+
+    // Read the output
+    const outputData = await ffmpeg.readFile(outputFileName);
+
+    // Upload to Supabase Storage
+    const timestamp = Date.now();
+    const storagePath = `edited/${user.id}/${timestamp}_${outputFileName}`;
+
+    const { error: uploadError } = await adminSupabase.storage
+      .from('media')
+      .upload(storagePath, outputData, {
+        contentType: `video/${outputFormat}`,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      // Try creating the bucket if it doesn't exist
+      if (uploadError.message?.includes('not found')) {
+        await adminSupabase.storage.createBucket('media', { public: true });
+        await adminSupabase.storage
+          .from('media')
+          .upload(storagePath, outputData, {
+            contentType: `video/${outputFormat}`,
+            upsert: true,
+          });
+      } else {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
     }
+
+    // Get the public URL
+    const { data: urlData } = adminSupabase.storage
+      .from('media')
+      .getPublicUrl(storagePath);
+
+    // Clean up WASM memory
+    await ffmpeg.deleteFile(inputFileName);
+    await ffmpeg.deleteFile(outputFileName);
+
+    return NextResponse.json({
+      output_url: urlData.publicUrl,
+      storage_path: storagePath,
+    });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'FFmpeg execution failed';
-    console.error('[api/editing/ffmpeg]', err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[ffmpeg-api]', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
 
-  // 3. Upload to Supabase Storage
-  const path = `edited/${userId}/${Date.now()}_${outputName}`;
-  const db = createServiceSupabase();
-
-  const contentTypeMap: Record<string, string> = {
-    mp4: 'video/mp4',
-    webm: 'video/webm',
-    mov: 'video/quicktime',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    webp: 'image/webp',
-  };
-
-  const { error: uploadError } = await db.storage
-    .from('media')
-    .upload(path, outputBytes, {
-      contentType: contentTypeMap[output_format] || 'application/octet-stream',
-      upsert: false,
-    });
-
-  if (uploadError) {
-    return NextResponse.json(
-      { error: `Storage upload failed: ${uploadError.message}` },
-      { status: 500 }
-    );
+/** Get file extension from a URL */
+function getExtension(url: string): string {
+  const path = new URL(url).pathname;
+  const ext = path.split('.').pop()?.toLowerCase();
+  if (ext && ['mp4', 'mov', 'webm', 'avi', 'mkv', 'jpg', 'jpeg', 'png'].includes(ext)) {
+    return ext;
   }
-
-  const { data: pub } = db.storage.from('media').getPublicUrl(path);
-
-  return NextResponse.json({
-    output_url: pub.publicUrl,
-    storage_path: path,
-  });
+  return 'mp4';
 }

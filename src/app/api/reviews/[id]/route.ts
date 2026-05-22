@@ -1,116 +1,130 @@
 // ============================================================
-// GET    /api/reviews/[id]  — Fetch a single review session with its comments
-// PATCH  /api/reviews/[id]  — Update status, notes, or brand_decision
-// DELETE /api/reviews/[id]  — Soft-delete (set status to cancelled)
+// Single Review Session API — GET + PATCH
+//
+// GET /api/reviews/[id]
+//   Returns a single review session with all its comments.
+//
+// PATCH /api/reviews/[id]
+//   Updates mutable fields: status, notes, editor_deadline,
+//   brand_decision, asset_name, video_url.
 // ============================================================
 
-import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerSupabase } from '@/lib/supabase-server';
+
+// --- GET: Single review with comments ---
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const supabase = createServerSupabase();
 
-  const { data, error } = await supabase
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  const reviewId = params.id;
+
+  // Fetch the review session
+  const { data: review, error: reviewError } = await supabase
     .from('review_sessions')
-    .select('*, review_comments(*)')
-    .eq('id', params.id)
+    .select('*')
+    .eq('id', reviewId)
     .single();
 
-  if (error) {
-    console.error('Error fetching review session:', error);
+  if (reviewError || !review) {
     return NextResponse.json({ error: 'Review session not found' }, { status: 404 });
   }
 
-  return NextResponse.json(data);
+  // Fetch comments for this session
+  const { data: comments, error: commentsError } = await supabase
+    .from('review_comments')
+    .select('*')
+    .eq('session_id', reviewId)
+    .order('created_at', { ascending: true });
+
+  if (commentsError) {
+    return NextResponse.json(
+      { error: `Failed to load comments: ${commentsError.message}` },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    review,
+    comments: comments ?? [],
+  });
 }
+
+// --- PATCH: Update review session ---
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const supabase = createServerSupabase();
 
-  // Verify the session exists
-  const { data: existing, error: fetchError } = await supabase
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  const reviewId = params.id;
+
+  // Parse update fields
+  let body: {
+    status?: string;
+    notes?: string;
+    editor_deadline?: string;
+    brand_decision?: string;
+    asset_name?: string;
+    video_url?: string;
+  };
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  // Verify the review exists
+  const { data: existing, error: existingError } = await supabase
     .from('review_sessions')
-    .select('id, status')
-    .eq('id', params.id)
+    .select('id')
+    .eq('id', reviewId)
     .single();
 
-  if (fetchError || !existing) {
+  if (existingError || !existing) {
     return NextResponse.json({ error: 'Review session not found' }, { status: 404 });
   }
 
-  const body = await request.json();
+  // Build the update payload — only include fields that were provided
+  const updatePayload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
 
-  const updates: Record<string, unknown> = {};
-  if (body.status !== undefined) updates.status = body.status;
-  if (body.notes !== undefined) updates.notes = body.notes;
-  if (body.brand_decision !== undefined) updates.brand_decision = body.brand_decision;
-  if (body.video_url !== undefined) updates.video_url = body.video_url;
-  if (body.video_duration_seconds !== undefined) updates.video_duration_seconds = body.video_duration_seconds;
-  if (body.editor_deadline !== undefined) updates.editor_deadline = body.editor_deadline;
-  if (body.asset_name !== undefined) updates.asset_name = body.asset_name;
-  if (body.athlete_name !== undefined) updates.athlete_name = body.athlete_name;
-  if (body.version_number !== undefined) updates.version_number = body.version_number;
+  if (body.status !== undefined) updatePayload.status = body.status;
+  if (body.notes !== undefined) updatePayload.notes = body.notes;
+  if (body.editor_deadline !== undefined) updatePayload.editor_deadline = body.editor_deadline;
+  if (body.brand_decision !== undefined) updatePayload.brand_decision = body.brand_decision;
+  if (body.asset_name !== undefined) updatePayload.asset_name = body.asset_name;
+  if (body.video_url !== undefined) updatePayload.video_url = body.video_url;
 
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
-  }
-
-  const { data, error } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('review_sessions')
-    .update(updates)
-    .eq('id', params.id)
+    .update(updatePayload)
+    .eq('id', reviewId)
     .select()
     .single();
 
-  if (error) {
-    console.error('Error updating review session:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (updateError) {
+    return NextResponse.json(
+      { error: `Failed to update: ${updateError.message}` },
+      { status: 500 }
+    );
   }
 
-  return NextResponse.json(data);
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-
-  const { data, error } = await supabase
-    .from('review_sessions')
-    .update({ status: 'cancelled' })
-    .eq('id', params.id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error cancelling review session:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(data);
+  return NextResponse.json({ review: updated });
 }

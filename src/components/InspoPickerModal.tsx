@@ -1,201 +1,208 @@
 // ============================================================
-// InspoPickerModal — modal that lets a CM choose one or more
-// approved inspo_items from the library to use as the source asset
-// (and/or reference) for an AI edit.
+// Inspo Picker Modal
 //
-// Single-select by default; pass `multiSelect` to allow several.
+// A reusable modal that lets CMs browse the inspo library
+// and select assets to attach to concepts or creator briefs.
+// Used on the concepts page (Collaborate mode) and the
+// creator brief editor.
+//
+// Props:
+//   - isOpen: boolean — show/hide the modal
+//   - onClose: () => void
+//   - onSelect: (items: SelectedInspoItem[]) => void
+//   - selectedIds: string[] — already-selected item IDs (shown as checked)
+//   - maxSelections?: number — limit how many can be picked (default: 20)
+//   - filterContentType?: string — pre-filter to photos or videos
 // ============================================================
 
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createBrowserSupabase } from '@/lib/supabase';
 
+// Lightweight type for what the picker returns
 export interface SelectedInspoItem {
   id: string;
-  thumbnail_url: string | null;
   file_url: string | null;
-  content_type: 'video' | 'image' | string;
-  visual_description?: string | null;
-  athlete_name?: string | null;
-  sport?: string | null;
-  brand_id?: string | null;
+  thumbnail_url: string | null;
+  mime_type: string | null;
+  content_type: string;
+  visual_description: string | null;
+  sport: string | null;
+  athlete_name: string | null;
+  search_phrases: string[];
 }
 
-interface Props {
-  open: boolean;
+interface InspoPickerModalProps {
+  isOpen: boolean;
   onClose: () => void;
   onSelect: (items: SelectedInspoItem[]) => void;
-  multiSelect?: boolean;
-  // Optional content-type filter — most callers want videos only.
-  contentType?: 'video' | 'image';
-  title?: string;
+  selectedIds?: string[];
+  maxSelections?: number;
+  filterContentType?: string;
 }
 
-const PAGE_SIZE = 30;
-
 export default function InspoPickerModal({
-  open,
+  isOpen,
   onClose,
   onSelect,
-  multiSelect = false,
-  contentType,
-  title = 'Pick from Inspo Library',
-}: Props) {
+  selectedIds = [],
+  maxSelections = 20,
+  filterContentType,
+}: InspoPickerModalProps) {
   const [items, setItems] = useState<SelectedInspoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Record<string, SelectedInspoItem>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set(selectedIds));
+  const [total, setTotal] = useState(0);
 
-  const load = useCallback(async () => {
-    if (!open) return;
+  // Sync selectedIds prop
+  useEffect(() => {
+    setSelected(new Set(selectedIds));
+  }, [selectedIds]);
+
+  // Fetch items
+  const fetchItems = useCallback(async () => {
+    if (!isOpen) return;
     setLoading(true);
-    const supabase = createBrowserSupabase();
 
-    let q = supabase
-      .from('inspo_items')
-      .select('id, thumbnail_url, file_url, content_type, visual_description, athlete_name, sport, brand_id')
-      .eq('triage_status', 'approved')
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE);
+    const params = new URLSearchParams();
+    params.set('tagging_status', 'tagged');
+    params.set('limit', '60');
+    params.set('sort', 'hero_first');
+    if (search) params.set('q', search);
+    if (filterContentType) params.set('content_type', filterContentType);
 
-    if (contentType) q = q.eq('content_type', contentType);
-
-    if (search.trim()) {
-      const term = `%${search.trim()}%`;
-      // Match on the most useful free-text columns; OR-style filter.
-      q = q.or(
-        `visual_description.ilike.${term},athlete_name.ilike.${term},sport.ilike.${term}`
-      );
+    try {
+      const res = await fetch(`/api/inspo?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items || []);
+        setTotal(data.total || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch inspo for picker:', err);
     }
 
-    const { data, error } = await q;
-    if (error) {
-      console.error('Inspo load failed:', error);
-      setItems([]);
-    } else {
-      setItems((data as SelectedInspoItem[]) || []);
-    }
     setLoading(false);
-  }, [open, contentType, search]);
+  }, [isOpen, search, filterContentType]);
 
   useEffect(() => {
-    if (open) {
-      load();
-      setSelected({});
-    }
-  }, [open, load]);
+    fetchItems();
+  }, [fetchItems]);
 
-  function toggle(item: SelectedInspoItem) {
+  // Toggle selection
+  const toggleItem = (item: SelectedInspoItem) => {
     setSelected((prev) => {
-      if (multiSelect) {
-        const next = { ...prev };
-        if (next[item.id]) {
-          delete next[item.id];
-        } else {
-          next[item.id] = item;
-        }
-        return next;
+      const next = new Set(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else if (next.size < maxSelections) {
+        next.add(item.id);
       }
-      // single-select: replace
-      return { [item.id]: item };
+      return next;
     });
-  }
+  };
 
-  function confirm() {
-    const list = Object.values(selected);
-    if (list.length === 0) return;
-    onSelect(list);
+  // Confirm selection
+  const handleConfirm = () => {
+    const selectedItems = items.filter((item) => selected.has(item.id));
+    onSelect(selectedItems);
     onClose();
-  }
+  };
 
-  if (!open) return null;
-
-  const selectedCount = Object.keys(selected).length;
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="bg-[#141414] border border-[#262626] rounded-xl w-full max-w-5xl max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative bg-[#141414] border border-white/10 rounded-xl w-[90vw] max-w-4xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[#262626]">
-          <h2 className="text-lg font-bold text-white">{title}</h2>
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Pick from Inspo Library</h2>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {selected.size} selected{maxSelections < 20 ? ` (max ${maxSelections})` : ''}
+              {' '}&middot; {total} asset{total !== 1 ? 's' : ''} available
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl leading-none"
-            aria-label="Close"
+            className="text-gray-500 hover:text-white transition-colors text-xl"
           >
-            ×
+            ✕
           </button>
         </div>
 
         {/* Search */}
-        <div className="p-5 border-b border-[#262626]">
+        <div className="px-5 py-3 border-b border-white/10">
           <input
             type="text"
+            placeholder="Search by vibe, sport, description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
-            placeholder="Search by description, athlete, sport…"
-            className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#262626] rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-orange-600"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/30"
           />
-          <button
-            onClick={load}
-            className="mt-2 text-xs text-orange-600 hover:text-orange-500"
-          >
-            {loading ? 'Searching…' : 'Search'}
-          </button>
         </div>
 
         {/* Grid */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
-            <div className="text-center text-gray-500 py-12">Loading…</div>
+            <div className="text-center text-gray-400 py-10">Loading assets...</div>
           ) : items.length === 0 ? (
-            <div className="text-center text-gray-500 py-12">
-              No approved inspo items match your search.
+            <div className="text-center text-gray-500 py-10">
+              No tagged assets found. Upload and tag footage on the Intake page first.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
               {items.map((item) => {
-                const isSel = !!selected[item.id];
+                const isSelected = selected.has(item.id);
+                const thumbUrl = item.thumbnail_url || item.file_url;
+                const isVideo = item.mime_type?.startsWith('video/');
+
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    onClick={() => toggle(item)}
-                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-colors text-left ${
-                      isSel
-                        ? 'border-orange-600 ring-2 ring-orange-600/40'
-                        : 'border-[#262626] hover:border-[#404040]'
+                    onClick={() => toggleItem(item)}
+                    className={`relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                      isSelected
+                        ? 'border-blue-500 ring-1 ring-blue-500/30'
+                        : 'border-transparent hover:border-white/20'
                     }`}
                   >
-                    {item.thumbnail_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.thumbnail_url}
-                        alt={item.visual_description || 'inspo'}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#0a0a0a] flex items-center justify-center text-xs text-gray-600">
-                        no thumbnail
-                      </div>
-                    )}
-                    {item.content_type === 'video' && (
-                      <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-bold tracking-wider">
-                        VIDEO
-                      </span>
-                    )}
-                    {isSel && (
-                      <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-bold">
-                        ✓
-                      </span>
-                    )}
-                    <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                      <div className="text-xs text-white truncate">
-                        {item.athlete_name || item.sport || item.visual_description || ''}
-                      </div>
+                    <div className="aspect-square bg-white/5">
+                      {thumbUrl ? (
+                        <img
+                          src={thumbUrl}
+                          alt={item.visual_description || ''}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600 text-2xl">
+                          {isVideo ? '🎬' : '📷'}
+                        </div>
+                      )}
                     </div>
-                  </button>
+
+                    {/* Check overlay */}
+                    {isSelected && (
+                      <div className="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        ✓
+                      </div>
+                    )}
+
+                    {/* Video indicator */}
+                    {isVideo && (
+                      <div className="absolute bottom-1 left-1 px-1 py-0.5 bg-black/70 text-white text-[9px] rounded">
+                        VIDEO
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -203,32 +210,22 @@ export default function InspoPickerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-5 border-t border-[#262626]">
-          <div className="text-sm text-gray-500">
-            {selectedCount === 0
-              ? 'Select an item to continue'
-              : `${selectedCount} selected`}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-[#262626] hover:bg-[#333] text-gray-200 rounded-lg text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={confirm}
-              disabled={selectedCount === 0}
-              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Use {selectedCount > 1 ? `${selectedCount} items` : 'this item'}
-            </button>
-          </div>
+        <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={selected.size === 0}
+            className="px-5 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Attach {selected.size} Asset{selected.size !== 1 ? 's' : ''}
+          </button>
         </div>
       </div>
     </div>
   );
 }
-
-// Re-export named for the page imports — they expect both forms.
-export { InspoPickerModal };

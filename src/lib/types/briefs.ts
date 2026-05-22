@@ -4,12 +4,6 @@
 // so the editor can catch mistakes before they hit production.
 // ============================================================
 
-// --- Creative seed (user-provided idea for concept generation) ---
-export interface CreativeSeed {
-  name: string;
-  description: string;
-}
-
 // --- Brief types ---
 
 export type BriefCampaignType =
@@ -187,7 +181,6 @@ export interface ShootLogisticsContent {
   shoot_date: string | null;     // ISO date "2026-06-15"
   shoot_time: string | null;     // e.g. "10:00 AM"
   location: string | null;       // free-text address/venue
-  location_2: string | null;     // optional second location (e.g. follow-up spot)
   postgame_contacts: ShootContact[];  // up to 2-3 Postgame team members
   videographer: ShootContact | null;  // the assigned videographer
 }
@@ -286,17 +279,6 @@ export interface CreatorBriefSection {
     | FileDeliverySectionContent;
 }
 
-// Athlete profile — short bio card shown on the creator brief
-export interface AthleteProfile {
-  name: string;
-  school: string;
-  sport: string;
-  year: string;           // e.g. "Sophomore", "Junior"
-  instagram: string;      // handle without @
-  bio: string;            // short blurb
-  photo_url: string | null;
-}
-
 // The full creator brief record from Supabase
 export interface CreatorBrief {
   id: string;
@@ -310,15 +292,6 @@ export interface CreatorBrief {
   reference_images: { url: string; caption?: string }[];
   brand_color: string | null;
   brand_logo_url: string | null;
-  athlete_photo_url: string | null;
-  athlete_photo_focal_point: string | null;
-  shoot_date: string | null;
-  shoot_time: string | null;
-  location: string | null;
-  location_2: string | null;
-  postgame_contacts: ShootContact[];
-  videographer: ShootContact | null;
-  athlete_profile: AthleteProfile | null;
   status: CreatorBriefStatus;
   published_at: string | null;
   created_by: string;

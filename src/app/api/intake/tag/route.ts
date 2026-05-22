@@ -12,22 +12,13 @@
 //   4. Logs the run to agent_runs
 // ============================================================
 
-import { createServerClient } from '@supabase/ssr';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import { tagInspoItem, tagBatch } from '@/lib/agents/intake-agent';
 
 export async function POST(request: NextRequest) {
   // Auth check
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll() {},
-      },
-    }
-  );
+  const supabase = createServerSupabase();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

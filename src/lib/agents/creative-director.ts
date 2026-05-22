@@ -79,9 +79,6 @@ function buildSystemPrompt(voiceRules: string | null): string {
 
 Your job: take a brand brief and produce 3 to 5 distinct creative concept proposals. Each concept should be a complete creative direction — not just a title, but a full pitch with reasoning.
 
-POSTGAME'S STYLE — "ELEVATED BTS":
-Postgame's signature content style is called "Elevated BTS" — behind-the-scenes footage that is intentionally shot and edited to feel polished and brand-ready. It's NOT raw phone-behind-the-camera content. It's cinematic, styled, and captures authentic moments with professional quality. Every concept you propose should reflect this Elevated BTS aesthetic.
-
 PERSONA:
 - You are confident, brand-savvy, and slightly opinionated. Creative Directors have taste.
 - You think in terms of visual storytelling, athlete authenticity, and platform-native content.
@@ -102,21 +99,6 @@ CONSTRAINTS:
 - Consider the brand's history if provided. What worked before? What didn't?`;
 }
 
-// Campaign structure types — how the brief maps to athletes
-export type CampaignStructure = 'individual' | 'team_collab' | 'multi_athlete_cohesive';
-
-// Parsed athlete from the uploaded roster CSV
-export interface RosterAthlete {
-  name: string;
-  school?: string;
-  position?: string;
-  instagram_handle?: string;
-  instagram_followers?: number;
-  tiktok_followers?: number;
-  twitter_followers?: number;
-  total_followers?: number;
-}
-
 // Optional inputs from the "Collaborate" panel on the concepts page.
 // When an AM provides these, they get woven into the prompt so the
 // Creative Director agent tailors its concepts to a specific shoot.
@@ -126,8 +108,6 @@ export interface CollaborateInputs {
   location?: string;
   referenceImageUrls?: string[];
   creativeSeeds?: string[];
-  campaignStructure?: CampaignStructure;
-  athleteRoster?: RosterAthlete[];
 }
 
 // Build the user message with the actual brief data
@@ -189,15 +169,31 @@ function buildUserMessage(
     });
   }
 
-  // Inspo items
+  // Inspo items — real tagged footage from the Creative Brain
   if (inspoItems.length > 0) {
-    message += `\n## INSPO LIBRARY (${inspoItems.length} relevant items)\n`;
-    message += `Reference these by ID in your concepts.\n\n`;
+    message += `\n## INSPO LIBRARY (${inspoItems.length} tagged assets)\n`;
+    message += `These are real assets in Postgame's library, tagged by AI. Reference them by ID in your concepts — they'll be attached to the creator brief.\n\n`;
     inspoItems.forEach((item) => {
       message += `- **ID:** ${item.id}`;
-      if (item.title) message += ` | **Title:** ${item.title}`;
-      if (item.tags) message += ` | **Tags:** ${JSON.stringify(item.tags)}`;
-      if (item.vibe_words) message += ` | **Vibe:** ${item.vibe_words}`;
+      if (item.content_type) message += ` | **Type:** ${item.content_type}`;
+      if (item.sport) message += ` | **Sport:** ${item.sport}`;
+      if (item.athlete_name) message += ` | **Athlete:** ${item.athlete_name}`;
+      if (item.is_hero) message += ` | **★ HERO ASSET**`;
+      if (item.visual_description) {
+        // Truncate long descriptions to keep prompt manageable
+        const desc = (item.visual_description as string).slice(0, 120);
+        message += `\n  Description: "${desc}${(item.visual_description as string).length > 120 ? '...' : ''}"`;
+      }
+      // Include vibe words — they're the Creative Director's language
+      const vibes = item.search_phrases as string[] | undefined;
+      if (vibes && vibes.length > 0) {
+        message += `\n  Vibes: ${vibes.join(', ')}`;
+      }
+      // Include brief_fit so the CD knows what campaigns this asset suits
+      const fits = item.brief_fit as string[] | undefined;
+      if (fits && fits.length > 0) {
+        message += `\n  Brief fit: ${fits.join(', ')}`;
+      }
       message += '\n';
     });
   }
@@ -206,68 +202,11 @@ function buildUserMessage(
   // more specific and actionable for the videographer brief.
   if (collaborateInputs) {
     const ci = collaborateInputs;
-
-    // Campaign structure — tells the agent how to scope concepts
-    if (ci.campaignStructure) {
-      message += `\n## CAMPAIGN STRUCTURE\n`;
-      switch (ci.campaignStructure) {
-        case 'individual':
-          message += `This is an **Individual Athlete** campaign.
-
-DELIVERABLE STRUCTURE:
-- Each athlete gets their OWN standalone creative brief and content package
-- Concepts should be adaptable to any single athlete on the roster
-- Each concept = a personalized content angle highlighting that athlete's personality, story, and style
-- No master/group cut — everything is individual
-
-Generate concepts that work as repeatable templates any athlete on the roster could star in.\n`;
-          break;
-        case 'team_collab':
-          message += `This is a **Team Collaboration** campaign.
-
-DELIVERABLE STRUCTURE:
-- Athletes are grouped together for shoots (duos, trios, or full squad)
-- Concepts should be built around group dynamics, chemistry, and collaborative moments
-- Deliverables include group content AND individual moments captured during the group shoot
-- Think: relay-style challenges, group meals, squad energy, competitive segments
-
-Generate concepts centered on group energy and interaction.\n`;
-          break;
-        case 'multi_athlete_cohesive':
-          message += `This is a **Multi-Athlete Cohesive** campaign.
-
-DELIVERABLE STRUCTURE — THIS IS CRITICAL:
-1. **Individual athlete highlight videos** — EACH athlete on the roster gets their own personalized highlight video to post on their own socials. Same visual template/format, but featuring that specific athlete.
-2. **Master cut** — ONE hero video that highlights ALL athletes together as a campaign sizzle reel. This is the brand's main deliverable.
-
-So every concept you propose must work at BOTH levels:
-- As a repeatable individual format (filmed the same way for each athlete)
-- As a combined master cut that stitches the best moments from every athlete into one cohesive piece
-
-Think: consistent set design, repeated format per athlete, then a master edit that weaves everyone together. The Raising Cane's example: each athlete gets their own studio moment + field workout clip, and the master cut is a hype reel of all athletes.\n`;
-          break;
-      }
-    }
-
-    // Athlete roster — the approved list of athletes for this campaign
-    if (ci.athleteRoster && ci.athleteRoster.length > 0) {
-      message += `\n## APPROVED ATHLETE ROSTER (${ci.athleteRoster.length} athletes)\n`;
-      message += `These are the confirmed athletes for this campaign. Use their real names, schools, and social stats to inform your concepts.\n\n`;
-      ci.athleteRoster.forEach((a, i) => {
-        message += `${i + 1}. **${a.name}**`;
-        if (a.position) message += ` — ${a.position}`;
-        if (a.school) message += ` @ ${a.school}`;
-        if (a.instagram_handle) message += ` | IG: @${a.instagram_handle}`;
-        if (a.total_followers) message += ` | ${(a.total_followers).toLocaleString()} total followers`;
-        message += '\n';
-      });
-    }
-
-    const hasShootDetails = ci.athleteName || ci.shootDate || ci.location ||
+    const hasAny = ci.athleteName || ci.shootDate || ci.location ||
       (ci.referenceImageUrls && ci.referenceImageUrls.length > 0) ||
       (ci.creativeSeeds && ci.creativeSeeds.length > 0);
 
-    if (hasShootDetails) {
+    if (hasAny) {
       message += `\n## SHOOT DETAILS (provided by AM)\n`;
       message += `Tailor every concept to these specifics.\n\n`;
       if (ci.athleteName) message += `**Athlete:** ${ci.athleteName}\n`;
@@ -355,22 +294,32 @@ export async function generateConcepts(
     .limit(3);
 
   // --- Step 3: Find relevant inspo items ---
-  // Using tag-based filtering for v1 (will upgrade to pgvector later)
+  // Pull tagged assets from the inspo library so the Creative Director
+  // can reference real footage when building concepts. Uses the actual
+  // 13-category tag system from Station 1 (Claude Vision tagging).
   let inspoItems: Record<string, unknown>[] = [];
   try {
-    // Extract keywords from the brief for tag matching
     const targeting = brief.athlete_targeting as Record<string, unknown> | null;
     const sports = (targeting?.sports as string[]) || [];
 
-    // Build a simple tag-based query
+    // Only pull successfully tagged items — they have real AI-generated metadata
     let inspoQuery = supabase
       .from('inspo_items')
-      .select('id, title, tags, vibe_words, sport, content_purpose')
+      .select('id, file_url, thumbnail_url, content_type, sport, athlete_name, visual_description, pro_tags, social_tags, context_tags, search_phrases, brief_fit, is_hero')
+      .eq('tagging_status', 'tagged')
+      .order('is_hero', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(25);
 
-    // Filter by sport if targeting specifies one
+    // Filter by sport if athlete targeting specifies one
     if (sports.length > 0) {
       inspoQuery = inspoQuery.in('sport', sports);
+    }
+
+    // Filter by brand if we want brand-specific inspo
+    if (brief.brand_id) {
+      // Get both brand-specific AND general inspo (no brand_id)
+      inspoQuery = inspoQuery.or(`brand_id.eq.${brief.brand_id},brand_id.is.null`);
     }
 
     const { data: inspoData } = await inspoQuery;
@@ -535,16 +484,6 @@ export async function generateConcepts(
   }
 
   // --- Step 7: Save concepts to Supabase ---
-  const VALID_SCOPES = ['ugc_only', 'hybrid', 'full_production'] as const;
-  function sanitizeScope(raw: unknown): 'ugc_only' | 'hybrid' | 'full_production' {
-    const s = String(raw || '').toLowerCase();
-    if (VALID_SCOPES.includes(s as typeof VALID_SCOPES[number])) return s as typeof VALID_SCOPES[number];
-    // Fuzzy match: if the AI wrote a description, guess from keywords
-    if (s.includes('ugc') || s.includes('user generated')) return 'ugc_only';
-    if (s.includes('full') || s.includes('studio') || s.includes('high')) return 'full_production';
-    return 'hybrid'; // safe default
-  }
-
   const conceptRecords = conceptsArray.map((c: Record<string, unknown>) => ({
     brief_id: briefId,
     name: c.name as string,
@@ -552,7 +491,7 @@ export async function generateConcepts(
     athlete_archetype: (c.athlete_archetype as string) || null,
     settings_suggestions: (c.settings_suggestions as string[]) || [],
     inspo_references: (c.inspo_item_ids as string[]) || [],
-    production_scope: sanitizeScope(c.production_scope),
+    production_scope: (c.production_scope as string) || 'hybrid',
     estimated_assets: (c.estimated_assets as number) || null,
     status: 'proposed' as const,
     generated_by: 'claude' as const,

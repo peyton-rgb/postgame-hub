@@ -1,315 +1,486 @@
 // ============================================================
-// Distributor Agent — Content Distribution Strategist
+// Distributor Agent — Station 4 AI Agent
 //
-// What it does:
-//   1. Takes context about a final asset or campaign
-//   2. Optionally fetches campaign brief details and existing
-//      posting packages to avoid scheduling conflicts
-//   3. Sends everything to Claude for analysis
-//   4. Claude returns a structured distribution plan:
-//      - Recommended platforms with priority + rationale
-//      - Posting schedule with optimal dates/times
-//      - Caption guidelines per platform
-//      - Cross-promotion tips
-//      - NIL compliance reminders
-//   5. Logs the run to agent_runs for auditing
+// The Distributor Agent handles the caption and posting pipeline.
+// It generates platform-native captions in Postgame's voice,
+// suggests hashtags, writes FTC disclosures, and assembles
+// complete posting packages for athletes.
 //
-// This function is called by POST /api/agents/distributor
+// Functions:
+//   1. generateCaptions  — 3 variants (short/medium/long) per channel
+//   2. generateHashtags  — platform-aware hashtag suggestions
+//   3. generateFtcNote   — FTC-compliant disclosure copy
+//   4. generatePostingPackage — full bundle for athlete delivery
+//   5. checkNcaaCompliance — flags NCAA-restricted terms
+//
+// Uses Postgame's voice_settings from Supabase to keep all
+// output on-brand. Respects channel-specific character limits
+// and content norms.
 // ============================================================
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
 
-// Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
 const anthropic = new Anthropic();
 
-// Admin Supabase client for full access
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// --- NCAA restricted terms ---
+// The NCAA restricts use of these terms in NIL-related content.
+// If any appear in captions, the agent flags them for review.
+const NCAA_RESTRICTED_TERMS = [
+  'March Madness',
+  'Final Four',
+  'Elite Eight',
+  'Sweet Sixteen',
+  'Sweet 16',
+  'College World Series',
+  'College Cup',
+  'Frozen Four',
+  'College Football Playoff',
+  'CFP',
+  'Big Ten',
+  'Big 12',
+  'SEC Championship',
+  'ACC Championship',
+  'Pac-12',
+  'Big East',
+  'Mountain West',
+  'American Athletic',
+  'Sun Belt',
+  'Conference USA',
+  'Mid-American',
+  'MAC Championship',
+  'Bowl Championship',
+  'BCS',
+  'NCAA Tournament',
+  'NCAA Championship',
+  'The Big Dance',
+  'Selection Sunday',
+  'Bracketology',
+  'NIT',
+];
 
-// ---------- Types ----------
+// --- Channel-specific constraints ---
+const CHANNEL_CONFIG: Record<string, { maxLength: number; hashtagLimit: number; notes: string }> = {
+  instagram: {
+    maxLength: 2200,
+    hashtagLimit: 30,
+    notes: 'Instagram favors storytelling captions. First line is the hook. Use line breaks for readability. Hashtags go at the end or in a comment.',
+  },
+  tiktok: {
+    maxLength: 4000,
+    hashtagLimit: 5,
+    notes: 'TikTok captions should be punchy and short. Use trending language. Hashtags are part of discoverability — keep them relevant, not spammy.',
+  },
+  linkedin: {
+    maxLength: 3000,
+    hashtagLimit: 5,
+    notes: 'LinkedIn is professional. Lead with a bold statement or stat. Use line breaks. Hashtags should be industry-relevant.',
+  },
+  youtube: {
+    maxLength: 5000,
+    hashtagLimit: 15,
+    notes: 'YouTube descriptions should front-load key info. Include timestamps if relevant. Hashtags go above the fold.',
+  },
+  'twitter/x': {
+    maxLength: 280,
+    hashtagLimit: 3,
+    notes: 'Twitter/X is ultra-concise. Every word counts. One or two hashtags max for engagement.',
+  },
+  twitter: {
+    maxLength: 280,
+    hashtagLimit: 3,
+    notes: 'Twitter/X is ultra-concise. Every word counts. One or two hashtags max for engagement.',
+  },
+  newsletter: {
+    maxLength: 10000,
+    hashtagLimit: 0,
+    notes: 'Newsletter copy is conversational and informative. No hashtags. Write like you are talking to a friend who loves sports.',
+  },
+};
 
-export interface DistributorParams {
-  final_asset_id?: string;
-  campaign_id?: string;
-  athlete_name: string;
-  asset_type: string;           // e.g. "reel", "photo", "carousel", "video"
-  content_description: string;  // brief description of the content
+// --- Types ---
+
+export interface CaptionGenerationParams {
+  assetDescription: string;
+  channel: string;
+  athleteName?: string;
+  brandName?: string;
+  campaignName?: string;
+  tone?: string;
+  voiceRules?: string[];
 }
 
-export interface PlatformRecommendation {
-  platform: string;
-  priority: 'primary' | 'secondary';
-  rationale: string;
+export interface CaptionResult {
+  captions: {
+    short: string;
+    medium: string;
+    long: string;
+  };
+  hashtags: string[];
+  ftc_note: string;
 }
 
-export interface PostingSlot {
-  platform: string;
-  recommended_date: string;
-  recommended_time: string;
-  reasoning: string;
+export interface HashtagParams {
+  brandName?: string;
+  campaignName?: string;
+  athleteName?: string;
+  sport?: string;
+  channel: string;
+  context?: string;
 }
 
-export interface CaptionGuideline {
-  platform: string;
-  tone: string;
-  length_guidance: string;
-  hashtag_strategy: string;
+export interface PostingPackageParams {
+  assetDescription: string;
+  channel: string;
+  athleteName: string;
+  brandName?: string;
+  campaignName?: string;
+  sport?: string;
+  tone?: string;
+  voiceRules?: string[];
+  postingWindowDays?: number;
 }
 
-export interface DistributionPlan {
-  recommended_platforms: PlatformRecommendation[];
-  posting_schedule: PostingSlot[];
-  caption_guidelines: CaptionGuideline[];
-  cross_promotion_tips: string[];
-  compliance_reminders: string[];
-  summary: string;
+export interface PostingPackageResult {
+  captions: {
+    short: string;
+    medium: string;
+    long: string;
+  };
+  hashtags: string[];
+  mentions: string[];
+  ftc_note: string;
+  platform_notes: string;
+  posting_window_start: string;
+  posting_window_end: string;
 }
 
-// ---------- System Prompt ----------
+export interface NcaaComplianceResult {
+  isCompliant: boolean;
+  flaggedTerms: string[];
+  suggestions: Record<string, string>;
+}
 
-const SYSTEM_PROMPT = `You are the Distributor Agent for Postgame, an NIL (Name, Image, Likeness) marketing agency that creates content campaigns featuring college athletes.
+// --- System prompt builder ---
 
-YOUR ROLE:
-You are a social media distribution strategist who specializes in NIL athlete marketing. You decide WHEN, WHERE, and HOW content should be posted to maximize reach, engagement, and brand value while staying fully compliant with NCAA NIL regulations.
+function buildDistributorSystemPrompt(voiceRules?: string[]): string {
+  return `You are the Distributor for Postgame, an NIL (Name, Image, Likeness) marketing agency that creates content campaigns for college athletes and brands.
 
-WHAT YOU KNOW:
-- Platform algorithms and optimal posting windows (Instagram, TikTok, YouTube, X/Twitter, LinkedIn, Snapchat)
-- NIL compliance requirements — athletes must have proper disclosures (#ad, #partner, paid partnership tags)
-- College athlete audience demographics — primarily 18-24, high engagement on TikTok and Instagram
-- Sports calendar awareness — game days, rivalry weeks, off-season timing all affect performance
-- Brand safety considerations for athlete-sponsored content
+Your job: write social media captions that are authentic, athlete-first, and on-brand.
 
-PLATFORM EXPERTISE:
-- Instagram: Reels (best reach), Stories (engagement), Feed posts (brand polish), Carousels (education/storytelling)
-- TikTok: Native vertical video, trending sounds, duets, 15-60s sweet spot
-- YouTube: Shorts for discovery, long-form for depth, community posts for engagement
-- X/Twitter: Real-time moments, game day reactions, quote tweets for conversation
-- LinkedIn: Professional brand building, brand partner highlights, career milestones
-- Snapchat: Behind-the-scenes, day-in-the-life, casual athlete personality
+PERSONA:
+- You write like a creative director who lives on social media — not a corporate marketer.
+- Your tone is confident, slightly editorial, and always respectful of the athlete's story.
+- You understand that NIL content lives at the intersection of brand deals and personal brand — it should never feel like a forced ad.
+- You write for Postgame's "Elevated BTS" style: polished, intentional behind-the-scenes content that looks premium but feels real.
 
-SCHEDULING PRINCIPLES:
-1. Never stack multiple posts on the same platform in one day
-2. Space content across the week for sustained visibility
-3. Align with the athlete's sport schedule (avoid posting during games/practice)
-4. Consider time zones for the athlete's school market
-5. Primary platform gets first-post advantage
-6. Cross-promote within 24-48 hours on secondary platforms
+POSTGAME VOICE:
+- Confident but not cocky
+- Authentic — never try-hard or cringe
+- Athlete-first — the athlete is the hero, never the brand
+- Visual language — write captions that complement what people see, don't over-explain
+- Platform-native — what works on TikTok does NOT work on LinkedIn
+${voiceRules && voiceRules.length > 0 ? `\nBRAND VOICE RULES:\n${voiceRules.map((r) => `- ${r}`).join('\n')}\n` : ''}
 
-OUTPUT: Return ONLY valid JSON matching the requested schema. No extra text, no markdown.`;
+NCAA COMPLIANCE:
+- NEVER use NCAA-trademarked terms: "March Madness", "Final Four", "Elite Eight", "Sweet Sixteen", "College World Series", etc.
+- NEVER reference specific conference names unless the brand has a licensing deal.
+- Use generic alternatives: "the big tournament", "championship weekend", "postseason run"
+- Always include FTC disclosure for sponsored/NIL content (#ad or #partner at minimum)
 
-// ---------- Main Function ----------
+CAPTION RULES:
+- Short captions: 1-2 sentences. Punchy. Social-first.
+- Medium captions: 3-5 sentences. More context, still scannable.
+- Long captions: Full story. Multiple paragraphs with line breaks. Only for Instagram and YouTube.
+- ALWAYS match the platform's vibe and character limits.
+- Hashtags are separate — do not embed them in the caption body.
+
+OUTPUT FORMAT:
+Always return valid JSON. No markdown code fences. No extra text.`;
+}
+
+// --- Main functions ---
 
 /**
- * Run the Distributor Agent to generate a distribution plan
- * for athlete marketing content.
- *
- * @param params - Asset, campaign, and content context
- * @returns A structured distribution plan
+ * Generate 3 caption variants (short, medium, long) plus hashtags and FTC note.
  */
-export async function runDistributorAgent(
-  params: DistributorParams
-): Promise<DistributionPlan> {
-  const startTime = Date.now();
+export async function generateCaptions(params: CaptionGenerationParams): Promise<CaptionResult> {
+  const {
+    assetDescription,
+    channel,
+    athleteName,
+    brandName,
+    campaignName,
+    tone,
+    voiceRules,
+  } = params;
 
-  // --- Step 1: Gather context from the database ---
-  let campaignContext = '';
-  let assetContext = '';
-  let existingPackages = '';
+  const channelKey = channel.toLowerCase();
+  const config = CHANNEL_CONFIG[channelKey] || CHANNEL_CONFIG.instagram;
 
-  // Fetch campaign brief if campaign_id provided
-  if (params.campaign_id) {
-    const { data: campaign } = await supabase
-      .from('campaign_briefs')
-      .select('name, campaign_type, target_launch_date, brand_name, status')
-      .eq('id', params.campaign_id)
-      .single();
+  const systemPrompt = buildDistributorSystemPrompt(voiceRules);
 
-    if (campaign) {
-      campaignContext = `\n\nCAMPAIGN CONTEXT:
-- Campaign: ${campaign.name}
-- Type: ${campaign.campaign_type || 'general'}
-- Brand: ${campaign.brand_name || 'unknown'}
-- Target launch: ${campaign.target_launch_date || 'flexible'}
-- Status: ${campaign.status}`;
-    }
-  }
+  const userMessage = `Generate captions for this content:
 
-  // Fetch final asset details if final_asset_id provided
-  if (params.final_asset_id) {
-    const { data: asset } = await supabase
-      .from('final_assets')
-      .select('*')
-      .eq('id', params.final_asset_id)
-      .single();
+ASSET: ${assetDescription || 'No description provided'}
+CHANNEL: ${channel}
+${athleteName ? `ATHLETE: ${athleteName}` : ''}
+${brandName ? `BRAND: ${brandName}` : ''}
+${campaignName ? `CAMPAIGN: ${campaignName}` : ''}
+${tone ? `TONE: ${tone}` : ''}
 
-    if (asset) {
-      assetContext = `\n\nASSET DETAILS:
-- Asset name: ${asset.name || 'Untitled'}
-- File type: ${asset.file_type || params.asset_type}
-- Status: ${asset.status || 'ready'}`;
-    }
-  }
+CHANNEL CONSTRAINTS:
+- Max caption length: ${config.maxLength} characters
+- Max hashtags: ${config.hashtagLimit}
+- Platform notes: ${config.notes}
 
-  // Fetch existing posting packages to avoid conflicts
-  if (params.campaign_id) {
-    const { data: packages } = await supabase
-      .from('posting_packages')
-      .select('platform, scheduled_date, scheduled_time, status')
-      .eq('campaign_id', params.campaign_id);
-
-    if (packages && packages.length > 0) {
-      existingPackages = `\n\nEXISTING SCHEDULED POSTS (avoid conflicts):
-${packages.map((p) => `- ${p.platform} on ${p.scheduled_date} at ${p.scheduled_time} (${p.status})`).join('\n')}`;
-    }
-  }
-
-  // --- Step 2: Create agent_runs record ---
-  const { data: agentRun, error: runError } = await supabase
-    .from('agent_runs')
-    .insert({
-      agent_name: 'distributor',
-      input_payload: {
-        ...params,
-        campaign_context: campaignContext ? 'loaded' : 'none',
-        asset_context: assetContext ? 'loaded' : 'none',
-      },
-      model: 'claude-sonnet-4-20250514',
-      status: 'running',
-    })
-    .select()
-    .single();
-
-  if (runError) {
-    throw new Error(`Failed to create agent run record: ${runError.message}`);
-  }
-
-  // --- Step 3: Build the user prompt ---
-  const userPrompt = `Generate a distribution plan for this NIL athlete content.
-
-ATHLETE: ${params.athlete_name}
-ASSET TYPE: ${params.asset_type}
-CONTENT: ${params.content_description}${campaignContext}${assetContext}${existingPackages}
-
-Return a JSON object with this exact structure:
+Return a JSON object with this exact shape:
 {
-  "recommended_platforms": [
-    { "platform": "instagram_reels", "priority": "primary", "rationale": "why this platform" }
-  ],
-  "posting_schedule": [
-    { "platform": "instagram_reels", "recommended_date": "YYYY-MM-DD or relative like 'Day 1'", "recommended_time": "HH:MM EST", "reasoning": "why this slot" }
-  ],
-  "caption_guidelines": [
-    { "platform": "instagram", "tone": "casual/professional/hype", "length_guidance": "word count range", "hashtag_strategy": "how many, what type" }
-  ],
-  "cross_promotion_tips": ["tip 1", "tip 2"],
-  "compliance_reminders": ["reminder about NIL disclosures"],
-  "summary": "2-3 sentence overview of the distribution strategy"
-}`;
+  "captions": {
+    "short": "1-2 sentence caption",
+    "medium": "3-5 sentence caption",
+    "long": "Full story caption with line breaks"
+  },
+  "hashtags": ["hashtag1", "hashtag2"],
+  "ftc_note": "Required FTC disclosure text"
+}
 
-  // --- Step 4: Call Claude ---
-  let response;
-  try {
-    response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
-  } catch (err) {
-    await supabase
-      .from('agent_runs')
-      .update({
-        status: 'failed',
-        error_message: err instanceof Error ? err.message : 'Claude call failed',
-        duration_ms: Date.now() - startTime,
-      })
-      .eq('id', agentRun.id);
-    throw err;
-  }
+${config.hashtagLimit === 0 ? 'This channel does not use hashtags — return an empty array.' : ''}
+The FTC note should be a clean, compliant disclosure for NIL/sponsored content.`;
 
-  // --- Step 5: Parse the response ---
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
+  });
+
   const textBlock = response.content.find((block) => block.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
-    await supabase
-      .from('agent_runs')
-      .update({
-        status: 'failed',
-        error_message: 'Claude returned no text content',
-        duration_ms: Date.now() - startTime,
-      })
-      .eq('id', agentRun.id);
     throw new Error('Claude returned no text content');
   }
 
-  let plan: DistributionPlan;
-  try {
-    let jsonText = textBlock.text.trim();
-    if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-    }
-    plan = JSON.parse(jsonText) as DistributionPlan;
-  } catch {
-    // Retry once with a correction prompt
-    console.warn('First JSON parse failed for distributor, retrying...');
-    try {
-      const retryResponse = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2048,
-        system: SYSTEM_PROMPT,
-        messages: [
-          { role: 'user', content: userPrompt },
-          { role: 'assistant', content: textBlock.text },
-          {
-            role: 'user',
-            content: 'Your previous response was not valid JSON. Return ONLY a valid JSON object with these keys: recommended_platforms, posting_schedule, caption_guidelines, cross_promotion_tips, compliance_reminders, summary. No extra text.',
-          },
-        ],
-      });
+  let jsonText = textBlock.text.trim();
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  }
 
-      const retryBlock = retryResponse.content.find((b) => b.type === 'text');
-      if (retryBlock && retryBlock.type === 'text') {
-        let retryJson = retryBlock.text.trim();
-        if (retryJson.startsWith('```')) {
-          retryJson = retryJson.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-        }
-        plan = JSON.parse(retryJson) as DistributionPlan;
-        response = retryResponse;
-      } else {
-        throw new Error('Retry returned no text');
+  const parsed = JSON.parse(jsonText);
+
+  // Validate the response shape
+  if (!parsed.captions || !parsed.captions.short) {
+    throw new Error('Invalid caption response — missing captions object');
+  }
+
+  // Run NCAA compliance check on all captions
+  const allText = `${parsed.captions.short} ${parsed.captions.medium} ${parsed.captions.long}`;
+  const compliance = checkNcaaCompliance(allText);
+
+  if (!compliance.isCompliant) {
+    // Auto-fix: replace flagged terms in captions
+    let fixedShort = parsed.captions.short;
+    let fixedMedium = parsed.captions.medium;
+    let fixedLong = parsed.captions.long;
+
+    for (const [term, replacement] of Object.entries(compliance.suggestions)) {
+      const regex = new RegExp(term, 'gi');
+      fixedShort = fixedShort.replace(regex, replacement);
+      fixedMedium = fixedMedium.replace(regex, replacement);
+      fixedLong = fixedLong.replace(regex, replacement);
+    }
+
+    parsed.captions.short = fixedShort;
+    parsed.captions.medium = fixedMedium;
+    parsed.captions.long = fixedLong;
+  }
+
+  return {
+    captions: {
+      short: parsed.captions.short || '',
+      medium: parsed.captions.medium || '',
+      long: parsed.captions.long || '',
+    },
+    hashtags: parsed.hashtags || [],
+    ftc_note: parsed.ftc_note || '#ad #partner',
+  };
+}
+
+/**
+ * Generate platform-aware hashtag suggestions.
+ */
+export async function generateHashtags(params: HashtagParams): Promise<string[]> {
+  const config = CHANNEL_CONFIG[params.channel.toLowerCase()] || CHANNEL_CONFIG.instagram;
+
+  if (config.hashtagLimit === 0) return [];
+
+  const systemPrompt = `You are a social media hashtag strategist for Postgame, an NIL marketing agency. Generate relevant, effective hashtags for college athlete content. Mix broad reach hashtags with niche ones. NEVER use NCAA-trademarked terms. Return ONLY a JSON array of strings.`;
+
+  const userMessage = `Generate ${config.hashtagLimit} hashtags for:
+${params.brandName ? `Brand: ${params.brandName}` : ''}
+${params.campaignName ? `Campaign: ${params.campaignName}` : ''}
+${params.athleteName ? `Athlete: ${params.athleteName}` : ''}
+${params.sport ? `Sport: ${params.sport}` : ''}
+Channel: ${params.channel}
+${params.context ? `Context: ${params.context}` : ''}
+
+Return a JSON array of hashtag strings (without the # symbol).`;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 512,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
+  });
+
+  const textBlock = response.content.find((block) => block.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') return [];
+
+  let jsonText = textBlock.text.trim();
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  }
+
+  try {
+    const hashtags = JSON.parse(jsonText);
+    if (Array.isArray(hashtags)) {
+      // Strip # prefix if Claude added them, and filter NCAA terms
+      return hashtags
+        .map((h: string) => h.replace(/^#/, ''))
+        .filter((h: string) => !NCAA_RESTRICTED_TERMS.some((term) =>
+          h.toLowerCase().includes(term.toLowerCase().replace(/\s+/g, ''))
+        ))
+        .slice(0, config.hashtagLimit);
+    }
+  } catch {
+    // Fall back to empty
+  }
+
+  return [];
+}
+
+/**
+ * Generate a complete posting package — captions + hashtags + FTC + scheduling.
+ */
+export async function generatePostingPackage(params: PostingPackageParams): Promise<PostingPackageResult> {
+  const {
+    assetDescription,
+    channel,
+    athleteName,
+    brandName,
+    campaignName,
+    sport,
+    tone,
+    voiceRules,
+    postingWindowDays = 7,
+  } = params;
+
+  // Generate captions
+  const captionResult = await generateCaptions({
+    assetDescription,
+    channel,
+    athleteName,
+    brandName,
+    campaignName,
+    tone,
+    voiceRules,
+  });
+
+  // Generate hashtags with more context
+  const hashtags = await generateHashtags({
+    brandName,
+    campaignName,
+    athleteName,
+    sport,
+    channel,
+    context: assetDescription,
+  });
+
+  // Build mentions array
+  const mentions: string[] = [];
+  if (brandName) {
+    mentions.push(`@${brandName.toLowerCase().replace(/\s+/g, '')}`);
+  }
+  mentions.push('@postgame');
+
+  // Calculate posting window
+  const now = new Date();
+  const windowStart = new Date(now);
+  windowStart.setDate(windowStart.getDate() + 1); // Start tomorrow
+  const windowEnd = new Date(windowStart);
+  windowEnd.setDate(windowEnd.getDate() + postingWindowDays);
+
+  // Build platform-specific notes
+  const config = CHANNEL_CONFIG[channel.toLowerCase()] || CHANNEL_CONFIG.instagram;
+  const platformNotes = buildPlatformNotes(channel, athleteName);
+
+  return {
+    captions: captionResult.captions,
+    hashtags: hashtags.length > 0 ? hashtags : captionResult.hashtags,
+    mentions,
+    ftc_note: captionResult.ftc_note,
+    platform_notes: platformNotes,
+    posting_window_start: windowStart.toISOString(),
+    posting_window_end: windowEnd.toISOString(),
+  };
+}
+
+/**
+ * Build platform-specific posting notes for athletes.
+ */
+function buildPlatformNotes(channel: string, athleteName?: string): string {
+  const name = athleteName || 'the athlete';
+  const channelKey = channel.toLowerCase();
+
+  const notes: Record<string, string> = {
+    instagram: `Post as a Reel or carousel. Tag the brand in the post (not just the caption). Add the FTC disclosure in the caption — "paid partnership" label is preferred but #ad works too. ${name} should post from their personal account.`,
+    tiktok: `Post natively on TikTok (not a repost from Instagram). Use trending sounds if possible. FTC disclosure must be visible — use the "paid partnership" toggle or add #ad to caption. Pin the brand's comment if they leave one.`,
+    linkedin: `Share as a personal post, not from a company page. Write in first person. Tag the brand's LinkedIn page. Professional but authentic tone. ${name} should engage with comments for the first hour.`,
+    youtube: `Upload as a YouTube Short or standard video. Add the brand tag in the description. Enable the "includes paid promotion" checkbox. Thumbnail should feature ${name}.`,
+    'twitter/x': `Tweet natively. No threads unless the content warrants it. Quote tweet the brand if they post about the campaign. #ad in the tweet body.`,
+    twitter: `Tweet natively. No threads unless the content warrants it. Quote tweet the brand if they post about the campaign. #ad in the tweet body.`,
+    newsletter: `Include in the next newsletter edition. Feature the content with a brief personal note from ${name}. Disclosure should be clear at the top of the sponsored section.`,
+  };
+
+  return notes[channelKey] || `Post on ${channel}. Include FTC disclosure. Tag the brand.`;
+}
+
+/**
+ * Check text for NCAA-restricted terms and suggest replacements.
+ */
+export function checkNcaaCompliance(text: string): NcaaComplianceResult {
+  const flaggedTerms: string[] = [];
+  const suggestions: Record<string, string> = {};
+
+  // Replacement map for common restricted terms
+  const replacements: Record<string, string> = {
+    'March Madness': 'the big tournament',
+    'Final Four': 'the national semifinals',
+    'Elite Eight': 'the quarterfinals',
+    'Sweet Sixteen': 'the round of 16',
+    'Sweet 16': 'the round of 16',
+    'College World Series': 'the college baseball championship',
+    'College Cup': 'the college soccer championship',
+    'Frozen Four': 'the hockey semifinals',
+    'College Football Playoff': 'the postseason',
+    'NCAA Tournament': 'the national tournament',
+    'NCAA Championship': 'the national championship',
+    'The Big Dance': 'tournament time',
+    'Selection Sunday': 'bracket day',
+    'Bracketology': 'tournament predictions',
+  };
+
+  for (const term of NCAA_RESTRICTED_TERMS) {
+    const regex = new RegExp(term, 'gi');
+    if (regex.test(text)) {
+      flaggedTerms.push(term);
+      if (replacements[term]) {
+        suggestions[term] = replacements[term];
       }
-    } catch {
-      await supabase
-        .from('agent_runs')
-        .update({
-          status: 'failed',
-          error_message: 'Failed to parse Claude distributor response after 2 attempts',
-          output_payload: { raw_response: textBlock.text },
-          duration_ms: Date.now() - startTime,
-        })
-        .eq('id', agentRun.id);
-      throw new Error('Claude returned malformed JSON twice during distribution planning. Please retry.');
     }
   }
 
-  // --- Step 6: Log success to agent_runs ---
-  const inputTokens = response.usage?.input_tokens || 0;
-  const outputTokens = response.usage?.output_tokens || 0;
-  const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
-
-  await supabase
-    .from('agent_runs')
-    .update({
-      status: 'complete',
-      output_payload: plan,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      cost_usd: costUsd,
-      duration_ms: Date.now() - startTime,
-    })
-    .eq('id', agentRun.id);
-
-  return plan;
+  return {
+    isCompliant: flaggedTerms.length === 0,
+    flaggedTerms,
+    suggestions,
+  };
 }

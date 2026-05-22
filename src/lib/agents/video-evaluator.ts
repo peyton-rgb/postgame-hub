@@ -1,111 +1,123 @@
 // ============================================================
-// Video Evaluator agent — "The Brain"
+// Video Evaluator Agent
 //
-// Uploads the source asset to the Gemini File API, asks Gemini 2.5
-// Pro for a detailed scene map, and saves it on the edit_jobs row.
-// On exit, the job is in 'planning' so the Edit Planner can pick up.
+// The "Brain" of the editing pipeline. This agent:
+//   1. Takes a video or image from an edit job
+//   2. Uploads it to Gemini's File API
+//   3. Asks Gemini 2.5 Pro to analyze the entire file
+//   4. Gets back a structured "scene map" — a scene-by-scene
+//      breakdown of everything visible (people, logos, objects,
+//      timestamps, locations, camera work, lighting)
+//   5. Saves the scene map to the edit_jobs row
 //
-// Logs run start/finish to agent_runs under agent_name='video_evaluator'.
+// The scene map is the foundation for the Edit Planner agent,
+// which reads it and figures out exactly what tools to use
+// for each part of the edit.
+//
+// Called by: POST /api/editing/jobs (after job creation)
 // ============================================================
 
-import { createServiceSupabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import {
   uploadFileToGemini,
   analyzeWithGemini,
   estimateGeminiCost,
 } from '@/lib/tools/gemini';
-import type { ContentType, SceneMap } from '@/lib/types/editing';
+import type { SceneMap, VideoEvaluatorInput } from '@/lib/types/editing';
 
-let _db: ReturnType<typeof createServiceSupabase> | null = null;
-function getDb() {
-  if (!_db) _db = createServiceSupabase();
-  return _db;
-}
+// Admin Supabase client — bypasses RLS for server-side agent work
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-export interface EvaluateVideoInput {
-  jobId: string;
-  sourceUrl: string;
-  contentType: ContentType;
-  instruction: string;
-}
-
-function mimeForContentType(ct: ContentType, sourceUrl: string): string {
-  if (ct === 'image') {
-    if (/\.(png)(\?|$)/i.test(sourceUrl)) return 'image/png';
-    if (/\.(webp)(\?|$)/i.test(sourceUrl)) return 'image/webp';
-    return 'image/jpeg';
-  }
-  if (/\.(webm)(\?|$)/i.test(sourceUrl)) return 'video/webm';
-  if (/\.(mov)(\?|$)/i.test(sourceUrl)) return 'video/quicktime';
-  return 'video/mp4';
-}
-
+/**
+ * Analyze an asset with Gemini and produce a scene map.
+ *
+ * @param input - The edit job details (source URL, content type, instruction)
+ * @param userId - Who triggered this (for audit logging)
+ * @returns The scene map, or throws on failure
+ */
 export async function evaluateVideo(
-  input: EvaluateVideoInput,
+  input: VideoEvaluatorInput,
   userId: string
 ): Promise<SceneMap> {
-  const db = getDb();
   const startTime = Date.now();
 
-  // Audit row — start state.
-  const { data: agentRun, error: runError } = await db
+  // --- Log the agent run start ---
+  const { data: agentRun } = await supabase
     .from('agent_runs')
     .insert({
-      agent_name: 'video_evaluator',
+      agent_name: 'video-evaluator',
       triggered_by: userId,
       input_payload: {
-        scope: 'video_evaluator',
-        job_id: input.jobId,
-        source_url: input.sourceUrl,
-        content_type: input.contentType,
+        edit_job_id: input.edit_job_id,
+        source_url: input.source_url,
+        content_type: input.content_type,
         instruction: input.instruction,
       },
       model: 'gemini-2.5-pro',
       status: 'running',
     })
-    .select('id')
+    .select()
     .single();
 
-  if (runError) {
-    // Don't block the pipeline on audit-log failure — surface it but proceed.
-    console.error('[video-evaluator] agent_runs insert failed:', runError);
-  }
-
-  // Move job into 'analyzing'
-  await db
+  // --- Update job status to "analyzing" ---
+  await supabase
     .from('edit_jobs')
-    .update({ status: 'analyzing' })
-    .eq('id', input.jobId);
+    .update({ status: 'analyzing', updated_at: new Date().toISOString() })
+    .eq('id', input.edit_job_id);
 
   try {
-    const mime = mimeForContentType(input.contentType, input.sourceUrl);
+    // --- Figure out the MIME type ---
+    // We need this for Gemini's File API upload
+    const mimeType = guessMimeType(input.source_url, input.content_type);
 
-    const { fileUri } = await uploadFileToGemini(input.sourceUrl, mime);
-    const { sceneMap, promptTokens, completionTokens } = await analyzeWithGemini(
+    // --- Upload to Gemini ---
+    // This sends our file to Google's temporary storage so Gemini
+    // can process it. For videos, Gemini needs to transcode it first,
+    // which can take a minute or two.
+    const fileUri = await uploadFileToGemini(input.source_url, mimeType);
+
+    // --- Run the analysis ---
+    // Gemini watches the whole video (or analyzes the image) and
+    // returns a structured JSON scene map
+    const { sceneMap, inputTokens, outputTokens } = await analyzeWithGemini(
       fileUri,
-      mime,
+      mimeType,
       input.instruction
     );
 
-    const estCost = estimateGeminiCost(input.contentType, sceneMap.duration_seconds);
+    // --- Calculate cost ---
+    const costUsd = estimateGeminiCost(
+      input.content_type,
+      sceneMap.duration_seconds
+    );
 
-    await db
+    // --- Save scene map to the job ---
+    await supabase
       .from('edit_jobs')
       .update({
-        scene_map: sceneMap,
-        status: 'planning',
+        scene_map: sceneMap as unknown as Record<string, unknown>,
+        status: 'planning', // ready for the Edit Planner
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', input.jobId);
+      .eq('id', input.edit_job_id);
 
-    if (agentRun?.id) {
-      await db
+    // --- Log success ---
+    if (agentRun) {
+      await supabase
         .from('agent_runs')
         .update({
           status: 'complete',
-          output_payload: { scene_map: sceneMap },
-          input_tokens: promptTokens,
-          output_tokens: completionTokens,
-          cost_usd: estCost,
+          output_payload: {
+            scene_count: sceneMap.scenes.length,
+            subject_count: Object.keys(sceneMap.subjects || {}).length,
+            duration_seconds: sceneMap.duration_seconds,
+          },
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          cost_usd: costUsd,
           duration_ms: Date.now() - startTime,
         })
         .eq('id', agentRun.id);
@@ -113,25 +125,50 @@ export async function evaluateVideo(
 
     return sceneMap;
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Video evaluator failed';
-    console.error('[video-evaluator]', err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
 
-    if (agentRun?.id) {
-      await db
+    // --- Update job to failed ---
+    await supabase
+      .from('edit_jobs')
+      .update({
+        status: 'failed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', input.edit_job_id);
+
+    // --- Log failure ---
+    if (agentRun) {
+      await supabase
         .from('agent_runs')
         .update({
           status: 'failed',
-          error_message: message,
+          output_payload: { error: errorMessage },
           duration_ms: Date.now() - startTime,
         })
         .eq('id', agentRun.id);
     }
 
-    await db
-      .from('edit_jobs')
-      .update({ status: 'failed' })
-      .eq('id', input.jobId);
-
-    throw err;
+    throw new Error(`Video evaluation failed: ${errorMessage}`);
   }
+}
+
+/**
+ * Guess the MIME type from a URL and content type.
+ * Gemini needs an accurate MIME type for file upload.
+ */
+function guessMimeType(url: string, contentType: 'video' | 'image'): string {
+  const lower = url.toLowerCase();
+
+  if (contentType === 'video') {
+    if (lower.includes('.mov')) return 'video/quicktime';
+    if (lower.includes('.webm')) return 'video/webm';
+    if (lower.includes('.avi')) return 'video/x-msvideo';
+    return 'video/mp4'; // most common default
+  }
+
+  // Image
+  if (lower.includes('.png')) return 'image/png';
+  if (lower.includes('.webp')) return 'image/webp';
+  if (lower.includes('.gif')) return 'image/gif';
+  return 'image/jpeg'; // most common default
 }

@@ -77,7 +77,7 @@ export async function sendSlackNotification(
               text: 'View in Hub',
               emoji: true,
             },
-            url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://postgame-hub.vercel.app'}/dashboard/campaign-briefs`,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://postgame-hub.vercel.app'}/dashboard/briefs`,
           },
         ],
       },

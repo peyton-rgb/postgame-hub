@@ -74,7 +74,8 @@ function generateSlug(brandName: string, conceptName: string): string {
 function buildBriefWriterMessage(
   concept: Record<string, unknown>,
   brief: Record<string, unknown>,
-  brand: Record<string, unknown>
+  brand: Record<string, unknown>,
+  inspoItems: Record<string, unknown>[] = []
 ): string {
   let msg = `## APPROVED CONCEPT\n\n`;
   msg += `**Name:** ${concept.name}\n`;
@@ -125,9 +126,98 @@ function buildBriefWriterMessage(
     msg += `\n### Athlete Targeting\n${JSON.stringify(brief.athlete_targeting, null, 2)}\n`;
   }
 
+  // Inspo library items — real tagged assets the brief can reference
+  if (inspoItems.length > 0) {
+    const photoItems = inspoItems.filter((i) => (i.mime_type as string)?.startsWith('image/'));
+    const videoItems = inspoItems.filter((i) => (i.mime_type as string)?.startsWith('video/'));
+
+    msg += `\n## INSPO LIBRARY ASSETS\n`;
+    msg += `These are real, tagged assets from Postgame's library. Reference them in the "photos" and "videos" sections.\n`;
+    msg += `Use the actual URLs provided — do NOT make up placeholder URLs.\n\n`;
+
+    if (photoItems.length > 0) {
+      msg += `### Photo Assets (${photoItems.length})\n`;
+      photoItems.forEach((item, i) => {
+        msg += `- Photo ${i + 1}: ${item.file_url || item.thumbnail_url}`;
+        if (item.visual_description) msg += `\n  "${(item.visual_description as string).slice(0, 100)}"`;
+        const vibes = item.search_phrases as string[] | undefined;
+        if (vibes && vibes.length > 0) msg += `\n  Vibes: ${vibes.slice(0, 5).join(', ')}`;
+        msg += '\n';
+      });
+    }
+
+    if (videoItems.length > 0) {
+      msg += `### Video Assets (${videoItems.length})\n`;
+      videoItems.forEach((item, i) => {
+        const url = item.thumbnail_url || item.file_url;
+        msg += `- Video ${i + 1}: ${url}`;
+        if (item.visual_description) msg += `\n  "${(item.visual_description as string).slice(0, 100)}"`;
+        const vibes = item.search_phrases as string[] | undefined;
+        if (vibes && vibes.length > 0) msg += `\n  Vibes: ${vibes.slice(0, 5).join(', ')}`;
+        msg += '\n';
+      });
+    }
+  }
+
   msg += `\n## OUTPUT\nReturn a JSON array of section objects matching the defined section types. Start with section "01" (concept). Do NOT include a shoot_logistics section — that is added separately.`;
 
   return msg;
+}
+
+/**
+ * Fetch inspo items that match a concept's references or general vibe.
+ * First tries to find items the Creative Director specifically referenced
+ * (inspo_references on the concept). Then fills remaining slots with
+ * tag-matched items from the library.
+ */
+async function findMatchingInspo(
+  concept: Record<string, unknown>,
+  brief: Record<string, unknown>,
+  maxItems = 10
+): Promise<Record<string, unknown>[]> {
+  const results: Record<string, unknown>[] = [];
+
+  // 1. Pull specifically referenced inspo items (from concept generation)
+  const inspoRefs = concept.inspo_references as string[] | undefined;
+  if (inspoRefs && inspoRefs.length > 0) {
+    const { data: refItems } = await supabase
+      .from('inspo_items')
+      .select('id, file_url, thumbnail_url, content_type, mime_type, visual_description, sport, athlete_name, search_phrases, pro_tags, social_tags, context_tags')
+      .in('id', inspoRefs)
+      .eq('tagging_status', 'tagged');
+
+    if (refItems) results.push(...refItems);
+  }
+
+  // 2. If we still need more, find tag-matched items from the library
+  if (results.length < maxItems) {
+    const remaining = maxItems - results.length;
+    const existingIds = results.map((r) => r.id as string);
+
+    // Build a query that matches on sport, content type, or brand
+    let query = supabase
+      .from('inspo_items')
+      .select('id, file_url, thumbnail_url, content_type, mime_type, visual_description, sport, athlete_name, search_phrases, pro_tags, social_tags, context_tags')
+      .eq('tagging_status', 'tagged')
+      .order('is_hero', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(remaining);
+
+    // Exclude already-found items
+    if (existingIds.length > 0) {
+      query = query.not('id', 'in', `(${existingIds.join(',')})`);
+    }
+
+    // Try to match by brand
+    if (brief.brand_id) {
+      query = query.or(`brand_id.eq.${brief.brand_id},brand_id.is.null`);
+    }
+
+    const { data: extraItems } = await query;
+    if (extraItems) results.push(...extraItems);
+  }
+
+  return results;
 }
 
 /**
@@ -175,6 +265,15 @@ export async function generateCreatorBrief(
 
   if (!brand) throw new Error(`Brand not found: ${brief.brand_id}`);
 
+  // --- Find matching inspo assets from the library ---
+  let matchingInspo: Record<string, unknown>[] = [];
+  try {
+    matchingInspo = await findMatchingInspo(concept, brief, 10);
+  } catch (err) {
+    console.warn('Failed to fetch matching inspo items:', err);
+    // Non-fatal — brief will generate without reference media
+  }
+
   // --- Create agent run record ---
   const { data: agentRun, error: runError } = await supabase
     .from('agent_runs')
@@ -185,6 +284,8 @@ export async function generateCreatorBrief(
         concept_id: conceptId,
         brief_id: concept.brief_id,
         brand_id: brief.brand_id,
+        inspo_count: matchingInspo.length,
+        inspo_ids: matchingInspo.map((i) => i.id),
       },
       model: 'claude-sonnet-4-20250514',
       status: 'running',
@@ -195,7 +296,7 @@ export async function generateCreatorBrief(
   if (runError) throw new Error(`Failed to create agent run: ${runError.message}`);
 
   // --- Call Claude ---
-  const userMessage = buildBriefWriterMessage(concept, brief, brand);
+  const userMessage = buildBriefWriterMessage(concept, brief, brand, matchingInspo);
   let response;
 
   try {

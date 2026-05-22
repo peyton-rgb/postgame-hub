@@ -1,96 +1,92 @@
 // ============================================================
-// POST /api/editing/jobs/[id]/approve
-// Body: { save_as_inspo?: boolean }
+// Approve Edit — POST /api/editing/jobs/[id]/approve
 //
-// Flips the job to 'approved' and stamps approved_by. If
-// save_as_inspo is true and the job has an output_url, also
-// inserts a row into inspo_items with triage_status='approved'
-// so the result becomes immediately reusable in the library.
+// Called when a CM reviews the before/after comparison and
+// approves the result. This:
+//   1. Sets the job status to "approved"
+//   2. Records who approved it
+//   3. Optionally creates a new inspo_items row for the edited asset
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
-import { createServiceSupabase } from '@/lib/supabase';
-import type { EditJob } from '@/lib/types/editing';
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const auth = await createServerSupabase();
-  const { data: { user }, error: authError } = await auth.auth.getUser();
+  const supabase = createServerSupabase();
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  if (!UUID_RE.test(params.id)) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
-  }
+  const jobId = params.id;
 
-  const body = (await request.json().catch(() => ({}))) as { save_as_inspo?: boolean };
-  const saveAsInspo = body.save_as_inspo === true;
-
-  const db = createServiceSupabase();
-
-  const { data: job, error: fetchError } = await db
+  // Verify the job is in "review" status
+  const { data: job, error: jobError } = await supabase
     .from('edit_jobs')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', jobId)
     .single();
 
-  if (fetchError || !job) {
-    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  if (jobError || !job) {
+    return NextResponse.json({ error: 'Edit job not found' }, { status: 404 });
   }
 
-  const { data: updated, error: updateError } = await db
+  if (job.status !== 'review') {
+    return NextResponse.json(
+      { error: `Job is in "${job.status}" status — can only approve jobs in "review" status` },
+      { status: 400 }
+    );
+  }
+
+  // Parse optional body — CM can choose to save as new inspo item
+  let saveAsInspo = false;
+  try {
+    const body = await request.json();
+    saveAsInspo = body.save_as_inspo === true;
+  } catch {
+    // No body is fine — just approve without saving to inspo
+  }
+
+  // Update job to approved
+  const { error: updateError } = await supabase
     .from('edit_jobs')
     .update({
       status: 'approved',
       approved_by: user.id,
+      updated_at: new Date().toISOString(),
     })
-    .eq('id', params.id)
-    .select('*')
-    .single();
+    .eq('id', jobId);
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return NextResponse.json(
+      { error: `Failed to approve: ${updateError.message}` },
+      { status: 500 }
+    );
   }
 
-  let inspoId: string | null = null;
-  let inspoWarning: string | null = null;
+  // Optionally save the edited asset as a new inspo item
+  if (saveAsInspo && job.output_url) {
+    const { error: inspoError } = await supabase
+      .from('inspo_items')
+      .insert({
+        file_url: job.output_url,
+        thumbnail_url: job.output_thumbnail_url || job.output_url,
+        content_type: job.content_type === 'video' ? 'produced' : 'photography',
+        source: 'ai_edited',
+        tagging_status: 'pending', // will need to be tagged
+        notes: `AI-edited from job ${jobId}. Original instruction: "${job.instruction}"`,
+        uploaded_by: user.id,
+      });
 
-  if (saveAsInspo) {
-    if (!job.output_url) {
-      inspoWarning = 'save_as_inspo was requested but the job has no output_url';
-    } else {
-      const { data: inspoRow, error: inspoError } = await db
-        .from('inspo_items')
-        .insert({
-          file_url: job.output_url,
-          thumbnail_url: job.output_url,
-          content_type: job.content_type,
-          source: 'ai_edit',
-          triage_status: 'approved',
-          visual_description: job.instruction,
-        })
-        .select('id')
-        .single();
-
-      if (inspoError) {
-        console.error('Save to inspo failed:', inspoError);
-        inspoWarning = inspoError.message;
-      } else {
-        inspoId = inspoRow?.id ?? null;
-      }
+    if (inspoError) {
+      // Don't fail the approval — just log the error
+      console.error('[approve] Failed to create inspo item:', inspoError);
     }
   }
 
-  return NextResponse.json({
-    job: updated as EditJob,
-    inspo_item_id: inspoId,
-    inspo_warning: inspoWarning,
-  });
+  return NextResponse.json({ message: 'Edit approved', job_id: jobId });
 }

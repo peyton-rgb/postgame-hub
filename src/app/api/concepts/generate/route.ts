@@ -12,21 +12,12 @@
 // Returns: { concepts: Concept[], agentRunId: string }
 // ============================================================
 
-import { createServerClient } from '@supabase/ssr';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
-import { generateConcepts, type CollaborateInputs, type RosterAthlete, type CampaignStructure } from '@/lib/agents/creative-director';
+import { generateConcepts, type CollaborateInputs } from '@/lib/agents/creative-director';
 
 export async function POST(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll() {},
-      },
-    }
-  );
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -50,10 +41,6 @@ export async function POST(request: NextRequest) {
     location: body.location || undefined,
     referenceImageUrls: body.reference_image_urls || undefined,
     creativeSeeds: body.creative_seeds || undefined,
-    campaignStructure: (['individual', 'team_collab', 'multi_athlete_cohesive'].includes(body.campaign_structure)
-      ? body.campaign_structure as CampaignStructure
-      : undefined),
-    athleteRoster: Array.isArray(body.athlete_roster) ? body.athlete_roster as RosterAthlete[] : undefined,
   };
 
   try {

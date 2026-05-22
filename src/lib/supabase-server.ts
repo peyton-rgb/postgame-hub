@@ -1,28 +1,22 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+// ============================================================
+// Server Supabase Clients — for API routes and server components
+//
+// createServerSupabase()  — uses anon key, respects RLS
+// createServiceSupabase() — uses service role key, bypasses RLS
+// ============================================================
 
-// Server client with cookie-based auth (for server components that need auth)
-export async function createServerSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient(
+import { createClient } from '@supabase/supabase-js';
+
+export function createServerSupabase() {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // setAll can fail in Server Components (read-only).
-            // Middleware handles session refresh.
-          }
-        },
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
+export function createServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }

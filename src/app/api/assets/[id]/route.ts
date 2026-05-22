@@ -1,22 +1,18 @@
 // ============================================================
-// /api/assets/[id]
-// GET    — Fetch a single final asset
-// PATCH  — Update asset fields (title, status, notes, tags, delivered_at, delivered_to)
-// DELETE — Remove a final asset
+// GET    /api/assets/[id] — Fetch a single final asset
+// PATCH  /api/assets/[id] — Update a final asset
+// DELETE /api/assets/[id] — Delete a final asset
 // ============================================================
 
-import { createServerClient } from '@supabase/ssr';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 
+// GET: Fetch a single final asset by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -30,21 +26,19 @@ export async function GET(
     .single();
 
   if (error) {
+    console.error('Error fetching final asset:', error);
     return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
   }
 
   return NextResponse.json(data);
 }
 
+// PATCH: Update a final asset
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -53,48 +47,64 @@ export async function PATCH(
 
   const body = await request.json();
 
+  // Only allow updating specific fields
   const allowedFields = [
-    'title', 'status', 'notes', 'tags',
-    'delivered_at', 'delivered_to',
+    'title', 'asset_type', 'file_url', 'thumbnail_url',
+    'file_size_bytes', 'duration_seconds', 'width', 'height',
+    'athlete_name', 'brand_name', 'tags', 'notes', 'status',
+    'campaign_id', 'review_session_id', 'concept_id', 'creator_brief_id',
   ];
 
-  const updates: Record<string, unknown> = {};
+  const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const field of allowedFields) {
     if (body[field] !== undefined) {
-      updates[field] = body[field];
+      updateData[field] = body[field];
     }
   }
 
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json(
-      { error: 'No valid fields to update' },
-      { status: 400 }
-    );
+  // Validate asset_type if provided
+  if (updateData.asset_type) {
+    const validTypes = ['video', 'photo', 'graphic'];
+    if (!validTypes.includes(updateData.asset_type as string)) {
+      return NextResponse.json(
+        { error: `asset_type must be one of: ${validTypes.join(', ')}` },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Validate status if provided
+  if (updateData.status) {
+    const validStatuses = ['ready', 'delivered', 'posted', 'archived'];
+    if (!validStatuses.includes(updateData.status as string)) {
+      return NextResponse.json(
+        { error: `status must be one of: ${validStatuses.join(', ')}` },
+        { status: 400 }
+      );
+    }
   }
 
   const { data, error } = await supabase
     .from('final_assets')
-    .update(updates)
+    .update(updateData)
     .eq('id', params.id)
     .select()
     .single();
 
   if (error) {
+    console.error('Error updating final asset:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json(data);
 }
 
+// DELETE: Remove a final asset
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
+  const supabase = createServerSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -107,6 +117,7 @@ export async function DELETE(
     .eq('id', params.id);
 
   if (error) {
+    console.error('Error deleting final asset:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

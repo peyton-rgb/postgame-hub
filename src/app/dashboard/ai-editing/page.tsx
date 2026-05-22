@@ -1,466 +1,416 @@
 // ============================================================
 // AI Editing Studio — /dashboard/ai-editing
 //
-// CMs pick an asset from the inspo library, describe what they
-// want changed in plain language, and the pipeline (Gemini scene
-// map → Claude edit plan → ffmpeg + AI tools) produces an edited
-// version. This page is the front-end: form, queue, polling,
-// per-status actions.
+// The main page for the AI editing pipeline. CMs use this to:
+//   1. Submit new edit jobs (pick an asset + type an instruction)
+//   2. View the queue of all edit jobs and their status
+//   3. Click into jobs to review results or check progress
 //
-// API endpoints used:
-//   POST   /api/editing/jobs                  — create + start pipeline
-//   GET    /api/editing/jobs?status=...       — list jobs
-//   POST   /api/editing/jobs/[id]/confirm     — approve plan, run edits
-//   POST   /api/editing/jobs/[id]/retry       — retry failed
-//
-// While the integration code is still being assembled, the API
-// routes return 501 — the UI surfaces the error instead of crashing.
+// Two modes:
+//   - Quick Edit: single instruction on a single asset
+//   - Batch Edit: same instruction across multiple assets
+//     (batch creates one job per asset)
 // ============================================================
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import Link from 'next/link';
+import { useEffect, useState, useCallback } from 'react';
 import { createBrowserSupabase } from '@/lib/supabase';
-import InspoPickerModal, { SelectedInspoItem } from '@/components/InspoPickerModal';
+import InspoPickerModal from '@/components/InspoPickerModal';
+import type { SelectedInspoItem } from '@/components/InspoPickerModal';
 import type { EditJob, EditJobStatus } from '@/lib/types/editing';
 
-interface StatusMeta {
-  label: string;
-  color: string;     // tailwind color classes for the badge
-  icon: string;      // single-char glyph used in the badge
-}
+// --- Status display helpers ---
 
-const STATUS_CONFIG: Record<EditJobStatus, StatusMeta> = {
-  pending:    { label: 'Pending',           color: 'bg-gray-700 text-gray-200',     icon: '·' },
-  analyzing:  { label: 'Analyzing',         color: 'bg-blue-900/60 text-blue-200',  icon: '◐' },
-  planning:   { label: 'Planning',          color: 'bg-blue-900/60 text-blue-200',  icon: '◑' },
-  confirming: { label: 'Awaiting Approval', color: 'bg-amber-900/60 text-amber-200',icon: '?' },
-  editing:    { label: 'Editing',           color: 'bg-orange-900/60 text-orange-200', icon: '✶' },
-  review:     { label: 'Ready for Review',  color: 'bg-emerald-900/60 text-emerald-200', icon: '✓' },
-  approved:   { label: 'Approved',          color: 'bg-green-700 text-green-100',   icon: '✓' },
-  rejected:   { label: 'Rejected',          color: 'bg-red-900/60 text-red-200',    icon: '✕' },
-  failed:     { label: 'Failed',            color: 'bg-red-900/60 text-red-200',    icon: '!' },
+const STATUS_CONFIG: Record<EditJobStatus, { label: string; color: string; icon: string }> = {
+  pending: { label: 'Queued', color: 'bg-gray-600/20 text-gray-300 border-gray-600/30', icon: '⏳' },
+  analyzing: { label: 'Analyzing', color: 'bg-blue-600/20 text-blue-300 border-blue-600/30', icon: '🔍' },
+  planning: { label: 'Planning', color: 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30', icon: '📋' },
+  confirming: { label: 'Awaiting Approval', color: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30', icon: '⚡' },
+  editing: { label: 'Editing', color: 'bg-purple-600/20 text-purple-300 border-purple-600/30', icon: '✂️' },
+  review: { label: 'Ready for Review', color: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30', icon: '👀' },
+  approved: { label: 'Approved', color: 'bg-green-600/20 text-green-300 border-green-600/30', icon: '✅' },
+  rejected: { label: 'Rejected', color: 'bg-red-600/20 text-red-300 border-red-600/30', icon: '❌' },
+  failed: { label: 'Failed', color: 'bg-red-600/20 text-red-300 border-red-600/30', icon: '⚠️' },
 };
 
-const FILTER_TABS: { key: 'all' | 'awaiting' | 'review' | 'in_progress' | 'approved' | 'failed'; label: string; statuses: EditJobStatus[] }[] = [
-  { key: 'all',         label: 'All',                statuses: [] },
-  { key: 'awaiting',    label: 'Awaiting Approval',  statuses: ['confirming'] },
-  { key: 'review',      label: 'Ready for Review',   statuses: ['review'] },
-  { key: 'in_progress', label: 'In Progress',        statuses: ['pending', 'analyzing', 'planning', 'editing'] },
-  { key: 'approved',    label: 'Approved',           statuses: ['approved'] },
-  { key: 'failed',      label: 'Failed',             statuses: ['failed', 'rejected'] },
-];
+export default function EditingDashboardPage() {
+  const supabase = createBrowserSupabase();
 
-const ACTIVE_STATUSES: EditJobStatus[] = ['pending', 'analyzing', 'planning', 'editing'];
+  // --- State ---
+  const [jobs, setJobs] = useState<EditJob[]>([]);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-export default function AIEditingStudioPage() {
-  // form state
+  // New job form state
   const [showForm, setShowForm] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [chosenAsset, setChosenAsset] = useState<SelectedInspoItem | null>(null);
   const [instruction, setInstruction] = useState('');
-  const [referenceUrl, setReferenceUrl] = useState('');
+  const [selectedAsset, setSelectedAsset] = useState<SelectedInspoItem | null>(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState('');
+  const [inspoPickerOpen, setInspoPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // queue state
-  const [jobs, setJobs] = useState<EditJob[]>([]);
-  const [loadingJobs, setLoadingJobs] = useState(true);
-  const [filter, setFilter] = useState<typeof FILTER_TABS[number]['key']>('all');
-  const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  // --- Fetch jobs ---
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({ limit: '50', offset: '0' });
+    if (statusFilter !== 'all') params.set('status', statusFilter);
 
-  const loadJobs = useCallback(async () => {
-    try {
-      const res = await fetch('/api/editing/jobs');
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        // 501 just means the backend isn't wired yet — render an empty list.
-        if (res.status === 501) {
-          setJobs([]);
-          setError('Editing pipeline is not yet connected. UI is live; backend stubs return 501.');
-          setLoadingJobs(false);
-          return;
-        }
-        throw new Error(body.error || `Failed to load jobs (${res.status})`);
-      }
+    const res = await fetch(`/api/editing/jobs?${params}`);
+    if (res.ok) {
       const data = await res.json();
-      setJobs(Array.isArray(data) ? (data as EditJob[]) : (data.jobs as EditJob[]) || []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load jobs');
+      setJobs(data.jobs || []);
+      setTotalJobs(data.total || 0);
     }
-    setLoadingJobs(false);
-  }, []);
+    setLoading(false);
+  }, [statusFilter]);
 
   useEffect(() => {
-    loadJobs();
-  }, [loadJobs]);
+    fetchJobs();
+  }, [fetchJobs]);
 
-  // Poll while any job is in an active state.
-  const hasActive = useMemo(
-    () => jobs.some((j) => ACTIVE_STATUSES.includes(j.status)),
-    [jobs]
-  );
-
+  // Poll for updates every 5 seconds when there are active jobs
   useEffect(() => {
-    if (!hasActive) return;
-    const id = setInterval(() => { loadJobs(); }, 5000);
-    return () => clearInterval(id);
-  }, [hasActive, loadJobs]);
+    const hasActiveJobs = jobs.some((j) =>
+      ['pending', 'analyzing', 'planning', 'editing'].includes(j.status)
+    );
+    if (!hasActiveJobs) return;
 
-  async function handleSubmit() {
-    if (!chosenAsset || !instruction.trim()) {
-      setError('Pick an asset and describe what you want changed.');
-      return;
-    }
+    const interval = setInterval(fetchJobs, 5000);
+    return () => clearInterval(interval);
+  }, [jobs, fetchJobs]);
+
+  // --- Submit new job ---
+  const handleSubmit = async () => {
+    if (!selectedAsset || !instruction.trim()) return;
+
     setSubmitting(true);
-    setError(null);
     try {
+      const sourceUrl = selectedAsset.file_url || selectedAsset.thumbnail_url || '';
+      const contentType = (selectedAsset.mime_type || '').startsWith('video/') ? 'video' : 'image';
+
       const res = await fetch('/api/editing/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          asset_id: chosenAsset.id,
-          source_url: chosenAsset.file_url,
-          content_type: chosenAsset.content_type,
+          asset_id: selectedAsset.id,
+          source_url: sourceUrl,
+          content_type: contentType,
           instruction: instruction.trim(),
-          reference_image_url: referenceUrl.trim() || null,
+          reference_image_url: referenceImageUrl || undefined,
         }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Create failed (${res.status})`);
+
+      if (res.ok) {
+        // Reset form and refresh
+        setInstruction('');
+        setSelectedAsset(null);
+        setReferenceImageUrl('');
+        setShowForm(false);
+        fetchJobs();
       }
-      // Reset form, refresh queue
-      setShowForm(false);
-      setChosenAsset(null);
-      setInstruction('');
-      setReferenceUrl('');
-      await loadJobs();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create edit job');
+      console.error('Failed to submit edit job:', err);
     }
     setSubmitting(false);
-  }
+  };
 
-  async function handleConfirm(jobId: string) {
-    setActionLoading(jobId);
-    try {
-      const res = await fetch(`/api/editing/jobs/${jobId}/confirm`, { method: 'POST' });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Confirm failed (${res.status})`);
-      }
-      await loadJobs();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to confirm job');
-    }
-    setActionLoading(null);
-  }
+  // --- Confirm an edit plan ---
+  const handleConfirm = async (jobId: string) => {
+    await fetch(`/api/editing/jobs/${jobId}/confirm`, { method: 'POST' });
+    fetchJobs();
+  };
 
-  async function handleRetry(jobId: string) {
-    setActionLoading(jobId);
-    try {
-      const res = await fetch(`/api/editing/jobs/${jobId}/retry`, { method: 'POST' });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Retry failed (${res.status})`);
-      }
-      await loadJobs();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to retry job');
-    }
-    setActionLoading(null);
-  }
+  // --- Retry a failed job ---
+  const handleRetry = async (jobId: string) => {
+    await fetch(`/api/editing/jobs/${jobId}/retry`, { method: 'POST' });
+    fetchJobs();
+  };
 
-  // Stash a thumbnail map keyed by asset_id so the queue can show a preview
-  // without an extra fetch per job. Filled lazily as we encounter assets.
-  const [thumbMap, setThumbMap] = useState<Record<string, string>>({});
-  useEffect(() => {
-    const ids = Array.from(
-      new Set(jobs.map((j) => j.asset_id).filter((x): x is string => !!x && !thumbMap[x]))
-    );
-    if (ids.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      const supabase = createBrowserSupabase();
-      const { data } = await supabase
-        .from('inspo_items')
-        .select('id, thumbnail_url')
-        .in('id', ids);
-      if (cancelled || !data) return;
-      const next: Record<string, string> = {};
-      (data as { id: string; thumbnail_url: string | null }[]).forEach((row) => {
-        if (row.thumbnail_url) next[row.id] = row.thumbnail_url;
-      });
-      setThumbMap((prev) => ({ ...prev, ...next }));
-    })();
-    return () => { cancelled = true; };
-  }, [jobs, thumbMap]);
-
-  const filteredJobs = useMemo(() => {
-    const tab = FILTER_TABS.find((t) => t.key === filter);
-    if (!tab || tab.statuses.length === 0) return jobs;
-    return jobs.filter((j) => tab.statuses.includes(j.status));
-  }, [filter, jobs]);
+  // --- Status filter tabs ---
+  const filterTabs = [
+    { key: 'all', label: 'All' },
+    { key: 'confirming', label: 'Awaiting Approval' },
+    { key: 'review', label: 'Ready for Review' },
+    { key: 'editing', label: 'In Progress' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'failed', label: 'Failed' },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <div className="max-w-6xl mx-auto p-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">AI Editing Studio</h1>
-            <p className="text-gray-400 mt-1 text-sm">
-              Describe what you want changed — the AI handles the rest.
+            <p className="text-gray-400 mt-1">
+              Describe what you want changed — the AI handles the rest
             </p>
           </div>
-          <div className="flex gap-2">
-            <Link
+          <div className="flex items-center gap-3">
+            <a
               href="/dashboard/inspo"
-              className="px-4 py-2 bg-[#141414] hover:bg-[#1f1f1f] border border-[#262626] text-gray-200 rounded-lg text-sm"
+              className="px-4 py-2 text-sm text-gray-300 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
             >
               Inspo Library
-            </Link>
+            </a>
             <button
-              onClick={() => setShowForm((s) => !s)}
-              className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-semibold"
+              onClick={() => setShowForm(!showForm)}
+              className="px-5 py-2.5 bg-[#D73F09] hover:bg-[#b33507] rounded-lg font-medium transition"
             >
               {showForm ? 'Cancel' : '+ New Edit'}
             </button>
           </div>
         </div>
 
-        {error && (
-          <div className="bg-red-900/40 border border-red-800 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm flex items-start justify-between gap-3">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200 text-xs">Dismiss</button>
-          </div>
-        )}
-
-        {/* Form */}
+        {/* New Edit Form */}
         {showForm && (
-          <section className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8">
-            <h2 className="text-lg font-bold mb-4">New Edit</h2>
+          <div className="bg-[#141414] border border-gray-800 rounded-xl p-6 mb-8">
+            <h2 className="text-lg font-semibold mb-4">New Edit Job</h2>
 
-            {/* Asset picker */}
+            {/* Asset selection */}
             <div className="mb-4">
-              <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">Source Asset</label>
-              {chosenAsset ? (
-                <div className="flex items-center gap-3 p-3 bg-[#0a0a0a] border border-[#262626] rounded-lg">
-                  {chosenAsset.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={chosenAsset.thumbnail_url} alt="" className="w-16 h-16 object-cover rounded" />
-                  ) : (
-                    <div className="w-16 h-16 bg-[#262626] rounded" />
+              <label className="block text-sm text-gray-400 mb-2">Asset</label>
+              {selectedAsset ? (
+                <div className="flex items-center gap-3 p-3 bg-[#1a1a1a] rounded-lg border border-gray-700">
+                  {(selectedAsset.thumbnail_url || selectedAsset.file_url) && (
+                    <img
+                      src={selectedAsset.thumbnail_url || selectedAsset.file_url || ''}
+                      alt=""
+                      className="w-16 h-16 object-cover rounded"
+                    />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {chosenAsset.athlete_name || chosenAsset.sport || 'Inspo asset'}
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">{chosenAsset.visual_description || ''}</div>
+                    <p className="text-sm truncate">
+                      {selectedAsset.visual_description || selectedAsset.content_type}
+                    </p>
+                    <p className="text-xs text-gray-500">{selectedAsset.sport || 'No sport tagged'}</p>
                   </div>
                   <button
-                    onClick={() => setPickerOpen(true)}
-                    className="text-xs text-orange-600 hover:text-orange-500"
+                    onClick={() => setSelectedAsset(null)}
+                    className="text-gray-500 hover:text-white text-sm"
                   >
                     Change
                   </button>
                 </div>
               ) : (
                 <button
-                  onClick={() => setPickerOpen(true)}
-                  className="w-full p-4 border-2 border-dashed border-[#262626] hover:border-[#404040] rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
+                  onClick={() => setInspoPickerOpen(true)}
+                  className="w-full p-4 border-2 border-dashed border-gray-700 rounded-lg text-gray-400 hover:border-[#D73F09] hover:text-[#D73F09] transition text-center"
                 >
-                  Pick from Inspo Library
+                  Click to select an asset from the inspo library
                 </button>
               )}
             </div>
 
             {/* Instruction */}
             <div className="mb-4">
-              <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">Instruction</label>
+              <label className="block text-sm text-gray-400 mb-2">
+                What do you want to change?
+              </label>
               <textarea
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
-                placeholder='e.g. "Make this 9:16, brighten the subject, add a Postgame logo bottom-right at 30% opacity"'
-                rows={4}
-                className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#262626] rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-600 resize-y"
+                placeholder="e.g., Remove all visible logos from the jersey, make it vertical for TikTok, add a cinematic color grade..."
+                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] resize-none"
+                rows={3}
               />
             </div>
 
             {/* Reference image (optional) */}
-            <div className="mb-4">
-              <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">Reference Image URL (optional)</label>
+            <div className="mb-6">
+              <label className="block text-sm text-gray-400 mb-2">
+                Reference image URL (optional — for style guidance)
+              </label>
               <input
                 type="text"
-                value={referenceUrl}
-                onChange={(e) => setReferenceUrl(e.target.value)}
+                value={referenceImageUrl}
+                onChange={(e) => setReferenceImageUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-[#262626] rounded-lg text-white text-sm font-mono placeholder-gray-600 focus:outline-none focus:border-orange-600"
+                className="w-full px-4 py-2.5 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
               />
             </div>
 
+            {/* Submit */}
             <button
               onClick={handleSubmit}
-              disabled={submitting || !chosenAsset || !instruction.trim()}
-              className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!selectedAsset || !instruction.trim() || submitting}
+              className="px-6 py-2.5 bg-[#D73F09] hover:bg-[#b33507] disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
             >
-              {submitting ? 'Submitting…' : 'Run Edit'}
+              {submitting ? 'Submitting...' : 'Run Edit'}
             </button>
-          </section>
+          </div>
         )}
 
-        {/* Status filter tabs */}
-        <div className="flex gap-1 border-b border-[#262626] mb-6 overflow-x-auto">
-          {FILTER_TABS.map((tab) => (
+        {/* Filter tabs */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+          {filterTabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                filter === tab.key
-                  ? 'text-white border-orange-600'
-                  : 'text-gray-500 hover:text-gray-300 border-transparent'
+              onClick={() => setStatusFilter(tab.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                statusFilter === tab.key
+                  ? 'bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30'
+                  : 'text-gray-400 border border-gray-800 hover:bg-gray-800'
               }`}
             >
               {tab.label}
             </button>
           ))}
+          <span className="ml-auto text-sm text-gray-500 self-center">
+            {totalJobs} job{totalJobs !== 1 ? 's' : ''}
+          </span>
         </div>
 
-        {/* Queue */}
-        {loadingJobs ? (
-          <div className="text-center text-gray-500 py-12">Loading jobs…</div>
-        ) : filteredJobs.length === 0 ? (
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-12 text-center">
-            <p className="text-gray-300 font-medium">
-              {filter === 'all' ? 'No edits yet' : 'Nothing in this filter'}
-            </p>
-            <p className="text-gray-500 text-sm mt-1">
-              {filter === 'all'
-                ? 'Click "+ New Edit" to start your first AI edit.'
-                : 'Try a different status tab.'}
+        {/* Jobs list */}
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading jobs...</div>
+        ) : jobs.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500 text-lg mb-2">No edit jobs yet</p>
+            <p className="text-gray-600 text-sm">
+              Click &quot;+ New Edit&quot; to submit your first AI editing job
             </p>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {filteredJobs.map((job) => {
-              const meta = STATUS_CONFIG[job.status];
-              const thumb = job.asset_id ? thumbMap[job.asset_id] : null;
+          <div className="space-y-3">
+            {jobs.map((job) => {
+              const statusCfg = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
+
               return (
-                <li key={job.id} className="bg-[#141414] border border-[#262626] rounded-xl p-4 flex items-start gap-4">
-                  {/* Thumb */}
-                  <div className="w-24 h-24 flex-shrink-0 bg-[#0a0a0a] rounded-lg overflow-hidden">
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-700 text-xs">
-                        no thumb
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Body */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start gap-2">
-                      <p className="text-sm text-gray-200 flex-1 line-clamp-2">{job.instruction}</p>
-                      <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${meta.color}`}>
-                        <span className="mr-1">{meta.icon}</span>{meta.label}
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-gray-600 mt-1">
-                      Created {new Date(job.created_at).toLocaleString()}
-                      {job.estimated_cost_usd != null && (
-                        <> · est ${Number(job.estimated_cost_usd).toFixed(2)}</>
-                      )}
-                      {job.actual_cost_usd != null && (
-                        <> · actual ${Number(job.actual_cost_usd).toFixed(2)}</>
+                <div
+                  key={job.id}
+                  className="bg-[#141414] border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="w-20 h-20 bg-[#1a1a1a] rounded-lg overflow-hidden flex-shrink-0">
+                      {job.source_url && (
+                        <img
+                          src={job.source_url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
                       )}
                     </div>
 
-                    {/* Plan preview while confirming */}
-                    {job.status === 'confirming' && job.edit_plan && (
-                      <div className="mt-3 p-3 bg-[#0a0a0a] border border-[#262626] rounded-lg">
-                        <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">
-                          Proposed Plan
-                          {job.edit_plan.estimated_total_cost_usd != null && (
-                            <span className="text-gray-400 normal-case font-normal ml-2">
-                              · est ${job.edit_plan.estimated_total_cost_usd.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        <ol className="space-y-1 text-sm text-gray-300">
-                          {job.edit_plan.steps.map((step, i) => (
-                            <li key={step.id || i} className="flex gap-2">
-                              <span className="text-gray-600 w-5 flex-shrink-0">{i + 1}.</span>
-                              <span className="flex-1">
-                                {step.description}
-                                <span className="ml-2 text-xs text-gray-600">[{step.tool}/{step.action}]</span>
-                              </span>
-                            </li>
-                          ))}
-                        </ol>
+                    {/* Job info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-medium truncate">
+                        &quot;{job.instruction}&quot;
+                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${statusCfg.color}`}
+                        >
+                          <span>{statusCfg.icon}</span>
+                          {statusCfg.label}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {job.content_type}
+                        </span>
+                        {job.estimated_cost_usd && (
+                          <span className="text-xs text-gray-500">
+                            ~${job.estimated_cost_usd.toFixed(2)}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-600">
+                          {new Date(job.created_at).toLocaleDateString()}
+                        </span>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Action row */}
-                    <div className="flex items-center gap-2 mt-3">
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {job.status === 'confirming' && (
                         <button
                           onClick={() => handleConfirm(job.id)}
-                          disabled={actionLoading === job.id}
-                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-semibold disabled:opacity-50"
+                          className="px-4 py-2 bg-green-600/20 text-green-400 border border-green-600/30 rounded-lg text-sm hover:bg-green-600/30 transition"
                         >
-                          {actionLoading === job.id ? 'Confirming…' : 'Confirm & Run'}
+                          Confirm & Run
                         </button>
                       )}
                       {job.status === 'review' && (
-                        <Link
+                        <a
                           href={`/dashboard/ai-editing/${job.id}/review`}
-                          className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs font-semibold"
+                          className="px-4 py-2 bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30 rounded-lg text-sm hover:bg-[#D73F09]/30 transition"
                         >
-                          Review →
-                        </Link>
+                          Review
+                        </a>
                       )}
-                      {(job.status === 'failed' || job.status === 'rejected') && (
+                      {job.status === 'failed' && (
                         <button
                           onClick={() => handleRetry(job.id)}
-                          disabled={actionLoading === job.id}
-                          className="px-3 py-1.5 bg-[#262626] hover:bg-[#333] text-gray-200 rounded text-xs disabled:opacity-50"
+                          className="px-4 py-2 bg-red-600/20 text-red-400 border border-red-600/30 rounded-lg text-sm hover:bg-red-600/30 transition"
                         >
-                          {actionLoading === job.id ? 'Retrying…' : 'Retry'}
+                          Retry
                         </button>
                       )}
-                      {(job.status === 'approved' || job.status === 'review') && job.output_url && (
-                        <a
-                          href={job.output_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 bg-[#262626] hover:bg-[#333] text-gray-200 rounded text-xs"
-                        >
-                          Open Output ↗
-                        </a>
+                      {['analyzing', 'planning', 'editing'].includes(job.status) && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                          <span className="text-xs text-blue-400">Processing...</span>
+                        </div>
                       )}
                     </div>
                   </div>
-                </li>
+
+                  {/* Edit plan preview (when confirming) */}
+                  {job.status === 'confirming' && job.edit_plan && (
+                    <div className="mt-4 p-4 bg-[#0a0a0a] rounded-lg border border-gray-800">
+                      <p className="text-sm text-gray-400 mb-2 font-medium">Edit Plan</p>
+                      <div className="space-y-1.5">
+                        {((job.edit_plan as unknown as { steps: Array<{ step_id: number; description: string; tool: string }> }).steps || []).map(
+                          (step) => (
+                            <div key={step.step_id} className="flex items-center gap-2 text-sm">
+                              <span className="text-gray-600 w-5">{step.step_id}.</span>
+                              <span className="text-gray-300">{step.description}</span>
+                              <span className="text-xs text-gray-600 ml-auto">
+                                {step.tool}
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                      {job.estimated_cost_usd && (
+                        <p className="text-xs text-gray-500 mt-3">
+                          Estimated cost: ${job.estimated_cost_usd.toFixed(2)} &middot;{' '}
+                          {(job.edit_plan as unknown as { estimated_duration_minutes: number }).estimated_duration_minutes || '?'} min
+                        </p>
+                      )}
+                      {((job.edit_plan as unknown as { warnings: string[] }).warnings || []).length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {((job.edit_plan as unknown as { warnings: string[] }).warnings).map((w, i) => (
+                            <p key={i} className="text-xs text-yellow-500">⚠ {w}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
 
+      {/* Inspo Picker Modal */}
       <InspoPickerModal
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        isOpen={inspoPickerOpen}
+        onClose={() => setInspoPickerOpen(false)}
         onSelect={(items) => {
-          if (items[0]) setChosenAsset(items[0]);
+          if (items.length > 0) {
+            setSelectedAsset(items[0]);
+          }
+          setInspoPickerOpen(false);
         }}
-        contentType="video"
-        title="Pick a video to edit"
+        selectedIds={selectedAsset ? [selectedAsset.id] : []}
+        maxSelections={1}
       />
     </div>
   );

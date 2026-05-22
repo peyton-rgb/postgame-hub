@@ -89,7 +89,7 @@ export interface ComputedStats {
   combinedFollowers: number;
   totalImpressions: number;
   totalEngagements: number;
-  avgEngRate: number; // @deprecated — average of platform-best rates, average across platforms
+  avgEngRate: number;
   igAvgEngRate: number;
   tiktokAvgEngRate: number;
 
@@ -97,6 +97,7 @@ export interface ComputedStats {
   igFeedPosts: number;
   igReelPosts: number;
   tiktokPosts: number;
+  igStoryPosts: number; // ADDED (Change 3): story post count for platform breakdown
   totalReach: number;
   igFeed: { reach: number; impressions: number; likes: number; comments: number; shares: number; reposts: number; engagements: number; engRateSum: number; engRateCount: number };
   igStory: { count: number; impressions: number };
@@ -133,9 +134,14 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
   let tiktokPosts = 0;
   let totalReach = 0;
 
-  // Per-platform: average of best engagement rates across athletes who posted.
-  const platformRateSum = { ig_feed: 0, ig_reel: 0, tiktok: 0 };
-  const platformRateCount = { ig_feed: 0, ig_reel: 0, tiktok: 0 };
+  // UPDATED (Change 2): Flat engagement rate accumulators — one entry per unique post,
+  // instead of per-platform average-of-averages.
+  let allRateSum = 0;
+  let allRateCount = 0;
+  let igRateSum = 0;
+  let igRateCount = 0;
+  let tiktokRateSum = 0;
+  let tiktokRateCount = 0;
 
   const igFeed = { reach: 0, impressions: 0, likes: 0, comments: 0, shares: 0, reposts: 0, engagements: 0, engRateSum: 0, engRateCount: 0 };
   const igStory = { count: 0, impressions: 0 };
@@ -172,16 +178,18 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     if (m.ig_story?.count) { totalPosts += m.ig_story.count; }
 
     // ── Total Impressions: Feed + Story + Reel + TikTok (Post 1 + Post 2) ──
+    // UPDATED (Change 1): Always include every athlete's impressions/views, even for collab posts.
+    // Collab post impressions = sum of ALL athletes' individual impressions in the collab.
     const storyTotalImp = m.ig_story?.total_impressions
       ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
     totalImpressions +=
-      (feedIsCollab ? 0 : (m.ig_feed?.impressions || 0)) +
-      (feed2IsCollab ? 0 : (m.ig_feed_2?.impressions || 0)) +
+      (m.ig_feed?.impressions || 0) +
+      (m.ig_feed_2?.impressions || 0) +
       storyTotalImp +
-      (reelIsCollab ? 0 : (m.ig_reel?.views || 0)) +
-      (reel2IsCollab ? 0 : (m.ig_reel_2?.views || 0)) +
-      (tiktokIsCollab ? 0 : (m.tiktok?.views || 0)) +
-      (tiktok2IsCollab ? 0 : (m.tiktok_2?.views || 0));
+      (m.ig_reel?.views || 0) +
+      (m.ig_reel_2?.views || 0) +
+      (m.tiktok?.views || 0) +
+      (m.tiktok_2?.views || 0);
 
     // ── Total Engagements: Feed + Reel + TikTok (Post 1 + Post 2; Story has none) ──
     totalEngagements +=
@@ -196,59 +204,81 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     totalReach += (feedIsCollab ? 0 : (m.ig_feed?.reach || 0)) + (a.ig_followers || 0);
 
     // ── Per-platform aggregations (Post 1) ──
+    // UPDATED (Change 1): Impressions/views always included, even for collab athletes.
+    // Engagement stats (likes, comments, etc.) still skip collab — counted via collab group.
+    igFeed.impressions += m.ig_feed?.impressions || 0;
     if (!feedIsCollab) {
       igFeed.reach += m.ig_feed?.reach || 0;
-      igFeed.impressions += m.ig_feed?.impressions || 0;
       igFeed.likes += m.ig_feed?.likes || 0;
       igFeed.comments += m.ig_feed?.comments || 0;
       igFeed.shares += m.ig_feed?.shares || 0;
       igFeed.reposts += m.ig_feed?.reposts || 0;
       igFeed.engagements += m.ig_feed?.total_engagements || 0;
       const r = bestRateForPlatform(m, "ig_feed");
-      if (r > 0) { igFeed.engRateSum += r; igFeed.engRateCount++; }
+      if (r > 0) {
+        igFeed.engRateSum += r; igFeed.engRateCount++;
+        // UPDATED (Change 2): Flat average accumulation
+        allRateSum += r; allRateCount++;
+        igRateSum += r; igRateCount++;
+      }
     }
     // Post 2
+    igFeed.impressions += m.ig_feed_2?.impressions || 0;
     if (!feed2IsCollab && m.ig_feed_2?.post_url) {
       igFeed.reach += m.ig_feed_2.reach || 0;
-      igFeed.impressions += m.ig_feed_2.impressions || 0;
       igFeed.likes += m.ig_feed_2.likes || 0;
       igFeed.comments += m.ig_feed_2.comments || 0;
       igFeed.shares += m.ig_feed_2.shares || 0;
       igFeed.reposts += m.ig_feed_2.reposts || 0;
       igFeed.engagements += m.ig_feed_2.total_engagements || 0;
       const r2f = Math.max(m.ig_feed_2.engagement_rate_followers ?? 0, m.ig_feed_2.engagement_rate_impressions ?? 0);
-      if (r2f > 0) { igFeed.engRateSum += r2f; igFeed.engRateCount++; }
+      if (r2f > 0) {
+        igFeed.engRateSum += r2f; igFeed.engRateCount++;
+        // UPDATED (Change 2): Flat average accumulation
+        allRateSum += r2f; allRateCount++;
+        igRateSum += r2f; igRateCount++;
+      }
     }
 
     igStory.count += m.ig_story?.count || 0;
     igStory.impressions += m.ig_story?.total_impressions
       ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
 
+    igReel.views += m.ig_reel?.views || 0;
     if (!reelIsCollab) {
-      igReel.views += m.ig_reel?.views || 0;
       igReel.likes += m.ig_reel?.likes || 0;
       igReel.comments += m.ig_reel?.comments || 0;
       igReel.shares += m.ig_reel?.shares || 0;
       igReel.reposts += m.ig_reel?.reposts || 0;
       igReel.engagements += m.ig_reel?.total_engagements || 0;
       const r = bestRateForPlatform(m, "ig_reel");
-      if (r > 0) { igReel.engRateSum += r; igReel.engRateCount++; }
+      if (r > 0) {
+        igReel.engRateSum += r; igReel.engRateCount++;
+        // UPDATED (Change 2): Flat average accumulation
+        allRateSum += r; allRateCount++;
+        igRateSum += r; igRateCount++;
+      }
     }
     // Post 2
+    igReel.views += m.ig_reel_2?.views || 0;
     if (!reel2IsCollab && m.ig_reel_2?.post_url) {
-      igReel.views += m.ig_reel_2.views || 0;
       igReel.likes += m.ig_reel_2.likes || 0;
       igReel.comments += m.ig_reel_2.comments || 0;
       igReel.shares += m.ig_reel_2.shares || 0;
       igReel.reposts += m.ig_reel_2.reposts || 0;
       igReel.engagements += m.ig_reel_2.total_engagements || 0;
       const r2r = Math.max(m.ig_reel_2.engagement_rate_followers ?? 0, m.ig_reel_2.engagement_rate_impressions ?? 0);
-      if (r2r > 0) { igReel.engRateSum += r2r; igReel.engRateCount++; }
+      if (r2r > 0) {
+        igReel.engRateSum += r2r; igReel.engRateCount++;
+        // UPDATED (Change 2): Flat average accumulation
+        allRateSum += r2r; allRateCount++;
+        igRateSum += r2r; igRateCount++;
+      }
     }
 
     tiktok.followers += m.tiktok?.followers || 0;
+    tiktok.views += m.tiktok?.views || 0;
     if (!tiktokIsCollab) {
-      tiktok.views += m.tiktok?.views || 0;
       tiktok.likes += m.tiktok?.likes || 0;
       tiktok.comments += m.tiktok?.comments || 0;
       tiktok.saves += m.tiktok?.saves || 0;
@@ -256,47 +286,28 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
       tiktok.saves_shares += m.tiktok?.saves_shares || 0;
       tiktok.engagements += m.tiktok?.total_engagements || 0;
       const r = bestRateForPlatform(m, "tiktok");
-      if (r > 0) { tiktok.engRateSum += r; tiktok.engRateCount++; }
+      if (r > 0) {
+        tiktok.engRateSum += r; tiktok.engRateCount++;
+        // UPDATED (Change 2): Flat average accumulation
+        allRateSum += r; allRateCount++;
+        tiktokRateSum += r; tiktokRateCount++;
+      }
     }
     // Post 2
+    tiktok.views += m.tiktok_2?.views || 0;
     if (!tiktok2IsCollab && m.tiktok_2?.post_url) {
       tiktok.followers += m.tiktok_2.followers || 0;
-      tiktok.views += m.tiktok_2.views || 0;
       tiktok.likes += m.tiktok_2.likes || 0;
       tiktok.comments += m.tiktok_2.comments || 0;
       tiktok.saves += m.tiktok_2.saves || 0;
       tiktok.engagements += m.tiktok_2.total_engagements || 0;
       const r2t = Math.max(m.tiktok_2.engagement_rate_followers ?? 0, m.tiktok_2.engagement_rate_impressions ?? 0);
-      if (r2t > 0) { tiktok.engRateSum += r2t; tiktok.engRateCount++; }
-    }
-
-    // ── Hero Avg Engagement Rate inputs (per-platform aggregation, Post 1) ──
-    for (const p of ["ig_feed", "ig_reel", "tiktok"] as const) {
-      if (
-        (p === "ig_feed" && feedIsCollab) ||
-        (p === "ig_reel" && reelIsCollab) ||
-        (p === "tiktok" && tiktokIsCollab)
-      ) continue;
-      if (athletePostedOn(m, p)) {
-        const r = bestRateForPlatform(m, p);
-        if (r > 0) {
-          platformRateSum[p] += r;
-          platformRateCount[p] += 1;
-        }
+      if (r2t > 0) {
+        tiktok.engRateSum += r2t; tiktok.engRateCount++;
+        // UPDATED (Change 2): Flat average accumulation
+        allRateSum += r2t; allRateCount++;
+        tiktokRateSum += r2t; tiktokRateCount++;
       }
-    }
-    // Post 2 ER contributions to platform averages.
-    if (!feed2IsCollab && m.ig_feed_2?.post_url) {
-      const r2f = Math.max(m.ig_feed_2.engagement_rate_followers ?? 0, m.ig_feed_2.engagement_rate_impressions ?? 0);
-      if (r2f > 0) { platformRateSum.ig_feed += r2f; platformRateCount.ig_feed += 1; }
-    }
-    if (!reel2IsCollab && m.ig_reel_2?.post_url) {
-      const r2r = Math.max(m.ig_reel_2.engagement_rate_followers ?? 0, m.ig_reel_2.engagement_rate_impressions ?? 0);
-      if (r2r > 0) { platformRateSum.ig_reel += r2r; platformRateCount.ig_reel += 1; }
-    }
-    if (!tiktok2IsCollab && m.tiktok_2?.post_url) {
-      const r2t = Math.max(m.tiktok_2.engagement_rate_followers ?? 0, m.tiktok_2.engagement_rate_impressions ?? 0);
-      if (r2t > 0) { platformRateSum.tiktok += r2t; platformRateCount.tiktok += 1; }
     }
 
     // ── Clicks (unchanged) ──
@@ -325,10 +336,10 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
   }
 
   // ── Collab groups: add each one's metrics exactly once. ──
+  // UPDATED (Change 1): Impressions/views NOT added here — already summed per-athlete above.
+  // Only engagements, likes, comments, etc. are added from the collab group.
   for (const g of collabGroups) {
     const gm = g.metrics;
-    const views = gm.views || 0;
-    const impressions = gm.impressions || 0;
     const engagements = gm.totalEngagements || 0;
     const likes = gm.likes || 0;
     const comments = gm.comments || 0;
@@ -338,54 +349,51 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
 
     if (g.platform === "ig_feed") {
       igFeedPosts++; totalPosts++;
-      totalImpressions += impressions;
       totalEngagements += engagements;
-      igFeed.impressions += impressions;
       igFeed.likes += likes;
       igFeed.comments += comments;
       igFeed.shares += shares;
       igFeed.reposts += reposts;
       igFeed.engagements += engagements;
-      if (rate > 0) { igFeed.engRateSum += rate; igFeed.engRateCount++; platformRateSum.ig_feed += rate; platformRateCount.ig_feed += 1; }
+      if (rate > 0) {
+        igFeed.engRateSum += rate; igFeed.engRateCount++;
+        // UPDATED (Change 2): Collab group counts as one entry in flat average
+        allRateSum += rate; allRateCount++;
+        igRateSum += rate; igRateCount++;
+      }
     } else if (g.platform === "ig_reel") {
       igReelPosts++; totalPosts++;
-      totalImpressions += views;
       totalEngagements += engagements;
-      igReel.views += views;
       igReel.likes += likes;
       igReel.comments += comments;
       igReel.shares += shares;
       igReel.reposts += reposts;
       igReel.engagements += engagements;
-      if (rate > 0) { igReel.engRateSum += rate; igReel.engRateCount++; platformRateSum.ig_reel += rate; platformRateCount.ig_reel += 1; }
+      if (rate > 0) {
+        igReel.engRateSum += rate; igReel.engRateCount++;
+        // UPDATED (Change 2): Collab group counts as one entry in flat average
+        allRateSum += rate; allRateCount++;
+        igRateSum += rate; igRateCount++;
+      }
     } else {
       tiktokPosts++; totalPosts++;
-      totalImpressions += views;
       totalEngagements += engagements;
-      tiktok.views += views;
       tiktok.likes += likes;
       tiktok.comments += comments;
       tiktok.engagements += engagements;
-      if (rate > 0) { tiktok.engRateSum += rate; tiktok.engRateCount++; platformRateSum.tiktok += rate; platformRateCount.tiktok += 1; }
+      if (rate > 0) {
+        tiktok.engRateSum += rate; tiktok.engRateCount++;
+        // UPDATED (Change 2): Collab group counts as one entry in flat average
+        allRateSum += rate; allRateCount++;
+        tiktokRateSum += rate; tiktokRateCount++;
+      }
     }
   }
 
-  // ── Platform-specific avg engagement rates ──
-  const igPlatformAvgs: number[] = [];
-  if (platformRateCount.ig_feed > 0) igPlatformAvgs.push(platformRateSum.ig_feed / platformRateCount.ig_feed);
-  if (platformRateCount.ig_reel > 0) igPlatformAvgs.push(platformRateSum.ig_reel / platformRateCount.ig_reel);
-  const igAvgEngRate = igPlatformAvgs.length > 0
-    ? igPlatformAvgs.reduce((s, r) => s + r, 0) / igPlatformAvgs.length
-    : 0;
-  const tiktokAvgEngRate = platformRateCount.tiktok > 0
-    ? platformRateSum.tiktok / platformRateCount.tiktok
-    : 0;
-  // Legacy combined rate (deprecated, kept for backward compat)
-  const allPlatformAvgs = [...igPlatformAvgs];
-  if (platformRateCount.tiktok > 0) allPlatformAvgs.push(platformRateSum.tiktok / platformRateCount.tiktok);
-  const avgEngRate = allPlatformAvgs.length > 0
-    ? allPlatformAvgs.reduce((s, r) => s + r, 0) / allPlatformAvgs.length
-    : 0;
+  // ── UPDATED (Change 2): Flat average across all unique posts ──
+  const avgEngRate = allRateCount > 0 ? allRateSum / allRateCount : 0;
+  const igAvgEngRate = igRateCount > 0 ? igRateSum / igRateCount : 0;
+  const tiktokAvgEngRate = tiktokRateCount > 0 ? tiktokRateSum / tiktokRateCount : 0;
 
   return {
     athleteCount: athletes.length,
@@ -398,7 +406,9 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     avgEngRate,
     igAvgEngRate,
     tiktokAvgEngRate,
-    igFeedPosts, igReelPosts, tiktokPosts, totalReach,
+    igFeedPosts, igReelPosts, tiktokPosts,
+    igStoryPosts: igStory.count, // ADDED (Change 3)
+    totalReach,
     igFeed, igStory, igReel, tiktok,
     clicks, hasClicks, sales, hasSales,
   };
@@ -533,17 +543,34 @@ function collabTotalImpressions(g: CollabGroup): number {
   return g.metrics.views ?? g.metrics.impressions ?? 0;
 }
 
-function athleteHasAnyCollabPost(a: Athlete, collabUrls: Set<string>): boolean {
+/** Find the collab group that an athlete's best-platform post belongs to. */
+function findCollabGroupForAthlete(
+  a: Athlete,
+  platformKey: Platform | null,
+  collabGroups: CollabGroup[],
+  collabUrls: Set<string>,
+): CollabGroup | undefined {
+  if (!platformKey) return undefined;
   const m = a.metrics;
-  if (!m) return false;
-  return (
-    (!!m.ig_feed?.post_url && collabUrls.has(m.ig_feed.post_url)) ||
-    (!!m.ig_reel?.post_url && collabUrls.has(m.ig_reel.post_url)) ||
-    (!!m.tiktok?.post_url && collabUrls.has(m.tiktok.post_url)) ||
-    (!!m.ig_feed_2?.post_url && collabUrls.has(m.ig_feed_2.post_url)) ||
-    (!!m.ig_reel_2?.post_url && collabUrls.has(m.ig_reel_2.post_url)) ||
-    (!!m.tiktok_2?.post_url && collabUrls.has(m.tiktok_2.post_url))
-  );
+  if (!m) return undefined;
+
+  // Check all URL slots for this athlete to find a collab match
+  const urlsToCheck: (string | undefined)[] = [];
+  if (platformKey === "ig_feed") {
+    urlsToCheck.push(m.ig_feed?.post_url, m.ig_feed_2?.post_url);
+  } else if (platformKey === "ig_reel") {
+    urlsToCheck.push(m.ig_reel?.post_url, m.ig_reel_2?.post_url);
+  } else {
+    urlsToCheck.push(m.tiktok?.post_url, m.tiktok_2?.post_url);
+  }
+
+  for (const url of urlsToCheck) {
+    if (url && collabUrls.has(url)) {
+      const group = collabGroups.find((g) => g.url === url);
+      if (group) return group;
+    }
+  }
+  return undefined;
 }
 
 export function getTopPerformers(
@@ -553,18 +580,22 @@ export function getTopPerformers(
 ): TopPerformerEntry[] {
   const collabUrls = buildCollabUrlSet(collabGroups);
 
+  // UPDATED (Change 4): Collab athletes get their collab group's ER and impressions
+  // instead of being zeroed out. This ensures collab partners show matching rates.
   const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
       const key = bestPlatformKey(platform);
-      const url = key ? a.metrics?.[key]?.post_url : undefined;
-      const onCollab = !!url && collabUrls.has(url);
+      const collabGroup = findCollabGroupForAthlete(a, key, collabGroups, collabUrls);
+
       return {
         ...a,
         kind: "athlete" as const,
-        bestEngRate: onCollab ? 0 : rate,
+        bestEngRate: collabGroup ? collabGroup.combinedEngagementRate : rate,
         bestPlatform: platform,
-        totalImpressions: getTotalImpressions(a),
+        totalImpressions: collabGroup
+          ? collabTotalImpressions(collabGroup)
+          : getTotalImpressions(a),
       };
     })
     .filter((e) => e.bestEngRate > 0);
@@ -589,18 +620,25 @@ export function getTopPerformersByImpressions(
 ): TopPerformerEntry[] {
   const collabUrls = buildCollabUrlSet(collabGroups);
 
+  // UPDATED (Change 4): Collab athletes get their collab group's impressions
+  // instead of being excluded entirely.
   const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
+      const key = bestPlatformKey(platform);
+      const collabGroup = findCollabGroupForAthlete(a, key, collabGroups, collabUrls);
+
       return {
         ...a,
         kind: "athlete" as const,
-        bestEngRate: rate,
+        bestEngRate: collabGroup ? collabGroup.combinedEngagementRate : rate,
         bestPlatform: platform,
-        totalImpressions: getTotalImpressions(a),
+        totalImpressions: collabGroup
+          ? collabTotalImpressions(collabGroup)
+          : getTotalImpressions(a),
       };
     })
-    .filter((e) => e.totalImpressions > 0 && !athleteHasAnyCollabPost(e, collabUrls));
+    .filter((e) => e.totalImpressions > 0);
 
   const collabEntries: CollabTopPerformerEntry[] = collabGroups.map((g) => ({
     ...g,

@@ -1,288 +1,378 @@
 // ============================================================
-// Editing Orchestrator — "The Hands"
+// Editing Orchestrator Agent
 //
-// Loads an edit_jobs row + its EDL, expands the EDL into edit_steps
-// rows, then walks the dependency graph in topological order:
+// The "Hands" of the editing pipeline. This agent:
+//   1. Reads the Edit Decision List (EDL) from an edit job
+//   2. Creates edit_steps rows for each step (audit trail)
+//   3. Executes steps in dependency order (topological sort)
+//   4. Routes each step to the right tool (FFmpeg, VOID,
+//      Firefly, or Higgsfield)
+//   5. Chains outputs — each step's output becomes the next
+//      step's input
+//   6. Tracks costs and timing per step
+//   7. On completion, moves the job to "review" status
 //
-//   - ffmpeg actions execute synchronously via the FFmpeg tool.
-//   - void / higgsfield / firefly actions are AI tools dispatched
-//     via MCP from the Cowork session. The orchestrator marks the
-//     step as still-pending with an __AWAITING_MCP__:tool sentinel
-//     and returns; the Cowork session takes it from there.
+// Think of this like a foreman on a construction site — it reads
+// the blueprint (EDL), assigns each task to the right crew
+// (tool), makes sure they work in the right order, and reports
+// back when the building is done.
 //
-// Every successful step's output_url becomes the input for any
-// dependent step. When all steps complete, the job moves to
-// 'review' with the final step's output_url.
+// Called by: POST /api/editing/jobs/[id]/approve (when CM confirms the plan)
 // ============================================================
 
-import { createServiceSupabase } from '@/lib/supabase';
-import { executeFFmpeg } from '@/lib/tools/ffmpeg';
+import { createClient } from '@supabase/supabase-js';
 import type {
   EditDecisionList,
   EditJob,
   EditStep,
-  EditStepStatus,
-  EditTool,
   EDLStep,
   ToolResult,
 } from '@/lib/types/editing';
+import { executeFFmpeg } from '@/lib/tools/ffmpeg';
 
-let _db: ReturnType<typeof createServiceSupabase> | null = null;
-function getDb() {
-  if (!_db) _db = createServiceSupabase();
-  return _db;
-}
+// Admin Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-export async function executeEditPlan(jobId: string, userId: string): Promise<void> {
-  const db = getDb();
+/**
+ * Execute the full edit plan for a job.
+ *
+ * @param jobId - The edit_jobs row ID
+ * @param userId - Who triggered this (for audit logging)
+ */
+export async function executeEditPlan(
+  jobId: string,
+  userId: string
+): Promise<void> {
   const startTime = Date.now();
 
-  const { data: agentRun } = await db
+  // --- Log the agent run ---
+  const { data: agentRun } = await supabase
     .from('agent_runs')
     .insert({
-      agent_name: 'editing_orchestrator',
+      agent_name: 'editing-orchestrator',
       triggered_by: userId,
-      input_payload: { scope: 'editing_orchestrator', job_id: jobId },
-      model: 'orchestrator',
+      input_payload: { edit_job_id: jobId },
+      model: 'orchestrator', // not an LLM — this is a routing agent
       status: 'running',
     })
-    .select('id')
+    .select()
     .single();
 
-  // Load job + plan
-  const { data: jobRow, error: jobError } = await db
-    .from('edit_jobs')
-    .select('*')
-    .eq('id', jobId)
-    .single();
+  try {
+    // --- Load the job ---
+    const { data: job, error: jobError } = await supabase
+      .from('edit_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .single();
 
-  if (jobError || !jobRow) {
-    await failRun(agentRun?.id, 'Job not found', startTime);
-    throw new Error(`Job not found: ${jobId}`);
-  }
-  const job = jobRow as EditJob;
-  const plan = job.edit_plan as EditDecisionList | null;
-  if (!plan || !Array.isArray(plan.steps) || plan.steps.length === 0) {
-    await failRun(agentRun?.id, 'Job has no edit_plan to execute', startTime);
-    await db.from('edit_jobs').update({ status: 'failed' }).eq('id', jobId);
-    throw new Error('Job has no edit_plan');
-  }
-
-  await db.from('edit_jobs').update({ status: 'editing' }).eq('id', jobId);
-
-  // Insert / refresh edit_steps rows. We upsert by (job_id, step_number)
-  // so re-running an orchestrator on a retried job doesn't duplicate.
-  const stepRows = plan.steps.map((s) => ({
-    edit_job_id: jobId,
-    step_number: s.step_number,
-    action: s.action,
-    tool: s.tool,
-    description: s.description,
-    params: { ...s.params, _edl_id: s.id, _depends_on: s.depends_on },
-    status: 'pending' as EditStepStatus,
-  }));
-
-  // Best-effort cleanup: drop any prior pending step rows for this job.
-  await db
-    .from('edit_steps')
-    .delete()
-    .eq('edit_job_id', jobId)
-    .in('status', ['pending', 'failed']);
-
-  const { data: insertedSteps, error: insertError } = await db
-    .from('edit_steps')
-    .insert(stepRows)
-    .select('*');
-
-  if (insertError || !insertedSteps) {
-    await failRun(agentRun?.id, `edit_steps insert failed: ${insertError?.message}`, startTime);
-    await db.from('edit_jobs').update({ status: 'failed' }).eq('id', jobId);
-    throw new Error('edit_steps insert failed');
-  }
-
-  // Build lookup maps so we can resolve dependencies.
-  const dbStepsByEDLId = new Map<string, EditStep>();
-  for (const dbStep of insertedSteps as EditStep[]) {
-    const edlId = (dbStep.params as { _edl_id?: string })?._edl_id || `s${dbStep.step_number}`;
-    dbStepsByEDLId.set(edlId, dbStep);
-  }
-  const completedOutputByEDLId = new Map<string, string>(); // edl_id → output_url
-  const completedSet = new Set<string>(); // edl_id
-
-  // Topological execution loop.
-  const remaining: EDLStep[] = [...plan.steps];
-  let totalCost = 0;
-  let lastOutputUrl: string | null = null;
-
-  // Hard cap iterations defensively against bad planner output.
-  const MAX_ITERATIONS = remaining.length * 2 + 10;
-  let iter = 0;
-
-  while (remaining.length > 0 && iter < MAX_ITERATIONS) {
-    iter++;
-
-    // Find a step whose deps are all complete.
-    const idx = remaining.findIndex((s) =>
-      (s.depends_on || []).every((d) => completedSet.has(d))
-    );
-    if (idx === -1) {
-      // Cyclic or missing deps — fail.
-      await failRun(agentRun?.id, 'Unsatisfiable step dependencies', startTime);
-      await db.from('edit_jobs').update({ status: 'failed' }).eq('id', jobId);
-      throw new Error('Unsatisfiable step dependencies');
+    if (jobError || !job) {
+      throw new Error(`Could not load edit job: ${jobError?.message || 'Not found'}`);
     }
 
-    const step = remaining[idx];
-    remaining.splice(idx, 1);
-    const dbStep = dbStepsByEDLId.get(step.id);
-    if (!dbStep) {
-      throw new Error(`Internal: missing edit_steps row for EDL id ${step.id}`);
+    const editJob = job as EditJob;
+    const edl = editJob.edit_plan as EditDecisionList | null;
+
+    if (!edl || !edl.steps || edl.steps.length === 0) {
+      throw new Error('Edit job has no edit plan or plan has no steps');
     }
 
-    // Resolve input URL: last completed dep's output, else original source.
-    const depId = step.depends_on?.[step.depends_on.length - 1];
-    const inputUrl =
-      (depId && completedOutputByEDLId.get(depId)) || job.source_url;
+    // --- Update job status ---
+    await supabase
+      .from('edit_jobs')
+      .update({ status: 'editing', updated_at: new Date().toISOString() })
+      .eq('id', jobId);
 
-    await db
+    // --- Create edit_steps rows for tracking ---
+    const stepRows = edl.steps.map((step) => ({
+      edit_job_id: jobId,
+      step_number: step.step_id,
+      action: step.action,
+      tool: step.tool,
+      description: step.description,
+      params: step.params,
+      status: 'pending' as const,
+    }));
+
+    const { data: insertedSteps, error: insertError } = await supabase
       .from('edit_steps')
+      .insert(stepRows)
+      .select();
+
+    if (insertError) {
+      throw new Error(`Failed to create edit steps: ${insertError.message}`);
+    }
+
+    // Build a map from step_number to DB row ID for updates
+    const stepDbMap = new Map<number, string>();
+    for (const row of (insertedSteps || []) as EditStep[]) {
+      stepDbMap.set(row.step_number, row.id);
+    }
+
+    // --- Execute steps in dependency order ---
+    // Topological sort: process steps whose dependencies are all complete
+    const completedSteps = new Set<number>();
+    const stepOutputs = new Map<number, string>(); // step_id → output URL
+    let totalCost = 0;
+
+    // Current asset URL starts with the source file
+    // Steps that depend on other steps get their input from the dependency's output
+    const stepsToProcess = [...edl.steps];
+
+    while (stepsToProcess.length > 0) {
+      // Find steps whose dependencies are all satisfied
+      const readySteps = stepsToProcess.filter((step) =>
+        step.depends_on.every((depId) => completedSteps.has(depId))
+      );
+
+      if (readySteps.length === 0) {
+        // Circular dependency or all remaining steps are blocked
+        throw new Error(
+          `Stuck: ${stepsToProcess.length} steps remain but none are ready. ` +
+          `Completed: [${[...completedSteps].join(', ')}]. ` +
+          `Waiting: [${stepsToProcess.map((s) => s.step_id).join(', ')}]`
+        );
+      }
+
+      // Execute ready steps (sequentially for now — could parallelize independent steps later)
+      for (const step of readySteps) {
+        const dbStepId = stepDbMap.get(step.step_id);
+
+        // Determine input URL: if this step depends on another, use that step's output.
+        // If multiple dependencies, use the last one's output (chain pattern).
+        // If no dependencies, use the original source file.
+        let inputUrl = editJob.source_url;
+        if (step.depends_on.length > 0) {
+          const lastDep = step.depends_on[step.depends_on.length - 1];
+          inputUrl = stepOutputs.get(lastDep) || editJob.source_url;
+        }
+
+        // Mark step as running
+        if (dbStepId) {
+          await supabase
+            .from('edit_steps')
+            .update({
+              status: 'running',
+              input_url: inputUrl,
+              started_at: new Date().toISOString(),
+            })
+            .eq('id', dbStepId);
+        }
+
+        // --- Route to the right tool ---
+        let result: ToolResult;
+        try {
+          result = await routeToTool(step, inputUrl);
+        } catch (toolErr) {
+          result = {
+            success: false,
+            output_url: null,
+            cost_usd: 0,
+            duration_seconds: 0,
+            error: toolErr instanceof Error ? toolErr.message : String(toolErr),
+          };
+        }
+
+        // Check if this step needs MCP processing (Higgsfield/Firefly/VOID)
+        const isAwaitingMcp = !result.success && result.error?.startsWith('__AWAITING_MCP__');
+
+        if (isAwaitingMcp) {
+          // Mark this step as "pending" with a note that it needs MCP processing.
+          // The orchestrator pauses the whole job here — a Cowork session will
+          // pick up the pending MCP steps and process them.
+          if (dbStepId) {
+            const mcpTool = result.error?.replace('__AWAITING_MCP__:', '') || step.tool;
+            await supabase
+              .from('edit_steps')
+              .update({
+                status: 'pending',
+                input_url: inputUrl,
+                error_message: `Awaiting MCP processing via ${mcpTool}`,
+                external_provider: mcpTool,
+              })
+              .eq('id', dbStepId);
+          }
+
+          // Pause the job — set status to "editing" with a note
+          // The job stays in "editing" status. The Cowork session will
+          // process the MCP steps and then resume the orchestrator.
+          await supabase
+            .from('edit_jobs')
+            .update({
+              status: 'editing',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', jobId);
+
+          // Log partial progress
+          if (agentRun) {
+            await supabase
+              .from('agent_runs')
+              .update({
+                status: 'complete',
+                output_payload: {
+                  steps_completed: completedSteps.size,
+                  paused_at_step: step.step_id,
+                  reason: 'awaiting_mcp',
+                  total_cost_usd: totalCost,
+                },
+                cost_usd: totalCost,
+                duration_ms: Date.now() - startTime,
+              })
+              .eq('id', agentRun.id);
+          }
+
+          // Stop processing — Cowork will resume later
+          return;
+        }
+
+        // Update the step record
+        if (dbStepId) {
+          await supabase
+            .from('edit_steps')
+            .update({
+              status: result.success ? 'completed' : 'failed',
+              output_url: result.output_url,
+              error_message: result.error || null,
+              cost_usd: result.cost_usd,
+              duration_seconds: result.duration_seconds,
+              external_job_id: result.external_job_id || null,
+              external_provider: step.tool,
+              completed_at: new Date().toISOString(),
+            })
+            .eq('id', dbStepId);
+        }
+
+        if (!result.success) {
+          // Step failed — fail the whole job
+          throw new Error(
+            `Step ${step.step_id} (${step.description}) failed: ${result.error}`
+          );
+        }
+
+        // Track outputs for dependency chain
+        if (result.output_url) {
+          stepOutputs.set(step.step_id, result.output_url);
+        }
+        totalCost += result.cost_usd;
+        completedSteps.add(step.step_id);
+
+        // Remove from processing queue
+        const idx = stepsToProcess.indexOf(step);
+        if (idx >= 0) stepsToProcess.splice(idx, 1);
+      }
+    }
+
+    // --- All steps complete — find the final output ---
+    // The last step's output is the final result
+    const lastStepId = Math.max(...edl.steps.map((s) => s.step_id));
+    const finalOutputUrl = stepOutputs.get(lastStepId) || editJob.source_url;
+
+    // --- Move job to review ---
+    await supabase
+      .from('edit_jobs')
       .update({
-        status: 'running',
-        input_url: inputUrl,
+        status: 'review',
+        output_url: finalOutputUrl,
+        actual_cost_usd: Math.round(totalCost * 100) / 100,
+        processing_time_seconds: Math.round((Date.now() - startTime) / 1000),
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', dbStep.id);
+      .eq('id', jobId);
 
-    let result: ToolResult;
-    try {
-      result = await runStep(step.tool, step.action, inputUrl, step.params);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Step failed';
-      console.error(`[orchestrator] step ${step.id} failed:`, err);
+    // --- Log success ---
+    if (agentRun) {
+      await supabase
+        .from('agent_runs')
+        .update({
+          status: 'complete',
+          output_payload: {
+            steps_completed: completedSteps.size,
+            total_cost_usd: totalCost,
+            final_output_url: finalOutputUrl,
+          },
+          cost_usd: totalCost,
+          duration_ms: Date.now() - startTime,
+        })
+        .eq('id', agentRun.id);
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
 
-      await db
-        .from('edit_steps')
+    // --- Fail the job ---
+    await supabase
+      .from('edit_jobs')
+      .update({
+        status: 'failed',
+        processing_time_seconds: Math.round((Date.now() - startTime) / 1000),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+
+    // --- Log failure ---
+    if (agentRun) {
+      await supabase
+        .from('agent_runs')
         .update({
           status: 'failed',
-          error_message: message,
-          updated_at: new Date().toISOString(),
+          output_payload: { error: errorMessage },
+          duration_ms: Date.now() - startTime,
         })
-        .eq('id', dbStep.id);
-
-      await db.from('edit_jobs').update({ status: 'failed' }).eq('id', jobId);
-      await failRun(agentRun?.id, message, startTime);
-      throw err;
+        .eq('id', agentRun.id);
     }
 
-    // AWAITING_MCP — pause the pipeline; Cowork session will pick up.
-    if (result.awaiting_mcp) {
-      await db
-        .from('edit_steps')
-        .update({
-          status: 'pending',
-          external_provider: step.tool,
-          external_job_id: result.external_job_id ?? null,
-          error_message: `__AWAITING_MCP__:${step.tool}`,
-        })
-        .eq('id', dbStep.id);
-
-      // Job stays in 'editing' so MCP-side completion can resume it.
-      if (agentRun?.id) {
-        await db
-          .from('agent_runs')
-          .update({
-            status: 'complete',
-            output_payload: { paused_for_mcp: step.tool, step_id: dbStep.id },
-            duration_ms: Date.now() - startTime,
-          })
-          .eq('id', agentRun.id);
-      }
-      return;
-    }
-
-    // Success path
-    if (typeof result.cost_usd === 'number') totalCost += result.cost_usd;
-    if (result.output_url) lastOutputUrl = result.output_url;
-    completedSet.add(step.id);
-    if (result.output_url) completedOutputByEDLId.set(step.id, result.output_url);
-
-    await db
-      .from('edit_steps')
-      .update({
-        status: 'complete',
-        output_url: result.output_url ?? null,
-        cost_usd: result.cost_usd ?? null,
-        duration_seconds: result.duration_seconds ?? null,
-        external_job_id: result.external_job_id ?? null,
-        external_provider: result.external_provider ?? null,
-      })
-      .eq('id', dbStep.id);
-  }
-
-  if (remaining.length > 0) {
-    await failRun(agentRun?.id, 'Orchestrator iteration cap exceeded', startTime);
-    await db.from('edit_jobs').update({ status: 'failed' }).eq('id', jobId);
-    throw new Error('Orchestrator iteration cap exceeded');
-  }
-
-  // All done — mark job ready for review.
-  await db
-    .from('edit_jobs')
-    .update({
-      status: 'review',
-      output_url: lastOutputUrl,
-      actual_cost_usd: totalCost || null,
-    })
-    .eq('id', jobId);
-
-  if (agentRun?.id) {
-    await db
-      .from('agent_runs')
-      .update({
-        status: 'complete',
-        output_payload: { output_url: lastOutputUrl, total_cost_usd: totalCost },
-        cost_usd: totalCost,
-        duration_ms: Date.now() - startTime,
-      })
-      .eq('id', agentRun.id);
+    throw new Error(`Edit orchestration failed: ${errorMessage}`);
   }
 }
 
-async function runStep(
-  tool: EditTool,
-  action: string,
-  inputUrl: string,
-  params: Record<string, unknown>
-): Promise<ToolResult> {
-  switch (tool) {
+/**
+ * Route an EDL step to the appropriate tool and execute it.
+ */
+async function routeToTool(step: EDLStep, inputUrl: string): Promise<ToolResult> {
+  switch (step.tool) {
     case 'ffmpeg':
-      return executeFFmpeg(action, inputUrl, params);
+      return executeFFmpeg(step.action, inputUrl, step.params);
+
     case 'void':
     case 'higgsfield':
     case 'firefly':
-      // These are AI tools handled out-of-band via MCP. Mark the step
-      // so the Cowork session can find it and complete it.
+      // These tools run through MCP connectors (Higgsfield, Adobe Firefly)
+      // rather than direct API calls. The orchestrator pauses here and marks
+      // the step as "awaiting_mcp" — then a Cowork session picks it up
+      // and processes it through the MCP connection.
+      //
+      // This is like putting a task in someone's inbox: the orchestrator
+      // handles what it can (FFmpeg), then flags the AI-powered steps
+      // for processing in a Cowork session where the MCP tools are available.
       return {
-        awaiting_mcp: true,
-        external_provider: tool,
+        success: false,
+        output_url: null,
+        cost_usd: 0,
+        duration_seconds: 0,
+        error: `__AWAITING_MCP__:${step.tool}`,
       };
+
     default:
-      throw new Error(`Unknown tool: ${tool}`);
+      throw new Error(`Unknown tool: ${step.tool}`);
   }
 }
 
-async function failRun(
-  agentRunId: string | undefined,
-  message: string,
-  startTime: number
-) {
-  if (!agentRunId) return;
-  const db = getDb();
-  await db
-    .from('agent_runs')
-    .update({
-      status: 'failed',
-      error_message: message,
-      duration_ms: Date.now() - startTime,
-    })
-    .eq('id', agentRunId);
+/**
+ * Map an edit action to a Higgsfield operation type.
+ */
+function mapActionToHiggsFieldOp(action: string): 'text_to_video' | 'image_to_video' | 'video_to_video' | 'style_transfer' {
+  switch (action) {
+    case 'video_generation':
+      return 'text_to_video';
+    case 'style_transfer':
+      return 'style_transfer';
+    case 'object_removal':
+    case 'background_replace':
+      return 'video_to_video';
+    default:
+      return 'video_to_video';
+  }
 }

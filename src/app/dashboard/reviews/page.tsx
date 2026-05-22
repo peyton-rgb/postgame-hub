@@ -1,286 +1,303 @@
+// ============================================================
+// Review Dashboard — /dashboard/reviews
+//
+// The internal review queue where the Postgame team manages
+// all content approvals. Two-gate workflow:
+//   1. Internal review (Postgame approves first)
+//   2. Brand review (brand gets a link to approve/reject)
+//
+// Features:
+//   - Tab bar filtering by status
+//   - Expandable detail view with video player + comment thread
+//   - Add comment form for internal notes
+//   - Approve/reject action buttons based on current status
+//   - Status badges with color coding
+// ============================================================
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { createBrowserSupabase } from '@/lib/supabase';
 
 // --- Types ---
 
-type ReviewStatus = 'draft' | 'in_review' | 'revision_requested' | 'approved';
-
 interface ReviewSession {
   id: string;
-  asset_name: string;
-  athlete_name: string | null;
-  status: ReviewStatus;
-  revision_round: number;
-  video_url: string | null;
-  notes: string | null;
   created_at: string;
   updated_at: string;
+  campaign_id: string | null;
+  inspo_item_id: string | null;
+  version_number: number;
+  video_url: string;
+  video_duration_seconds: number | null;
+  brand_token: string;
+  agency_token: string;
+  editor_token: string;
+  status: string;
+  brand_decision: string | null;
+  brand_decided_at: string | null;
+  revision_round: number;
+  editor_deadline: string | null;
+  asset_name: string | null;
+  notes: string | null;
+  brief_id: string | null;
+  creator_brief_id: string | null;
+  athlete_name: string | null;
 }
 
 interface ReviewComment {
   id: string;
-  session_id: string;
-  author: string | null;
-  body: string;
-  timestamp_seconds: number | null;
   created_at: string;
+  session_id: string;
+  author_type: string;
+  comment_type: string;
+  timestamp_seconds: number | null;
+  body: string;
+  linked_brand_comment_id: string | null;
+  is_resolved: boolean;
+  resolved_at: string | null;
 }
 
-// --- Helpers ---
+// --- Status display config ---
 
-const STATUS_LABELS: Record<ReviewStatus, string> = {
-  draft: 'Draft',
-  in_review: 'In Review',
-  revision_requested: 'Revision Requested',
-  approved: 'Approved',
+type ReviewStatus = 'pending_internal' | 'pending_brand' | 'approved' | 'revision_requested';
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  pending_internal: {
+    label: 'Pending Internal',
+    color: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
+  },
+  pending_brand: {
+    label: 'Pending Brand',
+    color: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
+  },
+  approved: {
+    label: 'Approved',
+    color: 'bg-green-600/20 text-green-300 border-green-600/30',
+  },
+  revision_requested: {
+    label: 'Revisions',
+    color: 'bg-red-600/20 text-red-300 border-red-600/30',
+  },
 };
 
-const STATUS_COLORS: Record<ReviewStatus, string> = {
-  draft: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
-  in_review: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  revision_requested: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
-  approved: 'bg-green-600/20 text-green-300 border-green-600/30',
+const AUTHOR_COLORS: Record<string, string> = {
+  postgame: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  brand: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
+  agency: 'bg-cyan-600/20 text-cyan-300 border-cyan-600/30',
+  editor: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
 };
 
-const FILTER_TABS: { label: string; value: ReviewStatus | 'all' }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'In Review', value: 'in_review' },
-  { label: 'Revision Requested', value: 'revision_requested' },
-  { label: 'Approved', value: 'approved' },
+// --- Tabs ---
+
+const TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'pending_internal', label: 'Pending Internal' },
+  { key: 'pending_brand', label: 'Pending Brand' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'revision_requested', label: 'Revisions' },
 ];
 
+// --- Helper: format relative time ---
+
+function timeAgo(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// --- Helper: format timestamp for video ---
+
 function formatTimestamp(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  const min = Math.floor(seconds / 60);
+  const sec = Math.floor(seconds % 60);
+  return `${min}:${sec.toString().padStart(2, '0')}`;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
+// ============================================================
+// Main component
+// ============================================================
 
-// --- Component ---
-
-export default function ReviewsPage() {
+export default function ReviewsDashboardPage() {
   const supabase = createBrowserSupabase();
 
   // --- State ---
-  const [sessions, setSessions] = useState<ReviewSession[]>([]);
-  const [filter, setFilter] = useState<ReviewStatus | 'all'>('all');
+  const [reviews, setReviews] = useState<ReviewSession[]>([]);
+  const [totalReviews, setTotalReviews] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+
+  // Detail panel state
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [selectedReview, setSelectedReview] = useState<ReviewSession | null>(null);
   const [comments, setComments] = useState<ReviewComment[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Comment form state
   const [newComment, setNewComment] = useState('');
-  const [newTimestamp, setNewTimestamp] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [editorAgentResult, setEditorAgentResult] = useState<string | null>(null);
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [newForm, setNewForm] = useState({ asset_name: '', athlete_name: '', video_url: '', notes: '' });
-  const [creating, setCreating] = useState(false);
 
-  // --- Fetch sessions ---
-  const fetchSessions = useCallback(async () => {
+  // Action state
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Copy link feedback
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
+  // --- Fetch review list ---
+  const fetchReviews = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from('review_sessions')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const params = new URLSearchParams({ limit: '50', offset: '0' });
+    if (activeTab !== 'all') params.set('status', activeTab);
 
-    if (filter !== 'all') {
-      query = query.eq('status', filter);
-    }
-
-    const { data, error } = await query;
-    if (!error && data) {
-      setSessions(data as ReviewSession[]);
+    const res = await fetch(`/api/reviews?${params}`);
+    if (res.ok) {
+      const data = await res.json();
+      setReviews(data.reviews || []);
+      setTotalReviews(data.total || 0);
     }
     setLoading(false);
-  }, [filter, supabase]);
+  }, [activeTab]);
 
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    fetchReviews();
+  }, [fetchReviews]);
 
-  // --- Fetch comments for expanded session ---
-  const fetchComments = useCallback(
-    async (sessionId: string) => {
-      setCommentsLoading(true);
-      const { data, error } = await supabase
-        .from('review_comments')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
-
-      if (!error && data) {
-        setComments(data as ReviewComment[]);
-      }
-      setCommentsLoading(false);
-    },
-    [supabase]
-  );
-
-  const handleExpand = (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-      setComments([]);
-      setEditorAgentResult(null);
-      return;
+  // --- Fetch detail for selected review ---
+  const fetchDetail = useCallback(async (reviewId: string) => {
+    setLoadingDetail(true);
+    const res = await fetch(`/api/reviews/${reviewId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setSelectedReview(data.review);
+      setComments(data.comments || []);
     }
-    setExpandedId(id);
-    setEditorAgentResult(null);
-    fetchComments(id);
-  };
+    setLoadingDetail(false);
+  }, []);
+
+  useEffect(() => {
+    if (selectedReviewId) {
+      fetchDetail(selectedReviewId);
+    }
+  }, [selectedReviewId, fetchDetail]);
 
   // --- Add comment ---
   const handleAddComment = async () => {
-    if (!expandedId || !newComment.trim()) return;
+    if (!newComment.trim() || !selectedReviewId) return;
+
     setSubmittingComment(true);
-
-    let tsSeconds: number | null = null;
-    if (newTimestamp.trim()) {
-      const parts = newTimestamp.split(':');
-      if (parts.length === 2) {
-        tsSeconds = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-      }
-    }
-
-    const { error } = await supabase.from('review_comments').insert({
-      session_id: expandedId,
-      body: newComment.trim(),
-      timestamp_seconds: tsSeconds,
-      author: 'Staff',
+    const res = await fetch(`/api/reviews/${selectedReviewId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        author_type: 'postgame',
+        comment_type: 'note',
+        body: newComment.trim(),
+      }),
     });
 
-    if (!error) {
+    if (res.ok) {
       setNewComment('');
-      setNewTimestamp('');
-      fetchComments(expandedId);
+      await fetchDetail(selectedReviewId);
     }
     setSubmittingComment(false);
   };
 
-  // --- Approve ---
-  const handleApprove = async (sessionId: string) => {
-    setActionLoading('approve');
-    try {
-      const res = await fetch(`/api/reviews/${sessionId}/approve`, { method: 'POST' });
-      if (res.ok) {
-        fetchSessions();
-        if (expandedId === sessionId) fetchComments(sessionId);
-      }
-    } catch {
-      // silent
-    }
-    setActionLoading(null);
-  };
+  // --- Approve internally ---
+  const handleApproveInternal = async () => {
+    if (!selectedReviewId) return;
+    setActionLoading(true);
 
-  // --- Request Changes ---
-  const handleRequestChanges = async (sessionId: string) => {
-    setActionLoading('changes');
-    try {
-      const res = await fetch(`/api/reviews/${sessionId}/request-changes`, { method: 'POST' });
-      if (res.ok) {
-        fetchSessions();
-        if (expandedId === sessionId) fetchComments(sessionId);
-      }
-    } catch {
-      // silent
-    }
-    setActionLoading(null);
-  };
-
-  // --- Run Editor Agent ---
-  const handleRunEditorAgent = async (sessionId: string) => {
-    setActionLoading('editor');
-    setEditorAgentResult(null);
-    try {
-      const res = await fetch('/api/agents/editor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEditorAgentResult(
-          typeof data.result === 'string' ? data.result : JSON.stringify(data, null, 2)
-        );
-      } else {
-        setEditorAgentResult('Editor agent returned an error.');
-      }
-    } catch {
-      setEditorAgentResult('Failed to reach the editor agent.');
-    }
-    setActionLoading(null);
-  };
-
-  // --- Create new review session ---
-  const handleCreate = async () => {
-    if (!newForm.asset_name.trim()) return;
-    setCreating(true);
-    const { error } = await supabase.from('review_sessions').insert({
-      asset_name: newForm.asset_name.trim(),
-      athlete_name: newForm.athlete_name.trim() || null,
-      video_url: newForm.video_url.trim() || null,
-      notes: newForm.notes.trim() || null,
-      status: 'draft',
-      revision_round: 1,
+    const res = await fetch(`/api/reviews/${selectedReviewId}/approve`, {
+      method: 'POST',
     });
-    if (!error) {
-      setShowNewModal(false);
-      setNewForm({ asset_name: '', athlete_name: '', video_url: '', notes: '' });
-      fetchSessions();
+
+    if (res.ok) {
+      await fetchDetail(selectedReviewId);
+      await fetchReviews();
     }
-    setCreating(false);
+    setActionLoading(false);
   };
 
-  // --- Render ---
+  // --- Reject / request changes ---
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectFeedback, setRejectFeedback] = useState('');
+
+  const handleReject = async () => {
+    if (!selectedReviewId || !rejectFeedback.trim()) return;
+    setActionLoading(true);
+
+    const res = await fetch(`/api/reviews/${selectedReviewId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: rejectFeedback.trim() }),
+    });
+
+    if (res.ok) {
+      setShowRejectForm(false);
+      setRejectFeedback('');
+      await fetchDetail(selectedReviewId);
+      await fetchReviews();
+    }
+    setActionLoading(false);
+  };
+
+  // --- Copy review link ---
+  const copyReviewLink = (token: string, label: string) => {
+    const url = `${window.location.origin}/review/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiedToken(label);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  // --- Close detail panel ---
+  const closeDetail = () => {
+    setSelectedReviewId(null);
+    setSelectedReview(null);
+    setComments([]);
+    setShowRejectForm(false);
+    setRejectFeedback('');
+    setNewComment('');
+  };
+
+  // ============================================================
+  // Render
+  // ============================================================
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Top bar */}
-      <div className="border-b border-gray-800 px-8 py-5">
-        <Link
-          href="/dashboard"
-          className="text-sm text-gray-500 hover:text-white transition-colors"
-        >
-          &larr; Back to Dashboard
-        </Link>
+    <div>
+      {/* Header */}
+      <div className="border-b border-white/10 px-6 py-6">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-2xl font-bold">Review & Approval</h1>
+          <p className="text-sm text-white/50 mt-1">
+            Manage content approvals — internal review first, then brand sign-off
+          </p>
+        </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Review &amp; Approval</h1>
-          <button
-            onClick={() => setShowNewModal(true)}
-            className="px-5 py-2.5 rounded-lg font-semibold text-white transition-colors"
-            style={{ backgroundColor: '#D73F09' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#bf3508')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#D73F09')}
-          >
-            + New Review
-          </button>
-        </div>
-
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {FILTER_TABS.map((tab) => (
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 bg-white/5 rounded-lg p-1 w-fit">
+          {TABS.map((tab) => (
             <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === tab.value
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                closeDetail();
+              }}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === tab.key
                   ? 'bg-white/10 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/5'
               }`}
             >
               {tab.label}
@@ -288,284 +305,348 @@ export default function ReviewsPage() {
           ))}
         </div>
 
-        {/* Loading */}
-        {loading && (
-          <div className="text-center py-20 text-gray-500">Loading review sessions...</div>
-        )}
+        {/* Main content area */}
+        <div className="flex gap-6">
+          {/* Left: Review list */}
+          <div className={`${selectedReviewId ? 'w-1/2' : 'w-full'} transition-all`}>
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/30" />
+              </div>
+            ) : reviews.length === 0 ? (
+              // Empty state
+              <div className="text-center py-20 border border-white/10 rounded-xl">
+                <div className="text-4xl mb-4">📋</div>
+                <h3 className="text-lg font-semibold text-white/70 mb-2">No reviews yet</h3>
+                <p className="text-sm text-white/40 max-w-md mx-auto">
+                  Approved assets from the editing flow will appear here for review.
+                  The two-gate approval process ensures quality before brand delivery.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Results count */}
+                <div className="text-xs text-white/40 mb-3">
+                  {totalReviews} review{totalReviews !== 1 ? 's' : ''}
+                </div>
 
-        {/* Empty state */}
-        {!loading && sessions.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-gray-500 text-lg">No review sessions found.</p>
-            <p className="text-gray-600 text-sm mt-2">
-              Click &ldquo;+ New Review&rdquo; to create your first review session.
-            </p>
-          </div>
-        )}
+                {reviews.map((review) => {
+                  const statusCfg = STATUS_CONFIG[review.status] || {
+                    label: review.status,
+                    color: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
+                  };
+                  const isSelected = selectedReviewId === review.id;
 
-        {/* Cards grid */}
-        {!loading && sessions.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {sessions.map((session) => (
-              <div key={session.id}>
-                {/* Card */}
-                <button
-                  onClick={() => handleExpand(session.id)}
-                  className={`w-full text-left rounded-xl border p-5 transition-colors ${
-                    expandedId === session.id
-                      ? 'border-[#D73F09] bg-gray-800'
-                      : 'border-gray-700 bg-gray-800/60 hover:bg-gray-800 hover:border-gray-600'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <h3 className="font-bold text-lg leading-tight">{session.asset_name}</h3>
-                    <span
-                      className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                        STATUS_COLORS[session.status]
+                  return (
+                    <button
+                      key={review.id}
+                      onClick={() => setSelectedReviewId(review.id)}
+                      className={`w-full text-left p-4 rounded-xl border transition-colors ${
+                        isSelected
+                          ? 'border-white/30 bg-white/10'
+                          : 'border-white/10 bg-white/[0.02] hover:bg-white/5 hover:border-white/20'
                       }`}
                     >
-                      {STATUS_LABELS[session.status]}
-                    </span>
-                  </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {/* Asset name + athlete */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-sm truncate">
+                              {review.asset_name || 'Untitled Asset'}
+                            </h3>
+                            {review.revision_round > 1 && (
+                              <span className="text-xs text-white/40 flex-shrink-0">
+                                R{review.revision_round}
+                              </span>
+                            )}
+                          </div>
 
-                  {session.athlete_name && (
-                    <p className="text-sm text-gray-400 mb-1">
-                      Athlete: <span className="text-gray-300">{session.athlete_name}</span>
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
-                    <span>Round {session.revision_round}</span>
-                    <span>{formatDate(session.created_at)}</span>
-                  </div>
-                </button>
+                          {/* Meta row */}
+                          <div className="flex items-center gap-3 text-xs text-white/40">
+                            {review.athlete_name && (
+                              <span>{review.athlete_name}</span>
+                            )}
+                            <span>{timeAgo(review.created_at)}</span>
+                            {review.version_number > 1 && (
+                              <span>v{review.version_number}</span>
+                            )}
+                          </div>
+                        </div>
 
-                {/* Expanded details */}
-                {expandedId === session.id && (
-                  <div className="mt-2 rounded-xl border border-gray-700 bg-gray-800 p-6 space-y-6">
-                    {/* Video URL */}
-                    {session.video_url && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                          Video URL
-                        </h4>
-                        <a
-                          href={session.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-400 hover:text-blue-300 underline break-all"
+                        {/* Status badge */}
+                        <span
+                          className={`flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border ${statusCfg.color}`}
                         >
-                          {session.video_url}
-                        </a>
+                          {statusCfg.label}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Detail panel */}
+          {selectedReviewId && (
+            <div className="w-1/2 border border-white/10 rounded-xl bg-white/[0.02] overflow-hidden">
+              {loadingDetail ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/30" />
+                </div>
+              ) : selectedReview ? (
+                <div className="flex flex-col h-full max-h-[calc(100vh-200px)]">
+                  {/* Detail header */}
+                  <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                    <div>
+                      <h2 className="font-semibold text-lg">
+                        {selectedReview.asset_name || 'Untitled Asset'}
+                      </h2>
+                      <div className="flex items-center gap-3 text-xs text-white/40 mt-1">
+                        {selectedReview.athlete_name && (
+                          <span>{selectedReview.athlete_name}</span>
+                        )}
+                        <span>Round {selectedReview.revision_round}</span>
+                        <span>v{selectedReview.version_number}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={closeDetail}
+                      className="text-white/40 hover:text-white p-1"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Scrollable content */}
+                  <div className="flex-1 overflow-y-auto">
+                    {/* Video player */}
+                    {selectedReview.video_url && (
+                      <div className="p-4 border-b border-white/10">
+                        <video
+                          src={selectedReview.video_url}
+                          controls
+                          className="w-full rounded-lg bg-black aspect-video"
+                        />
                       </div>
                     )}
+
+                    {/* Status + Actions */}
+                    <div className="p-4 border-b border-white/10">
+                      <div className="flex items-center justify-between mb-3">
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
+                            (STATUS_CONFIG[selectedReview.status] || STATUS_CONFIG.pending_internal).color
+                          }`}
+                        >
+                          {(STATUS_CONFIG[selectedReview.status] || { label: selectedReview.status }).label}
+                        </span>
+
+                        {/* Editor deadline */}
+                        {selectedReview.editor_deadline && (
+                          <span className="text-xs text-white/40">
+                            Editor deadline:{' '}
+                            {new Date(selectedReview.editor_deadline).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Action buttons based on status */}
+                      {selectedReview.status === 'pending_internal' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleApproveInternal}
+                            disabled={actionLoading}
+                            className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {actionLoading ? 'Approving...' : 'Approve Internally'}
+                          </button>
+                          <button
+                            onClick={() => setShowRejectForm(true)}
+                            disabled={actionLoading}
+                            className="flex-1 px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 text-sm font-medium rounded-lg border border-red-600/30 transition-colors disabled:opacity-50"
+                          >
+                            Request Changes
+                          </button>
+                        </div>
+                      )}
+
+                      {selectedReview.status === 'pending_brand' && (
+                        <div className="space-y-3">
+                          <div className="bg-blue-600/10 border border-blue-600/20 rounded-lg p-3">
+                            <p className="text-xs text-blue-300">
+                              Waiting for brand approval. Share the review link with the brand contact.
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => copyReviewLink(selectedReview.brand_token, 'brand')}
+                              className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 text-sm rounded-lg border border-white/10 transition-colors"
+                            >
+                              {copiedToken === 'brand' ? 'Copied!' : 'Copy Brand Link'}
+                            </button>
+                            <button
+                              onClick={() => copyReviewLink(selectedReview.agency_token, 'agency')}
+                              className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 text-sm rounded-lg border border-white/10 transition-colors"
+                            >
+                              {copiedToken === 'agency' ? 'Copied!' : 'Copy Agency Link'}
+                            </button>
+                            <button
+                              onClick={() => copyReviewLink(selectedReview.editor_token, 'editor')}
+                              className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 text-sm rounded-lg border border-white/10 transition-colors"
+                            >
+                              {copiedToken === 'editor' ? 'Copied!' : 'Copy Editor Link'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedReview.status === 'approved' && (
+                        <div className="bg-green-600/10 border border-green-600/20 rounded-lg p-3">
+                          <p className="text-xs text-green-300">
+                            This asset has been approved and is ready for delivery.
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedReview.status === 'revision_requested' && (
+                        <div className="bg-red-600/10 border border-red-600/20 rounded-lg p-3">
+                          <p className="text-xs text-red-300">
+                            Changes requested — revision round {selectedReview.revision_round}.
+                            Review the feedback below and re-submit.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Reject form */}
+                      {showRejectForm && (
+                        <div className="mt-3 space-y-2">
+                          <textarea
+                            value={rejectFeedback}
+                            onChange={(e) => setRejectFeedback(e.target.value)}
+                            placeholder="Describe what changes are needed..."
+                            rows={3}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 resize-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleReject}
+                              disabled={actionLoading || !rejectFeedback.trim()}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {actionLoading ? 'Submitting...' : 'Submit Changes Request'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowRejectForm(false);
+                                setRejectFeedback('');
+                              }}
+                              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-sm rounded-lg border border-white/10 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Notes */}
-                    {session.notes && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    {selectedReview.notes && (
+                      <div className="p-4 border-b border-white/10">
+                        <h4 className="text-xs font-medium text-white/50 uppercase tracking-wide mb-2">
                           Notes
                         </h4>
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{session.notes}</p>
+                        <p className="text-sm text-white/70">{selectedReview.notes}</p>
                       </div>
                     )}
 
-                    {/* Comments */}
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                        Comments
+                    {/* Comment thread */}
+                    <div className="p-4">
+                      <h4 className="text-xs font-medium text-white/50 uppercase tracking-wide mb-3">
+                        Comments ({comments.length})
                       </h4>
 
-                      {commentsLoading ? (
-                        <p className="text-sm text-gray-600">Loading comments...</p>
-                      ) : comments.length === 0 ? (
-                        <p className="text-sm text-gray-600">No comments yet.</p>
+                      {comments.length === 0 ? (
+                        <p className="text-sm text-white/30 py-4 text-center">
+                          No comments yet
+                        </p>
                       ) : (
-                        <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                          {comments.map((c) => (
+                        <div className="space-y-3 mb-4">
+                          {comments.map((comment) => (
                             <div
-                              key={c.id}
-                              className="bg-gray-900/60 rounded-lg px-4 py-3 text-sm"
+                              key={comment.id}
+                              className="bg-white/[0.03] border border-white/5 rounded-lg p-3"
                             >
-                              <div className="flex items-center gap-2 mb-1">
-                                {c.author && (
-                                  <span className="font-semibold text-gray-300">{c.author}</span>
-                                )}
-                                {c.timestamp_seconds !== null && (
-                                  <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">
-                                    {formatTimestamp(c.timestamp_seconds)}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                                      AUTHOR_COLORS[comment.author_type] || AUTHOR_COLORS.postgame
+                                    }`}
+                                  >
+                                    {comment.author_type}
                                   </span>
-                                )}
-                                <span className="text-xs text-gray-600 ml-auto">
-                                  {formatDate(c.created_at)}
+                                  {comment.comment_type !== 'note' && (
+                                    <span className="text-[10px] text-white/30 uppercase">
+                                      {comment.comment_type}
+                                    </span>
+                                  )}
+                                  {comment.timestamp_seconds !== null && (
+                                    <span className="text-[10px] text-white/30 font-mono">
+                                      @ {formatTimestamp(comment.timestamp_seconds)}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-white/20">
+                                  {timeAgo(comment.created_at)}
                                 </span>
                               </div>
-                              <p className="text-gray-300">{c.body}</p>
+                              <p className="text-sm text-white/70 leading-relaxed">
+                                {comment.body}
+                              </p>
                             </div>
                           ))}
                         </div>
                       )}
 
                       {/* Add comment form */}
-                      <div className="mt-4 flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Add a comment..."
+                      <div className="flex gap-2">
+                        <textarea
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                          className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="MM:SS"
-                          value={newTimestamp}
-                          onChange={(e) => setNewTimestamp(e.target.value)}
-                          className="w-20 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 font-mono text-center"
+                          placeholder="Add an internal note..."
+                          rows={2}
+                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 resize-none"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.metaKey) {
+                              handleAddComment();
+                            }
+                          }}
                         />
                         <button
                           onClick={handleAddComment}
                           disabled={submittingComment || !newComment.trim()}
-                          className="px-4 py-2 rounded-lg text-sm font-medium bg-white/10 text-white hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-sm font-medium rounded-lg transition-colors disabled:opacity-30 self-end"
                         >
                           {submittingComment ? '...' : 'Send'}
                         </button>
                       </div>
+                      <p className="text-[10px] text-white/20 mt-1">
+                        Cmd+Enter to send
+                      </p>
                     </div>
-
-                    {/* Action buttons */}
-                    <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-700">
-                      <button
-                        onClick={() => handleApprove(session.id)}
-                        disabled={actionLoading !== null}
-                        className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 transition-colors"
-                      >
-                        {actionLoading === 'approve' ? 'Approving...' : 'Approve'}
-                      </button>
-                      <button
-                        onClick={() => handleRequestChanges(session.id)}
-                        disabled={actionLoading !== null}
-                        className="px-4 py-2 rounded-lg text-sm font-semibold bg-yellow-600 hover:bg-yellow-700 text-white disabled:opacity-50 transition-colors"
-                      >
-                        {actionLoading === 'changes' ? 'Sending...' : 'Request Changes'}
-                      </button>
-                      <button
-                        onClick={() => handleRunEditorAgent(session.id)}
-                        disabled={actionLoading !== null}
-                        className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors"
-                        style={{ backgroundColor: '#D73F09' }}
-                        onMouseEnter={(e) =>
-                          actionLoading === null &&
-                          (e.currentTarget.style.backgroundColor = '#bf3508')
-                        }
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#D73F09')}
-                      >
-                        {actionLoading === 'editor' ? 'Running...' : 'Run Editor Agent'}
-                      </button>
-                    </div>
-
-                    {/* Editor agent result */}
-                    {editorAgentResult && (
-                      <div className="bg-gray-900/80 border border-gray-700 rounded-lg p-4">
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                          Editor Agent Result
-                        </h4>
-                        <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
-                          {editorAgentResult}
-                        </pre>
-                      </div>
-                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* New Review Modal */}
-      {showNewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-lg p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">New Review Session</h2>
-              <button
-                onClick={() => setShowNewModal(false)}
-                className="text-gray-500 hover:text-white text-xl leading-none"
-              >
-                &times;
-              </button>
+                </div>
+              ) : null}
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Asset Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newForm.asset_name}
-                  onChange={(e) => setNewForm({ ...newForm, asset_name: e.target.value })}
-                  placeholder="e.g. Halftime Hype Reel v1"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Athlete Name
-                </label>
-                <input
-                  type="text"
-                  value={newForm.athlete_name}
-                  onChange={(e) => setNewForm({ ...newForm, athlete_name: e.target.value })}
-                  placeholder="e.g. Travis Hunter"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Video URL</label>
-                <input
-                  type="url"
-                  value={newForm.video_url}
-                  onChange={(e) => setNewForm({ ...newForm, video_url: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Notes</label>
-                <textarea
-                  value={newForm.notes}
-                  onChange={(e) => setNewForm({ ...newForm, notes: e.target.value })}
-                  rows={3}
-                  placeholder="Any context for the reviewer..."
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowNewModal(false)}
-                className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating || !newForm.asset_name.trim()}
-                className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors"
-                style={{ backgroundColor: '#D73F09' }}
-                onMouseEnter={(e) =>
-                  !creating && (e.currentTarget.style.backgroundColor = '#bf3508')
-                }
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#D73F09')}
-              >
-                {creating ? 'Creating...' : 'Create Session'}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
