@@ -90,8 +90,7 @@ async function loadBrandPageData(brand: Brand) {
         .order('created_at', { ascending: false })
     : Promise.resolve({ data: [] as CampaignRow[], error: null });
 
-  // 3) Athlete-attributed media for marquee + hero reel.
-  //    We pull the brand's images (joined to athletes for names/sport)
+  // 3) Athlete-attributed media — used by the montage marquee (everything)
   //    via campaign_recaps so RLS naturally limits to published ones.
   const mediaQ = brandDb
     ? supabase
@@ -103,16 +102,38 @@ async function loadBrandPageData(brand: Brand) {
         )
         .eq('type', 'image')
         .eq('campaign_recaps.brand_id', brandDb.id)
-        .limit(60)
+        .limit(120)
     : Promise.resolve({ data: [], error: null });
 
-  const [{ data: campaigns, error: campErr }, { data: mediaRows, error: mediaErr }] =
-    await Promise.all([campaignsQ, mediaQ]);
+  // 4) Curated hero pool — featured-campaign media only. Separate query so
+  //    we don't have to over-fetch general media to find the featured rows.
+  const featuredMediaQ = brandDb
+    ? supabase
+        .from('media')
+        .select(
+          `file_url,
+           athletes!inner(name),
+           campaign_recaps!inner(brand_id, published, featured)`
+        )
+        .eq('type', 'image')
+        .eq('campaign_recaps.brand_id', brandDb.id)
+        .eq('campaign_recaps.featured', true)
+        .order('sort_order', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+        .limit(40)
+    : Promise.resolve({ data: [], error: null });
+
+  const [
+    { data: campaigns, error: campErr },
+    { data: mediaRows, error: mediaErr },
+    { data: featuredMediaRows, error: featuredErr },
+  ] = await Promise.all([campaignsQ, mediaQ, featuredMediaQ]);
 
   if (campErr) console.error('[clients/[slug]] campaigns error:', campErr.message);
   if (mediaErr) console.error('[clients/[slug]] media error:', mediaErr.message);
+  if (featuredErr) console.error('[clients/[slug]] featured media error:', featuredErr.message);
 
-  // Normalize athlete-image rows (one per athlete for the marquee).
+  // Normalize media rows for the marquee.
   const allImages: AthleteImage[] = ((mediaRows as any[] | null) || [])
     .map((r) => {
       const a = Array.isArray(r.athletes) ? r.athletes[0] : r.athletes;
@@ -126,13 +147,27 @@ async function loadBrandPageData(brand: Brand) {
     })
     .filter((x): x is AthleteImage => x !== null);
 
-  // Keep one image per athlete to avoid duplicate tiles.
+  // Marquee tiles — one image per athlete across the whole (uncurated) pool.
   const seenAthletes = new Set<string>();
   const athleteTiles: AthleteImage[] = [];
   for (const img of allImages) {
     if (seenAthletes.has(img.athlete_name)) continue;
     seenAthletes.add(img.athlete_name);
     athleteTiles.push(img);
+  }
+
+  // Hero pool — curated. Featured-campaign media, deduped by athlete (so we
+  // get 6 different faces, not 4 shots of one athlete).
+  const HERO_CAP = 6;
+  const heroSeen = new Set<string>();
+  const featuredHero: string[] = [];
+  for (const r of (featuredMediaRows as any[] | null) || []) {
+    const a = Array.isArray(r.athletes) ? r.athletes[0] : r.athletes;
+    if (!a?.name || !r.file_url) continue;
+    if (heroSeen.has(a.name)) continue;
+    heroSeen.add(a.name);
+    featuredHero.push(r.file_url);
+    if (featuredHero.length >= HERO_CAP) break;
   }
 
   // Stats — counted from the full image set (not the deduped tiles).
@@ -147,6 +182,19 @@ async function loadBrandPageData(brand: Brand) {
 
   const campaignList: CampaignRow[] = (campaigns as CampaignRow[] | null) || [];
 
+  // Fallback hero pool — campaign cover images (hero_image_url / thumbnail_url).
+  // Only used when there are no featured-campaign athlete shots to show.
+  const coverHero: string[] = [];
+  if (featuredHero.length === 0) {
+    for (const c of campaignList) {
+      const cover = c.hero_image_url || c.thumbnail_url;
+      if (!cover) continue;
+      coverHero.push(cover);
+      if (coverHero.length >= HERO_CAP) break;
+    }
+  }
+  const heroPool: string[] = featuredHero.length > 0 ? featuredHero : coverHero;
+
   // "Partner Since" = earliest campaign date we know about.
   let partnerSince: Date | null = null;
   for (const c of campaignList) {
@@ -160,6 +208,7 @@ async function loadBrandPageData(brand: Brand) {
     brandDb,
     campaigns: campaignList,
     athleteTiles,
+    heroPool,
     stats: {
       athletes: athleteSet.size,
       campaigns: campaignList.length,
@@ -179,7 +228,7 @@ export default async function BrandPage({ params }: Props) {
   const brand = getBrandBySlug(slug);
   if (!brand) notFound();
 
-  const { brandDb, campaigns, athleteTiles, stats } = await loadBrandPageData(brand);
+  const { brandDb, campaigns, athleteTiles, heroPool, stats } = await loadBrandPageData(brand);
 
   // Color + logo resolution — DB value wins, brands.ts is the fallback.
   const primaryColor = brandDb?.primary_color || brand.primaryColor || '#1A1A1A';
@@ -192,8 +241,9 @@ export default async function BrandPage({ params }: Props) {
   const industry = brandDb?.industry || brand.category || null;
   const website = brandDb?.website || null;
 
-  // Hero reel images (top of the athlete tile list, deduped, photos only).
-  const heroImages = athleteTiles.slice(0, 7).map((t) => t.file_url);
+  // Hero reel — curated server-side: featured-campaign athlete shots first,
+  // then campaign cover images, else empty (clean no-photo hero).
+  const heroImages = heroPool;
 
   // Marquee data — split into two rows, only show the section if rich enough.
   const marqueeReady = athleteTiles.length >= 8;

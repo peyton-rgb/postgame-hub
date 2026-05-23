@@ -11,6 +11,11 @@
 // the raw original file (that's what was making slides grainy).
 // objectPosition is biased toward the top of the photo so the
 // athlete's face survives the crop on full-body shots.
+//
+// Every slide is `priority` (not just slide 0) — the reel is
+// capped to ~6 curated images so the bandwidth is bounded, and
+// pre-loading them all kills the "black flash" you'd otherwise
+// see when a later slide first becomes active.
 // ============================================================
 
 'use client';
@@ -46,7 +51,7 @@ export default function HeroSlideshow({ images, intervalMs = 4500 }: Props) {
               alt=""
               fill
               sizes="100vw"
-              priority={i === 0}
+              priority
               style={{ objectFit: 'cover', objectPosition: 'center 12%' }}
             />
           </div>
