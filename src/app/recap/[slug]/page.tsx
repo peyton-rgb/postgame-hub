@@ -1,4 +1,4 @@
-import { createPlainSupabase } from "@/lib/supabase";
+import { createPlainSupabase, createServiceSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
@@ -12,17 +12,27 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ preview?: string }>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+// `?preview=1` lets the recap render even when published=false. Gated to
+// non-production so a stray query string on the live site can't expose drafts.
+function allowPreviewBypass(sp: { preview?: string } | undefined) {
+  return sp?.preview === "1" && process.env.NODE_ENV !== "production";
+}
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = createPlainSupabase();
-  const { data: campaign } = await supabase
+  const sp = (await searchParams) ?? {};
+  const preview = allowPreviewBypass(sp);
+  // Preview mode uses the service-role client so RLS doesn't hide draft recaps.
+  const supabase = preview ? createServiceSupabase() : createPlainSupabase();
+  let q = supabase
     .from("campaign_recaps")
     .select("name, client_name, settings")
-    .eq("slug", slug)
-    .eq("published", true)
-    .single();
+    .eq("slug", slug);
+  if (!preview) q = q.eq("published", true);
+  const { data: campaign } = await q.single();
 
   if (!campaign) return { title: "Not Found" };
 
@@ -37,16 +47,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function RecapPage({ params }: Props) {
+export default async function RecapPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const supabase = createPlainSupabase();
+  const sp = (await searchParams) ?? {};
+  const preview = allowPreviewBypass(sp);
+  // Preview mode uses the service-role client so RLS doesn't hide draft recaps.
+  const supabase = preview ? createServiceSupabase() : createPlainSupabase();
 
-  const { data: campaign } = await supabase
-    .from("campaign_recaps")
-    .select("*")
-    .eq("slug", slug)
-    .eq("published", true)
-    .single();
+  let recapQ = supabase.from("campaign_recaps").select("*").eq("slug", slug);
+  if (!preview) recapQ = recapQ.eq("published", true);
+  const { data: campaign } = await recapQ.single();
 
   if (!campaign) notFound();
 
@@ -63,6 +73,22 @@ export default async function RecapPage({ params }: Props) {
       .order("sort_order"),
   ]);
 
+  // For media rows without a direct athlete_id (e.g. team/shared-folder imports),
+  // fan them out via the many-to-many media_athletes table so every linked
+  // athlete sees them in their slot of the gallery.
+  const mediaIds = (media || []).map((m: any) => m.id);
+  const { data: maLinks } = mediaIds.length
+    ? await supabase
+        .from("media_athletes")
+        .select("media_id, athlete_id")
+        .in("media_id", mediaIds)
+    : { data: [] };
+  const linkedAthletesByMedia: Record<string, string[]> = {};
+  for (const l of (maLinks || []) as any[]) {
+    if (!linkedAthletesByMedia[l.media_id]) linkedAthletesByMedia[l.media_id] = [];
+    linkedAthletesByMedia[l.media_id].push(l.athlete_id);
+  }
+
   const mediaByAthlete: Record<string, any[]> = {};
   (media || []).forEach((m: any) => {
     if (typeof m.drive_file_id === "string" && m.drive_file_id.startsWith("collab:")) {
@@ -71,9 +97,16 @@ export default async function RecapPage({ params }: Props) {
       mediaByAthlete[groupId].push(m);
       return;
     }
-    if (!m.athlete_id) return;
-    if (!mediaByAthlete[m.athlete_id]) mediaByAthlete[m.athlete_id] = [];
-    mediaByAthlete[m.athlete_id].push(m);
+    if (m.athlete_id) {
+      if (!mediaByAthlete[m.athlete_id]) mediaByAthlete[m.athlete_id] = [];
+      mediaByAthlete[m.athlete_id].push(m);
+      return;
+    }
+    // No direct athlete_id — fan out via media_athletes (team/shared folders).
+    for (const aId of linkedAthletesByMedia[m.id] || []) {
+      if (!mediaByAthlete[aId]) mediaByAthlete[aId] = [];
+      mediaByAthlete[aId].push(m);
+    }
   });
 
   const allAthletes = athletes || [];

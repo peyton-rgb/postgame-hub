@@ -4,3 +4,6 @@ node_modules/
 .vercel
 *.tsbuildinfo
 .DS_Store
+
+# Importer run logs — generated per run, noisy in the repo
+scripts/.import-runs/

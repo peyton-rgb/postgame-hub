@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bebas_Neue } from "next/font/google";
+import { Bebas_Neue, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/motion.css";
 import SiteNav from "@/components/SiteNav";
@@ -9,6 +9,22 @@ const bebasNeue = Bebas_Neue({
   weight: "400",
   subsets: ["latin"],
   variable: "--font-bebas",
+  display: "swap",
+});
+
+// Inter for body copy on editorial campaign pages; JetBrains Mono for
+// uppercase labels/kickers ("THE WORK", stat captions). Loaded once here so
+// every page can opt-in via the --font-inter / --font-mono CSS variables.
+const inter = Inter({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -52,7 +68,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={bebasNeue.variable}>
+    <html lang="en" className={`${bebasNeue.variable} ${inter.variable} ${mono.variable}`}>
       <body>
         <PageWrapper>
           {/* SiteNav hides itself on /dashboard, /login, /recap, /pitch, etc.
