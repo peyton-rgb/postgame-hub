@@ -26,6 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const { google } = require('googleapis');
 const { createClient } = require('@supabase/supabase-js');
 const sharp = require('sharp');
@@ -105,6 +106,11 @@ const RESUMABLE_THRESHOLD = 49 * 1024 * 1024;
 const SKIP_EXT = new Set(['.cr2']);
 const VIDEO_EXT = new Set(['.mov', '.mp4', '.m4v', '.avi', '.mkv', '.webm', '.wmv', '.mpg', '.mpeg', '.mxf']);
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.tif', '.tiff', '.bmp']);
+// HEIC/HEIF are Apple's iPhone-camera default. sharp's bundled libvips on
+// macOS doesn't ship a libheif plugin, so we transcode to JPEG (libheif's
+// heif-convert CLI) BEFORE sharp ever sees the file. That way every image
+// downstream — variants, focal point, phash — works on a normal JPEG.
+const HEIC_EXT = new Set(['.heic', '.heif']);
 
 // -------- utils --------
 const ACCENT_RE = /[̀-ͯ]/g;
@@ -224,6 +230,23 @@ function transcodeToMp4(input, output) {
       .save(output);
   });
 }
+// HEIC → JPEG via libheif's heif-convert. Quality 92 is visually lossless
+// vs the source. We resolve only on exit code 0 so a missing binary
+// (heif-convert not in PATH) surfaces clearly. Falls back to surfacing the
+// error so the file is skipped — never half-imports a HEIC.
+function transcodeHeicToJpeg(input, output, quality = 92) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('heif-convert', ['-q', String(quality), input, output], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stderr = '';
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+    proc.on('error', (e) => reject(new Error(`heif-convert spawn failed: ${e.message} (install via: brew install libheif)`)));
+    proc.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`heif-convert exit ${code}: ${stderr.trim().slice(0, 200)}`));
+    });
+  });
+}
+
 function posterFrame(input, output, ts = '00:00:01') {
   return new Promise((resolve, reject) => {
     ffmpeg(input)
@@ -774,50 +797,68 @@ async function main() {
         continue;
       }
 
-      // Plan storage paths (deterministic on drive id)
+      // Plan storage paths (deterministic on drive id).
+      // - HEIC images will be transcoded to JPEG before sharp ever sees them,
+      //   so the planned storage_path ends in `.jpg` from the start (and the
+      //   dry-run preview shows the correct final path).
+      // - File-extension stripping is case-insensitive — iPhone exports are
+      //   typically ".HEIC" while our SKIP/IMAGE sets use lowercase.
+      const isHeic = type === 'image' && HEIC_EXT.has(e);
       const idPrefix = f.id.slice(0, 12);
-      let storedExt = e || '';
-      let storedName = sanitizeFilename(path.basename(f.name, e || ''));
-      let storagePath = `${camp.slug}/${folderLabel}/${idPrefix}-${storedName}${storedExt}`;
+      const baseNoExt = sanitizeFilename(f.name.replace(/\.[A-Za-z0-9]+$/, ''));
+      let storedExt = isHeic ? '.jpg' : (e || '');
+      let storagePath = `${camp.slug}/${folderLabel}/${idPrefix}-${baseNoExt}${storedExt}`;
       let posterStoragePath = null;
       let willTranscode = false;
       if (type === 'video' && e !== '.mp4') {
         willTranscode = true;
-        storagePath = `${camp.slug}/${folderLabel}/${idPrefix}-${storedName}.mp4`;
+        storagePath = `${camp.slug}/${folderLabel}/${idPrefix}-${baseNoExt}.mp4`;
       }
       if (type === 'video') {
-        posterStoragePath = `${camp.slug}/${folderLabel}/posters/${idPrefix}-${storedName}.jpg`;
+        posterStoragePath = `${camp.slug}/${folderLabel}/posters/${idPrefix}-${baseNoExt}.jpg`;
       }
 
       fileLog.storagePath = storagePath;
       fileLog.posterStoragePath = posterStoragePath;
       fileLog.willTranscode = willTranscode;
+      fileLog.isHeic = isHeic;
 
       if (DRY_RUN) {
-        console.log(`  + PLAN ${type}${willTranscode ? '(transcode)' : ''}: ${f.name}  →  ${storagePath}`);
+        const tag = isHeic ? 'image(heic→jpg)' : (willTranscode ? 'video(transcode)' : type);
+        console.log(`  + PLAN ${tag}: ${f.name}  →  ${storagePath}`);
         fileLog.action = 'dry_plan';
         groupLog.files.push(fileLog);
         continue;
       }
 
-      // Live: download → (transcode/poster) → upload → DB inserts
-      const localOrig = path.join(tmpRoot, `${idPrefix}-${storedName}${e || ''}`);
+      // Live: download → (HEIC transcode? / video transcode + poster) → upload
+      // After download localOrig points at the HEIC bytes; after the HEIC
+      // transcode step it's reassigned to the JPEG. Everything downstream
+      // (sharp variants, focal point, phash) reads from localOrig.
+      let localOrig = path.join(tmpRoot, `${idPrefix}-${baseNoExt}${e || ''}`);
       const localUpload = willTranscode
-        ? path.join(tmpRoot, `${idPrefix}-${storedName}.mp4`)
-        : localOrig;
+        ? path.join(tmpRoot, `${idPrefix}-${baseNoExt}.mp4`)
+        : null;
       const localPoster = type === 'video'
-        ? path.join(tmpRoot, `${idPrefix}-${storedName}.jpg`)
+        ? path.join(tmpRoot, `${idPrefix}-${baseNoExt}.jpg`)
         : null;
 
       try {
         await downloadDriveFile(f.id, localOrig);
+
+        if (isHeic) {
+          const jpegPath = path.join(tmpRoot, `${idPrefix}-${baseNoExt}.jpg`);
+          await transcodeHeicToJpeg(localOrig, jpegPath, 92);
+          try { fs.unlinkSync(localOrig); } catch (_) {}
+          localOrig = jpegPath; // every downstream step now reads JPEG bytes
+        }
 
         let width = null, height = null;
         if (type === 'image') {
           try {
             const meta = await sharp(localOrig).metadata();
             width = meta.width || null; height = meta.height || null;
-          } catch (_) { /* HEIC sometimes fails — ok */ }
+          } catch (_) { /* extremely rare on JPEG; ignore */ }
         }
 
         if (willTranscode) await transcodeToMp4(localOrig, localUpload);
@@ -837,8 +878,13 @@ async function main() {
         }
 
         // Upload main asset (auto-switches to TUS for files > RESUMABLE_THRESHOLD)
-        const uploadContentType = willTranscode ? 'video/mp4' : (f.mimeType || 'application/octet-stream');
-        await uploadToStorage({ objectPath: storagePath, filePath: localUpload, contentType: uploadContentType });
+        // For images localUpload is the localOrig file (possibly a transcoded
+        // JPEG if the source was HEIC); for videos it's the transcoded mp4.
+        const uploadSource = willTranscode ? localUpload : localOrig;
+        const uploadContentType = willTranscode
+          ? 'video/mp4'
+          : (isHeic ? 'image/jpeg' : (f.mimeType || 'application/octet-stream'));
+        await uploadToStorage({ objectPath: storagePath, filePath: uploadSource, contentType: uploadContentType });
 
         let thumbnailUrl = null;
         if (localPoster && fs.existsSync(localPoster)) {
@@ -878,7 +924,7 @@ async function main() {
 
         const fileUrl = supabase.storage.from(BUCKET).getPublicUrl(storagePath).data.publicUrl;
         const resolution = (width && height) ? `${width}x${height}` : null;
-        const uploadedSize = fs.statSync(localUpload).size;
+        const uploadedSize = fs.statSync(uploadSource).size;
 
         // Insert media row. For team folders athlete_id stays null; per-athlete sets it.
         const mediaInsert = {
@@ -939,7 +985,7 @@ async function main() {
         totalErrors++;
         console.error(`  ! ERR ${f.name}: ${e.message}`);
       } finally {
-        for (const p of [localOrig, willTranscode ? localUpload : null, localPoster]) {
+        for (const p of [localOrig, localUpload, localPoster]) {
           if (p && fs.existsSync(p)) { try { fs.unlinkSync(p); } catch (_) {} }
         }
       }
