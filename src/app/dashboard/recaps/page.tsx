@@ -37,29 +37,27 @@ interface CampaignRecap {
     id: string;
     name: string;
     logo_url: string | null;
-    logo_light_url: string | null;
-    logo_white_url: string | null;
     primary_color: string | null;
   } | null;
-  // Cover image pulled from the recap's media (joined client-side).
-  cover_url?: string | null;
 }
 
 // ---- Status Badge ----
-// Driven by the `published` boolean flag, NOT the `status` text column.
-// During the bulk import every recap got status='published' even when
-// empty, so `published` is the trustworthy "is this actually live?" signal.
 
-function StatusBadge({ published }: { published: boolean }) {
+function StatusBadge({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    published: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+    draft: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
+    archived: 'bg-white/10 text-white/40 border-white/10',
+    in_review: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  };
+
   return (
     <span
       className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-        published
-          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
-          : 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20'
+        colors[status] || colors.draft
       }`}
     >
-      {published ? 'Live' : 'Draft'}
+      {status.replace(/_/g, ' ')}
     </span>
   );
 }
@@ -68,17 +66,7 @@ function StatusBadge({ published }: { published: boolean }) {
 
 function RecapCard({ recap }: { recap: CampaignRecap }) {
   const brandColor = recap.brand?.primary_color || '#D73F09';
-  // For the dark-tinted cover, prefer a white/light logo so it stands out.
-  const coverLogo =
-    recap.brand?.logo_white_url ||
-    recap.brand?.logo_light_url ||
-    recap.brand?.logo_url ||
-    recap.client_logo_url;
-  // Plain logo for the small brand row in the card body.
   const brandLogo = recap.brand?.logo_url || recap.client_logo_url;
-  // The cover photo: a piece of content from the recap, falling back to any
-  // hero/thumbnail set on the recap itself.
-  const coverUrl = recap.cover_url || recap.thumbnail_url || recap.hero_image_url;
   const initials = recap.client_name
     .split(' ')
     .map((w) => w[0])
@@ -87,44 +75,15 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
     .toUpperCase();
 
   return (
-    <div className="group relative bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300">
-      {/* Full-card link to the recap editor. Stretched across the whole
-          card (absolute inset-0) so clicking anywhere opens the editor. */}
-      <Link
-        href={`/dashboard/${recap.id}`}
-        className="absolute inset-0 z-10"
-        aria-label={`Edit ${recap.name}`}
-      />
-
+    <div className="group bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300">
       {/* Thumbnail / Hero area */}
       <div className="relative aspect-[16/9] bg-[#0a0a0a] overflow-hidden">
-        {coverUrl ? (
-          <>
-            {/* The content photo */}
-            <img
-              src={coverUrl}
-              alt={recap.name}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-            {/* Dark glass tint over the photo */}
-            <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] group-hover:bg-black/45 transition-colors duration-300" />
-            {/* Brand logo sitting on top, centered */}
-            {coverLogo ? (
-              <div className="absolute inset-0 flex items-center justify-center p-6">
-                <img
-                  src={coverLogo}
-                  alt={recap.client_name}
-                  className="max-h-14 max-w-[55%] object-contain drop-shadow-lg"
-                />
-              </div>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl font-black tracking-wider text-white/90 drop-shadow-lg">
-                  {initials}
-                </span>
-              </div>
-            )}
-          </>
+        {recap.thumbnail_url || recap.hero_image_url ? (
+          <img
+            src={recap.thumbnail_url || recap.hero_image_url || ''}
+            alt={recap.name}
+            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+          />
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
@@ -151,7 +110,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
 
         {/* Status badge overlay */}
         <div className="absolute top-3 right-3">
-          <StatusBadge published={recap.published} />
+          <StatusBadge status={recap.status} />
         </div>
 
         {/* Featured badge */}
@@ -161,27 +120,6 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
               Featured
             </span>
           </div>
-        )}
-
-        {/* "View Live" link — opens the public recap in a new tab.
-            Only shown for published recaps. z-10 + stopPropagation keep
-            it above the full-card editor link so its own click wins. */}
-        {recap.published && (
-          <Link
-            href={`/recap/${recap.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-white/70 bg-black/50 backdrop-blur hover:text-[#D73F09] hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-all"
-            title="View live recap"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 3h6v6" />
-              <path d="M10 14L21 3" />
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-            </svg>
-            View Live
-          </Link>
         )}
       </div>
 
@@ -239,10 +177,20 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
           </div>
         )}
 
-        {/* Type + date */}
-        <div className="flex items-center justify-between text-[10px] text-white/20">
+        {/* Actions */}
+        <div className="flex items-center justify-between text-[10px] text-white/20 mt-2">
           <span className="capitalize">{recap.type.replace(/_/g, ' ')}</span>
-          <span>{new Date(recap.created_at).toLocaleDateString()}</span>
+          <Link
+            href={`/dashboard/website/campaigns/${recap.id}/hero`}
+            className="text-[10px] uppercase tracking-wider text-[#D73F09] hover:text-[#ff5a2a] font-bold"
+          >
+            Edit Hero →
+          </Link>
+        </div>
+
+        {/* Date */}
+        <div className="text-[10px] text-white/20 mt-1">
+          {new Date(recap.created_at).toLocaleDateString()}
         </div>
       </div>
     </div>
@@ -255,10 +203,7 @@ export default function RecapsPage() {
   const [recaps, setRecaps] = useState<CampaignRecap[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  // Filter on the `published` flag (Live / Drafts / All), not the unreliable
-  // `status` text column. Default to "Live" so the page isn't flooded with
-  // drafts; the "Drafts" pill pulls them up, and any card opens its editor.
-  const [view, setView] = useState<'live' | 'draft' | null>('live');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchRecaps() {
@@ -267,39 +212,23 @@ export default function RecapsPage() {
         .from('campaign_recaps')
         .select(`
           *,
-          brand:brands!campaigns_brand_id_fkey ( id, name, logo_url, logo_light_url, logo_white_url, primary_color )
+          brand:brands!campaigns_brand_id_fkey ( id, name, logo_url, primary_color )
         `)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        const list = data as CampaignRecap[];
-
-        // Pull one cover image per recap from the recap_card_cover view
-        // (one row per campaign, the first content photo) and attach it.
-        const { data: covers } = await supabase
-          .from('recap_card_cover')
-          .select('campaign_id, cover_url');
-
-        if (covers) {
-          const coverMap = new Map<string, string>(
-            covers.map((c: { campaign_id: string; cover_url: string }) => [
-              c.campaign_id,
-              c.cover_url,
-            ])
-          );
-          list.forEach((r) => {
-            r.cover_url = coverMap.get(r.id) ?? null;
-          });
-        }
-
-        setRecaps(list);
+        setRecaps(data as CampaignRecap[]);
       }
       setLoading(false);
     }
     fetchRecaps();
   }, []);
 
-  const liveCount = useMemo(() => recaps.filter((r) => r.published).length, [recaps]);
+  // Get unique statuses for filter pills
+  const statuses = useMemo(() => {
+    const s = new Set(recaps.map((r) => r.status));
+    return Array.from(s).sort();
+  }, [recaps]);
 
   // Filtered results
   const filtered = useMemo(() => {
@@ -308,44 +237,22 @@ export default function RecapsPage() {
         !searchTerm ||
         r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.client_name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesView =
-        view === null ||
-        (view === 'live' && r.published) ||
-        (view === 'draft' && !r.published);
-      return matchesSearch && matchesView;
+      const matchesStatus = !statusFilter || r.status === statusFilter;
+      return matchesSearch && matchesStatus;
     });
-  }, [recaps, searchTerm, view]);
+  }, [recaps, searchTerm, statusFilter]);
 
   return (
     <DashboardContent>
       {/* Page header */}
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="text-[10px] font-bold tracking-[0.2em] text-[#D73F09] uppercase mb-1">
-            Campaign Library
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-1">Campaign Recaps</h1>
-          <p className="text-sm text-white/40">
-            {view === 'live'
-              ? `${liveCount} live recaps · ${recaps.length} total`
-              : view === 'draft'
-              ? `${filtered.length} drafts · ${recaps.length} total`
-              : `${recaps.length} campaigns across all brands`}
-          </p>
+      <div className="mb-8">
+        <div className="text-[10px] font-bold tracking-[0.2em] text-[#D73F09] uppercase mb-1">
+          Campaign Library
         </div>
-
-        {/* Create a new campaign. Opens the existing creation flow
-            (modal lives on the legacy dashboard list). */}
-        <Link
-          href="/dashboard?tab=recaps&new=1"
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#D73F09] hover:bg-[#c0370a] text-white text-sm font-semibold transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          New Campaign
-        </Link>
+        <h1 className="text-2xl font-bold text-white mb-1">Campaign Recaps</h1>
+        <p className="text-sm text-white/40">
+          {recaps.length} campaigns across all brands
+        </p>
       </div>
 
       {/* Search + filters */}
@@ -358,21 +265,27 @@ export default function RecapsPage() {
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#D73F09]/50 transition-colors"
         />
         <div className="flex gap-2 flex-wrap">
-          {([
-            { key: 'live' as const, label: 'Live' },
-            { key: 'draft' as const, label: 'Drafts' },
-            { key: null, label: 'All' },
-          ]).map(({ key, label }) => (
+          <button
+            onClick={() => setStatusFilter(null)}
+            className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${
+              !statusFilter
+                ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
+                : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
+            }`}
+          >
+            All
+          </button>
+          {statuses.map((s) => (
             <button
-              key={label}
-              onClick={() => setView(key)}
-              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${
-                view === key
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all capitalize ${
+                statusFilter === s
                   ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
                   : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
               }`}
             >
-              {label}
+              {s.replace(/_/g, ' ')}
             </button>
           ))}
         </div>
@@ -410,12 +323,12 @@ export default function RecapsPage() {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
           <div className="text-white/20 text-lg font-semibold mb-2">
-            {searchTerm || view
+            {searchTerm || statusFilter
               ? 'No matching recaps found'
               : 'No campaign recaps yet'}
           </div>
           <p className="text-sm text-white/15">
-            {searchTerm || view
+            {searchTerm || statusFilter
               ? 'Try adjusting your search or filters'
               : 'Campaign recaps will appear here as campaigns are completed'}
           </p>
