@@ -40,7 +40,6 @@ function fmt(n: number) {
   return new Intl.NumberFormat('en-US').format(n);
 }
 
-const POSTGAME_LOGO_URL = 'https://postgame-hub.vercel.app/postgame-logo-white.png';
 
 export default async function CampaignPage({ params, searchParams }: Props) {
   const { slug: brandSlug, campaign: campaignSlug } = await params;
@@ -76,7 +75,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   const { data: media } = await supabase
     .from('media')
     .select(
-      'id, type, file_url, thumbnail_url, athlete_id, focal_x, focal_y, quality_score, resolution'
+      'id, type, file_url, thumbnail_url, athlete_id, focal_x, focal_y, quality_score, resolution, is_hero, hero_order, hero_scale'
     )
     .eq('campaign_id', campaign.id)
     .order('sort_order', { ascending: true })
@@ -85,35 +84,39 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   const allImages = mediaArr.filter((m: any) => m.type === 'image');
   const allVideos = mediaArr.filter((m: any) => m.type === 'video');
 
-  // Hero: landscape, top quality_score, cap at 6 stills (~2-3 MB total at w1600).
-  // For Drive imports where resolution + quality_score are null, the primary
-  // filter returns 0 images — fall back to picking up to 6 images regardless.
-  const isLandscape = (m: any) => {
-    if (typeof m.resolution !== 'string') return false;
-    const [w, h] = m.resolution.split('x').map((n: string) => parseInt(n, 10));
-    return Number.isFinite(w) && Number.isFinite(h) && w > h;
-  };
+  // Hero selection: if the editor has manually picked hero images (is_hero=true),
+  // use those. Otherwise fall back to auto-pick for campaigns that haven't been
+  // curated yet.
+  const manualHeroes = mediaArr
+    .filter((m: any) => m.is_hero)
+    .sort((a: any, b: any) => (a.hero_order || 0) - (b.hero_order || 0));
 
-  // Primary hero: landscape + quality_score ranked
-  let heroCandidates = allImages
-    .filter(isLandscape)
-    .sort((a: any, b: any) => (b.quality_score || 0) - (a.quality_score || 0))
-    .slice(0, 6);
-
-  // Fallback: if fewer than 3 passed the resolution filter, just take the
-  // first 6 images (any orientation). An imperfect hero beats an empty one.
-  if (heroCandidates.length < 3) {
-    heroCandidates = allImages.slice(0, 6);
+  let heroCandidates: any[];
+  if (manualHeroes.length > 0) {
+    // Manual picks from the hero editor — these include videos too
+    heroCandidates = manualHeroes;
+  } else {
+    // Auto-pick fallback: prefer landscape images, fall back to first 6
+    const isLandscape = (m: any) => {
+      if (typeof m.resolution !== 'string') return false;
+      const [w, h] = m.resolution.split('x').map((n: string) => parseInt(n, 10));
+      return Number.isFinite(w) && Number.isFinite(h) && w > h;
+    };
+    heroCandidates = allImages
+      .filter(isLandscape)
+      .sort((a: any, b: any) => (b.quality_score || 0) - (a.quality_score || 0))
+      .slice(0, 6);
+    if (heroCandidates.length < 3) {
+      heroCandidates = allImages.slice(0, 6);
+    }
   }
 
-  // Hero images are full-bleed, so serve the original file directly.
-  // Drive-imported media has no .w1600.webp variants, and the original
-  // resolution is ideal for a full-screen hero anyway.
   const heroStills: HeroStill[] = heroCandidates.map((m: any) => ({
     src: m.file_url,
     alt: campaign.name,
     focalX: typeof m.focal_x === 'number' ? m.focal_x : 0.5,
     focalY: typeof m.focal_y === 'number' ? m.focal_y : 0.5,
+    scale: typeof m.hero_scale === 'number' ? m.hero_scale : 1.0,
   }));
 
   const images: GalleryItem[] = allImages.map((m: any) => ({
@@ -157,52 +160,10 @@ export default async function CampaignPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {/* ---- NAV: Postgame × brand lockup ---- */}
-      <nav
-        className="sticky top-0 z-20 h-20 backdrop-blur-2xl border-b border-white/[0.08]"
-        style={{ background: 'rgba(0,0,0,0.78)' }}
-      >
-        <div className="max-w-[1200px] h-full mx-auto px-10 max-[820px]:px-5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={POSTGAME_LOGO_URL} alt="Postgame" className="h-6 w-auto object-contain" />
-            <span className="text-[#D73F09] text-2xl font-extralight opacity-70 select-none">×</span>
-            {brand.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={brand.logoUrl}
-                alt={brand.name}
-                className="h-[30px] rounded-[3px] px-2 py-1 object-contain"
-              />
-            )}
-          </div>
-          <div className="flex items-center gap-[22px]">
-            <Link
-              href="/clients"
-              className="uppercase text-[11px] tracking-[0.14em] text-[#8a8a85] hover:text-white flex items-center gap-2"
-              style={{ fontFamily: 'var(--font-mono)' }}
-            >
-              <span className="text-sm">←</span> All Clients
-            </Link>
-            <span
-              className="uppercase text-[10px] tracking-[0.16em] font-bold px-3 py-[7px]"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: '#D73F09',
-                border: '1.5px solid #D73F09',
-                background: 'rgba(215,63,9,0.12)',
-              }}
-            >
-              Campaign
-            </span>
-          </div>
-        </div>
-      </nav>
-
       {/* ---- HERO ---- */}
       <header
         className="relative w-full overflow-hidden flex items-center border-b border-white/[0.08]"
-        style={{ minHeight: 'calc(100vh - 80px)' }}
+        style={{ minHeight: 'min(65vh, 700px)' }}
       >
         <div className="absolute inset-0 z-[1] bg-[#0c0c0e]">
           <HeroStills stills={heroStills} />
@@ -244,6 +205,15 @@ export default async function CampaignPage({ params, searchParams }: Props) {
               <span className="inline-block w-[46px] h-px" style={{ background: '#D73F09' }} />
               {brand.name} · NIL Campaign
             </div>
+
+            {brand.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brand.logoUrl}
+                alt={brand.name}
+                className="h-[50px] w-auto object-contain mb-6"
+              />
+            )}
 
             <h1
               className="font-normal uppercase leading-[0.88] tracking-[0.005em]"
