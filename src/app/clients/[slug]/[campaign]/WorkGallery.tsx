@@ -28,6 +28,9 @@ function interleave(images: GalleryItem[], videos: GalleryItem[]): GalleryItem[]
 }
 
 function PhotoTile({ item, onClick }: { item: GalleryItem; onClick: () => void }) {
+  // If the .w400.webp variant 404s, fall back to the original file_url (item.src).
+  // thumbFailed prevents an infinite loop if both fail.
+  const [thumbFailed, setThumbFailed] = useState(false);
   return (
     <button
       onClick={onClick}
@@ -35,12 +38,13 @@ function PhotoTile({ item, onClick }: { item: GalleryItem; onClick: () => void }
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={item.thumb}
+        src={thumbFailed ? item.src : item.thumb}
         alt={item.alt}
         className="block w-full h-auto"
         style={{ objectPosition: `${(item.focalX * 100).toFixed(1)}% ${(item.focalY * 100).toFixed(1)}%` }}
         loading="lazy"
         decoding="async"
+        onError={() => { if (!thumbFailed) setThumbFailed(true); }}
       />
     </button>
   );

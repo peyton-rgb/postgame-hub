@@ -80,8 +80,9 @@ async function loadBrandPageData(brand: Brand) {
     brandDb = byName;
   }
 
-  // 2) Campaigns — anon RLS restricts to published+public so we
-  //    only see what we're allowed to show on the public site.
+  // 2) Campaigns — pull from both `campaigns` AND `campaign_recaps`.
+  //    Drive-imported campaigns often only exist in campaign_recaps, so
+  //    we query both and merge by slug to avoid duplicates.
   const campaignsQ = brandDb
     ? supabase
         .from('campaigns')
@@ -89,6 +90,17 @@ async function loadBrandPageData(brand: Brand) {
         .eq('brand_id', brandDb.id)
         .order('created_at', { ascending: false })
     : Promise.resolve({ data: [] as CampaignRow[], error: null });
+
+  // campaign_recaps may contain campaigns not in the `campaigns` table
+  // (e.g. Drive-imported ones). We only show published recaps.
+  const recapsQ = brandDb
+    ? supabase
+        .from('campaign_recaps')
+        .select('id, name, slug, description, published, created_at')
+        .eq('brand_id', brandDb.id)
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+    : Promise.resolve({ data: [] as any[], error: null });
 
   // 3) Athlete-attributed media — used by the montage marquee (everything)
   //    via campaign_recaps so RLS naturally limits to published ones.
@@ -125,11 +137,13 @@ async function loadBrandPageData(brand: Brand) {
 
   const [
     { data: campaigns, error: campErr },
+    { data: recaps, error: recapErr },
     { data: mediaRows, error: mediaErr },
     { data: featuredMediaRows, error: featuredErr },
-  ] = await Promise.all([campaignsQ, mediaQ, featuredMediaQ]);
+  ] = await Promise.all([campaignsQ, recapsQ, mediaQ, featuredMediaQ]);
 
   if (campErr) console.error('[clients/[slug]] campaigns error:', campErr.message);
+  if (recapErr) console.error('[clients/[slug]] recaps error:', recapErr.message);
   if (mediaErr) console.error('[clients/[slug]] media error:', mediaErr.message);
   if (featuredErr) console.error('[clients/[slug]] featured media error:', featuredErr.message);
 
@@ -180,7 +194,36 @@ async function loadBrandPageData(brand: Brand) {
     if (r.sport) sportSet.add(r.sport);
   }
 
-  const campaignList: CampaignRow[] = (campaigns as CampaignRow[] | null) || [];
+  // Merge campaigns + campaign_recaps, deduplicating by slug.
+  // If a campaign exists in both tables, the `campaigns` row wins
+  // (it may have hero_image_url / thumbnail_url that recaps lack).
+  const campaignsBySlug = new Map<string, CampaignRow>();
+  for (const c of (campaigns as CampaignRow[] | null) || []) {
+    campaignsBySlug.set(c.slug, c);
+  }
+  for (const r of (recaps as any[] | null) || []) {
+    if (!campaignsBySlug.has(r.slug)) {
+      // Recap-only campaign — map to CampaignRow shape.
+      // These won't have hero_image_url/thumbnail_url, so the
+      // CampaignCard will show the branded placeholder.
+      campaignsBySlug.set(r.slug, {
+        id: r.id,
+        name: r.name,
+        slug: r.slug,
+        description: r.description ?? null,
+        hero_image_url: null,
+        thumbnail_url: null,
+        created_at: r.created_at ?? null,
+      });
+    }
+  }
+  const campaignList: CampaignRow[] = Array.from(campaignsBySlug.values())
+    .sort((a, b) => {
+      // Newest first — null dates sort to the end.
+      const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return db - da;
+    });
 
   // Fallback hero pool — campaign cover images (hero_image_url / thumbnail_url).
   // Only used when there are no featured-campaign athlete shots to show.
