@@ -85,21 +85,33 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   const allVideos = mediaArr.filter((m: any) => m.type === 'video');
 
   // Hero: landscape, top quality_score, cap at 6 stills (~2-3 MB total at w1600).
+  // For Drive imports where resolution + quality_score are null, the primary
+  // filter returns 0 images — fall back to picking up to 6 images regardless.
   const isLandscape = (m: any) => {
     if (typeof m.resolution !== 'string') return false;
     const [w, h] = m.resolution.split('x').map((n: string) => parseInt(n, 10));
     return Number.isFinite(w) && Number.isFinite(h) && w > h;
   };
-  const heroStills: HeroStill[] = allImages
+
+  // Primary hero: landscape + quality_score ranked
+  let heroCandidates = allImages
     .filter(isLandscape)
     .sort((a: any, b: any) => (b.quality_score || 0) - (a.quality_score || 0))
-    .slice(0, 6)
-    .map((m: any) => ({
-      src: variantUrl(m.file_url, 'w1600'),
-      alt: campaign.name,
-      focalX: typeof m.focal_x === 'number' ? m.focal_x : 0.5,
-      focalY: typeof m.focal_y === 'number' ? m.focal_y : 0.5,
-    }));
+    .slice(0, 6);
+
+  // Fallback: if fewer than 3 passed the resolution filter, just take the
+  // first 6 images (any orientation). An imperfect hero beats an empty one.
+  if (heroCandidates.length < 3) {
+    heroCandidates = allImages.slice(0, 6);
+  }
+
+  const heroStills: HeroStill[] = heroCandidates.map((m: any) => ({
+    src: variantUrl(m.file_url, 'w1600'),
+    originalSrc: m.file_url,
+    alt: campaign.name,
+    focalX: typeof m.focal_x === 'number' ? m.focal_x : 0.5,
+    focalY: typeof m.focal_y === 'number' ? m.focal_y : 0.5,
+  }));
 
   const images: GalleryItem[] = allImages.map((m: any) => ({
     id: m.id,

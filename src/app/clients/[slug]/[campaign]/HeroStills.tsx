@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 // nudges the crop vertically toward focalY so faces stay in frame.
 export interface HeroStill {
   src: string;
+  originalSrc: string; // the raw file_url — fallback when variant 404s
   alt: string;
   focalX: number; // 0..1
   focalY: number; // 0..1
@@ -17,6 +18,8 @@ const FADE_MS = 1200;
 
 export default function HeroStills({ stills }: { stills: HeroStill[] }) {
   const [current, setCurrent] = useState(0);
+  // Track which slides already fell back to originalSrc (prevents infinite loop)
+  const [fellBack, setFellBack] = useState<Set<number>>(() => new Set());
 
   useEffect(() => {
     if (stills.length < 2) return;
@@ -36,7 +39,7 @@ export default function HeroStills({ stills }: { stills: HeroStill[] }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={s.src}
-          src={s.src}
+          src={fellBack.has(i) ? s.originalSrc : s.src}
           alt={s.alt}
           className="absolute inset-0 w-full h-full object-cover"
           style={{
@@ -49,6 +52,12 @@ export default function HeroStills({ stills }: { stills: HeroStill[] }) {
           }}
           loading={i === 0 ? 'eager' : 'lazy'}
           decoding="async"
+          onError={() => {
+            // Variant 404'd — swap to the original file_url (once only)
+            if (!fellBack.has(i)) {
+              setFellBack((prev) => new Set(prev).add(i));
+            }
+          }}
         />
       ))}
     </>
