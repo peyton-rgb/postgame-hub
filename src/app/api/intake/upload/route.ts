@@ -17,6 +17,7 @@
 import { createServerSupabase } from '@/lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { convertImageIfNeeded } from '@/lib/services/image-convert';
 
 export async function POST(request: NextRequest) {
   // Auth check using the same pattern as other routes
@@ -74,13 +75,24 @@ export async function POST(request: NextRequest) {
       const datePath = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const storagePath = `${datePath}/${timestamp}_${sanitizedName}`;
 
-      // Read the file into a buffer
-      const fileBuffer = Buffer.from(await file.arrayBuffer());
+      // Read the file into a buffer, then auto-convert HEIC/TIFF → JPG
+      // so the image always displays in browsers.
+      let fileBuffer = Buffer.from(await file.arrayBuffer());
+      let uploadName = sanitizedName;
+      let uploadMime = mimeType;
+      const { buffer: converted, filename: convertedName, converted: didConvert } =
+        await convertImageIfNeeded(fileBuffer, sanitizedName);
+      if (didConvert) {
+        fileBuffer = converted;
+        uploadName = convertedName;
+        uploadMime = 'image/jpeg';
+      }
+      const finalStoragePath = `${datePath}/${timestamp}_${uploadName}`;
 
       const { error: uploadError } = await adminSupabase.storage
         .from('raw-footage')
-        .upload(storagePath, fileBuffer, {
-          contentType: mimeType,
+        .upload(finalStoragePath, fileBuffer, {
+          contentType: uploadMime,
           upsert: false,
         });
 
@@ -92,7 +104,7 @@ export async function POST(request: NextRequest) {
       // Build the public URL for the uploaded file
       const { data: publicUrlData } = adminSupabase.storage
         .from('raw-footage')
-        .getPublicUrl(storagePath);
+        .getPublicUrl(finalStoragePath);
 
       const fileUrl = publicUrlData.publicUrl;
 
