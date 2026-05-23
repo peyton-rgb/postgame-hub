@@ -18,6 +18,7 @@
 // NOT add a second nav here. Just the "← All Clients" crumb.
 // ============================================================
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getBrandBySlug, type Brand } from '@/lib/data/brands';
@@ -427,7 +428,13 @@ function Marquee({
     <div className={`bp-marquee${direction === 'right' ? ' row2' : ''}`}>
       {doubled.map((t, i) => (
         <div key={`${t.athlete_name}-${i}`} className="bp-tile">
-          <img src={t.file_url} alt={t.athlete_name} loading="lazy" />
+          <Image
+            src={t.file_url}
+            alt={t.athlete_name}
+            fill
+            sizes="236px"
+            style={{ objectFit: 'cover', objectPosition: 'center 15%' }}
+          />
           <div className="bp-tile-cap">
             <div className="bp-nm">{t.athlete_name}</div>
             {t.sport && <div className="bp-mt">{t.sport}</div>}

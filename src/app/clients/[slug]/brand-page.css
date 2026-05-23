@@ -48,14 +48,18 @@
   inset: 0;
   opacity: 0;
   transition: opacity 1.4s ease;
-  background-size: cover;
-  background-position: center 18%;
-  animation: bp-kenburns 13s ease-in-out infinite alternate;
+  overflow: hidden;
 }
 .bp-slide.active { opacity: 1; }
+/* A small 1.0 → 1.035 breath on a 22s loop — applied only to the active
+   slide so each new slide starts its own breath from rest. Subtle enough
+   that faces stay in frame and source-image grain isn't exaggerated. */
+.bp-slide.active img {
+  animation: bp-kenburns 22s ease-in-out infinite alternate;
+}
 @keyframes bp-kenburns {
-  from { transform: scale(1.02); }
-  to   { transform: scale(1.09); }
+  from { transform: scale(1); }
+  to   { transform: scale(1.035); }
 }
 .bp-dots { position: absolute; bottom: 24px; left: 32px; z-index: 3; display: flex; gap: 7px; }
 .bp-dots span {
