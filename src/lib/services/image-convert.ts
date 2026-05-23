@@ -19,11 +19,13 @@
 // ============================================================
 
 import sharp from 'sharp';
+import convert from 'heic-convert';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 // File extensions that browsers can't display as <img> src.
 // We convert these to .jpg on the fly.
 const UNSUPPORTED_EXTENSIONS = ['.heic', '.heif', '.tif', '.tiff', '.bmp', '.avif'];
+const HEIC_EXTENSIONS = ['.heic', '.heif'];
 
 /**
  * Check if a filename has an extension that browsers can't render.
@@ -31,6 +33,11 @@ const UNSUPPORTED_EXTENSIONS = ['.heic', '.heif', '.tif', '.tiff', '.bmp', '.avi
 export function needsConversion(filename: string): boolean {
   const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
   return UNSUPPORTED_EXTENSIONS.includes(ext);
+}
+
+function isHeic(filename: string): boolean {
+  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
+  return HEIC_EXTENSIONS.includes(ext);
 }
 
 /**
@@ -51,11 +58,17 @@ export async function convertImageIfNeeded(
     return { buffer, filename, converted: false };
   }
 
-  // sharp can read HEIC, TIFF, BMP, AVIF and output JPG.
-  // Quality 90 is a good balance of file size vs visual quality.
-  const jpgBuffer = await sharp(buffer)
-    .jpeg({ quality: 90 })
-    .toBuffer();
+  // sharp's libvips on Vercel doesn't ship libheif, so HEIC/HEIF decode fails
+  // at runtime ("No decoding plugin installed for this compression format").
+  // Route HEIC through heic-convert (pure JS / WASM); keep sharp for everything
+  // else (TIFF/BMP/AVIF), which it handles fine.
+  let jpgBuffer: Buffer;
+  if (isHeic(filename)) {
+    const out = await convert({ buffer, format: 'JPEG', quality: 0.9 });
+    jpgBuffer = Buffer.from(out);
+  } else {
+    jpgBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+  }
 
   // Replace the old extension with .jpg
   const newFilename = filename.replace(/\.[^.]+$/, '.jpg');
