@@ -172,7 +172,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
               <img
                 src={brand.logoUrl}
                 alt={brand.name}
-                className="h-[30px] bg-white rounded-[3px] px-2 py-1 object-contain"
+                className="h-[30px] rounded-[3px] px-2 py-1 object-contain"
               />
             )}
           </div>
