@@ -106,9 +106,11 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     heroCandidates = allImages.slice(0, 6);
   }
 
+  // Hero images are full-bleed, so serve the original file directly.
+  // Drive-imported media has no .w1600.webp variants, and the original
+  // resolution is ideal for a full-screen hero anyway.
   const heroStills: HeroStill[] = heroCandidates.map((m: any) => ({
-    src: variantUrl(m.file_url, 'w1600'),
-    originalSrc: m.file_url,
+    src: m.file_url,
     alt: campaign.name,
     focalX: typeof m.focal_x === 'number' ? m.focal_x : 0.5,
     focalY: typeof m.focal_y === 'number' ? m.focal_y : 0.5,

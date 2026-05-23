@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react';
 
-// One hero still: the _w1600.webp URL plus the focal point we computed at
+// One hero still: the direct file_url plus the focal point computed at
 // import (sharp + smartcrop saliency). The page top-anchors the still and
 // nudges the crop vertically toward focalY so faces stay in frame.
 export interface HeroStill {
   src: string;
-  originalSrc: string; // the raw file_url — fallback when variant 404s
   alt: string;
   focalX: number; // 0..1
   focalY: number; // 0..1
@@ -18,8 +17,6 @@ const FADE_MS = 1200;
 
 export default function HeroStills({ stills }: { stills: HeroStill[] }) {
   const [current, setCurrent] = useState(0);
-  // Track which slides already fell back to originalSrc (prevents infinite loop)
-  const [fellBack, setFellBack] = useState<Set<number>>(() => new Set());
 
   useEffect(() => {
     if (stills.length < 2) return;
@@ -39,7 +36,7 @@ export default function HeroStills({ stills }: { stills: HeroStill[] }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={s.src}
-          src={fellBack.has(i) ? s.originalSrc : s.src}
+          src={s.src}
           alt={s.alt}
           className="absolute inset-0 w-full h-full object-cover"
           style={{
@@ -50,14 +47,10 @@ export default function HeroStills({ stills }: { stills: HeroStill[] }) {
             transition: `opacity ${FADE_MS}ms ease`,
             animation: 'kenBurnsSlow 22s ease-in-out infinite alternate',
           }}
-          loading={i === 0 ? 'eager' : 'lazy'}
+          // All slides load eagerly — there are ≤6 and the hero is above
+          // the fold, so we want them ready before the rotation timer fires.
+          loading="eager"
           decoding="async"
-          onError={() => {
-            // Variant 404'd — swap to the original file_url (once only)
-            if (!fellBack.has(i)) {
-              setFellBack((prev) => new Set(prev).add(i));
-            }
-          }}
         />
       ))}
     </>
