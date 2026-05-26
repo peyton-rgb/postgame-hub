@@ -192,9 +192,9 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
           >
             Edit
           </Link>
-          {recap.published && recap.brand?.slug && (
+          {recap.published && (
             <Link
-              href={`/clients/${recap.brand.slug}/${recap.slug}`}
+              href={`/recap/${recap.slug}`}
               className="flex-1 text-center text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-[#D73F09]/10 text-[#D73F09] hover:bg-[#D73F09]/20 transition-all"
             >
               View Live
