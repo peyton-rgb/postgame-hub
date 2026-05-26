@@ -805,8 +805,20 @@ export function CampaignRecap({
   // Roster is then sliced to the first 50; the rest live behind an expand button.
   const ROSTER_VISIBLE_COUNT = 10;
   const rosterAthletes = (() => {
-    // Exclude collab participants — they render in bracket blocks, not solo rows.
-    const list = fullRoster.filter((a) => !collabAthleteNameSet.has(a.name));
+    // Exclude collab-ONLY athletes (in a collab group with no solo post of their
+    // own) — they render only in the collab bracket. A collab participant who
+    // ALSO made a solo post still appears here (showing just their solo metrics).
+    // "Solo" = a post_url that isn't one of the collab URLs (collab posts live in
+    // the same ig_feed/ig_reel slots, so we test the URL, not slot emptiness).
+    const hasSoloPost = (a: any) => {
+      const m = a.metrics || {};
+      return (
+        (!!m.ig_feed?.post_url && !isCollabUrl("ig_feed", m.ig_feed.post_url)) ||
+        (!!m.ig_reel?.post_url && !isCollabUrl("ig_reel", m.ig_reel.post_url)) ||
+        (!!m.tiktok?.post_url && !isCollabUrl("tiktok", m.tiktok.post_url))
+      );
+    };
+    const list = fullRoster.filter((a) => !collabAthleteNameSet.has(a.name) || hasSoloPost(a));
     if (list.length === 0) return list;
 
     // Compute total engagements for each athlete (sum across IG Feed + Reel + TikTok)
