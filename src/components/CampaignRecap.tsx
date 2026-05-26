@@ -1630,13 +1630,28 @@ export function CampaignRecap({
             const platName = (p: "ig_feed" | "ig_reel" | "tiktok") =>
               p === "ig_feed" ? "IG Feed" : p === "ig_reel" ? "IG Reel" : "TikTok";
 
-            const renderBracketHeader = (group: CollabGroup, compact: boolean) => (
-              <div style={{ background: "rgba(215,63,9,0.07)", borderBottom: "1px solid rgba(215,63,9,0.2)", padding: compact ? "10px 12px" : "10px 16px" }}>
-                <span style={{ fontFamily: bebas, fontSize: compact ? 13 : 14, letterSpacing: 1.5, color: "#f0ede8" }}>
-                  {collabBracketTitle(group)}
-                </span>
-              </div>
-            );
+            const renderBracketHeader = (group: CollabGroup, compact: boolean) => {
+              const schoolSport = collabBracketTitle(group).replace(/ Collab Post$/, "");
+              return (
+                <div style={{ background: "rgba(215,63,9,0.07)", borderBottom: "1px solid rgba(215,63,9,0.2)", padding: compact ? "10px 12px" : "10px 16px" }}>
+                  <span style={{ fontFamily: bebas, fontSize: compact ? 18 : 22, fontWeight: 700, letterSpacing: 1.5, color: "#ffffff" }}>{schoolSport}</span>
+                  <span style={{
+                    display: "inline-block",
+                    marginLeft: 12,
+                    verticalAlign: "middle",
+                    color: "#D73F09",
+                    background: "rgba(215,63,9,0.15)",
+                    border: "1px solid rgba(215,63,9,0.4)",
+                    padding: "4px 10px",
+                    borderRadius: 4,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                  }}>COLLAB POST</span>
+                </div>
+              );
+            };
 
             const renderBracketDesktop = (group: CollabGroup) => {
               const rows = group.athleteNames
@@ -1645,11 +1660,11 @@ export function CampaignRecap({
               const feedSource = group.sources.find((s) => s.platform === "ig_feed");
               const reelSource = group.sources.find((s) => s.platform === "ig_reel");
               return (
-                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
                   {renderBracketHeader(group, false)}
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b border-white/[0.15]">
+                      <tr className="border-b border-white/[0.15]" style={{ borderLeft: "2px solid transparent" }}>
                         <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
                         <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</th>
                         {showCol("school") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>}
@@ -1684,9 +1699,9 @@ export function CampaignRecap({
                               <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
                             ) : "\u2014"}</td>}
                             {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
-                            {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.45)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
-                            {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.45)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
-                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.45)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
+                            {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.7)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
+                            {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.7)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
+                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.7)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
@@ -1729,7 +1744,7 @@ export function CampaignRecap({
                             <td className="px-3 py-3">
                               <span style={{ display: "inline-block", color: "#fff", background: "#D73F09", padding: "4px 10px", borderRadius: 4, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>{platName(s.platform).toUpperCase()}</span>
                             </td>
-                            {showCol("school") && <td className="px-3 py-3"><span style={{ color: "#D73F09", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>Collab Totals</span></td>}
+                            {showCol("school") && <td className="px-3 py-3" />}
                             {showCol("sport") && <td className="px-3 py-3" />}
                             {showCol("ig_handle") && <td className="px-3 py-3" />}
                             {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(group.combinedFollowers)}</td>}
@@ -1775,7 +1790,7 @@ export function CampaignRecap({
                 .map((name) => fullRoster.find((x) => x.name === name))
                 .filter((a): a is typeof fullRoster[number] => !!a);
               return (
-                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
                   {renderBracketHeader(group, true)}
                   {rows.map((a, idx) => {
                     const isLast = idx === rows.length - 1;
