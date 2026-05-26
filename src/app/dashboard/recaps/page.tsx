@@ -187,7 +187,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
         {/* Action buttons */}
         <div className="flex gap-2 mt-3 pt-3 border-t border-white/[0.06]">
           <Link
-            href={`/dashboard/recaps/${recap.id}`}
+            href={`/dashboard/${recap.id}`}
             className="flex-1 text-center text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all"
           >
             Edit
@@ -195,6 +195,8 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
           {recap.published && (
             <Link
               href={`/recap/${recap.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex-1 text-center text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-[#D73F09]/10 text-[#D73F09] hover:bg-[#D73F09]/20 transition-all"
             >
               View Live
