@@ -11,7 +11,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
 import DashboardContent from '@/components/DashboardContent';
 import { createBrowserSupabase } from '@/lib/supabase';
 
