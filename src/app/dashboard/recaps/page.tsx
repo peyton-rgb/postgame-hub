@@ -181,10 +181,10 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
         <div className="flex items-center justify-between text-[10px] text-white/20 mt-2">
           <span className="capitalize">{recap.type.replace(/_/g, ' ')}</span>
           <Link
-            href={`/dashboard/website/campaigns/${recap.id}/hero`}
+            href={`/dashboard/recaps/${recap.id}`}
             className="text-[10px] uppercase tracking-wider text-[#D73F09] hover:text-[#ff5a2a] font-bold"
           >
-            Edit Hero →
+            Edit Recap →
           </Link>
         </div>
 
