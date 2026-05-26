@@ -441,9 +441,15 @@ function findCol(headers: string[], ...names: string[]): number {
   for (const name of names) {
     const lower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!lower) continue;
+    // Rate guard: a non-rate search term ("impressions") must not match a rate
+    // column ("engagement rate impressions" → contains the substring). Skip
+    // "rate" columns unless the search term is itself a rate. Prevents an ER%
+    // value from leaking into a metric slot (the phantom ig_feed_2 bug).
+    const searchIsRate = lower.includes("rate");
     const idx = headers.findIndex((h) => {
       const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
       if (!hClean) return false; // Skip empty headers
+      if (!searchIsRate && hClean.includes("rate")) return false;
       // Exact match or header contains the full search term
       // NOTE: We intentionally do NOT check lower.includes(hClean) because
       // generic headers like "Views" would falsely match "tiktokviews",
@@ -478,10 +484,13 @@ function findColInPlatform(
   for (const name of names) {
     const lower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!lower) continue;
+    // Rate guard — see findCol.
+    const searchIsRate = lower.includes("rate");
     for (let i = 0; i < headers.length; i++) {
       if (platformMap[i] !== platform) continue;
       const hClean = headers[i].toLowerCase().replace(/[^a-z0-9]/g, "");
       if (!hClean) continue;
+      if (!searchIsRate && hClean.includes("rate")) continue;
       if (hClean === lower || hClean.includes(lower)) return i;
     }
   }
@@ -510,11 +519,16 @@ function findColInPlatformNth(
   for (const name of names) {
     const lower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!lower) continue;
+    // Rate guard — see findCol. Critical here: occurrence 1 of "impressions"
+    // would otherwise resolve to "Engagement Rate Impressions" and fabricate a
+    // phantom ig_feed_2 / tiktok_2 from a leaked ER% value.
+    const searchIsRate = lower.includes("rate");
     let count = 0;
     for (let i = 0; i < headers.length; i++) {
       if (platformMap[i] !== platform) continue;
       const hClean = headers[i].toLowerCase().replace(/[^a-z0-9]/g, "");
       if (!hClean) continue;
+      if (!searchIsRate && hClean.includes("rate")) continue;
       if (hClean === lower || hClean.includes(lower)) {
         if (count === occurrence) return i;
         count++;
