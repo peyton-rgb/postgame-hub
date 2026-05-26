@@ -11,6 +11,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
@@ -382,6 +383,28 @@ export default function DashboardSidebar() {
   const router = useRouter();
   const supabase = createBrowserSupabase();
 
+  // Holds the Postgame logo URL once fetched from Supabase.
+  // Starts as null (nothing loaded yet) so we can fall back to the
+  // text wordmark during loading or if the fetch fails.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Fetch the Postgame brand logo once when the sidebar mounts.
+  // Brand ID is hardcoded — this is the Postgame brand's row in the
+  // brands table, and it doesn't change.
+  useEffect(() => {
+    async function fetchLogo() {
+      const { data } = await supabase
+        .from('brands')
+        .select('logo_primary_url')
+        .eq('id', '7a0e28e9-d62f-427d-a207-cd22596fcf50')
+        .single();
+      if (data?.logo_primary_url) {
+        setLogoUrl(data.logo_primary_url);
+      }
+    }
+    fetchLogo();
+  }, []);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     // Clear the auth cookie so middleware redirects to login
@@ -429,14 +452,23 @@ export default function DashboardSidebar() {
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-black border-r border-white/10 flex flex-col z-50">
-      {/* Logo / Wordmark */}
+     {/* Logo / Wordmark — pulls from Supabase, falls back to wordmark */}
       <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-white/[0.08]">
-        <Link href="/dashboard" className="flex items-baseline gap-0">
-          <span className="text-white font-medium tracking-wider text-[15px]">
-            P<span className="text-[#D73F09]">+</span>STGAME
-          </span>
+        <Link href="/dashboard" className="flex items-center">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Postgame"
+              className="h-7 w-auto object-contain"
+            />
+          ) : (
+            <span className="text-white font-medium tracking-wider text-[15px]">
+              P<span className="text-[#D73F09]">+</span>STGAME
+            </span>
+          )}
         </Link>
       </div>
+    
 
       {/* Scrollable navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
