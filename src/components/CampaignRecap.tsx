@@ -1672,9 +1672,9 @@ export function CampaignRecap({
               const feedSource = group.sources.find((s) => s.platform === "ig_feed");
               const reelSource = group.sources.find((s) => s.platform === "ig_reel");
               return (
-                <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
+                <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderLeft: "3px solid #D73F09", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
                   {renderBracketHeader(group, false)}
-                  <table className="w-full text-left" style={{ borderLeft: "2px solid #D73F09" }}>
+                  <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-white/[0.15]">
                         <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
@@ -1800,14 +1800,13 @@ export function CampaignRecap({
                 .map((name) => fullRoster.find((x) => x.name === name))
                 .filter((a): a is typeof fullRoster[number] => !!a);
               return (
-                <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
+                <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderLeft: "3px solid #D73F09", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
                   {renderBracketHeader(group, true)}
                   {rows.map((a, idx) => {
                     const isLast = idx === rows.length - 1;
                     return (
                       <div key={a.id} className="flex items-center" style={{
                         background: "rgba(215,63,9,0.03)",
-                        borderLeft: "2px solid #D73F09",
                         borderBottom: isLast ? "none" : "1px solid rgba(215,63,9,0.07)",
                         padding: "10px 12px",
                         gap: 10,
@@ -1836,7 +1835,6 @@ export function CampaignRecap({
                     return (
                       <div key={`${group.id}-mtot-${si}`} style={{
                         background: "rgba(215,63,9,0.08)",
-                        borderLeft: "2px solid #D73F09",
                         borderTop: si === 0 ? "1px solid rgba(215,63,9,0.3)" : "1px solid rgba(215,63,9,0.15)",
                         padding: "12px", display: "flex", flexDirection: "column", gap: 8,
                       }}>
