@@ -1665,6 +1665,28 @@ export function CampaignRecap({
               );
             };
 
+            // Shared column grid so every roster table (collab cards + Individual
+            // Posts) lines up — gating mirrors the thead <th> exactly. Used with
+            // tableLayout:"fixed" on each table. Long content wraps, never truncates.
+            const rosterColgroup = (
+              <colgroup>
+                <col style={{ width: "4%" }} />
+                <col style={{ width: "14%" }} />
+                {showCol("school") && <col style={{ width: "21%" }} />}
+                {showCol("sport") && <col style={{ width: "10%" }} />}
+                {showCol("ig_handle") && <col style={{ width: "15%" }} />}
+                {showCol("ig_followers") && hasAnyFollowers && <col style={{ width: "8%" }} />}
+                {showCol("ig_feed_impressions") && hasAnyImpressions && <col style={{ width: "8%" }} />}
+                {showCol("ig_feed_total") && hasAnyEngagements && <col style={{ width: "8%" }} />}
+                {showCol("ig_feed_rate") && hasAnyEngRate && <col style={{ width: "7%" }} />}
+                {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <col style={{ width: "6%" }} />}
+                {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <col style={{ width: "6%" }} />}
+                {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <col style={{ width: "6%" }} />}
+                {hasAnyFeedUrl && <col style={{ width: "2.5%" }} />}
+                {hasAnyReelUrl && <col style={{ width: "2.5%" }} />}
+              </colgroup>
+            );
+
             const renderBracketDesktop = (group: CollabGroup) => {
               const rows = group.athleteNames
                 .map((name) => fullRoster.find((x) => x.name === name))
@@ -1674,7 +1696,8 @@ export function CampaignRecap({
               return (
                 <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderLeft: "3px solid #D73F09", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
                   {renderBracketHeader(group, false)}
-                  <table className="w-full text-left">
+                  <table className="w-full text-left" style={{ tableLayout: "fixed" }}>
+                    {rosterColgroup}
                     <thead>
                       <tr className="border-b border-white/[0.15]">
                         <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
@@ -1870,7 +1893,8 @@ export function CampaignRecap({
               </>
             )}
             {visibleRosterAthletes.length > 0 && (
-              <table className="w-full text-left">
+              <table className="w-full text-left" style={{ tableLayout: "fixed" }}>
+                {rosterColgroup}
                 <thead>
                   <tr className="border-b border-white/[0.15]">
                     <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
