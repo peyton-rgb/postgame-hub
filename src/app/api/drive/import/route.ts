@@ -22,17 +22,19 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fileId, fileName, athleteId, recapId } = body;
+    const { fileId, fileName, athleteId, collabContainerId, recapId } = body;
 
-    if (!fileId || !fileName || !athleteId || !recapId) {
+    if (!fileId || !fileName || !recapId || (!athleteId && !collabContainerId)) {
       return NextResponse.json(
-        { error: "Missing required fields: fileId, fileName, athleteId, recapId" },
+        { error: "Missing required fields: fileId, fileName, recapId, and one of athleteId/collabContainerId" },
         { status: 400 }
       );
     }
 
     const supabase = createServiceSupabase();
-    const storagePath = buildStoragePath(recapId, athleteId, fileName);
+    // Storage path segment: athlete folder, or a collab-<id> folder for collab posts.
+    const destSegment = athleteId ?? `collab-${collabContainerId}`;
+    const storagePath = buildStoragePath(recapId, destSegment, fileName);
 
     const { publicUrl, isVideo } = await downloadAndUpload(supabase, {
       fileId,
@@ -40,15 +42,26 @@ export async function POST(request: NextRequest) {
       storagePath,
     });
 
-    // Insert media record (matching actual schema)
-    const mediaRecord = {
-      campaign_id: recapId,
-      athlete_id: athleteId,
-      type: isVideo ? "video" : "image",
-      file_url: publicUrl,
-      thumbnail_url: isVideo ? null : publicUrl,
-      is_video_thumbnail: false,
-    };
+    // Insert media record. Collab destinations use athlete_id = NULL and the
+    // "collab:<id>" marker that the dashboard + recap already group on.
+    const mediaRecord = athleteId
+      ? {
+          campaign_id: recapId,
+          athlete_id: athleteId,
+          type: isVideo ? "video" : "image",
+          file_url: publicUrl,
+          thumbnail_url: isVideo ? null : publicUrl,
+          is_video_thumbnail: false,
+        }
+      : {
+          campaign_id: recapId,
+          athlete_id: null,
+          type: isVideo ? "video" : "image",
+          file_url: publicUrl,
+          thumbnail_url: isVideo ? null : publicUrl,
+          is_video_thumbnail: false,
+          drive_file_id: `collab:${collabContainerId}`,
+        };
 
     const { data: insertedMedia, error: insertError } = await supabase
       .from("media")

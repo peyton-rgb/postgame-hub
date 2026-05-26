@@ -63,6 +63,10 @@ interface DrivePickerProps {
     onProgress: (p: ImportProgress) => void,
     signal?: AbortSignal
   ) => Promise<ImportProgress>;
+  onAssign: (
+    files: DriveFile[],
+    destinations: Array<{ type: "athlete" | "collab"; id: string }>,
+  ) => Promise<{ succeeded: number; failed: number; errors: Array<{ file: string; error: string }> }>;
 }
 
 interface ImportProgress {
@@ -113,11 +117,19 @@ export default function DrivePicker({
   onFolderConnected,
   athletes,
   onImport,
+  onAssign,
 }: DrivePickerProps) {
   const supabase = useMemo(() => createBrowserSupabase(), []);
   const [aliasMap, setAliasMap] = useState<SchoolAliasMap>(new Map());
   const [teamFolders, setTeamFolders] = useState<DetectedTeam[]>([]);
   const [activeTeamFolderId, setActiveTeamFolderId] = useState<string | null>(null);
+  const [containerByFolderId, setContainerByFolderId] = useState<Record<string, string>>({});
+  const [poolSelection, setPoolSelection] = useState<Set<string>>(new Set());
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignDests, setAssignDests] = useState<Set<string>>(new Set()); // "collab" or athleteId
+  const [assigning, setAssigning] = useState(false);
+  const [assignMsg, setAssignMsg] = useState<string | null>(null);
+  const [assignedFileIds, setAssignedFileIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [driveData, setDriveData] = useState<DriveData | null>(null);
@@ -250,8 +262,13 @@ export default function DrivePicker({
       if (cancelled) return;
       setTeamFolders(teams);
 
-      // auto-create containers (silent, idempotent)
-      for (const t of teams) await ensureTeamContainer(supabase, recapId, t);
+      // auto-create containers (silent, idempotent) and map folder -> container id
+      const map: Record<string, string> = {};
+      for (const t of teams) {
+        const c = await ensureTeamContainer(supabase, recapId, t);
+        if (c) map[t.folderId] = c.id;
+      }
+      if (!cancelled) setContainerByFolderId(map);
     })();
     return () => { cancelled = true; };
   }, [driveData, athletes, supabase, recapId]); // aliasMap intentionally omitted
@@ -342,6 +359,51 @@ export default function DrivePicker({
     if (!activeAthlete) return null;
     return matchAthleteToFolder(activeAthlete.name, driveData.athletes);
   }, [driveData, activeAthlete, activeTeamFolderId]);
+
+  // Reset team-pool selection + assign UI when switching teams.
+  useEffect(() => {
+    setPoolSelection(new Set());
+    setAssignOpen(false);
+    setAssignDests(new Set());
+    setAssignMsg(null);
+    setAssignedFileIds(new Set());
+  }, [activeTeamFolderId]);
+
+  const activeContainerId = activeTeamFolderId ? containerByFolderId[activeTeamFolderId] : undefined;
+  const togglePoolFile = (fileId: string) =>
+    setPoolSelection((p) => { const n = new Set(p); n.has(fileId) ? n.delete(fileId) : n.add(fileId); return n; });
+  const toggleDest = (key: string) =>
+    setAssignDests((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+  const handleAssign = async () => {
+    if (!activeFolder || poolSelection.size === 0 || assignDests.size === 0) return;
+    const files = activeFolder.files.filter((f) => poolSelection.has(f.id));
+    const dests = Array.from(assignDests)
+      .map((key) => key === "collab"
+        ? { type: "collab" as const, id: activeContainerId || "" }
+        : { type: "athlete" as const, id: key })
+      .filter((d) => d.id); // drop collab if container not ready
+    if (dests.length === 0) return;
+    setAssigning(true);
+    setAssignMsg(null);
+    try {
+      const res = await onAssign(files, dests);
+      setAssignedFileIds((prev) => {
+        const n = new Set(prev);
+        files.forEach((f) => n.add(f.id));
+        return n;
+      });
+      setAssignMsg(
+        `Assigned ${res.succeeded}/${files.length * dests.length}` +
+        (res.failed ? ` · ${res.failed} failed` : ""),
+      );
+      setAssignOpen(false);
+      setAssignDests(new Set());
+      // poolSelection kept, so you can assign the same files elsewhere
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   // ── Filtered files for active athlete ──
   const filteredFiles = useMemo(() => {
@@ -931,17 +993,100 @@ export default function DrivePicker({
                     </div>
                   ) : (
                     <>
-                      <div className="text-xs text-gray-500 mb-4">
-                        Team pool · {filteredFiles.length} files. Assigning files to
-                        athletes and the collab post is coming next.
+                      {/* Team-pool assign bar */}
+                      <div className="flex items-center justify-between mb-4 relative">
+                        <div className="text-xs text-gray-500">
+                          Team pool · {filteredFiles.length} files
+                          {poolSelection.size > 0 && (
+                            <span className="text-[#D73F09] font-bold ml-1">
+                              · {poolSelection.size} selected
+                            </span>
+                          )}
+                          {filteredFiles.length > 0 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setPoolSelection(new Set(filteredFiles.map((f) => f.id)))}
+                                className="ml-3 text-[10px] font-bold uppercase text-gray-400 hover:text-white"
+                              >
+                                Select All
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPoolSelection(new Set())}
+                                className="ml-2 text-[10px] font-bold uppercase text-gray-400 hover:text-white"
+                              >
+                                Clear
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {assignMsg && (
+                            <span className="text-[10px] text-gray-400">{assignMsg}</span>
+                          )}
+                          <button
+                            type="button"
+                            disabled={poolSelection.size === 0 || assigning}
+                            onClick={() => setAssignOpen((v) => !v)}
+                            className="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg bg-[#D73F09] text-white hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600"
+                          >
+                            {assigning ? "Assigning…" : "Assign to ▾"}
+                          </button>
+                          {assignOpen && (
+                            <div className="absolute right-0 top-9 z-20 w-60 bg-[#111] border border-white/10 rounded-lg shadow-xl p-2">
+                              <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 px-2 py-1">
+                                Destinations
+                              </div>
+                              <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={assignDests.has("collab")}
+                                  onChange={() => toggleDest("collab")}
+                                />
+                                <span className="text-sm font-bold text-white">Collab Post</span>
+                              </label>
+                              <div className="h-px bg-white/10 my-1" />
+                              {activeTeam?.athletes.map((a) => (
+                                <label
+                                  key={a.id}
+                                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={assignDests.has(a.id)}
+                                    onChange={() => toggleDest(a.id)}
+                                  />
+                                  <span className="text-sm text-gray-200 truncate">{a.name}</span>
+                                </label>
+                              ))}
+                              <button
+                                type="button"
+                                disabled={assignDests.size === 0}
+                                onClick={handleAssign}
+                                className="w-full mt-2 px-3 py-1.5 text-[10px] font-black uppercase rounded bg-[#D73F09] text-white hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600"
+                              >
+                                Assign {poolSelection.size} file{poolSelection.size === 1 ? "" : "s"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
+
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                         {filteredFiles.map((file) => {
                           const isVideo = file.mimeType.startsWith("video/");
+                          const isSelected = poolSelection.has(file.id);
+                          const wasAssigned = assignedFileIds.has(file.id);
                           return (
                             <div
                               key={file.id}
-                              className="relative rounded-lg overflow-hidden border-2 border-white/10"
+                              onClick={() => togglePoolFile(file.id)}
+                              className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                                isSelected
+                                  ? "border-[#D73F09] ring-2 ring-[#D73F09]/30"
+                                  : "border-white/10 hover:border-white/30"
+                              }`}
                             >
                               <div className="aspect-square bg-black relative">
                                 <img
@@ -956,6 +1101,20 @@ export default function DrivePicker({
                                 {isVideo && (
                                   <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[9px] font-black text-white">
                                     VIDEO
+                                  </div>
+                                )}
+                                {wasAssigned && !isSelected && (
+                                  <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white">
+                                    ✓
+                                  </div>
+                                )}
+                                {isSelected && (
+                                  <div className="absolute inset-0 bg-[#D73F09]/20 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-full bg-[#D73F09] flex items-center justify-center">
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
+                                    </div>
                                   </div>
                                 )}
                               </div>

@@ -1430,6 +1430,44 @@ export default function CampaignEditor() {
     return { current, total, currentFile: "", succeeded, failed, errors };
   }
 
+  // Assign team-pool files to one or more destinations (athletes and/or the
+  // team's collab container). One media row is written per (file × destination).
+  async function handleAssignFiles(
+    files: { id: string; name: string }[],
+    destinations: Array<{ type: "athlete" | "collab"; id: string }>,
+  ) {
+    let succeeded = 0, failed = 0;
+    const errors: Array<{ file: string; error: string }> = [];
+    for (const dest of destinations) {
+      for (const file of files) {
+        try {
+          const body = dest.type === "athlete"
+            ? { fileId: file.id, fileName: file.name, athleteId: dest.id, recapId: id }
+            : { fileId: file.id, fileName: file.name, collabContainerId: dest.id, recapId: id };
+          const res = await fetch("/api/drive/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) {
+            const eb = await res.json().catch(() => ({}));
+            failed++;
+            errors.push({ file: file.name, error: eb?.error || `HTTP ${res.status}` });
+          } else {
+            const { media: nm } = await res.json();
+            succeeded++;
+            // key = athleteId OR container UUID (matches loadData's collab grouping)
+            setMedia((prev) => ({ ...prev, [dest.id]: [...(prev[dest.id] || []), nm] }));
+          }
+        } catch (e: any) {
+          failed++;
+          errors.push({ file: file.name, error: String(e?.message || e) });
+        }
+      }
+    }
+    return { succeeded, failed, errors };
+  }
+
   async function removeMedia(athleteId: string, mediaId: string) {
     await supabase.from("media").delete().eq("id", mediaId);
     setMedia((prev) => ({ ...prev, [athleteId]: (prev[athleteId] || []).filter((m) => m.id !== mediaId) }));
@@ -2906,6 +2944,7 @@ export default function CampaignEditor() {
               onFolderConnected={handleFolderConnected}
               athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name, school: a.school, sport: a.sport }))}
               onImport={handleDriveImport}
+              onAssign={handleAssignFiles}
             />
 
             {tier3PickerAthlete && campaign?.admin_campaign_id && (
