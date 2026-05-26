@@ -344,12 +344,6 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
 
 // ── Collab Card ───────────────────────────────────────────────
 
-function platformLabel(platform: "ig_feed" | "ig_reel" | "tiktok"): string {
-  if (platform === "ig_feed") return "IG Feed";
-  if (platform === "ig_reel") return "IG Reel";
-  return "TikTok";
-}
-
 function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group: CollabGroup; items: Media[]; activeFilter: string; athletes: Athlete[] }) {
   const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
   const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
@@ -468,7 +462,7 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#D73F09" }}>
-                Collab · {platformLabel(group.platform)}
+                Collab · {group.platformLabel}
               </span>
             </div>
             <div className="flex gap-1 flex-shrink-0">
@@ -678,7 +672,7 @@ export function CampaignRecap({
   const stats = computeStatsWithOverrides(fullRoster, campaign, collabGroups);
   // Per-platform URL set for fast "is this post a collab?" lookup in the roster.
   const collabUrlSet = new Set<string>();
-  for (const g of collabGroups) collabUrlSet.add(`${g.platform}|${g.url}`);
+  for (const g of collabGroups) for (const k of g.rawUrlKeys) collabUrlSet.add(k);
   const isCollabUrl = (platform: "ig_feed" | "ig_reel" | "tiktok", url: string | null | undefined) =>
     !!url && collabUrlSet.has(`${platform}|${url}`);
   // Names of all athletes participating in any collab group. Collab athletes
@@ -1654,7 +1648,7 @@ export function CampaignRecap({
                     color: "#D73F09", background: "rgba(215,63,9,0.15)",
                     border: "1px solid rgba(215,63,9,0.3)", padding: "2px 8px", borderRadius: 3,
                   }}>
-                    {platformLabel(group.platform)}
+                    {group.platformLabel}
                   </span>
                 </div>
                 <div className="flex" style={{ gap: compact ? 14 : 20 }}>

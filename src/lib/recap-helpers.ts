@@ -121,7 +121,7 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
   // from counting the same post 5× when 5 athletes share it; the collab's
   // metrics are then added back once below.
   const collabUrlPlatforms = new Set<string>();
-  for (const g of collabGroups) collabUrlPlatforms.add(`${g.platform}|${g.url}`);
+  for (const g of collabGroups) for (const k of g.rawUrlKeys) collabUrlPlatforms.add(k);
   const isCollabPost = (platform: "ig_feed" | "ig_reel" | "tiktok", url: string | undefined) =>
     !!url && collabUrlPlatforms.has(`${platform}|${url}`);
 
@@ -338,54 +338,58 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
   // ── Collab groups: add each one's metrics exactly once. ──
   // UPDATED (Change 1): Impressions/views NOT added here — already summed per-athlete above.
   // Only engagements, likes, comments, etc. are added from the collab group.
+  // Iterate each group's unique posts (sources). A merged feed+reel collab
+  // contributes two posts; a duplicate-URL collab contributes one.
   for (const g of collabGroups) {
-    const gm = g.metrics;
-    const engagements = gm.totalEngagements || 0;
-    const likes = gm.likes || 0;
-    const comments = gm.comments || 0;
-    const shares = gm.shares || 0;
-    const reposts = gm.reposts || 0;
-    const rate = g.combinedEngagementRate;
+    for (const s of g.sources) {
+      const gm = s.metrics;
+      const engagements = gm.totalEngagements || 0;
+      const likes = gm.likes || 0;
+      const comments = gm.comments || 0;
+      const shares = gm.shares || 0;
+      const reposts = gm.reposts || 0;
+      const rate = s.combinedEngagementRate;
 
-    if (g.platform === "ig_feed") {
-      igFeedPosts++; totalPosts++;
-      totalEngagements += engagements;
-      igFeed.likes += likes;
-      igFeed.comments += comments;
-      igFeed.shares += shares;
-      igFeed.reposts += reposts;
-      igFeed.engagements += engagements;
-      if (rate > 0) {
-        igFeed.engRateSum += rate; igFeed.engRateCount++;
-        // UPDATED (Change 2): Collab group counts as one entry in flat average
-        allRateSum += rate; allRateCount++;
-        igRateSum += rate; igRateCount++;
-      }
-    } else if (g.platform === "ig_reel") {
-      igReelPosts++; totalPosts++;
-      totalEngagements += engagements;
-      igReel.likes += likes;
-      igReel.comments += comments;
-      igReel.shares += shares;
-      igReel.reposts += reposts;
-      igReel.engagements += engagements;
-      if (rate > 0) {
-        igReel.engRateSum += rate; igReel.engRateCount++;
-        // UPDATED (Change 2): Collab group counts as one entry in flat average
-        allRateSum += rate; allRateCount++;
-        igRateSum += rate; igRateCount++;
-      }
-    } else {
-      tiktokPosts++; totalPosts++;
-      totalEngagements += engagements;
-      tiktok.likes += likes;
-      tiktok.comments += comments;
-      tiktok.engagements += engagements;
-      if (rate > 0) {
-        tiktok.engRateSum += rate; tiktok.engRateCount++;
-        // UPDATED (Change 2): Collab group counts as one entry in flat average
-        allRateSum += rate; allRateCount++;
-        tiktokRateSum += rate; tiktokRateCount++;
+      if (s.platform === "ig_feed") {
+        igFeedPosts++; totalPosts++;
+        totalEngagements += engagements;
+        igFeed.likes += likes;
+        igFeed.comments += comments;
+        igFeed.shares += shares;
+        igFeed.reposts += reposts;
+        igFeed.engagements += engagements;
+        if (rate > 0) {
+          igFeed.engRateSum += rate; igFeed.engRateCount++;
+          // UPDATED (Change 2): Collab post counts as one entry in flat average
+          allRateSum += rate; allRateCount++;
+          igRateSum += rate; igRateCount++;
+        }
+      } else if (s.platform === "ig_reel") {
+        igReelPosts++; totalPosts++;
+        totalEngagements += engagements;
+        igReel.likes += likes;
+        igReel.comments += comments;
+        igReel.shares += shares;
+        igReel.reposts += reposts;
+        igReel.engagements += engagements;
+        if (rate > 0) {
+          igReel.engRateSum += rate; igReel.engRateCount++;
+          // UPDATED (Change 2): Collab post counts as one entry in flat average
+          allRateSum += rate; allRateCount++;
+          igRateSum += rate; igRateCount++;
+        }
+      } else {
+        tiktokPosts++; totalPosts++;
+        totalEngagements += engagements;
+        tiktok.likes += likes;
+        tiktok.comments += comments;
+        tiktok.engagements += engagements;
+        if (rate > 0) {
+          tiktok.engRateSum += rate; tiktok.engRateCount++;
+          // UPDATED (Change 2): Collab post counts as one entry in flat average
+          allRateSum += rate; allRateCount++;
+          tiktokRateSum += rate; tiktokRateCount++;
+        }
       }
     }
   }
@@ -518,12 +522,6 @@ type CollabTopPerformerEntry = CollabGroup & {
 
 export type TopPerformerEntry = AthleteTopPerformerEntry | CollabTopPerformerEntry;
 
-function collabPlatformLabel(p: CollabGroup["platform"]): string {
-  if (p === "ig_feed") return "IG Feed";
-  if (p === "ig_reel") return "IG Reel";
-  return "TikTok";
-}
-
 function bestPlatformKey(label: string): Platform | null {
   if (label === "IG Feed") return "ig_feed";
   if (label === "IG Reel") return "ig_reel";
@@ -533,8 +531,8 @@ function bestPlatformKey(label: string): Platform | null {
 
 function buildCollabUrlSet(collabGroups: CollabGroup[]): Set<string> {
   const set = new Set<string>();
-  for (const g of collabGroups) {
-    if (g.url) set.add(g.url);
+  for (const g of collabGroups) for (const s of g.sources) {
+    if (s.url) set.add(s.url);
   }
   return set;
 }
@@ -566,7 +564,7 @@ function findCollabGroupForAthlete(
 
   for (const url of urlsToCheck) {
     if (url && collabUrls.has(url)) {
-      const group = collabGroups.find((g) => g.url === url);
+      const group = collabGroups.find((g) => g.sources.some((s) => s.url === url));
       if (group) return group;
     }
   }
@@ -604,7 +602,7 @@ export function getTopPerformers(
     ...g,
     kind: "collab" as const,
     bestEngRate: g.combinedEngagementRate,
-    bestPlatform: collabPlatformLabel(g.platform),
+    bestPlatform: g.platformLabel,
     totalImpressions: collabTotalImpressions(g),
   }));
 
@@ -644,7 +642,7 @@ export function getTopPerformersByImpressions(
     ...g,
     kind: "collab" as const,
     bestEngRate: g.combinedEngagementRate,
-    bestPlatform: collabPlatformLabel(g.platform),
+    bestPlatform: g.platformLabel,
     totalImpressions: collabTotalImpressions(g),
   }));
 

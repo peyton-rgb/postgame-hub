@@ -272,10 +272,34 @@ export interface Media {
  * no id yet). `athleteNames` is always populated so name-based UI works
  * regardless of which identifier `athleteIds` holds.
  */
+/** One underlying post inside a collab group (deduped by URL). */
+export interface CollabSource {
+  platform: "ig_feed" | "ig_reel" | "tiktok";
+  url: string;
+  metrics: {
+    views?: number;
+    impressions?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    reposts?: number;
+    totalEngagements?: number;
+    engagementRateFol?: number;
+    engagementRateImp?: number;
+  };
+  combinedEngagementRate: number;
+}
+
 export interface CollabGroup {
   id: string;
   url: string;
   platform: "ig_feed" | "ig_reel" | "tiktok";
+  /** Display label — a single platform, or "IG Feed + Reel" when merged. */
+  platformLabel: string;
+  /** Unique posts in this collab (deduped by URL). Drives display + stats add-back. */
+  sources: CollabSource[];
+  /** Every raw "platform|url" pair (NOT deduped) — drives the stats skip-set. */
+  rawUrlKeys: string[];
   athleteIds: string[];
   athleteNames: string[];
   combinedFollowers: number;
