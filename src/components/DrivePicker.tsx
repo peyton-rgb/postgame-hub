@@ -63,9 +63,9 @@ interface DrivePickerProps {
     onProgress: (p: ImportProgress) => void,
     signal?: AbortSignal
   ) => Promise<ImportProgress>;
-  onAssign: (
+  onImportToCollab: (
     files: DriveFile[],
-    destinations: Array<{ type: "athlete" | "collab"; id: string }>,
+    containerId: string,
   ) => Promise<{ succeeded: number; failed: number; errors: Array<{ file: string; error: string }> }>;
 }
 
@@ -117,18 +117,16 @@ export default function DrivePicker({
   onFolderConnected,
   athletes,
   onImport,
-  onAssign,
+  onImportToCollab,
 }: DrivePickerProps) {
   const supabase = useMemo(() => createBrowserSupabase(), []);
   const [aliasMap, setAliasMap] = useState<SchoolAliasMap>(new Map());
   const [teamFolders, setTeamFolders] = useState<DetectedTeam[]>([]);
   const [activeTeamFolderId, setActiveTeamFolderId] = useState<string | null>(null);
   const [containerByFolderId, setContainerByFolderId] = useState<Record<string, string>>({});
-  const [poolSelection, setPoolSelection] = useState<Set<string>>(new Set());
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignDests, setAssignDests] = useState<Set<string>>(new Set()); // "collab" or athleteId
-  const [assigning, setAssigning] = useState(false);
-  const [assignMsg, setAssignMsg] = useState<string | null>(null);
+  const [teamPoolSelection, setTeamPoolSelection] = useState<Set<string>>(new Set());
+  const [collabImporting, setCollabImporting] = useState(false);
+  const [collabMsg, setCollabMsg] = useState<string | null>(null);
   const [assignedFileIds, setAssignedFileIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -184,6 +182,10 @@ export default function DrivePicker({
     setAddFolderInput("");
     setAddFolderError(null);
     setIsAddingFolder(false);
+    setActiveTeamFolderId(null);
+    setTeamPoolSelection(new Set());
+    setAssignedFileIds(new Set());
+    setCollabMsg(null);
     setMode(nextMode);
   };
 
@@ -360,76 +362,113 @@ export default function DrivePicker({
     return matchAthleteToFolder(activeAthlete.name, driveData.athletes);
   }, [driveData, activeAthlete, activeTeamFolderId]);
 
-  // Reset team-pool selection + assign UI when switching teams.
+  // Reset team-pool selection + status when switching teams. (assignedFileIds
+  // is left alone so the session ✓ badges persist across team switches.)
   useEffect(() => {
-    setPoolSelection(new Set());
-    setAssignOpen(false);
-    setAssignDests(new Set());
-    setAssignMsg(null);
-    setAssignedFileIds(new Set());
+    setTeamPoolSelection(new Set());
+    setCollabMsg(null);
   }, [activeTeamFolderId]);
 
   const activeContainerId = activeTeamFolderId ? containerByFolderId[activeTeamFolderId] : undefined;
-  const togglePoolFile = (fileId: string) =>
-    setPoolSelection((p) => { const n = new Set(p); n.has(fileId) ? n.delete(fileId) : n.add(fileId); return n; });
-  const toggleDest = (key: string) =>
-    setAssignDests((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const toggleTeamPoolFile = (fileId: string) =>
+    setTeamPoolSelection((p) => { const n = new Set(p); n.has(fileId) ? n.delete(fileId) : n.add(fileId); return n; });
 
-  const handleAssign = async () => {
-    if (!activeFolder || poolSelection.size === 0 || assignDests.size === 0) return;
-    const files = activeFolder.files.filter((f) => poolSelection.has(f.id));
-    const dests = Array.from(assignDests)
-      .map((key) => key === "collab"
-        ? { type: "collab" as const, id: activeContainerId || "" }
-        : { type: "athlete" as const, id: key })
-      .filter((d) => d.id); // drop collab if container not ready
-    if (dests.length === 0) return;
-    setAssigning(true);
-    setAssignMsg(null);
+  // Inline import of selected team-pool files to the team's collab container.
+  const handleImportCollab = async () => {
+    if (!activeContainerId || teamPoolSelection.size === 0 || !activeFolder) return;
+    const files = activeFolder.files.filter((f) => teamPoolSelection.has(f.id));
+    setCollabImporting(true);
+    setCollabMsg(null);
     try {
-      const res = await onAssign(files, dests);
+      const res = await onImportToCollab(files, activeContainerId);
       setAssignedFileIds((prev) => {
         const n = new Set(prev);
         files.forEach((f) => n.add(f.id));
         return n;
       });
-      setAssignMsg(
-        `Assigned ${res.succeeded}/${files.length * dests.length}` +
+      setCollabMsg(
+        `Imported ${res.succeeded}/${files.length} to Collab Post` +
         (res.failed ? ` · ${res.failed} failed` : ""),
       );
-      setAssignOpen(false);
-      setAssignDests(new Set());
-      // poolSelection kept, so you can assign the same files elsewhere
+      setTeamPoolSelection(new Set());
     } finally {
-      setAssigning(false);
+      setCollabImporting(false);
     }
   };
 
-  // ── Filtered files for active athlete ──
-  const filteredFiles = useMemo(() => {
-    if (!activeFolder) return [];
-    return activeFolder.files.filter((f) => {
-      if (filterType === "image") return f.mimeType.startsWith("image/");
-      if (filterType === "video") return f.mimeType.startsWith("video/");
-      return true;
-    });
-  }, [activeFolder, filterType]);
+  // ── Files for the current view ──
+  // Team selected: that team's pool files. Athlete selected: their personal
+  // folder files PLUS the pool files of any team they belong to (tagged with
+  // the team name so they're visually distinct).
+  const displayFiles = useMemo<{ file: DriveFile; teamName?: string }[]>(() => {
+    if (!driveData) return [];
+    const out: { file: DriveFile; teamName?: string }[] = [];
+    const seen = new Set<string>();
+    const push = (f: DriveFile, teamName?: string) => {
+      if (seen.has(f.id)) return;
+      seen.add(f.id);
+      out.push({ file: f, teamName });
+    };
+    if (activeTeamFolderId) {
+      const folder = driveData.athletes.find((df) => df.folderId === activeTeamFolderId);
+      for (const f of folder?.files || []) push(f);
+    } else if (activeAthlete) {
+      const personal = matchAthleteToFolder(activeAthlete.name, driveData.athletes);
+      for (const f of personal?.files || []) push(f);
+      for (const t of teamFolders) {
+        if (!t.athletes.some((a) => a.id === activeAthlete.id)) continue;
+        const folder = driveData.athletes.find((df) => df.folderId === t.folderId);
+        for (const f of folder?.files || []) push(f, t.teamName);
+      }
+    }
+    return out.filter(({ file }) =>
+      filterType === "image" ? file.mimeType.startsWith("image/")
+      : filterType === "video" ? file.mimeType.startsWith("video/")
+      : true,
+    );
+  }, [driveData, activeTeamFolderId, activeAthlete, teamFolders, filterType]);
 
-  // ── Build athlete tabs with match info ──
+  // ── View-aware selection (sidebar destination drives everything) ──
+  const isTeamView = !!activeTeamFolderId;
+  const currentSelectedIds =
+    (isTeamView ? teamPoolSelection : activeAthleteId ? selections[activeAthleteId] : undefined) ||
+    new Set<string>();
+  const toggleCurrent = (fileId: string) => {
+    if (isTeamView) toggleTeamPoolFile(fileId);
+    else if (activeAthleteId) toggleFile(activeAthleteId, fileId);
+  };
+  const selectAllCurrent = () => {
+    const ids = displayFiles.map((d) => d.file.id);
+    if (isTeamView) setTeamPoolSelection(new Set(ids));
+    else if (activeAthleteId) setSelections((prev) => ({ ...prev, [activeAthleteId]: new Set(ids) }));
+  };
+  const clearCurrent = () => {
+    if (isTeamView) setTeamPoolSelection(new Set());
+    else if (activeAthleteId) setSelections((prev) => ({ ...prev, [activeAthleteId]: new Set() }));
+  };
+
+  // ── Build athlete tabs with match info (personal folder + team membership) ──
   const athleteTabs = useMemo(() => {
     if (!driveData) return [];
     return athletes.map((athlete) => {
       const folder = matchAthleteToFolder(athlete.name, driveData.athletes);
       const selectedCount = selections[athlete.id]?.size || 0;
+      const teams = teamFolders.filter((t) => t.athletes.some((a) => a.id === athlete.id));
+      const teamFileCount = teams.reduce((sum, t) => {
+        const tf = driveData.athletes.find((df) => df.folderId === t.folderId);
+        return sum + (tf?.files.length || 0);
+      }, 0);
       return {
         ...athlete,
         folder,
         fileCount: folder?.files.length || 0,
         selectedCount,
         isMatched: !!folder,
+        onTeam: teams.length > 0,
+        teamFileCount,
       };
     });
-  }, [driveData, athletes, selections]);
+  }, [driveData, athletes, selections, teamFolders]);
 
   // ── Toggle file selection ──
   const toggleFile = (athleteId: string, fileId: string) => {
@@ -444,20 +483,6 @@ export default function DrivePicker({
       next[athleteId] = set;
       return next;
     });
-  };
-
-  // ── Bulk select helpers ──
-  const selectAllInFolder = () => {
-    if (!activeAthleteId || !filteredFiles.length) return;
-    setSelections((prev) => ({
-      ...prev,
-      [activeAthleteId]: new Set(filteredFiles.map((f) => f.id)),
-    }));
-  };
-
-  const clearSelectionForAthlete = () => {
-    if (!activeAthleteId) return;
-    setSelections((prev) => ({ ...prev, [activeAthleteId]: new Set() }));
   };
 
   // ── Total selection count ──
@@ -486,16 +511,26 @@ export default function DrivePicker({
       errors: [],
     });
 
-    // Build selections payload: { [athleteId]: DriveFile[] }
+    // Build selections payload: { [athleteId]: DriveFile[] }. Candidate files
+    // are the athlete's personal folder PLUS the pool files of any team they're
+    // on, so team-pool picks made in an athlete's view import to that athlete.
     const payload: Record<string, DriveFile[]> = {};
     for (const athlete of athletes) {
       const selectedIds = selections[athlete.id];
       if (!selectedIds || selectedIds.size === 0) continue;
 
-      const folder = matchAthleteToFolder(athlete.name, driveData.athletes);
-      if (!folder) continue;
+      const candidates = new Map<string, DriveFile>();
+      const personal = matchAthleteToFolder(athlete.name, driveData.athletes);
+      for (const f of personal?.files || []) candidates.set(f.id, f);
+      for (const t of teamFolders) {
+        if (!t.athletes.some((a) => a.id === athlete.id)) continue;
+        const tf = driveData.athletes.find((df) => df.folderId === t.folderId);
+        for (const f of tf?.files || []) candidates.set(f.id, f);
+      }
 
-      payload[athlete.id] = folder.files.filter((f) => selectedIds.has(f.id));
+      const files: DriveFile[] = [];
+      selectedIds.forEach((fid) => { const f = candidates.get(fid); if (f) files.push(f); });
+      if (files.length) payload[athlete.id] = files;
     }
 
     try {
@@ -893,6 +928,16 @@ export default function DrivePicker({
                         {tab.isMatched ? (
                           <>
                             {tab.fileCount} files
+                            {tab.onTeam && <span className="text-gray-400"> · team pool</span>}
+                            {tab.selectedCount > 0 && (
+                              <span className="text-[#D73F09] font-bold ml-1">
+                                · {tab.selectedCount} selected
+                              </span>
+                            )}
+                          </>
+                        ) : tab.onTeam ? (
+                          <>
+                            <span className="text-gray-400">Team pool · {tab.teamFileCount} files</span>
                             {tab.selectedCount > 0 && (
                               <span className="text-[#D73F09] font-bold ml-1">
                                 · {tab.selectedCount} selected
@@ -952,17 +997,17 @@ export default function DrivePicker({
                       </button>
                     ))}
                   </div>
-                  {/* Bulk actions (athlete view only for now) */}
-                  {!activeTeamFolderId && filteredFiles.length > 0 && (
+                  {/* Bulk actions (athlete or team view) */}
+                  {displayFiles.length > 0 && (
                     <>
                       <button
-                        onClick={selectAllInFolder}
+                        onClick={selectAllCurrent}
                         className="px-3 py-1 text-[10px] font-bold uppercase text-gray-400 hover:text-white"
                       >
                         Select All
                       </button>
                       <button
-                        onClick={clearSelectionForAthlete}
+                        onClick={clearCurrent}
                         className="px-3 py-1 text-[10px] font-bold uppercase text-gray-400 hover:text-white"
                       >
                         Clear
@@ -974,177 +1019,38 @@ export default function DrivePicker({
 
               {/* File grid */}
               <div className="flex-1 overflow-y-auto p-6">
-                {!activeFolder ? (
+                {!activeTeamFolderId && !activeAthlete ? (
+                  <div className="text-center text-gray-500 mt-20">
+                    <div className="text-sm">Select an athlete or team</div>
+                  </div>
+                ) : displayFiles.length === 0 ? (
                   <div className="text-center text-gray-500 mt-20">
                     <div className="text-sm">
-                      No matching Drive folder for{" "}
-                      <span className="text-white font-bold">
-                        {activeAthlete?.name}
-                      </span>
+                      {isTeamView ? (
+                        "No files in this team folder"
+                      ) : (
+                        <>
+                          No content for{" "}
+                          <span className="text-white font-bold">{activeAthlete?.name}</span>
+                        </>
+                      )}
                     </div>
-                    <div className="text-xs mt-2">
-                      Folder name should match the athlete name
-                    </div>
-                  </div>
-                ) : activeTeamFolderId ? (
-                  filteredFiles.length === 0 ? (
-                    <div className="text-center text-gray-500 mt-20">
-                      <div className="text-sm">No files match the current filter</div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Team-pool assign bar */}
-                      <div className="flex items-center justify-between mb-4 relative">
-                        <div className="text-xs text-gray-500">
-                          Team pool · {filteredFiles.length} files
-                          {poolSelection.size > 0 && (
-                            <span className="text-[#D73F09] font-bold ml-1">
-                              · {poolSelection.size} selected
-                            </span>
-                          )}
-                          {filteredFiles.length > 0 && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setPoolSelection(new Set(filteredFiles.map((f) => f.id)))}
-                                className="ml-3 text-[10px] font-bold uppercase text-gray-400 hover:text-white"
-                              >
-                                Select All
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setPoolSelection(new Set())}
-                                className="ml-2 text-[10px] font-bold uppercase text-gray-400 hover:text-white"
-                              >
-                                Clear
-                              </button>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {assignMsg && (
-                            <span className="text-[10px] text-gray-400">{assignMsg}</span>
-                          )}
-                          <button
-                            type="button"
-                            disabled={poolSelection.size === 0 || assigning}
-                            onClick={() => setAssignOpen((v) => !v)}
-                            className="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg bg-[#D73F09] text-white hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600"
-                          >
-                            {assigning ? "Assigning…" : "Assign to ▾"}
-                          </button>
-                          {assignOpen && (
-                            <div className="absolute right-0 top-9 z-20 w-60 bg-[#111] border border-white/10 rounded-lg shadow-xl p-2">
-                              <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 px-2 py-1">
-                                Destinations
-                              </div>
-                              <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={assignDests.has("collab")}
-                                  onChange={() => toggleDest("collab")}
-                                />
-                                <span className="text-sm font-bold text-white">Collab Post</span>
-                              </label>
-                              <div className="h-px bg-white/10 my-1" />
-                              {activeTeam?.athletes.map((a) => (
-                                <label
-                                  key={a.id}
-                                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={assignDests.has(a.id)}
-                                    onChange={() => toggleDest(a.id)}
-                                  />
-                                  <span className="text-sm text-gray-200 truncate">{a.name}</span>
-                                </label>
-                              ))}
-                              <button
-                                type="button"
-                                disabled={assignDests.size === 0}
-                                onClick={handleAssign}
-                                className="w-full mt-2 px-3 py-1.5 text-[10px] font-black uppercase rounded bg-[#D73F09] text-white hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600"
-                              >
-                                Assign {poolSelection.size} file{poolSelection.size === 1 ? "" : "s"}
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                    {!isTeamView && (
+                      <div className="text-xs mt-2">
+                        No personal folder match and no team pool files.
                       </div>
-
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                        {filteredFiles.map((file) => {
-                          const isVideo = file.mimeType.startsWith("video/");
-                          const isSelected = poolSelection.has(file.id);
-                          const wasAssigned = assignedFileIds.has(file.id);
-                          return (
-                            <div
-                              key={file.id}
-                              onClick={() => togglePoolFile(file.id)}
-                              className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                                isSelected
-                                  ? "border-[#D73F09] ring-2 ring-[#D73F09]/30"
-                                  : "border-white/10 hover:border-white/30"
-                              }`}
-                            >
-                              <div className="aspect-square bg-black relative">
-                                <img
-                                  src={`/api/drive/thumbnail/${file.id}`}
-                                  alt={file.name}
-                                  loading="lazy"
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = "none";
-                                  }}
-                                />
-                                {isVideo && (
-                                  <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[9px] font-black text-white">
-                                    VIDEO
-                                  </div>
-                                )}
-                                {wasAssigned && !isSelected && (
-                                  <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white">
-                                    ✓
-                                  </div>
-                                )}
-                                {isSelected && (
-                                  <div className="absolute inset-0 bg-[#D73F09]/20 flex items-center justify-center">
-                                    <div className="w-8 h-8 rounded-full bg-[#D73F09] flex items-center justify-center">
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                                        <polyline points="20 6 9 17 4 12" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="px-2 py-1.5 bg-black/60">
-                                <div className="text-[10px] text-gray-400 truncate">
-                                  {file.name}
-                                </div>
-                                <div className="text-[9px] text-gray-600">{file.size}</div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )
-                ) : filteredFiles.length === 0 ? (
-                  <div className="text-center text-gray-500 mt-20">
-                    <div className="text-sm">No files match the current filter</div>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                    {filteredFiles.map((file) => {
-                      const isSelected = selections[activeAthleteId!]?.has(file.id);
+                    {displayFiles.map(({ file, teamName }) => {
                       const isVideo = file.mimeType.startsWith("video/");
+                      const isSelected = currentSelectedIds.has(file.id);
+                      const wasAssigned = assignedFileIds.has(file.id);
                       return (
                         <div
                           key={file.id}
-                          onClick={() =>
-                            activeAthleteId && toggleFile(activeAthleteId, file.id)
-                          }
+                          onClick={() => toggleCurrent(file.id)}
                           className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
                             isSelected
                               ? "border-[#D73F09] ring-2 ring-[#D73F09]/30"
@@ -1164,6 +1070,17 @@ export default function DrivePicker({
                             {isVideo && (
                               <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[9px] font-black text-white">
                                 VIDEO
+                              </div>
+                            )}
+                            {/* Team-pool tag — only in an athlete's combined view */}
+                            {!isTeamView && teamName && (
+                              <div className="absolute bottom-2 left-2 bg-[#D73F09]/90 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wide text-white max-w-[90%] truncate">
+                                {teamName}
+                              </div>
+                            )}
+                            {wasAssigned && !isSelected && (
+                              <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white">
+                                ✓
                               </div>
                             )}
                             {isSelected && (
@@ -1203,7 +1120,18 @@ export default function DrivePicker({
         {mode === "selecting" && driveData && !isLoading && (
           <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-black/40">
             <div className="text-xs text-gray-400">
-              {totalSelected > 0 ? (
+              {isTeamView ? (
+                collabMsg ? (
+                  <span className="text-gray-300">{collabMsg}</span>
+                ) : teamPoolSelection.size > 0 ? (
+                  <>
+                    <span className="font-bold text-white">{teamPoolSelection.size}</span> files
+                    selected for Collab Post
+                  </>
+                ) : (
+                  "No files selected"
+                )
+              ) : totalSelected > 0 ? (
                 <>
                   <span className="font-bold text-white">{totalSelected}</span> files
                   selected across{" "}
@@ -1222,13 +1150,25 @@ export default function DrivePicker({
               >
                 Cancel
               </button>
-              <button
-                onClick={handleImport}
-                disabled={totalSelected === 0 || isImporting}
-                className="px-6 py-2 text-xs font-black uppercase bg-[#D73F09] text-white rounded-lg hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600 transition-colors flex items-center gap-2"
-              >
-                <>Import {totalSelected > 0 ? `${totalSelected} files` : ""}</>
-              </button>
+              {isTeamView ? (
+                <button
+                  onClick={handleImportCollab}
+                  disabled={teamPoolSelection.size === 0 || collabImporting}
+                  className="px-6 py-2 text-xs font-black uppercase bg-[#D73F09] text-white rounded-lg hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600 transition-colors flex items-center gap-2"
+                >
+                  {collabImporting
+                    ? "Importing…"
+                    : `Import${teamPoolSelection.size > 0 ? ` ${teamPoolSelection.size}` : ""} to Collab Post`}
+                </button>
+              ) : (
+                <button
+                  onClick={handleImport}
+                  disabled={totalSelected === 0 || isImporting}
+                  className="px-6 py-2 text-xs font-black uppercase bg-[#D73F09] text-white rounded-lg hover:bg-[#ff5722] disabled:bg-gray-800 disabled:text-gray-600 transition-colors flex items-center gap-2"
+                >
+                  <>Import {totalSelected > 0 ? `${totalSelected} files` : ""}</>
+                </button>
+              )}
             </div>
           </div>
         )}
