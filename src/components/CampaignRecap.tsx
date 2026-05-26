@@ -1662,45 +1662,48 @@ export function CampaignRecap({
               }];
             };
 
-            const renderBracketHeader = (group: CollabGroup, unit: BracketUnit, compact: boolean) => (
+            const renderBracketHeader = (group: CollabGroup, compact: boolean) => (
               <div
                 style={{
                   background: "rgba(215,63,9,0.07)",
                   borderBottom: "1px solid rgba(215,63,9,0.2)",
                   padding: compact ? "10px 12px" : "10px 16px",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  flexWrap: compact ? "wrap" : "nowrap",
+                  flexDirection: "column",
+                  gap: compact ? 8 : 10,
                 }}
               >
-                <div className="flex items-center min-w-0" style={{ gap: 10 }}>
-                  <span style={{ fontFamily: bebas, fontSize: compact ? 13 : 14, letterSpacing: 1.5, color: "#f0ede8" }}>
-                    {collabBracketTitle(group)}
-                  </span>
-                  <span style={{
-                    fontSize: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
-                    color: "#D73F09", background: "rgba(215,63,9,0.15)",
-                    border: "1px solid rgba(215,63,9,0.3)", padding: "2px 8px", borderRadius: 3,
-                  }}>
-                    {unit.platformLabel}
-                  </span>
-                </div>
-                <div className="flex" style={{ gap: compact ? 14 : 20 }}>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{pct(unit.combinedEngagementRate)}</div>
-                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined ER</div>
+                <span style={{ fontFamily: bebas, fontSize: compact ? 13 : 14, letterSpacing: 1.5, color: "#f0ede8" }}>
+                  {collabBracketTitle(group)}
+                </span>
+                {bracketUnits(group).map((unit) => (
+                  <div
+                    key={unit.key}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: compact ? "wrap" : "nowrap" }}
+                  >
+                    <span style={{
+                      fontSize: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
+                      color: "#D73F09", background: "rgba(215,63,9,0.15)",
+                      border: "1px solid rgba(215,63,9,0.3)", padding: "2px 8px", borderRadius: 3,
+                    }}>
+                      {unit.platformLabel}
+                    </span>
+                    <div className="flex" style={{ gap: compact ? 14 : 20 }}>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{pct(unit.combinedEngagementRate)}</div>
+                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined ER</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(unit.metricValue)}</div>
+                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>{unit.metricLabel}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.combinedFollowers)}</div>
+                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined Followers</div>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(unit.metricValue)}</div>
-                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>{unit.metricLabel}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.combinedFollowers)}</div>
-                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined Followers</div>
-                  </div>
-                </div>
+                ))}
               </div>
             );
 
@@ -1708,9 +1711,11 @@ export function CampaignRecap({
               const rows = group.athleteNames
                 .map((name) => fullRoster.find((x) => x.name === name))
                 .filter((a): a is typeof fullRoster[number] => !!a);
-              return bracketUnits(group).map((unit) => (
-                <div key={unit.key} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
-                  {renderBracketHeader(group, unit, false)}
+              const feedSource = group.sources.find((s) => s.platform === "ig_feed");
+              const reelSource = group.sources.find((s) => s.platform === "ig_reel");
+              return (
+                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                  {renderBracketHeader(group, false)}
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-white/[0.15]">
@@ -1756,8 +1761,8 @@ export function CampaignRecap({
                             {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {hasAnyFeedUrl && (
                               <td className="px-3 py-3 text-center">
-                                {unit.linkPlatform === "ig_feed" ? (
-                                  <a href={unit.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                                {feedSource ? (
+                                  <a href={feedSource.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                   </a>
                                 ) : (
@@ -1767,8 +1772,8 @@ export function CampaignRecap({
                             )}
                             {hasAnyReelUrl && (
                               <td className="px-3 py-3 text-center">
-                                {unit.linkPlatform === "ig_reel" ? (
-                                  <a href={unit.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                                {reelSource ? (
+                                  <a href={reelSource.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                                   </a>
                                 ) : (
@@ -1782,16 +1787,16 @@ export function CampaignRecap({
                     </tbody>
                   </table>
                 </div>
-              ));
+              );
             };
 
             const renderBracketMobile = (group: CollabGroup) => {
               const rows = group.athleteNames
                 .map((name) => fullRoster.find((x) => x.name === name))
                 .filter((a): a is typeof fullRoster[number] => !!a);
-              return bracketUnits(group).map((unit) => (
-                <div key={unit.key} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
-                  {renderBracketHeader(group, unit, true)}
+              return (
+                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                  {renderBracketHeader(group, true)}
                   <div className="flex items-center" style={{ padding: "8px 12px", borderBottom: "1px solid rgba(215,63,9,0.12)", gap: 10 }}>
                     <span style={{ width: 16 }} />
                     <span className="flex-1 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</span>
@@ -1819,7 +1824,7 @@ export function CampaignRecap({
                     );
                   })}
                 </div>
-              ));
+              );
             };
 
             const divider = (
