@@ -214,7 +214,7 @@ export default function RecapsPage() {
   const [recaps, setRecaps] = useState<CampaignRecap[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>('published');
 
   useEffect(() => {
     async function fetchRecaps() {
