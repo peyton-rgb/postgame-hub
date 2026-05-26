@@ -1626,7 +1626,43 @@ export function CampaignRecap({
               return first ? `${first.school} ${first.sport} Collab Post` : "Collab Post";
             };
 
-            const renderBracketHeader = (group: CollabGroup, compact: boolean) => (
+            // Split a multi-source collab (e.g. Feed + Reel) into one bracket per source.
+            // A single-source collab returns one unit that reproduces today's exact display.
+            type BracketUnit = {
+              key: string;
+              platformLabel: string;
+              combinedEngagementRate: number;
+              metricValue: number;
+              metricLabel: string;
+              linkPlatform: "ig_feed" | "ig_reel" | "tiktok";
+              linkUrl: string;
+            };
+            const platName = (p: "ig_feed" | "ig_reel" | "tiktok") =>
+              p === "ig_feed" ? "IG Feed" : p === "ig_reel" ? "IG Reel" : "TikTok";
+            const bracketUnits = (group: CollabGroup): BracketUnit[] => {
+              if (group.sources.length > 1) {
+                return group.sources.map((s, i) => ({
+                  key: `${group.id}-src${i}`,
+                  platformLabel: platName(s.platform),
+                  combinedEngagementRate: s.combinedEngagementRate,
+                  metricValue: s.platform === "ig_feed" ? (s.metrics.impressions ?? 0) : (s.metrics.views ?? 0),
+                  metricLabel: s.platform === "ig_feed" ? "Impressions" : "Views",
+                  linkPlatform: s.platform,
+                  linkUrl: s.url,
+                }));
+              }
+              return [{
+                key: group.id,
+                platformLabel: group.platformLabel,
+                combinedEngagementRate: group.combinedEngagementRate,
+                metricValue: group.metrics.views ?? 0,
+                metricLabel: "Views",
+                linkPlatform: group.platform,
+                linkUrl: group.url,
+              }];
+            };
+
+            const renderBracketHeader = (group: CollabGroup, unit: BracketUnit, compact: boolean) => (
               <div
                 style={{
                   background: "rgba(215,63,9,0.07)",
@@ -1648,17 +1684,17 @@ export function CampaignRecap({
                     color: "#D73F09", background: "rgba(215,63,9,0.15)",
                     border: "1px solid rgba(215,63,9,0.3)", padding: "2px 8px", borderRadius: 3,
                   }}>
-                    {group.platformLabel}
+                    {unit.platformLabel}
                   </span>
                 </div>
                 <div className="flex" style={{ gap: compact ? 14 : 20 }}>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{pct(group.combinedEngagementRate)}</div>
+                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{pct(unit.combinedEngagementRate)}</div>
                     <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined ER</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.metrics.views ?? 0)}</div>
-                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Views</div>
+                    <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(unit.metricValue)}</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>{unit.metricLabel}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.combinedFollowers)}</div>
@@ -1672,9 +1708,9 @@ export function CampaignRecap({
               const rows = group.athleteNames
                 .map((name) => fullRoster.find((x) => x.name === name))
                 .filter((a): a is typeof fullRoster[number] => !!a);
-              return (
-                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
-                  {renderBracketHeader(group, false)}
+              return bracketUnits(group).map((unit) => (
+                <div key={unit.key} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                  {renderBracketHeader(group, unit, false)}
                   <table className="w-full text-left">
                     <tbody>
                       {rows.map((a, idx) => {
@@ -1700,8 +1736,8 @@ export function CampaignRecap({
                             {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {hasAnyFeedUrl && (
                               <td className="px-3 py-3 text-center">
-                                {group.platform === "ig_feed" ? (
-                                  <a href={group.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                                {unit.linkPlatform === "ig_feed" ? (
+                                  <a href={unit.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                   </a>
                                 ) : (
@@ -1711,8 +1747,8 @@ export function CampaignRecap({
                             )}
                             {hasAnyReelUrl && (
                               <td className="px-3 py-3 text-center">
-                                {group.platform === "ig_reel" ? (
-                                  <a href={group.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                                {unit.linkPlatform === "ig_reel" ? (
+                                  <a href={unit.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                                   </a>
                                 ) : (
@@ -1726,16 +1762,16 @@ export function CampaignRecap({
                     </tbody>
                   </table>
                 </div>
-              );
+              ));
             };
 
             const renderBracketMobile = (group: CollabGroup) => {
               const rows = group.athleteNames
                 .map((name) => fullRoster.find((x) => x.name === name))
                 .filter((a): a is typeof fullRoster[number] => !!a);
-              return (
-                <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
-                  {renderBracketHeader(group, true)}
+              return bracketUnits(group).map((unit) => (
+                <div key={unit.key} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+                  {renderBracketHeader(group, unit, true)}
                   {rows.map((a, idx) => {
                     const isLast = idx === rows.length - 1;
                     return (
@@ -1758,7 +1794,7 @@ export function CampaignRecap({
                     );
                   })}
                 </div>
-              );
+              ));
             };
 
             const divider = (
