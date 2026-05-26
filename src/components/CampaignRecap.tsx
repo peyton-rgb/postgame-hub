@@ -1626,84 +1626,15 @@ export function CampaignRecap({
               return first ? `${first.school} ${first.sport} Collab Post` : "Collab Post";
             };
 
-            // Split a multi-source collab (e.g. Feed + Reel) into one bracket per source.
-            // A single-source collab returns one unit that reproduces today's exact display.
-            type BracketUnit = {
-              key: string;
-              platformLabel: string;
-              combinedEngagementRate: number;
-              metricValue: number;
-              metricLabel: string;
-              linkPlatform: "ig_feed" | "ig_reel" | "tiktok";
-              linkUrl: string;
-            };
+            // Uppercase platform label for collab totals badges ("IG FEED", "IG REEL").
             const platName = (p: "ig_feed" | "ig_reel" | "tiktok") =>
               p === "ig_feed" ? "IG Feed" : p === "ig_reel" ? "IG Reel" : "TikTok";
-            const bracketUnits = (group: CollabGroup): BracketUnit[] => {
-              if (group.sources.length > 1) {
-                return group.sources.map((s, i) => ({
-                  key: `${group.id}-src${i}`,
-                  platformLabel: platName(s.platform),
-                  combinedEngagementRate: s.combinedEngagementRate,
-                  metricValue: s.platform === "ig_feed" ? (s.metrics.impressions ?? 0) : (s.metrics.views ?? 0),
-                  metricLabel: s.platform === "ig_feed" ? "Impressions" : "Views",
-                  linkPlatform: s.platform,
-                  linkUrl: s.url,
-                }));
-              }
-              return [{
-                key: group.id,
-                platformLabel: group.platformLabel,
-                combinedEngagementRate: group.combinedEngagementRate,
-                metricValue: group.metrics.views ?? 0,
-                metricLabel: "Views",
-                linkPlatform: group.platform,
-                linkUrl: group.url,
-              }];
-            };
 
             const renderBracketHeader = (group: CollabGroup, compact: boolean) => (
-              <div
-                style={{
-                  background: "rgba(215,63,9,0.07)",
-                  borderBottom: "1px solid rgba(215,63,9,0.2)",
-                  padding: compact ? "10px 12px" : "10px 16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: compact ? 8 : 10,
-                }}
-              >
+              <div style={{ background: "rgba(215,63,9,0.07)", borderBottom: "1px solid rgba(215,63,9,0.2)", padding: compact ? "10px 12px" : "10px 16px" }}>
                 <span style={{ fontFamily: bebas, fontSize: compact ? 13 : 14, letterSpacing: 1.5, color: "#f0ede8" }}>
                   {collabBracketTitle(group)}
                 </span>
-                {bracketUnits(group).map((unit) => (
-                  <div
-                    key={unit.key}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: compact ? "wrap" : "nowrap" }}
-                  >
-                    <span style={{
-                      fontSize: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
-                      color: "#D73F09", background: "rgba(215,63,9,0.15)",
-                      border: "1px solid rgba(215,63,9,0.3)", padding: "2px 8px", borderRadius: 3,
-                    }}>
-                      {unit.platformLabel}
-                    </span>
-                    <div className="flex" style={{ gap: compact ? 14 : 20 }}>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{pct(unit.combinedEngagementRate)}</div>
-                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined ER</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(unit.metricValue)}</div>
-                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>{unit.metricLabel}</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontFamily: bebas, fontSize: compact ? 15 : 16, color: "#D73F09", lineHeight: 1 }}>{fmt(group.combinedFollowers)}</div>
-                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>Combined Followers</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             );
 
@@ -1753,9 +1684,9 @@ export function CampaignRecap({
                               <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
                             ) : "\u2014"}</td>}
                             {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
-                            {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
-                            {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
-                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.45)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
+                            {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.45)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
+                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.45)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
@@ -1784,6 +1715,55 @@ export function CampaignRecap({
                           </tr>
                         );
                       })}
+                      {group.sources.map((s, si) => {
+                        const isFeed = s.platform === "ig_feed";
+                        const totalVal = isFeed ? (s.metrics.impressions ?? 0) : (s.metrics.views ?? 0);
+                        const numStyle = { color: "#D73F09", fontWeight: 700, fontSize: 13, fontFamily: bebas } as const;
+                        return (
+                          <tr key={`${group.id}-tot-${si}`} style={{
+                            background: "rgba(215,63,9,0.08)",
+                            borderLeft: "2px solid #D73F09",
+                            borderTop: si === 0 ? "1px solid rgba(215,63,9,0.3)" : "1px solid rgba(215,63,9,0.15)",
+                          }}>
+                            <td className="px-3 py-3 w-10" />
+                            <td className="px-3 py-3">
+                              <span style={{ display: "inline-block", color: "#fff", background: "#D73F09", padding: "4px 10px", borderRadius: 4, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>{platName(s.platform).toUpperCase()}</span>
+                            </td>
+                            {showCol("school") && <td className="px-3 py-3"><span style={{ color: "#D73F09", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>Collab Totals</span></td>}
+                            {showCol("sport") && <td className="px-3 py-3" />}
+                            {showCol("ig_handle") && <td className="px-3 py-3" />}
+                            {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(group.combinedFollowers)}</td>}
+                            {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(totalVal)}</td>}
+                            {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(s.metrics.totalEngagements ?? 0)}</td>}
+                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={numStyle}>{pct(s.combinedEngagementRate)}</td>}
+                            {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3" />}
+                            {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3" />}
+                            {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3" />}
+                            {hasAnyFeedUrl && (
+                              <td className="px-3 py-3 text-center">
+                                {isFeed ? (
+                                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/15 text-brand hover:bg-brand/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                  </a>
+                                ) : (
+                                  <span className="text-white/35">&mdash;</span>
+                                )}
+                              </td>
+                            )}
+                            {hasAnyReelUrl && (
+                              <td className="px-3 py-3 text-center">
+                                {s.platform === "ig_reel" ? (
+                                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                                  </a>
+                                ) : (
+                                  <span className="text-white/35">&mdash;</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1797,11 +1777,6 @@ export function CampaignRecap({
               return (
                 <div key={group.id} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
                   {renderBracketHeader(group, true)}
-                  <div className="flex items-center" style={{ padding: "8px 12px", borderBottom: "1px solid rgba(215,63,9,0.12)", gap: 10 }}>
-                    <span style={{ width: 16 }} />
-                    <span className="flex-1 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">Followers</span>
-                  </div>
                   {rows.map((a, idx) => {
                     const isLast = idx === rows.length - 1;
                     return (
@@ -1820,6 +1795,33 @@ export function CampaignRecap({
                           )}
                         </div>
                         <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</span>
+                      </div>
+                    );
+                  })}
+                  {group.sources.map((s, si) => {
+                    const isFeed = s.platform === "ig_feed";
+                    const totalVal = isFeed ? (s.metrics.impressions ?? 0) : (s.metrics.views ?? 0);
+                    const totalLabel = isFeed ? "Impressions" : "Views";
+                    const stat = (value: string, label: string) => (
+                      <div>
+                        <div style={{ fontFamily: bebas, fontSize: 15, color: "#D73F09", lineHeight: 1 }}>{value}</div>
+                        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 3 }}>{label}</div>
+                      </div>
+                    );
+                    return (
+                      <div key={`${group.id}-mtot-${si}`} style={{
+                        background: "rgba(215,63,9,0.08)",
+                        borderLeft: "2px solid #D73F09",
+                        borderTop: si === 0 ? "1px solid rgba(215,63,9,0.3)" : "1px solid rgba(215,63,9,0.15)",
+                        padding: "12px", display: "flex", flexDirection: "column", gap: 8,
+                      }}>
+                        <span style={{ alignSelf: "flex-start", color: "#fff", background: "#D73F09", padding: "4px 10px", borderRadius: 4, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>{platName(s.platform).toUpperCase()}</span>
+                        <div className="flex" style={{ gap: 16, flexWrap: "wrap" }}>
+                          {stat(pct(s.combinedEngagementRate), "Combined ER")}
+                          {stat(fmt(totalVal), totalLabel)}
+                          {stat(fmt(s.metrics.totalEngagements ?? 0), "Engagements")}
+                          {stat(fmt(group.combinedFollowers), "Combined Followers")}
+                        </div>
                       </div>
                     );
                   })}
