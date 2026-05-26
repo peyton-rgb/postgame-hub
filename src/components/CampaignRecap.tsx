@@ -1839,9 +1839,14 @@ export function CampaignRecap({
                     const m = a.metrics || {};
                     const feedUrl = m.ig_feed?.post_url || null;
                     const reelUrl = m.ig_reel?.post_url || null;
-                    const hasReel2 = !!(m.ig_reel_2?.post_url || m.ig_reel_2?.views || m.ig_reel_2?.total_engagements);
-                    const hasFeed2 = !!(m.ig_feed_2?.post_url || m.ig_feed_2?.impressions || m.ig_feed_2?.total_engagements);
-                    const hasTiktok2 = !!(m.tiktok_2?.post_url || m.tiktok_2?.views || m.tiktok_2?.total_engagements);
+                    // A second post is real only if it has a non-empty post_url. A post
+                    // always has a URL; bare metric fields (e.g. a leaked ER% in
+                    // ig_feed_2.impressions) must NOT fabricate a "Post 2" sub-row.
+                    const realPost2 = (s?: { post_url?: string }) =>
+                      typeof s?.post_url === "string" && s.post_url.trim() !== "";
+                    const hasReel2 = realPost2(m.ig_reel_2);
+                    const hasFeed2 = realPost2(m.ig_feed_2);
+                    const hasTiktok2 = realPost2(m.tiktok_2);
                     const hasAnyPost2 = hasReel2 || hasFeed2 || hasTiktok2;
 
                     const mainRow = (
