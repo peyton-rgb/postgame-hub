@@ -11,7 +11,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
 import DashboardContent from '@/components/DashboardContent';
 import { createBrowserSupabase } from '@/lib/supabase';
 
@@ -177,15 +176,9 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center justify-between text-[10px] text-white/20 mt-2">
+        {/* Type label */}
+        <div className="text-[10px] text-white/20 mt-2">
           <span className="capitalize">{recap.type.replace(/_/g, ' ')}</span>
-          <Link
-            href={`/dashboard/recaps/${recap.id}`}
-            className="text-[10px] uppercase tracking-wider text-[#D73F09] hover:text-[#ff5a2a] font-bold"
-          >
-            Edit Recap →
-          </Link>
         </div>
 
         {/* Date */}
