@@ -1712,6 +1712,24 @@ export function CampaignRecap({
                 <div key={unit.key} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
                   {renderBracketHeader(group, unit, false)}
                   <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-white/[0.15]">
+                        <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
+                        <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</th>
+                        {showCol("school") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>}
+                        {showCol("sport") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Sport</th>}
+                        {showCol("ig_handle") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">IG Handle</th>}
+                        {showCol("ig_followers") && hasAnyFollowers && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Followers</th>}
+                        {showCol("ig_feed_impressions") && hasAnyImpressions && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
+                        {showCol("ig_feed_total") && hasAnyEngagements && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
+                        {showCol("ig_feed_rate") && hasAnyEngRate && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
+                        {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
+                        {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
+                        {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
+                        {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
+                        {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
+                      </tr>
+                    </thead>
                     <tbody>
                       {rows.map((a, idx) => {
                         const isLast = idx === rows.length - 1;
@@ -1724,6 +1742,8 @@ export function CampaignRecap({
                           <tr key={a.id} style={rowStyle}>
                             <td className="px-3 py-3 w-10" style={{ color: "rgba(215,63,9,0.25)", fontSize: 10, fontWeight: 900 }}>{idx + 1}</td>
                             <td className="px-3 py-3" style={{ color: "#e8e5e0", fontWeight: 700, textTransform: "uppercase", fontSize: 12 }}>{a.name}</td>
+                            {showCol("school") && <td className="px-3 py-3 text-sm text-white/70">{a.school}</td>}
+                            {showCol("sport") && <td className="px-3 py-3"><span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">{a.sport}</span></td>}
                             {showCol("ig_handle") && <td className="px-3 py-3 text-sm">{a.ig_handle ? (
                               <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-brand transition-colors inline-flex items-center gap-1">@{a.ig_handle}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a>
                             ) : "\u2014"}</td>}
@@ -1772,6 +1792,11 @@ export function CampaignRecap({
               return bracketUnits(group).map((unit) => (
                 <div key={unit.key} style={{ border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
                   {renderBracketHeader(group, unit, true)}
+                  <div className="flex items-center" style={{ padding: "8px 12px", borderBottom: "1px solid rgba(215,63,9,0.12)", gap: 10 }}>
+                    <span style={{ width: 16 }} />
+                    <span className="flex-1 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">Followers</span>
+                  </div>
                   {rows.map((a, idx) => {
                     const isLast = idx === rows.length - 1;
                     return (
