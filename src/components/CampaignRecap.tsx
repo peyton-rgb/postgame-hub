@@ -1674,9 +1674,9 @@ export function CampaignRecap({
               return (
                 <div key={group.id} style={{ border: "1.5px solid rgba(215,63,9,0.5)", borderRadius: 12, overflow: "hidden", marginBottom: 28, background: "rgba(15,15,18,0.5)" }}>
                   {renderBracketHeader(group, false)}
-                  <table className="w-full text-left">
+                  <table className="w-full text-left" style={{ borderLeft: "2px solid #D73F09" }}>
                     <thead>
-                      <tr className="border-b border-white/[0.15]" style={{ borderLeft: "2px solid transparent" }}>
+                      <tr className="border-b border-white/[0.15]">
                         <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
                         <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</th>
                         {showCol("school") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>}
@@ -1698,7 +1698,6 @@ export function CampaignRecap({
                         const isLast = idx === rows.length - 1;
                         const rowStyle = {
                           background: "rgba(215,63,9,0.03)",
-                          borderLeft: "2px solid #D73F09",
                           borderBottom: isLast ? "none" : "1px solid rgba(215,63,9,0.07)",
                         } as const;
                         return (
@@ -1749,7 +1748,6 @@ export function CampaignRecap({
                         return (
                           <tr key={`${group.id}-tot-${si}`} style={{
                             background: "rgba(215,63,9,0.08)",
-                            borderLeft: "2px solid #D73F09",
                             borderTop: si === 0 ? "1px solid rgba(215,63,9,0.3)" : "1px solid rgba(215,63,9,0.15)",
                           }}>
                             <td className="px-3 py-3 w-10" />
