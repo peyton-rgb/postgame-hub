@@ -14,6 +14,9 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createBrowserSupabase } from "@/lib/supabase";
+import { fetchSchoolAliases, matchTeamFolder, type SchoolAliasMap } from "@/lib/team-folders";
+import { ensureTeamContainer, type DetectedTeam } from "@/lib/collab-containers";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -44,12 +47,15 @@ interface DriveData {
 interface RecapAthlete {
   id: string;
   name: string;
+  school?: string;
+  sport?: string;
 }
 
 interface DrivePickerProps {
   isOpen: boolean;
   onClose: () => void;
   folderId: string | null | undefined;
+  recapId: string;
   onFolderConnected: (folderId: string) => Promise<void>;
   athletes: RecapAthlete[];
   onImport: (
@@ -103,10 +109,15 @@ export default function DrivePicker({
   isOpen,
   onClose,
   folderId,
+  recapId,
   onFolderConnected,
   athletes,
   onImport,
 }: DrivePickerProps) {
+  const supabase = useMemo(() => createBrowserSupabase(), []);
+  const [aliasMap, setAliasMap] = useState<SchoolAliasMap>(new Map());
+  const [teamFolders, setTeamFolders] = useState<DetectedTeam[]>([]);
+  const [activeTeamFolderId, setActiveTeamFolderId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [driveData, setDriveData] = useState<DriveData | null>(null);
@@ -209,6 +220,42 @@ export default function DrivePicker({
       .finally(() => setIsLoading(false));
   }, [isOpen, folderId, athletes, mode]);
 
+  // ── Detect team folders & auto-create their collab containers ──
+  useEffect(() => {
+    if (!driveData) return;
+    let cancelled = false;
+    (async () => {
+      const aliases = aliasMap.size ? aliasMap : await fetchSchoolAliases(supabase);
+      if (!aliasMap.size && !cancelled) setAliasMap(aliases);
+
+      // folders already claimed by an individual athlete are off the table
+      const claimed = new Set<string>();
+      for (const a of athletes) {
+        const f = matchAthleteToFolder(a.name, driveData.athletes);
+        if (f) claimed.add(f.folderId);
+      }
+
+      const roster = athletes.map((a) => ({
+        id: a.id, name: a.name, school: a.school || "", sport: a.sport || "",
+      }));
+
+      const teams: DetectedTeam[] = [];
+      for (const folder of driveData.athletes) {
+        if (claimed.has(folder.folderId)) continue;
+        const m = matchTeamFolder(folder.folderName, aliases, roster);
+        if (!m) continue;
+        const teamName = folder.folderName.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+        teams.push({ ...m, folderId: folder.folderId, teamName });
+      }
+      if (cancelled) return;
+      setTeamFolders(teams);
+
+      // auto-create containers (silent, idempotent)
+      for (const t of teams) await ensureTeamContainer(supabase, recapId, t);
+    })();
+    return () => { cancelled = true; };
+  }, [driveData, athletes, supabase, recapId]); // aliasMap intentionally omitted
+
   // Prevent Escape from closing modal during import
   useEffect(() => {
     if (!isOpen || mode !== "importing") return;
@@ -287,10 +334,14 @@ export default function DrivePicker({
   // ── Match active athlete to Drive folder ──
           
   const activeAthlete = athletes.find((a) => a.id === activeAthleteId);
+  const activeTeam = teamFolders.find((t) => t.folderId === activeTeamFolderId) || null;
   const activeFolder = useMemo(() => {
-    if (!driveData || !activeAthlete) return null;
+    if (!driveData) return null;
+    if (activeTeamFolderId)
+      return driveData.athletes.find((f) => f.folderId === activeTeamFolderId) || null;
+    if (!activeAthlete) return null;
     return matchAthleteToFolder(activeAthlete.name, driveData.athletes);
-  }, [driveData, activeAthlete]);
+  }, [driveData, activeAthlete, activeTeamFolderId]);
 
   // ── Filtered files for active athlete ──
   const filteredFiles = useMemo(() => {
@@ -716,17 +767,56 @@ export default function DrivePicker({
         {/* Main content */}
         {mode === "selecting" && driveData && !isLoading && !error && (
           <div className="flex-1 flex overflow-hidden">
-            {/* Left sidebar — athlete tabs */}
+            {/* Left sidebar — teams + athletes */}
             <div className="w-64 border-r border-white/10 overflow-y-auto bg-black/40">
+              {/* TEAMS section */}
+              {teamFolders.length > 0 && (
+                <>
+                  <div className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 border-b border-white/10">
+                    Teams ({teamFolders.length})
+                  </div>
+                  {teamFolders.map((team) => {
+                    const isActive = team.folderId === activeTeamFolderId;
+                    return (
+                      <button
+                        key={team.folderId}
+                        onClick={() => {
+                          setActiveTeamFolderId(team.folderId);
+                          setActiveAthleteId(null);
+                        }}
+                        className={`w-full px-4 py-3 text-left border-b border-white/5 transition-colors flex items-center justify-between ${
+                          isActive
+                            ? "bg-[#D73F09]/10 border-l-2 border-l-[#D73F09]"
+                            : "hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-bold text-white truncate">
+                            {team.teamName}
+                          </div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">
+                            {team.athletes.length} athletes
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* ATHLETES section */}
               <div className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 border-b border-white/10">
                 Athletes ({athletes.length})
               </div>
               {athleteTabs.map((tab) => {
-                const isActive = tab.id === activeAthleteId;
+                const isActive = tab.id === activeAthleteId && !activeTeamFolderId;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveAthleteId(tab.id)}
+                    onClick={() => {
+                      setActiveAthleteId(tab.id);
+                      setActiveTeamFolderId(null);
+                    }}
                     className={`w-full px-4 py-3 text-left border-b border-white/5 transition-colors flex items-center justify-between ${
                       isActive
                         ? "bg-[#D73F09]/10 border-l-2 border-l-[#D73F09]"
@@ -768,8 +858,15 @@ export default function DrivePicker({
               <div className="px-6 py-3 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="text-sm font-bold text-white">
-                    {activeAthlete?.name || "Select an athlete"}
+                    {activeTeam
+                      ? activeTeam.teamName
+                      : activeAthlete?.name || "Select an athlete"}
                   </div>
+                  {activeTeam && (
+                    <span className="text-[9px] font-black uppercase tracking-widest text-[#D73F09] bg-[#D73F09]/10 px-1.5 py-0.5 rounded">
+                      Team
+                    </span>
+                  )}
                   {activeFolder && (
                     <div className="text-xs text-gray-500">
                       / {activeFolder.folderName}
@@ -793,8 +890,8 @@ export default function DrivePicker({
                       </button>
                     ))}
                   </div>
-                  {/* Bulk actions */}
-                  {filteredFiles.length > 0 && (
+                  {/* Bulk actions (athlete view only for now) */}
+                  {!activeTeamFolderId && filteredFiles.length > 0 && (
                     <>
                       <button
                         onClick={selectAllInFolder}
@@ -827,6 +924,53 @@ export default function DrivePicker({
                       Folder name should match the athlete name
                     </div>
                   </div>
+                ) : activeTeamFolderId ? (
+                  filteredFiles.length === 0 ? (
+                    <div className="text-center text-gray-500 mt-20">
+                      <div className="text-sm">No files match the current filter</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-xs text-gray-500 mb-4">
+                        Team pool · {filteredFiles.length} files. Assigning files to
+                        athletes and the collab post is coming next.
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                        {filteredFiles.map((file) => {
+                          const isVideo = file.mimeType.startsWith("video/");
+                          return (
+                            <div
+                              key={file.id}
+                              className="relative rounded-lg overflow-hidden border-2 border-white/10"
+                            >
+                              <div className="aspect-square bg-black relative">
+                                <img
+                                  src={`/api/drive/thumbnail/${file.id}`}
+                                  alt={file.name}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                                {isVideo && (
+                                  <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[9px] font-black text-white">
+                                    VIDEO
+                                  </div>
+                                )}
+                              </div>
+                              <div className="px-2 py-1.5 bg-black/60">
+                                <div className="text-[10px] text-gray-400 truncate">
+                                  {file.name}
+                                </div>
+                                <div className="text-[9px] text-gray-600">{file.size}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )
                 ) : filteredFiles.length === 0 ? (
                   <div className="text-center text-gray-500 mt-20">
                     <div className="text-sm">No files match the current filter</div>

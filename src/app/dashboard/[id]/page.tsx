@@ -2902,8 +2902,9 @@ export default function CampaignEditor() {
               isOpen={driveImportOpen}
               onClose={() => setDriveImportOpen(false)}
               folderId={campaign?.drive_folder_id}
+              recapId={id}
               onFolderConnected={handleFolderConnected}
-              athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name }))}
+              athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name, school: a.school, sport: a.sport }))}
               onImport={handleDriveImport}
             />
 
