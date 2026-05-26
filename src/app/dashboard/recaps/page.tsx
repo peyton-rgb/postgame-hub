@@ -35,6 +35,7 @@ interface CampaignRecap {
   brand: {
     id: string;
     name: string;
+    slug: string;
     logo_url: string | null;
     primary_color: string | null;
   } | null;
@@ -176,14 +177,28 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
           </div>
         )}
 
-        {/* Type label */}
-        <div className="text-[10px] text-white/20 mt-2">
+        {/* Type + Date row */}
+        <div className="flex items-center justify-between text-[10px] text-white/20 mt-2">
           <span className="capitalize">{recap.type.replace(/_/g, ' ')}</span>
+          <span>{new Date(recap.created_at).toLocaleDateString()}</span>
         </div>
 
-        {/* Date */}
-        <div className="text-[10px] text-white/20 mt-1">
-          {new Date(recap.created_at).toLocaleDateString()}
+        {/* Action buttons */}
+        <div className="flex gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+          <Link
+            href={`/dashboard/recaps/${recap.id}`}
+            className="flex-1 text-center text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all"
+          >
+            Edit
+          </Link>
+          {recap.published && recap.brand?.slug && (
+            <Link
+              href={`/clients/${recap.brand.slug}/${recap.slug}`}
+              className="flex-1 text-center text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-[#D73F09]/10 text-[#D73F09] hover:bg-[#D73F09]/20 transition-all"
+            >
+              View Live
+            </Link>
+          )}
         </div>
       </div>
     </div>
@@ -205,7 +220,7 @@ export default function RecapsPage() {
         .from('campaign_recaps')
         .select(`
           *,
-          brand:brands!campaigns_brand_id_fkey ( id, name, logo_url, primary_color )
+          brand:brands!campaigns_brand_id_fkey ( id, name, slug, logo_url, primary_color )
         `)
         .order('created_at', { ascending: false });
 
