@@ -72,6 +72,10 @@ function fmt(n: number): string {
   return n.toLocaleString();
 }
 
+// Order-independent key for an athlete-id set — used to match a detected collab
+// group to the collab_containers row that covers the same set of athletes.
+const collabSetKey = (ids: string[]) => [...ids].sort().join("|");
+
 function generateDescription(campaignName: string, clientName: string, parsed: ParsedAthlete[]): {
   description: string;
   platform: string;
@@ -761,21 +765,20 @@ function SortableAthleteRow({
   );
 }
 
-// A team collab post surfaced on the Upload Content tab. Driven by a
-// collab_containers row (a detected team Drive folder). Its media lives in
-// the media table as drive_file_id = "collab:<id>", split feed/reel by slot.
-type CollabCard = {
-  id: string;               // collab_containers.id
-  teamName: string;
-  school: string | null;
-  sport: string | null;
+// A collab container (a detected team Drive folder) plus the athletes it
+// covers. Used to link a detected collab group to its source Drive folder —
+// both UF Softball groups (feed + reel) resolve to the one UF container.
+type CollabContainerInfo = {
+  containerId: string;
   driveFolderId: string | null;
-  participantNames: string[];
+  teamName: string;
+  athleteIds: string[];
 };
 
-// Where a Drive-picker import should land when launched from a collab slot.
+// Where a Drive-picker collab import should land: the synthetic collab group
+// id (drive_file_id = "collab:<groupId>") plus the feed/reel slot.
 type PickerSlotDest = {
-  containerId: string;
+  groupId: string;
   driveFolderId: string | null;
   slot: "feed" | "reel";
 };
@@ -797,7 +800,7 @@ export default function CampaignEditor() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [media, setMedia] = useState<Record<string, Media[]>>({});
-  const [collabCards, setCollabCards] = useState<CollabCard[]>([]);
+  const [collabContainers, setCollabContainers] = useState<CollabContainerInfo[]>([]);
   const [collabSlotDest, setCollabSlotDest] = useState<PickerSlotDest | null>(null);
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
@@ -811,6 +814,71 @@ export default function CampaignEditor() {
     () => detectCollabGroups(athletes, (a) => a.id).collabGroups,
     [athletes],
   );
+
+  // Match each detected collab group to the collab_container (team Drive
+  // folder) covering the same athlete set, so each card knows its Drive source.
+  const containerBySet = useMemo(() => {
+    const m = new Map<string, CollabContainerInfo>();
+    for (const c of collabContainers) m.set(collabSetKey(c.athleteIds), c);
+    return m;
+  }, [collabContainers]);
+
+  // One card per collab group, paired with its container (null = unlinked, e.g.
+  // Western Kentucky until its container is set up).
+  const collabCardData = useMemo(
+    () =>
+      collabGroups.map((group) => {
+        const container = containerBySet.get(collabSetKey(group.athleteIds)) ?? null;
+        const a0 = athletes.find((a) => a.id === group.athleteIds[0]);
+        const derived = a0 ? `${a0.school || ""} ${a0.sport || ""}`.trim() : "";
+        const teamName = container?.teamName || derived || group.athleteNames.slice(0, 2).join(" + ");
+        return { group, container, teamName };
+      }),
+    [collabGroups, containerBySet, athletes],
+  );
+
+  // containerId -> { feed?, reel? } group ids, so a (team folder, slot) import
+  // from the Drive picker resolves to the right synthetic collab group id.
+  const collabGroupByContainerSlot = useMemo(() => {
+    const m: Record<string, { feed?: string; reel?: string }> = {};
+    for (const { group, container } of collabCardData) {
+      if (!container) continue;
+      const slot: "feed" | "reel" = group.platform === "ig_feed" ? "feed" : "reel";
+      if (!m[container.containerId]) m[container.containerId] = {};
+      m[container.containerId][slot] = group.id;
+    }
+    return m;
+  }, [collabCardData]);
+
+  // Cover Photos filter — mirrors the recap: an athlete who appears in a collab
+  // group renders only inside the team collab card UNLESS they also made a solo
+  // post (a post_url that isn't one of the collab URLs), in which case they keep
+  // their own cover slot. e.g. UF's Taylor/Ava/Caroline are collab-only (hidden);
+  // USF's players each have a solo feed post alongside the shared reel (kept).
+  const collabAthleteIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const g of collabGroups) for (const aid of g.athleteIds) s.add(aid);
+    return s;
+  }, [collabGroups]);
+  const collabUrlKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const g of collabGroups) for (const k of g.rawUrlKeys) s.add(k);
+    return s;
+  }, [collabGroups]);
+  const hasSoloPost = useCallback(
+    (a: Athlete) => {
+      const m = a.metrics || {};
+      const solo = (platform: string, url?: string | null) =>
+        !!url && !collabUrlKeys.has(`${platform}|${url.trim()}`);
+      return (
+        solo("ig_feed", m.ig_feed?.post_url) ||
+        solo("ig_reel", m.ig_reel?.post_url) ||
+        solo("tiktok", m.tiktok?.post_url)
+      );
+    },
+    [collabUrlKeys],
+  );
+
   const [publishing, setPublishing] = useState(false);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -924,19 +992,16 @@ export default function CampaignEditor() {
     // already grouped above (split by slot at render time).
     const { data: containers } = await supabase
       .from("collab_containers")
-      .select("id, team_name, school, sport, drive_folder_id, collab_container_athletes(included, athletes(name, sort_order))")
+      .select("id, team_name, school, sport, drive_folder_id, collab_container_athletes(included, athletes(id, name, sort_order))")
       .eq("campaign_id", id);
-    setCollabCards(
+    setCollabContainers(
       (containers || []).map((c: any) => ({
-        id: c.id,
-        teamName: c.team_name,
-        school: c.school ?? null,
-        sport: c.sport ?? null,
+        containerId: c.id,
         driveFolderId: c.drive_folder_id ?? null,
-        participantNames: (c.collab_container_athletes || [])
+        teamName: c.team_name,
+        athleteIds: (c.collab_container_athletes || [])
           .filter((m: any) => m.included !== false && m.athletes)
-          .sort((a: any, b: any) => (a.athletes?.sort_order ?? 0) - (b.athletes?.sort_order ?? 0))
-          .map((m: any) => m.athletes.name),
+          .map((m: any) => m.athletes.id),
       })),
     );
 
@@ -1330,42 +1395,6 @@ export default function CampaignEditor() {
     if (data) setMedia((prev) => ({ ...prev, [athleteId]: [...(prev[athleteId] || []), data] }));
   }
 
-  // Collab groups don't have UUID ids — the synthetic group id (e.g.
-  // "ig_reel-abc123f") is stamped into drive_file_id as "collab:<groupId>"
-  // and athlete_id is left NULL.
-  async function handleCollabFiles(groupId: string, fileList: FileList | null) {
-    if (!fileList) return;
-    for (const file of Array.from(fileList)) {
-      const name = file.name.toLowerCase();
-      const isHeic = name.endsWith(".heic") || name.endsWith(".heif");
-      if (file.type.startsWith("image/") || isHeic) {
-        await uploadCollabMedia(groupId, file);
-      } else if (file.type.startsWith("video/")) {
-        setPendingVideo({ athleteId: groupId, file, isCollab: true });
-      }
-    }
-  }
-
-  async function uploadCollabMedia(groupId: string, file: File) {
-    const converted = await convertHeicIfNeeded(file);
-    const path = `${id}/collab-${groupId}/${Date.now()}-${converted.name}`;
-    const url = await uploadFile(converted, path);
-    if (!url) return;
-    const existing = media[groupId] || [];
-    const { data } = await supabase
-      .from("media")
-      .insert({
-        athlete_id: null,
-        campaign_id: id,
-        type: "image",
-        file_url: url,
-        sort_order: existing.length,
-        drive_file_id: `collab:${groupId}`,
-      })
-      .select().single();
-    if (data) setMedia((prev) => ({ ...prev, [groupId]: [...(prev[groupId] || []), data] }));
-  }
-
   async function uploadVideoWithThumbnail(thumbnailFile: File) {
     if (!pendingVideo) return;
     const { athleteId, file: videoFile, isCollab } = pendingVideo;
@@ -1474,21 +1503,27 @@ export default function CampaignEditor() {
     return { current, total, currentFile: "", succeeded, failed, errors };
   }
 
-  // Open the Drive picker scoped to a team folder + a specific slot. The
-  // picker resolves the collab_containers row from the folder id itself, so we
-  // only need the folder + slot here.
-  function openCollabSlot(card: CollabCard, slot: "feed" | "reel") {
-    setCollabSlotDest({ containerId: card.id, driveFolderId: card.driveFolderId, slot });
+  // Open the Drive picker scoped to a collab group's team folder. The slot is
+  // derived from the group's platform; imports land on collab:<groupId>.
+  function openCollabDrive(group: CollabGroup, driveFolderId: string | null) {
+    const slot: "feed" | "reel" = group.platform === "ig_feed" ? "feed" : "reel";
+    setCollabSlotDest({ groupId: group.id, driveFolderId, slot });
     setDriveImportOpen(true);
   }
 
-  // Import team-pool files to a team's collab container. One media row per file,
-  // stored with athlete_id = NULL + drive_file_id "collab:<containerId>".
+  // Import team-pool files to a collab group. The picker hands us the team's
+  // container id + slot; we resolve that to the synthetic collab group id so
+  // media lands on drive_file_id = "collab:<groupId>" (how the recap reads it).
   async function handleImportToCollab(
     files: { id: string; name: string }[],
     containerId: string,
     slot: "feed" | "reel",
   ) {
+    const bySlot = collabGroupByContainerSlot[containerId];
+    const groupId = bySlot?.[slot] ?? bySlot?.feed ?? bySlot?.reel;
+    if (!groupId) {
+      return { succeeded: 0, failed: files.length, errors: files.map((f) => ({ file: f.name, error: "No collab group for this team/slot" })) };
+    }
     let succeeded = 0, failed = 0;
     const errors: Array<{ file: string; error: string }> = [];
     for (const file of files) {
@@ -1496,7 +1531,7 @@ export default function CampaignEditor() {
         const res = await fetch("/api/drive/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId: file.id, fileName: file.name, collabContainerId: containerId, slot, recapId: id }),
+          body: JSON.stringify({ fileId: file.id, fileName: file.name, collabGroupId: groupId, slot, recapId: id }),
         });
         if (!res.ok) {
           const eb = await res.json().catch(() => ({}));
@@ -1505,7 +1540,7 @@ export default function CampaignEditor() {
         } else {
           const { media: nm } = await res.json();
           succeeded++;
-          setMedia((prev) => ({ ...prev, [containerId]: [...(prev[containerId] || []), nm] }));
+          setMedia((prev) => ({ ...prev, [groupId]: [...(prev[groupId] || []), nm] }));
         }
       } catch (e: any) {
         failed++;
@@ -1788,6 +1823,11 @@ export default function CampaignEditor() {
   }
 
   const selectedAthletes = athletes.filter((a) => selected.includes(a.id));
+  // Cover Photos shows individual athletes only — collab-only participants live
+  // in their team collab card (see hasSoloPost above).
+  const coverPhotoAthletes = selectedAthletes.filter(
+    (a) => !collabAthleteIds.has(a.id) || hasSoloPost(a),
+  );
   const uploadedCount = Object.keys(media).filter((k) => media[k]?.length > 0).length;
 
   // Top performers by engagement rate (from ALL athletes, not just selected)
@@ -2689,177 +2729,34 @@ export default function CampaignEditor() {
               )}
             </div>
 
-            {/* Team Collab Posts — one card per detected team Drive folder
-                (collab_containers). Each card has side-by-side Feed + Reel
-                slots; picking assets writes collab media with the matching
-                `slot`. Sits ABOVE the CSV-detected grid and the individual
-                athlete cards. */}
-            {collabCards.length > 0 && (
+            {/* Team Collab Posts — one card per detected collab GROUP (per
+                platform). A team that posted both a feed and a reel (e.g. UF
+                Softball) shows up as two cards. Each card sources assets from
+                the team's Drive folder via the matching collab_containers row;
+                imports write collab:<groupId>. A group whose athlete set has no
+                container (e.g. Western Kentucky until linked) renders a disabled
+                "Drive folder not linked" state with no upload action. */}
+            {collabCardData.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-black uppercase tracking-wider">Team Collab Posts</h3>
                   <span className="text-xs text-gray-500 font-bold">
-                    {collabCards.filter((c) => (media[c.id] || []).length > 0).length} / {collabCards.length} with content
+                    {collabCardData.filter((c) => (media[c.group.id] || []).length > 0).length} / {collabCardData.length} with content
                   </span>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {collabCards.map((card) => {
-                    const items = media[card.id] || [];
-                    // NULL-slot (legacy) collab rows default into Feed so
-                    // nothing ever disappears from view.
-                    const feedMedia = items.filter((m) => m.slot !== "reel");
-                    const reelMedia = items.filter((m) => m.slot === "reel");
-                    return (
-                      <TeamCollabCard
-                        key={card.id}
-                        teamName={card.teamName}
-                        participantNames={card.participantNames}
-                        feedMedia={feedMedia}
-                        reelMedia={reelMedia}
-                        onSlotClick={(slot) => openCollabSlot(card, slot)}
-                        onRemoveMedia={(mediaId) => removeMedia(card.id, mediaId)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Collab Posts Grid — one card per detected collab group (same
-                content shared by 2+ featured athletes). Stored in the media
-                table with athlete_id = NULL and drive_file_id = "collab:<id>". */}
-            {collabGroups.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black uppercase tracking-wider">Collab Posts</h3>
-                  <span className="text-xs text-gray-500 font-bold">
-                    {collabGroups.filter((g) => (media[g.id] || []).length > 0).length} / {collabGroups.length} assigned
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-                  {collabGroups.map((g) => {
-                    const items = media[g.id] || [];
-                    const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
-                    const cover = firstImage || items[0];
-                    const coverSrc = cover?.type !== "video" ? cover?.file_url : cover?.thumbnail_url;
-
-                    const primaryNames = g.athleteNames.slice(0, 2).join(" + ");
-                    const remaining = Math.max(0, g.athleteNames.length - 2);
-                    const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
-                    const platformLabel = g.platform === "ig_feed" ? "IG Feed" : g.platform === "ig_reel" ? "IG Reel" : "TikTok";
-
-                    return (
-                      <div key={g.id} className="group relative">
-                        <div
-                          onClick={() => fileRefs.current[g.id]?.click()}
-                          onDrop={(e) => { e.preventDefault(); handleCollabFiles(g.id, e.dataTransfer?.files); }}
-                          onDragOver={(e) => e.preventDefault()}
-                          className={`aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                            coverSrc
-                              ? "border-transparent hover:border-[#D73F09]"
-                              : "border-dashed border-gray-700 hover:border-gray-500 bg-[#0a0a0a]"
-                          }`}
-                        >
-                          {coverSrc ? (
-                            <img
-                              src={supabaseImageUrl(coverSrc, 600) ?? coverSrc}
-                              className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
-                              alt={nameLabel}
-                              loading="lazy"
-                              onError={(e) => {
-                                const img = e.currentTarget;
-                                if (img.src.includes("/render/image/public/")) {
-                                  img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
-                                }
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                              </svg>
-                            </div>
-                          )}
-                          <input ref={(el: HTMLInputElement | null) => { fileRefs.current[g.id] = el; }}
-                            type="file" accept="image/*,video/*,.heic,.heif" multiple
-                            onChange={(e) => handleCollabFiles(g.id, e.target.files)} className="hidden" />
-                        </div>
-
-                        {coverSrc && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); if (cover) removeMedia(g.id, cover.id); }}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white text-[10px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                          >×</button>
-                        )}
-
-                        <div className="flex gap-0.5 mt-1 overflow-x-auto scrollbar-none">
-                          {items.map((m) => {
-                            const thumbSrc = m.thumbnail_url || (m.type !== "video" ? m.file_url : null);
-                            return (
-                              <div key={m.id} className="relative flex-shrink-0 group/thumb">
-                                <div
-                                  className={`w-9 h-9 rounded overflow-hidden border-2 transition-all ${
-                                    m.type === "video"
-                                      ? "border-purple-500/50"
-                                      : "border-gray-700"
-                                  }`}
-                                >
-                                  {thumbSrc ? (
-                                    <img
-                                      src={supabaseImageUrl(thumbSrc, 100) ?? thumbSrc}
-                                      className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
-                                      alt=""
-                                      loading="lazy"
-                                      onError={(e) => {
-                                        const img = e.currentTarget;
-                                        if (img.src.includes("/render/image/public/")) {
-                                          img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
-                                        }
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
-                                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                                    </div>
-                                  )}
-                                </div>
-                                {m.type === "video" && (
-                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-4 h-4 rounded-full bg-black/60 flex items-center justify-center">
-                                      <svg width="7" height="7" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="8 5 19 12 8 19 8 5"/></svg>
-                                    </div>
-                                  </div>
-                                )}
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); removeMedia(g.id, m.id); }}
-                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-black/80 text-white text-[7px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-10"
-                                >×</button>
-                              </div>
-                            );
-                          })}
-                          <div
-                            className="flex-shrink-0 w-7 h-7 rounded border border-dashed border-gray-600 hover:border-[#D73F09] flex items-center justify-center cursor-pointer transition-colors"
-                            onClick={(e) => { e.stopPropagation(); fileRefs.current[g.id]?.click(); }}
-                          >
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round">
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                          </div>
-                        </div>
-
-                        <div className="mt-1.5 px-0.5">
-                          <div className="flex items-center gap-1 mb-0.5">
-                            <span className="px-1 py-0.5 rounded text-[7px] font-black uppercase bg-[#D73F09] text-white tracking-wider">Collab</span>
-                            <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">{platformLabel}</span>
-                          </div>
-                          <div className="text-[10px] font-bold uppercase truncate text-gray-300" title={g.athleteNames.join(", ")}>{nameLabel}</div>
-                          <div className="text-[9px] text-gray-600 truncate">{fmt(g.combinedFollowers)} combined</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {collabCardData.map(({ group, container, teamName }) => (
+                    <TeamCollabCard
+                      key={group.id}
+                      teamName={teamName}
+                      platformLabel={group.platformLabel}
+                      participantNames={group.athleteNames}
+                      items={media[group.id] || []}
+                      driveLinked={!!container}
+                      onAddFromDrive={container ? () => openCollabDrive(group, container.driveFolderId) : undefined}
+                      onRemoveMedia={(mediaId) => removeMedia(group.id, mediaId)}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -2869,11 +2766,11 @@ export default function CampaignEditor() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-black uppercase tracking-wider">Cover Photos</h3>
                 <span className="text-xs text-gray-500 font-bold">
-                  {Object.keys(media).filter((k) => selectedAthletes.some((a) => a.id === k) && media[k]?.length > 0).length} / {selectedAthletes.length} assigned
+                  {coverPhotoAthletes.filter((a) => (media[a.id]?.length ?? 0) > 0).length} / {coverPhotoAthletes.length} assigned
                 </span>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-                {selectedAthletes.map((a) => {
+                {coverPhotoAthletes.map((a) => {
                   const items = media[a.id] || [];
                   // Always use the first image as cover (not video)
                   const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
