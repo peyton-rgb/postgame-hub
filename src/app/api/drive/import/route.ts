@@ -60,6 +60,9 @@ export async function POST(request: NextRequest) {
           file_url: publicUrl,
           thumbnail_url: isVideo ? null : publicUrl,
           is_video_thumbnail: false,
+          // Stamp the source Drive file id so re-imports (e.g. from the Media
+          // Library doorway) can detect already-imported files and grey them out.
+          drive_file_id: fileId,
         }
       : {
           campaign_id: recapId,
