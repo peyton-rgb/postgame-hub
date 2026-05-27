@@ -1319,8 +1319,11 @@ function WebsiteEditorInner() {
   const supabase = createBrowserSupabase();
   const brandSlug = params.get("slug") || "";
   const campaignId = params.get("id") || "";
-  const [clientsOpen, setClientsOpen] = useState(activePage === "brand");
-  const [campaignsOpen, setCampaignsOpen] = useState(activePage === "campaign");
+  // Expansion is derived from the active route, not local toggle state — the
+  // toggle didn't survive the setPage() navigation, and the old initializer
+  // only opened on the brand/campaign sub-page, never on the section itself.
+  const clientsOpen = activePage === "clients" || activePage === "brand";
+  const campaignsOpen = activePage === "campaigns" || activePage === "campaign";
   const [navRecaps, setNavRecaps] = useState<{ id: string; name: string | null; slug: string | null; brandSlug: string | null }[]>([]);
 
   useEffect(() => {
@@ -1370,11 +1373,7 @@ function WebsiteEditorInner() {
                 <div key={p.key}>
                   <div
                     style={S.sidebarItem(activePage === p.key)}
-                    onClick={() => {
-                      if (p.key === "clients") setClientsOpen(o => !o);
-                      else if (p.key === "campaigns") setCampaignsOpen(o => !o);
-                      setPage(p.key);
-                    }}
+                    onClick={() => setPage(p.key)}
                   >
                     <span style={{ fontSize:14 }}>{p.icon}</span>
                     <span>{p.label}</span>
