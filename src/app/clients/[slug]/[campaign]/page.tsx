@@ -84,6 +84,17 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   const allImages = mediaArr.filter((m: any) => m.type === 'image');
   const allVideos = mediaArr.filter((m: any) => m.type === 'video');
 
+  // Phase 4 — optional slot overrides (hero carousel, gallery). Empty = today's auto behavior.
+  const { data: campSlots } = await supabase
+    .from("slot_assignments")
+    .select("slot_key, file_url, focal_x, focal_y, scale, position")
+    .in("slot_key", [`campaign.${campaign.id}.hero_carousel`, `campaign.${campaign.id}.gallery`])
+    .order("position", { ascending: true });
+  const cs = (campSlots || []) as any[];
+  const heroSlot = cs.filter(s => s.slot_key === `campaign.${campaign.id}.hero_carousel` && s.file_url);
+  const gallerySlot = cs.filter(s => s.slot_key === `campaign.${campaign.id}.gallery` && s.file_url);
+  const isVid = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u);
+
   // Hero selection: if the editor has manually picked hero images (is_hero=true),
   // use those. Otherwise fall back to auto-pick for campaigns that haven't been
   // curated yet.
@@ -111,13 +122,9 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     }
   }
 
-  const heroStills: HeroStill[] = heroCandidates.map((m: any) => ({
-    src: m.file_url,
-    alt: campaign.name,
-    focalX: typeof m.focal_x === 'number' ? m.focal_x : 0.5,
-    focalY: typeof m.focal_y === 'number' ? m.focal_y : 0.5,
-    scale: typeof m.hero_scale === 'number' ? m.hero_scale : 1.0,
-  }));
+  const heroStills: HeroStill[] = heroSlot.length > 0
+    ? heroSlot.map((s: any) => ({ src: s.file_url, alt: campaign.name, focalX: s.focal_x ?? 0.5, focalY: s.focal_y ?? 0.5, scale: s.scale ?? 1 }))
+    : heroCandidates.map((m: any) => ({ src: m.file_url, alt: campaign.name, focalX: typeof m.focal_x === "number" ? m.focal_x : 0.5, focalY: typeof m.focal_y === "number" ? m.focal_y : 0.5, scale: typeof m.hero_scale === "number" ? m.hero_scale : 1.0 }));
 
   const images: GalleryItem[] = allImages.map((m: any) => ({
     id: m.id,
@@ -139,6 +146,14 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     focalX: 0.5,
     focalY: 0.5,
   }));
+
+  // Gallery slot override — use curated slot rows if present, else today's full media list.
+  const galleryImages = gallerySlot.length > 0
+    ? gallerySlot.filter((s: any) => !isVid(s.file_url)).map((s: any, i: number) => ({ id: `slot-img-${i}`, src: s.file_url, thumb: variantUrl(s.file_url, "w400"), isVideo: false, poster: null, alt: campaign.name, focalX: s.focal_x ?? 0.5, focalY: s.focal_y ?? 0.5 }))
+    : images;
+  const galleryVideos = gallerySlot.length > 0
+    ? gallerySlot.filter((s: any) => isVid(s.file_url)).map((s: any, i: number) => ({ id: `slot-vid-${i}`, src: s.file_url, thumb: s.file_url, isVideo: true, poster: null, alt: campaign.name, focalX: 0.5, focalY: 0.5 }))
+    : videos;
 
   // Title split: render the last word in orange italic, like the prototype.
   const titleWords = campaign.name.split(/\s+/);
@@ -305,7 +320,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
           each athlete and team shoot, near-duplicates and softer frames already removed.
         </p>
 
-        <WorkGallery images={images} videos={videos} />
+        <WorkGallery images={galleryImages} videos={galleryVideos} />
       </section>
 
       {/* ---- FOOTER ---- */}

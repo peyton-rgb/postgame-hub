@@ -226,6 +226,24 @@ async function loadBrandPageData(brand: Brand) {
       return db - da;
     });
 
+  // Phase 4 — optional slot overrides (hero carousel, featured campaigns, pull quote).
+  // Empty slots fall back to today's automatic behavior; nothing goes blank.
+  const slug = brand.slug;
+  const { data: slotRows } = await supabase
+    .from("slot_assignments")
+    .select("slot_key, file_url, text_value, recap_id, position")
+    .in("slot_key", [`brand.${slug}.hero_carousel`, `brand.${slug}.featured_campaigns`, `brand.${slug}.pull_quote`])
+    .order("position", { ascending: true });
+  const slots = (slotRows || []) as any[];
+  const heroSlotImages = slots.filter(s => s.slot_key === `brand.${slug}.hero_carousel` && s.file_url).map(s => s.file_url as string);
+  const featuredRecapIds = slots.filter(s => s.slot_key === `brand.${slug}.featured_campaigns` && s.recap_id).map(s => s.recap_id as string);
+  const pq = slots.find(s => s.slot_key === `brand.${slug}.pull_quote`);
+  const pullQuote = pq ? { image: pq.file_url as string | null, text: pq.text_value as string | null } : null;
+
+  const orderedCampaigns = featuredRecapIds.length > 0
+    ? featuredRecapIds.map(id => campaignList.find(c => c.id === id)).filter(Boolean) as CampaignRow[]
+    : campaignList;
+
   // Fallback hero pool — campaign cover images (hero_image_url / thumbnail_url).
   // Only used when there are no featured-campaign athlete shots to show.
   const coverHero: string[] = [];
@@ -237,7 +255,10 @@ async function loadBrandPageData(brand: Brand) {
       if (coverHero.length >= HERO_CAP) break;
     }
   }
-  const heroPool: string[] = featuredHero.length > 0 ? featuredHero : coverHero;
+  const heroPool: string[] =
+    heroSlotImages.length > 0 ? heroSlotImages
+    : featuredHero.length > 0 ? featuredHero
+    : coverHero;
 
   // "Partner Since" = earliest campaign date we know about.
   let partnerSince: Date | null = null;
@@ -250,7 +271,8 @@ async function loadBrandPageData(brand: Brand) {
 
   return {
     brandDb,
-    campaigns: campaignList,
+    campaigns: orderedCampaigns,
+    pullQuote,
     athleteTiles,
     heroPool,
     stats: {
@@ -272,7 +294,7 @@ export default async function BrandPage({ params }: Props) {
   const brand = getBrandBySlug(slug);
   if (!brand) notFound();
 
-  const { brandDb, campaigns, athleteTiles, heroPool, stats } = await loadBrandPageData(brand);
+  const { brandDb, campaigns, pullQuote, athleteTiles, heroPool, stats } = await loadBrandPageData(brand);
 
   // Color + logo resolution — DB value wins, brands.ts is the fallback.
   const primaryColor = brandDb?.primary_color || brand.primaryColor || '#1A1A1A';
@@ -447,6 +469,19 @@ export default async function BrandPage({ params }: Props) {
           )}
         </aside>
       </section>
+
+      {pullQuote && (pullQuote.image || pullQuote.text) && (
+        <section className="bp-pullquote" style={{ position:"relative", padding:"64px 48px", textAlign:"center" }}>
+          {pullQuote.image && (
+            <img src={pullQuote.image} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity:0.25 }} />
+          )}
+          {pullQuote.text && (
+            <p style={{ position:"relative", maxWidth:780, margin:"0 auto", fontSize:"clamp(22px,3vw,34px)", lineHeight:1.3, fontWeight:700 }}>
+              {pullQuote.text}
+            </p>
+          )}
+        </section>
+      )}
 
       {/* ================== CAMPAIGN GRID ================== */}
       {campaigns.length > 0 && (

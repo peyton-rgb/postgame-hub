@@ -6,6 +6,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import CampaignMediaPicker from "@/components/CampaignMediaPicker";
 import SlotEditor from "@/components/SlotEditor";
+import BrandPageEditor from "@/components/BrandPageEditor";
+import CampaignPageEditor from "@/components/CampaignPageEditor";
+import { allBrands } from "@/lib/data/brands";
 import DealList from "@/components/DealList";
 import PressList from "@/components/PressList";
 import CaseStudyList from "@/components/CaseStudyList";
@@ -1313,6 +1316,28 @@ function WebsiteEditorInner() {
 
   const setPage = (p: string) => router.push(`/dashboard/website?page=${p}`, { scroll: false });
 
+  const supabase = createBrowserSupabase();
+  const brandSlug = params.get("slug") || "";
+  const campaignId = params.get("id") || "";
+  const [clientsOpen, setClientsOpen] = useState(activePage === "brand");
+  const [campaignsOpen, setCampaignsOpen] = useState(activePage === "campaign");
+  const [navRecaps, setNavRecaps] = useState<{ id: string; name: string | null; slug: string | null; brandSlug: string | null }[]>([]);
+
+  useEffect(() => {
+    (supabase as any)
+      .from("campaign_recaps")
+      .select("id, name, slug, brands(slug)")
+      .eq("type", "recap")
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .then(({ data }: any) =>
+        setNavRecaps((data || []).map((r: any) => ({ id: r.id, name: r.name, slug: r.slug, brandSlug: r.brands?.slug ?? null })))
+      );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const navBrands = allBrands.filter((b) => b.tier === "featured" || b.tier === "partner");
+  const go = (qs: string) => router.push(`/dashboard/website?${qs}`, { scroll: false });
+
   const handleSaved = useCallback(() => {
     setPreviewKey(k => k + 1);
     setToast("Saved ✓");
@@ -1320,7 +1345,13 @@ function WebsiteEditorInner() {
   }, []);
 
   const activeMeta = PAGES.find(p => p.key === activePage) || PAGES[0];
-  const previewUrl = activeMeta.url;
+  const headerLabel = activePage === "brand" ? "Brand Page" : activePage === "campaign" ? "Campaign Page" : activeMeta.label;
+  let previewUrl = activeMeta.url;
+  if (activePage === "brand" && brandSlug) previewUrl = `/clients/${brandSlug}`;
+  if (activePage === "campaign" && campaignId) {
+    const r = navRecaps.find((x) => x.id === campaignId);
+    previewUrl = r?.brandSlug && r?.slug ? `/clients/${r.brandSlug}/${r.slug}` : "/campaigns";
+  }
 
   return (
     <div style={S.shell}>
@@ -1336,9 +1367,37 @@ function WebsiteEditorInner() {
             <div key={section}>
               <div style={S.sidebarSection}>{section}</div>
               {PAGES.filter(p => p.section === section).map(p => (
-                <div key={p.key} style={S.sidebarItem(activePage === p.key)} onClick={() => setPage(p.key)}>
-                  <span style={{ fontSize:14 }}>{p.icon}</span>
-                  <span>{p.label}</span>
+                <div key={p.key}>
+                  <div
+                    style={S.sidebarItem(activePage === p.key)}
+                    onClick={() => {
+                      if (p.key === "clients") setClientsOpen(o => !o);
+                      else if (p.key === "campaigns") setCampaignsOpen(o => !o);
+                      setPage(p.key);
+                    }}
+                  >
+                    <span style={{ fontSize:14 }}>{p.icon}</span>
+                    <span>{p.label}</span>
+                    {(p.key === "clients" || p.key === "campaigns") && (
+                      <span style={{ marginLeft:"auto", fontSize:10, color:C.text3 }}>
+                        {(p.key === "clients" ? clientsOpen : campaignsOpen) ? "▾" : "▸"}
+                      </span>
+                    )}
+                  </div>
+
+                  {p.key === "clients" && clientsOpen && navBrands.map(b => (
+                    <div key={b.slug} onClick={() => go(`page=brand&slug=${b.slug}`)}
+                      style={{ ...S.sidebarItem(activePage === "brand" && brandSlug === b.slug), marginLeft:14, padding:"6px 16px" }}>
+                      <span style={{ fontSize:11, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</span>
+                    </div>
+                  ))}
+
+                  {p.key === "campaigns" && campaignsOpen && navRecaps.map(r => (
+                    <div key={r.id} onClick={() => go(`page=campaign&id=${r.id}`)}
+                      style={{ ...S.sidebarItem(activePage === "campaign" && campaignId === r.id), marginLeft:14, padding:"6px 16px" }}>
+                      <span style={{ fontSize:11, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.name || "(untitled)"}</span>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -1371,7 +1430,7 @@ function WebsiteEditorInner() {
         <div style={S.editPane}>
           <div style={S.editHeader}>
             <div>
-              <div style={S.editTitle}>{activeMeta.label}</div>
+              <div style={S.editTitle}>{headerLabel}</div>
               <div style={S.editMeta}>Edit content · changes save to Supabase</div>
             </div>
           </div>
@@ -1389,6 +1448,8 @@ function WebsiteEditorInner() {
           {activePage === "svc-scaled"      && <ServicesEditor svc="scaled" onSaved={handleSaved} />}
           {activePage === "svc-always-on"   && <ServicesEditor svc="always-on" onSaved={handleSaved} />}
           {activePage === "svc-experiential"&& <ServicesEditor svc="experiential" onSaved={handleSaved} />}
+          {activePage === "brand"    && <BrandPageEditor slug={brandSlug} onSaved={handleSaved} />}
+          {activePage === "campaign" && <CampaignPageEditor recapId={campaignId} onSaved={handleSaved} />}
         </div>
 
         {/* Preview pane */}
