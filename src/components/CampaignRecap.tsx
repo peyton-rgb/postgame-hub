@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey, CollabGroup } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { fmt, pct, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate, type TopPerformerEntry } from "@/lib/recap-helpers";
+import { fmt, pct, formatEngagementRate, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate, type TopPerformerEntry } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import PostgameCalendar from "./PostgameCalendar";
@@ -314,7 +314,7 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
         <div className="flex" style={{ padding: "10px 0 12px" }}>
           <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {pct(getBestEngRate(athlete))}
+              {formatEngagementRate(getBestEngRate(athlete))}
             </div>
             <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Eng. Rate
@@ -534,7 +534,7 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
         <div className="flex" style={{ padding: "10px 0 12px" }}>
           <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {pct(group.combinedEngagementRate)}
+              {formatEngagementRate(group.combinedEngagementRate)}
             </div>
             <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
               Combined ER
@@ -542,10 +542,10 @@ function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group:
           </div>
           <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
             <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {fmt(group.metrics.views ?? 0)}
+              {fmt(group.platform === "ig_feed" ? (group.metrics.impressions ?? 0) : (group.metrics.views ?? 0))}
             </div>
             <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-              Views
+              {group.platform === "ig_feed" ? "Impressions" : "Views"}
             </div>
           </div>
           <div style={{ flex: 1, textAlign: "center" }}>
@@ -1076,8 +1076,8 @@ export function CampaignRecap({
                 { key: "combined_followers" as const,  value: fmt(stats.combinedFollowers),   label: "TOTAL FOLLOWERS" },
                 { key: "total_impressions" as const,   value: fmt(stats.totalImpressions),    label: "TOTAL IMPRESSIONS" },
                 { key: "total_engagements" as const,   value: fmt(stats.totalEngagements),    label: "TOTAL ENGAGEMENTS" },
-                ...(stats.igFeedPosts > 0 || stats.igReelPosts > 0 ? [{ key: "ig_avg_engagement_rate" as const, value: pct(stats.igAvgEngRate), label: "IG AVG ENG RATE" }] : []),
-                ...(stats.tiktokPosts > 0 ? [{ key: "tiktok_avg_engagement_rate" as const, value: pct(stats.tiktokAvgEngRate), label: "TIKTOK AVG ENG RATE" }] : []),
+                ...(stats.igFeedPosts > 0 || stats.igReelPosts > 0 ? [{ key: "ig_avg_engagement_rate" as const, value: formatEngagementRate(stats.igAvgEngRate), label: "IG AVG ENG RATE" }] : []),
+                ...(stats.tiktokPosts > 0 ? [{ key: "tiktok_avg_engagement_rate" as const, value: formatEngagementRate(stats.tiktokAvgEngRate), label: "TIKTOK AVG ENG RATE" }] : []),
                 ...(stats.hasSales && show("sales") ? [{ key: null as HeroMetricOverrideKey | null, value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
               ].filter(m => m.key === null || !hiddenHeroes.includes(m.key)) as { key: HeroMetricOverrideKey | null; value: string | number; label: string }[];
 
@@ -1132,7 +1132,7 @@ export function CampaignRecap({
                     { label: "Shares", value: fmt(stats.igFeed.shares), raw: stats.igFeed.shares, col: "ig_feed_shares" },
                     { label: "Reposts", value: fmt(stats.igFeed.reposts), raw: stats.igFeed.reposts, col: "ig_feed_reposts" },
                     { label: "Total Engagements", value: fmt(stats.igFeed.engagements), raw: stats.igFeed.engagements, col: "ig_feed_total" },
-                    { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? pct(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "\u2014", raw: stats.igFeed.engRateCount, col: "ig_feed_rate" },
+                    { label: "Avg Engagement Rate", value: stats.igFeed.engRateCount > 0 ? formatEngagementRate(stats.igFeed.engRateSum / stats.igFeed.engRateCount) : "\u2014", raw: stats.igFeed.engRateCount, col: "ig_feed_rate" },
                   ].filter((row) => row.raw > 0 && showCol(row.col)).map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
                       <span className="text-xs text-white/70 font-semibold">{row.label}</span>
@@ -1175,7 +1175,7 @@ export function CampaignRecap({
                     { label: "Shares", value: fmt(stats.igReel.shares), raw: stats.igReel.shares, col: "ig_reel_shares" },
                     { label: "Reposts", value: fmt(stats.igReel.reposts), raw: stats.igReel.reposts, col: "ig_reel_reposts" },
                     { label: "Total Engagements", value: fmt(stats.igReel.engagements), raw: stats.igReel.engagements, col: "ig_reel_total" },
-                    { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? pct(stats.igReel.engRateSum / stats.igReel.engRateCount) : "\u2014", raw: stats.igReel.engRateCount, col: "ig_reel_rate" },
+                    { label: "Avg Engagement Rate", value: stats.igReel.engRateCount > 0 ? formatEngagementRate(stats.igReel.engRateSum / stats.igReel.engRateCount) : "\u2014", raw: stats.igReel.engRateCount, col: "ig_reel_rate" },
                   ].filter((row) => row.raw > 0 && showCol(row.col)).map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
                       <span className="text-xs text-white/70 font-semibold">{row.label}</span>
@@ -1200,7 +1200,7 @@ export function CampaignRecap({
                     { label: "Likes + Comments", value: fmt(stats.tiktok.likes_comments), raw: stats.tiktok.likes > 0 ? 0 : stats.tiktok.likes_comments, col: "tiktok_likes_comments" },
                     { label: "Saves + Shares", value: fmt(stats.tiktok.saves_shares), raw: stats.tiktok.saves_shares, col: "tiktok_saves_shares" },
                     { label: "Total Engagements", value: fmt(stats.tiktok.engagements), raw: stats.tiktok.engagements, col: "tiktok_total" },
-                    { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? pct(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "\u2014", raw: stats.tiktok.engRateCount, col: "tiktok_rate" },
+                    { label: "Avg Engagement Rate", value: stats.tiktok.engRateCount > 0 ? formatEngagementRate(stats.tiktok.engRateSum / stats.tiktok.engRateCount) : "\u2014", raw: stats.tiktok.engRateCount, col: "tiktok_rate" },
                   ].filter((row) => row.raw > 0 && showCol(row.col)).map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-2 border-b border-white/[0.10] last:border-0">
                       <span className="text-xs text-white/70 font-semibold">{row.label}</span>
@@ -1294,7 +1294,7 @@ export function CampaignRecap({
           {/* Desktop: all same size, #1 highlighted in orange */}
           <div className="hidden md:flex items-end justify-center gap-4">
             {topPerformers.map((entry, i) => {
-              const metricValue = topPerformerMode === "engagement" ? pct(entry.bestEngRate) : fmt(entry.totalImpressions);
+              const metricValue = topPerformerMode === "engagement" ? formatEngagementRate(entry.bestEngRate) : fmt(entry.totalImpressions);
               const metricLabel = topPerformerMode === "engagement" ? "Engagement Rate" : "Impressions";
 
               if (entry.kind === "collab") {
@@ -1389,7 +1389,7 @@ export function CampaignRecap({
           <div className="md:hidden grid grid-cols-2 gap-3">
             {topPerformers.map((entry, i) => {
               const isFirst = i === 0;
-              const metricValue = topPerformerMode === "engagement" ? pct(entry.bestEngRate) : fmt(entry.totalImpressions);
+              const metricValue = topPerformerMode === "engagement" ? formatEngagementRate(entry.bestEngRate) : fmt(entry.totalImpressions);
               const metricLabel = topPerformerMode === "engagement" ? "Engagement Rate" : "Impressions";
 
               if (entry.kind === "collab") {
@@ -1783,7 +1783,7 @@ export function CampaignRecap({
                             {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(group.combinedFollowers)}</td>}
                             {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(totalVal)}</td>}
                             {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(s.metrics.totalEngagements ?? 0)}</td>}
-                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={numStyle}>{pct(s.combinedEngagementRate)}</td>}
+                            {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={numStyle}>{formatEngagementRate(s.combinedEngagementRate)}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3" />}
                             {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3" />}
                             {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3" />}
@@ -1863,7 +1863,7 @@ export function CampaignRecap({
                       }}>
                         <span style={{ alignSelf: "flex-start", color: "#fff", background: "#D73F09", padding: "4px 10px", borderRadius: 4, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>{platName(s.platform).toUpperCase()}</span>
                         <div className="flex" style={{ gap: 16, flexWrap: "wrap" }}>
-                          {stat(pct(s.combinedEngagementRate), "Combined ER")}
+                          {stat(formatEngagementRate(s.combinedEngagementRate), "Combined ER")}
                           {stat(fmt(totalVal), totalLabel)}
                           {stat(fmt(s.metrics.totalEngagements ?? 0), "Engagements")}
                           {stat(fmt(group.combinedFollowers), "Combined Followers")}
@@ -1874,6 +1874,32 @@ export function CampaignRecap({
                 </div>
               );
             };
+
+            // One bracket per TEAM (athlete-id set). detectCollabGroups emits one
+            // group PER PLATFORM, so a team that posted both a feed and a reel
+            // (e.g. UF Softball) arrives as two groups with the same athlete set.
+            // Merge those into a single group whose `sources` union every platform
+            // (ordered feed → reel → tiktok) — renderBracket already renders one
+            // totals row per source, so the athletes list once with a metrics row
+            // stacked per platform. Single-platform teams keep their lone row.
+            const platformRank: Record<"ig_feed" | "ig_reel" | "tiktok", number> = { ig_feed: 0, ig_reel: 1, tiktok: 2 };
+            const mergedCollabGroups: CollabGroup[] = (() => {
+              const bySet = new Map<string, CollabGroup>();
+              for (const g of collabGroups) {
+                const key = [...g.athleteIds].sort().join("|");
+                const existing = bySet.get(key);
+                if (existing) {
+                  existing.sources = [...existing.sources, ...g.sources];
+                } else {
+                  bySet.set(key, { ...g, sources: [...g.sources] });
+                }
+              }
+              const out = Array.from(bySet.values());
+              for (const g of out) {
+                g.sources = [...g.sources].sort((a, b) => platformRank[a.platform] - platformRank[b.platform]);
+              }
+              return out;
+            })();
 
             const divider = (
               <div className="flex items-center" style={{ gap: 12, margin: "20px 0" }}>
@@ -1886,9 +1912,9 @@ export function CampaignRecap({
             return (<>
           {/* Desktop: collab brackets, divider, solo athlete table */}
           <div className="hidden md:block overflow-x-auto">
-            {collabGroups.length > 0 && (
+            {mergedCollabGroups.length > 0 && (
               <>
-                {collabGroups.map(renderBracketDesktop)}
+                {mergedCollabGroups.map(renderBracketDesktop)}
                 {divider}
               </>
             )}
@@ -1944,7 +1970,7 @@ export function CampaignRecap({
                       {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</td>}
                       {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>}
                       {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>}
-                      {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? pct(getBestEngRate(a)) : "\u2014"}</td>}
+                      {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? formatEngagementRate(getBestEngRate(a)) : "\u2014"}</td>}
                       {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
                       {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
                       {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
@@ -2010,7 +2036,7 @@ export function CampaignRecap({
                           {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-2" style={subTdStyle} />}
                           {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{slot.impressions ? fmt(slot.impressions) : "\u2014"}</td>}
                           {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{slot.engagements ? fmt(slot.engagements) : "\u2014"}</td>}
-                          {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{er > 0 ? pct(er) : "\u2014"}</td>}
+                          {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{er > 0 ? formatEngagementRate(er) : "\u2014"}</td>}
                           {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-2" style={subTdStyle} />}
                           {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-2" style={subTdStyle} />}
                           {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-2" style={subTdStyle} />}
@@ -2066,9 +2092,9 @@ export function CampaignRecap({
 
           {/* Mobile: collab brackets, divider, solo athlete cards */}
           <div className="md:hidden">
-            {collabGroups.length > 0 && (
+            {mergedCollabGroups.length > 0 && (
               <>
-                {collabGroups.map(renderBracketMobile)}
+                {mergedCollabGroups.map(renderBracketMobile)}
                 {divider}
               </>
             )}
@@ -2087,7 +2113,7 @@ export function CampaignRecap({
                   <div className="text-right flex-shrink-0">
                     {showCol("ig_followers") && hasAnyFollowers && <div className="text-sm font-bold text-white/70">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>}
                     {showCol("ig_feed_rate") && hasAnyEngRate && getBestEngRate(a) > 0 && (
-                      <div className="text-xs font-bold text-brand">{pct(getBestEngRate(a))}</div>
+                      <div className="text-xs font-bold text-brand">{formatEngagementRate(getBestEngRate(a))}</div>
                     )}
                     {stats.hasClicks && show("clicks") && (
                       (showCol("clicks_link_clicks") && m.clicks?.link_clicks) ||

@@ -14,6 +14,18 @@ export function pct(n: number | undefined): string {
   return Math.round(n) + "%";
 }
 
+/**
+ * Engagement-rate display: like pct(), but never rounds a real (non-zero)
+ * rate down to "0%". A fractional rate (e.g. 0.22%) reads as "1%" so a genuine
+ * engagement never looks like nothing; an exact 0 stays "0%".
+ * Use this everywhere an engagement rate is shown on the recap.
+ */
+export function formatEngagementRate(n: number | undefined): string {
+  if (n == null || n === 0) return "0%";
+  if (n > 0 && n < 1) return "1%";
+  return `${Math.round(n)}%`;
+}
+
 export function dollar(n: number | undefined): string {
   if (n == null) return "$0";
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
