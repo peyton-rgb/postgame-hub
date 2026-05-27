@@ -56,6 +56,20 @@ function humanFileSize(bytes: number): string {
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
 }
 
+/**
+ * Extract an athlete name from a Google Form upload filename, e.g.
+ *   "1fbf1e3d... - Maya Maycock.mov" → "Maya Maycock"
+ * Strips the extension, splits on " - " (space-dash-space), and returns the
+ * last part trimmed. Returns null when there's no separator (unmatched file).
+ */
+export function extractAthleteNameFromFilename(filename: string): string | null {
+  const dot = filename.lastIndexOf(".");
+  const base = dot > 0 ? filename.slice(0, dot) : filename;
+  const parts = base.split(" - ");
+  if (parts.length < 2) return null;
+  return parts[parts.length - 1].trim();
+}
+
 // ── Core functions ────────────────────────────────────────────
 
 async function listSubfolders(
@@ -206,6 +220,37 @@ export async function getCampaignDriveMedia(
     for (const r of results) {
       athletes.push(r);
       totalFiles += r.files.length;
+    }
+  }
+
+  // Tier 3: loose media files sitting directly in the parent folder (Google
+  // Form upload responses). These have the athlete name embedded in the
+  // filename. Group them into virtual athlete folders. listMediaFilesInFolder
+  // only fetches direct children, and the subfolder loop above only reads from
+  // inside subfolders, so there's no overlap with the Tier 1 athletes above.
+  const looseFiles = await listMediaFilesInFolder(drive, parentFolderId, "");
+  if (looseFiles.length > 0) {
+    const UNMATCHED = "Unmatched files";
+    const byName = new Map<string, DriveFile[]>();
+
+    for (const file of looseFiles) {
+      const name = extractAthleteNameFromFilename(file.name) ?? UNMATCHED;
+      const bucket = byName.get(name);
+      if (bucket) {
+        bucket.push(file);
+      } else {
+        byName.set(name, [file]);
+      }
+    }
+
+    for (const [name, files] of Array.from(byName.entries())) {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      athletes.push({
+        folderName: name,
+        folderId: `virtual-${parentFolderId}-${slug}`,
+        files,
+      });
+      totalFiles += files.length;
     }
   }
 
