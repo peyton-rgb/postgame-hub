@@ -578,25 +578,24 @@ export function getTopPerformers(
 ): TopPerformerEntry[] {
   const collabUrls = buildCollabUrlSet(collabGroups);
 
-  // UPDATED (Change 4): Collab athletes get their collab group's ER and impressions
-  // instead of being zeroed out. This ensures collab partners show matching rates.
+  // When an athlete's top post is part of a collab, they're already represented
+  // by the Collab card — exclude them from individual ranking so the same post
+  // doesn't appear once per participant plus once as a collab.
   const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
       const key = bestPlatformKey(platform);
-      const collabGroup = findCollabGroupForAthlete(a, key, collabGroups, collabUrls);
+      if (findCollabGroupForAthlete(a, key, collabGroups, collabUrls)) return null;
 
       return {
         ...a,
         kind: "athlete" as const,
-        bestEngRate: collabGroup ? collabGroup.combinedEngagementRate : rate,
+        bestEngRate: rate,
         bestPlatform: platform,
-        totalImpressions: collabGroup
-          ? collabTotalImpressions(collabGroup)
-          : getTotalImpressions(a),
+        totalImpressions: getTotalImpressions(a),
       };
     })
-    .filter((e) => e.bestEngRate > 0);
+    .filter((e): e is AthleteTopPerformerEntry => e !== null && e.bestEngRate > 0);
 
   const collabEntries: CollabTopPerformerEntry[] = collabGroups.map((g) => ({
     ...g,
@@ -618,25 +617,24 @@ export function getTopPerformersByImpressions(
 ): TopPerformerEntry[] {
   const collabUrls = buildCollabUrlSet(collabGroups);
 
-  // UPDATED (Change 4): Collab athletes get their collab group's impressions
-  // instead of being excluded entirely.
+  // When an athlete's top post is part of a collab, they're already represented
+  // by the Collab card — exclude them from individual ranking so the same post
+  // doesn't appear once per participant plus once as a collab.
   const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
       const key = bestPlatformKey(platform);
-      const collabGroup = findCollabGroupForAthlete(a, key, collabGroups, collabUrls);
+      if (findCollabGroupForAthlete(a, key, collabGroups, collabUrls)) return null;
 
       return {
         ...a,
         kind: "athlete" as const,
-        bestEngRate: collabGroup ? collabGroup.combinedEngagementRate : rate,
+        bestEngRate: rate,
         bestPlatform: platform,
-        totalImpressions: collabGroup
-          ? collabTotalImpressions(collabGroup)
-          : getTotalImpressions(a),
+        totalImpressions: getTotalImpressions(a),
       };
     })
-    .filter((e) => e.totalImpressions > 0);
+    .filter((e): e is AthleteTopPerformerEntry => e !== null && e.totalImpressions > 0);
 
   const collabEntries: CollabTopPerformerEntry[] = collabGroups.map((g) => ({
     ...g,
