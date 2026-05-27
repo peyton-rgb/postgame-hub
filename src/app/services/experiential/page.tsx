@@ -76,15 +76,22 @@ const SHARED_STYLES = `
 `;
 
 export default async function ServicesExperientialPage() {
-  // Fetch carousel photos from Supabase
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/pages?slug=eq.services&select=settings`,
-    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }, next: { revalidate: 0 } }
-  );
-  const rows = await res.json();
-  const settings = rows?.[0]?.settings ?? {};
-  const raw = settings?.["experiential"]?.carousel_photos ?? DEFAULT_PHOTOS;
-  const photos: {path:string; brand_logo_url?:string; focal_point?:string}[] = (Array.isArray(raw) ? raw : DEFAULT_PHOTOS).map((p: unknown) => typeof p === "string" ? { path: p } : p as {path:string; brand_logo_url?:string; focal_point?:string});
+  // Carousel photos from slot_assignments (Phase 3 migration).
+  const supabase = createPlainSupabase();
+  const { data: carouselRows } = await supabase
+    .from("slot_assignments")
+    .select("file_url, focal_x, focal_y, scale, logo_url, position")
+    .eq("slot_key", "svc-experiential.carousel")
+    .is("scope_id", null)
+    .order("position", { ascending: true });
+  const photos = (carouselRows || [])
+    .filter((r: any) => r.file_url)
+    .map((r: any) => ({
+      url: r.file_url as string,
+      focal_point: `${(r.focal_x ?? 0.5) * 100}% ${(r.focal_y ?? 0.5) * 100}%`,
+      scale: r.scale ?? 1,
+      brand_logo_url: r.logo_url ?? undefined,
+    }));
 
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
@@ -120,7 +127,7 @@ export default async function ServicesExperientialPage() {
         <div className="carousel-bg">
           {photos.map((photo, i) => (
             <div key={i} className={`carousel-slide${i === 0 ? " active" : ""}`}>
-              <img src={`${BASE}${photo.path}`} alt="" style={{ objectPosition: photo.focal_point || '50% 20%' }} />
+              <img src={photo.url} alt="" style={{ objectPosition: photo.focal_point || '50% 20%', transform: photo.scale !== 1 ? `scale(${photo.scale})` : undefined }} />
             </div>
           ))}
           <div className="carousel-overlay" />

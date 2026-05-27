@@ -1,32 +1,27 @@
 "use client";
 
 // ============================================================
-// <SlotEditor> — the single, reusable "slot" remote.
+// <SlotEditor> — the single, reusable "slot" remote.  (v2, Phase 3)
 //
-// A "slot" is a named spot on a public page that holds an ordered
-// list of media (e.g. "homepage.hero_carousel"). This component
-// reads/writes the `slot_assignments` table for one slot and lets
-// you add media (via your existing CampaignMediaPicker), reorder,
-// set a focal point + zoom per image, and (optionally) attach a
-// one-line text value (used later by the brand pull-quote slot).
+// Reads/writes the `slot_assignments` table for one slot. Add media
+// via the existing CampaignMediaPicker, reorder, set focal point +
+// zoom per image, optionally attach one-line text (pull-quote slots),
+// and — new in v2 — optionally attach a per-photo brand-logo overlay
+// (used by the Services carousels).
 //
-// Matches the website editor's existing conventions:
-//   - inline styles with the same dark palette + orange accent
-//   - reuses CampaignMediaPicker (no second picker to maintain)
-//   - stores the image URL on slot_assignments.file_url, exactly
-//     like the rest of the editor already works
+// v2 change vs Phase 2: added the `acceptsLogo` prop + a per-row brand
+// logo picker that writes slot_assignments.logo_url. Everything else
+// is unchanged. Safe to drop in over the Phase 2 file.
 //
-// NOTE: `slot_assignments` was added in Phase 1. Regenerate your
-// Supabase types (see PHASE-2-APPLY.md, step 1) so TypeScript knows
-// the table. The `db` cast below keeps the build green either way.
+// NOTE: `slot_assignments` (and its file_url / logo_url columns) were
+// added by Cowork in Phases 1 & 3. Regenerate Supabase types so TS
+// knows them; the `db` cast below keeps the build green either way.
 // ============================================================
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import CampaignMediaPicker from "@/components/CampaignMediaPicker";
 
-// Local design tokens — mirror the website editor palette so this
-// component looks native wherever it's dropped in.
 const C = {
   orange: "#D73F09",
   border: "rgba(255,255,255,0.08)",
@@ -38,17 +33,13 @@ const C = {
 };
 
 export interface SlotEditorProps {
-  /** e.g. "homepage.hero_carousel" */
   slotKey: string;
-  /** brand_id / campaign_recap_id for scoped slots; omit for static slots */
   scopeId?: string;
-  /** Section heading shown above the grid */
   title?: string;
-  /** Soft cap — shows a gentle warning past this count, doesn't block */
   maxItems?: number;
-  /** When true, exposes a one-line text field (stored on the first row) */
   acceptsText?: boolean;
-  /** Called after any change persists — use it to flip the page's "saved" toast */
+  /** v2: show a per-photo brand-logo picker (Services carousels) */
+  acceptsLogo?: boolean;
   onSaved?: () => void;
 }
 
@@ -59,12 +50,19 @@ interface SlotRow {
   media_id: string | null;
   recap_id: string | null;
   file_url: string | null;
+  logo_url: string | null;
   position: number;
   focal_x: number;
   focal_y: number;
   scale: number;
   text_value: string | null;
   enabled: boolean;
+}
+
+interface BrandLogo {
+  id: string;
+  name: string;
+  logo_primary_url: string | null;
 }
 
 const FOCAL_PRESETS: { label: string; x: number; y: number }[] = [
@@ -81,16 +79,16 @@ export default function SlotEditor({
   title,
   maxItems,
   acceptsText,
+  acceptsLogo,
   onSaved,
 }: SlotEditorProps) {
   const supabase = createBrowserSupabase();
-  // Cast keeps the build green if database.types.ts hasn't been
-  // regenerated to include slot_assignments yet.
-  const db = supabase as any;
+  const db = supabase as any; // keeps build green if types aren't regenerated yet
 
   const [rows, setRows] = useState<SlotRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [brandLogos, setBrandLogos] = useState<BrandLogo[]>([]);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const textCreating = useRef(false);
 
@@ -106,7 +104,16 @@ export default function SlotEditor({
     load();
   }, [load]);
 
-  // ── Add (from the existing media picker) ───────────────────
+  // Brand logos for the per-photo overlay picker (only when needed)
+  useEffect(() => {
+    if (!acceptsLogo) return;
+    supabase
+      .from("brands")
+      .select("id,name,logo_primary_url")
+      .order("name")
+      .then(({ data }: { data: BrandLogo[] | null }) => setBrandLogos(data || []));
+  }, [acceptsLogo]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function addMedia(url: string) {
     const nextPos = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
     await db.from("slot_assignments").insert({
@@ -122,14 +129,12 @@ export default function SlotEditor({
     onSaved?.();
   }
 
-  // ── Remove ─────────────────────────────────────────────────
   async function remove(id: string) {
     await db.from("slot_assignments").delete().eq("id", id);
     await load();
     onSaved?.();
   }
 
-  // ── Reorder (swap positions with the neighbor) ─────────────
   async function move(idx: number, dir: -1 | 1) {
     const j = idx + dir;
     if (j < 0 || j >= rows.length) return;
@@ -143,7 +148,6 @@ export default function SlotEditor({
     onSaved?.();
   }
 
-  // ── Focal / zoom — optimistic local update + 300ms debounced save ──
   function patch(id: string, p: Partial<SlotRow>) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...p } : r)));
     if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
@@ -156,7 +160,6 @@ export default function SlotEditor({
     }, 300);
   }
 
-  // Click/drag on the thumbnail to set the focal point.
   function setFocalFromEvent(id: string, e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
@@ -164,14 +167,11 @@ export default function SlotEditor({
     patch(id, { focal_x: +x.toFixed(3), focal_y: +y.toFixed(3) });
   }
 
-  // ── Text value (optional) — stored on the first row ────────
   async function setText(val: string) {
     if (rows.length > 0) {
       patch(rows[0].id, { text_value: val });
       return;
     }
-    // No rows yet: create one text-only row to hold the value (guarded
-    // so we never insert twice on rapid typing).
     if (textCreating.current) return;
     textCreating.current = true;
     await db.from("slot_assignments").insert({
@@ -189,7 +189,6 @@ export default function SlotEditor({
 
   return (
     <div style={{ marginBottom: 16 }}>
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.text3 }}>
           {title || slotKey}
@@ -200,7 +199,6 @@ export default function SlotEditor({
         </div>
       </div>
 
-      {/* Optional one-line text (pull-quote style slots) */}
       {acceptsText && (
         <input
           value={rows[0]?.text_value ?? ""}
@@ -227,7 +225,7 @@ export default function SlotEditor({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows
-            .filter((r) => r.file_url) // text-only rows have no thumbnail
+            .filter((r) => r.file_url)
             .map((r, idx, arr) => (
               <div
                 key={r.id}
@@ -240,7 +238,6 @@ export default function SlotEditor({
                   borderRadius: 10,
                 }}
               >
-                {/* Thumbnail — click/drag to set focal point */}
                 <div
                   onMouseDown={(e) => setFocalFromEvent(r.id, e)}
                   onMouseMove={(e) => {
@@ -270,7 +267,13 @@ export default function SlotEditor({
                       transform: `scale(${r.scale})`,
                     }}
                   />
-                  {/* focal crosshair marker */}
+                  {/* logo overlay preview */}
+                  {r.logo_url && (
+                    <div style={{ position: "absolute", bottom: 3, right: 3, width: 22, height: 22, borderRadius: 4, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={r.logo_url} alt="" style={{ width: 18, height: 18, objectFit: "contain" }} />
+                    </div>
+                  )}
                   <div
                     style={{
                       position: "absolute",
@@ -288,9 +291,7 @@ export default function SlotEditor({
                   />
                 </div>
 
-                {/* Controls */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-                  {/* Focal presets */}
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {FOCAL_PRESETS.map((p) => {
                       const active = Math.abs(r.focal_x - p.x) < 0.02 && Math.abs(r.focal_y - p.y) < 0.02;
@@ -315,7 +316,6 @@ export default function SlotEditor({
                     })}
                   </div>
 
-                  {/* Zoom */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 10, color: C.text3, width: 32 }}>Zoom</span>
                     <input
@@ -332,14 +332,39 @@ export default function SlotEditor({
                     </span>
                   </div>
 
-                  {/* Row actions */}
+                  {/* v2: per-photo brand logo overlay */}
+                  {acceptsLogo && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 10, color: C.text3, width: 32 }}>Logo</span>
+                      <select
+                        value={r.logo_url ?? ""}
+                        onChange={(e) => patch(r.id, { logo_url: e.target.value || null })}
+                        style={{
+                          flex: 1,
+                          padding: "4px 8px",
+                          background: "#1a1a1a",
+                          border: `1px solid ${C.border2}`,
+                          borderRadius: 6,
+                          color: r.logo_url ? C.text : C.text3,
+                          fontSize: 11,
+                          fontFamily: "Arial,sans-serif",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="">No logo</option>
+                        {brandLogos
+                          .filter((b) => b.logo_primary_url)
+                          .map((b) => (
+                            <option key={b.id} value={b.logo_primary_url as string}>
+                              {b.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", gap: 6, marginTop: "auto" }}>
-                    <button
-                      onClick={() => move(idx, -1)}
-                      disabled={idx === 0}
-                      style={iconBtn(idx === 0)}
-                      title="Move up"
-                    >
+                    <button onClick={() => move(idx, -1)} disabled={idx === 0} style={iconBtn(idx === 0)} title="Move up">
                       ▲
                     </button>
                     <button
@@ -371,7 +396,6 @@ export default function SlotEditor({
               </div>
             ))}
 
-          {/* Add */}
           <button
             onClick={() => setPickerOpen(true)}
             style={{

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
 
 export const revalidate = 60;
 
@@ -95,8 +96,29 @@ async function getCampaigns() {
   }
 }
 
+async function getHeroSlides(): Promise<HeroSlide[]> {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await supabase
+      .from("slot_assignments")
+      .select("file_url, focal_x, focal_y, scale, position")
+      .eq("slot_key", "campaigns.hero")
+      .is("scope_id", null)
+      .order("position", { ascending: true });
+    return (data || [])
+      .filter((r: any) => r.file_url)
+      .map((r: any) => ({ url: r.file_url, focalX: r.focal_x ?? 0.5, focalY: r.focal_y ?? 0.5, scale: r.scale ?? 1 }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function CampaignsPage() {
   const campaigns = await getCampaigns();
+  const heroSlides = await getHeroSlides();
 
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
@@ -104,10 +126,13 @@ export default async function CampaignsPage() {
 
       {/* Top nav rendered globally by SiteNav in layout.tsx. */}
 
-      <section className="hero">
+      <section className="hero" style={{ position: "relative", overflow: "hidden" }}>
+        <HomeHeroSlides slides={heroSlides} />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <div className="eyebrow">Our Work</div>
         <h1 className="d hero-title">394+ Campaigns.<br />One Playbook.</h1>
         <p className="hero-desc">From single-athlete posts to full-scale, multi-school activations â this is what athlete-powered marketing looks like at scale.</p>
+        </div>
       </section>
 
       <section className="section">
