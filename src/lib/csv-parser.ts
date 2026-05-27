@@ -172,11 +172,10 @@ export function detectCollabGroups<T extends CollabSource>(
   const collabGroups: CollabGroup[] = [];
   const idToGroupIds = new Map<string, string[]>();
 
+  type Platform = CollabPostSource["platform"];
+
   grouped.forEach((groupPosts: Post[]) => {
     const base = groupPosts[0];
-    // Every raw platform|url pair — the recap uses these to skip per-athlete
-    // double counting (must include BOTH columns when a URL is duplicated).
-    const rawUrlKeys = groupPosts.map((p) => `${p.platform}|${p.url}`);
 
     // Dedupe by URL -> one source per unique post. Same URL in multiple columns
     // is a data-entry duplicate (counted once); prefer the IG Reel label for it.
@@ -186,6 +185,8 @@ export function detectCollabGroups<T extends CollabSource>(
       byUrl.get(p.url)!.push(p);
     });
     const sources: CollabPostSource[] = [];
+    // url -> the platform its deduped source resolved to (drives rawUrlKey ownership).
+    const platformByUrl = new Map<string, Platform>();
     byUrl.forEach((dupes: Post[]) => {
       const reel = dupes.find((d) => d.platform === "ig_reel");
       const withMetrics = dupes.find((d) =>
@@ -197,56 +198,81 @@ export function detectCollabGroups<T extends CollabSource>(
         metrics: rep.metrics,
         combinedEngagementRate: rep.combinedEngagementRate,
       });
+      platformByUrl.set(rep.url, rep.platform);
     });
 
-    // Display metrics: single post -> its metrics; multiple posts -> summed.
-    let mergedMetrics: CollabMetrics;
-    if (sources.length === 1) {
-      mergedMetrics = { ...sources[0].metrics };
-    } else {
-      const acc: Record<string, number> = {};
-      for (const s of sources) {
-        for (const mk of METRIC_KEYS) {
-          const v = (s.metrics as Record<string, number | undefined>)[mk];
-          if (v != null) acc[mk] = (acc[mk] || 0) + v;
-        }
-      }
-      mergedMetrics = acc as CollabMetrics;
+    // HYBRID: emit one card PER PLATFORM, not one merged card per athlete set.
+    // A team that posted both a feed and a reel (e.g. UF Softball) yields two
+    // groups — a feed group and a reel group — each with its own metrics. The
+    // URL dedupe above already collapsed a URL pasted into both columns into a
+    // single (reel-preferred) source, so that case stays one card, not split.
+    const sourcesByPlatform = new Map<Platform, CollabPostSource[]>();
+    for (const s of sources) {
+      if (!sourcesByPlatform.has(s.platform)) sourcesByPlatform.set(s.platform, []);
+      sourcesByPlatform.get(s.platform)!.push(s);
+    }
+    // Partition the raw platform|url pairs by the platform that owns each URL so
+    // each group's rawUrlKeys still union to the full per-athlete skip-set that
+    // computeStats relies on (no post counted twice).
+    const rawKeysByPlatform = new Map<Platform, string[]>();
+    for (const p of groupPosts) {
+      const owner = platformByUrl.get(p.url) ?? p.platform;
+      if (!rawKeysByPlatform.has(owner)) rawKeysByPlatform.set(owner, []);
+      rawKeysByPlatform.get(owner)!.push(`${p.platform}|${p.url}`);
     }
 
     // Combined followers is fixed per athlete set — never summed across posts.
     const combinedFollowers = base.combinedFollowers;
-    const combinedEngagementRate = sources.length === 1
-      ? sources[0].combinedEngagementRate
-      : (combinedFollowers > 0 && mergedMetrics.totalEngagements != null
-          ? (mergedMetrics.totalEngagements / combinedFollowers) * 100
-          : 0);
 
-    const distinctPlatforms = PLATFORM_ORDER.filter((pl) => sources.some((s) => s.platform === pl));
-    const platformLabel = distinctPlatforms.map((pl) => PLATFORM_NAME[pl]).join(" + ");
-    const primaryPlatform = distinctPlatforms[0] || base.platform;
-    const uniqueUrls = Array.from(new Set(sources.map((s) => s.url))).sort();
-    // Single-post groups keep the legacy id (`platform-hash(url)`) so collab
-    // media keyed by the old id still resolves.
-    const groupId = `${primaryPlatform}-${hashString(uniqueUrls.join("|"))}`;
+    for (const platform of PLATFORM_ORDER) {
+      const platSources = sourcesByPlatform.get(platform);
+      if (!platSources || platSources.length === 0) continue;
 
-    collabGroups.push({
-      id: groupId,
-      url: sources[0]?.url || base.url,
-      platform: primaryPlatform,
-      platformLabel,
-      sources,
-      rawUrlKeys,
-      athleteIds: base.athleteIds,
-      athleteNames: base.athleteNames,
-      combinedFollowers,
-      metrics: mergedMetrics,
-      combinedEngagementRate,
-    });
+      // Display metrics: single post -> its metrics; multiple posts -> summed.
+      let mergedMetrics: CollabMetrics;
+      if (platSources.length === 1) {
+        mergedMetrics = { ...platSources[0].metrics };
+      } else {
+        const acc: Record<string, number> = {};
+        for (const s of platSources) {
+          for (const mk of METRIC_KEYS) {
+            const v = (s.metrics as Record<string, number | undefined>)[mk];
+            if (v != null) acc[mk] = (acc[mk] || 0) + v;
+          }
+        }
+        mergedMetrics = acc as CollabMetrics;
+      }
 
-    for (const id of base.athleteIds) {
-      if (!idToGroupIds.has(id)) idToGroupIds.set(id, []);
-      idToGroupIds.get(id)!.push(groupId);
+      const combinedEngagementRate = platSources.length === 1
+        ? platSources[0].combinedEngagementRate
+        : (combinedFollowers > 0 && mergedMetrics.totalEngagements != null
+            ? (mergedMetrics.totalEngagements / combinedFollowers) * 100
+            : 0);
+
+      const uniqueUrls = Array.from(new Set(platSources.map((s) => s.url))).sort();
+      // `platform-hash(url)` id is stable: single-platform teams keep their old
+      // id (so existing collab media still resolves), and the two halves of a
+      // feed+reel team get distinct ids.
+      const groupId = `${platform}-${hashString(uniqueUrls.join("|"))}`;
+
+      collabGroups.push({
+        id: groupId,
+        url: platSources[0].url,
+        platform,
+        platformLabel: PLATFORM_NAME[platform],
+        sources: platSources,
+        rawUrlKeys: rawKeysByPlatform.get(platform) || [],
+        athleteIds: base.athleteIds,
+        athleteNames: base.athleteNames,
+        combinedFollowers,
+        metrics: mergedMetrics,
+        combinedEngagementRate,
+      });
+
+      for (const id of base.athleteIds) {
+        if (!idToGroupIds.has(id)) idToGroupIds.set(id, []);
+        idToGroupIds.get(id)!.push(groupId);
+      }
     }
   });
 

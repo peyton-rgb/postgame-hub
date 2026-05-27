@@ -1,7 +1,11 @@
 // src/app/api/drive/import/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/drive/import
-// Body: { fileId, fileName, athleteId | collabContainerId, slot?, recapId }
+// Body: { fileId, fileName, athleteId | collabGroupId | collabContainerId, slot?, recapId }
+//
+// collabGroupId is the synthetic per-platform collab group id (e.g.
+// "ig_reel-abc123f") that the dashboard cards and the recap both key media on.
+// collabContainerId is kept as a legacy fallback.
 //
 // Downloads a file from Google Drive and uploads it to
 // Supabase storage. Inserts a media record matching the
@@ -22,18 +26,22 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fileId, fileName, athleteId, collabContainerId, slot, recapId } = body;
+    const { fileId, fileName, athleteId, collabGroupId, collabContainerId, slot, recapId } = body;
 
-    if (!fileId || !fileName || !recapId || (!athleteId && !collabContainerId)) {
+    // The collab destination key: prefer the synthetic group id, fall back to a
+    // legacy container id. Stamped into drive_file_id as "collab:<id>".
+    const collabId = collabGroupId ?? collabContainerId;
+
+    if (!fileId || !fileName || !recapId || (!athleteId && !collabId)) {
       return NextResponse.json(
-        { error: "Missing required fields: fileId, fileName, recapId, and one of athleteId/collabContainerId" },
+        { error: "Missing required fields: fileId, fileName, recapId, and one of athleteId/collabGroupId" },
         { status: 400 }
       );
     }
 
     const supabase = createServiceSupabase();
     // Storage path segment: athlete folder, or a collab-<id> folder for collab posts.
-    const destSegment = athleteId ?? `collab-${collabContainerId}`;
+    const destSegment = athleteId ?? `collab-${collabId}`;
     const storagePath = buildStoragePath(recapId, destSegment, fileName);
 
     const { publicUrl, isVideo } = await downloadAndUpload(supabase, {
@@ -60,7 +68,7 @@ export async function POST(request: NextRequest) {
           file_url: publicUrl,
           thumbnail_url: isVideo ? null : publicUrl,
           is_video_thumbnail: false,
-          drive_file_id: `collab:${collabContainerId}`,
+          drive_file_id: `collab:${collabId}`,
           // feed/reel slot for the team collab card; null if the caller
           // didn't specify one (legacy / untargeted collab import).
           slot: slot === "feed" || slot === "reel" ? slot : null,
