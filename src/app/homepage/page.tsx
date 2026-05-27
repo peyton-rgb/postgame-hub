@@ -4,6 +4,8 @@ import AnimateIn from "@/components/AnimateIn";
 import Image from "next/image";
 import ScrollVideo from "@/components/ScrollVideo";
 import BrandCarousel from "@/components/BrandCarousel";
+import { createPlainSupabase } from "@/lib/supabase";
+import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
 
 export const revalidate = 60;
 
@@ -63,6 +65,25 @@ export default async function HomepagePage() {
   if (!data) return <Fallback />;
 
   const { page, sections } = data;
+  // Hero carousel images (Phase 2 — slot_assignments). Empty = text-only hero.
+  let heroSlides: HeroSlide[] = [];
+  try {
+    const sb = createPlainSupabase();
+    const { data: slotRows } = await (sb as any)
+      .from("slot_assignments")
+      .select("file_url, focal_x, focal_y, scale, position")
+      .eq("slot_key", "homepage.hero_carousel")
+      .is("scope_id", null)
+      .order("position", { ascending: true });
+    heroSlides = (slotRows || [])
+      .filter((r: any) => r.file_url)
+      .map((r: any) => ({
+        url: r.file_url as string,
+        focalX: r.focal_x ?? 0.5,
+        focalY: r.focal_y ?? 0.5,
+        scale: r.scale ?? 1,
+      }));
+  } catch {}
   const raw = (k: string) => getSetting(page, k);
   const s = (k: string) => settingText(raw(k));
   const ps = (page.settings as Record<string, unknown>)?.public_sections as Record<string, boolean> | undefined;
@@ -156,6 +177,7 @@ export default async function HomepagePage() {
 
       {/* Hero */}
       <section className="hp-hero">
+        <HomeHeroSlides slides={heroSlides} />
         <div className="hp-hero-inner">
           {s("hero_eyebrow") && <div className="pg-eyebrow" style={{marginBottom:20}}>{s("hero_eyebrow")}</div>}
           <h1 className="hp-hero-title d hp-title-anim">{s("hero_title") || "We Build\nAthlete-Powered\nCampaigns"}</h1>

@@ -5,6 +5,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import CampaignMediaPicker from "@/components/CampaignMediaPicker";
+import SlotEditor from "@/components/SlotEditor";
 import DealList from "@/components/DealList";
 import PressList from "@/components/PressList";
 import CaseStudyList from "@/components/CaseStudyList";
@@ -224,6 +225,19 @@ function HomepageEditor({ onSaved }: { onSaved: () => void }) {
   return (
     <>
       <div style={S.editScroll}>
+
+        {/* Hero Carousel (Phase 2 — slot_assignments) */}
+        <SectionCard title="Hero Carousel">
+          <SlotEditor
+            slotKey="homepage.hero_carousel"
+            title="Hero Images"
+            maxItems={8}
+            onSaved={onSaved}
+          />
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>
+            Cross-campaign images shown behind the homepage headline. Saves instantly — hit Republish (or wait ~60s) to push live.
+          </div>
+        </SectionCard>
 
         {/* Hero */}
         <SectionCard title="Hero">
