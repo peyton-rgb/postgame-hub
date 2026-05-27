@@ -257,6 +257,8 @@ export interface Media {
   sort_order: number;
   is_video_thumbnail: boolean;
   drive_file_id?: string | null;
+  /** For collab media only: which slot of the team collab card this asset fills. */
+  slot?: "feed" | "reel" | null;
   created_at: string;
 }
 

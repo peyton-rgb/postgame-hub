@@ -1,7 +1,7 @@
 // src/app/api/drive/import/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/drive/import
-// Body: { fileId, fileName, athleteId, recapId }
+// Body: { fileId, fileName, athleteId | collabContainerId, slot?, recapId }
 //
 // Downloads a file from Google Drive and uploads it to
 // Supabase storage. Inserts a media record matching the
@@ -22,7 +22,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fileId, fileName, athleteId, collabContainerId, recapId } = body;
+    const { fileId, fileName, athleteId, collabContainerId, slot, recapId } = body;
 
     if (!fileId || !fileName || !recapId || (!athleteId && !collabContainerId)) {
       return NextResponse.json(
@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
           thumbnail_url: isVideo ? null : publicUrl,
           is_video_thumbnail: false,
           drive_file_id: `collab:${collabContainerId}`,
+          // feed/reel slot for the team collab card; null if the caller
+          // didn't specify one (legacy / untargeted collab import).
+          slot: slot === "feed" || slot === "reel" ? slot : null,
         };
 
     const { data: insertedMedia, error: insertError } = await supabase

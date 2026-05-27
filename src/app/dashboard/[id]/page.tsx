@@ -13,6 +13,7 @@ import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 // heic2any is browser-only; imported dynamically inside convertHeicIfNeeded()
 import DrivePicker from "@/components/DrivePicker";
+import TeamCollabCard from "@/components/TeamCollabCard";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { computeStats, pct } from "@/lib/recap-helpers";
@@ -760,6 +761,25 @@ function SortableAthleteRow({
   );
 }
 
+// A team collab post surfaced on the Upload Content tab. Driven by a
+// collab_containers row (a detected team Drive folder). Its media lives in
+// the media table as drive_file_id = "collab:<id>", split feed/reel by slot.
+type CollabCard = {
+  id: string;               // collab_containers.id
+  teamName: string;
+  school: string | null;
+  sport: string | null;
+  driveFolderId: string | null;
+  participantNames: string[];
+};
+
+// Where a Drive-picker import should land when launched from a collab slot.
+type PickerSlotDest = {
+  containerId: string;
+  driveFolderId: string | null;
+  slot: "feed" | "reel";
+};
+
 export default function CampaignEditor() {
   const params = useParams();
   const id = params.id as string;
@@ -777,6 +797,8 @@ export default function CampaignEditor() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [media, setMedia] = useState<Record<string, Media[]>>({});
+  const [collabCards, setCollabCards] = useState<CollabCard[]>([]);
+  const [collabSlotDest, setCollabSlotDest] = useState<PickerSlotDest | null>(null);
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
   const [loading, setLoading] = useState(true);
@@ -895,6 +917,28 @@ export default function CampaignEditor() {
     });
     setMedia(grouped);
     setLoading(false);
+
+    // Team collab cards — driven by collab_containers (detected team Drive
+    // folders). Participant names come through the collab_container_athletes
+    // junction -> athletes. Their feed/reel media is the "collab:<id>" media
+    // already grouped above (split by slot at render time).
+    const { data: containers } = await supabase
+      .from("collab_containers")
+      .select("id, team_name, school, sport, drive_folder_id, collab_container_athletes(included, athletes(name, sort_order))")
+      .eq("campaign_id", id);
+    setCollabCards(
+      (containers || []).map((c: any) => ({
+        id: c.id,
+        teamName: c.team_name,
+        school: c.school ?? null,
+        sport: c.sport ?? null,
+        driveFolderId: c.drive_folder_id ?? null,
+        participantNames: (c.collab_container_athletes || [])
+          .filter((m: any) => m.included !== false && m.athletes)
+          .sort((a: any, b: any) => (a.athletes?.sort_order ?? 0) - (b.athletes?.sort_order ?? 0))
+          .map((m: any) => m.athletes.name),
+      })),
+    );
 
     // Fetch brand kit logos if brand_id exists
     if (camp?.brand_id) {
@@ -1430,11 +1474,20 @@ export default function CampaignEditor() {
     return { current, total, currentFile: "", succeeded, failed, errors };
   }
 
+  // Open the Drive picker scoped to a team folder + a specific slot. The
+  // picker resolves the collab_containers row from the folder id itself, so we
+  // only need the folder + slot here.
+  function openCollabSlot(card: CollabCard, slot: "feed" | "reel") {
+    setCollabSlotDest({ containerId: card.id, driveFolderId: card.driveFolderId, slot });
+    setDriveImportOpen(true);
+  }
+
   // Import team-pool files to a team's collab container. One media row per file,
   // stored with athlete_id = NULL + drive_file_id "collab:<containerId>".
   async function handleImportToCollab(
     files: { id: string; name: string }[],
     containerId: string,
+    slot: "feed" | "reel",
   ) {
     let succeeded = 0, failed = 0;
     const errors: Array<{ file: string; error: string }> = [];
@@ -1443,7 +1496,7 @@ export default function CampaignEditor() {
         const res = await fetch("/api/drive/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId: file.id, fileName: file.name, collabContainerId: containerId, recapId: id }),
+          body: JSON.stringify({ fileId: file.id, fileName: file.name, collabContainerId: containerId, slot, recapId: id }),
         });
         if (!res.ok) {
           const eb = await res.json().catch(() => ({}));
@@ -2636,6 +2689,42 @@ export default function CampaignEditor() {
               )}
             </div>
 
+            {/* Team Collab Posts — one card per detected team Drive folder
+                (collab_containers). Each card has side-by-side Feed + Reel
+                slots; picking assets writes collab media with the matching
+                `slot`. Sits ABOVE the CSV-detected grid and the individual
+                athlete cards. */}
+            {collabCards.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-black uppercase tracking-wider">Team Collab Posts</h3>
+                  <span className="text-xs text-gray-500 font-bold">
+                    {collabCards.filter((c) => (media[c.id] || []).length > 0).length} / {collabCards.length} with content
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {collabCards.map((card) => {
+                    const items = media[card.id] || [];
+                    // NULL-slot (legacy) collab rows default into Feed so
+                    // nothing ever disappears from view.
+                    const feedMedia = items.filter((m) => m.slot !== "reel");
+                    const reelMedia = items.filter((m) => m.slot === "reel");
+                    return (
+                      <TeamCollabCard
+                        key={card.id}
+                        teamName={card.teamName}
+                        participantNames={card.participantNames}
+                        feedMedia={feedMedia}
+                        reelMedia={reelMedia}
+                        onSlotClick={(slot) => openCollabSlot(card, slot)}
+                        onRemoveMedia={(mediaId) => removeMedia(card.id, mediaId)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Collab Posts Grid — one card per detected collab group (same
                 content shared by 2+ featured athletes). Stored in the media
                 table with athlete_id = NULL and drive_file_id = "collab:<id>". */}
@@ -2932,13 +3021,14 @@ export default function CampaignEditor() {
 
             <DrivePicker
               isOpen={driveImportOpen}
-              onClose={() => setDriveImportOpen(false)}
+              onClose={() => { setDriveImportOpen(false); setCollabSlotDest(null); }}
               folderId={campaign?.drive_folder_id}
               recapId={id}
               onFolderConnected={handleFolderConnected}
               athletes={selectedAthletes.map((a) => ({ id: a.id, name: a.name, school: a.school, sport: a.sport }))}
               onImport={handleDriveImport}
               onImportToCollab={handleImportToCollab}
+              initialDestination={collabSlotDest ? { driveFolderId: collabSlotDest.driveFolderId, slot: collabSlotDest.slot } : null}
             />
 
             {tier3PickerAthlete && campaign?.admin_campaign_id && (

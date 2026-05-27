@@ -66,7 +66,11 @@ interface DrivePickerProps {
   onImportToCollab: (
     files: DriveFile[],
     containerId: string,
+    slot: "feed" | "reel",
   ) => Promise<{ succeeded: number; failed: number; errors: Array<{ file: string; error: string }> }>;
+  // When the picker is opened from a collab card slot, this pre-scopes it to
+  // the team's Drive folder and remembers which slot (feed/reel) to fill.
+  initialDestination?: { driveFolderId: string | null; slot: "feed" | "reel" } | null;
 }
 
 interface ImportProgress {
@@ -118,11 +122,13 @@ export default function DrivePicker({
   athletes,
   onImport,
   onImportToCollab,
+  initialDestination,
 }: DrivePickerProps) {
   const supabase = useMemo(() => createBrowserSupabase(), []);
   const [aliasMap, setAliasMap] = useState<SchoolAliasMap>(new Map());
   const [teamFolders, setTeamFolders] = useState<DetectedTeam[]>([]);
   const [activeTeamFolderId, setActiveTeamFolderId] = useState<string | null>(null);
+  const [activeSlot, setActiveSlot] = useState<"feed" | "reel">("feed");
   const [containerByFolderId, setContainerByFolderId] = useState<Record<string, string>>({});
   const [teamPoolSelection, setTeamPoolSelection] = useState<Set<string>>(new Set());
   const [collabImporting, setCollabImporting] = useState(false);
@@ -153,6 +159,17 @@ export default function DrivePicker({
     errors: [],
   });
   const [wasAborted, setWasAborted] = useState(false);
+
+  // When opened from a collab card slot, jump straight to that team's folder
+  // and remember which slot (feed/reel) the imported files should fill.
+  useEffect(() => {
+    if (!isOpen || !initialDestination) return;
+    setActiveSlot(initialDestination.slot);
+    if (initialDestination.driveFolderId) {
+      setActiveTeamFolderId(initialDestination.driveFolderId);
+      setActiveAthleteId(null);
+    }
+  }, [isOpen, initialDestination]);
 
   const isImporting = mode === "importing";
   const prevIsOpen = useRef<boolean>(false);
@@ -380,7 +397,7 @@ export default function DrivePicker({
     setCollabImporting(true);
     setCollabMsg(null);
     try {
-      const res = await onImportToCollab(files, activeContainerId);
+      const res = await onImportToCollab(files, activeContainerId, activeSlot);
       setAssignedFileIds((prev) => {
         const n = new Set(prev);
         files.forEach((f) => n.add(f.id));
@@ -1119,14 +1136,31 @@ export default function DrivePicker({
         {/* Footer */}
         {mode === "selecting" && driveData && !isLoading && (
           <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-black/40">
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-gray-400 flex items-center gap-3">
+              {isTeamView && (
+                <div className="flex items-center gap-1 bg-black/40 rounded-lg p-0.5 border border-white/10">
+                  {(["feed", "reel"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setActiveSlot(s)}
+                      className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-colors ${
+                        activeSlot === s
+                          ? "bg-[#D73F09] text-white"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
               {isTeamView ? (
                 collabMsg ? (
                   <span className="text-gray-300">{collabMsg}</span>
                 ) : teamPoolSelection.size > 0 ? (
                   <>
                     <span className="font-bold text-white">{teamPoolSelection.size}</span> files
-                    selected for Collab Post
+                    selected for {activeSlot === "feed" ? "Feed" : "Reel"}
                   </>
                 ) : (
                   "No files selected"
@@ -1158,7 +1192,7 @@ export default function DrivePicker({
                 >
                   {collabImporting
                     ? "Importing…"
-                    : `Import${teamPoolSelection.size > 0 ? ` ${teamPoolSelection.size}` : ""} to Collab Post`}
+                    : `Import${teamPoolSelection.size > 0 ? ` ${teamPoolSelection.size}` : ""} to ${activeSlot === "feed" ? "Feed" : "Reel"}`}
                 </button>
               ) : (
                 <button
