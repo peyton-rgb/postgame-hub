@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Campaign, Athlete, Media } from "@/lib/types";
 import { PostgameLogo } from "@/components/PostgameLogo";
+import DrivePicker from "@/components/DrivePicker";
+import { extractDriveFolderId } from "@/lib/drive-url";
 import Link from "next/link";
 
 interface Brand {
@@ -30,9 +32,36 @@ export default function MediaLibrary() {
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState<Media | null>(null);
 
+  // ── Drive-import empty-state flow ──
+  const [urlInput, setUrlInput] = useState("");
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
+  // When the folder is flat (no athlete subfolders) we show a warning instead.
+  const [flatInfo, setFlatInfo] = useState<{ fileCount: number } | null>(null);
+  // When the campaign is already linked to a different folder, confirm first.
+  const [confirmReplace, setConfirmReplace] = useState<
+    { existingFolderId: string; newFolderId: string } | null
+  >(null);
+  // DrivePicker wiring.
+  const [drivePickerOpen, setDrivePickerOpen] = useState(false);
+  const [drivePickerAthletes, setDrivePickerAthletes] = useState<
+    { id: string; name: string; sort_order: number }[]
+  >([]);
+  const [drivePickerFolderId, setDrivePickerFolderId] = useState<string | null>(null);
+  const [drivePickerCampaignId, setDrivePickerCampaignId] = useState<string | null>(null);
+  const [alreadyImportedFileIds, setAlreadyImportedFileIds] = useState<string[]>([]);
+
   useEffect(() => {
     loadData();
   }, []);
+
+  // Reset the import UI whenever we navigate to a different campaign's view.
+  function resetImportUI() {
+    setUrlInput("");
+    setDiscoverError(null);
+    setFlatInfo(null);
+    setConfirmReplace(null);
+  }
 
   async function loadData() {
     setLoading(true);
@@ -78,6 +107,7 @@ export default function MediaLibrary() {
   }
 
   async function openCampaign(campaign: Campaign, brandName: string) {
+    resetImportUI();
     setLoading(true);
     // Fetch athletes and their media counts in parallel
     const [athletesRes, mediaRes] = await Promise.all([
@@ -113,12 +143,138 @@ export default function MediaLibrary() {
   }
 
   function goBack() {
+    resetImportUI();
     if (view.level === "media") {
       openCampaign(view.campaign, view.brand);
     } else if (view.level === "athletes") {
       setView({ level: "campaigns", brand: view.brand });
     } else if (view.level === "campaigns") {
       setView({ level: "brands" });
+    }
+  }
+
+  // Discover a Drive folder's structure for the current campaign, then open
+  // the existing DrivePicker (per-athlete) or show the flat-folder warning.
+  async function handleContinue(force = false) {
+    if (view.level !== "athletes") return;
+    const campaignId = view.campaign.id;
+    setDiscoverError(null);
+    setDiscovering(true);
+    try {
+      const res = await fetch("/api/drive/discover-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderUrl: urlInput, campaignId, force }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setDiscoverError(data?.error || `Something went wrong (HTTP ${res.status}).`);
+        return;
+      }
+
+      if (data.shape === "confirm_replace") {
+        setConfirmReplace({
+          existingFolderId: data.existingFolderId,
+          newFolderId: data.newFolderId,
+        });
+        return;
+      }
+
+      if (data.shape === "flat") {
+        setFlatInfo({ fileCount: data.fileCount ?? 0 });
+        return;
+      }
+
+      if (data.shape === "per_athlete") {
+        setConfirmReplace(null);
+        setFlatInfo(null);
+        setDrivePickerAthletes(data.athletes || []);
+        setDrivePickerFolderId(data.folderId);
+        setDrivePickerCampaignId(campaignId);
+        setAlreadyImportedFileIds(data.alreadyImportedFileIds || []);
+        setDrivePickerOpen(true);
+        return;
+      }
+
+      setDiscoverError("Unexpected response from the server.");
+    } catch (e: any) {
+      setDiscoverError(String(e?.message || e));
+    } finally {
+      setDiscovering(false);
+    }
+  }
+
+  // onImport callback for the DrivePicker — mirrors the recap editor's
+  // handleDriveImport: POST each selected file to /api/drive/import, tying
+  // it to its athlete, and report progress back to the picker.
+  async function handleMediaLibraryImport(
+    selections: Record<string, { id: string; name: string }[]>,
+    onProgress: (p: {
+      current: number;
+      total: number;
+      currentFile: string;
+      succeeded: number;
+      failed: number;
+      errors: Array<{ file: string; error: string }>;
+    }) => void,
+    signal?: AbortSignal
+  ) {
+    const total = Object.values(selections).reduce((sum, files) => sum + files.length, 0);
+    let current = 0;
+    let succeeded = 0;
+    let failed = 0;
+    const errors: Array<{ file: string; error: string }> = [];
+
+    outer: for (const [athleteId, files] of Object.entries(selections)) {
+      for (const file of files) {
+        if (signal?.aborted) break outer;
+
+        const currentFile = String(file?.name || "Unknown file");
+        onProgress({ current, total, currentFile, succeeded, failed, errors: [...errors] });
+
+        try {
+          const res = await fetch("/api/drive/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileId: file.id,
+              fileName: file.name,
+              athleteId,
+              recapId: drivePickerCampaignId,
+            }),
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            failed++;
+            errors.push({
+              file: currentFile,
+              error: String(errBody?.error || errBody?.message || `HTTP ${res.status}`),
+            });
+          } else {
+            succeeded++;
+          }
+        } catch (e: any) {
+          failed++;
+          errors.push({ file: currentFile, error: String(e?.message || e) });
+        } finally {
+          current++;
+          onProgress({ current, total, currentFile, succeeded, failed, errors: [...errors] });
+        }
+      }
+    }
+
+    return { current, total, currentFile: "", succeeded, failed, errors };
+  }
+
+  // Close the picker and refresh the campaign view so freshly-imported
+  // athletes and files appear.
+  function handleDrivePickerClose() {
+    setDrivePickerOpen(false);
+    if (view.level === "athletes") {
+      resetImportUI();
+      openCampaign(view.campaign, view.brand);
     }
   }
 
@@ -300,14 +456,125 @@ export default function MediaLibrary() {
               <>
                 <BackButton />
                 {athletes.length === 0 ? (
-                  <div className="text-center py-20">
-                    <p className="text-gray-500 mb-2">No athletes in this campaign.</p>
-                    <Link
-                      href={`/dashboard/${view.campaign.id}`}
-                      className="text-[#D73F09] font-bold text-sm hover:underline"
-                    >
-                      Add athletes in the campaign editor
-                    </Link>
+                  <div className="max-w-lg mx-auto py-16">
+                    {flatInfo ? (
+                      /* ── Flat-folder warning ── */
+                      <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl leading-none">⚠️</span>
+                          <div>
+                            <h3 className="font-black text-white mb-2">
+                              No athlete subfolders found.
+                            </h3>
+                            <p className="text-sm text-gray-400">
+                              {flatInfo.fileCount > 0 ? (
+                                <>
+                                  This folder has{" "}
+                                  <span className="font-bold text-white">
+                                    {flatInfo.fileCount}
+                                  </span>{" "}
+                                  loose file{flatInfo.fileCount !== 1 ? "s" : ""}, but the Hub
+                                  needs subfolders (one per athlete) to import. Add athletes to
+                                  this campaign first in the recap editor, then come back.
+                                </>
+                              ) : (
+                                <>
+                                  This folder is empty. Add athlete subfolders in Drive, or add
+                                  athletes to this campaign in the recap editor, then come back.
+                                </>
+                              )}
+                            </p>
+                            <div className="flex flex-wrap gap-4 mt-4">
+                              <a
+                                href={`/dashboard/${view.campaign.id}`}
+                                target="_blank"
+                                rel="noopener"
+                                className="text-[#D73F09] font-bold text-sm hover:underline"
+                              >
+                                → Open campaign in recap editor
+                              </a>
+                              <button
+                                onClick={() => {
+                                  setFlatInfo(null);
+                                  setUrlInput("");
+                                  setDiscoverError(null);
+                                }}
+                                className="text-gray-400 font-bold text-sm hover:text-white"
+                              >
+                                ← Try a different URL
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : confirmReplace ? (
+                      /* ── Confirm replacing an existing linked folder ── */
+                      <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
+                        <h3 className="font-black text-white mb-2">
+                          This campaign is already linked to a different Drive folder.
+                        </h3>
+                        <p className="text-sm text-gray-400 mb-4">
+                          Continuing will link it to the new folder you pasted. Existing imported
+                          files stay; new athlete subfolders will be added.
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            disabled={discovering}
+                            onClick={() => handleContinue(true)}
+                            className="bg-[#D73F09] hover:bg-[#ff5722] px-5 py-2.5 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 transition-colors"
+                          >
+                            {discovering ? "Working…" : "Replace & continue"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmReplace(null)}
+                            className="text-gray-400 font-bold text-sm hover:text-white"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── Empty-state Drive-import form ── */
+                      <div className="text-center">
+                        <h2 className="text-xl font-black text-white mb-2">
+                          This campaign has no content yet
+                        </h2>
+                        <p className="text-sm text-gray-400 mb-6">
+                          Paste a Google Drive folder URL to import content for each athlete
+                        </p>
+                        <div className="text-left">
+                          <input
+                            value={urlInput}
+                            onChange={(e) => {
+                              setUrlInput(e.target.value);
+                              setDiscoverError(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "Enter" &&
+                                !discovering &&
+                                extractDriveFolderId(urlInput)
+                              ) {
+                                handleContinue();
+                              }
+                            }}
+                            placeholder="https://drive.google.com/drive/folders/..."
+                            aria-label="Paste a Drive folder URL to import content"
+                            className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
+                          />
+                          {discoverError && (
+                            <div className="text-sm text-red-400 mt-2">{discoverError}</div>
+                          )}
+                          <button
+                            disabled={discovering || !extractDriveFolderId(urlInput)}
+                            onClick={() => handleContinue()}
+                            className="w-full mt-4 bg-[#D73F09] hover:bg-[#ff5722] px-6 py-3 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {discovering ? "Scanning folder…" : "Continue"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -421,6 +688,30 @@ export default function MediaLibrary() {
           </>
         )}
       </div>
+
+      {/* Drive import picker (reuses the recap editor's pipeline) */}
+      {drivePickerCampaignId && (
+        <DrivePicker
+          isOpen={drivePickerOpen}
+          onClose={handleDrivePickerClose}
+          folderId={drivePickerFolderId}
+          recapId={drivePickerCampaignId}
+          athletes={drivePickerAthletes}
+          alreadyImportedFileIds={alreadyImportedFileIds}
+          onFolderConnected={async () => {
+            /* no-op: folder is saved by /api/drive/discover-folder */
+          }}
+          onImport={handleMediaLibraryImport}
+          onImportToCollab={async (files) => ({
+            succeeded: 0,
+            failed: files.length,
+            errors: files.map((f) => ({
+              file: f.name,
+              error: "Collab import isn't available from the Media Library.",
+            })),
+          })}
+        />
+      )}
 
       {/* Lightbox */}
       {lightbox && (

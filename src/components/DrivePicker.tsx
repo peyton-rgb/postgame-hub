@@ -71,6 +71,8 @@ interface DrivePickerProps {
   // When the picker is opened from a collab card slot, this pre-scopes it to
   // the team's Drive folder and remembers which slot (feed/reel) to fill.
   initialDestination?: { driveFolderId: string | null; slot: "feed" | "reel" } | null;
+  /** Drive file IDs already imported for this campaign. Greyed out and not selectable. */
+  alreadyImportedFileIds?: string[];
 }
 
 interface ImportProgress {
@@ -123,8 +125,15 @@ export default function DrivePicker({
   onImport,
   onImportToCollab,
   initialDestination,
+  alreadyImportedFileIds,
 }: DrivePickerProps) {
   const supabase = useMemo(() => createBrowserSupabase(), []);
+  // Drive files already imported for this campaign — greyed out, not selectable.
+  // Empty when the prop is omitted (recap editor usage is unaffected).
+  const alreadyImportedSet = useMemo(
+    () => new Set(alreadyImportedFileIds ?? []),
+    [alreadyImportedFileIds]
+  );
   const [aliasMap, setAliasMap] = useState<SchoolAliasMap>(new Map());
   const [teamFolders, setTeamFolders] = useState<DetectedTeam[]>([]);
   const [activeTeamFolderId, setActiveTeamFolderId] = useState<string | null>(null);
@@ -451,11 +460,14 @@ export default function DrivePicker({
     (isTeamView ? teamPoolSelection : activeAthleteId ? selections[activeAthleteId] : undefined) ||
     new Set<string>();
   const toggleCurrent = (fileId: string) => {
+    if (alreadyImportedSet.has(fileId)) return; // already-imported files aren't selectable
     if (isTeamView) toggleTeamPoolFile(fileId);
     else if (activeAthleteId) toggleFile(activeAthleteId, fileId);
   };
   const selectAllCurrent = () => {
-    const ids = displayFiles.map((d) => d.file.id);
+    const ids = displayFiles
+      .map((d) => d.file.id)
+      .filter((fid) => !alreadyImportedSet.has(fid));
     if (isTeamView) setTeamPoolSelection(new Set(ids));
     else if (activeAthleteId) setSelections((prev) => ({ ...prev, [activeAthleteId]: new Set(ids) }));
   };
@@ -546,7 +558,11 @@ export default function DrivePicker({
       }
 
       const files: DriveFile[] = [];
-      selectedIds.forEach((fid) => { const f = candidates.get(fid); if (f) files.push(f); });
+      selectedIds.forEach((fid) => {
+        if (alreadyImportedSet.has(fid)) return; // never re-import an already-imported file
+        const f = candidates.get(fid);
+        if (f) files.push(f);
+      });
       if (files.length) payload[athlete.id] = files;
     }
 
@@ -1062,16 +1078,19 @@ export default function DrivePicker({
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                     {displayFiles.map(({ file, teamName }) => {
                       const isVideo = file.mimeType.startsWith("video/");
-                      const isSelected = currentSelectedIds.has(file.id);
+                      const isAlreadyImported = alreadyImportedSet.has(file.id);
+                      const isSelected = !isAlreadyImported && currentSelectedIds.has(file.id);
                       const wasAssigned = assignedFileIds.has(file.id);
                       return (
                         <div
                           key={file.id}
                           onClick={() => toggleCurrent(file.id)}
-                          className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                            isSelected
-                              ? "border-[#D73F09] ring-2 ring-[#D73F09]/30"
-                              : "border-white/10 hover:border-white/30"
+                          className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
+                            isAlreadyImported
+                              ? "border-white/10 opacity-40 cursor-default"
+                              : isSelected
+                              ? "border-[#D73F09] ring-2 ring-[#D73F09]/30 cursor-pointer"
+                              : "border-white/10 hover:border-white/30 cursor-pointer"
                           }`}
                         >
                           <div className="aspect-square bg-black relative">
@@ -1095,7 +1114,12 @@ export default function DrivePicker({
                                 {teamName}
                               </div>
                             )}
-                            {wasAssigned && !isSelected && (
+                            {isAlreadyImported && (
+                              <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
+                                ✓ Imported
+                              </div>
+                            )}
+                            {!isAlreadyImported && wasAssigned && !isSelected && (
                               <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white">
                                 ✓
                               </div>
