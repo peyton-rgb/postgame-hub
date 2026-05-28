@@ -76,6 +76,14 @@ export default function MediaLibrary() {
   // Feature 1: "Import more from Drive" expansion on an already-populated campaign.
   const [importMoreOpen, setImportMoreOpen] = useState(false);
 
+  // "Add athlete" form — shown in the empty state and as an expansion on a populated list.
+  const [addAthleteOpen, setAddAthleteOpen] = useState(false);
+  const [newAthleteName, setNewAthleteName] = useState("");
+  const [newAthleteSchool, setNewAthleteSchool] = useState("");
+  const [newAthleteSport, setNewAthleteSport] = useState("");
+  const [creatingAthlete, setCreatingAthlete] = useState(false);
+  const [addAthleteError, setAddAthleteError] = useState<string | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -167,6 +175,49 @@ export default function MediaLibrary() {
     setMedia(data || []);
     setView({ level: "media", brand: view.brand, campaign: view.campaign, athlete });
     setLoading(false);
+  }
+
+  // Manually add an athlete to the current campaign, then drop the user into
+  // that athlete's media view so the drag-and-drop uploader is immediately
+  // available. RLS allows authenticated INSERT directly via the browser client.
+  async function createAthlete() {
+    if (view.level !== "athletes") return;
+    const name = newAthleteName.trim();
+    if (!name) return;
+    const campaignId = view.campaign.id;
+    setCreatingAthlete(true);
+    setAddAthleteError(null);
+    const { data, error } = await supabase
+      .from("athletes")
+      .insert({
+        campaign_id: campaignId,
+        name,
+        school: newAthleteSchool.trim(),
+        sport: newAthleteSport.trim(),
+      })
+      .select()
+      .single();
+    if (error || !data) {
+      setAddAthleteError(error?.message || "Failed to create athlete.");
+      setCreatingAthlete(false);
+      return;
+    }
+    const newRow = data as Athlete;
+    setAthletes((prev) => [...prev, newRow]);
+    setAthleteMediaCounts((prev) => ({ ...prev, [newRow.id]: 0 }));
+    setCampaignCounts((prev) => ({
+      ...prev,
+      [campaignId]: {
+        athletes: (prev[campaignId]?.athletes || 0) + 1,
+        media: prev[campaignId]?.media || 0,
+      },
+    }));
+    setNewAthleteName("");
+    setNewAthleteSchool("");
+    setNewAthleteSport("");
+    setAddAthleteOpen(false);
+    setCreatingAthlete(false);
+    await openAthlete(newRow);
   }
 
   async function reloadAthleteMedia() {
@@ -524,6 +575,45 @@ export default function MediaLibrary() {
     );
   };
 
+  // Shared "Add athlete" form — used by both the empty state and the
+  // expansion on a populated athletes list.
+  const renderAddAthleteForm = () => (
+    <div className="text-left">
+      <input
+        value={newAthleteName}
+        onChange={(e) => { setNewAthleteName(e.target.value); setAddAthleteError(null); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !creatingAthlete && newAthleteName.trim()) createAthlete();
+        }}
+        placeholder="Name (required)"
+        aria-label="Athlete name"
+        className="w-full bg-[#0a0a0a] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09] mb-3"
+      />
+      <input
+        value={newAthleteSchool}
+        onChange={(e) => setNewAthleteSchool(e.target.value)}
+        placeholder="School (optional)"
+        aria-label="School"
+        className="w-full bg-[#0a0a0a] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09] mb-3"
+      />
+      <input
+        value={newAthleteSport}
+        onChange={(e) => setNewAthleteSport(e.target.value)}
+        placeholder="Sport (optional)"
+        aria-label="Sport"
+        className="w-full bg-[#0a0a0a] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
+      />
+      {addAthleteError && <div className="text-sm text-red-400 mt-2">{addAthleteError}</div>}
+      <button
+        disabled={creatingAthlete || !newAthleteName.trim()}
+        onClick={createAthlete}
+        className="w-full mt-4 bg-[#D73F09] hover:bg-[#ff5722] px-6 py-3 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {creatingAthlete ? "Creating…" : "Add athlete"}
+      </button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -635,27 +725,53 @@ export default function MediaLibrary() {
               <>
                 <BackButton />
                 {athletes.length === 0 ? (
-                  <div className="max-w-lg mx-auto py-16">
+                  <div className="max-w-lg mx-auto py-16 space-y-6">
                     {renderImportForm(
                       "This campaign has no content yet",
                       "Paste a Google Drive folder URL to import content for each athlete"
                     )}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-gray-800" />
+                      <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Or</span>
+                      <div className="flex-1 h-px bg-gray-800" />
+                    </div>
+                    <div className="bg-[#111] border border-gray-800 rounded-xl p-6">
+                      <h3 className="font-black text-white mb-2">Add an athlete manually</h3>
+                      <p className="text-sm text-gray-400 mb-4">Create an athlete now and drop files directly into their folder.</p>
+                      {renderAddAthleteForm()}
+                    </div>
                   </div>
                 ) : (
                   <>
                     {/* Feature 1: import more from Drive into an already-populated campaign */}
-                    <div className="mb-5">
-                      {!importMoreOpen ? (
-                        <button
-                          onClick={() => { resetImportUI(); setImportMoreOpen(true); }}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#111] border border-gray-800 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-600 transition-colors"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                          </svg>
-                          Import more from Drive
-                        </button>
-                      ) : (
+                    <div className="mb-5 space-y-3">
+                      <div className="flex flex-wrap gap-3">
+                        {!importMoreOpen && (
+                          <button
+                            onClick={() => { resetImportUI(); setImportMoreOpen(true); }}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#111] border border-gray-800 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-600 transition-colors"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Import more from Drive
+                          </button>
+                        )}
+                        {!addAthleteOpen && (
+                          <button
+                            onClick={() => { setAddAthleteError(null); setAddAthleteOpen(true); }}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#111] border border-gray-800 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-600 transition-colors"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                              <circle cx="12" cy="7" r="4" />
+                              <line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" />
+                            </svg>
+                            Add athlete
+                          </button>
+                        )}
+                      </div>
+                      {importMoreOpen && (
                         <div className="max-w-lg bg-[#111] border border-gray-800 rounded-xl p-5">
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="font-black text-white">Import more from Drive</h3>
@@ -673,6 +789,24 @@ export default function MediaLibrary() {
                             undefined,
                             "Paste a Drive folder URL — already-imported files appear greyed out."
                           )}
+                        </div>
+                      )}
+                      {addAthleteOpen && (
+                        <div className="max-w-lg bg-[#111] border border-gray-800 rounded-xl p-5">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-black text-white">Add athlete</h3>
+                            <button
+                              onClick={() => { setAddAthleteOpen(false); setAddAthleteError(null); }}
+                              aria-label="Close"
+                              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                          <p className="text-sm text-gray-400 mb-4">Once created, you'll land in their media view to drop files in.</p>
+                          {renderAddAthleteForm()}
                         </div>
                       )}
                     </div>
