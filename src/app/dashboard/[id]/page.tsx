@@ -14,6 +14,7 @@ import Link from "next/link";
 // heic2any is browser-only; imported dynamically inside convertHeicIfNeeded()
 import DrivePicker from "@/components/DrivePicker";
 import TeamCollabCard from "@/components/TeamCollabCard";
+import CampaignEditorBanner from "@/components/CampaignEditorBanner";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { computeStats, pct } from "@/lib/recap-helpers";
@@ -1863,6 +1864,8 @@ export default function CampaignEditor() {
           videoFile={pendingVideo.file}
         />
       )}
+
+      <CampaignEditorBanner recapId={id} />
 
       {/* Header */}
       <div className="border-b border-gray-800 px-8 py-5 flex items-center justify-between">
