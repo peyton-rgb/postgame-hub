@@ -21,6 +21,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import CampaignMediaPicker from "@/components/CampaignMediaPicker";
+import { isVideoUrl } from "@/lib/is-video-url";
 
 const C = {
   orange: "#D73F09",
@@ -255,18 +256,34 @@ export default function SlotEditor({
                     border: `1px solid ${C.border2}`,
                   }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={r.file_url as string}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      objectPosition: `${r.focal_x * 100}% ${r.focal_y * 100}%`,
-                      transform: `scale(${r.scale})`,
-                    }}
-                  />
+                  {isVideoUrl(r.file_url) ? (
+                    <video
+                      src={r.file_url as string}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: `${r.focal_x * 100}% ${r.focal_y * 100}%`,
+                        transform: `scale(${r.scale})`,
+                      }}
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={r.file_url as string}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: `${r.focal_x * 100}% ${r.focal_y * 100}%`,
+                        transform: `scale(${r.scale})`,
+                      }}
+                    />
+                  )}
                   {/* logo overlay preview */}
                   {r.logo_url && (
                     <div style={{ position: "absolute", bottom: 3, right: 3, width: 22, height: 22, borderRadius: 4, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>

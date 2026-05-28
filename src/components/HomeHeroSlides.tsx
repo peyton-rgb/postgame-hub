@@ -11,6 +11,7 @@
 // ============================================================
 
 import { useEffect, useState } from "react";
+import { isVideoUrl } from "@/lib/is-video-url";
 
 export interface HeroSlide {
   url: string;
@@ -48,21 +49,39 @@ export default function HomeHeroSlides({
             transition: "opacity 1.2s ease",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={s.url}
-            alt=""
-            loading="eager"
-            // @ts-expect-error fetchpriority is valid HTML, not yet in React's types
-            fetchpriority={i === 0 ? "high" : "auto"}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: `${s.focalX * 100}% ${s.focalY * 100}%`,
-              transform: `scale(${s.scale})`,
-            }}
-          />
+          {isVideoUrl(s.url) ? (
+            <video
+              src={s.url}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: `${s.focalX * 100}% ${s.focalY * 100}%`,
+                transform: `scale(${s.scale})`,
+              }}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={s.url}
+              alt=""
+              loading="eager"
+              // @ts-expect-error fetchpriority is valid HTML, not yet in React's types
+              fetchpriority={i === 0 ? "high" : "auto"}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: `${s.focalX * 100}% ${s.focalY * 100}%`,
+                transform: `scale(${s.scale})`,
+              }}
+            />
+          )}
         </div>
       ))}
       {/* Darkening scrim so the centered hero text stays legible */}

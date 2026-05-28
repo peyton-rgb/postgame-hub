@@ -22,6 +22,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { isVideoUrl } from '@/lib/is-video-url';
 
 interface Props {
   images: string[];
@@ -46,14 +47,33 @@ export default function HeroSlideshow({ images, intervalMs = 4500 }: Props) {
       <div className="bp-slides">
         {images.map((src, i) => (
           <div key={src + i} className={`bp-slide${i === active ? ' active' : ''}`}>
-            <Image
-              src={src}
-              alt=""
-              fill
-              sizes="100vw"
-              priority
-              style={{ objectFit: 'cover', objectPosition: 'center 12%' }}
-            />
+            {isVideoUrl(src) ? (
+              <video
+                src={src}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center 12%",
+                }}
+              />
+            ) : (
+              <Image
+                src={src}
+                alt=""
+                fill
+                sizes="100vw"
+                priority
+                style={{ objectFit: 'cover', objectPosition: 'center 12%' }}
+              />
+            )}
           </div>
         ))}
       </div>

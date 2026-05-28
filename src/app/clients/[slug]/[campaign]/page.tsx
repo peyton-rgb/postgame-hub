@@ -17,6 +17,7 @@ import { getBrandBySlug } from '@/lib/data/brands';
 import { createPlainSupabase, createServiceSupabase } from '@/lib/supabase';
 import HeroStills, { type HeroStill } from './HeroStills';
 import WorkGallery, { type GalleryItem } from './WorkGallery';
+import { isVideoUrl } from '@/lib/is-video-url';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -93,7 +94,6 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   const cs = (campSlots || []) as any[];
   const heroSlot = cs.filter(s => s.slot_key === `campaign.${campaign.id}.hero_carousel` && s.file_url);
   const gallerySlot = cs.filter(s => s.slot_key === `campaign.${campaign.id}.gallery` && s.file_url);
-  const isVid = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u);
 
   // Hero selection: if the editor has manually picked hero images (is_hero=true),
   // use those. Otherwise fall back to auto-pick for campaigns that haven't been
@@ -149,10 +149,10 @@ export default async function CampaignPage({ params, searchParams }: Props) {
 
   // Gallery slot override — use curated slot rows if present, else today's full media list.
   const galleryImages = gallerySlot.length > 0
-    ? gallerySlot.filter((s: any) => !isVid(s.file_url)).map((s: any, i: number) => ({ id: `slot-img-${i}`, src: s.file_url, thumb: variantUrl(s.file_url, "w400"), isVideo: false, poster: null, alt: campaign.name, focalX: s.focal_x ?? 0.5, focalY: s.focal_y ?? 0.5 }))
+    ? gallerySlot.filter((s: any) => !isVideoUrl(s.file_url)).map((s: any, i: number) => ({ id: `slot-img-${i}`, src: s.file_url, thumb: variantUrl(s.file_url, "w400"), isVideo: false, poster: null, alt: campaign.name, focalX: s.focal_x ?? 0.5, focalY: s.focal_y ?? 0.5 }))
     : images;
   const galleryVideos = gallerySlot.length > 0
-    ? gallerySlot.filter((s: any) => isVid(s.file_url)).map((s: any, i: number) => ({ id: `slot-vid-${i}`, src: s.file_url, thumb: s.file_url, isVideo: true, poster: null, alt: campaign.name, focalX: 0.5, focalY: 0.5 }))
+    ? gallerySlot.filter((s: any) => isVideoUrl(s.file_url)).map((s: any, i: number) => ({ id: `slot-vid-${i}`, src: s.file_url, thumb: s.file_url, isVideo: true, poster: null, alt: campaign.name, focalX: 0.5, focalY: 0.5 }))
     : videos;
 
   // Title split: render the last word in orange italic, like the prototype.
