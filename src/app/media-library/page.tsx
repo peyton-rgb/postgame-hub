@@ -1,12 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Campaign, Athlete, Media } from "@/lib/types";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import DrivePicker from "@/components/DrivePicker";
 import { extractDriveFolderId } from "@/lib/drive-url";
 import Link from "next/link";
+
+// Feature 2: per-athlete manual upload (browser → Storage, then JSON insert).
+const UPLOAD_BUCKET = "campaign-media";
+const ACCEPTED_MIME = [
+  "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif",
+  "video/mp4", "video/quicktime", "video/webm",
+];
+const ACCEPTED_EXT = ["jpg", "jpeg", "png", "webp", "heic", "heif", "mp4", "mov", "webm"];
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024; // 100 MB — tune here if needed
+function sanitizeUploadName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_{2,}/g, "_");
+}
+function uploadExt(name: string) {
+  return name.split(".").pop()?.toLowerCase() || "";
+}
 
 interface Brand {
   name: string;
@@ -31,6 +46,13 @@ export default function MediaLibrary() {
   const [campaignCounts, setCampaignCounts] = useState<Record<string, { athletes: number; media: number }>>({});
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState<Media | null>(null);
+
+  // Feature 2: manual upload
+  const [uploads, setUploads] = useState<
+    { name: string; status: "pending" | "uploading" | "done" | "failed"; error?: string }[]
+  >([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Drive-import empty-state flow ──
   const [urlInput, setUrlInput] = useState("");
@@ -135,6 +157,7 @@ export default function MediaLibrary() {
   async function openAthlete(athlete: Athlete) {
     if (view.level !== "athletes") return;
     setLoading(true);
+    setUploads([]);
     const { data } = await supabase
       .from("media")
       .select("*")
@@ -144,6 +167,72 @@ export default function MediaLibrary() {
     setMedia(data || []);
     setView({ level: "media", brand: view.brand, campaign: view.campaign, athlete });
     setLoading(false);
+  }
+
+  async function reloadAthleteMedia() {
+    if (view.level !== "media") return;
+    const { data } = await supabase
+      .from("media")
+      .select("*")
+      .eq("athlete_id", view.athlete.id)
+      .eq("is_video_thumbnail", false)
+      .order("sort_order", { ascending: true });
+    setMedia(data || []);
+  }
+
+  // Serial upload: browser → Storage, then POST the path to /api/media/upload
+  // to insert the media row. One file at a time (matches the DrivePicker import
+  // pattern; avoids hammering Storage). Per-file status; failures don't block the rest.
+  async function uploadFiles(files: File[]) {
+    if (view.level !== "media") return;
+    const campaignId = view.campaign.id;
+    const athleteId = view.athlete.id;
+
+    setUploads(files.map((f) => ({ name: f.name, status: "pending" as const })));
+    let anySucceeded = false;
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const ext = uploadExt(f.name);
+
+      // Cheap client-side validation — reject before any Storage write.
+      if (!ACCEPTED_MIME.includes(f.type) && !ACCEPTED_EXT.includes(ext)) {
+        setUploads((p) => p.map((u, j) => (j === i ? { ...u, status: "failed", error: "Only images and videos are supported." } : u)));
+        continue;
+      }
+      if (f.size > MAX_UPLOAD_BYTES) {
+        setUploads((p) => p.map((u, j) => (j === i ? { ...u, status: "failed", error: "Too large (max 100 MB)." } : u)));
+        continue;
+      }
+
+      setUploads((p) => p.map((u, j) => (j === i ? { ...u, status: "uploading" } : u)));
+      const storagePath = `${campaignId}/${athleteId}/${Date.now()}-${sanitizeUploadName(f.name)}`;
+
+      try {
+        const { error: upErr } = await supabase.storage
+          .from(UPLOAD_BUCKET)
+          .upload(storagePath, f, { contentType: f.type || undefined, cacheControl: "3600", upsert: false });
+        if (upErr) throw new Error(upErr.message);
+
+        const res = await fetch("/api/media/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ campaignId, athleteId, storagePath }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          setUploads((p) => p.map((u, j) => (j === i ? { ...u, status: "failed", error: String(data?.error || `HTTP ${res.status}`) } : u)));
+        } else {
+          anySucceeded = true;
+          setUploads((p) => p.map((u, j) => (j === i ? { ...u, status: "done" } : u)));
+        }
+      } catch (e: any) {
+        setUploads((p) => p.map((u, j) => (j === i ? { ...u, status: "failed", error: String(e?.message || e) } : u)));
+      }
+    }
+
+    if (anySucceeded) await reloadAthleteMedia();
   }
 
   function goBack() {
@@ -625,6 +714,58 @@ export default function MediaLibrary() {
             {view.level === "media" && (
               <>
                 <BackButton />
+                {/* Feature 2: per-athlete manual upload */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    const fs = Array.from(e.dataTransfer.files);
+                    if (fs.length) uploadFiles(fs);
+                  }}
+                  className={`mb-5 rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
+                    dragOver ? "border-[#D73F09] bg-[#D73F09]/5" : "border-gray-700 hover:border-gray-500"
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const fs = Array.from(e.target.files || []);
+                      if (fs.length) uploadFiles(fs);
+                      e.target.value = "";
+                    }}
+                  />
+                  <p className="text-sm font-bold text-gray-300">Drag and drop files here, or click to browse</p>
+                  <p className="text-xs text-gray-500 mt-1">Images &amp; videos · up to 100 MB each</p>
+                </div>
+
+                {uploads.length > 0 && (
+                  <div className="mb-6 space-y-1.5">
+                    {uploads.map((u, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3 text-xs bg-[#111] border border-gray-800 rounded-lg px-3 py-2">
+                        <span className="truncate text-gray-300">{u.name}</span>
+                        <span
+                          className={
+                            u.status === "done" ? "text-green-400 flex-shrink-0"
+                            : u.status === "failed" ? "text-red-400 flex-shrink-0"
+                            : "text-gray-400 flex-shrink-0"
+                          }
+                        >
+                          {u.status === "uploading" ? "Uploading…"
+                            : u.status === "done" ? "✓ Done"
+                            : u.status === "failed" ? (u.error || "Failed")
+                            : "Pending"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {media.length === 0 ? (
                   <div className="text-center py-20">
                     <p className="text-gray-500 mb-2">No media uploaded for this athlete.</p>
