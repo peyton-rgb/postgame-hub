@@ -51,6 +51,9 @@ export default function MediaLibrary() {
   const [drivePickerCampaignId, setDrivePickerCampaignId] = useState<string | null>(null);
   const [alreadyImportedFileIds, setAlreadyImportedFileIds] = useState<string[]>([]);
 
+  // Feature 1: "Import more from Drive" expansion on an already-populated campaign.
+  const [importMoreOpen, setImportMoreOpen] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -61,6 +64,7 @@ export default function MediaLibrary() {
     setDiscoverError(null);
     setFlatInfo(null);
     setConfirmReplace(null);
+    setImportMoreOpen(false);
   }
 
   async function loadData() {
@@ -345,6 +349,92 @@ export default function MediaLibrary() {
     );
   }
 
+  // Shared Drive-import form — used by BOTH the empty state and the
+  // "Import more from Drive" expansion. State/handlers stay on the parent.
+  const renderImportForm = (heading?: string, subtext?: string) => {
+    if (flatInfo) {
+      return (
+        <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl leading-none">⚠️</span>
+            <div>
+              <h3 className="font-black text-white mb-2">No athlete subfolders found.</h3>
+              <p className="text-sm text-gray-400">
+                {flatInfo.fileCount > 0 ? (
+                  <>
+                    This folder has <span className="font-bold text-white">{flatInfo.fileCount}</span> loose file{flatInfo.fileCount !== 1 ? "s" : ""}, but the Hub needs subfolders (one per athlete) to import. Add athletes to this campaign first in the recap editor, then come back.
+                  </>
+                ) : (
+                  <>This folder is empty. Add athlete subfolders in Drive, or add athletes to this campaign in the recap editor, then come back.</>
+                )}
+              </p>
+              <div className="flex flex-wrap gap-4 mt-4">
+                <a
+                  href={`/dashboard/${view.level === "athletes" ? view.campaign.id : ""}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-[#D73F09] font-bold text-sm hover:underline"
+                >
+                  → Open campaign in recap editor
+                </a>
+                <button
+                  onClick={() => { setFlatInfo(null); setUrlInput(""); setDiscoverError(null); }}
+                  className="text-gray-400 font-bold text-sm hover:text-white"
+                >
+                  ← Try a different URL
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (confirmReplace) {
+      return (
+        <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
+          <h3 className="font-black text-white mb-2">This campaign is already linked to a different Drive folder.</h3>
+          <p className="text-sm text-gray-400 mb-4">Continuing will link it to the new folder you pasted. Existing imported files stay; new athlete subfolders will be added.</p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              disabled={discovering}
+              onClick={() => handleContinue(true)}
+              className="bg-[#D73F09] hover:bg-[#ff5722] px-5 py-2.5 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 transition-colors"
+            >
+              {discovering ? "Working…" : "Replace & continue"}
+            </button>
+            <button onClick={() => setConfirmReplace(null)} className="text-gray-400 font-bold text-sm hover:text-white">Cancel</button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className={heading ? "text-center" : "text-left"}>
+        {heading && <h2 className="text-xl font-black text-white mb-2">{heading}</h2>}
+        {subtext && <p className="text-sm text-gray-400 mb-6">{subtext}</p>}
+        <div className="text-left">
+          <input
+            value={urlInput}
+            onChange={(e) => { setUrlInput(e.target.value); setDiscoverError(null); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !discovering && extractDriveFolderId(urlInput)) handleContinue();
+            }}
+            placeholder="https://drive.google.com/drive/folders/..."
+            aria-label="Paste a Drive folder URL to import content"
+            className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
+          />
+          {discoverError && <div className="text-sm text-red-400 mt-2">{discoverError}</div>}
+          <button
+            disabled={discovering || !extractDriveFolderId(urlInput)}
+            onClick={() => handleContinue()}
+            className="w-full mt-4 bg-[#D73F09] hover:bg-[#ff5722] px-6 py-3 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {discovering ? "Scanning folder…" : "Continue"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -457,127 +547,48 @@ export default function MediaLibrary() {
                 <BackButton />
                 {athletes.length === 0 ? (
                   <div className="max-w-lg mx-auto py-16">
-                    {flatInfo ? (
-                      /* ── Flat-folder warning ── */
-                      <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
-                        <div className="flex items-start gap-3">
-                          <span className="text-2xl leading-none">⚠️</span>
-                          <div>
-                            <h3 className="font-black text-white mb-2">
-                              No athlete subfolders found.
-                            </h3>
-                            <p className="text-sm text-gray-400">
-                              {flatInfo.fileCount > 0 ? (
-                                <>
-                                  This folder has{" "}
-                                  <span className="font-bold text-white">
-                                    {flatInfo.fileCount}
-                                  </span>{" "}
-                                  loose file{flatInfo.fileCount !== 1 ? "s" : ""}, but the Hub
-                                  needs subfolders (one per athlete) to import. Add athletes to
-                                  this campaign first in the recap editor, then come back.
-                                </>
-                              ) : (
-                                <>
-                                  This folder is empty. Add athlete subfolders in Drive, or add
-                                  athletes to this campaign in the recap editor, then come back.
-                                </>
-                              )}
-                            </p>
-                            <div className="flex flex-wrap gap-4 mt-4">
-                              <a
-                                href={`/dashboard/${view.campaign.id}`}
-                                target="_blank"
-                                rel="noopener"
-                                className="text-[#D73F09] font-bold text-sm hover:underline"
-                              >
-                                → Open campaign in recap editor
-                              </a>
-                              <button
-                                onClick={() => {
-                                  setFlatInfo(null);
-                                  setUrlInput("");
-                                  setDiscoverError(null);
-                                }}
-                                className="text-gray-400 font-bold text-sm hover:text-white"
-                              >
-                                ← Try a different URL
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : confirmReplace ? (
-                      /* ── Confirm replacing an existing linked folder ── */
-                      <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
-                        <h3 className="font-black text-white mb-2">
-                          This campaign is already linked to a different Drive folder.
-                        </h3>
-                        <p className="text-sm text-gray-400 mb-4">
-                          Continuing will link it to the new folder you pasted. Existing imported
-                          files stay; new athlete subfolders will be added.
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                          <button
-                            disabled={discovering}
-                            onClick={() => handleContinue(true)}
-                            className="bg-[#D73F09] hover:bg-[#ff5722] px-5 py-2.5 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 transition-colors"
-                          >
-                            {discovering ? "Working…" : "Replace & continue"}
-                          </button>
-                          <button
-                            onClick={() => setConfirmReplace(null)}
-                            className="text-gray-400 font-bold text-sm hover:text-white"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* ── Empty-state Drive-import form ── */
-                      <div className="text-center">
-                        <h2 className="text-xl font-black text-white mb-2">
-                          This campaign has no content yet
-                        </h2>
-                        <p className="text-sm text-gray-400 mb-6">
-                          Paste a Google Drive folder URL to import content for each athlete
-                        </p>
-                        <div className="text-left">
-                          <input
-                            value={urlInput}
-                            onChange={(e) => {
-                              setUrlInput(e.target.value);
-                              setDiscoverError(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (
-                                e.key === "Enter" &&
-                                !discovering &&
-                                extractDriveFolderId(urlInput)
-                              ) {
-                                handleContinue();
-                              }
-                            }}
-                            placeholder="https://drive.google.com/drive/folders/..."
-                            aria-label="Paste a Drive folder URL to import content"
-                            className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
-                          />
-                          {discoverError && (
-                            <div className="text-sm text-red-400 mt-2">{discoverError}</div>
-                          )}
-                          <button
-                            disabled={discovering || !extractDriveFolderId(urlInput)}
-                            onClick={() => handleContinue()}
-                            className="w-full mt-4 bg-[#D73F09] hover:bg-[#ff5722] px-6 py-3 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {discovering ? "Scanning folder…" : "Continue"}
-                          </button>
-                        </div>
-                      </div>
+                    {renderImportForm(
+                      "This campaign has no content yet",
+                      "Paste a Google Drive folder URL to import content for each athlete"
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <>
+                    {/* Feature 1: import more from Drive into an already-populated campaign */}
+                    <div className="mb-5">
+                      {!importMoreOpen ? (
+                        <button
+                          onClick={() => { resetImportUI(); setImportMoreOpen(true); }}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#111] border border-gray-800 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-600 transition-colors"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          Import more from Drive
+                        </button>
+                      ) : (
+                        <div className="max-w-lg bg-[#111] border border-gray-800 rounded-xl p-5">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-black text-white">Import more from Drive</h3>
+                            <button
+                              onClick={() => { setImportMoreOpen(false); resetImportUI(); }}
+                              aria-label="Close"
+                              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                          {renderImportForm(
+                            undefined,
+                            "Paste a Drive folder URL — already-imported files appear greyed out."
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {athletes.map((a) => (
                       <button
                         key={a.id}
@@ -605,6 +616,7 @@ export default function MediaLibrary() {
                       </button>
                     ))}
                   </div>
+                  </>
                 )}
               </>
             )}
