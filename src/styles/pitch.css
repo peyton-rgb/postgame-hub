@@ -826,8 +826,8 @@
    element enters the viewport. */
 .pitch-page > section,
 .pitch-page > footer {
-  opacity: 0;
-  transform: translateY(40px);
+  opacity: 1;
+  transform: none;
   transition: opacity 1.2s cubic-bezier(.16, .8, .24, 1),
               transform 1.2s cubic-bezier(.16, .8, .24, 1);
 }
