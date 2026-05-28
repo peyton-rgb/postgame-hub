@@ -13,6 +13,7 @@ import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 // heic2any is browser-only; imported dynamically inside convertHeicIfNeeded()
 import DrivePicker from "@/components/DrivePicker";
+import AthleteDriveFolderPicker from "@/components/AthleteDriveFolderPicker";
 import TeamCollabCard from "@/components/TeamCollabCard";
 import CampaignEditorBanner from "@/components/CampaignEditorBanner";
 import Tier3Picker from "@/components/Tier3Picker";
@@ -805,6 +806,7 @@ export default function CampaignEditor() {
   const [collabSlotDest, setCollabSlotDest] = useState<PickerSlotDest | null>(null);
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
+  const [driveFolderAthlete, setDriveFolderAthlete] = useState<Athlete | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
@@ -2894,6 +2896,17 @@ export default function CampaignEditor() {
                             <line x1="5" y1="12" x2="19" y2="12" />
                           </svg>
                         </div>
+                        {/* Pick files from this athlete's own Drive folder (isolated, not under
+                            the campaign parent — campaign-level DrivePicker can't reach it). */}
+                        <div
+                          className="flex-shrink-0 w-7 h-7 rounded border border-gray-700 hover:border-[#D73F09] flex items-center justify-center cursor-pointer transition-colors"
+                          onClick={(e) => { e.stopPropagation(); setDriveFolderAthlete(a); }}
+                          title="Import from a Drive folder"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                          </svg>
+                        </div>
                       </div>
 
                       <div className="mt-1.5 px-0.5">
@@ -2942,6 +2955,22 @@ export default function CampaignEditor() {
                   setMedia((prev) => ({
                     ...prev,
                     [tier3PickerAthlete.id]: [...(prev[tier3PickerAthlete.id] || []), newMedia],
+                  }));
+                }}
+              />
+            )}
+
+            {driveFolderAthlete && (
+              <AthleteDriveFolderPicker
+                isOpen={!!driveFolderAthlete}
+                recapId={id}
+                athleteId={driveFolderAthlete.id}
+                athleteName={driveFolderAthlete.name}
+                onClose={() => setDriveFolderAthlete(null)}
+                onImported={(newMedia) => {
+                  setMedia((prev) => ({
+                    ...prev,
+                    [driveFolderAthlete.id]: [...(prev[driveFolderAthlete.id] || []), ...newMedia],
                   }));
                 }}
               />
