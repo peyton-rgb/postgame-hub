@@ -252,7 +252,7 @@ export default function CampaignMediaPicker({
       .not("name", "is", null)
       .neq("name", "")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(500);
     if (brandId) qRecaps = qRecaps.eq("brand_id", brandId);
 
     // Query brand_campaigns (may not have media yet)
@@ -262,7 +262,7 @@ export default function CampaignMediaPicker({
       .not("name", "is", null)
       .neq("name", "")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(500);
     if (brandId) qBrand = qBrand.eq("brand_id", brandId);
 
     const [{ data: recaps }, { data: brandCampaigns }] = await Promise.all([qRecaps, qBrand]);
