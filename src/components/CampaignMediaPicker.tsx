@@ -200,7 +200,7 @@ export default function CampaignMediaPicker({
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignRow | null>(null);
 
   const [mediaTab, setMediaTab] = useState<MediaTab>("browse");
-  const [files, setFiles] = useState<{ name: string; url: string }[]>([]);
+  const [files, setFiles] = useState<{ name: string; url: string; poster?: string | null }[]>([]);
   const [includeVideos, setIncludeVideos] = useState(true);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
@@ -334,7 +334,23 @@ export default function CampaignMediaPicker({
           return { name: f.name, url: publicUrl };
         });
 
-      setFiles(items);
+      // Attach video posters from the media table (thumbnail_url), matched by file_url.
+      const posterMap = new Map<string, string>();
+      try {
+        const { data: vids } = await supabase
+          .from("media")
+          .select("file_url, thumbnail_url")
+          .eq("campaign_id", campaignId)
+          .eq("type", "video")
+          .not("thumbnail_url", "is", null);
+        for (const v of (vids || []) as { file_url: string | null; thumbnail_url: string | null }[]) {
+          if (v.file_url && v.thumbnail_url) posterMap.set(v.file_url, v.thumbnail_url);
+        }
+      } catch {
+        /* posters are best-effort; fall back to dark tile */
+      }
+      const withPosters = items.map((it) => ({ ...it, poster: posterMap.get(it.url) ?? null }));
+      setFiles(withPosters);
       setLoadingFiles(false);
     },
     [includeVideos, supabase]
@@ -730,7 +746,24 @@ export default function CampaignMediaPicker({
                       >
                         {VIDEO_EXTS.includes(ext(f.name)) ? (
                           <>
-                            <video src={f.url} muted preload="none" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            {f.poster ? (
+                              <img
+                                src={supabaseImageUrl(f.poster, 400) || f.poster}
+                                alt={f.name}
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  const img = e.currentTarget;
+                                  if (img.dataset.fellBack !== "1" && f.poster && img.src !== f.poster) {
+                                    img.dataset.fellBack = "1";
+                                    img.src = f.poster;
+                                  }
+                                }}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              <video src={f.url} muted preload="none" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            )}
                             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
                               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <div style={{ width: 0, height: 0, borderTop: "6px solid transparent", borderBottom: "6px solid transparent", borderLeft: "10px solid #111", marginLeft: 2 }} />
