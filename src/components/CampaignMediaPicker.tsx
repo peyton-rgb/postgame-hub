@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { supabaseImageUrl } from "@/lib/supabase-image";
 
 export interface MediaPickerResult {
   type: "image" | "video";
@@ -722,7 +723,7 @@ export default function CampaignMediaPicker({
                       >
                         {VIDEO_EXTS.includes(ext(f.name)) ? (
                           <>
-                            <video src={f.url} muted preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <video src={f.url} muted preload="none" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
                               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <div style={{ width: 0, height: 0, borderTop: "6px solid transparent", borderBottom: "6px solid transparent", borderLeft: "10px solid #111", marginLeft: 2 }} />
@@ -731,8 +732,10 @@ export default function CampaignMediaPicker({
                           </>
                         ) : (
                           <img
-                            src={f.url}
+                            src={supabaseImageUrl(f.url, 400) || f.url}
                             alt={f.name}
+                            loading="lazy"
+                            decoding="async"
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
                         )}
