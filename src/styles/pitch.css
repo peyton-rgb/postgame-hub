@@ -812,8 +812,8 @@
 
 /* FADE ANIMATIONS */
 .pitch-page .fade {
-  opacity: 0;
-  transform: translateY(28px);
+  opacity: 1;
+  transform: none;
   transition: opacity 1.1s cubic-bezier(.16,.8,.24,1),
               transform 1.1s cubic-bezier(.16,.8,.24,1);
 }
