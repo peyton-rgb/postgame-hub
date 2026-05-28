@@ -286,6 +286,13 @@ export default function CampaignMediaPicker({
       merged.push({ id: String(d.id), name: String(d.name), brand_name: String((d.brands as any)?.name || ""), source: "brand_campaign" });
     }
 
+    merged.sort((a, b) => {
+      const aHas = a.hasMedia === true;
+      const bHas = b.hasMedia === true;
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+
     setCampaigns(merged);
   };
 
