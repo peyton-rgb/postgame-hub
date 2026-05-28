@@ -736,6 +736,13 @@ export default function CampaignMediaPicker({
                             alt={f.name}
                             loading="lazy"
                             decoding="async"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              if (img.dataset.fellBack !== "1" && img.src !== f.url) {
+                                img.dataset.fellBack = "1";
+                                img.src = f.url;
+                              }
+                            }}
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
                         )}
