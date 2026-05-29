@@ -63,6 +63,181 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ---- Card Photo Picker Modal ----
+
+interface MediaImage {
+  id: string;
+  file_url: string;
+  thumbnail_url: string | null;
+  type: string;
+  is_hero: boolean;
+}
+
+function CardPhotoPicker({
+  recapId,
+  currentThumbnailUrl,
+  isOpen,
+  onClose,
+  onSelect,
+}: {
+  recapId: string;
+  currentThumbnailUrl: string | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (fileUrl: string) => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [images, setImages] = useState<MediaImage[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setLoading(true);
+      setImages([]);
+      setError(null);
+      setSavingId(null);
+      return;
+    }
+    let cancelled = false;
+    async function load() {
+      const supabase = createBrowserSupabase();
+      const { data, error } = await supabase
+        .from('media')
+        .select('id, file_url, thumbnail_url, type, is_hero')
+        .eq('campaign_id', recapId)
+        .eq('type', 'image')
+        .order('sort_order', { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        setError(error.message);
+      } else {
+        setImages((data as MediaImage[]) || []);
+      }
+      setLoading(false);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, recapId]);
+
+  async function selectImage(img: MediaImage) {
+    if (savingId) return;
+    setSavingId(img.id);
+    const supabase = createBrowserSupabase();
+    try {
+      // Drive the card thumbnail + the public hero off one photo.
+      await supabase
+        .from('campaign_recaps')
+        .update({ thumbnail_url: img.file_url })
+        .eq('id', recapId);
+      await supabase.from('media').update({ is_hero: false }).eq('campaign_id', recapId);
+      await supabase
+        .from('media')
+        .update({ is_hero: true, hero_order: 0 })
+        .eq('id', img.id);
+      onSelect(img.file_url);
+      onClose();
+    } catch (e: any) {
+      setError(String(e?.message || e));
+      setSavingId(null);
+    }
+  }
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !savingId) onClose();
+      }}
+    >
+      <div className="w-[95vw] h-[85vh] max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold tracking-widest text-[#D73F09] uppercase">
+              Card photo
+            </div>
+            <h2 className="text-xl font-black text-white truncate">Choose card photo</h2>
+            <div className="text-xs text-gray-500 mt-0.5">
+              Sets the card thumbnail and the public hero image.
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <svg className="animate-spin h-8 w-8 text-[#D73F09]" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-400 mt-20 text-sm">{error}</div>
+          ) : images.length === 0 ? (
+            <div className="text-center text-gray-500 mt-20 text-sm">
+              No images found for this campaign.
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {images.map((img) => {
+                const isCurrent = img.file_url === currentThumbnailUrl;
+                const isSaving = savingId === img.id;
+                return (
+                  <button
+                    key={img.id}
+                    onClick={() => selectImage(img)}
+                    disabled={!!savingId}
+                    className={`relative group rounded-lg overflow-hidden border-2 transition-all disabled:cursor-wait ${
+                      isCurrent
+                        ? 'border-[#D73F09] ring-2 ring-[#D73F09]/30'
+                        : 'border-white/10 hover:border-white/30'
+                    }`}
+                  >
+                    <div className="aspect-square bg-black">
+                      <img
+                        src={img.thumbnail_url || img.file_url}
+                        alt=""
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {isCurrent && (
+                      <div className="absolute top-2 left-2 bg-[#D73F09] px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
+                        Current
+                      </div>
+                    )}
+                    {isSaving && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <svg className="animate-spin h-6 w-6 text-[#D73F09]" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Recap Card ----
 
 function RecapCard({ recap }: { recap: CampaignRecap }) {
@@ -75,13 +250,16 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
     .slice(0, 2)
     .toUpperCase();
 
+  const [thumbnailUrl, setThumbnailUrl] = useState(recap.thumbnail_url);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   return (
     <div className="group bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300">
       {/* Thumbnail / Hero area */}
       <div className="relative aspect-[16/9] bg-[#0a0a0a] overflow-hidden">
-        {recap.thumbnail_url || recap.hero_image_url ? (
+        {thumbnailUrl || recap.hero_image_url ? (
           <img
-            src={recap.thumbnail_url || recap.hero_image_url || ''}
+            src={thumbnailUrl || recap.hero_image_url || ''}
             alt={recap.name}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
           />
@@ -122,7 +300,28 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
             </span>
           </div>
         )}
+
+        {/* Card photo picker trigger */}
+        <button
+          onClick={() => setPickerOpen(true)}
+          aria-label="Choose card photo"
+          title="Choose card photo"
+          className="absolute bottom-3 right-3 w-8 h-8 rounded-lg bg-black/60 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/70 opacity-0 group-hover:opacity-100 hover:bg-black/80 hover:text-white hover:border-[#D73F09]/50 transition-all"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+        </button>
       </div>
+
+      <CardPhotoPicker
+        recapId={recap.id}
+        currentThumbnailUrl={thumbnailUrl}
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(fileUrl) => setThumbnailUrl(fileUrl)}
+      />
 
       {/* Card body */}
       <div className="p-4">
