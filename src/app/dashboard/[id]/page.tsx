@@ -1775,12 +1775,32 @@ export default function CampaignEditor() {
       budget: budget === "" ? undefined : budget,
       total_impressions: totalImpressions === "" ? undefined : totalImpressions,
     };
+
+    const newPublished = !campaign.published;
+    const updatePayload: { published: boolean; settings: typeof newSettings; thumbnail_url?: string } = {
+      published: newPublished,
+      settings: newSettings,
+    };
+
+    // When publishing a recap with no card photo yet, fall back to its first
+    // image so nothing ever goes live blank. Never touches the photo on unpublish
+    // or when one is already chosen.
+    const card = campaign as Campaign & { thumbnail_url?: string | null; hero_image_url?: string | null };
+    if (newPublished && !card.thumbnail_url && !card.hero_image_url) {
+      const { data: firstImage } = await supabase
+        .from("media")
+        .select("file_url")
+        .eq("campaign_id", campaign.id)
+        .eq("type", "image")
+        .order("sort_order", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (firstImage?.file_url) updatePayload.thumbnail_url = firstImage.file_url;
+    }
+
     const { data, error } = await supabase
       .from("campaign_recaps")
-      .update({
-        published: !campaign.published,
-        settings: newSettings,
-      })
+      .update(updatePayload)
       .eq("id", campaign.id)
       .select().single();
     if (error) {
