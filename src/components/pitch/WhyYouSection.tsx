@@ -60,7 +60,7 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
     ? {
         backgroundImage: `url(${data.bannerImageUrl})`,
         backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundPosition: data.bannerPosition || "center",
       }
     : {};
 

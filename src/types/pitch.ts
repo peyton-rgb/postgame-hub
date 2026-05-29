@@ -233,6 +233,7 @@ export interface WhyYouSectionData {
   // when absent, the hero falls back to a dark gradient. Used by the
   // magazine-cover redesign of WhyYouSection.
   bannerImageUrl?: string;
+  bannerPosition?: string;           // CSS background-position, e.g. "50% 30%"
 
   // Body copy. `paragraphs` (multi-paragraph) is preferred; `paragraph`
   // (single) is kept for backwards compatibility with existing pitches.

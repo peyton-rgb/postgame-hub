@@ -273,6 +273,52 @@ export default function WhyYouEditor({ data, onChange }: Props) {
             fallback.
           </p>
         </Field>
+        {data.bannerImageUrl ? (
+          (() => {
+            // Vertical crop position (%). Horizontal stays fixed at 50%.
+            const parts = (data.bannerPosition ?? "").split(" ");
+            const parsed = parseFloat((parts[1] ?? "").replace("%", ""));
+            const vertical = Number.isNaN(parsed) ? 50 : parsed;
+            return (
+              <Field label="Frame">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => patch({ bannerPosition: "50% 0%" })}
+                    className="text-xs px-3 py-2 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-[#D73F09] hover:border-[#D73F09] transition-colors"
+                  >
+                    Top
+                  </button>
+                  <button
+                    onClick={() => patch({ bannerPosition: "50% 50%" })}
+                    className="text-xs px-3 py-2 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-[#D73F09] hover:border-[#D73F09] transition-colors"
+                  >
+                    Center
+                  </button>
+                  <button
+                    onClick={() => patch({ bannerPosition: "50% 100%" })}
+                    className="text-xs px-3 py-2 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-[#D73F09] hover:border-[#D73F09] transition-colors"
+                  >
+                    Bottom
+                  </button>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={vertical}
+                  onChange={(e) =>
+                    patch({ bannerPosition: `50% ${e.target.value}%` })
+                  }
+                  className="w-full mt-3 accent-[#D73F09]"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Vertical: {vertical}% (0 = top of photo, 100 = bottom)
+                </p>
+              </Field>
+            );
+          })()
+        ) : null}
         <Field label="Athlete Photo">
           <PhotoSlot
             url={data.athletePhotoUrl}
