@@ -562,7 +562,8 @@ function Marquee({
             src={t.file_url}
             alt={t.athlete_name}
             fill
-            sizes="236px"
+            sizes="480px"
+            quality={85}
             style={{ objectFit: 'cover', objectPosition: 'center 15%' }}
           />
           <div className="bp-tile-cap">
