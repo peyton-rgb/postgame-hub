@@ -126,14 +126,17 @@ export async function prepareImageForClaude(
   return { base64: out.toString('base64'), mediaType: 'image/jpeg' };
 }
 
-// Map a width/height to one of the aspect-ratio buckets the app understands.
+// Map a width/height to its NEAREST social-media shape.
+// These are coarse buckets ("which shape is this closest to") — the exact
+// dimensions always live in the `resolution` field. The bands are gap-free,
+// so any readable image gets a real label; 'unknown' is reserved for images
+// we couldn't measure at all (handled in extractImageDimensions' catch).
 function classifyAspect(w: number, h: number): '9:16' | '16:9' | '1:1' | '4:5' | 'unknown' {
   const r = w / h;
-  if (Math.abs(r - 1) < 0.08) return '1:1';   // square-ish
-  if (r >= 1.5) return '16:9';                // wide / landscape
-  if (r <= 0.667) return '9:16';              // tall / vertical
-  if (r >= 0.72 && r <= 0.86) return '4:5';   // portrait feed
-  return 'unknown';
+  if (r >= 1.15) return '16:9';   // landscape (incl. 4:3, 3:2, 16:9)
+  if (r > 0.87) return '1:1';     // square-ish (0.87–1.15)
+  if (r >= 0.70) return '4:5';    // gentle portrait (3:4, 4:5)
+  return '9:16';                  // tall portrait (2:3 and taller)
 }
 
 /**
