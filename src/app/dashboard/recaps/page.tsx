@@ -44,21 +44,16 @@ interface CampaignRecap {
 
 // ---- Status Badge ----
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    published: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-    draft: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
-    archived: 'bg-white/10 text-white/40 border-white/10',
-    in_review: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  };
-
+function StatusBadge({ published }: { published: boolean }) {
   return (
     <span
       className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-        colors[status] || colors.draft
+        published
+          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+          : 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20'
       }`}
     >
-      {status.replace(/_/g, ' ')}
+      {published ? 'Published' : 'Draft'}
     </span>
   );
 }
@@ -289,7 +284,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
 
         {/* Status badge overlay */}
         <div className="absolute top-3 right-3">
-          <StatusBadge status={recap.status} />
+          <StatusBadge published={recap.published} />
         </div>
 
         {/* Featured badge */}
@@ -413,7 +408,7 @@ export default function RecapsPage() {
   const [recaps, setRecaps] = useState<CampaignRecap[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | null>('published');
+  const [publishFilter, setPublishFilter] = useState<'all' | 'published' | 'drafts'>('published');
 
   useEffect(() => {
     async function fetchRecaps() {
@@ -434,12 +429,6 @@ export default function RecapsPage() {
     fetchRecaps();
   }, []);
 
-  // Get unique statuses for filter pills
-  const statuses = useMemo(() => {
-    const s = new Set(recaps.map((r) => r.status));
-    return Array.from(s).sort();
-  }, [recaps]);
-
   // Filtered results
   const filtered = useMemo(() => {
     return recaps.filter((r) => {
@@ -447,10 +436,12 @@ export default function RecapsPage() {
         !searchTerm ||
         r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.client_name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = !statusFilter || r.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesPublish =
+        publishFilter === 'all' ||
+        (publishFilter === 'published' ? r.published : !r.published);
+      return matchesSearch && matchesPublish;
     });
-  }, [recaps, searchTerm, statusFilter]);
+  }, [recaps, searchTerm, publishFilter]);
 
   return (
     <DashboardContent>
@@ -475,27 +466,21 @@ export default function RecapsPage() {
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#D73F09]/50 transition-colors"
         />
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setStatusFilter(null)}
-            className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${
-              !statusFilter
-                ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
-                : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
-            }`}
-          >
-            All
-          </button>
-          {statuses.map((s) => (
+          {([
+            { value: 'all', label: 'All' },
+            { value: 'published', label: 'Published' },
+            { value: 'drafts', label: 'Drafts' },
+          ] as const).map((opt) => (
             <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all capitalize ${
-                statusFilter === s
+              key={opt.value}
+              onClick={() => setPublishFilter(opt.value)}
+              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${
+                publishFilter === opt.value
                   ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
                   : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
               }`}
             >
-              {s.replace(/_/g, ' ')}
+              {opt.label}
             </button>
           ))}
         </div>
@@ -533,12 +518,12 @@ export default function RecapsPage() {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
           <div className="text-white/20 text-lg font-semibold mb-2">
-            {searchTerm || statusFilter
+            {searchTerm || publishFilter !== 'all'
               ? 'No matching recaps found'
               : 'No campaign recaps yet'}
           </div>
           <p className="text-sm text-white/15">
-            {searchTerm || statusFilter
+            {searchTerm || publishFilter !== 'all'
               ? 'Try adjusting your search or filters'
               : 'Campaign recaps will appear here as campaigns are completed'}
           </p>
