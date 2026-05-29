@@ -14,6 +14,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import DashboardContent from '@/components/DashboardContent';
 import { createBrowserSupabase } from '@/lib/supabase';
+import { supabaseImageUrl } from '@/lib/supabase-image';
 
 // ---- Types ----
 
@@ -203,7 +204,7 @@ function CardPhotoPicker({
                   >
                     <div className="aspect-square bg-black">
                       <img
-                        src={img.thumbnail_url || img.file_url}
+                        src={supabaseImageUrl(img.thumbnail_url || img.file_url, 400) || img.file_url}
                         alt=""
                         loading="lazy"
                         className="w-full h-full object-cover"
