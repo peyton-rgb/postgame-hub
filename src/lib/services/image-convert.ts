@@ -77,6 +77,56 @@ export async function convertImageIfNeeded(
 }
 
 /**
+ * Prepare ANY image for sending to Claude's vision API.
+ *
+ * Claude rejects any single image larger than 5 MB, and it internally
+ * downscales anything bigger than ~1568px on the long edge anyway — so
+ * sending a full 27 MB phone photo is both rejected AND wasteful. This
+ * shrinks the image to a sane size, then steps the JPEG quality down
+ * until it is comfortably under the limit.
+ *
+ * Think of it like emailing a photo: you don't attach the 30 MB
+ * original, you let it resize to "medium" first.
+ *
+ * @param buffer   Raw image bytes (any format)
+ * @param filename Used only to detect HEIC/HEIF (iPhone photos)
+ * @returns base64 JPEG string + its media type, ready to drop straight
+ *          into a Claude image block.
+ */
+export async function prepareImageForClaude(
+  buffer: Buffer,
+  filename: string
+): Promise<{ base64: string; mediaType: 'image/jpeg' }> {
+  // 1. HEIC/HEIF can't be decoded by sharp on Vercel, so translate first.
+  let working = buffer;
+  if (isHeic(filename)) {
+    const out = await convert({ buffer, format: 'JPEG', quality: 0.9 });
+    working = Buffer.from(out);
+  }
+
+  // 2. Resize down to a max 1568px long edge, then encode as JPEG.
+  //    If it's still too big, lower the quality and re-encode until it fits.
+  const MAX_BYTES = 5 * 1024 * 1024;                 // Claude's hard per-image cap
+  const TARGET_BYTES = Math.floor(MAX_BYTES * 0.9);  // aim a little under, for safety
+  let quality = 80;
+
+  const encode = (q: number) =>
+    sharp(working)
+      .rotate() // honor EXIF orientation so portrait photos aren't sideways
+      .resize({ width: 1568, height: 1568, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: q })
+      .toBuffer();
+
+  let out = await encode(quality);
+  while (out.length > TARGET_BYTES && quality > 40) {
+    quality -= 15;
+    out = await encode(quality);
+  }
+
+  return { base64: out.toString('base64'), mediaType: 'image/jpeg' };
+}
+
+/**
  * Convert a single media row's file from an unsupported format
  * to JPG inside Supabase Storage, then update the DB row.
  *
