@@ -32,6 +32,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import type { IntakeTagResult } from '@/lib/types/intake';
+import { prepareImageForClaude, extractImageDimensions } from '@/lib/services/image-convert';
 
 // Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
 const anthropic = new Anthropic();
@@ -243,21 +244,34 @@ export async function tagInspoItem(
 
   // --- Step 4: Call Claude Vision ---
   let response;
+  // Declared out here (not inside the try) so the JSON-retry below can reuse them.
+  let base64Image = '';
+  let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/jpeg';
+  // Technical metadata read straight from the file (photos only — a video's specs
+  // come from ffprobe, not from its thumbnail). Stay blank when unavailable.
+  let fileResolution: string | null = null;
+  let fileAspect: '9:16' | '16:9' | '1:1' | '4:5' | 'unknown' = 'unknown';
   try {
-    // Fetch the image as base64 for Claude Vision
+    // Fetch the image, then SHRINK it before sending to Claude.
+    // Claude's API rejects any single image over 5 MB, and raw phone photos
+    // (especially HEIC) are often 20–30 MB — which is what failed every intake
+    // run before. prepareImageForClaude resizes + compresses it under the limit.
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
       throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
     }
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const prepared = await prepareImageForClaude(imageBuffer, imageUrl);
+    base64Image = prepared.base64;
+    mediaType = prepared.mediaType;
 
-    // Determine the media type from the response headers or file extension
-    const contentTypeHeader = imageResponse.headers.get('content-type') || 'image/jpeg';
-    // Claude Vision accepts: image/jpeg, image/png, image/gif, image/webp
-    const mediaType = contentTypeHeader.startsWith('image/')
-      ? contentTypeHeader.split(';')[0] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
-      : 'image/jpeg';
+    // For photos, read true dimensions + aspect ratio from the ORIGINAL bytes.
+    // (Skip videos: the buffer here is a downscaled thumbnail, not the source clip.)
+    if (!isVideo) {
+      const dims = await extractImageDimensions(imageBuffer);
+      fileResolution = dims.resolution;
+      fileAspect = dims.aspectFormat;
+    }
 
     response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -345,8 +359,8 @@ export async function tagInspoItem(
                 type: 'image',
                 source: {
                   type: 'base64',
-                  media_type: 'image/jpeg',
-                  data: '', // We won't re-send the image on retry
+                  media_type: mediaType,
+                  data: base64Image, // re-send the already-shrunk image (valid, under 5 MB)
                 },
               },
               { type: 'text', text: 'Analyze this content and return structured tags as JSON.' },
@@ -390,17 +404,24 @@ export async function tagInspoItem(
   }
 
   // --- Step 6: Save tags to inspo_items ---
+  const tagUpdate: Record<string, unknown> = {
+    pro_tags: tagResult.pro_tags,
+    social_tags: tagResult.social_tags,
+    context_tags: tagResult.context_tags,
+    search_phrases: tagResult.vibe_words,
+    brief_fit: tagResult.brief_fit,
+    visual_description: tagResult.visual_description,
+    tagging_status: 'tagged',
+  };
+  // Only photos get dimensions here; videos get their specs from ffprobe later,
+  // so we don't overwrite those fields for video items.
+  if (!isVideo) {
+    tagUpdate.resolution = fileResolution;
+    tagUpdate.format = fileAspect;
+  }
   const { error: updateError } = await supabase
     .from('inspo_items')
-    .update({
-      pro_tags: tagResult.pro_tags,
-      social_tags: tagResult.social_tags,
-      context_tags: tagResult.context_tags,
-      search_phrases: tagResult.vibe_words,
-      brief_fit: tagResult.brief_fit,
-      visual_description: tagResult.visual_description,
-      tagging_status: 'tagged',
-    })
+    .update(tagUpdate)
     .eq('id', inspoItemId);
 
   if (updateError) {
