@@ -1242,10 +1242,10 @@
   padding: 64px 0 80px;
 }
 .pitch-page .pitch-why-you__card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  overflow: hidden;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
 }
 
 /* HERO BANNER — wide photo (or gradient fallback) */
@@ -1253,6 +1253,8 @@
   position: relative;
   aspect-ratio: 16 / 7;
   overflow: hidden;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 .pitch-page .pitch-why-you__hero--gradient {
   background: linear-gradient(
