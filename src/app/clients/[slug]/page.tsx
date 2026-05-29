@@ -89,6 +89,7 @@ async function loadBrandPageData(brand: Brand) {
         .from('campaigns')
         .select('id, name, slug, description, hero_image_url, thumbnail_url, created_at')
         .eq('brand_id', brandDb.id)
+        .eq('published', true)
         .order('created_at', { ascending: false })
     : Promise.resolve({ data: [] as CampaignRow[], error: null });
 
