@@ -66,9 +66,9 @@ const HERO_METRICS: { key: HeroMetricOverrideKey; label: string }[] = [
   { key: "total_engagements", label: "Total Engagements" },
   { key: "ig_avg_engagement_rate", label: "IG Avg Eng Rate" },
   { key: "tiktok_avg_engagement_rate", label: "TikTok Avg Eng Rate" },
-  { key: "total_clicks", label: "Total Clicks" },
-  { key: "total_sales", label: "Total Sales" },
-  { key: "total_revenue", label: "Total Revenue" },
+  { key: "total_clicks", label: "Clicks" },
+  { key: "total_orders", label: "Orders" },
+  { key: "total_sales", label: "Sales" },
 ];
 
 function fmt(n: number): string {
@@ -2325,8 +2325,8 @@ export default function CampaignEditor() {
                       else if (m.key === "ig_avg_engagement_rate") value = pct(previewStats.igAvgEngRate);
                       else if (m.key === "tiktok_avg_engagement_rate") value = pct(previewStats.tiktokAvgEngRate);
                       else if (m.key === "total_clicks") value = fmt(previewStats.clicks.link_clicks);
-                      else if (m.key === "total_sales") value = fmt(previewStats.sales.conversions);
-                      else if (m.key === "total_revenue") value = dollar(previewStats.sales.revenue);
+                      else if (m.key === "total_orders") value = fmt(previewStats.clicks.orders || previewStats.sales.conversions);
+                      else if (m.key === "total_sales") value = dollar(previewStats.clicks.salesAmount || previewStats.sales.revenue);
                       return (
                         <button
                           key={m.key}
