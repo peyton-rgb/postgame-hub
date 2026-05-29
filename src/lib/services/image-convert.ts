@@ -126,6 +126,49 @@ export async function prepareImageForClaude(
   return { base64: out.toString('base64'), mediaType: 'image/jpeg' };
 }
 
+// Map a width/height to one of the aspect-ratio buckets the app understands.
+function classifyAspect(w: number, h: number): '9:16' | '16:9' | '1:1' | '4:5' | 'unknown' {
+  const r = w / h;
+  if (Math.abs(r - 1) < 0.08) return '1:1';   // square-ish
+  if (r >= 1.5) return '16:9';                // wide / landscape
+  if (r <= 0.667) return '9:16';              // tall / vertical
+  if (r >= 0.72 && r <= 0.86) return '4:5';   // portrait feed
+  return 'unknown';
+}
+
+/**
+ * Read a photo's true dimensions + aspect ratio straight from the file bytes.
+ *
+ * This is the "extract the facts, don't make the AI guess" helper: dimensions
+ * are objective data already inside the image, so we read them with sharp
+ * instead of paying Claude to estimate them.
+ *
+ * Note: pass the ORIGINAL image bytes (not a resized copy). For videos, do NOT
+ * use this on a thumbnail — a thumbnail's size isn't the source clip's; use
+ * ffprobe on the video instead.
+ *
+ * @returns resolution like "1920x1080" (or null if unreadable) and the aspect bucket.
+ */
+export async function extractImageDimensions(
+  buffer: Buffer
+): Promise<{ resolution: string | null; aspectFormat: '9:16' | '16:9' | '1:1' | '4:5' | 'unknown' }> {
+  try {
+    const meta = await sharp(buffer, { failOn: 'none' }).metadata();
+    let w = meta.width ?? 0;
+    let h = meta.height ?? 0;
+    // EXIF orientation 5–8 means the photo is rotated 90°, so the displayed
+    // width/height are swapped versus how they're stored. Account for that.
+    if (meta.orientation && meta.orientation >= 5) {
+      [w, h] = [h, w];
+    }
+    if (!w || !h) return { resolution: null, aspectFormat: 'unknown' };
+    return { resolution: `${w}x${h}`, aspectFormat: classifyAspect(w, h) };
+  } catch {
+    // Unreadable (e.g. a HEIC sharp can't decode) — just leave it blank.
+    return { resolution: null, aspectFormat: 'unknown' };
+  }
+}
+
 /**
  * Convert a single media row's file from an unsupported format
  * to JPG inside Supabase Storage, then update the DB row.
