@@ -75,7 +75,10 @@ export type HeroMetricOverrideKey =
   | "total_impressions"
   | "total_engagements"
   | "ig_avg_engagement_rate"
-  | "tiktok_avg_engagement_rate";
+  | "tiktok_avg_engagement_rate"
+  | "total_clicks"
+  | "total_sales"
+  | "total_revenue";
 
 export type MetricOverrides = Partial<Record<HeroMetricOverrideKey, number | null>>;
 

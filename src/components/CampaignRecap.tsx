@@ -1078,7 +1078,9 @@ export function CampaignRecap({
                 { key: "total_engagements" as const,   value: fmt(stats.totalEngagements),    label: "TOTAL ENGAGEMENTS" },
                 ...(stats.igFeedPosts > 0 || stats.igReelPosts > 0 ? [{ key: "ig_avg_engagement_rate" as const, value: formatEngagementRate(stats.igAvgEngRate), label: "IG AVG ENG RATE" }] : []),
                 ...(stats.tiktokPosts > 0 ? [{ key: "tiktok_avg_engagement_rate" as const, value: formatEngagementRate(stats.tiktokAvgEngRate), label: "TIKTOK AVG ENG RATE" }] : []),
-                ...(stats.hasSales && show("sales") ? [{ key: null as HeroMetricOverrideKey | null, value: dollar(stats.sales.revenue), label: "TOTAL SALES" }] : []),
+                ...(stats.hasClicks && show("clicks") ? [{ key: "total_clicks" as const, value: fmt(stats.clicks.link_clicks), label: "TOTAL CLICKS" }] : []),
+                ...(stats.hasSales && show("sales") ? [{ key: "total_sales" as const, value: fmt(stats.sales.conversions), label: "TOTAL SALES" }] : []),
+                ...(stats.hasSales && show("sales") ? [{ key: "total_revenue" as const, value: dollar(stats.sales.revenue), label: "TOTAL REVENUE" }] : []),
               ].filter(m => m.key === null || !hiddenHeroes.includes(m.key)) as { key: HeroMetricOverrideKey | null; value: string | number; label: string }[];
 
               const renderBox = (m: { key: HeroMetricOverrideKey | null; value: string | number; label: string }) => {

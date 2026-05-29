@@ -18,7 +18,7 @@ import TeamCollabCard from "@/components/TeamCollabCard";
 import CampaignEditorBanner from "@/components/CampaignEditorBanner";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { computeStats, pct } from "@/lib/recap-helpers";
+import { computeStats, pct, dollar } from "@/lib/recap-helpers";
 import dynamic from "next/dynamic";
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
 
@@ -66,6 +66,9 @@ const HERO_METRICS: { key: HeroMetricOverrideKey; label: string }[] = [
   { key: "total_engagements", label: "Total Engagements" },
   { key: "ig_avg_engagement_rate", label: "IG Avg Eng Rate" },
   { key: "tiktok_avg_engagement_rate", label: "TikTok Avg Eng Rate" },
+  { key: "total_clicks", label: "Total Clicks" },
+  { key: "total_sales", label: "Total Sales" },
+  { key: "total_revenue", label: "Total Revenue" },
 ];
 
 function fmt(n: number): string {
@@ -2321,6 +2324,9 @@ export default function CampaignEditor() {
                       else if (m.key === "total_engagements") value = fmt(previewStats.totalEngagements);
                       else if (m.key === "ig_avg_engagement_rate") value = pct(previewStats.igAvgEngRate);
                       else if (m.key === "tiktok_avg_engagement_rate") value = pct(previewStats.tiktokAvgEngRate);
+                      else if (m.key === "total_clicks") value = fmt(previewStats.clicks.link_clicks);
+                      else if (m.key === "total_sales") value = fmt(previewStats.sales.conversions);
+                      else if (m.key === "total_revenue") value = dollar(previewStats.sales.revenue);
                       return (
                         <button
                           key={m.key}
