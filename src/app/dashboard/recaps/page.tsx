@@ -208,6 +208,13 @@ function CardPhotoPicker({
                         alt=""
                         loading="lazy"
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (!el.dataset.fellBack) {
+                            el.dataset.fellBack = '1';
+                            el.src = img.file_url;
+                          }
+                        }}
                       />
                     </div>
                     {isCurrent && (
