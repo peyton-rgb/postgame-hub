@@ -13,6 +13,15 @@ const PORT = process.env.PORT || 3001;
 const FFMPEG_WORKER_SECRET = process.env.FFMPEG_WORKER_SECRET;
 const HUB_URL = process.env.HUB_URL || "https://postgame-hub.vercel.app";
 
+// The app's tagging endpoint sits behind a hard 4.5 MB request-size limit.
+// Sending one full-resolution frame per second blows past that on longer
+// clips, so the request is rejected before tagging can run. We extract 1
+// frame/sec (so we still know the true duration), then send only a small,
+// evenly-spaced sample. The app only needs a few frames to tag, and reads
+// resolution/duration from the frames' real dimensions + timestamps, so this
+// keeps all the specs intact while keeping the package small.
+const MAX_FRAMES_TO_SEND = 8;
+
 // -- Auth middleware -----------------------------------------------------------
 
 function authenticate(req, res, next) {
@@ -65,7 +74,7 @@ function extractFrames(videoPath) {
   return new Promise((resolve, reject) => {
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "pg-frames-"));
     ffmpeg(videoPath)
-      .outputOptions(["-vf", "fps=1", "-q:v", "2"])
+      .outputOptions(["-vf", "fps=1", "-q:v", "5"])
       .output(path.join(outDir, "frame-%04d.jpg"))
       .on("end", () => {
         const files = fs.readdirSync(outDir)
@@ -115,11 +124,30 @@ app.post("/process", authenticate, async (req, res) => {
     framesDir = outDir;
     console.log(`[process] Extracted ${files.length} frames`);
 
-    // Convert frames to base64
-    const frames = files.map((filePath, i) => ({
+    // Pick at most MAX_FRAMES_TO_SEND frames, evenly spread from first to last.
+    // Each keeps its true second (its position in the 1-per-second list), so
+    // the app can still read the real duration from the highest timestamp.
+    let selected;
+    if (files.length <= MAX_FRAMES_TO_SEND) {
+      selected = files.map((filePath, i) => ({ filePath, second: i + 1 }));
+    } else {
+      const step = (files.length - 1) / (MAX_FRAMES_TO_SEND - 1);
+      const picked = [];
+      for (let k = 0; k < MAX_FRAMES_TO_SEND; k++) {
+        const idx = Math.round(k * step);
+        picked.push({ filePath: files[idx], second: idx + 1 });
+      }
+      // Drop any duplicate seconds that rounding may have produced.
+      selected = picked.filter(
+        (s, i, arr) => arr.findIndex((x) => x.second === s.second) === i
+      );
+    }
+
+    // Convert the selected frames to base64
+    const frames = selected.map(({ filePath, second }) => ({
       data: fs.readFileSync(filePath).toString("base64"),
       media_type: "image/jpeg",
-      timestamp_seconds: i + 1,
+      timestamp_seconds: second,
     }));
 
     // POST to /api/tag
