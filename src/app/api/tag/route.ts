@@ -216,7 +216,13 @@ function buildEmbeddingInput(tags: Record<string, unknown>): string {
 // frames can also exceed Claude's 5 MB-per-image cap. So we send only a few
 // evenly-spaced frames, each shrunk down first. A handful captures the whole
 // clip's content at a fraction of the tokens and cost.
-const MAX_CLAUDE_FRAMES = 5;
+const MAX_CLAUDE_FRAMES = 3;
+
+// Each frame sent to Claude is shrunk to this long-edge size. Smaller than the
+// 1568px we use for photos — video frames don't need fine detail to be tagged,
+// and smaller frames keep us comfortably under the per-minute token limit so a
+// batch of clips can run without tripping a rate-limit error.
+const CLAUDE_FRAME_MAX_EDGE = 768;
 
 // Pick up to `max` frames spread evenly from first to last.
 function pickEvenFrames(frames: Frame[], max: number): Frame[] {
@@ -236,7 +242,8 @@ async function prepareFramesForClaude(frames: Frame[]): Promise<Frame[]> {
     try {
       const prepared = await prepareImageForClaude(
         Buffer.from(f.data, "base64"),
-        "frame.jpg"
+        "frame.jpg",
+        CLAUDE_FRAME_MAX_EDGE
       );
       out.push({
         data: prepared.base64,
