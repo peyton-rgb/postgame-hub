@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
+import { extractImageDimensions, prepareImageForClaude } from "@/lib/services/image-convert";
 
 // ---------------------------------------------------------------------------
 // POST /api/tag
@@ -208,6 +209,47 @@ function buildEmbeddingInput(tags: Record<string, unknown>): string {
   return parts.join(" | ");
 }
 
+// -- Frame selection (rate-limit + size safety) -----------------------------
+
+// The worker extracts one frame per SECOND of video. Sending all of them to
+// Claude floods the per-minute token limit on long clips, and full-resolution
+// frames can also exceed Claude's 5 MB-per-image cap. So we send only a few
+// evenly-spaced frames, each shrunk down first. A handful captures the whole
+// clip's content at a fraction of the tokens and cost.
+const MAX_CLAUDE_FRAMES = 5;
+
+// Pick up to `max` frames spread evenly from first to last.
+function pickEvenFrames(frames: Frame[], max: number): Frame[] {
+  if (frames.length <= max) return frames;
+  const step = (frames.length - 1) / (max - 1);
+  const picked: Frame[] = [];
+  for (let i = 0; i < max; i++) picked.push(frames[Math.round(i * step)]);
+  // de-dupe in case rounding lands on the same frame twice
+  return picked.filter((f, idx) => picked.indexOf(f) === idx);
+}
+
+// Shrink each selected frame under Claude's size/token limits before sending.
+async function prepareFramesForClaude(frames: Frame[]): Promise<Frame[]> {
+  const picked = pickEvenFrames(frames, MAX_CLAUDE_FRAMES);
+  const out: Frame[] = [];
+  for (const f of picked) {
+    try {
+      const prepared = await prepareImageForClaude(
+        Buffer.from(f.data, "base64"),
+        "frame.jpg"
+      );
+      out.push({
+        data: prepared.base64,
+        media_type: prepared.mediaType,
+        timestamp_seconds: f.timestamp_seconds,
+      });
+    } catch {
+      out.push(f); // if a resize fails, fall back to the original frame
+    }
+  }
+  return out;
+}
+
 // -- Route handler ----------------------------------------------------------
 
 export async function POST(req: NextRequest) {
@@ -235,9 +277,12 @@ export async function POST(req: NextRequest) {
       .update({ tagging_status: "processing" })
       .eq("id", body.inspo_item_id);
 
-    // 1. Claude vision tagging
+    // 1. Claude vision tagging — on a few evenly-spaced, shrunk frames
+    //    (keeps us under the token + per-image size limits). Duration,
+    //    resolution and the thumbnail below still use the FULL frame set.
+    const claudeFrames = await prepareFramesForClaude(body.frames);
     const tags = await callClaude(
-      body.frames,
+      claudeFrames,
       body.human_tags ?? {},
       body.brief_context
     );
@@ -245,6 +290,50 @@ export async function POST(req: NextRequest) {
     // 2. Generate embedding from combined tag text
     const embeddingInput = buildEmbeddingInput(tags);
     const embedding = await generateEmbedding(embeddingInput);
+
+    // 2b. Technical specs, read straight off the frames the worker extracted.
+    //  - resolution + aspect ratio come from a frame's actual pixels
+    //  - duration ≈ the last frame's timestamp (frames are sampled 1 per second)
+    // fps + codec are intentionally NOT set here — those require ffprobe on the
+    // real video file (a worker change), handled in a later phase.
+    let videoResolution: string | null = null;
+    let videoAspect = "unknown";
+    try {
+      const dims = await extractImageDimensions(
+        Buffer.from(body.frames[0].data, "base64")
+      );
+      videoResolution = dims.resolution;
+      videoAspect = dims.aspectFormat;
+    } catch {
+      /* if a frame can't be read, leave specs blank rather than fail */
+    }
+    const videoDuration =
+      body.frames.reduce((max, f) => Math.max(max, f.timestamp_seconds || 0), 0) ||
+      body.frames.length ||
+      null;
+
+    // Save a representative (middle) frame as the item's thumbnail. Non-fatal:
+    // a failure here must never kill the tag job, so it's wrapped and ignored.
+    let thumbnailUrl: string | null = null;
+    try {
+      const midFrame =
+        body.frames[Math.floor(body.frames.length / 2)] ?? body.frames[0];
+      const thumbPath = `thumbnails/${body.inspo_item_id}_${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from("raw-footage")
+        .upload(thumbPath, Buffer.from(midFrame.data, "base64"), {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+      if (!upErr) {
+        const { data: pub } = supabase.storage
+          .from("raw-footage")
+          .getPublicUrl(thumbPath);
+        thumbnailUrl = pub?.publicUrl ?? null;
+      }
+    } catch {
+      /* thumbnail is a nice-to-have; never fail tagging over it */
+    }
 
     // 3. Build the update payload, mapping Claude's output to DB columns
     const update: Record<string, unknown> = {
@@ -262,9 +351,13 @@ export async function POST(req: NextRequest) {
         ? tags.search_phrases
         : null,
       embedding: JSON.stringify(embedding),
+      resolution: videoResolution,
+      format: videoAspect,
+      duration_seconds: videoDuration,
       tagging_status: "complete",
       updated_at: new Date().toISOString(),
     };
+    if (thumbnailUrl) update.thumbnail_url = thumbnailUrl;
 
     // Merge human-supplied fields that should override
     if (body.human_tags?.athlete_name) {
