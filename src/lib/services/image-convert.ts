@@ -95,7 +95,8 @@ export async function convertImageIfNeeded(
  */
 export async function prepareImageForClaude(
   buffer: Buffer,
-  filename: string
+  filename: string,
+  maxEdge: number = 1568
 ): Promise<{ base64: string; mediaType: 'image/jpeg' }> {
   // 1. HEIC/HEIF can't be decoded by sharp on Vercel, so translate first.
   let working = buffer;
@@ -104,8 +105,9 @@ export async function prepareImageForClaude(
     working = Buffer.from(out);
   }
 
-  // 2. Resize down to a max 1568px long edge, then encode as JPEG.
-  //    If it's still too big, lower the quality and re-encode until it fits.
+  // 2. Resize down to a max long edge (default 1568px; callers may pass a
+  //    smaller value, e.g. video frames), then encode as JPEG. If it's still
+  //    too big, lower the quality and re-encode until it fits.
   const MAX_BYTES = 5 * 1024 * 1024;                 // Claude's hard per-image cap
   const TARGET_BYTES = Math.floor(MAX_BYTES * 0.9);  // aim a little under, for safety
   let quality = 80;
@@ -113,7 +115,7 @@ export async function prepareImageForClaude(
   const encode = (q: number) =>
     sharp(working)
       .rotate() // honor EXIF orientation so portrait photos aren't sideways
-      .resize({ width: 1568, height: 1568, fit: 'inside', withoutEnlargement: true })
+      .resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: q })
       .toBuffer();
 
