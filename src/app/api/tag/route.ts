@@ -257,11 +257,40 @@ async function prepareFramesForClaude(frames: Frame[]): Promise<Frame[]> {
   return out;
 }
 
+// -- Enum safety ------------------------------------------------------------
+
+// Three columns are strict dropdowns in the database — they only accept these
+// exact values (or a true blank). Claude occasionally answers with the literal
+// text "null", or a value just outside the list. Writing that straight to the
+// column makes Postgres reject the ENTIRE row. So we validate each enum field
+// against its allowed list and fall back to a real null for anything else.
+const ENUM_VALUES = {
+  content_type: [
+    "produced",
+    "athlete_ugc",
+    "bts",
+    "raw_footage",
+    "photography",
+    "talking_head",
+    "inspo_external",
+  ],
+  content_freshness: ["evergreen", "timely", "expired"],
+  production_config: ["vid_is_editor", "split_team"],
+} as const;
+
+function enumOrNull(value: unknown, allowed: readonly string[]): string | null {
+  return typeof value === "string" && allowed.includes(value) ? value : null;
+}
+
 // -- Route handler ----------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  // Captured right after we parse the body, so the catch block can mark the
+  // item failed without trying to re-read the (already consumed) request.
+  let itemIdForError: string | null = null;
   try {
     const body = (await req.json()) as TagRequestBody;
+    itemIdForError = body.inspo_item_id ?? null;
 
     if (!body.inspo_item_id) {
       return NextResponse.json(
@@ -345,9 +374,15 @@ export async function POST(req: NextRequest) {
     // 3. Build the update payload, mapping Claude's output to DB columns
     const update: Record<string, unknown> = {
       visual_description: tags.visual_description ?? null,
-      content_type: tags.content_type ?? null,
-      content_freshness: tags.content_freshness ?? null,
-      production_config: tags.production_config ?? null,
+      content_type: enumOrNull(tags.content_type, ENUM_VALUES.content_type),
+      content_freshness: enumOrNull(
+        tags.content_freshness,
+        ENUM_VALUES.content_freshness
+      ),
+      production_config: enumOrNull(
+        tags.production_config,
+        ENUM_VALUES.production_config
+      ),
       sport: tags.sport ?? null,
       school: tags.school ?? null,
       context_tags: tags.context_tags ?? null,
@@ -394,15 +429,15 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[/api/tag] Error:", message);
 
-    // Attempt to mark the item as failed
+    // Mark the item failed so it's visible and retryable (uses the id captured
+    // above — the request body has already been read and can't be re-read).
     try {
-      const body = await req.clone().json().catch(() => null);
-      if (body?.inspo_item_id) {
+      if (itemIdForError) {
         const supabase = createServiceSupabase();
         await supabase
           .from("inspo_items")
           .update({ tagging_status: "failed" })
-          .eq("id", body.inspo_item_id);
+          .eq("id", itemIdForError);
       }
     } catch {
       // Best-effort; don't mask the original error
