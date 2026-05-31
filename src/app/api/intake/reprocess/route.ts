@@ -25,7 +25,14 @@ import { createServiceSupabase } from "@/lib/supabase";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // let the worker round-trip finish (Vercel Pro)
 
-const MAX_IDS = 5; // safety cap while testing
+const MAX_IDS = 8; // how many videos one request will process in sequence
+
+// Pause between videos so a batch can't outrun the per-minute token limit on
+// the tagging step, no matter how fast the worker returns. ~16s spacing keeps
+// us safely under the ceiling at the current (smaller) frame size.
+const PACE_MS = 16_000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function GET(req: NextRequest) {
   // --- Auth: require a signed-in user (browser session cookie) ---
@@ -72,7 +79,13 @@ export async function GET(req: NextRequest) {
   const db = createServiceSupabase();
   const results: Array<Record<string, unknown>> = [];
 
+  let processed = 0;
   for (const id of ids) {
+    // Space out requests after the first, so the batch stays under the
+    // per-minute token limit on the tagging step.
+    if (processed > 0) await sleep(PACE_MS);
+    processed++;
+
     // Look up the item
     const { data: item, error: itemError } = await db
       .from("inspo_items")
