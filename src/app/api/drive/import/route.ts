@@ -26,13 +26,13 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fileId, fileName, athleteId, collabGroupId, collabContainerId, slot, recapId } = body;
+    const { fileId, fileName, athleteId, collabGroupId, collabContainerId, slot, recapId, isEvent } = body;
 
     // The collab destination key: prefer the synthetic group id, fall back to a
     // legacy container id. Stamped into drive_file_id as "collab:<id>".
     const collabId = collabGroupId ?? collabContainerId;
 
-    if (!fileId || !fileName || !recapId || (!athleteId && !collabId)) {
+    if (!fileId || !fileName || !recapId || (!athleteId && !collabId && !isEvent)) {
       return NextResponse.json(
         { error: "Missing required fields: fileId, fileName, recapId, and one of athleteId/collabGroupId" },
         { status: 400 }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceSupabase();
     // Storage path segment: athlete folder, or a collab-<id> folder for collab posts.
-    const destSegment = athleteId ?? `collab-${collabId}`;
+    const destSegment = athleteId ?? (isEvent ? "event" : `collab-${collabId}`);
     const storagePath = buildStoragePath(recapId, destSegment, fileName);
 
     const { publicUrl, isVideo } = await downloadAndUpload(supabase, {
@@ -62,6 +62,18 @@ export async function POST(request: NextRequest) {
           is_video_thumbnail: false,
           // Stamp the source Drive file id so re-imports (e.g. from the Media
           // Library doorway) can detect already-imported files and grey them out.
+          drive_file_id: fileId,
+        }
+      : isEvent
+      ? {
+          // Event import: athlete-less content attached to the campaign. Keep the
+          // real Drive file id (NOT a collab: marker) so dedup greys out re-imports.
+          campaign_id: recapId,
+          athlete_id: null,
+          type: isVideo ? "video" : "image",
+          file_url: publicUrl,
+          thumbnail_url: isVideo ? null : publicUrl,
+          is_video_thumbnail: false,
           drive_file_id: fileId,
         }
       : {
