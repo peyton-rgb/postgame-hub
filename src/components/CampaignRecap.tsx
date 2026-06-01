@@ -637,18 +637,101 @@ function ExportPptxButton({ slug, campaignName }: { slug: string; campaignName: 
 
 // ── Main Recap Component ──────────────────────────────────────
 
+// A single flat event-content tile — image or click-to-play video with a
+// download button. No athlete chrome (event media is athlete-less). Used by
+// the gallery-first Event Content section.
+function EventMediaCard({ item }: { item: Media }) {
+  const [playing, setPlaying] = useState(false);
+  const isVideo = item.type === "video";
+  const displaySrc = item.thumbnail_url || (!isVideo ? item.file_url : null);
+
+  const handleDownload = async () => {
+    if (!item.file_url) return;
+    try {
+      const res = await fetch(item.file_url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `event-${item.id}.${isVideo ? "mp4" : "jpg"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(item.file_url, "_blank");
+    }
+  };
+
+  return (
+    <div className="break-inside-avoid mb-2 rounded-lg overflow-hidden group relative" style={{ background: "#141418", border: "1px solid #2a2a30" }}>
+      <div className="relative overflow-hidden">
+        {isVideo && playing ? (
+          <video src={item.file_url} autoPlay controls playsInline className="w-full block" onEnded={() => setPlaying(false)} />
+        ) : displaySrc ? (
+          <img
+            src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
+            className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
+            draggable={false}
+            alt=""
+            loading="lazy"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.src.includes("/render/image/public/")) {
+                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+              }
+            }}
+          />
+        ) : isVideo ? (
+          <div className="w-full aspect-square bg-black flex items-center justify-center" onClick={() => setPlaying(true)}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+        ) : (
+          <div className="w-full aspect-square bg-black flex items-center justify-center">
+            <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
+          </div>
+        )}
+
+        {isVideo && !playing && displaySrc && (
+          <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
+            <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
+            </div>
+          </div>
+        )}
+
+        {!playing && (
+          <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-4 bg-gradient-to-b from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex justify-end">
+              <button onClick={(e) => { e.stopPropagation(); handleDownload(); }} className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors" title="Download">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CampaignRecap({
   campaign,
   athletes,
   allAthletes,
   media,
   collabGroups = [],
+  eventMedia = [],
 }: {
   campaign: Campaign;
   athletes: Athlete[];
   allAthletes?: Athlete[];
   media: Record<string, Media[]>;
   collabGroups?: CollabGroup[];
+  eventMedia?: Media[];
 }) {
   const [filter, setFilter] = useState("all");
   const [galleryExpanded, setGalleryExpanded] = useState(false);
@@ -657,6 +740,7 @@ export function CampaignRecap({
   const settings = campaign.settings || {};
   const vis: VisibleSections = settings.visible_sections || {};
   const show = (key: keyof VisibleSections) => vis[key] !== false;
+  const isEvent = settings.campaign_type === "event";
   const hiddenCols = new Set(settings.hidden_columns || []);
   const showCol = (key: string) => !hiddenCols.has(key);
   const hiddenCards = new Set(settings.hidden_platform_cards || []);
@@ -702,6 +786,7 @@ export function CampaignRecap({
   // Build nav tabs dynamically based on visible sections + data availability
   const hasKpi = settings.kpi_targets && (settings.kpi_targets.athlete_quantity || settings.kpi_targets.content_units || settings.kpi_targets.posts || settings.kpi_targets.impressions || settings.kpi_targets.engagements || settings.kpi_targets.engagement_rate || settings.kpi_targets.cpm || settings.kpi_targets.other_kpis);
   const navTabs = [
+    isEvent && eventMedia.length > 0 && { key: "event_content", label: "Event Content" },
     show("brief") && { key: "brief", label: "Recap" },
     show("key_takeaways") && hasRichTextContent(settings.key_takeaways) && { key: "key_takeaways", label: "Takeaways" },
     show("kpi_targets") && hasKpi && { key: "kpi_targets", label: "KPIs" },
@@ -939,6 +1024,20 @@ export function CampaignRecap({
           </div>
         </div>
       </div>
+
+      {/* ── SECTION 0: EVENT CONTENT (gallery-first) ──────────── */}
+      {isEvent && eventMedia.length > 0 && (
+        <div ref={(el) => { sectionRefs.current["event_content"] = el; }} data-section="event_content" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Event Content</h2>
+          <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
+            <div className="columns-2 md:columns-3 lg:columns-4 gap-2 [column-fill:_balance]">
+              {eventMedia.map((m) => (
+                <EventMediaCard key={m.id} item={m} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── SECTION 2: CAMPAIGN OVERVIEW ─────────────────────── */}
       {show("brief") && (
