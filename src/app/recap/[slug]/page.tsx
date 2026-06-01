@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
 import { detectCollabGroups } from "@/lib/csv-parser";
-import { stripSensitiveMetrics } from "@/lib/strip-sensitive-metrics";
 import type { Athlete } from "@/lib/types";
 import type { Metadata } from "next";
 // PostgameCalendar is now rendered inside CampaignRecap and Top50Recap
@@ -110,12 +109,7 @@ export default async function RecapPage({ params, searchParams }: Props) {
     }
   });
 
-  // PRIVACY: on the public (anon) path, strip sensitive performance metrics from
-  // athlete data before it reaches the components / RSC payload. The ?preview=1
-  // (non-production, service-role) path keeps full metrics for internal preview.
-  const allAthletes = preview
-    ? (athletes || [])
-    : stripSensitiveMetrics((athletes || []) as Athlete[]);
+  const allAthletes = athletes || [];
   // Gallery athletes: only those with actual uploaded media
   const galleryAthletes = allAthletes.filter((a: any) => {
     const items = mediaByAthlete[a.id];
