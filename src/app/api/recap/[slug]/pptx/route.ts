@@ -12,7 +12,8 @@
 import { NextResponse } from "next/server";
 import { createPlainSupabase } from "@/lib/supabase";
 import { buildRecapPptx, recapFileName } from "@/lib/pptx-export";
-import type { Media } from "@/lib/types";
+import { stripSensitiveMetrics } from "@/lib/strip-sensitive-metrics";
+import type { Athlete, Media } from "@/lib/types";
 
 // Force dynamic rendering — this route always runs fresh against the database.
 export const dynamic = "force-dynamic";
@@ -57,6 +58,10 @@ export async function GET(
     supabase.from("media").select("*").eq("campaign_id", campaign.id).order("sort_order"),
   ]);
 
+  // PRIVACY: this route is always public (anon, no preview path) — strip
+  // sensitive performance metrics before they enter the deck builder.
+  const publicAthletes = stripSensitiveMetrics((athletes || []) as Athlete[]);
+
   // 3. Group media by athlete (same shape CampaignRecap expects)
   const mediaByAthlete: Record<string, Media[]> = {};
   (mediaRows || []).forEach((m: Media) => {
@@ -71,7 +76,7 @@ export async function GET(
   // 4. Build the .pptx
   let buffer: Buffer;
   try {
-    buffer = await buildRecapPptx(campaign, athletes || [], mediaByAthlete);
+    buffer = await buildRecapPptx(campaign, publicAthletes, mediaByAthlete);
   } catch (err) {
     const e = err as Error;
     console.error(`[pptx-export] Build failed for slug="${slug}"`, {
