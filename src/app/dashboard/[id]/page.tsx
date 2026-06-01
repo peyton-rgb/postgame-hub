@@ -810,6 +810,7 @@ export default function CampaignEditor() {
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
   const [driveFolderAthlete, setDriveFolderAthlete] = useState<Athlete | null>(null);
+  const [eventPickerOpen, setEventPickerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
@@ -2266,6 +2267,37 @@ export default function CampaignEditor() {
               </div>
             </div>
 
+            {/* Event toggle */}
+            <div className="border border-gray-800 rounded-lg px-4 py-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center ${campaignType === "event" ? "bg-[#D73F09] border-[#D73F09]" : "border-gray-600"}`}
+                  onClick={() => setCampaignType(campaignType === "event" ? "" : "event")}
+                >
+                  {campaignType === "event" && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                  )}
+                </div>
+                <div>
+                  <span className="text-sm font-semibold text-gray-300">This is an event (no athlete list).</span>
+                  <p className="text-[10px] text-gray-600">Content is imported at the campaign level instead of per-athlete.</p>
+                </div>
+              </label>
+
+              {campaignType === "event" && (
+                <div className="mt-3 pt-3 border-t border-gray-800">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Import event content from Drive</label>
+                  <button
+                    type="button"
+                    onClick={() => setEventPickerOpen(true)}
+                    className="px-4 py-2 rounded-lg text-xs font-black uppercase bg-[#D73F09] text-white hover:bg-[#ff5722] transition-colors"
+                  >
+                    Import from Drive folder
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Platform(s)</label>
@@ -2999,6 +3031,18 @@ export default function CampaignEditor() {
                     [driveFolderAthlete.id]: [...(prev[driveFolderAthlete.id] || []), ...newMedia],
                   }));
                 }}
+              />
+            )}
+
+            {/* Campaign-level event content import (athleteId intentionally omitted) */}
+            {campaign && (
+              <AthleteDriveFolderPicker
+                isOpen={eventPickerOpen}
+                recapId={campaign.id}
+                eventImport
+                athleteName="this event"
+                onClose={() => setEventPickerOpen(false)}
+                onImported={() => {}}
               />
             )}
           </div>
