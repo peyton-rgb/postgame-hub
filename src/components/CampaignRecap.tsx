@@ -1956,10 +1956,26 @@ export function CampaignRecap({
                     const hasTiktok2 = realPost2(m.tiktok_2);
                     const hasAnyPost2 = hasReel2 || hasFeed2 || hasTiktok2;
 
+                    // Visual grouping for multi-post athletes (styling only): a solid
+                    // orange bar runs down the athlete row + its sub-rows, and small
+                    // "2 reels"/"2 feed"/"2 tiktoks" pills sit next to the name. Pill
+                    // style mirrors MetricsSpreadsheet.tsx so editor + recap match.
+                    const accentBar: React.CSSProperties = { boxShadow: "inset 3px 0 0 #D73F09" };
+                    const post2Pills = [
+                      hasFeed2 && "2 feed",
+                      hasReel2 && "2 reels",
+                      hasTiktok2 && "2 tiktoks",
+                    ].filter(Boolean) as string[];
+
                     const mainRow = (
                     <tr key={a.id} className="border-b border-white/[0.10] hover:bg-white/[0.04]">
-                      <td className="px-3 py-3 text-sm font-black text-white/45">{i + 1}</td>
-                      <td className="px-3 py-3 text-sm font-black uppercase">{a.name}</td>
+                      <td className="px-3 py-3 text-sm font-black text-white/45" style={hasAnyPost2 ? accentBar : undefined}>{i + 1}</td>
+                      <td className="px-3 py-3 text-sm font-black uppercase">
+                        {a.name}
+                        {post2Pills.map((p) => (
+                          <span key={p} className="ml-1.5 inline-block align-middle px-1.5 py-px rounded-full bg-[#D73F09]/15 text-[#D73F09] text-[9px] font-bold uppercase tracking-wide leading-tight">{p}</span>
+                        ))}
+                      </td>
                       {showCol("school") && <td className="px-3 py-3 text-sm text-white/70">{a.school}</td>}
                       {showCol("sport") && <td className="px-3 py-3">
                         <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/15 text-brand">
@@ -2005,8 +2021,7 @@ export function CampaignRecap({
 
                     // Build Post 1 + Post 2 sub-rows for each platform that has a second post.
                     // Sub-rows are desktop-only (hidden md:table-row) and show per-post metrics.
-                    const subTdStyle: React.CSSProperties = { borderLeft: "2px solid rgba(215,63,9,0.15)" };
-                    const subRowBg: React.CSSProperties = { background: "rgba(215,63,9,0.025)" };
+                    const subRowBg: React.CSSProperties = { background: "rgba(215,63,9,0.06)" };
 
                     type PostSlotData = { label: string; impressions?: number; engagements?: number; erFol?: number; erImp?: number; url?: string | null; };
                     const slots: PostSlotData[] = [];
@@ -2030,20 +2045,20 @@ export function CampaignRecap({
                       const isReel = slot.label.startsWith("Reel");
                       return (
                         <tr key={`${a.id}-${slot.label}`} className="hidden md:table-row border-b border-white/[0.06]" style={subRowBg}>
-                          <td className="px-3 py-2" style={subTdStyle} />
-                          <td className="px-3 py-2" style={{ ...subTdStyle, fontSize: 10, color: "#666" }}>↳ {slot.label}</td>
-                          {showCol("school") && <td className="px-3 py-2" style={subTdStyle} />}
-                          {showCol("sport") && <td className="px-3 py-2" style={subTdStyle} />}
-                          {showCol("ig_handle") && <td className="px-3 py-2" style={subTdStyle} />}
-                          {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-2" style={subTdStyle} />}
-                          {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{slot.impressions ? fmt(slot.impressions) : "\u2014"}</td>}
-                          {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{slot.engagements ? fmt(slot.engagements) : "\u2014"}</td>}
-                          {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-2 text-right text-sm text-white/50" style={subTdStyle}>{er > 0 ? formatEngagementRate(er) : "\u2014"}</td>}
-                          {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-2" style={subTdStyle} />}
-                          {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-2" style={subTdStyle} />}
-                          {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-2" style={subTdStyle} />}
+                          <td className="px-3 py-2" style={accentBar} />
+                          <td className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#D73F09]">↳ {slot.label}</td>
+                          {showCol("school") && <td className="px-3 py-2" />}
+                          {showCol("sport") && <td className="px-3 py-2" />}
+                          {showCol("ig_handle") && <td className="px-3 py-2" />}
+                          {showCol("ig_followers") && hasAnyFollowers && <td className="px-3 py-2" />}
+                          {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-2 text-right text-sm text-white/90">{slot.impressions ? fmt(slot.impressions) : "\u2014"}</td>}
+                          {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-2 text-right text-sm text-white/90">{slot.engagements ? fmt(slot.engagements) : "\u2014"}</td>}
+                          {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-2 text-right text-sm text-white/90">{er > 0 ? formatEngagementRate(er) : "\u2014"}</td>}
+                          {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-2" />}
+                          {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-2" />}
+                          {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-2" />}
                           {hasAnyFeedUrl && (
-                            <td className="px-3 py-2 text-center" style={subTdStyle}>
+                            <td className="px-3 py-2 text-center">
                               {isFeed && slot.url ? (
                                 <a href={slot.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand/10 text-brand hover:bg-brand/25 transition-colors">
                                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
@@ -2052,7 +2067,7 @@ export function CampaignRecap({
                             </td>
                           )}
                           {hasAnyReelUrl && (
-                            <td className="px-3 py-2 text-center" style={subTdStyle}>
+                            <td className="px-3 py-2 text-center">
                               {isReel ? (
                                 slot.url ? (
                                   <a href={slot.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-white hover:bg-white/25 transition-colors">
@@ -2067,7 +2082,7 @@ export function CampaignRecap({
                             </td>
                           )}
                           {hasTiktok2 && (
-                            <td className="px-3 py-2 text-center" style={subTdStyle}>
+                            <td className="px-3 py-2 text-center">
                               {slot.label.startsWith("TikTok") ? (
                                 slot.url ? (
                                   <a href={slot.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-white hover:bg-white/25 transition-colors">
