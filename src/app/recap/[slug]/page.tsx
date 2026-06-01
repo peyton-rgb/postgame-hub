@@ -136,6 +136,20 @@ export default async function RecapPage({ params, searchParams }: Props) {
     (a) => a.id,
   );
 
+  // Event content: athlete-less, non-collab, link-less media for the
+  // gallery-first Event Content section. Only for event campaigns — every
+  // other campaign passes nothing, so existing recaps are untouched.
+  const isEvent = campaign.settings?.campaign_type === "event";
+  const eventMedia = isEvent
+    ? (media || []).filter(
+        (m: any) =>
+          !m.athlete_id &&
+          !(typeof m.drive_file_id === "string" && m.drive_file_id.startsWith("collab:")) &&
+          !(linkedAthletesByMedia[m.id]?.length) &&
+          !m.is_video_thumbnail,
+      )
+    : [];
+
   return (
     <CampaignRecap
       campaign={campaign}
@@ -143,6 +157,7 @@ export default async function RecapPage({ params, searchParams }: Props) {
       allAthletes={allAthletes}
       media={mediaByAthlete}
       collabGroups={collabGroups}
+      eventMedia={eventMedia}
     />
   );
 }

@@ -811,6 +811,7 @@ export default function CampaignEditor() {
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
   const [driveFolderAthlete, setDriveFolderAthlete] = useState<Athlete | null>(null);
   const [eventPickerOpen, setEventPickerOpen] = useState(false);
+  const [eventMedia, setEventMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
@@ -941,6 +942,21 @@ export default function CampaignEditor() {
 
   useEffect(() => { loadData(); }, [id]);
 
+  // Event content for the preview: athlete-less, non-collab, link-less media.
+  // Returns [] for non-event campaigns so non-event previews are unchanged.
+  async function collectEventMedia(isEvent: boolean, allMedia: Media[]): Promise<Media[]> {
+    if (!isEvent) return [];
+    const athleteLess = allMedia.filter(
+      (m) => !m.athlete_id && !m.drive_file_id?.startsWith("collab:") && !m.is_video_thumbnail
+    );
+    const ids = athleteLess.map((m) => m.id);
+    if (!ids.length) return [];
+    const { data: maLinks } = await supabase
+      .from("media_athletes").select("media_id").in("media_id", ids);
+    const linkedIds = new Set((maLinks || []).map((l: any) => l.media_id));
+    return athleteLess.filter((m) => !linkedIds.has(m.id));
+  }
+
   async function loadData() {
     const [{ data: camp }, { data: aths }, { data: med }, { data: trks }] = await Promise.all([
       supabase.from("campaign_recaps").select("*").eq("id", id).single(),
@@ -992,6 +1008,7 @@ export default function CampaignEditor() {
     });
     setMedia(grouped);
     setLoading(false);
+    setEventMedia(await collectEventMedia(camp?.settings?.campaign_type === "event", med || []));
 
     // Team collab cards — driven by collab_containers (detected team Drive
     // folders). Participant names come through the collab_container_athletes
@@ -1184,6 +1201,7 @@ export default function CampaignEditor() {
         grouped[m.athlete_id].push(m);
       }
       setMedia(grouped);
+      setEventMedia(await collectEventMedia(campaign?.settings?.campaign_type === "event", allMedia || []));
     }
 
     setImportingTracker(false);
@@ -1842,6 +1860,7 @@ export default function CampaignEditor() {
         allAthletes={athletes}
         media={media}
         collabGroups={collabGroups}
+        eventMedia={eventMedia}
         onBack={() => setShowPreview(false)}
         onPublish={togglePublish}
         publishing={publishing}

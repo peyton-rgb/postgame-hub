@@ -11,6 +11,7 @@ export function MasonryPreview({
   allAthletes,
   media,
   collabGroups,
+  eventMedia,
   onBack,
   onPublish,
   publishing,
@@ -20,6 +21,7 @@ export function MasonryPreview({
   allAthletes?: Athlete[];
   media: Record<string, Media[]>;
   collabGroups?: CollabGroup[];
+  eventMedia?: Media[];
   onBack: () => void;
   onPublish: () => void;
   publishing: boolean;
@@ -80,6 +82,7 @@ export function MasonryPreview({
           allAthletes={allAthletes}
           media={media}
           collabGroups={collabGroups ?? detectCollabGroups<Athlete>(allAthletes || athletes, (a) => a.id).collabGroups}
+          eventMedia={eventMedia}
         />
       )}
     </div>
