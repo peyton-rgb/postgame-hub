@@ -14,6 +14,10 @@ import PressList from "@/components/PressList";
 import CaseStudyList from "@/components/CaseStudyList";
 import Link from "next/link";
 import Image from "next/image";
+import type { ReactNode, CSSProperties } from "react";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ── Design tokens ────────────────────────────────────────────
 const C = {
@@ -765,23 +769,165 @@ function PressEditor({ onSaved }: { onSaved: () => void }) {
 }
 
 // ── Campaigns editor ─────────────────────────────────────────
+// One row in a drag-to-reorder list.
+type OrderRow = { id: string; name: string; brand_name: string; pos: number | null };
+
+// A single draggable row, styled like the editor's other item cards.
+// The whole row is the drag handle (no buttons inside to conflict with).
+function SortableRow({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: CSSProperties = {
+    ...S.itemCard,
+    display: "flex", alignItems: "center", gap: 10,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    cursor: "grab",
+    touchAction: "none",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
+
 function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
   const supabase = createBrowserSupabase();
-  const [campaigns, setCampaigns] = useState<{id:string;name:string;slug:string;status:string;brand_name:string}[]>([]);
+  type Camp = {
+    id: string; name: string; client_name: string; slug: string;
+    status: string; published: boolean; visibility: string | null;
+    featured: boolean; created_at: string | null; brand_name: string;
+  };
+  const [campaigns, setCampaigns] = useState<Camp[]>([]);
   const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [showAll, setShowAll] = useState(false); // toggles list: reveal the off campaigns
+  // Drag-to-reorder lists (separate from the full toggles/search list above).
+  const [carousel, setCarousel] = useState<OrderRow[]>([]);
+  const [grid, setGrid] = useState<OrderRow[]>([]);
+  // A small drag threshold so a click on a row doesn't start a drag by accident.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   useEffect(() => {
-    supabase.from("campaigns").select("id,name,slug,status,brands(name)").order("created_at",{ascending:false}).limit(50).then(({ data }) => {
-      setCampaigns((data||[]).map((c:any) => ({ ...c, brand_name: c.brands?.name || "" })));
-      setLoading(false);
-    });
+    supabase
+      .from("campaigns")
+      .select("id,name,client_name,slug,status,published,visibility,featured,created_at,brands(name)")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        const rows: Camp[] = (data || []).map((c: any) => ({
+          id: c.id, name: c.name, client_name: c.client_name || "", slug: c.slug,
+          status: c.status, published: !!c.published, visibility: c.visibility ?? null,
+          featured: !!c.featured, created_at: c.created_at ?? null,
+          brand_name: c.brands?.name || c.client_name || "",
+        }));
+        // Live campaigns (status='published') first, then newest-created first.
+        rows.sort((a, b) => {
+          const al = a.status === "published" ? 0 : 1;
+          const bl = b.status === "published" ? 0 : 1;
+          if (al !== bl) return al - bl;
+          return (b.created_at || "").localeCompare(a.created_at || "");
+        });
+        setCampaigns(rows);
+        setLoading(false);
+      });
   }, []);
 
-  const toggleStatus = async (id: string, current: string) => {
-    const next = current === "published" ? "draft" : "published";
-    await supabase.from("campaigns").update({ status: next }).eq("id", id);
-    setCampaigns(p => p.map(c => c.id===id ? {...c,status:next} : c));
+  // Load the two drag lists. We read campaign_recaps (the base table) because
+  // carousel_order / grid_order live there, not on the `campaigns` view.
+  useEffect(() => {
+    // Carousel list = the featured strip members, in saved carousel_order.
+    supabase
+      .from("campaign_recaps")
+      .select("id,name,client_name,carousel_order,created_at,brands(name)")
+      .eq("published", true)
+      .in("visibility", ["public", "both"])
+      .eq("featured", true)
+      .order("carousel_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setCarousel((data || []).map((c: any) => ({
+        id: c.id, name: c.name, brand_name: c.brands?.name || c.client_name || "", pos: c.carousel_order ?? null,
+      }))));
+    // Grid list = the live archive grid members, in saved grid_order.
+    supabase
+      .from("campaign_recaps")
+      .select("id,name,client_name,grid_order,created_at,brands(name)")
+      .eq("status", "published")
+      .order("grid_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setGrid((data || []).map((c: any) => ({
+        id: c.id, name: c.name, brand_name: c.brands?.name || c.client_name || "", pos: c.grid_order ?? null,
+      }))));
+  }, []);
+
+  // "Live on site": status drives the public grid; we also set the boolean
+  // `published` (the cover-flow strip reads it) and bump visibility to 'public'
+  // ONLY when it's currently unset/private — never downgrade an existing 'both'.
+  const toggleLive = async (c: Camp) => {
+    const goingLive = c.status !== "published";
+    const patch: any = goingLive
+      ? { status: "published", published: true }
+      : { status: "draft", published: false };
+    let nextVisibility = c.visibility;
+    if (goingLive && (c.visibility == null || c.visibility === "private")) {
+      patch.visibility = "public";
+      nextVisibility = "public";
+    }
+    await supabase.from("campaigns").update(patch).eq("id", c.id);
+    setCampaigns(p => p.map(x => x.id === c.id
+      ? { ...x, status: goingLive ? "published" : "draft", published: goingLive, visibility: nextVisibility }
+      : x));
     onSaved();
+  };
+
+  // "Featured in carousel": flips the boolean the homepage carousel filters on.
+  const toggleFeatured = async (c: Camp) => {
+    const next = !c.featured;
+    await supabase.from("campaigns").update({ featured: next }).eq("id", c.id);
+    setCampaigns(p => p.map(x => x.id === c.id ? { ...x, featured: next } : x));
+    onSaved();
+  };
+
+  // Toggles list (NOT the drag lists below). A campaign is "active" if it's Live
+  // (status='published') OR Featured; active ones float to the top.
+  const isActive = (c: Camp) => c.status === "published" || c.featured;
+  const matches = (c: Camp) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    return c.name.toLowerCase().includes(needle)
+      || (c.brand_name || c.client_name).toLowerCase().includes(needle);
+  };
+  // Active-first, preserving the existing order within each group.
+  const ordered = [...campaigns.filter(isActive), ...campaigns.filter(c => !isActive(c))];
+  const searching = q.trim().length > 0;
+  // Searching: show every match across all campaigns (ignore collapse).
+  // Not searching: show active-only, with off ones behind the expander unless showAll.
+  const shown = searching
+    ? ordered.filter(matches)
+    : (showAll ? ordered : ordered.filter(isActive));
+  const hiddenCount = ordered.filter(c => !isActive(c)).length;
+
+  // On drop: reorder locally (so the list doesn't jump), renumber 1..n, and write
+  // the new position back to campaign_recaps for every row whose number changed.
+  // onSaved() fires the editor's normal "saved" indicator once writes complete.
+  const reorder = (
+    list: OrderRow[],
+    setList: (rows: OrderRow[]) => void,
+    column: "carousel_order" | "grid_order",
+  ) => (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = list.findIndex(r => r.id === active.id);
+    const to = list.findIndex(r => r.id === over.id);
+    if (from < 0 || to < 0) return;
+    const renumbered = arrayMove(list, from, to).map((r, i) => ({ ...r, pos: i + 1 }));
+    setList(renumbered);
+    const changed = renumbered.filter(r => list.find(x => x.id === r.id)?.pos !== r.pos);
+    Promise.all(changed.map(r =>
+      supabase.from("campaign_recaps").update({ [column]: r.pos }).eq("id", r.id)
+    )).then(() => onSaved());
   };
 
   if (loading) return <div style={{ padding:40, color:C.text3, fontSize:14 }}>Loading campaigns...</div>;
@@ -796,17 +942,85 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
           </div>
         </SectionCard>
         <SectionCard title="Campaigns">
-          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Toggle campaigns to control visibility on the public campaigns page.</div>
-          {campaigns.map(c => (
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>
+            Flip <strong style={{ color:C.text2 }}>Live</strong> to show a campaign on the public site; <strong style={{ color:C.text2 }}>Featured</strong> also adds it to the homepage carousel.
+          </div>
+          <input
+            type="text"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Search campaigns by name or brand…"
+            style={{ ...S.input, marginBottom:12 }}
+          />
+          {shown.map(c => (
             <div key={c.id} style={{ ...S.itemCard, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:700, color: c.status==="published" ? C.text : C.text3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{c.name}</div>
-                <div style={{ fontSize:11, color:C.text3 }}>{c.brand_name}</div>
+                <div style={{ fontSize:11, color:C.text3 }}>{c.brand_name || c.client_name}</div>
+                {c.featured && c.status!=="published" && (
+                  <div style={{ fontSize:10, color:C.text3, marginTop:3 }}>Featured — won&apos;t show in the carousel until it&apos;s Live.</div>
+                )}
               </div>
-              <Toggle on={c.status==="published"} onChange={()=>toggleStatus(c.id,c.status)} />
+              <div style={{ display:"flex", alignItems:"center", gap:16, flexShrink:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:C.text3 }}>
+                  Live
+                  <Toggle on={c.status==="published"} onChange={()=>toggleLive(c)} />
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:C.text3 }}>
+                  Featured
+                  <Toggle on={c.featured} onChange={()=>toggleFeatured(c)} />
+                </div>
+              </div>
             </div>
           ))}
+          {searching && !shown.length && (
+            <div style={{ fontSize:12, color:C.text3, padding:"8px 0" }}>No campaigns match “{q}”.</div>
+          )}
+          {!searching && hiddenCount > 0 && (
+            <button type="button" onClick={() => setShowAll(s => !s)} style={{ ...S.btnAdd, marginTop:8 }}>
+              {showAll ? "Show fewer" : `Show all campaigns (${hiddenCount})`}
+            </button>
+          )}
         </SectionCard>
+
+        <SectionCard title="Carousel order">
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Drag to reorder the homepage featured carousel. Lower = earlier.</div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorder(carousel, setCarousel, "carousel_order")}>
+            <SortableContext items={carousel.map(c => c.id)} strategy={verticalListSortingStrategy}>
+              {carousel.map((c, i) => (
+                <SortableRow key={c.id} id={c.id}>
+                  <span style={{ fontSize:11, color:C.text3, width:18, textAlign:"right" as const }}>{i + 1}</span>
+                  <span aria-hidden style={{ fontSize:14, color:C.text3 }}>⠿</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{c.name}</div>
+                    <div style={{ fontSize:11, color:C.text3 }}>{c.brand_name}</div>
+                  </div>
+                </SortableRow>
+              ))}
+            </SortableContext>
+          </DndContext>
+          {!carousel.length && <div style={{ fontSize:12, color:C.text3 }}>No featured campaigns yet — turn on “Featured” above to add some.</div>}
+        </SectionCard>
+
+        <SectionCard title="Grid order">
+          <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>Drag to reorder the campaign archive grid. Lower = earlier.</div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorder(grid, setGrid, "grid_order")}>
+            <SortableContext items={grid.map(c => c.id)} strategy={verticalListSortingStrategy}>
+              {grid.map((c, i) => (
+                <SortableRow key={c.id} id={c.id}>
+                  <span style={{ fontSize:11, color:C.text3, width:18, textAlign:"right" as const }}>{i + 1}</span>
+                  <span aria-hidden style={{ fontSize:14, color:C.text3 }}>⠿</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{c.name}</div>
+                    <div style={{ fontSize:11, color:C.text3 }}>{c.brand_name}</div>
+                  </div>
+                </SortableRow>
+              ))}
+            </SortableContext>
+          </DndContext>
+          {!grid.length && <div style={{ fontSize:12, color:C.text3 }}>No live campaigns yet — turn on “Live” above to add some.</div>}
+        </SectionCard>
+
         <div style={{ padding:"16px 20px" }}>
           <Link href="/dashboard?tab=recaps" style={{ fontSize:13, color:C.orange, textDecoration:"none", fontWeight:700 }}>→ Manage Campaigns in Page Creator</Link>
         </div>

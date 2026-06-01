@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
+import CampaignCoverFlow from "@/components/CampaignCoverFlow";
+import { getCoverFlowCampaigns } from "@/lib/getCoverFlowCampaigns";
 
 export const revalidate = 60;
 
@@ -7,6 +9,7 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
   :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,0.08);--text:#fff;--text-muted:rgba(255,255,255,0.55);--text-dim:rgba(255,255,255,0.35);}
   *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
   body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;}
   .d{font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:0.02em;}
   .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border);}
@@ -28,9 +31,29 @@ const styles = `
   .section-eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:12px;}
   .section-title{font-size:clamp(32px,4vw,48px);line-height:1;margin:0 0 48px;}
 
+  /* PART 1: header above the featured strip. Reuses .section-eyebrow/.section-title;
+     no bottom gap, so the strip's own top padding sets the spacing below it. */
+  .featured-head{padding:80px 48px 0;}
+  .featured-head .section-title{margin-bottom:0;}
+
+  /* PART 2: a single clean separator that also cues "scroll down to the grid".
+     The hairline and the clickable link are folded together (no stacked dividers). */
+  .browse-sep{padding:40px 48px 0;}
+  .cf-divider-line{height:1px;background:rgba(255,255,255,0.08);}
+  .browse-cue{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:28px;text-decoration:none;color:var(--text-muted);transition:color 0.2s;}
+  .browse-cue:hover{color:var(--text);}
+  .browse-cue-label{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;}
+  .browse-cue-arrow{color:var(--orange);font-size:22px;line-height:1;animation:browse-bounce 1.8s ease-in-out infinite;}
+  @keyframes browse-bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
+  @media(prefers-reduced-motion:reduce){.browse-cue-arrow{animation:none;}}
+
   .campaigns-masonry{column-count:3;column-gap:20px;}
-  .camp-card{break-inside:avoid;margin-bottom:20px;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:var(--surface);transition:transform 0.25s,box-shadow 0.25s;text-decoration:none;display:block;color:inherit;}
+  .camp-card{position:relative;break-inside:avoid;margin-bottom:20px;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:var(--surface);transition:transform 0.25s,box-shadow 0.25s;text-decoration:none;display:block;color:inherit;}
   .camp-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.4);border-color:rgba(215,63,9,0.4);}
+  /* Uniform brand logo overlay (top-left), mirroring the carousel at a slightly smaller scale. */
+  .camp-logo{position:absolute;top:14px;left:16px;z-index:2;height:28px;width:auto;max-width:110px;object-fit:contain;object-position:left center;}
+  .camp-logo-chip{position:absolute;top:14px;left:16px;z-index:2;display:inline-flex;align-items:center;height:28px;max-width:120px;padding:0 8px;border-radius:999px;background:rgba(255,255,255,0.9);}
+  .camp-logo-chip img{height:18px;width:auto;max-width:100%;object-fit:contain;}
   .camp-media{width:100%;display:block;}
   .camp-media img,.camp-media video{width:100%;height:auto;display:block;}
   .camp-no-media{min-height:200px;display:flex;flex-direction:column;justify-content:flex-end;padding:28px;}
@@ -70,6 +93,8 @@ const styles = `
     .nav{padding:14px 24px;} .nav-links{display:none;}
     .hero{padding:120px 24px 60px;}
     .section{padding:60px 24px;}
+    .featured-head{padding:60px 24px 0;}
+    .browse-sep{padding:32px 24px 0;}
     .campaigns-masonry{column-count:2;}
     .footer-top{grid-template-columns:1fr 1fr;gap:32px;}
   }
@@ -84,10 +109,15 @@ async function getCampaigns() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
+    // Read from the campaign_recaps base table (not the `campaigns` view) because
+    // grid_order lives only on the base table. The view is an unfiltered passthrough
+    // of campaign_recaps, so the rows shown are identical — same status='published'
+    // set, just now sortable by grid_order.
     const { data } = await supabase
-      .from("campaigns")
-      .select("id, name, slug, brand_id, brands(name, logo_url, logo_light_url), thumbnail_url, media_type, status")
+      .from("campaign_recaps")
+      .select("id, name, slug, brand_id, brands(name, logo_url, logo_light_url), thumbnail_url, media_type, status, grid_order")
       .eq("status", "published")
+      .order("grid_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(60);
     return data || [];
@@ -119,6 +149,7 @@ async function getHeroSlides(): Promise<HeroSlide[]> {
 export default async function CampaignsPage() {
   const campaigns = await getCampaigns();
   const heroSlides = await getHeroSlides();
+  const featured = await getCoverFlowCampaigns({ featuredOnly: true });
 
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
@@ -135,7 +166,29 @@ export default async function CampaignsPage() {
         </div>
       </section>
 
-      <section className="section">
+      {/* PART 1: Spotlight header above the featured strip — mirrors the archive
+          header below, reusing .section-eyebrow/.section-title. The heading lives
+          here on the page, NOT inside the strip component. */}
+      <div className="featured-head">
+        <div className="section-eyebrow">Spotlight</div>
+        <h2 className="d section-title">Featured Campaigns</h2>
+      </div>
+
+      {/* Featured cover-flow strip — renders nothing if there are no featured campaigns. */}
+      <CampaignCoverFlow campaigns={featured} hrefBase="/campaign" />
+
+      {/* PART 2: clean separator that doubles as a "scroll down" cue. The old
+          hairline is folded in above the link so we don't stack two separators.
+          Clicking smooth-scrolls to #all-campaigns (smooth via html scroll-behavior). */}
+      <div className="browse-sep">
+        <div className="cf-divider-line" />
+        <a href="#all-campaigns" className="browse-cue">
+          <span className="browse-cue-label">Browse all campaigns</span>
+          <span className="browse-cue-arrow" aria-hidden="true">&darr;</span>
+        </a>
+      </div>
+
+      <section id="all-campaigns" className="section">
         <div className="section-eyebrow">Campaign Archive</div>
         <h2 className="d section-title">All Campaigns</h2>
 
@@ -143,7 +196,8 @@ export default async function CampaignsPage() {
           <div className="campaigns-masonry">
             {campaigns.map((c: any, i: number) => {
               const brand = c.brands?.name || "";
-              const logo = c.brands?.logo_light_url || c.brands?.logo_url || "";
+              const logoLight = c.brands?.logo_light_url || "";
+              const logoChip = c.brands?.logo_url || "";
               const hasMedia = !!c.thumbnail_url;
               const isVideo = c.media_type === "video";
               const gradient = GRADIENTS[i % 5];
@@ -151,6 +205,12 @@ export default async function CampaignsPage() {
 
               return (
                 <a key={c.id} className={`camp-card${!hasMedia ? ` ${gradient}` : ""}`} href={href}>
+                  {/* Uniform brand logo overlay — light wordmark on the art, else colored logo on a white pill. */}
+                  {logoLight ? (
+                    <img src={logoLight} alt={brand} className="camp-logo" />
+                  ) : logoChip ? (
+                    <span className="camp-logo-chip"><img src={logoChip} alt={brand} /></span>
+                  ) : null}
                   {hasMedia && (
                     <div className="camp-media">
                       {isVideo
