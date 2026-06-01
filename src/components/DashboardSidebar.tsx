@@ -250,6 +250,14 @@ const BuildingIcon = () => (
   </Icon>
 );
 
+const ExternalLinkIcon = () => (
+  <Icon>
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </Icon>
+);
+
 const PhotoIcon = () => (
   <Icon>
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -367,6 +375,7 @@ const TOOLS_SECTION: NavSection = {
   links: [
     { name: 'Campaign Briefs', href: '/dashboard/campaign-briefs', icon: FilesIcon },
     { name: 'Brands', href: '/dashboard/brands', icon: BuildingIcon },
+    { name: 'Brand Portals', href: '/dashboard/brand-portals', icon: ExternalLinkIcon },
     { name: 'Media Library', href: '/media-library', icon: PhotoIcon },
     { name: 'BTS Submissions', href: '/dashboard/bts', icon: CameraIcon },
     { name: 'Website Editor', href: '/dashboard/website', icon: BrowserIcon },
