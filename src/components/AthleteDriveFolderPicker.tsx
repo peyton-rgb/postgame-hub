@@ -22,6 +22,10 @@ interface FolderFile {
   webViewLink: string | null;
   createdTime: string | null;
   isVideo: boolean;
+  // Set for recursive event imports: the subfolder this file sits in, and the
+  // full path from the dropped root. Absent/ignored for flat athlete imports.
+  folderName?: string;
+  folderPath?: string;
 }
 
 interface ListFolderResponse {
@@ -72,6 +76,25 @@ export default function AthleteDriveFolderPicker({
     [folder, alreadyImported]
   );
 
+  // Group event-mode files by the subfolder they came from, preserving
+  // first-appearance order (the route returns them root-first, BFS order).
+  // Must run on every render — keep it above the `if (!isOpen) return null`.
+  const groupedFiles = useMemo(() => {
+    const groups: { name: string; files: FolderFile[] }[] = [];
+    const index = new Map<string, number>();
+    for (const f of folder?.files ?? []) {
+      const key = f.folderName || "Other";
+      let i = index.get(key);
+      if (i === undefined) {
+        i = groups.length;
+        index.set(key, i);
+        groups.push({ name: key, files: [] });
+      }
+      groups[i].files.push(f);
+    }
+    return groups;
+  }, [folder]);
+
   // Fully reset whenever the modal closes so reopening starts fresh.
   useEffect(() => {
     if (isOpen) return;
@@ -100,7 +123,11 @@ export default function AthleteDriveFolderPicker({
       const res = await fetch("/api/drive/list-folder-files", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderUrl: folderUrl.trim(), recapId }),
+        body: JSON.stringify(
+          eventImport
+            ? { folderUrl: folderUrl.trim(), recapId, recursive: true }
+            : { folderUrl: folderUrl.trim(), recapId }
+        ),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -194,6 +221,87 @@ export default function AthleteDriveFolderPicker({
 
   const totalFiles = folder?.files.length ?? 0;
   const alreadyCount = folder?.alreadyImportedFileIds.length ?? 0;
+
+  // One file tile — identical markup for flat (athlete) and grouped (event) modes.
+  const renderTile = (file: FolderFile) => {
+    const isAlready = alreadyImported.has(file.id);
+    const isSelected = !isAlready && selected.has(file.id);
+    const thumbFailed = thumbErrored.has(file.id);
+    return (
+      <div
+        key={file.id}
+        onClick={() => toggleFile(file.id)}
+        className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
+          isAlready
+            ? "border-white/10 opacity-40 cursor-default"
+            : isSelected
+            ? "border-[#D73F09] ring-2 ring-[#D73F09]/30 cursor-pointer"
+            : "border-white/10 hover:border-white/30 cursor-pointer"
+        }`}
+      >
+        <div className="aspect-square bg-black relative flex items-center justify-center">
+          {!thumbFailed ? (
+            <img
+              src={`/api/drive/thumbnail/${file.id}`}
+              alt={file.name}
+              loading="lazy"
+              className="w-full h-full object-cover"
+              onError={() =>
+                setThumbErrored((prev) => {
+                  const next = new Set(prev);
+                  next.add(file.id);
+                  return next;
+                })
+              }
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-gray-500 text-[9px] px-2 text-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                {file.isVideo ? (
+                  <>
+                    <polygon points="23 7 16 12 23 17 23 7" />
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                  </>
+                ) : (
+                  <>
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </>
+                )}
+              </svg>
+              <div className="mt-1 truncate w-full">{file.name}</div>
+            </div>
+          )}
+          {file.isVideo && (
+            <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[9px] font-black text-white">
+              VIDEO
+            </div>
+          )}
+          {isAlready && (
+            <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
+              ✓ Imported
+            </div>
+          )}
+          {isSelected && (
+            <div className="absolute inset-0 bg-[#D73F09]/20 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-[#D73F09] flex items-center justify-center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="px-2 py-1.5 bg-black/60">
+          <div className="text-[10px] text-gray-400 truncate">{file.name}</div>
+          {isAlready && (
+            <div className="text-[9px] text-green-400/70">Already imported</div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -333,87 +441,25 @@ export default function AthleteDriveFolderPicker({
                 <div className="text-center text-gray-500 mt-20">
                   <div className="text-sm">No image or video files in this folder.</div>
                 </div>
+              ) : eventImport ? (
+                <div className="space-y-8">
+                  {groupedFiles.map((group) => (
+                    <div key={group.name}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <h3 className="text-sm font-black text-white uppercase tracking-wide">{group.name}</h3>
+                        <span className="text-[10px] text-gray-500">
+                          {group.files.length} file{group.files.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                        {group.files.map(renderTile)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {folder.files.map((file) => {
-                    const isAlready = alreadyImported.has(file.id);
-                    const isSelected = !isAlready && selected.has(file.id);
-                    const thumbFailed = thumbErrored.has(file.id);
-                    return (
-                      <div
-                        key={file.id}
-                        onClick={() => toggleFile(file.id)}
-                        className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
-                          isAlready
-                            ? "border-white/10 opacity-40 cursor-default"
-                            : isSelected
-                            ? "border-[#D73F09] ring-2 ring-[#D73F09]/30 cursor-pointer"
-                            : "border-white/10 hover:border-white/30 cursor-pointer"
-                        }`}
-                      >
-                        <div className="aspect-square bg-black relative flex items-center justify-center">
-                          {!thumbFailed ? (
-                            <img
-                              src={`/api/drive/thumbnail/${file.id}`}
-                              alt={file.name}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
-                              onError={() =>
-                                setThumbErrored((prev) => {
-                                  const next = new Set(prev);
-                                  next.add(file.id);
-                                  return next;
-                                })
-                              }
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center text-gray-500 text-[9px] px-2 text-center">
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                {file.isVideo ? (
-                                  <>
-                                    <polygon points="23 7 16 12 23 17 23 7" />
-                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                                  </>
-                                ) : (
-                                  <>
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                    <circle cx="8.5" cy="8.5" r="1.5" />
-                                    <polyline points="21 15 16 10 5 21" />
-                                  </>
-                                )}
-                              </svg>
-                              <div className="mt-1 truncate w-full">{file.name}</div>
-                            </div>
-                          )}
-                          {file.isVideo && (
-                            <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[9px] font-black text-white">
-                              VIDEO
-                            </div>
-                          )}
-                          {isAlready && (
-                            <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
-                              ✓ Imported
-                            </div>
-                          )}
-                          {isSelected && (
-                            <div className="absolute inset-0 bg-[#D73F09]/20 flex items-center justify-center">
-                              <div className="w-8 h-8 rounded-full bg-[#D73F09] flex items-center justify-center">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="px-2 py-1.5 bg-black/60">
-                          <div className="text-[10px] text-gray-400 truncate">{file.name}</div>
-                          {isAlready && (
-                            <div className="text-[9px] text-green-400/70">Already imported</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {folder.files.map(renderTile)}
                 </div>
               )}
             </div>
