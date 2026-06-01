@@ -718,6 +718,116 @@ function EventMediaCard({ item }: { item: Media }) {
   );
 }
 
+// Full-bleed autoplaying hero for a landscape event video. Muted+loop by
+// default (so autoplay is allowed); click the video or the button to unmute.
+function EventHeroVideo({ item }: { item: Media }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+  const toggleMute = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+    if (!v.muted) v.play().catch(() => {});
+  };
+  return (
+    <div className="relative w-full bg-black">
+      <video
+        ref={videoRef}
+        src={item.file_url}
+        autoPlay
+        muted
+        loop
+        playsInline
+        onClick={toggleMute}
+        className="w-full block bg-black cursor-pointer"
+      />
+      <button
+        onClick={toggleMute}
+        className="absolute bottom-4 right-4 z-[2] w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+        title={muted ? "Unmute" : "Mute"}
+      >
+        {muted ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
+// Event Content body: landscape videos play full-bleed at the top; images and
+// portrait videos stay in the flat gallery. Orientation is probed client-side
+// (rows store no dimensions); a video isn't placed until known (no flash), and
+// a metadata failure falls back to the gallery.
+function EventContent({ eventMedia }: { eventMedia: Media[] }) {
+  const [orientation, setOrientation] = useState<Record<string, "landscape" | "portrait">>({});
+
+  const videos = eventMedia.filter((m) => m.type === "video");
+  const videoIdsKey = videos.map((v) => v.id).join(",");
+
+  useEffect(() => {
+    let cancelled = false;
+    const probes: HTMLVideoElement[] = [];
+    for (const v of videos) {
+      if (!v.file_url) {
+        setOrientation((p) => ({ ...p, [v.id]: "portrait" })); // safe fallback
+        continue;
+      }
+      const probe = document.createElement("video");
+      probe.preload = "metadata";
+      probe.muted = true;
+      probe.onloadedmetadata = () => {
+        if (cancelled) return;
+        setOrientation((p) => ({
+          ...p,
+          [v.id]: probe.videoWidth >= probe.videoHeight ? "landscape" : "portrait",
+        }));
+      };
+      probe.onerror = () => {
+        if (cancelled) return;
+        setOrientation((p) => ({ ...p, [v.id]: "portrait" })); // safe fallback → gallery
+      };
+      probe.src = v.file_url;
+      probes.push(probe);
+    }
+    return () => {
+      cancelled = true;
+      for (const p of probes) { p.onloadedmetadata = null; p.onerror = null; p.src = ""; }
+    };
+  }, [videoIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const landscapeVideos = videos.filter((v) => orientation[v.id] === "landscape");
+  // Gallery: images always, plus videos confirmed portrait. Pending (unknown)
+  // videos are held back until classified. Original order preserved.
+  const galleryItems = eventMedia.filter(
+    (m) => m.type !== "video" || orientation[m.id] === "portrait"
+  );
+
+  return (
+    <>
+      {landscapeVideos.length > 0 && (
+        <div className="-mx-6 md:-mx-12 -mt-10 md:-mt-12 mb-8 space-y-1">
+          {landscapeVideos.map((v) => (
+            <EventHeroVideo key={v.id} item={v} />
+          ))}
+        </div>
+      )}
+      <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Event Content</h2>
+      {galleryItems.length > 0 && (
+        <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
+          <div className="columns-2 md:columns-3 lg:columns-4 gap-2 [column-fill:_balance]">
+            {galleryItems.map((m) => (
+              <EventMediaCard key={m.id} item={m} />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function CampaignRecap({
   campaign,
   athletes,
@@ -1028,14 +1138,7 @@ export function CampaignRecap({
       {/* ── SECTION 0: EVENT CONTENT (gallery-first) ──────────── */}
       {isEvent && eventMedia.length > 0 && (
         <div ref={(el) => { sectionRefs.current["event_content"] = el; }} data-section="event_content" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Event Content</h2>
-          <div className="bg-[#0a0a0a] border border-white/[0.15] rounded-xl p-2">
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-2 [column-fill:_balance]">
-              {eventMedia.map((m) => (
-                <EventMediaCard key={m.id} item={m} />
-              ))}
-            </div>
-          </div>
+          <EventContent eventMedia={eventMedia} />
         </div>
       )}
 
