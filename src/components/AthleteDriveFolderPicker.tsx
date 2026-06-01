@@ -35,7 +35,8 @@ interface AthleteDriveFolderPickerProps {
   isOpen: boolean;
   onClose: () => void;
   recapId: string;
-  athleteId: string;
+  athleteId?: string;
+  eventImport?: boolean;
   athleteName: string;
   onImported: (newMedia: any[]) => void;
 }
@@ -47,6 +48,7 @@ export default function AthleteDriveFolderPicker({
   onClose,
   recapId,
   athleteId,
+  eventImport,
   athleteName,
   onImported,
 }: AthleteDriveFolderPickerProps) {
@@ -154,12 +156,11 @@ export default function AthleteDriveFolderPicker({
         const res = await fetch("/api/drive/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileId: file.id,
-            fileName: file.name,
-            athleteId,
-            recapId,
-          }),
+          body: JSON.stringify(
+            eventImport
+              ? { fileId: file.id, fileName: file.name, recapId, isEvent: true }
+              : { fileId: file.id, fileName: file.name, athleteId, recapId }
+          ),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data?.success) {
