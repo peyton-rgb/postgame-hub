@@ -1,17 +1,20 @@
 // src/app/api/drive/list-folder-files/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/drive/list-folder-files
-// Body: { folderUrl: string, recapId: string }
+// Body: { folderUrl: string, recapId: string, recursive?: boolean }
 //
-// Lists the immediate media files (images/videos) in a Drive folder
-// so the per-athlete folder picker can render thumbnails to pick
-// from. Reports which file ids are already imported for this recap
-// so the picker can grey them out.
+// Lists media files (images/videos) in a Drive folder so a folder
+// picker can render thumbnails to pick from. Reports which file ids
+// are already imported for this recap so the picker can grey them out.
 //
-// Used by the per-athlete Drive folder picker in the recap editor —
-// for athletes whose content sits in a folder that isn't nested under
-// the campaign's parent Drive folder (so the campaign-level
-// DrivePicker can't reach it).
+// By default lists only the IMMEDIATE files in the dropped folder
+// (used by the per-athlete picker — unchanged). When `recursive` is
+// true (event imports), it walks the folder tree and tags each file
+// with the `folderName` it sits in, so the picker can group by
+// subfolder. Each file also carries `folderPath` for nested cases.
+//
+// Note: a separate campaign-level DrivePicker exists elsewhere — this
+// route is only used by AthleteDriveFolderPicker.
 // ─────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
@@ -22,17 +25,34 @@ import { parseDriveUrl } from "@/lib/drive-url";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Hard cap so we never page through a giant folder. The picker is for
-// small, athlete-scoped folders; if anyone ever hits this, they should
-// be using the campaign-level DrivePicker instead.
+// Hard caps so we never page through a giant tree. Flat (athlete) imports
+// keep the original 500 cap; recursive (event) imports get a larger cap
+// plus depth / folder-count guards against huge or shortcut-looped trees.
 const MAX_FILES = 500;
+const MAX_FILES_EVENT = 1000;
+const MAX_DEPTH = 8;
+const MAX_FOLDERS = 200;
+
+type PickerFile = {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: string | null;
+  thumbnailLink: string | null;
+  webViewLink: string | null;
+  createdTime: string | null;
+  isVideo: boolean;
+  folderName: string;
+  folderPath: string;
+};
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { folderUrl, recapId } = body as {
+    const { folderUrl, recapId, recursive } = body as {
       folderUrl?: string;
       recapId?: string;
+      recursive?: boolean;
     };
 
     if (!recapId) {
@@ -55,33 +75,18 @@ export async function POST(request: NextRequest) {
     const folderId = parsed.id;
 
     const drive = getDriveClient();
+    const maxFiles = recursive ? MAX_FILES_EVENT : MAX_FILES;
 
-    // Fetch folder name + media listing in parallel. Media query mirrors the
-    // shape used in discover-folder / google-drive.ts (shared-drive aware).
     let folderName = "Drive folder";
-    const files: {
-      id: string;
-      name: string;
-      mimeType: string;
-      size: string | null;
-      thumbnailLink: string | null;
-      webViewLink: string | null;
-      createdTime: string | null;
-      isVideo: boolean;
-    }[] = [];
+    const files: PickerFile[] = [];
 
-    try {
-      const nameRes = await drive.files.get({
-        fileId: folderId,
-        supportsAllDrives: true,
-        fields: "name",
-      });
-      folderName = nameRes.data.name ?? "Drive folder";
-
+    // List the direct media files in one folder, tagging each with the
+    // folder it sits in. Appends to `files`, stopping at the cap.
+    async function collectMedia(fId: string, fName: string, pathNames: string[]) {
       let pageToken: string | undefined;
       do {
         const res = await drive.files.list({
-          q: `'${folderId}' in parents and trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')`,
+          q: `'${fId}' in parents and trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')`,
           supportsAllDrives: true,
           includeItemsFromAllDrives: true,
           corpora: "allDrives",
@@ -103,11 +108,78 @@ export async function POST(request: NextRequest) {
             webViewLink: f.webViewLink ?? null,
             createdTime: f.createdTime ?? null,
             isVideo: mimeType.startsWith("video/"),
+            folderName: fName,
+            folderPath: pathNames.join(" / "),
           });
-          if (files.length >= MAX_FILES) break;
+          if (files.length >= maxFiles) break;
         }
-        pageToken = files.length >= MAX_FILES ? undefined : res.data.nextPageToken ?? undefined;
+        pageToken = files.length >= maxFiles ? undefined : res.data.nextPageToken ?? undefined;
       } while (pageToken);
+    }
+
+    // List immediate subfolders of a folder (shared-drive aware).
+    async function listSubfolders(fId: string): Promise<{ id: string; name: string }[]> {
+      const out: { id: string; name: string }[] = [];
+      let pageToken: string | undefined;
+      do {
+        const res = await drive.files.list({
+          q: `'${fId}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          corpora: "allDrives",
+          fields: "nextPageToken, files(id, name)",
+          pageSize: 100,
+          orderBy: "name",
+          pageToken,
+        });
+        for (const f of res.data.files ?? []) {
+          if (!f.id || !f.name) continue;
+          out.push({ id: f.id, name: f.name });
+        }
+        pageToken = res.data.nextPageToken ?? undefined;
+      } while (pageToken);
+      return out;
+    }
+
+    try {
+      const nameRes = await drive.files.get({
+        fileId: folderId,
+        supportsAllDrives: true,
+        fields: "name",
+      });
+      folderName = nameRes.data.name ?? "Drive folder";
+
+      if (recursive) {
+        // Breadth-first walk. Guards: file cap, depth cap, folder-count cap,
+        // and a `seen` set so a shortcut loop can't revisit a folder.
+        let foldersVisited = 0;
+        const seen = new Set<string>([folderId]);
+        const queue: { id: string; name: string; pathNames: string[]; depth: number }[] = [
+          { id: folderId, name: folderName, pathNames: [folderName], depth: 0 },
+        ];
+        while (queue.length > 0) {
+          if (files.length >= maxFiles || foldersVisited >= MAX_FOLDERS) break;
+          const cur = queue.shift()!;
+          foldersVisited++;
+          await collectMedia(cur.id, cur.name, cur.pathNames);
+          if (files.length >= maxFiles) break;
+          if (cur.depth >= MAX_DEPTH) continue;
+          const subs = await listSubfolders(cur.id);
+          for (const sub of subs) {
+            if (seen.has(sub.id)) continue;
+            seen.add(sub.id);
+            queue.push({
+              id: sub.id,
+              name: sub.name,
+              pathNames: [...cur.pathNames, sub.name],
+              depth: cur.depth + 1,
+            });
+          }
+        }
+      } else {
+        // Flat (athlete) path — immediate files only, identical to before.
+        await collectMedia(folderId, folderName, [folderName]);
+      }
     } catch (e: any) {
       const status = e?.code === 404 ? 404 : 403;
       console.error("[drive/list-folder-files] Drive access error:", e?.message || e);
@@ -121,6 +193,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Already-imported detection for this campaign — greyed out in the picker.
+    // Works off the full collected file-id list, so dedup spans all subfolders.
     let alreadyImportedFileIds: string[] = [];
     if (files.length > 0) {
       const supabase = createServiceSupabase();
