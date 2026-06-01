@@ -3033,18 +3033,6 @@ export default function CampaignEditor() {
                 }}
               />
             )}
-
-            {/* Campaign-level event content import (athleteId intentionally omitted) */}
-            {campaign && (
-              <AthleteDriveFolderPicker
-                isOpen={eventPickerOpen}
-                recapId={campaign.id}
-                eventImport
-                athleteName="this event"
-                onClose={() => setEventPickerOpen(false)}
-                onImported={() => {}}
-              />
-            )}
           </div>
         )}
       </div>
@@ -3062,6 +3050,18 @@ export default function CampaignEditor() {
             className="px-6 py-2 bg-[#D73F09] rounded-lg text-sm font-bold">Preview Recap →</button>
         )}
       </div>
+
+      {/* Campaign-level event content import — top-level so it mounts on any step (button is in step 2) */}
+      {campaign && (
+        <AthleteDriveFolderPicker
+          isOpen={eventPickerOpen}
+          recapId={campaign.id}
+          eventImport
+          athleteName="this event"
+          onClose={() => setEventPickerOpen(false)}
+          onImported={() => {}}
+        />
+      )}
     </div>
   );
 }
