@@ -565,6 +565,42 @@ function findColInPlatformNth(
 }
 
 /**
+ * Find the Nth column (0-based) within a platform group whose header contains
+ * "post" but is NOT the "reposts" column. This mirrors how the Post-1 URL is
+ * located today (a header like "IG REEL Post"), so the Post 2 URL can be found
+ * as the 2nd such column even when both URL columns share the identical header
+ * "...Post" — i.e. there is no "URL"/"2" qualifier to tell them apart, which is
+ * exactly the case the explicit "post url"/"url"/"post 2" searches miss.
+ *
+ * "reposts" is excluded because its normalized form contains the substring
+ * "post"; "rate" columns are skipped because a URL column never contains a rate.
+ * Requires a group row (occurrence-based Post 2 detection is meaningless without
+ * one), matching findColInPlatformNth's behavior for occurrence > 0.
+ */
+function findPostUrlColInPlatformNth(
+  headers: string[],
+  platformMap: PlatformTag[],
+  platform: PlatformTag,
+  occurrence: number,
+): number {
+  const hasGroupRow = platformMap.some((p) => p !== "identity");
+  if (!hasGroupRow) return -1;
+
+  let count = 0;
+  for (let i = 0; i < headers.length; i++) {
+    if (platformMap[i] !== platform) continue;
+    const hClean = headers[i].toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!hClean) continue;
+    if (hClean.includes("rate")) continue;   // never a URL column
+    if (hClean.includes("repost")) continue; // exclude Reposts ("repost" ⊃ "post")
+    if (!hClean.includes("post")) continue;
+    if (count === occurrence) return i;
+    count++;
+  }
+  return -1;
+}
+
+/**
  * Parse an Info/Roster CSV — athlete identity data
  * Expected columns: First, Last, IG Handle, School, Sport, Gender, Notes (flexible matching)
  */
@@ -842,8 +878,14 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // findColInPlatformNth with occurrence=1 finds the SECOND column with that name
   // inside the ig_reel platform group — i.e. the Post 2 columns.
   const iIgReelUrl2 = (() => {
-    const r = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "post url", "url");
+    // PRIMARY: same rule as the Post 1 URL — a header containing "post" (not
+    // "reposts") — at the 2nd occurrence within the ig_reel group. Handles the
+    // common case where both URL columns are just "IG REEL Post".
+    const r = findPostUrlColInPlatformNth(headers, platformMap, "ig_reel", 1);
     if (r !== -1) return r;
+    // SECONDARY (legacy): explicit "post url"/"url" 2nd occurrence, then "post 2".
+    const r2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "post url", "url");
+    if (r2 !== -1) return r2;
     return findColInPlatformNth(headers, platformMap, "ig_reel", 0, "post 2", "post2");
   })();
   const iIgReelViews2 = findColInPlatformNth(headers, platformMap, "ig_reel", 1, "views");
@@ -857,8 +899,13 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
 
   // ── IG Feed POST 2 columns ──
   const iIgFeedUrl2 = (() => {
-    const r = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "post url", "url");
+    // PRIMARY: same rule as the Post 1 URL — a header containing "post" (not
+    // "reposts") — at the 2nd occurrence within the ig_feed group.
+    const r = findPostUrlColInPlatformNth(headers, platformMap, "ig_feed", 1);
     if (r !== -1) return r;
+    // SECONDARY (legacy): explicit "post url"/"url" 2nd occurrence, then "post 2".
+    const r2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "post url", "url");
+    if (r2 !== -1) return r2;
     return findColInPlatformNth(headers, platformMap, "ig_feed", 0, "post 2", "post2");
   })();
   const iIgFeedReach2 = findColInPlatformNth(headers, platformMap, "ig_feed", 1, "reach");
@@ -874,8 +921,13 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
   // ── TikTok POST 2 columns ──
   const iTiktokFollowers2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "followers");
   const iTiktokUrl2 = (() => {
-    const r = findColInPlatformNth(headers, platformMap, "tiktok", 1, "post url", "url");
+    // PRIMARY: same rule as the Post 1 URL — a header containing "post" (not
+    // "reposts") — at the 2nd occurrence within the tiktok group.
+    const r = findPostUrlColInPlatformNth(headers, platformMap, "tiktok", 1);
     if (r !== -1) return r;
+    // SECONDARY (legacy): explicit "post url"/"url" 2nd occurrence, then "post 2".
+    const r2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "post url", "url");
+    if (r2 !== -1) return r2;
     return findColInPlatformNth(headers, platformMap, "tiktok", 0, "post 2", "post2");
   })();
   const iTiktokViews2 = findColInPlatformNth(headers, platformMap, "tiktok", 1, "views");
