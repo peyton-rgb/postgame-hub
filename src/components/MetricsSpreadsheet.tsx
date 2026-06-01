@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, Fragment } from "react";
 import type { Athlete, AthleteMetrics } from "@/lib/types";
 import { parseMetricsCSV, mergeAthleteData, type ParsedAthlete } from "@/lib/csv-parser";
 
@@ -57,8 +57,12 @@ function metricVal(m: AthleteMetrics | undefined, platform: string, field: strin
 // Mirrors bestRateForPlatform in recap-helpers.ts, minus the "did they post?"
 // guard — in the editor we want to surface whatever rate was entered even if
 // the post URL/views haven't been filled in yet.
-function bestRate(m: AthleteMetrics | undefined, platform: "ig_feed" | "ig_reel" | "tiktok"): number | "" {
-  const block = m?.[platform];
+// platform is a string (not just the Post-1 union) so this also works for the
+// Post-2 slots — ig_feed_2 / ig_reel_2 / tiktok_2.
+function bestRate(m: AthleteMetrics | undefined, platform: string): number | "" {
+  const block = m?.[platform as keyof AthleteMetrics] as
+    | { engagement_rate_followers?: number; engagement_rate_impressions?: number; engagement_rate?: number }
+    | undefined;
   if (!block) return "";
   const rateF = block.engagement_rate_followers;
   const rateI = block.engagement_rate_impressions;
@@ -80,6 +84,28 @@ function setMetricVal(row: EditableRow, platform: string, field: string, val: st
     metrics[platform][field] = n != null && !isNaN(n) ? n : undefined;
   }
   return { ...row, metrics };
+}
+
+// ─── Multi-post (Post 2) support ─────────────────────────
+// Each platform tab can hold a second post stored in a parallel "_2" slot.
+// POST2_SLOT maps the active tab to its Post-2 metrics key.
+const POST2_SLOT: Partial<Record<PlatformTab, "ig_feed_2" | "ig_reel_2" | "tiktok_2">> = {
+  ig_feed: "ig_feed_2",
+  ig_reel: "ig_reel_2",
+  tiktok: "tiktok_2",
+};
+
+// Platforms that support a second post + the at-a-glance pill shown by the name.
+const MULTIPOST_PLATFORMS: { slot: "ig_feed_2" | "ig_reel_2" | "tiktok_2"; pill: string }[] = [
+  { slot: "ig_feed_2", pill: "2 feed" },
+  { slot: "ig_reel_2", pill: "2 reels" },
+  { slot: "tiktok_2", pill: "2 tiktoks" },
+];
+
+// A Post-2 slot "exists" when it carries a post_url or any non-empty metric.
+function hasPostData(block: Record<string, unknown> | undefined): boolean {
+  if (!block) return false;
+  return Object.values(block).some((v) => v != null && v !== "");
 }
 
 const IDENTITY_COLS: ColDef[] = [
@@ -529,6 +555,56 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
   const cols = allCols.filter((c) => !hiddenCols.has(c.key));
   const newCount = rows.filter((r) => r._isNew).length;
 
+  // Post-2 slot for the active tab (undefined on tabs without multi-post support).
+  const post2Slot = POST2_SLOT[activeTab];
+
+  // Orange "2 reels" / "2 feed" / "2 tiktoks" pills for the multi-post platforms
+  // this athlete has. Computed across ALL platforms so the signal shows on every tab.
+  const pillsFor = (row: EditableRow) =>
+    MULTIPOST_PLATFORMS.filter((p) => hasPostData(row.metrics?.[p.slot] as Record<string, unknown> | undefined)).map((p) => p.pill);
+
+  const renderPills = (pills: string[]) =>
+    pills.map((p) => (
+      <span key={p} className="inline-block px-1.5 py-px rounded-full bg-[#D73F09]/15 text-[#D73F09] text-[9px] font-bold uppercase tracking-wide leading-tight">
+        {p}
+      </span>
+    ));
+
+  // Renders the active tab's data cells for one (sub-)row against a given metrics
+  // slot. `basePlatform` is the active tab's platform (used to derive the field
+  // from each column key); `slot` is where values are read/written — equal to
+  // basePlatform for Post 1, or the "_2" slot for Post 2. Behaviour matches the
+  // single-row cells below exactly, so Post 1 sub-rows are identical to today.
+  const renderDataCells = (row: EditableRow, basePlatform: string, slot: string) =>
+    cols.map((col) => {
+      if (col.computed) {
+        const val = col.key.endsWith("_rate")
+          ? bestRate(row.metrics, slot)
+          : metricVal(row.metrics, slot, "total_engagements");
+        return (
+          <td key={col.key} className="px-2 py-1">
+            <div className="bg-[#0a0a0a] rounded px-2 py-1.5 text-gray-400 font-mono text-xs min-w-[60px]">
+              {val !== "" && val != null ? (typeof val === "number" ? (col.key.includes("rate") ? Math.round(val) + "%" : val.toFixed(2)) : val) : "—"}
+            </div>
+          </td>
+        );
+      }
+      const field = col.key.slice(basePlatform.length + 1);
+      const val = metricVal(row.metrics, slot, field);
+      return (
+        <td key={col.key} className="px-1 py-1">
+          <input
+            type={col.type === "number" ? "number" : "text"}
+            value={val ?? ""}
+            onChange={(e) => updateRow(row._key, (r) => setMetricVal(r, slot, field, e.target.value))}
+            className="w-full bg-transparent border-0 border-b border-gray-800 focus:border-[#D73F09] text-white text-xs px-2 py-1.5 outline-none transition-colors placeholder-gray-700"
+            placeholder={col.label}
+            step={col.type === "number" ? "any" : undefined}
+          />
+        </td>
+      );
+    });
+
   // ─── Render ──────────────────────────────────────────
 
   return (
@@ -797,54 +873,104 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, idx) => (
-                <tr key={row._key} className={`border-b border-gray-800/50 hover:bg-white/[0.02] ${row._isNew ? "bg-[#D73F09]/[0.03]" : ""}`}>
-                  {/* Row number */}
-                  <td className="sticky left-0 z-10 bg-black w-8 px-2 py-1 text-center text-gray-600 font-mono border-r border-gray-800">
-                    {idx + 1}
-                  </td>
-                  {/* Delete button */}
-                  <td className="sticky left-8 z-10 bg-black w-8 px-1 py-1 text-center border-r border-gray-800">
-                    <button onClick={() => deleteRow(row._key, row.id)}
-                      className="text-gray-700 hover:text-red-500 transition-colors" title="Delete">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </td>
-                  {/* Sticky name col when on metric tabs */}
-                  {activeTab !== "identity" && (
-                    <td className="sticky left-16 z-10 bg-black px-2 py-1 border-r border-gray-800" style={{ minWidth: "150px" }}>
-                      <span className="text-white font-bold text-xs truncate block">{row.name || "—"}</span>
-                    </td>
-                  )}
-                  {/* Data columns */}
-                  {cols.map((col) => {
-                    const val = col.getValue(row);
-                    if (col.computed) {
-                      return (
-                        <td key={col.key} className="px-2 py-1">
-                          <div className="bg-[#0a0a0a] rounded px-2 py-1.5 text-gray-400 font-mono text-xs min-w-[60px]">
-                            {val !== "" && val != null ? (typeof val === "number" ? (col.key.includes("rate") ? Math.round(val) + "%" : val.toFixed(2)) : val) : "—"}
+              {rows.map((row, idx) => {
+                const pills = pillsFor(row);
+                const isMulti = !!post2Slot && hasPostData(row.metrics?.[post2Slot] as Record<string, unknown> | undefined);
+
+                // Multi-post: two stacked sub-rows (Post 1 / Post 2) for the same
+                // athlete, grouped by an orange left-accent bar on the # cell.
+                if (isMulti && post2Slot) {
+                  return (
+                    <Fragment key={row._key}>
+                      {/* Post 1 sub-row — no bottom border so it merges with Post 2 */}
+                      <tr className={`hover:bg-white/[0.02] ${row._isNew ? "bg-[#D73F09]/[0.03]" : ""}`}>
+                        <td className="sticky left-0 z-10 bg-black w-8 px-2 py-1 text-center text-gray-600 font-mono border-r border-l-2 border-gray-800 border-l-[#D73F09]">
+                          {idx + 1}
+                        </td>
+                        <td className="sticky left-8 z-10 bg-black w-8 px-1 py-1 text-center border-r border-gray-800">
+                          <button onClick={() => deleteRow(row._key, row.id)}
+                            className="text-gray-700 hover:text-red-500 transition-colors" title="Delete">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </td>
+                        <td className="sticky left-16 z-10 bg-black px-2 py-1 border-r border-gray-800" style={{ minWidth: "150px" }}>
+                          <span className="text-white font-bold text-xs truncate block">{row.name || "—"}</span>
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09]/70">Post 1</span>
+                            {renderPills(pills)}
                           </div>
                         </td>
-                      );
-                    }
-                    return (
-                      <td key={col.key} className="px-1 py-1">
-                        <input
-                          type={col.type === "number" ? "number" : "text"}
-                          value={val ?? ""}
-                          onChange={(e) => updateRow(row._key, (r) => col.setValue(r, e.target.value))}
-                          className="w-full bg-transparent border-0 border-b border-gray-800 focus:border-[#D73F09] text-white text-xs px-2 py-1.5 outline-none transition-colors placeholder-gray-700"
-                          placeholder={col.label}
-                          step={col.type === "number" ? "any" : undefined}
-                        />
+                        {renderDataCells(row, activeTab, activeTab)}
+                      </tr>
+                      {/* Post 2 sub-row — reads/writes the "_2" slot */}
+                      <tr className={`border-b border-gray-800/50 hover:bg-white/[0.02] ${row._isNew ? "bg-[#D73F09]/[0.03]" : ""}`}>
+                        <td className="sticky left-0 z-10 bg-black w-8 px-2 py-1 text-center border-r border-l-2 border-gray-800 border-l-[#D73F09]"></td>
+                        <td className="sticky left-8 z-10 bg-black w-8 px-1 py-1 border-r border-gray-800"></td>
+                        <td className="sticky left-16 z-10 bg-black px-2 py-1 border-r border-gray-800" style={{ minWidth: "150px" }}>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09]/70">Post 2</span>
+                        </td>
+                        {renderDataCells(row, activeTab, post2Slot)}
+                      </tr>
+                    </Fragment>
+                  );
+                }
+
+                // Single post (unchanged from before). Pills still render next to
+                // the name on metric tabs as the at-a-glance multi-post signal.
+                return (
+                  <tr key={row._key} className={`border-b border-gray-800/50 hover:bg-white/[0.02] ${row._isNew ? "bg-[#D73F09]/[0.03]" : ""}`}>
+                    {/* Row number */}
+                    <td className="sticky left-0 z-10 bg-black w-8 px-2 py-1 text-center text-gray-600 font-mono border-r border-gray-800">
+                      {idx + 1}
+                    </td>
+                    {/* Delete button */}
+                    <td className="sticky left-8 z-10 bg-black w-8 px-1 py-1 text-center border-r border-gray-800">
+                      <button onClick={() => deleteRow(row._key, row.id)}
+                        className="text-gray-700 hover:text-red-500 transition-colors" title="Delete">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </td>
+                    {/* Sticky name col when on metric tabs */}
+                    {activeTab !== "identity" && (
+                      <td className="sticky left-16 z-10 bg-black px-2 py-1 border-r border-gray-800" style={{ minWidth: "150px" }}>
+                        <span className="text-white font-bold text-xs truncate block">{row.name || "—"}</span>
+                        {pills.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">{renderPills(pills)}</div>
+                        )}
                       </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                    )}
+                    {/* Data columns */}
+                    {cols.map((col) => {
+                      const val = col.getValue(row);
+                      if (col.computed) {
+                        return (
+                          <td key={col.key} className="px-2 py-1">
+                            <div className="bg-[#0a0a0a] rounded px-2 py-1.5 text-gray-400 font-mono text-xs min-w-[60px]">
+                              {val !== "" && val != null ? (typeof val === "number" ? (col.key.includes("rate") ? Math.round(val) + "%" : val.toFixed(2)) : val) : "—"}
+                            </div>
+                          </td>
+                        );
+                      }
+                      return (
+                        <td key={col.key} className="px-1 py-1">
+                          <input
+                            type={col.type === "number" ? "number" : "text"}
+                            value={val ?? ""}
+                            onChange={(e) => updateRow(row._key, (r) => col.setValue(r, e.target.value))}
+                            className="w-full bg-transparent border-0 border-b border-gray-800 focus:border-[#D73F09] text-white text-xs px-2 py-1.5 outline-none transition-colors placeholder-gray-700"
+                            placeholder={col.label}
+                            step={col.type === "number" ? "any" : undefined}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
