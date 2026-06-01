@@ -97,7 +97,7 @@ export default async function HomepagePage() {
 
   return (
     <div className="pg-page">
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .hp-hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:80px 24px 64px;position:relative;overflow:hidden;}
         .hp-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(215,63,9,0.18) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(215,63,9,0.06) 0%,transparent 50%);pointer-events:none;}
         .hp-hero-inner{position:relative;z-index:1;max-width:860px;}
@@ -174,7 +174,7 @@ export default async function HomepagePage() {
           .hp-masonry{column-count:1;}
           .hp-athletes-grid{grid-template-columns:1fr 1fr;}
         }
-      `}</style>
+      ` }} />
 
       {/* Hero */}
       <section className="hp-hero">

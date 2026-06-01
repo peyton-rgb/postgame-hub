@@ -218,10 +218,24 @@ function HomepageEditor({ onSaved }: { onSaved: () => void }) {
 
   async function save() {
     setSaving(true);
-    await supabase.from("pages").update({ settings }).eq("id", HP_PAGE_ID);
+    const { error: pageErr } = await supabase.from("pages").update({ settings }).eq("id", HP_PAGE_ID);
+    if (pageErr) {
+      console.error("[HomepageEditor] pages.update failed:", pageErr);
+      alert(`Save failed (pages): ${pageErr.code ?? "?"} — ${pageErr.message}`);
+      setSaving(false);
+      return;
+    }
     for (const [type, content] of Object.entries(sections)) {
       const { id, ...rest } = content;
-      if (id) await supabase.from("page_sections").update({ content: rest }).eq("id", id);
+      if (id) {
+        const { error: secErr } = await supabase.from("page_sections").update({ content: rest }).eq("id", id);
+        if (secErr) {
+          console.error(`[HomepageEditor] page_sections.update failed (type=${type}, id=${id}):`, secErr);
+          alert(`Save failed (section ${type}): ${secErr.code ?? "?"} — ${secErr.message}`);
+          setSaving(false);
+          return;
+        }
+      }
     }
     setSaving(false);
     onSaved();

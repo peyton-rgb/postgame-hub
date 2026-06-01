@@ -23,7 +23,7 @@ export default function BrandCarousel({ items }: { items: TickerItem[] }) {
 
   return (
     <div className="pitch-ticker" aria-hidden="true">
-      <style>{BRAND_CAROUSEL_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: BRAND_CAROUSEL_CSS }} />
       <div className="pitch-ticker__inner">
         {doubled.map((item, i) => {
           if (typeof item === "string") {
