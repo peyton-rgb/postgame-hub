@@ -16,5 +16,5 @@ primary_region = 'iad'
   min_machines_running = 0
 
 [[vm]]
-  size = 'shared-cpu-2x'
-  memory = '1gb'
+  size = 'shared-cpu-4x'
+  memory = '2gb'

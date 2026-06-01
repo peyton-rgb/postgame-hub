@@ -1,6 +1,10 @@
 node_modules/
 .next/
 .env.local
+# Local secret-file backups — never commit. Covers .env.local.backup, .env.local.bak, etc.
+# Intentional .env.local.example stays tracked because it doesn't match these patterns.
+.env*.backup
+.env*.bak
 .vercel
 *.tsbuildinfo
 .DS_Store

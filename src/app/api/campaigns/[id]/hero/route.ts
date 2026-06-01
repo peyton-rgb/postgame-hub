@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
   const { data, error } = await supabase
     .from('media')
-    .select('id, type, file_url, thumbnail_url, focal_x, focal_y, hero_scale, is_hero, hero_order, resolution')
+    .select('id, type, file_url, thumbnail_url, focal_x, focal_y, hero_scale, is_hero, hero_order, resolution, hero_source, hero_render_look, hero_rendered_url')
     .eq('campaign_id', campaignId)
     .order('hero_order', { ascending: true })
     .order('sort_order', { ascending: true })
@@ -46,6 +46,9 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
     focal_x: number;
     focal_y: number;
     hero_scale: number;
+    hero_source: 'original' | 'rendered';
+    hero_render_look: 'blur' | 'mirror' | null;
+    hero_rendered_url: string | null;
   }> = body.items;
 
   if (!Array.isArray(items)) {
@@ -73,6 +76,9 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
         focal_x: item.focal_x,
         focal_y: item.focal_y,
         hero_scale: item.hero_scale,
+        hero_source: item.hero_source,
+        hero_render_look: item.hero_render_look,
+        hero_rendered_url: item.hero_rendered_url,
       })
       .eq('id', item.id)
       .eq('campaign_id', campaignId);

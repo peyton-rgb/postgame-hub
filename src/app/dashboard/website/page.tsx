@@ -235,6 +235,7 @@ function HomepageEditor({ onSaved }: { onSaved: () => void }) {
             slotKey="homepage.hero_carousel"
             title="Hero Images"
             maxItems={8}
+            treatAsHero
             onSaved={onSaved}
           />
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>
@@ -789,7 +790,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
     <>
       <div style={S.editScroll}>
         <SectionCard title="Page Hero">
-          <SlotEditor slotKey="campaigns.hero" title="Campaigns Page Hero" maxItems={3} onSaved={onSaved} />
+          <SlotEditor slotKey="campaigns.hero" title="Campaigns Page Hero" maxItems={3} treatAsHero onSaved={onSaved} />
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:6 }}>
             Optional images shown behind the Campaigns page headline. Leave empty for the text-only hero.
           </div>

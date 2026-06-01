@@ -6,6 +6,7 @@ import ScrollVideo from "@/components/ScrollVideo";
 import BrandCarousel from "@/components/BrandCarousel";
 import { createPlainSupabase } from "@/lib/supabase";
 import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
+import { resolveHeroPlaybackUrl } from "@/lib/hero-render";
 
 export const revalidate = 60;
 
@@ -71,18 +72,18 @@ export default async function HomepagePage() {
     const sb = createPlainSupabase();
     const { data: slotRows } = await (sb as any)
       .from("slot_assignments")
-      .select("file_url, focal_x, focal_y, scale, position")
+      .select("file_url, focal_x, focal_y, scale, position, hero_source, hero_rendered_url")
       .eq("slot_key", "homepage.hero_carousel")
       .is("scope_id", null)
       .order("position", { ascending: true });
     heroSlides = (slotRows || [])
-      .filter((r: any) => r.file_url)
       .map((r: any) => ({
-        url: r.file_url as string,
+        url: resolveHeroPlaybackUrl(r),
         focalX: r.focal_x ?? 0.5,
         focalY: r.focal_y ?? 0.5,
         scale: r.scale ?? 1,
-      }));
+      }))
+      .filter((s: { url: string | null }) => s.url) as HeroSlide[];
   } catch {}
   const raw = (k: string) => getSetting(page, k);
   const s = (k: string) => settingText(raw(k));

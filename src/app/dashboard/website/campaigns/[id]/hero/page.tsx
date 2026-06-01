@@ -19,6 +19,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DashboardContent from '@/components/DashboardContent';
+import VerticalHeroChoiceModal from '@/components/VerticalHeroChoiceModal';
+import { parseResolution, isVertical } from '@/lib/hero-render';
 
 // ---- Types ----
 
@@ -33,6 +35,9 @@ interface MediaItem {
   is_hero: boolean;
   hero_order: number;
   resolution: string | null;
+  hero_source: 'original' | 'rendered';
+  hero_render_look: 'blur' | 'mirror' | null;
+  hero_rendered_url: string | null;
 }
 
 interface HeroSelection {
@@ -41,6 +46,9 @@ interface HeroSelection {
   focal_y: number;
   hero_scale: number;
   hero_order: number;
+  hero_source: 'original' | 'rendered';
+  hero_render_look: 'blur' | 'mirror' | null;
+  hero_rendered_url: string | null;
 }
 
 // ---- Position Editor ----
@@ -190,6 +198,10 @@ export default function HeroEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [campaignName, setCampaignName] = useState('');
+  const [verticalChoice, setVerticalChoice] = useState<
+    | { mediaId: string; sourceUrl: string; clipLabel?: string }
+    | null
+  >(null);
 
   // Fetch media and campaign name on mount
   useEffect(() => {
@@ -212,6 +224,9 @@ export default function HeroEditorPage() {
             focal_y: m.focal_y ?? 0.5,
             hero_scale: m.hero_scale ?? 1.0,
             hero_order: i,
+            hero_source: m.hero_source ?? 'original',
+            hero_render_look: m.hero_render_look ?? null,
+            hero_rendered_url: m.hero_rendered_url ?? null,
           });
         });
       setSelections(map);
@@ -238,27 +253,68 @@ export default function HeroEditorPage() {
     load();
   }, [campaignId]);
 
-  // Toggle a media item as hero
-  const toggleHero = useCallback((id: string) => {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        if (activeId === id) setActiveId(null);
-      } else {
-        const item = media.find((m) => m.id === id);
-        next.set(id, {
-          id,
-          focal_x: item?.focal_x ?? 0.5,
-          focal_y: item?.focal_y ?? 0.5,
-          hero_scale: item?.hero_scale ?? 1.0,
+  // Insert a media row into the selection map with explicit hero fields.
+  const addHeroToSelections = useCallback(
+    (
+      item: MediaItem,
+      fields: {
+        hero_source: 'original' | 'rendered';
+        hero_render_look?: 'blur' | 'mirror' | null;
+        hero_rendered_url?: string | null;
+      },
+    ) => {
+      setSelections((prev) => {
+        const next = new Map(prev);
+        next.set(item.id, {
+          id: item.id,
+          focal_x: item.focal_x ?? 0.5,
+          focal_y: item.focal_y ?? 0.5,
+          hero_scale: item.hero_scale ?? 1.0,
           hero_order: next.size,
+          hero_source: fields.hero_source,
+          hero_render_look: fields.hero_render_look ?? null,
+          hero_rendered_url: fields.hero_rendered_url ?? null,
         });
-        setActiveId(id);
+        return next;
+      });
+      setActiveId(item.id);
+    },
+    [],
+  );
+
+  // Add (with orientation branch) or remove. Replaces the previous toggleHero.
+  const toggleHero = useCallback(
+    (id: string) => {
+      // Already selected → remove.
+      if (selections.has(id)) {
+        setSelections((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        if (activeId === id) setActiveId(null);
+        return;
       }
-      return next;
-    });
-  }, [activeId, media]);
+
+      const item = media.find((m) => m.id === id);
+      if (!item) return;
+
+      // Vertical video → choose original vs widescreen first.
+      const dim = parseResolution(item.resolution);
+      if (item.type === 'video' && isVertical(dim)) {
+        setVerticalChoice({
+          mediaId: item.id,
+          sourceUrl: item.file_url,
+          clipLabel: campaignName || undefined,
+        });
+        return;
+      }
+
+      // Image or horizontal video → straight in as original.
+      addHeroToSelections(item, { hero_source: 'original' });
+    },
+    [activeId, media, selections, campaignName, addHeroToSelections],
+  );
 
   // Update a hero selection's position/scale
   const updateSelection = useCallback((id: string, updates: Partial<HeroSelection>) => {
@@ -282,6 +338,9 @@ export default function HeroEditorPage() {
       focal_x: s.focal_x,
       focal_y: s.focal_y,
       hero_scale: s.hero_scale,
+      hero_source: s.hero_source,
+      hero_render_look: s.hero_render_look ?? null,
+      hero_rendered_url: s.hero_rendered_url ?? null,
     }));
 
     try {
@@ -421,6 +480,15 @@ export default function HeroEditorPage() {
                         {(selections.get(m.id)?.hero_order ?? 0) + 1}
                       </div>
                     )}
+                    {isSelected && selections.get(m.id)?.hero_source === 'rendered' && (
+                      <span
+                        className="absolute top-1 right-1 text-[8px] font-bold text-white px-1 py-0.5 rounded uppercase tracking-wider"
+                        style={{ background: 'rgba(0,0,0,0.7)' }}
+                        title={`Widescreen render (${selections.get(m.id)?.hero_render_look})`}
+                      >
+                        16:9
+                      </span>
+                    )}
 
                     {m.type === 'video' && (
                       <span className="absolute bottom-1 right-1 text-[8px] uppercase tracking-wider text-white px-1 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.7)' }}>
@@ -504,6 +572,31 @@ export default function HeroEditorPage() {
           </div>
         </div>
       </div>
+
+      {verticalChoice && (
+        <VerticalHeroChoiceModal
+          open={true}
+          sourceUrl={verticalChoice.sourceUrl}
+          mediaId={verticalChoice.mediaId}
+          clipLabel={verticalChoice.clipLabel}
+          onCancel={() => setVerticalChoice(null)}
+          onChoice={(choice) => {
+            const item = media.find((m) => m.id === verticalChoice.mediaId);
+            if (item) {
+              if (choice.source === 'original') {
+                addHeroToSelections(item, { hero_source: 'original' });
+              } else {
+                addHeroToSelections(item, {
+                  hero_source: 'rendered',
+                  hero_render_look: choice.look,
+                  hero_rendered_url: choice.rendered_url,
+                });
+              }
+            }
+            setVerticalChoice(null);
+          }}
+        />
+      )}
     </DashboardContent>
   );
 }
