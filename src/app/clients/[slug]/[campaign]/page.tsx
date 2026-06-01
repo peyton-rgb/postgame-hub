@@ -16,6 +16,7 @@ import { notFound } from 'next/navigation';
 import { getBrandBySlug } from '@/lib/data/brands';
 import { createPlainSupabase, createServiceSupabase } from '@/lib/supabase';
 import HeroStills, { type HeroStill } from './HeroStills';
+import { resolveHeroPlaybackUrl } from '@/lib/hero-render';
 import WorkGallery, { type GalleryItem } from './WorkGallery';
 import { isVideoUrl } from '@/lib/is-video-url';
 
@@ -76,7 +77,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   const { data: media } = await supabase
     .from('media')
     .select(
-      'id, type, file_url, thumbnail_url, athlete_id, focal_x, focal_y, quality_score, resolution, is_hero, hero_order, hero_scale'
+      'id, type, file_url, thumbnail_url, athlete_id, focal_x, focal_y, quality_score, resolution, is_hero, hero_order, hero_scale, hero_source, hero_rendered_url'
     )
     .eq('campaign_id', campaign.id)
     .order('sort_order', { ascending: true })
@@ -88,7 +89,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   // Phase 4 — optional slot overrides (hero carousel, gallery). Empty = today's auto behavior.
   const { data: campSlots } = await supabase
     .from("slot_assignments")
-    .select("slot_key, file_url, focal_x, focal_y, scale, position")
+    .select("slot_key, file_url, focal_x, focal_y, scale, position, hero_source, hero_rendered_url")
     .in("slot_key", [`campaign.${campaign.id}.hero_carousel`, `campaign.${campaign.id}.gallery`])
     .order("position", { ascending: true });
   const cs = (campSlots || []) as any[];
@@ -122,9 +123,10 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     }
   }
 
-  const heroStills: HeroStill[] = heroSlot.length > 0
-    ? heroSlot.map((s: any) => ({ src: s.file_url, alt: campaign.name, focalX: s.focal_x ?? 0.5, focalY: s.focal_y ?? 0.5, scale: s.scale ?? 1 }))
-    : heroCandidates.map((m: any) => ({ src: m.file_url, alt: campaign.name, focalX: typeof m.focal_x === "number" ? m.focal_x : 0.5, focalY: typeof m.focal_y === "number" ? m.focal_y : 0.5, scale: typeof m.hero_scale === "number" ? m.hero_scale : 1.0 }));
+  const heroStills: HeroStill[] = (heroSlot.length > 0
+    ? heroSlot.map((s: any) => ({ src: resolveHeroPlaybackUrl(s), alt: campaign.name, focalX: s.focal_x ?? 0.5, focalY: s.focal_y ?? 0.5, scale: s.scale ?? 1 }))
+    : heroCandidates.map((m: any) => ({ src: resolveHeroPlaybackUrl(m), alt: campaign.name, focalX: typeof m.focal_x === "number" ? m.focal_x : 0.5, focalY: typeof m.focal_y === "number" ? m.focal_y : 0.5, scale: typeof m.hero_scale === "number" ? m.hero_scale : 1.0 }))
+  ).filter((s): s is HeroStill => !!s.src);
 
   const images: GalleryItem[] = allImages.map((m: any) => ({
     id: m.id,

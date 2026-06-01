@@ -24,6 +24,7 @@ import { notFound } from 'next/navigation';
 import { getBrandBySlug, type Brand } from '@/lib/data/brands';
 import { createPlainSupabase } from '@/lib/supabase';
 import HeroSlideshow from './HeroSlideshow';
+import { resolveHeroPlaybackUrl } from '@/lib/hero-render';
 import './brand-page.css';
 
 export const dynamic = 'force-dynamic';
@@ -232,11 +233,14 @@ async function loadBrandPageData(brand: Brand) {
   const slug = brand.slug;
   const { data: slotRows } = await supabase
     .from("slot_assignments")
-    .select("slot_key, file_url, text_value, recap_id, position")
+    .select("slot_key, file_url, text_value, recap_id, position, hero_source, hero_rendered_url")
     .in("slot_key", [`brand.${slug}.hero_carousel`, `brand.${slug}.featured_campaigns`, `brand.${slug}.pull_quote`])
     .order("position", { ascending: true });
   const slots = (slotRows || []) as any[];
-  const heroSlotImages = slots.filter(s => s.slot_key === `brand.${slug}.hero_carousel` && s.file_url).map(s => s.file_url as string);
+  const heroSlotImages = slots
+    .filter(s => s.slot_key === `brand.${slug}.hero_carousel`)
+    .map(s => resolveHeroPlaybackUrl(s as Record<string, unknown>))
+    .filter((u): u is string => !!u);
   const featuredRecapIds = slots.filter(s => s.slot_key === `brand.${slug}.featured_campaigns` && s.recap_id).map(s => s.recap_id as string);
   const pq = slots.find(s => s.slot_key === `brand.${slug}.pull_quote`);
   const pullQuote = pq ? { image: pq.file_url as string | null, text: pq.text_value as string | null } : null;

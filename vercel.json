@@ -5,6 +5,9 @@
   "functions": {
     "src/app/api/pitches/generate/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/heroes/render/route.ts": {
+      "maxDuration": 300
     }
   }
 }

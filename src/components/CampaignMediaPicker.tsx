@@ -11,6 +11,10 @@ export interface MediaPickerResult {
   campaign: string;
   campaign_id: string;
   campaign_recap_id?: string;
+  /** media.id when the picked file matches a row in the media table. Used as the stable cache key for hero render. */
+  media_id?: string;
+  /** media.resolution as text e.g. "1080x1920". Used for the vertical-hero orientation check. */
+  resolution?: string;
 }
 
 export interface CampaignMediaPickerProps {
@@ -200,7 +204,13 @@ export default function CampaignMediaPicker({
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignRow | null>(null);
 
   const [mediaTab, setMediaTab] = useState<MediaTab>("browse");
-  const [files, setFiles] = useState<{ name: string; url: string; poster?: string | null }[]>([]);
+  const [files, setFiles] = useState<{
+    name: string;
+    url: string;
+    poster?: string | null;
+    media_id?: string;
+    resolution?: string;
+  }[]>([]);
   const [includeVideos, setIncludeVideos] = useState(true);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
@@ -334,23 +344,36 @@ export default function CampaignMediaPicker({
           return { name: f.name, url: publicUrl };
         });
 
-      // Attach video posters from the media table (thumbnail_url), matched by file_url.
+      // Attach video posters + media-row enrichment, matched by file_url.
       const posterMap = new Map<string, string>();
+      const idMap = new Map<string, string>();
+      const resolutionMap = new Map<string, string>();
       try {
         const { data: vids } = await supabase
           .from("media")
-          .select("file_url, thumbnail_url")
-          .eq("campaign_id", campaignId)
-          .eq("type", "video")
-          .not("thumbnail_url", "is", null);
-        for (const v of (vids || []) as { file_url: string | null; thumbnail_url: string | null }[]) {
-          if (v.file_url && v.thumbnail_url) posterMap.set(v.file_url, v.thumbnail_url);
+          .select("id, file_url, thumbnail_url, resolution")
+          .eq("campaign_id", campaignId);
+        for (const v of (vids || []) as {
+          id: string;
+          file_url: string | null;
+          thumbnail_url: string | null;
+          resolution: string | null;
+        }[]) {
+          if (!v.file_url) continue;
+          if (v.thumbnail_url) posterMap.set(v.file_url, v.thumbnail_url);
+          idMap.set(v.file_url, v.id);
+          if (v.resolution) resolutionMap.set(v.file_url, v.resolution);
         }
       } catch {
-        /* posters are best-effort; fall back to dark tile */
+        /* media-row enrichment is best-effort; downstream modal probes client-side if resolution is missing */
       }
-      const withPosters = items.map((it) => ({ ...it, poster: posterMap.get(it.url) ?? null }));
-      setFiles(withPosters);
+      const enriched = items.map((it) => ({
+        ...it,
+        poster: posterMap.get(it.url) ?? null,
+        media_id: idMap.get(it.url),
+        resolution: resolutionMap.get(it.url),
+      }));
+      setFiles(enriched);
       setLoadingFiles(false);
     },
     [includeVideos, supabase]
@@ -383,6 +406,8 @@ export default function CampaignMediaPicker({
   const handleFileSelect = (file: { name: string; url: string }) => {
     if (!selectedCampaign) return;
     const e = ext(file.name);
+    // Pull the enriched fields off the file row in state (set during loadFiles).
+    const enriched = files.find((f) => f.url === file.url);
     onSelect({
       type: VIDEO_EXTS.includes(e) ? "video" : "image",
       url: file.url,
@@ -390,6 +415,8 @@ export default function CampaignMediaPicker({
       campaign: selectedCampaign.name,
       campaign_id: selectedCampaign.id,
       campaign_recap_id: selectedCampaign.source === "recap" ? selectedCampaign.id : undefined,
+      media_id: enriched?.media_id,
+      resolution: enriched?.resolution,
     });
     onClose();
   };

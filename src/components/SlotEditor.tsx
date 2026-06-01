@@ -20,7 +20,9 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
-import CampaignMediaPicker from "@/components/CampaignMediaPicker";
+import CampaignMediaPicker, { type MediaPickerResult } from "@/components/CampaignMediaPicker";
+import VerticalHeroChoiceModal from "@/components/VerticalHeroChoiceModal";
+import { parseResolution, isVertical, probeVideoDimensions } from "@/lib/hero-render";
 import { isVideoUrl } from "@/lib/is-video-url";
 
 const C = {
@@ -41,6 +43,10 @@ export interface SlotEditorProps {
   acceptsText?: boolean;
   /** v2: show a per-photo brand-logo picker (Services carousels) */
   acceptsLogo?: boolean;
+  /** Hero slots only: picking a vertical video opens the Keep-vertical /
+   *  Make-widescreen modal before inserting the row. Defaults to false so
+   *  services / pull-quote / gallery slots are unaffected. */
+  treatAsHero?: boolean;
   onSaved?: () => void;
 }
 
@@ -81,6 +87,7 @@ export default function SlotEditor({
   maxItems,
   acceptsText,
   acceptsLogo,
+  treatAsHero,
   onSaved,
 }: SlotEditorProps) {
   const supabase = createBrowserSupabase();
@@ -89,6 +96,10 @@ export default function SlotEditor({
   const [rows, setRows] = useState<SlotRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [heroChoice, setHeroChoice] = useState<
+    | { sourceUrl: string; mediaId?: string; clipLabel?: string }
+    | null
+  >(null);
   const [brandLogos, setBrandLogos] = useState<BrandLogo[]>([]);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const textCreating = useRef(false);
@@ -115,19 +126,61 @@ export default function SlotEditor({
       .then(({ data }: { data: BrandLogo[] | null }) => setBrandLogos(data || []));
   }, [acceptsLogo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function addMedia(url: string) {
+  async function addMedia(payload: {
+    file_url: string;
+    hero_source?: "original" | "rendered";
+    hero_render_look?: "blur" | "mirror";
+    hero_rendered_url?: string;
+  }) {
     const nextPos = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
     await db.from("slot_assignments").insert({
       slot_key: slotKey,
       scope_id: scopeId ?? null,
-      file_url: url,
+      file_url: payload.file_url,
       position: nextPos,
       focal_x: 0.5,
       focal_y: 0.5,
       scale: 1.0,
+      hero_source: payload.hero_source ?? "original",
+      hero_render_look: payload.hero_render_look ?? null,
+      hero_rendered_url: payload.hero_rendered_url ?? null,
     });
     await load();
     onSaved?.();
+  }
+
+  /** Picker → orientation branch → either insert directly or open the hero choice modal. */
+  async function handlePickerSelect(item: MediaPickerResult) {
+    setPickerOpen(false);
+
+    // Non-hero slots and images go straight in (today's behavior).
+    if (!treatAsHero || item.type !== "video") {
+      await addMedia({ file_url: item.url });
+      return;
+    }
+
+    // Vertical check — prefer media.resolution, fall back to a client-side probe.
+    // If the probe fails, treat as horizontal (safe default — no widescreen render forced).
+    let dim = parseResolution(item.resolution);
+    if (!dim) {
+      try {
+        dim = await probeVideoDimensions(item.url);
+      } catch {
+        await addMedia({ file_url: item.url });
+        return;
+      }
+    }
+    if (!isVertical(dim)) {
+      await addMedia({ file_url: item.url });
+      return;
+    }
+
+    // Vertical video → let the editor choose original vs rendered.
+    setHeroChoice({
+      sourceUrl: item.url,
+      mediaId: item.media_id,
+      clipLabel: `${item.brand} · ${item.campaign}`,
+    });
   }
 
   async function remove(id: string) {
@@ -443,9 +496,29 @@ export default function SlotEditor({
         <CampaignMediaPicker
           open={pickerOpen}
           onClose={() => setPickerOpen(false)}
-          onSelect={(item) => {
-            addMedia(item.url);
-            setPickerOpen(false);
+          onSelect={(item) => { void handlePickerSelect(item); }}
+        />
+      )}
+
+      {heroChoice && (
+        <VerticalHeroChoiceModal
+          open={true}
+          sourceUrl={heroChoice.sourceUrl}
+          mediaId={heroChoice.mediaId}
+          clipLabel={heroChoice.clipLabel}
+          onCancel={() => setHeroChoice(null)}
+          onChoice={async (choice) => {
+            if (choice.source === "original") {
+              await addMedia({ file_url: heroChoice.sourceUrl });
+            } else {
+              await addMedia({
+                file_url: heroChoice.sourceUrl,
+                hero_source: "rendered",
+                hero_render_look: choice.look,
+                hero_rendered_url: choice.rendered_url,
+              });
+            }
+            setHeroChoice(null);
           }}
         />
       )}

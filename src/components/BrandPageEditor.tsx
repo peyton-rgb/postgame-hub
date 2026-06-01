@@ -42,7 +42,7 @@ export default function BrandPageEditor({ slug, onSaved }: { slug: string; onSav
         </div>
 
         <Card title="Hero Carousel">
-          <SlotEditor slotKey={`brand.${slug}.hero_carousel`} title="Hero Images" maxItems={8} onSaved={onSaved} />
+          <SlotEditor slotKey={`brand.${slug}.hero_carousel`} title="Hero Images" maxItems={8} treatAsHero onSaved={onSaved} />
           <Hint>Curated cross-campaign hero. Empty = the page falls back to this brand’s featured-campaign photos (today’s behavior).</Hint>
         </Card>
 

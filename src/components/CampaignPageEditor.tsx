@@ -76,7 +76,7 @@ export default function CampaignPageEditor({ recapId, onSaved }: { recapId: stri
         </div>
 
         <Card title="Hero Carousel">
-          <SlotEditor slotKey={`campaign.${recapId}.hero_carousel`} title="Hero Images" maxItems={6} onSaved={onSaved} />
+          <SlotEditor slotKey={`campaign.${recapId}.hero_carousel`} title="Hero Images" maxItems={6} treatAsHero onSaved={onSaved} />
           <Hint>Top-of-page heroes. Empty = the page auto-picks heroes (today’s behavior).</Hint>
         </Card>
 
