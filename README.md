@@ -123,3 +123,5 @@ Records: 120 brands, 1083 campaigns, 1280 athletes, 1305 media files
 To view or edit the database: go to supabase.com, open your project, click Table Editor.
 
 Last updated: April 2026
+
+<!-- deploy: trigger production rebuild of merged main -->
