@@ -17,7 +17,7 @@ export default function CampaignList() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newClient, setNewClient] = useState("");
-  const [recapType, setRecapType] = useState<"recap" | "top_50">("recap");
+  const [recapType, setRecapType] = useState<"recap" | "top_50" | "event">("recap");
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvDragging, setCsvDragging] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -297,11 +297,12 @@ export default function CampaignList() {
             </label>
             <select
               value={recapType}
-              onChange={(e) => setRecapType(e.target.value as "recap" | "top_50")}
+              onChange={(e) => setRecapType(e.target.value as "recap" | "top_50" | "event")}
               className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm mb-4 focus:border-[#D73F09] outline-none appearance-none"
             >
               <option value="recap">Campaign Recap</option>
               <option value="top_50">Top 50 List</option>
+              <option value="event">Event Recap</option>
             </select>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
               Brand
