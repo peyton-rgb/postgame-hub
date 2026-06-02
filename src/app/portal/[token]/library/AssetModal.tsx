@@ -24,6 +24,17 @@ export type PortalPost = {
   postUrl: string | null;
 };
 
+// One participant in a collab post. Additive: only the recap's collab cards set
+// these (followers are per-person and real); the portal and solo recap cards
+// never populate `collaborators`, so nothing below renders for them.
+export type Collaborator = {
+  name: string;
+  igHandle: string | null;
+  school: string | null;
+  sport: string | null;
+  igFollowers: number | null;
+};
+
 export type PortalAthlete = {
   id: string; // group id (campaign + name)
   name: string;
@@ -34,6 +45,10 @@ export type PortalAthlete = {
   sport: string | null;
   igHandle: string | null;
   igFollowers: number | null;
+  // ADDITIVE / default-undefined. When present, this PortalAthlete is a collab:
+  // the modal shows a "Pooled" note above the (shared) metric tiles and a
+  // per-athlete collaborator list in place of the single-identity block.
+  collaborators?: Collaborator[];
 };
 
 // Which metric fields to surface per kind, in display order.
@@ -363,6 +378,20 @@ export default function AssetModal({
 
           {/* Metrics */}
           <div className="mt-6">
+            {athlete.collaborators && athlete.collaborators.length > 0 ? (
+              <div
+                className="mb-2.5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[1.2px]"
+                style={{ color: ORANGE }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Pooled — shared across all {athlete.collaborators.length} athletes
+              </div>
+            ) : null}
             {cards.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {cards.map((c) => (
@@ -390,8 +419,52 @@ export default function AssetModal({
             )}
           </div>
 
-          {/* Identity — who the creator is */}
-          {athlete.igHandle || athlete.school || athlete.sport || athlete.igFollowers != null ? (
+          {/* Identity / collaborators */}
+          {athlete.collaborators && athlete.collaborators.length > 0 ? (
+            <div className="mt-6 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <div className="text-[9px] font-bold uppercase tracking-[1.5px] mb-3.5" style={{ color: "rgba(255,255,255,0.5)" }}>
+                Collaborators
+              </div>
+              <div className="flex flex-col gap-3.5">
+                {athlete.collaborators.map((c) => (
+                  <div key={c.name} className="flex items-end justify-between gap-4">
+                    <div className="min-w-0">
+                      {c.igHandle ? (
+                        <a
+                          href={`https://instagram.com/${c.igHandle.replace(/^@+/, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[14px] font-bold tracking-[0.3px] hover:underline"
+                          style={{ color: ORANGE }}
+                        >
+                          @{c.igHandle.replace(/^@+/, "")}
+                        </a>
+                      ) : (
+                        <span className="text-[14px] font-bold" style={{ color: OFFWHITE }}>
+                          {c.name}
+                        </span>
+                      )}
+                      {c.school || c.sport ? (
+                        <div className="mt-0.5 text-[11px]" style={{ color: "rgba(255,255,255,0.55)" }}>
+                          {[c.school, c.sport].filter(Boolean).join(" · ")}
+                        </div>
+                      ) : null}
+                    </div>
+                    {c.igFollowers != null ? (
+                      <div className="text-right shrink-0">
+                        <div className="leading-none" style={{ ...BEBAS, color: OFFWHITE, fontSize: 22 }}>
+                          {formatCount(c.igFollowers)}
+                        </div>
+                        <div className="mt-0.5 text-[8px] font-bold uppercase tracking-[1.5px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+                          Followers
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : athlete.igHandle || athlete.school || athlete.sport || athlete.igFollowers != null ? (
             <div
               className="mt-6 pt-6 flex items-end justify-between gap-4"
               style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}

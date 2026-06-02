@@ -7,7 +7,7 @@ import { fmt, pct, formatEngagementRate, dollar, computeStatsWithOverrides, getT
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import PostgameCalendar from "./PostgameCalendar";
-import AssetModal, { type PortalAthlete, type PortalPost, type SideMetrics } from "@/app/portal/[token]/library/AssetModal";
+import AssetModal, { type PortalAthlete, type PortalPost, type SideMetrics, type Collaborator } from "@/app/portal/[token]/library/AssetModal";
 // Replaced react-masonry-css with a local shortest-column-next implementation
 // (see BalancedMasonry below). react-masonry-css distributes sequentially,
 // which left uneven column bottoms and a lot of dead space.
@@ -177,6 +177,90 @@ function buildRecapPortalAthlete(
     igHandle: athlete.ig_handle || null,
     igFollowers: typeof athlete.ig_followers === "number" && athlete.ig_followers > 0 ? athlete.ig_followers : null,
   };
+  return { portalAthlete, reelPostIndex };
+}
+
+// Map a collab group + its pooled media into the shared AssetModal shape: ONE
+// pooled post (kind reel when the media has a video, reusing the solo modal's
+// default-to-reel + muted autoplay), the group's shared metrics mapped to the
+// modal's SideMetrics keys, and a per-athlete collaborators[] list (followers
+// are per-person, looked up from the roster). reelPostIndex follows the same
+// rule as solo so View More opens on the reel when there is one.
+function buildCollabPortalAthlete(
+  group: CollabGroup,
+  items: Media[],
+  roster: Athlete[],
+  campaignName: string,
+): { portalAthlete: PortalAthlete; reelPostIndex: number } {
+  const images = items
+    .filter((m) => m.type === "image")
+    .map((m) => ({ fileUrl: m.file_url, thumb: m.thumbnail_url || m.file_url }));
+  const videoItem = items.find((m) => m.type === "video");
+  const video = videoItem
+    ? { fileUrl: videoItem.file_url, poster: videoItem.thumbnail_url || null }
+    : null;
+
+  // ONE pooled metric set — do NOT fabricate per-athlete splits. Both impressions
+  // (feed labels) and views (reel labels) are populated; the post kind decides
+  // which the modal surfaces.
+  const gm = group.metrics;
+  const pooled: SideMetrics = {};
+  if (typeof gm.impressions === "number") pooled.impressions = gm.impressions;
+  if (typeof gm.views === "number") pooled.views = gm.views;
+  if (typeof gm.likes === "number") pooled.likes = gm.likes;
+  if (typeof gm.comments === "number") pooled.comments = gm.comments;
+  if (typeof gm.totalEngagements === "number") pooled.total_engagements = gm.totalEngagements;
+  if (group.combinedEngagementRate > 0) pooled.engagement_rate = group.combinedEngagementRate;
+  const metrics = Object.keys(pooled).length ? pooled : null;
+
+  const kind: "feed" | "reel" = video ? "reel" : "feed";
+  const post: PortalPost = {
+    key: `${group.id}:pooled`,
+    kind,
+    label: kind === "reel" ? "Reel" : "Feed",
+    rowId: group.id,
+    images: kind === "feed" ? images : [],
+    video: kind === "reel" ? video : null,
+    metrics,
+    postUrl: group.url || null,
+  };
+
+  // Title mirrors the card: stacked last names.
+  const lastNames = group.athleteNames
+    .map((nm) => nm.trim().split(/\s+/).pop() || nm)
+    .join(" · ");
+
+  // Per-athlete rows — match by DB id (render-time athleteIds), fall back to name.
+  const byId = new Map(roster.map((a) => [a.id, a] as const));
+  const byName = new Map(roster.map((a) => [a.name, a] as const));
+  const collaborators: Collaborator[] = group.athleteNames.map((nm, i) => {
+    const id = group.athleteIds[i];
+    const a = (id ? byId.get(id) : undefined) || byName.get(nm) || null;
+    return {
+      name: nm,
+      igHandle: a?.ig_handle || null,
+      school: a?.school || null,
+      sport: a?.sport || null,
+      igFollowers:
+        a && typeof a.ig_followers === "number" && a.ig_followers > 0 ? a.ig_followers : null,
+    };
+  });
+
+  const campaignId = roster.find((a) => group.athleteIds.includes(a.id))?.campaign_id || "";
+
+  const portalAthlete: PortalAthlete = {
+    id: group.id,
+    name: lastNames,
+    campaignId,
+    campaignName,
+    posts: [post],
+    school: null,
+    sport: null,
+    igHandle: null,
+    igFollowers: null,
+    collaborators,
+  };
+  const reelPostIndex = kind === "reel" ? 0 : -1;
   return { portalAthlete, reelPostIndex };
 }
 
@@ -764,6 +848,10 @@ export function CampaignRecap({
   const [modalData, setModalData] = useState<{ portalAthlete: PortalAthlete; startPostIndex: number } | null>(null);
   const openAthleteModal = (a: Athlete, items: Media[]) => {
     const { portalAthlete, reelPostIndex } = buildRecapPortalAthlete(a, items, campaign.name);
+    setModalData({ portalAthlete, startPostIndex: reelPostIndex >= 0 ? reelPostIndex : 0 });
+  };
+  const openCollabModal = (group: CollabGroup, items: Media[]) => {
+    const { portalAthlete, reelPostIndex } = buildCollabPortalAthlete(group, items, fullRoster, campaign.name);
     setModalData({ portalAthlete, startPostIndex: reelPostIndex >= 0 ? reelPostIndex : 0 });
   };
   const [topPerformerMode, setTopPerformerMode] = useState<"engagement" | "impressions">("engagement");
@@ -1672,6 +1760,7 @@ export function CampaignRecap({
                               activeFilter={filter}
                               athletes={fullRoster}
                               cardIndex={originalIndex}
+                              onViewMore={() => openCollabModal(entry.group, entry.items)}
                             />
                           ) : (
                             <AthleteCard
