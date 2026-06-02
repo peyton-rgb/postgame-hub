@@ -291,7 +291,7 @@ function BestInClassCard({
   hasReel: boolean;
   alt: string;
   marker?: ReactNode;
-  title: string;
+  title?: string;
   subtitle: string;
   onViewMore?: () => void;
   borderColor?: string;
@@ -378,19 +378,21 @@ function BestInClassCard({
         >
           <div className="min-w-0">
             {marker}
-            <div
-              style={{
-                fontFamily: bebas,
-                fontSize: 24,
-                fontWeight: 900,
-                letterSpacing: 1,
-                color: "#fff",
-                lineHeight: 1,
-                marginBottom: 3,
-              }}
-            >
-              {title}
-            </div>
+            {title ? (
+              <div
+                style={{
+                  fontFamily: bebas,
+                  fontSize: 24,
+                  fontWeight: 900,
+                  letterSpacing: 1,
+                  color: "#fff",
+                  lineHeight: 1,
+                  marginBottom: 3,
+                }}
+              >
+                {title}
+              </div>
+            ) : null}
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", fontWeight: 500 }}>
               {subtitle}
             </div>
@@ -438,24 +440,36 @@ function BestInClassCard({
             )}
           </span>
         </div>
-      </div>
 
-      {/* View More — opens the reused portal metrics modal */}
-      <button
-        onClick={onViewMore}
-        className="w-full transition-[filter] hover:brightness-110 cursor-pointer"
-        style={{
-          background: "#D73F09",
-          color: "#fff",
-          padding: "12px 14px",
-          fontSize: 12,
-          fontWeight: 800,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-        }}
-      >
-        View More
-      </button>
+        {/* Bottom overlay — scrim + frosted light-glass "View More" over the photo */}
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[2]"
+          style={{
+            padding: "48px 12px 12px",
+            background:
+              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.42) 48%, transparent 100%)",
+          }}
+        >
+          <button
+            onClick={onViewMore}
+            className="w-full cursor-pointer rounded-full bg-white/[0.13] hover:bg-white/20 transition-colors"
+            style={{
+              border: "1px solid rgba(255,255,255,0.28)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              color: "#fff",
+              fontFamily: bebas,
+              fontSize: 16,
+              fontWeight: 900,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              padding: "9px 14px",
+            }}
+          >
+            View More
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -552,7 +566,6 @@ function CollabCard({
       hasReel={hasReel}
       alt={lastNames}
       marker={marker}
-      title={lastNames}
       subtitle={subtitle}
       onViewMore={onViewMore}
       borderColor="rgba(215,63,9,0.4)"
