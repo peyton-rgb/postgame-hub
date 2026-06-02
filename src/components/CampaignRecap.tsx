@@ -7,6 +7,7 @@ import { fmt, pct, formatEngagementRate, dollar, computeStatsWithOverrides, getT
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import PostgameCalendar from "./PostgameCalendar";
+import AssetModal, { type PortalAthlete, type PortalPost, type SideMetrics } from "@/app/portal/[token]/library/AssetModal";
 // Replaced react-masonry-css with a local shortest-column-next implementation
 // (see BalancedMasonry below). react-masonry-css distributes sequentially,
 // which left uneven column bottoms and a lot of dead space.
@@ -86,6 +87,97 @@ function athleteHasReel(athlete: Athlete, items: Media[]): boolean {
     !!(m?.ig_reel_2 && Object.keys(m.ig_reel_2).length > 0);
   const hasVideo = items.some((it) => it.type === "video");
   return reelMetrics || hasVideo;
+}
+
+// Convert a recap Athlete + its media into the shape the shared portal
+// AssetModal consumes. Mirrors the portal's server-side derivation
+// (library/page.tsx): a Feed post (images + ig_feed metrics) and a Reel post
+// (video + ig_reel metrics), plus Post-2 slots when present. Media is shared
+// across a type's posts — the recap stores one image set / one video per
+// athlete, exactly as the old card's Post 1/2 toggle behaved.
+//
+// `reelPostIndex` is the index the recap passes as AssetModal's startPostIndex so
+// the modal opens on the Reel; -1 when the athlete is feed-only. By construction
+// reelPostIndex >= 0 iff athleteHasReel() is true, so the card tag and the modal
+// can never disagree.
+function buildRecapPortalAthlete(
+  athlete: Athlete,
+  items: Media[],
+  campaignName: string,
+): { portalAthlete: PortalAthlete; reelPostIndex: number } {
+  const images = items
+    .filter((m) => m.type === "image")
+    .map((m) => ({ fileUrl: m.file_url, thumb: m.thumbnail_url || m.file_url }));
+  const videoItem = items.find((m) => m.type === "video");
+  const video = videoItem
+    ? { fileUrl: videoItem.file_url, poster: videoItem.thumbnail_url || null }
+    : null;
+
+  // Copy a metrics block through, filling the modal's legacy `engagement_rate`
+  // key from the best available rate (followers/impressions) so newer-template
+  // campaigns still render an Eng. Rate tile. Recap-side only — the portal's own
+  // data is untouched.
+  const side = (block: Record<string, any> | undefined): SideMetrics | null => {
+    if (!block || Object.keys(block).length === 0) return null;
+    const out: SideMetrics = { ...block };
+    if (out.engagement_rate == null) {
+      const f = typeof block.engagement_rate_followers === "number" ? block.engagement_rate_followers : 0;
+      const i = typeof block.engagement_rate_impressions === "number" ? block.engagement_rate_impressions : 0;
+      const best = Math.max(f, i);
+      if (best > 0) out.engagement_rate = best;
+    }
+    return out;
+  };
+
+  const m = athlete.metrics || {};
+  const feed1 = side(m.ig_feed);
+  const reel1 = side(m.ig_reel);
+  const feed2 = side(m.ig_feed_2);
+  const reel2 = side(m.ig_reel_2);
+
+  const posts: PortalPost[] = [];
+  if (images.length > 0 || feed1) {
+    posts.push({ key: `${athlete.id}:feed1`, kind: "feed", label: "Feed", rowId: athlete.id, images, video: null, metrics: feed1, postUrl: (feed1?.post_url as string) || athlete.post_url || null });
+  }
+  if (video || reel1) {
+    posts.push({ key: `${athlete.id}:reel1`, kind: "reel", label: "Reel", rowId: athlete.id, images: [], video, metrics: reel1, postUrl: (reel1?.post_url as string) || athlete.post_url || null });
+  }
+  if (feed2) {
+    posts.push({ key: `${athlete.id}:feed2`, kind: "feed", label: "Feed", rowId: athlete.id, images, video: null, metrics: feed2, postUrl: (feed2.post_url as string) || null });
+  }
+  if (reel2) {
+    posts.push({ key: `${athlete.id}:reel2`, kind: "reel", label: "Reel", rowId: athlete.id, images: [], video, metrics: reel2, postUrl: (reel2.post_url as string) || null });
+  }
+
+  // Number labels per type only when there's more than one of that type.
+  const feedTotal = posts.filter((p) => p.kind === "feed").length;
+  const reelTotal = posts.filter((p) => p.kind === "reel").length;
+  let fi = 0;
+  let ri = 0;
+  for (const p of posts) {
+    if (p.kind === "feed") {
+      fi += 1;
+      p.label = feedTotal > 1 ? `Feed Post ${fi}` : "Feed";
+    } else {
+      ri += 1;
+      p.label = reelTotal > 1 ? `Reel Post ${ri}` : "Reel";
+    }
+  }
+
+  const reelPostIndex = posts.findIndex((p) => p.kind === "reel");
+
+  const portalAthlete: PortalAthlete = {
+    id: athlete.id,
+    name: athlete.name,
+    campaignId: athlete.campaign_id,
+    campaignName,
+    posts,
+    school: athlete.school || null,
+    sport: athlete.sport || null,
+    igHandle: athlete.ig_handle || null,
+    igFollowers: typeof athlete.ig_followers === "number" && athlete.ig_followers > 0 ? athlete.ig_followers : null,
+  };
+  return { portalAthlete, reelPostIndex };
 }
 
 // ── Best-in-Class Athlete Card ───────────────────────────────
@@ -775,6 +867,13 @@ export function CampaignRecap({
 }) {
   const [filter, setFilter] = useState("all");
   const [galleryExpanded, setGalleryExpanded] = useState(false);
+  // Best-in-Class "View More" opens the reused portal metrics modal for one
+  // athlete, defaulting to their Reel tab (startPostIndex) when they have one.
+  const [modalData, setModalData] = useState<{ portalAthlete: PortalAthlete; startPostIndex: number } | null>(null);
+  const openAthleteModal = (a: Athlete, items: Media[]) => {
+    const { portalAthlete, reelPostIndex } = buildRecapPortalAthlete(a, items, campaign.name);
+    setModalData({ portalAthlete, startPostIndex: reelPostIndex >= 0 ? reelPostIndex : 0 });
+  };
   const [topPerformerMode, setTopPerformerMode] = useState<"engagement" | "impressions">("engagement");
   const [activeSection, setActiveSection] = useState<string>("");
   const settings = campaign.settings || {};
@@ -1688,6 +1787,7 @@ export function CampaignRecap({
                               items={entry.items}
                               activeFilter={filter}
                               cardIndex={originalIndex}
+                              onViewMore={() => openAthleteModal(entry.athlete, entry.items)}
                             />
                           )
                         ))}
@@ -2347,6 +2447,16 @@ export function CampaignRecap({
           </span>
         </div>
       </div>
+
+      {/* Best-in-Class metrics popup — the reused portal AssetModal, one athlete */}
+      {modalData ? (
+        <AssetModal
+          athletes={[modalData.portalAthlete]}
+          startIndex={0}
+          startPostIndex={modalData.startPostIndex}
+          onClose={() => setModalData(null)}
+        />
+      ) : null}
     </div>
   );
 }

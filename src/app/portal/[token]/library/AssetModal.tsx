@@ -104,8 +104,21 @@ export default function AssetModal({
   const [idx, setIdx] = useState(startIndex);
   const [postIdx, setPostIdx] = useState(startPostIndex);
   const [slide, setSlide] = useState(0);
+  // Reel videos autoplay MUTED (browsers block sound-autoplay); the user taps to
+  // unmute, Instagram-style. videoRef lets us flip mute imperatively so React
+  // doesn't re-apply the static `muted` attribute and re-mute on every render.
+  const [reelMuted, setReelMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const athlete = athletes[idx];
+
+  const toggleReelMute = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setReelMuted(v.muted);
+    if (!v.muted) v.play().catch(() => {});
+  };
 
   const prev = useCallback(() => setIdx((i) => Math.max(0, i - 1)), []);
   const next = useCallback(
@@ -123,11 +136,13 @@ export default function AssetModal({
     }
     setPostIdx(0);
     setSlide(0);
+    setReelMuted(true); // new athlete's reel restarts muted
   }, [idx]);
 
-  // Switching posts (tabs) resets the carousel.
+  // Switching posts (tabs) resets the carousel and re-mutes the reel.
   useEffect(() => {
     setSlide(0);
+    setReelMuted(true);
   }, [postIdx]);
 
   // Keyboard nav + body scroll lock while open.
@@ -192,15 +207,36 @@ export default function AssetModal({
         >
           {post.kind === "reel" ? (
             post.video ? (
-              <video
-                key={post.video.fileUrl}
-                src={post.video.fileUrl}
-                poster={post.video.poster || undefined}
-                controls
-                autoPlay
-                playsInline
-                className="max-h-[82vh] w-auto max-w-full object-contain"
-              />
+              <>
+                <video
+                  key={post.video.fileUrl}
+                  ref={videoRef}
+                  src={post.video.fileUrl}
+                  poster={post.video.poster || undefined}
+                  controls
+                  autoPlay
+                  muted
+                  playsInline
+                  className="max-h-[82vh] w-auto max-w-full object-contain"
+                />
+                {/* Tap-to-unmute control — sits above the native control bar */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleReelMute();
+                  }}
+                  aria-label={reelMuted ? "Unmute" : "Mute"}
+                  title={reelMuted ? "Tap to unmute" : "Mute"}
+                  className="absolute bottom-16 right-4 z-[2] grid place-items-center w-10 h-10 rounded-full transition-colors hover:bg-black/80"
+                  style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
+                >
+                  {reelMuted ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                  )}
+                </button>
+              </>
             ) : (
               <EmptyMedia label="No video" />
             )
