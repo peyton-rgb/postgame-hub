@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey, CollabGroup } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { fmt, pct, formatEngagementRate, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getMediaLabel, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate, type TopPerformerEntry } from "@/lib/recap-helpers";
+import { fmt, pct, formatEngagementRate, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate, type TopPerformerEntry } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import PostgameCalendar from "./PostgameCalendar";
@@ -75,30 +75,58 @@ function hasRichTextContent(html: string | null | undefined): boolean {
 const DEFAULT_RATIOS = ["1/1", "9/16", "4/5"] as const;
 const VIDEO_SAFE_RATIOS = ["9/16", "4/5"] as const;
 
-function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { athlete: Athlete; items: Media[]; activeFilter: string; cardIndex: number }) {
-  // When photo filter is active, exclude video items from the carousel
-  const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
-  const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
+// Single source of truth for "does this athlete have a reel?" — shared by the
+// gallery card's content tag and (Phase 2) the modal's open-on-reel logic, so
+// the card and the modal can never disagree. True when the athlete has an
+// uploaded video OR reel metrics in their JSONB.
+function athleteHasReel(athlete: Athlete, items: Media[]): boolean {
+  const m = athlete.metrics;
+  const reelMetrics =
+    !!(m?.ig_reel && Object.keys(m.ig_reel).length > 0) ||
+    !!(m?.ig_reel_2 && Object.keys(m.ig_reel_2).length > 0);
+  const hasVideo = items.some((it) => it.type === "video");
+  return reelMetrics || hasVideo;
+}
 
+// ── Best-in-Class Athlete Card ───────────────────────────────
+//
+// Replaces the old metrics-below-the-box MasonryCard. A single hero shot fills
+// the card; the athlete's name sits top-left and a content-type tag top-right,
+// both over a dark top gradient; a full-width orange "View More" button sits
+// below. NO metrics live on the card — those are in the reused portal
+// AssetModal, opened by View More (wired in Phase 2).
+function AthleteCard({
+  athlete,
+  items: rawItems,
+  activeFilter,
+  cardIndex,
+  onViewMore,
+}: {
+  athlete: Athlete;
+  items: Media[];
+  activeFilter: string;
+  cardIndex: number;
+  onViewMore?: () => void;
+}) {
   const hasVideo = rawItems.some((m) => m.type === "video");
+  const hasReel = athleteHasReel(athlete, rawItems);
+
+  // Hero = best available still: prefer a photo (honoring the photo filter),
+  // else fall back to a reel's poster frame.
+  const filteredItems =
+    activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
+  const coverImage =
+    filteredItems.find((m) => m.type === "image") || rawItems.find((m) => m.type === "image");
+  const heroVideo = rawItems.find((m) => m.type === "video");
+  const heroSrc =
+    coverImage?.thumbnail_url || coverImage?.file_url || heroVideo?.thumbnail_url || null;
+
   const defaultRatio = hasVideo
     ? VIDEO_SAFE_RATIOS[cardIndex % VIDEO_SAFE_RATIOS.length]
     : DEFAULT_RATIOS[cardIndex % DEFAULT_RATIOS.length];
+  const [cardRatio, setCardRatio] = useState<string>(defaultRatio);
 
-  const [cardRatio, setCardRatio] = useState(defaultRatio);
-  const [slideIdx, setSlideIdx] = useState(0);
-  const [hovered, setHovered] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  // Multi-post: does this athlete have a second post on any platform?
-  const hasPost2 = !!(
-    athlete.metrics?.ig_reel_2?.post_url ||
-    athlete.metrics?.ig_feed_2?.post_url ||
-    athlete.metrics?.tiktok_2?.post_url
-  );
-  const [postSlot, setPostSlot] = useState(0); // 0 = Post 1, 1 = Post 2
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Detect wide content: use 16:9 if video is landscape, or if all photos are wide
+  // Landscape hero -> 16/9 (mirrors the old card's orientation probe).
   useEffect(() => {
     if (hasVideo) {
       const vid = rawItems.find((m) => m.type === "video");
@@ -106,63 +134,19 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
       const video = document.createElement("video");
       video.preload = "metadata";
       video.onloadedmetadata = () => {
-        if (video.videoWidth > video.videoHeight * 1.2) {
-          setCardRatio("16/9");
-        }
+        if (video.videoWidth > video.videoHeight * 1.2) setCardRatio("16/9");
       };
       video.src = vid.file_url;
     } else {
-      const coverImg = rawItems.find((m) => m.type === "image");
-      if (!coverImg) return;
+      const cover = rawItems.find((m) => m.type === "image");
+      if (!cover) return;
       const img = new Image();
       img.onload = () => {
-        if (img.naturalWidth > img.naturalHeight * 1.2) {
-          setCardRatio("16/9");
-        }
+        if (img.naturalWidth > img.naturalHeight * 1.2) setCardRatio("16/9");
       };
-      img.src = coverImg.file_url;
+      img.src = cover.file_url;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const current = items[slideIdx];
-  const isVideo = current?.type === "video";
-  const coverImage = items.find((m) => m.type === "image");
-  const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : coverImage?.file_url ?? null);
-  // When viewing Post 2, link to that slot's URL; otherwise use Post 1.
-  const postUrl = postSlot === 0
-    ? getPostUrl(athlete)
-    : (athlete.metrics?.ig_reel_2?.post_url ||
-       athlete.metrics?.ig_feed_2?.post_url ||
-       athlete.metrics?.tiktok_2?.post_url || null);
-
-  const keepControlsVisible = useCallback(() => {
-    if (playing && videoRef.current) {
-      const rect = videoRef.current.getBoundingClientRect();
-      videoRef.current.dispatchEvent(new MouseEvent("mousemove", {
-        bubbles: true,
-        clientX: rect.left + rect.width / 2,
-        clientY: rect.bottom - 30,
-      }));
-    }
-  }, [playing]);
-
-  const handleDownload = async () => {
-    if (!current?.file_url) return;
-    try {
-      const res = await fetch(current.file_url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `${athlete.name.replace(/\s+/g, "-")}-${slideIdx + 1}.${isVideo ? "mp4" : "jpg"}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(current.file_url, "_blank");
-    }
-  };
 
   const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
@@ -170,16 +154,11 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
     <div
       className="break-inside-avoid mb-2 rounded-lg overflow-hidden"
       style={{ background: "#141418", border: "1px solid #2a2a30" }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onMouseMove={keepControlsVisible}
     >
       <div className="relative overflow-hidden">
-        {isVideo && playing ? (
-          <video ref={videoRef} src={current.file_url} autoPlay controls playsInline className="w-full block relative z-[1] object-cover" style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }} onEnded={() => setPlaying(false)} />
-        ) : displaySrc ? (
+        {heroSrc ? (
           <img
-            src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
+            src={supabaseImageUrl(heroSrc, 1200) ?? heroSrc}
             className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
             style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
             draggable={false}
@@ -192,152 +171,103 @@ function MasonryCard({ athlete, items: rawItems, activeFilter, cardIndex }: { at
               }
             }}
           />
-        ) : isVideo ? (
-          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }} onClick={() => setPlaying(true)}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          </div>
         ) : (
-          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }}>
+          <div
+            className="w-full bg-black flex items-center justify-center"
+            style={{ aspectRatio: cardRatio }}
+          >
             <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
           </div>
         )}
 
-        {isVideo && !playing && (
-          <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
-            <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
-            </div>
-          </div>
-        )}
-
-        {/* Top overlay — buttons only (download + post link) */}
-        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-4 bg-gradient-to-b from-black/75 to-transparent">
-          <div className="flex justify-end gap-1">
-            <button
-              onClick={(e) => { e.stopPropagation(); handleDownload(); }}
-              className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
-              title="Download"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-            </button>
-            {postUrl && (
-              <a
-                href={postUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
-                title="View Post"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                </svg>
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom overlay — name + school · sport */}
+        {/* Top overlay — name (left) + content-type tag (right) over a dark fade */}
         <div
-          className="absolute bottom-0 left-0 right-0 z-[2]"
+          className="absolute top-0 left-0 right-0 z-[2] flex items-start justify-between gap-2"
           style={{
-            padding: "40px 14px 12px",
-            background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 55%, transparent 100%)",
+            padding: "12px 14px 40px",
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 45%, transparent 100%)",
           }}
         >
-          <div style={{ fontFamily: bebas, fontSize: 24, fontWeight: 900, letterSpacing: 1, color: "#fff", lineHeight: 1, marginBottom: 3 }}>
-            {athlete.name}
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
-            {athlete.school} · {athlete.sport}
-          </div>
-        </div>
-
-        {/* Carousel arrows — Post 1/2 switch when multi-post; media slide otherwise */}
-        {hasPost2 && hovered && (
-          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setPostSlot((s) => (s <= 0 ? 1 : 0)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setPostSlot((s) => (s >= 1 ? 0 : 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
-          </div>
-        )}
-        {!hasPost2 && items.length > 1 && hovered && (
-          <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 z-[20] flex justify-between px-1.5 pointer-events-none">
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i <= 0 ? items.length - 1 : i - 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx((i) => (i >= items.length - 1 ? 0 : i + 1)); }} className="pointer-events-auto w-8 h-8 rounded-full bg-black/70 backdrop-blur text-white flex items-center justify-center hover:bg-black/90 transition-colors">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
-          </div>
-        )}
-
-        {items.length > 1 && !playing && (
-          <div className={`absolute bottom-11 left-1/2 -translate-x-1/2 flex gap-1 z-[3] transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
-            {items.map((_, i) => (
-              <div key={i} onClick={(e) => { e.stopPropagation(); setPlaying(false); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full cursor-pointer ${slideIdx === i ? "bg-white" : "bg-white/35"}`} />
-            ))}
-          </div>
-        )}
-
-        {/* POST 1 / POST 2 badge — bottom-right of image when multi-post */}
-        {hasPost2 && !playing && (
-          <div className="absolute bottom-14 right-3 z-[3]" style={{
-            background: "rgba(0,0,0,0.65)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
-            padding: "3px 8px",
-            borderRadius: 4,
-            fontSize: 9,
-            fontWeight: 800,
-            letterSpacing: 1,
-            textTransform: "uppercase" as const,
-            color: "rgba(255,255,255,0.85)",
-          }}>
-            POST {postSlot + 1} OF 2
-          </div>
-        )}
-      </div>
-
-      {/* Footer panel — media-type tag + three centered stat columns */}
-      <div style={{ background: "#141418", borderTop: "1px solid #222226" }}>
-        <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, padding: "8px 14px 0" }}>
-          {hasPost2 ? `Post ${postSlot + 1} · ${getMediaLabel(items)}` : getMediaLabel(items)}
-        </div>
-        <div className="flex" style={{ padding: "10px 0 12px" }}>
-          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
-            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {formatEngagementRate(getBestEngRate(athlete))}
+          <div className="min-w-0">
+            <div
+              style={{
+                fontFamily: bebas,
+                fontSize: 24,
+                fontWeight: 900,
+                letterSpacing: 1,
+                color: "#fff",
+                lineHeight: 1,
+                marginBottom: 3,
+              }}
+            >
+              {athlete.name}
             </div>
-            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-              Eng. Rate
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", fontWeight: 500 }}>
+              {athlete.school} · {athlete.sport}
             </div>
           </div>
-          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
-            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {fmt(getTotalImpressions(athlete))}
-            </div>
-            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-              Views
-            </div>
-          </div>
-          <div style={{ flex: 1, textAlign: "center" }}>
-            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {fmt(athlete.ig_followers ?? 0)}
-            </div>
-            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-              Followers
-            </div>
-          </div>
+          <span
+            className="flex items-center gap-1 flex-shrink-0 rounded-full"
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              padding: "4px 9px",
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: 0.8,
+              textTransform: "uppercase",
+              color: "#fff",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {hasReel ? (
+              <>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="#fff">
+                  <polygon points="5,3 19,12 5,21" />
+                </svg>
+                Photos + Video
+              </>
+            ) : (
+              <>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                Photos
+              </>
+            )}
+          </span>
         </div>
       </div>
+
+      {/* View More — opens the reused portal metrics modal (wired in Phase 2) */}
+      <button
+        onClick={onViewMore}
+        className="w-full transition-[filter] hover:brightness-110 cursor-pointer"
+        style={{
+          background: "#D73F09",
+          color: "#fff",
+          padding: "12px 14px",
+          fontSize: 12,
+          fontWeight: 800,
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+        }}
+      >
+        View More
+      </button>
     </div>
   );
 }
@@ -1752,7 +1682,7 @@ export function CampaignRecap({
                               athletes={fullRoster}
                             />
                           ) : (
-                            <MasonryCard
+                            <AthleteCard
                               key={entry.athlete.id}
                               athlete={entry.athlete}
                               items={entry.items}
