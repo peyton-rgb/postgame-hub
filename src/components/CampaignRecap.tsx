@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 import type { Campaign, Athlete, Media, VisibleSections, HeroMetricOverrideKey, CollabGroup } from "@/lib/types";
 import { supabaseImageUrl } from "@/lib/supabase-image";
 import { fmt, pct, formatEngagementRate, dollar, computeStatsWithOverrides, getTopPerformers, getTopPerformersByImpressions, getPostUrl, getBestEngRate, getTotalImpressions, getTotalEngagements, getCollabEngRate, type TopPerformerEntry } from "@/lib/recap-helpers";
@@ -180,28 +180,39 @@ function buildRecapPortalAthlete(
   return { portalAthlete, reelPostIndex };
 }
 
-// ── Best-in-Class Athlete Card ───────────────────────────────
+// ── Best-in-Class Card shell ─────────────────────────────────
 //
-// Replaces the old metrics-below-the-box MasonryCard. A single hero shot fills
-// the card; the athlete's name sits top-left and a content-type tag top-right,
-// both over a dark top gradient; a full-width orange "View More" button sits
-// below. NO metrics live on the card — those are in the reused portal
-// AssetModal, opened by View More (wired in Phase 2).
-function AthleteCard({
-  athlete,
+// Shared chrome for the gallery's solo and collab cards: a hero image fills the
+// card with a name block top-left (an optional marker above it) and a
+// content-type tag top-right over a dark fade, and a full-width orange
+// "View More" button below. NO metrics live on the card — those are in the
+// reused portal AssetModal. AthleteCard and CollabCard both render this; the
+// differences a collab needs (the COLLAB marker, stacked names, collab has-reel
+// signal) come in as props.
+function BestInClassCard({
   items: rawItems,
   activeFilter,
   cardIndex,
+  hasReel,
+  alt,
+  marker,
+  title,
+  subtitle,
   onViewMore,
+  borderColor = "#2a2a30",
 }: {
-  athlete: Athlete;
   items: Media[];
   activeFilter: string;
   cardIndex: number;
+  hasReel: boolean;
+  alt: string;
+  marker?: ReactNode;
+  title: string;
+  subtitle: string;
   onViewMore?: () => void;
+  borderColor?: string;
 }) {
   const hasVideo = rawItems.some((m) => m.type === "video");
-  const hasReel = athleteHasReel(athlete, rawItems);
 
   // Hero = best available still: prefer a photo (honoring the photo filter),
   // else fall back to a reel's poster frame.
@@ -245,7 +256,7 @@ function AthleteCard({
   return (
     <div
       className="break-inside-avoid mb-2 rounded-lg overflow-hidden"
-      style={{ background: "#141418", border: "1px solid #2a2a30" }}
+      style={{ background: "#141418", border: `1px solid ${borderColor}` }}
     >
       <div className="relative overflow-hidden">
         {heroSrc ? (
@@ -254,7 +265,7 @@ function AthleteCard({
             className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
             style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
             draggable={false}
-            alt={athlete.name}
+            alt={alt}
             loading="lazy"
             onError={(e) => {
               const img = e.currentTarget;
@@ -272,7 +283,7 @@ function AthleteCard({
           </div>
         )}
 
-        {/* Top overlay — name (left) + content-type tag (right) over a dark fade */}
+        {/* Top overlay — name block (left) + content-type tag (right) over a dark fade */}
         <div
           className="absolute top-0 left-0 right-0 z-[2] flex items-start justify-between gap-2"
           style={{
@@ -282,6 +293,7 @@ function AthleteCard({
           }}
         >
           <div className="min-w-0">
+            {marker}
             <div
               style={{
                 fontFamily: bebas,
@@ -293,10 +305,10 @@ function AthleteCard({
                 marginBottom: 3,
               }}
             >
-              {athlete.name}
+              {title}
             </div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", fontWeight: 500 }}>
-              {athlete.school} · {athlete.sport}
+              {subtitle}
             </div>
           </div>
           <span
@@ -344,7 +356,7 @@ function AthleteCard({
         </div>
       </div>
 
-      {/* View More — opens the reused portal metrics modal (wired in Phase 2) */}
+      {/* View More — opens the reused portal metrics modal */}
       <button
         onClick={onViewMore}
         className="w-full transition-[filter] hover:brightness-110 cursor-pointer"
@@ -364,223 +376,103 @@ function AthleteCard({
   );
 }
 
-// ── Collab Card ───────────────────────────────────────────────
+// ── Best-in-Class Athlete Card (solo) ────────────────────────
+function AthleteCard({
+  athlete,
+  items: rawItems,
+  activeFilter,
+  cardIndex,
+  onViewMore,
+}: {
+  athlete: Athlete;
+  items: Media[];
+  activeFilter: string;
+  cardIndex: number;
+  onViewMore?: () => void;
+}) {
+  return (
+    <BestInClassCard
+      items={rawItems}
+      activeFilter={activeFilter}
+      cardIndex={cardIndex}
+      hasReel={athleteHasReel(athlete, rawItems)}
+      alt={athlete.name}
+      title={athlete.name}
+      subtitle={`${athlete.school} · ${athlete.sport}`}
+      onViewMore={onViewMore}
+    />
+  );
+}
 
-function CollabCard({ group, items: rawItems, activeFilter, athletes }: { group: CollabGroup; items: Media[]; activeFilter: string; athletes: Athlete[] }) {
-  const filteredItems = activeFilter === "photo" ? rawItems.filter((m) => m.type === "image") : rawItems;
-  const items = [...filteredItems].sort((a, b) => (a.type === "video" ? -1 : 1) - (b.type === "video" ? -1 : 1));
-
-  const hasVideo = rawItems.some((m) => m.type === "video");
-  const defaultRatio = hasVideo
-    ? VIDEO_SAFE_RATIOS[0]
-    : DEFAULT_RATIOS[0];
-  const [cardRatio, setCardRatio] = useState<string>(defaultRatio);
-
-  const [playing, setPlaying] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const current = items[0];
-  const isVideo = current?.type === "video";
-  const coverImage = items.find((m) => m.type === "image");
-  const displaySrc = current?.thumbnail_url || (current?.type !== "video" ? current?.file_url : coverImage?.file_url ?? null);
-
-  useEffect(() => {
-    if (hasVideo) {
-      const vid = rawItems.find((m) => m.type === "video");
-      if (!vid) return;
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.onloadedmetadata = () => {
-        if (video.videoWidth > video.videoHeight * 1.2) setCardRatio("16/9");
-      };
-      video.src = vid.file_url;
-    } else {
-      const cover = rawItems.find((m) => m.type === "image");
-      if (!cover) return;
-      const img = new Image();
-      img.onload = () => {
-        if (img.naturalWidth > img.naturalHeight * 1.2) setCardRatio("16/9");
-      };
-      img.src = cover.file_url;
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const groupName = group.athleteNames.join(" + ");
+// ── Best-in-Class Collab Card ────────────────────────────────
+//
+// Same shell as the solo card, with the differences a multi-athlete post needs:
+// an orange "COLLAB · N ATHLETES" marker, a title of stacked last names, and the
+// shared school - sport beneath. Full names/handles/per-athlete followers live in
+// the popup (Phase 2), not on the card.
+function CollabCard({
+  group,
+  items: rawItems,
+  activeFilter,
+  athletes,
+  cardIndex,
+  onViewMore,
+}: {
+  group: CollabGroup;
+  items: Media[];
+  activeFilter: string;
+  athletes: Athlete[];
+  cardIndex: number;
+  onViewMore?: () => void;
+}) {
+  const n = group.athleteNames.length;
+  const lastNames = group.athleteNames
+    .map((nm) => nm.trim().split(/\s+/).pop() || nm)
+    .join(" · ");
   const firstAthlete = athletes.find((a) => a.name === group.athleteNames[0]) ?? null;
+  const subtitle = firstAthlete ? `${firstAthlete.school} · ${firstAthlete.sport}` : "";
+  // Collab has-a-reel: a video in the pooled media, or any non-feed (reel/tiktok)
+  // source. Mirrors athleteHasReel's intent for a multi-athlete post.
+  const hasReel =
+    rawItems.some((m) => m.type === "video") ||
+    group.sources.some((s) => s.platform !== "ig_feed");
 
-  const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
-
-  const handleDownload = async () => {
-    if (!current?.file_url) return;
-    try {
-      const res = await fetch(current.file_url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `${groupName.replace(/\s+/g, "-")}.${isVideo ? "mp4" : "jpg"}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(current.file_url, "_blank");
-    }
-  };
+  const marker = (
+    <div className="flex items-center gap-1.5" style={{ marginBottom: 6 }}>
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#D73F09"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+      <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#D73F09" }}>
+        Collab · {n} {n === 1 ? "Athlete" : "Athletes"}
+      </span>
+    </div>
+  );
 
   return (
-    <div
-      className="break-inside-avoid mb-2 rounded-lg overflow-hidden"
-      style={{ background: "#141418", border: "1px solid rgba(215,63,9,0.4)" }}
-    >
-      <div className="relative overflow-hidden">
-        {isVideo && playing ? (
-          <video
-            ref={videoRef}
-            src={current.file_url}
-            autoPlay
-            controls
-            playsInline
-            className="w-full block relative z-[1] object-cover"
-            style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
-            onEnded={() => setPlaying(false)}
-          />
-        ) : displaySrc ? (
-          <img
-            src={supabaseImageUrl(displaySrc, 1200) ?? displaySrc}
-            className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
-            style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
-            draggable={false}
-            alt={groupName}
-            loading="lazy"
-            onError={(e) => {
-              const img = e.currentTarget;
-              if (img.src.includes("/render/image/public/")) {
-                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
-              }
-            }}
-          />
-        ) : isVideo ? (
-          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }} onClick={() => setPlaying(true)}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeOpacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          </div>
-        ) : (
-          <div className="w-full bg-black flex items-center justify-center" style={{ aspectRatio: cardRatio }}>
-            <span className="text-[10px] text-white/45 font-black uppercase">No media</span>
-          </div>
-        )}
-
-        {isVideo && !playing && (
-          <div onClick={() => setPlaying(true)} className="absolute inset-0 flex items-center justify-center cursor-pointer z-[2]">
-            <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21" /></svg>
-            </div>
-          </div>
-        )}
-
-        {/* Top overlay — collab flag (left) + buttons (right) */}
-        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-4 bg-gradient-to-b from-black/75 to-transparent">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: "#D73F09" }} />
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#D73F09" }}>
-                Collab · {group.platformLabel}
-              </span>
-            </div>
-            <div className="flex gap-1 flex-shrink-0">
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDownload(); }}
-                className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
-                title="Download"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-              </button>
-              {group.url && (
-                <a
-                  href={group.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-6 h-6 rounded bg-black/50 backdrop-blur flex items-center justify-center hover:bg-brand transition-colors"
-                  title="View Post"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                  </svg>
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom overlay — school · sport line + athlete name pills */}
-        <div
-          className="absolute bottom-0 left-0 right-0 z-[2]"
-          style={{
-            padding: "50px 14px 12px",
-            background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 55%, transparent 100%)",
-          }}
-        >
-          {firstAthlete && (
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500, marginBottom: 6 }}>
-              {firstAthlete.school} · {firstAthlete.sport}
-            </div>
-          )}
-          <div className="flex flex-wrap" style={{ gap: 4 }}>
-            {group.athleteNames.map((name) => (
-              <span
-                key={name}
-                style={{
-                  padding: "2px 8px",
-                  borderRadius: 20,
-                  background: "rgba(255,255,255,0.12)",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "#fff",
-                  textTransform: "uppercase",
-                }}
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer panel — three centered stat columns */}
-      <div style={{ background: "#141418", borderTop: "1px solid #222226" }}>
-        <div className="flex" style={{ padding: "10px 0 12px" }}>
-          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
-            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {formatEngagementRate(group.combinedEngagementRate)}
-            </div>
-            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-              Combined ER
-            </div>
-          </div>
-          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #1e1e22" }}>
-            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {fmt(group.platform === "ig_feed" ? (group.metrics.impressions ?? 0) : (group.metrics.views ?? 0))}
-            </div>
-            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-              {group.platform === "ig_feed" ? "Impressions" : "Views"}
-            </div>
-          </div>
-          <div style={{ flex: 1, textAlign: "center" }}>
-            <div style={{ fontFamily: bebas, fontSize: 18, color: "#D73F09", lineHeight: 1 }}>
-              {fmt(group.combinedFollowers)}
-            </div>
-            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>
-              Followers
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <BestInClassCard
+      items={rawItems}
+      activeFilter={activeFilter}
+      cardIndex={cardIndex}
+      hasReel={hasReel}
+      alt={lastNames}
+      marker={marker}
+      title={lastNames}
+      subtitle={subtitle}
+      onViewMore={onViewMore}
+      borderColor="rgba(215,63,9,0.4)"
+    />
   );
 }
 
@@ -1779,6 +1671,7 @@ export function CampaignRecap({
                               items={entry.items}
                               activeFilter={filter}
                               athletes={fullRoster}
+                              cardIndex={originalIndex}
                             />
                           ) : (
                             <AthleteCard
