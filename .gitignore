@@ -11,3 +11,15 @@ node_modules/
 
 # Importer run logs — generated per run, noisy in the repo
 scripts/.import-runs/
+
+# Scratch / cowork apply-spec files — local working artifacts, not for the repo.
+# (Mistakenly swept in by `git add -A` in 4861711; untracked in the follow-up.)
+/CampaignEditorBanner.tsx
+/alphaboost_picker_data.json
+/media-library-followups-spec.md
+/phase2/
+/phase3/
+/phase4/
+/route.ts
+/scripts/walk-alphaboost-folders.js
+/walk-stderr.log
