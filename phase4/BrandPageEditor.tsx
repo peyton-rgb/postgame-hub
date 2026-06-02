@@ -42,7 +42,7 @@ export default function BrandPageEditor({ slug, onSaved }: { slug: string; onSav
         </div>
 
         <Card title="Hero Carousel">
-          <SlotEditor slotKey={`brand.${slug}.hero_carousel`} title="Hero Images" maxItems={8} treatAsHero brandSlug={slug} brandName={brand.name} onSaved={onSaved} />
+          <SlotEditor slotKey={`brand.${slug}.hero_carousel`} title="Hero Images" maxItems={8} onSaved={onSaved} />
           <Hint>Curated cross-campaign hero. Empty = the page falls back to this brand’s featured-campaign photos (today’s behavior).</Hint>
         </Card>
 
@@ -52,7 +52,7 @@ export default function BrandPageEditor({ slug, onSaved }: { slug: string; onSav
         </Card>
 
         <Card title="Pull Quote">
-          <SlotEditor slotKey={`brand.${slug}.pull_quote`} title="Banner Image + Text" maxItems={1} acceptsText brandSlug={slug} brandName={brand.name} onSaved={onSaved} />
+          <SlotEditor slotKey={`brand.${slug}.pull_quote`} title="Banner Image + Text" maxItems={1} acceptsText onSaved={onSaved} />
           <Hint>One image plus a one-line testimonial / stat / summary. Optional.</Hint>
         </Card>
       </div>

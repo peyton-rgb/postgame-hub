@@ -25,6 +25,9 @@ export interface CampaignMediaPickerProps {
   mode?: "full" | "media-only";
   /** Required when mode='media-only' — the campaign to browse media for */
   initialCampaign?: { id: string; name: string; brand_name: string };
+  /** When set (and mode is not 'media-only'), open directly to this brand's
+   *  campaigns and lock the picker to that brand (no back-out to all brands). */
+  initialBrand?: { id: string; name: string };
 }
 
 type Step = "brand" | "campaign" | "media";
@@ -191,6 +194,7 @@ export default function CampaignMediaPicker({
   onSelect,
   mode = "full",
   initialCampaign,
+  initialBrand,
 }: CampaignMediaPickerProps) {
   const supabase = createBrowserSupabase();
 
@@ -233,6 +237,13 @@ export default function CampaignMediaPicker({
         setSelectedCampaign({ id: initialCampaign.id, name: initialCampaign.name, brand_name: initialCampaign.brand_name, source: "recap" });
         setStep("media");
         loadFiles(initialCampaign.id);
+      } else if (initialBrand) {
+        // Locked-to-brand entry: skip the brand step and open this brand's campaigns.
+        setSelectedBrand(initialBrand);
+        setSelectedCampaign(null);
+        setCampaignSearch("");
+        setStep("campaign");
+        loadCampaigns(initialBrand.id);
       } else {
         setStep("brand");
         setSelectedBrand(null);
@@ -506,6 +517,11 @@ export default function CampaignMediaPicker({
 
   if (!open) return null;
 
+  // When entered from a brand page, the picker is locked to that brand —
+  // the "Brand" breadcrumb and the campaign-step back button are suppressed
+  // so the user can't pop back out to the full brand list.
+  const lockedToBrand = !!initialBrand && mode !== "media-only";
+
   // ── Filter helpers ───────────────────────────────────
   const filteredBrands = brandSearch
     ? brands.filter((b) =>
@@ -530,17 +546,21 @@ export default function CampaignMediaPicker({
 
         {/* Breadcrumb */}
         <div style={breadcrumb}>
-          <span
-            style={step === "brand" ? breadcrumbActive : { cursor: "pointer" }}
-            onClick={() => {
-              setStep("brand");
-              setSelectedBrand(null);
-              setSelectedCampaign(null);
-            }}
-          >
-            Brand
-          </span>
-          <span style={{ margin: "0 8px" }}>&gt;</span>
+          {!lockedToBrand && (
+            <>
+              <span
+                style={step === "brand" ? breadcrumbActive : { cursor: "pointer" }}
+                onClick={() => {
+                  setStep("brand");
+                  setSelectedBrand(null);
+                  setSelectedCampaign(null);
+                }}
+              >
+                Brand
+              </span>
+              <span style={{ margin: "0 8px" }}>&gt;</span>
+            </>
+          )}
           <span
             style={
               step === "campaign"
@@ -625,9 +645,11 @@ export default function CampaignMediaPicker({
         {/* ── STEP 2: Campaign ──────────────────────────── */}
         {step === "campaign" && (
           <div>
-            <button style={backBtn} onClick={() => { setStep("brand"); setSelectedBrand(null); }}>
-              &larr; Back to Brands
-            </button>
+            {!lockedToBrand && (
+              <button style={backBtn} onClick={() => { setStep("brand"); setSelectedBrand(null); }}>
+                &larr; Back to Brands
+              </button>
+            )}
             <h3 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 16px" }}>
               Select a Campaign
               {selectedBrand && (

@@ -75,6 +75,10 @@ export interface SlotEditorProps {
    *  Make-widescreen modal before inserting the row. Defaults to false so
    *  services / pull-quote / gallery slots are unaffected. */
   treatAsHero?: boolean;
+  /** When set, the media picker opens locked to this brand's campaigns
+   *  (skips the brand-select step). Used by the brand page editor. */
+  brandSlug?: string;
+  brandName?: string;
   onSaved?: () => void;
 }
 
@@ -116,12 +120,15 @@ export default function SlotEditor({
   acceptsText,
   acceptsLogo,
   treatAsHero,
+  brandSlug,
+  brandName,
   onSaved,
 }: SlotEditorProps) {
   const supabase = createBrowserSupabase();
   const db = supabase as any; // keeps build green if types aren't regenerated yet
 
   const [rows, setRows] = useState<SlotRow[]>([]);
+  const [brandId, setBrandId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [heroChoice, setHeroChoice] = useState<
@@ -151,6 +158,29 @@ export default function SlotEditor({
   useEffect(() => {
     load();
   }, [load]);
+
+  // Resolve the Supabase brand id from slug (fallback to name) so the picker
+  // can open locked to this brand. Mirrors RecapSlotEditor's lookup. When
+  // brandSlug/brandName aren't provided, brandId stays undefined and the
+  // picker behaves exactly as today.
+  useEffect(() => {
+    if (!brandSlug && !brandName) {
+      setBrandId(undefined);
+      return;
+    }
+    (async () => {
+      let resolved: string | null = null;
+      if (brandSlug) {
+        const { data: b1 } = await db.from("brands").select("id").eq("slug", brandSlug).maybeSingle();
+        resolved = b1?.id ?? null;
+      }
+      if (!resolved && brandName) {
+        const { data: b2 } = await db.from("brands").select("id").ilike("name", brandName).maybeSingle();
+        resolved = b2?.id ?? null;
+      }
+      setBrandId(resolved ?? undefined);
+    })();
+  }, [brandSlug, brandName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Brand logos for the per-photo overlay picker (only when needed)
   useEffect(() => {
@@ -384,6 +414,7 @@ export default function SlotEditor({
           open={pickerOpen}
           onClose={() => setPickerOpen(false)}
           onSelect={(item) => { void handlePickerSelect(item); }}
+          initialBrand={brandId ? { id: brandId, name: brandName ?? "" } : undefined}
         />
       )}
 
