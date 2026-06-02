@@ -22,6 +22,13 @@ export type PortalPost = {
   video: { fileUrl: string; poster: string | null } | null; // reel
   metrics: SideMetrics | null;
   postUrl: string | null;
+  // ADDITIVE / default-undefined. When set, THIS post is a pooled collab post:
+  // the modal shows the "Pooled" note + a collaborator list (labelled by
+  // `collaboratorsLabel`) while this post is active. Lets a solo athlete's popup
+  // carry a collab-reel tab without affecting their own feed/reel tabs. Falls
+  // back to the athlete-level `collaborators` (the collab-card popup) when unset.
+  collaborators?: Collaborator[];
+  collaboratorsLabel?: string;
 };
 
 // One participant in a collab post. Additive: only the recap's collab cards set
@@ -206,6 +213,11 @@ export default function AssetModal({
 
   const slides = post.kind === "feed" ? post.images : [];
   const cards = buildCards(post.metrics, post.kind);
+  // Collaborators resolve PER POST (so a solo athlete's collab-reel tab shows the
+  // pooled note + list while their own tabs don't), falling back to the
+  // athlete-level list used by the collab-card popup.
+  const activeCollabs = post.collaborators ?? athlete.collaborators;
+  const collabLabel = post.collaboratorsLabel ?? "Collaborators";
   const postUrl = post.postUrl || null;
   const downloadUrl =
     post.kind === "feed" ? slides[slide]?.fileUrl : post.video?.fileUrl;
@@ -378,7 +390,7 @@ export default function AssetModal({
 
           {/* Metrics */}
           <div className="mt-6">
-            {athlete.collaborators && athlete.collaborators.length > 0 ? (
+            {activeCollabs && activeCollabs.length > 0 ? (
               <div
                 className="mb-2.5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[1.2px]"
                 style={{ color: ORANGE }}
@@ -389,7 +401,7 @@ export default function AssetModal({
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                Pooled — shared across all {athlete.collaborators.length} athletes
+                Pooled — shared across all {activeCollabs.length} athletes
               </div>
             ) : null}
             {cards.length > 0 ? (
@@ -420,13 +432,13 @@ export default function AssetModal({
           </div>
 
           {/* Identity / collaborators */}
-          {athlete.collaborators && athlete.collaborators.length > 0 ? (
+          {activeCollabs && activeCollabs.length > 0 ? (
             <div className="mt-6 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
               <div className="text-[9px] font-bold uppercase tracking-[1.5px] mb-3.5" style={{ color: "rgba(255,255,255,0.5)" }}>
-                Collaborators
+                {collabLabel}
               </div>
               <div className="flex flex-col gap-3.5">
-                {athlete.collaborators.map((c) => (
+                {activeCollabs.map((c) => (
                   <div key={c.name} className="flex items-end justify-between gap-4">
                     <div className="min-w-0">
                       {c.igHandle ? (

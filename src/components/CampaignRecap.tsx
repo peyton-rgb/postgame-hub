@@ -89,6 +89,38 @@ function athleteHasReel(athlete: Athlete, items: Media[]): boolean {
   return reelMetrics || hasVideo;
 }
 
+// Shared collab→modal mappers, used by BOTH the collab-card popup
+// (buildCollabPortalAthlete) and the collab-reel tabs appended to a solo
+// athlete's popup (buildRecapPortalAthlete) — same pooled mapping, no duplication.
+function mapCollabMetrics(group: CollabGroup): SideMetrics | null {
+  const gm = group.metrics;
+  const pooled: SideMetrics = {};
+  if (typeof gm.impressions === "number") pooled.impressions = gm.impressions;
+  if (typeof gm.views === "number") pooled.views = gm.views;
+  if (typeof gm.likes === "number") pooled.likes = gm.likes;
+  if (typeof gm.comments === "number") pooled.comments = gm.comments;
+  if (typeof gm.totalEngagements === "number") pooled.total_engagements = gm.totalEngagements;
+  if (group.combinedEngagementRate > 0) pooled.engagement_rate = group.combinedEngagementRate;
+  return Object.keys(pooled).length ? pooled : null;
+}
+
+function collabCollaborators(group: CollabGroup, roster: Athlete[]): Collaborator[] {
+  const byId = new Map(roster.map((a) => [a.id, a] as const));
+  const byName = new Map(roster.map((a) => [a.name, a] as const));
+  return group.athleteNames.map((nm, i) => {
+    const id = group.athleteIds[i];
+    const a = (id ? byId.get(id) : undefined) || byName.get(nm) || null;
+    return {
+      name: nm,
+      igHandle: a?.ig_handle || null,
+      school: a?.school || null,
+      sport: a?.sport || null,
+      igFollowers:
+        a && typeof a.ig_followers === "number" && a.ig_followers > 0 ? a.ig_followers : null,
+    };
+  });
+}
+
 // Convert a recap Athlete + its media into the shape the shared portal
 // AssetModal consumes. Mirrors the portal's server-side derivation
 // (library/page.tsx): a Feed post (images + ig_feed metrics) and a Reel post
@@ -104,6 +136,10 @@ function buildRecapPortalAthlete(
   athlete: Athlete,
   items: Media[],
   campaignName: string,
+  // Collab reels this athlete appears in (reel-type groups) + their pooled media.
+  // Appended as extra Reel tabs; default [] keeps every existing caller unchanged.
+  collabReels: { group: CollabGroup; items: Media[] }[] = [],
+  roster: Athlete[] = [],
 ): { portalAthlete: PortalAthlete; reelPostIndex: number } {
   const images = items
     .filter((m) => m.type === "image")
@@ -164,7 +200,30 @@ function buildRecapPortalAthlete(
     }
   }
 
+  // Computed on the athlete's OWN posts only (above) so feed-only athletes still
+  // open on Feed — appended collab reels never change the default-open tab.
   const reelPostIndex = posts.findIndex((p) => p.kind === "reel");
+
+  // Append each collab reel this athlete is in as an extra Reel tab: the collab's
+  // video, the SAME pooled metrics the collab card uses, and an "Also in this
+  // reel" list of all participants (incl. this athlete). Per-post collaborators
+  // keep the pooled note off the athlete's own tabs.
+  collabReels.forEach(({ group, items: gItems }, i) => {
+    const v = gItems.find((m) => m.type === "video");
+    const collabVideo = v ? { fileUrl: v.file_url, poster: v.thumbnail_url || null } : null;
+    posts.push({
+      key: `${group.id}:collabreel`,
+      kind: "reel",
+      label: collabReels.length > 1 ? `Collab Reel ${i + 1}` : "Collab Reel",
+      rowId: group.id,
+      images: [],
+      video: collabVideo,
+      metrics: mapCollabMetrics(group),
+      postUrl: group.url || null,
+      collaborators: collabCollaborators(group, roster),
+      collaboratorsLabel: "Also in this reel",
+    });
+  });
 
   const portalAthlete: PortalAthlete = {
     id: athlete.id,
@@ -200,18 +259,8 @@ function buildCollabPortalAthlete(
     ? { fileUrl: videoItem.file_url, poster: videoItem.thumbnail_url || null }
     : null;
 
-  // ONE pooled metric set — do NOT fabricate per-athlete splits. Both impressions
-  // (feed labels) and views (reel labels) are populated; the post kind decides
-  // which the modal surfaces.
-  const gm = group.metrics;
-  const pooled: SideMetrics = {};
-  if (typeof gm.impressions === "number") pooled.impressions = gm.impressions;
-  if (typeof gm.views === "number") pooled.views = gm.views;
-  if (typeof gm.likes === "number") pooled.likes = gm.likes;
-  if (typeof gm.comments === "number") pooled.comments = gm.comments;
-  if (typeof gm.totalEngagements === "number") pooled.total_engagements = gm.totalEngagements;
-  if (group.combinedEngagementRate > 0) pooled.engagement_rate = group.combinedEngagementRate;
-  const metrics = Object.keys(pooled).length ? pooled : null;
+  // ONE pooled metric set — do NOT fabricate per-athlete splits.
+  const metrics = mapCollabMetrics(group);
 
   const kind: "feed" | "reel" = video ? "reel" : "feed";
   const post: PortalPost = {
@@ -230,21 +279,7 @@ function buildCollabPortalAthlete(
     .map((nm) => nm.trim().split(/\s+/).pop() || nm)
     .join(" · ");
 
-  // Per-athlete rows — match by DB id (render-time athleteIds), fall back to name.
-  const byId = new Map(roster.map((a) => [a.id, a] as const));
-  const byName = new Map(roster.map((a) => [a.name, a] as const));
-  const collaborators: Collaborator[] = group.athleteNames.map((nm, i) => {
-    const id = group.athleteIds[i];
-    const a = (id ? byId.get(id) : undefined) || byName.get(nm) || null;
-    return {
-      name: nm,
-      igHandle: a?.ig_handle || null,
-      school: a?.school || null,
-      sport: a?.sport || null,
-      igFollowers:
-        a && typeof a.ig_followers === "number" && a.ig_followers > 0 ? a.ig_followers : null,
-    };
-  });
+  const collaborators = collabCollaborators(group, roster);
 
   const campaignId = roster.find((a) => group.athleteIds.includes(a.id))?.campaign_id || "";
 
@@ -860,7 +895,23 @@ export function CampaignRecap({
   // athlete, defaulting to their Reel tab (startPostIndex) when they have one.
   const [modalData, setModalData] = useState<{ portalAthlete: PortalAthlete; startPostIndex: number } | null>(null);
   const openAthleteModal = (a: Athlete, items: Media[]) => {
-    const { portalAthlete, reelPostIndex } = buildRecapPortalAthlete(a, items, campaign.name);
+    // Collab REELS this athlete appears in (reel-type groups only), appended to
+    // their popup as extra "Collab Reel" tabs. Dedup against the athlete's OWN
+    // reel URLs so a reel they actually posted (that happens to be a collab)
+    // isn't shown twice. Card tag / athleteHasReel are untouched.
+    const ownReelUrls = new Set(
+      [
+        a.metrics?.ig_reel?.post_url,
+        a.metrics?.ig_reel_2?.post_url,
+        a.metrics?.tiktok?.post_url,
+        a.metrics?.tiktok_2?.post_url,
+      ].filter(Boolean) as string[],
+    );
+    const collabReels = collabGroups
+      .filter((g) => (g.platform === "ig_reel" || g.platform === "tiktok") && g.athleteIds.includes(a.id))
+      .filter((g) => !(ownReelUrls.has(g.url) || g.sources.some((s) => ownReelUrls.has(s.url))))
+      .map((g) => ({ group: g, items: collabMediaItems(g) }));
+    const { portalAthlete, reelPostIndex } = buildRecapPortalAthlete(a, items, campaign.name, collabReels, fullRoster);
     setModalData({ portalAthlete, startPostIndex: reelPostIndex >= 0 ? reelPostIndex : 0 });
   };
   const openCollabModal = (group: CollabGroup, items: Media[]) => {
