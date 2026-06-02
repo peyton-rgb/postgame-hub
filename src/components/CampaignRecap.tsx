@@ -2455,6 +2455,7 @@ export function CampaignRecap({
           startIndex={0}
           startPostIndex={modalData.startPostIndex}
           onClose={() => setModalData(null)}
+          showToggleHint
         />
       ) : null}
     </div>

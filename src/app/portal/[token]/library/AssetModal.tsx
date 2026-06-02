@@ -95,11 +95,15 @@ export default function AssetModal({
   startIndex,
   startPostIndex,
   onClose,
+  showToggleHint = false,
 }: {
   athletes: PortalAthlete[];
   startIndex: number;
   startPostIndex: number;
   onClose: () => void;
+  // Recap-only: show a one-time tooltip nudging the user to try the Feed/Reel
+  // toggle. Defaults false so the client portal shows NO new tooltip.
+  showToggleHint?: boolean;
 }) {
   const [idx, setIdx] = useState(startIndex);
   const [postIdx, setPostIdx] = useState(startPostIndex);
@@ -109,6 +113,8 @@ export default function AssetModal({
   // doesn't re-apply the static `muted` attribute and re-mute on every render.
   const [reelMuted, setReelMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+  // One-time Feed/Reel toggle hint (recap-only, gated by showToggleHint).
+  const [hintOpen, setHintOpen] = useState(false);
 
   const athlete = athletes[idx];
 
@@ -161,6 +167,22 @@ export default function AssetModal({
     };
   }, [prev, next, onClose]);
 
+  // Surface the toggle hint once per visit, only when a Feed/Reel toggle is
+  // actually present. sessionStorage marks it seen so clicking through many
+  // athletes in one visit doesn't re-trigger it.
+  useEffect(() => {
+    if (!showToggleHint) return;
+    const a = athletes[idx];
+    if (!a || a.posts.length <= 1) return;
+    try {
+      if (sessionStorage.getItem("pg_recap_toggle_hint_seen")) return;
+      sessionStorage.setItem("pg_recap_toggle_hint_seen", "1");
+    } catch {
+      // sessionStorage blocked — still show it this once.
+    }
+    setHintOpen(true);
+  }, [showToggleHint, idx, athletes]);
+
   if (!athlete) return null;
 
   const posts = athlete.posts;
@@ -181,15 +203,17 @@ export default function AssetModal({
       className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-8"
       style={{ background: "rgba(4,4,7,0.82)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
     >
-      {/* Athlete nav — prev */}
-      <NavArrow
-        dir="left"
-        disabled={idx === 0}
-        onClick={(e) => {
-          e.stopPropagation();
-          prev();
-        }}
-      />
+      {/* Athlete nav — prev (hidden entirely when there's only one athlete) */}
+      {athletes.length > 1 ? (
+        <NavArrow
+          dir="left"
+          disabled={idx === 0}
+          onClick={(e) => {
+            e.stopPropagation();
+            prev();
+          }}
+        />
+      ) : null}
 
       <div
         onClick={(e) => e.stopPropagation()}
@@ -281,13 +305,16 @@ export default function AssetModal({
 
           {/* Post tabs — one per post */}
           {showTabs ? (
-            <div className="flex flex-wrap items-center gap-2 mt-4">
+            <div className="relative flex flex-wrap items-center gap-2 mt-4">
               {posts.map((p, i) => {
                 const active = i === postIdx;
                 return (
                   <button
                     key={p.key}
-                    onClick={() => setPostIdx(i)}
+                    onClick={() => {
+                      setPostIdx(i);
+                      setHintOpen(false); // tapping either tab dismisses the hint
+                    }}
                     className="px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[1.5px] transition-colors"
                     style={{
                       background: active ? ORANGE : "rgba(255,255,255,0.06)",
@@ -299,6 +326,38 @@ export default function AssetModal({
                   </button>
                 );
               })}
+
+              {/* One-time Feed/Reel toggle hint, anchored under the toggle */}
+              {hintOpen ? (
+                <div
+                  role="status"
+                  className="absolute left-0 top-full mt-2 z-[5] w-[230px] rounded-xl px-3 py-2.5 flex items-start gap-2"
+                  style={{
+                    background: "rgba(20,20,24,0.97)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    boxShadow: "0 12px 30px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {/* caret pointing up to the toggle */}
+                  <span
+                    className="absolute -top-1 left-5 w-2 h-2 rotate-45"
+                    style={{ background: "rgba(20,20,24,0.97)", borderLeft: "1px solid rgba(255,255,255,0.14)", borderTop: "1px solid rgba(255,255,255,0.14)" }}
+                  />
+                  <span className="text-[11px] leading-snug" style={{ color: "rgba(255,255,255,0.85)" }}>
+                    Toggle between feed and reel to view insights on both posts.
+                  </span>
+                  <button
+                    onClick={() => setHintOpen(false)}
+                    aria-label="Dismiss"
+                    className="shrink-0 -mt-0.5 -mr-0.5 grid place-items-center w-5 h-5 rounded-full hover:bg-white/10"
+                    style={{ color: "rgba(255,255,255,0.6)" }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -414,15 +473,17 @@ export default function AssetModal({
         </button>
       </div>
 
-      {/* Athlete nav — next */}
-      <NavArrow
-        dir="right"
-        disabled={idx === athletes.length - 1}
-        onClick={(e) => {
-          e.stopPropagation();
-          next();
-        }}
-      />
+      {/* Athlete nav — next (hidden entirely when there's only one athlete) */}
+      {athletes.length > 1 ? (
+        <NavArrow
+          dir="right"
+          disabled={idx === athletes.length - 1}
+          onClick={(e) => {
+            e.stopPropagation();
+            next();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
