@@ -1960,6 +1960,31 @@ export default function CampaignEditor() {
           {campaign.published && (
             <a href={`/recap/${campaign.slug}`} target="_blank" className="text-[#D73F09] text-sm font-bold hover:underline">View Live →</a>
           )}
+          {/* Event Recap toggle — binds the same campaignType as the Step 2 block,
+              so header and Step 2 stay in sync; autosave persists it. */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCampaignType(campaignType === "event" ? "" : "event")}
+              title="Toggle this campaign as an event recap"
+              className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${
+                campaignType === "event"
+                  ? "bg-[#D73F09] border-[#D73F09] text-white"
+                  : "border-gray-700 text-gray-400 hover:border-gray-500"
+              }`}
+            >
+              Event Recap
+            </button>
+            {campaignType === "event" && (
+              <button
+                type="button"
+                onClick={() => setEventPickerOpen(true)}
+                className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border border-gray-700 text-gray-300 hover:border-[#D73F09] hover:text-[#D73F09] transition-colors"
+              >
+                Import from Drive
+              </button>
+            )}
+          </div>
           <button onClick={() => setShowPreview(true)}
             className="px-5 py-2 text-sm font-bold rounded-lg bg-[#D73F09] text-white hover:bg-[#c43808]">
             Preview Recap →
