@@ -896,11 +896,55 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
     onSaved();
   };
 
-  // "Featured in carousel": flips the boolean the homepage carousel filters on.
+  // "Featured in carousel": featuring also makes the campaign QUALIFY for the
+  // carousel. The public strip needs published=true AND visibility in
+  // ('public','both') AND featured=true — so turning ON also goes Live (and
+  // public if needed), then appends it to the end of carousel_order.
   const toggleFeatured = async (c: Camp) => {
     const next = !c.featured;
-    await supabase.from("campaigns").update({ featured: next }).eq("id", c.id);
-    setCampaigns(p => p.map(x => x.id === c.id ? { ...x, featured: next } : x));
+
+    if (next) {
+      // Find the current end of the carousel BEFORE changing anything, so the
+      // newly-featured campaign lands right after the existing members.
+      const { data: maxRow } = await supabase
+        .from("campaign_recaps")
+        .select("carousel_order")
+        .eq("featured", true)
+        .eq("published", true)
+        .in("visibility", ["public", "both"])
+        .order("carousel_order", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      const nextOrder = (maxRow?.carousel_order ?? 0) + 1;
+
+      // featured/published/status/visibility go through the campaigns view (as
+      // toggleLive does); bump visibility to 'public' ONLY if unset/private —
+      // never downgrade an existing 'both'.
+      const patch: any = { featured: true, published: true, status: "published" };
+      let nextVisibility = c.visibility;
+      if (c.visibility == null || c.visibility === "private") {
+        patch.visibility = "public";
+        nextVisibility = "public";
+      }
+      await supabase.from("campaigns").update(patch).eq("id", c.id);
+      // carousel_order lives on the base table only — write it directly.
+      await supabase.from("campaign_recaps").update({ carousel_order: nextOrder }).eq("id", c.id);
+
+      // Optimistic: update the toggles list AND append to the carousel drag list.
+      setCampaigns(p => p.map(x => x.id === c.id
+        ? { ...x, featured: true, published: true, status: "published", visibility: nextVisibility }
+        : x));
+      setCarousel(prev => prev.some(r => r.id === c.id)
+        ? prev
+        : [...prev, { id: c.id, name: c.name, brand_name: c.brand_name || c.client_name, pos: nextOrder }]);
+    } else {
+      // Turning OFF: just clear featured. Leave published/visibility/status and
+      // carousel_order alone (order is ignored once it's no longer featured).
+      await supabase.from("campaigns").update({ featured: false }).eq("id", c.id);
+      setCampaigns(p => p.map(x => x.id === c.id ? { ...x, featured: false } : x));
+      setCarousel(prev => prev.filter(r => r.id !== c.id));
+    }
+
     onSaved();
   };
 
@@ -957,7 +1001,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
         </SectionCard>
         <SectionCard title="Campaigns">
           <div style={{ fontSize:12, color:C.text3, marginBottom:12 }}>
-            Flip <strong style={{ color:C.text2 }}>Live</strong> to show a campaign on the public site; <strong style={{ color:C.text2 }}>Featured</strong> also adds it to the homepage carousel.
+            Flip <strong style={{ color:C.text2 }}>Live</strong> to show a campaign on the public site; <strong style={{ color:C.text2 }}>Featured</strong> adds it to the homepage carousel (and makes it Live if it isn&apos;t already).
           </div>
           <input
             type="text"

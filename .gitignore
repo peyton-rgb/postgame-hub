@@ -23,3 +23,9 @@ scripts/.import-runs/
 /route.ts
 /scripts/walk-alphaboost-folders.js
 /walk-stderr.log
+
+# Backfill / script run logs — generated per run
+scripts/logs/
+
+# Local-only script variants (not for the repo)
+scripts/*.local.js
