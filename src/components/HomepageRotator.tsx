@@ -251,9 +251,16 @@ const HR_CSS = `
    Above the media, below the content. */
 .hr-overlay{
   position:absolute;inset:0;z-index:3;pointer-events:none;
+  /* Solid black extends PAST the media's left edge (100% - media width),
+     then dissolves — keyed to --hr-media-w so it stays aligned if tuned. */
   background:
-    linear-gradient(90deg, #07070a 0%, #07070a 34%, rgba(7,7,10,0.55) 48%, rgba(7,7,10,0) 66%),
-    linear-gradient(0deg, rgba(7,7,10,0.55) 0%, transparent 38%);
+    linear-gradient(90deg,
+      #07070a 0%,
+      #07070a calc(100% - var(--hr-media-w) + 4%),
+      rgba(7,7,10,0.6) calc(100% - var(--hr-media-w) + 16%),
+      rgba(7,7,10,0) calc(100% - var(--hr-media-w) + 34%)
+    ),
+    linear-gradient(0deg, rgba(7,7,10,0.45) 0%, transparent 34%);
 }
 .hr-counter{
   position:absolute;top:24px;right:28px;z-index:5;
