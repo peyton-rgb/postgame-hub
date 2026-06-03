@@ -134,12 +134,14 @@ export default function HomepageRotator({ slides }: { slides: RotatorSlide[] }) 
               />
             )}
           </div>
-          {/* Vignette: stronger left + bottom for text legibility. */}
-          <div className="hr-vignette" />
+          {/* Grain lives inside the media region so it doesn't touch the
+              black text column. */}
+          <div className="hr-grain" aria-hidden />
         </div>
       ))}
-      {/* Grain overlay (single, above all slides, below content). */}
-      <div className="hr-grain" aria-hidden />
+      {/* Editorial split: full-section overlay that dissolves the media's
+          left edge into true black (above the media, below the content). */}
+      <div className="hr-overlay" aria-hidden />
 
       {/* ── Index counter (top-right) ── */}
       {n > 1 && (
@@ -229,23 +231,29 @@ const HR_CSS = `
   overflow:hidden;
   background:#07070a;
   isolation:isolate;
+  --hr-media-w:58%; /* width of the right-side media column — tune here */
 }
-.hr-slide{position:absolute;inset:0;opacity:0;z-index:0;}
+/* Media occupies the RIGHT column only; the left ~42% is the section's
+   true-black background. The crossfade still happens on .hr-slide. */
+.hr-slide{position:absolute;top:0;right:0;bottom:0;left:auto;width:var(--hr-media-w);opacity:0;z-index:0;}
 .hr-slide-active{opacity:1;z-index:1;}
 .hr-bg{position:absolute;inset:0;overflow:hidden;}
 .hr-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;}
 .hr-video{z-index:1;}
 .hr-kenburns{animation:hrKen 9s ease-out both;}
 @keyframes hrKen{from{transform:scale(1.001)}to{transform:scale(1.08)}}
-.hr-vignette{
-  position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:
-    linear-gradient(to right, rgba(7,7,10,0.82) 0%, rgba(7,7,10,0.35) 38%, rgba(7,7,10,0) 70%),
-    linear-gradient(to top, rgba(7,7,10,0.92) 0%, rgba(7,7,10,0.25) 45%, rgba(7,7,10,0) 78%);
-}
+/* Grain sits within the media region (inset:0 of its slide). */
 .hr-grain{
-  position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0.06;mix-blend-mode:overlay;
+  position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0.06;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Editorial split: dissolves the media's left edge into true black.
+   Above the media, below the content. */
+.hr-overlay{
+  position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:
+    linear-gradient(90deg, #07070a 0%, #07070a 34%, rgba(7,7,10,0.55) 48%, rgba(7,7,10,0) 66%),
+    linear-gradient(0deg, rgba(7,7,10,0.55) 0%, transparent 38%);
 }
 .hr-counter{
   position:absolute;top:24px;right:28px;z-index:5;
@@ -254,9 +262,13 @@ const HR_CSS = `
 }
 .hr-counter-sep{color:rgba(255,255,255,0.35);}
 .hr-content{
-  position:absolute;left:0;bottom:0;z-index:5;
-  max-width:min(620px,86vw);
-  padding:0 0 56px 48px;
+  position:absolute;left:0;top:0;bottom:0;z-index:5;
+  width:50%;
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  padding:0 0 0 48px;
+  /* Full-height layer would otherwise cover the dots; let clicks pass
+     through and re-enable them only on the CTA below. */
+  pointer-events:none;
 }
 .hr-chip{
   display:inline-block;
@@ -271,7 +283,7 @@ const HR_CSS = `
 .hr-title{
   font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;
   text-transform:uppercase;
-  font-size:clamp(40px,6.4vw,86px);line-height:0.92;letter-spacing:0.01em;
+  font-size:clamp(46px,6.5vw,98px);line-height:0.92;letter-spacing:0.01em;
   color:#fff;margin:0 0 14px;
 }
 .hr-desc{
@@ -291,9 +303,11 @@ const HR_CSS = `
 }
 .hr-cta{
   display:inline-flex;align-items:center;gap:9px;
+  align-self:flex-start;
   background:${ORANGE};color:#fff;text-decoration:none;
   font-size:14px;font-weight:700;letter-spacing:0.02em;
   padding:13px 22px;border-radius:10px;
+  pointer-events:auto;
   transition:transform 0.18s ease,filter 0.18s ease;
 }
 .hr-cta:hover{filter:brightness(1.08);transform:translateY(-1px);}
@@ -331,12 +345,23 @@ const HR_CSS = `
 .hr-s5{animation-delay:0.45s;}
 @keyframes hrUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:900px){
-  .hr-content{padding:0 0 64px 22px;max-width:90vw;}
+  .hr-content{padding-left:22px;}
   .hr-dots{left:22px;}
   .hr-arrows{right:18px;}
   .hr-stats{gap:24px;}
   .hr-stat-num{font-size:32px;}
   .hr-counter{right:18px;top:18px;}
+}
+/* Phones: a 50/50 split fails, so flip to full-width media behind the text,
+   re-weight the dissolve to bottom+left, and drop the content to the bottom. */
+@media(max-width:760px){
+  .hr-slide{width:100%;left:0;right:0;}
+  .hr-overlay{
+    background:
+      linear-gradient(0deg, #07070a 6%, rgba(7,7,10,0.45) 42%, rgba(7,7,10,0) 78%),
+      linear-gradient(90deg, rgba(7,7,10,0.7) 0%, rgba(7,7,10,0) 60%);
+  }
+  .hr-content{width:100%;justify-content:flex-end;padding:0 0 64px 22px;}
 }
 /* Reduced motion: no entrance animation, no Ken Burns, no progress fill. */
 @media(prefers-reduced-motion:reduce){
