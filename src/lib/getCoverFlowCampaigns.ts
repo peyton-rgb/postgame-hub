@@ -21,6 +21,7 @@ type Row = {
   thumbnail_url: string | null;
   brand_id: string | null;
   featured: boolean | null;
+  hero_recap_video_url: string | null;
   created_at: string | null;
   // The joined brand. Supabase may hand this back as an object or a 1-item array,
   // so we handle both below.
@@ -41,7 +42,7 @@ export async function getCoverFlowCampaigns(
   let query = supabase
     .from("campaign_recaps")
     .select(
-      "id,name,slug,client_name,client_logo_url,hero_image_url,thumbnail_url,brand_id,featured,created_at,carousel_order, brands ( logo_light_url, logo_primary_url )"
+      "id,name,slug,client_name,client_logo_url,hero_image_url,thumbnail_url,brand_id,featured,hero_recap_video_url,created_at,carousel_order, brands ( logo_light_url, logo_primary_url )"
     )
     .eq("published", true)
     .in("visibility", ["public", "both"]); // ADJUST 3: change the filter if you want a different public set
@@ -106,6 +107,10 @@ export async function getCoverFlowCampaigns(
       brand: r.client_name ?? "",
       slug: r.slug ?? r.id,
       hero,
+      // Phase 2: optional cinematic-rotator fields. heroVideo is the hand-picked
+      // hero_recap_video_url (may be null); poster is the still to show until it loads.
+      heroVideo: r.hero_recap_video_url ?? null,
+      poster: hero,
       // Prefer the brand's light/white logo on the dark card; the component
       // falls back to the colored logo on a light chip when there's no light one.
       logoLight: brand?.logo_light_url ?? null,
