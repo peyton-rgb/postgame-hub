@@ -204,13 +204,33 @@ function buildRecapPortalAthlete(
   // open on Feed — appended collab reels never change the default-open tab.
   const reelPostIndex = posts.findIndex((p) => p.kind === "reel");
 
-  // Append each collab reel this athlete is in as an extra Reel tab: the collab's
-  // video, the SAME pooled metrics the collab card uses, and an "Also in this
-  // reel" list of all participants (incl. this athlete). Per-post collaborators
-  // keep the pooled note off the athlete's own tabs.
+  // Surface each collab reel this athlete is in. When the collab matches one of
+  // the athlete's OWN reel posts (same url), upgrade that post in place — fill in
+  // the collab's video if it has none, and attach the pooled "Also in this reel"
+  // collaborator list — so it isn't duplicated as a separate tab. Otherwise append
+  // it as an extra Reel tab: the collab's video, the SAME pooled metrics the collab
+  // card uses, and an "Also in this reel" list of all participants (incl. this
+  // athlete). Per-post collaborators keep the pooled note off the athlete's own tabs.
   collabReels.forEach(({ group, items: gItems }, i) => {
     const v = gItems.find((m) => m.type === "video");
     const collabVideo = v ? { fileUrl: v.file_url, poster: v.thumbnail_url || null } : null;
+
+    // Match this collab against the athlete's own reel posts by url (the group's
+    // url or any of its source urls). If one matches, upgrade it instead of
+    // pushing a duplicate tab.
+    const groupUrls = new Set(
+      [group.url, ...group.sources.map((s) => s.url)].filter(Boolean) as string[],
+    );
+    const existing = posts.find(
+      (p) => p.kind === "reel" && p.postUrl != null && groupUrls.has(p.postUrl),
+    );
+    if (existing) {
+      if (!existing.video) existing.video = collabVideo;
+      existing.collaborators = collabCollaborators(group, roster);
+      existing.collaboratorsLabel = "Also in this reel";
+      return;
+    }
+
     posts.push({
       key: `${group.id}:collabreel`,
       kind: "reel",
@@ -895,21 +915,12 @@ export function CampaignRecap({
   // athlete, defaulting to their Reel tab (startPostIndex) when they have one.
   const [modalData, setModalData] = useState<{ portalAthlete: PortalAthlete; startPostIndex: number } | null>(null);
   const openAthleteModal = (a: Athlete, items: Media[]) => {
-    // Collab REELS this athlete appears in (reel-type groups only), appended to
-    // their popup as extra "Collab Reel" tabs. Dedup against the athlete's OWN
-    // reel URLs so a reel they actually posted (that happens to be a collab)
-    // isn't shown twice. Card tag / athleteHasReel are untouched.
-    const ownReelUrls = new Set(
-      [
-        a.metrics?.ig_reel?.post_url,
-        a.metrics?.ig_reel_2?.post_url,
-        a.metrics?.tiktok?.post_url,
-        a.metrics?.tiktok_2?.post_url,
-      ].filter(Boolean) as string[],
-    );
+    // Collab REELS this athlete appears in (reel-type groups only). A collab that
+    // matches one of the athlete's OWN reel posts upgrades that post in place (see
+    // buildRecapPortalAthlete); the rest are appended as extra "Collab Reel" tabs.
+    // Card tag / athleteHasReel are untouched.
     const collabReels = collabGroups
       .filter((g) => (g.platform === "ig_reel" || g.platform === "tiktok") && g.athleteIds.includes(a.id))
-      .filter((g) => !(ownReelUrls.has(g.url) || g.sources.some((s) => ownReelUrls.has(s.url))))
       .map((g) => ({ group: g, items: collabMediaItems(g) }));
     const { portalAthlete, reelPostIndex } = buildRecapPortalAthlete(a, items, campaign.name, collabReels, fullRoster);
     setModalData({ portalAthlete, startPostIndex: reelPostIndex >= 0 ? reelPostIndex : 0 });
