@@ -49,6 +49,10 @@ export default function HomepageRotator({ slides }: { slides: RotatorSlide[] }) 
   const [paused, setPaused] = useState(false);
   // Slides whose video failed to load/play — fall back to poster-only.
   const [failed, setFailed] = useState<Record<number, boolean>>({});
+  // The active slide's video has begun playing — drives the photo→video
+  // crossfade (poster reads first, video fades in over it). Resets on every
+  // slide change so re-entering a slide replays the reveal.
+  const [videoOn, setVideoOn] = useState(false);
 
   const n = slides.length;
 
@@ -78,6 +82,9 @@ export default function HomepageRotator({ slides }: { slides: RotatorSlide[] }) 
   // Play the active slide's video (best-effort). On failure, reveal the poster.
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
+    // Going inactive (or entering a new slide): reset the reveal so the
+    // poster shows crisp again before the video fades back in.
+    setVideoOn(false);
     const v = videoRef.current;
     if (!v) return;
     v.muted = true;
@@ -122,7 +129,7 @@ export default function HomepageRotator({ slides }: { slides: RotatorSlide[] }) 
               <video
                 key={`v-${active}`}
                 ref={videoRef}
-                className="hr-media hr-video"
+                className={`hr-media hr-video${videoOn ? " hr-video-on" : ""}`}
                 src={cur.heroVideo as string}
                 poster={s.poster ?? s.hero}
                 autoPlay
@@ -130,6 +137,8 @@ export default function HomepageRotator({ slides }: { slides: RotatorSlide[] }) 
                 loop
                 playsInline
                 preload="metadata"
+                onCanPlay={() => setVideoOn(true)}
+                onPlaying={() => setVideoOn(true)}
                 onError={() => setFailed((f) => ({ ...f, [active]: true }))}
               />
             )}
@@ -227,19 +236,31 @@ const HR_CSS = `
   position:relative;
   width:100vw;
   margin-left:calc(50% - 50vw);
-  height:clamp(440px,72vh,680px);
+  /* Interim: taller section gives faces more vertical room (see --hr-media-pos). */
+  height:clamp(480px,78vh,720px);
   overflow:hidden;
   background:#07070a;
   isolation:isolate;
   --hr-media-w:58%; /* width of the right-side media column — tune here */
+  /* INTERIM framing heuristic: a single global object-position biased toward
+     the upper region so heads/faces stay in frame more often under cover-crop.
+     This is a blunt instrument — true per-photo framing (focal points) is a
+     planned editor feature, not this change. Tune here; poster + video share it. */
+  --hr-media-pos:50% 22%;
 }
 /* Media occupies the RIGHT column only; the left ~42% is the section's
    true-black background. The crossfade still happens on .hr-slide. */
 .hr-slide{position:absolute;top:0;right:0;bottom:0;left:auto;width:var(--hr-media-w);opacity:0;z-index:0;}
 .hr-slide-active{opacity:1;z-index:1;}
 .hr-bg{position:absolute;inset:0;overflow:hidden;}
-.hr-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;}
-.hr-video{z-index:1;}
+/* Poster and video share identical object-fit/object-position so nothing
+   shifts when the video fades in over the still. */
+.hr-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--hr-media-pos);}
+/* Photo→video crossfade: video starts hidden, holds (~500ms) so the crisp
+   poster reads first, then fades in (~700ms) once it begins playing. The
+   poster stays mounted underneath the whole time (never-black guarantee). */
+.hr-video{z-index:1;opacity:0;transition:opacity 700ms ease;transition-delay:500ms;}
+.hr-video-on{opacity:1;}
 .hr-kenburns{animation:hrKen 9s ease-out both;}
 @keyframes hrKen{from{transform:scale(1.001)}to{transform:scale(1.08)}}
 /* Grain sits within the media region (inset:0 of its slide). */
