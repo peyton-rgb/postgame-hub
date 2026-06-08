@@ -47,6 +47,11 @@ export default function MediaLibrary() {
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState<Media | null>(null);
 
+  // Per-file delete: the media row pending confirmation + in-flight state.
+  const [confirmDelete, setConfirmDelete] = useState<Media | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // Feature 2: manual upload
   const [uploads, setUploads] = useState<
     { name: string; status: "pending" | "uploading" | "done" | "failed"; error?: string }[]
@@ -229,6 +234,56 @@ export default function MediaLibrary() {
       .eq("is_video_thumbnail", false)
       .order("sort_order", { ascending: true });
     setMedia(data || []);
+  }
+
+  // Per-file delete: POST to the server route (which removes the Storage
+  // object(s) best-effort, then the DB row). On success drop it from local
+  // state and decrement the relevant counts so the UI stays in sync without
+  // a full reload.
+  async function handleConfirmDelete() {
+    if (!confirmDelete) return;
+    const target = confirmDelete;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/media/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaId: target.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDeleteError(String(data?.error || `HTTP ${res.status}`));
+        return;
+      }
+
+      setMedia((prev) => prev.filter((m) => m.id !== target.id));
+
+      // Decrement cached counts for this athlete + campaign.
+      if (target.athlete_id) {
+        setAthleteMediaCounts((prev) => {
+          const current = prev[target.athlete_id as string];
+          if (current == null) return prev;
+          return { ...prev, [target.athlete_id as string]: Math.max(0, current - 1) };
+        });
+      }
+      if (target.campaign_id) {
+        setCampaignCounts((prev) => {
+          const entry = prev[target.campaign_id];
+          if (!entry) return prev;
+          return {
+            ...prev,
+            [target.campaign_id]: { ...entry, media: Math.max(0, entry.media - 1) },
+          };
+        });
+      }
+
+      setConfirmDelete(null);
+    } catch (e: any) {
+      setDeleteError(String(e?.message || e));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   // Serial upload: browser → Storage, then POST the path to /api/media/upload
@@ -913,10 +968,10 @@ export default function MediaLibrary() {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                     {media.map((m) => (
+                      <div key={m.id} className="group relative aspect-square">
                       <button
-                        key={m.id}
                         onClick={() => setLightbox(m)}
-                        className="relative aspect-square bg-[#111] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all group"
+                        className="relative w-full h-full bg-[#111] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all"
                       >
                         {m.type === "video" ? (
                           <>
@@ -967,6 +1022,21 @@ export default function MediaLibrary() {
                           </svg>
                         </div>
                       </button>
+                      {/* Delete — sibling of the thumbnail button so it isn't a
+                          nested <button>. Hidden until the cell is hovered. */}
+                      <button
+                        onClick={() => { setDeleteError(null); setConfirmDelete(m); }}
+                        aria-label="Delete file"
+                        className="absolute top-2 left-2 w-8 h-8 rounded-md bg-black/70 backdrop-blur-sm border border-white/10 flex items-center justify-center text-gray-300 hover:text-white hover:bg-[#D73F09] opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -1033,6 +1103,63 @@ export default function MediaLibrary() {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation */}
+      {confirmDelete && (() => {
+        const m = confirmDelete;
+        // Filename from the last path segment of storage_path or file_url.
+        const rawSource = (m as any).storage_path || m.file_url || "";
+        const lastSeg = String(rawSource).split("?")[0].split("/").pop() || "file";
+        let fileName = lastSeg;
+        try { fileName = decodeURIComponent(lastSeg); } catch { /* keep raw */ }
+        const thumb = m.thumbnail_url || m.file_url;
+        return (
+          <div
+            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => { if (!deleting) setConfirmDelete(null); }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-[#07070a] border border-gray-800 rounded-xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-6">
+                <h2 className="text-2xl text-white mb-1" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.02em" }}>
+                  Delete this file?
+                </h2>
+                <p className="text-sm text-gray-400 mb-5">This permanently removes the file. It can&apos;t be undone.</p>
+                <div className="flex items-center gap-3 bg-[#111] border border-gray-800 rounded-lg p-3 mb-5">
+                  <div className="w-14 h-14 rounded-md bg-black overflow-hidden flex-shrink-0">
+                    {thumb ? (
+                      <img src={thumb} alt="" className="w-full h-full object-cover" />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{fileName}</p>
+                    <p className="text-xs text-gray-500 uppercase">{m.type}</p>
+                  </div>
+                </div>
+                {deleteError && <div className="text-sm text-red-400 mb-4">{deleteError}</div>}
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setConfirmDelete(null)}
+                    disabled={deleting}
+                    className="px-5 py-2.5 rounded-lg font-bold text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-600 disabled:opacity-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmDelete}
+                    disabled={deleting}
+                    className="px-5 py-2.5 rounded-lg font-bold uppercase text-sm text-white bg-[#D73F09] hover:bg-[#ff5722] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
