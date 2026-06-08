@@ -13,6 +13,8 @@ export type CampaignCard = {
   brand: string;
   slug: string;
   hero: string;
+  heroVideo?: string | null;
+  poster?: string | null;
   logoLight: string | null;
   logoChip: string | null;
 };

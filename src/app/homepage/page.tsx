@@ -2,11 +2,12 @@ import { getHomepage, getPitchTickerLogos, type HomepageData, type PageSection, 
 import SiteFooter from "@/components/SiteFooter";
 import AnimateIn from "@/components/AnimateIn";
 import Image from "next/image";
-import ScrollVideo from "@/components/ScrollVideo";
 import BrandCarousel from "@/components/BrandCarousel";
 import { createPlainSupabase } from "@/lib/supabase";
 import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
 import { resolveHeroPlaybackUrl } from "@/lib/hero-render";
+import HomepageRotator from "@/components/HomepageRotator";
+import { getHomepageRotatorCampaigns, type RotatorSlide } from "@/lib/getHomepageRotatorCampaigns";
 
 export const revalidate = 60;
 
@@ -60,8 +61,13 @@ function Fallback() {
 export default async function HomepagePage() {
   let data: HomepageData | null = null;
   let brandTickerItems: BrandTickerItem[] = [];
+  let rotatorSlides: RotatorSlide[] = [];
   try {
-    [data, brandTickerItems] = await Promise.all([getHomepage(), getPitchTickerLogos()]);
+    [data, brandTickerItems, rotatorSlides] = await Promise.all([
+      getHomepage(),
+      getPitchTickerLogos(),
+      getHomepageRotatorCampaigns(),
+    ]);
   } catch {}
   if (!data) return <Fallback />;
 
@@ -202,56 +208,13 @@ export default async function HomepagePage() {
         </div>
       )}
 
-      {/* Campaigns */}
-      {show("featured_campaigns") && fc && (() => {
-        const cps = contentArr(fc, "campaigns", "items");
-        if (!cps.length) return null;
-        const fi = Math.max(0, cps.findIndex(c => c.featured));
-        const feat = cps[fi];
-        const rest = cps.filter((_,i) => i !== fi);
-        const GRADIENTS = ["rc-1","rc-2","rc-3","rc-4","rc-5"];
-        return (
-          <div className="hp-sec">
-            {contentStr(fc,"eyebrow") && <div className="pg-eyebrow">{contentStr(fc,"eyebrow")}</div>}
-            <h2 className="d pg-section-title">{fc.title || "Campaign Highlights"}</h2>
-            {feat && (
-              <div className={`hp-featured${feat.image_url ? "" : " rc-1"}`}>
-                {feat.image_url && (String(feat.media_type||"")==="video"
-                  ? <ScrollVideo src={String(feat.image_url)} scrollTrigger={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
-                  : <Image src={String(feat.image_url)} alt="" fill priority sizes="(max-width:900px) 100vw, 1100px" style={{objectFit:"cover",objectPosition:String(feat.focal_point||"center 20%")}} />
-                )}
-                <div className="hp-featured-overlay"/>
-                <div className="hp-featured-content">
-                  {String(feat.brand||"") && <div className="hp-card-brand">{String(feat.brand||"")}</div>}
-                  <div className="d hp-card-title" style={{fontSize:"clamp(32px,4vw,52px)"}}>{String(feat.name||feat.title||"")}</div>
-                  {String(feat.meta||"") && <div className="hp-card-meta">{String(feat.meta||"")}</div>}
-                </div>
-              </div>
-            )}
-            {rest.length > 0 && (
-              <AnimateIn className="anim-fade-up hp-masonry stagger">
-                {rest.map((item, i) => {
-                  const hasMedia = !!item.image_url;
-                  const isVid = String(item.media_type||"")==="video";
-                  return (
-                    <div key={i} className={`hp-card hover-lift anim-scale-in in-view${!hasMedia?" "+GRADIENTS[i%5]:""}`}>
-                      {hasMedia && (isVid
-                        ? <ScrollVideo src={String(item.image_url)} style={{width:"100%",display:"block"}} />
-                        : <img src={String(item.image_url)} alt="" loading="lazy" decoding="async" style={{width:"100%",display:"block",objectPosition:String(item.focal_point||"center 20%")}}/>
-                      )}
-                      <div className={hasMedia?"hp-card-body":"hp-card-nm"}>
-                        {String(item.brand||"") && <div className="hp-card-brand">{String(item.brand||"")}</div>}
-                        <div className="d hp-card-title">{String(item.name||item.title||"")}</div>
-                        {String(item.meta||"") && <div className="hp-card-meta">{String(item.meta||"")}</div>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </AnimateIn>
-            )}
-          </div>
-        );
-      })()}
+      {/* Campaigns — cinematic rotator (swapped in place of the old hand-typed
+          cards). Still gated by the CMS visibility toggle for this section;
+          the rotator is fed from the DB (homepage_featured / homepage_order)
+          via getHomepageRotatorCampaigns(). Renders nothing when empty. */}
+      {show("featured_campaigns") && fc && rotatorSlides.length > 0 && (
+        <HomepageRotator slides={rotatorSlides} />
+      )}
 
       {/* Athletes */}
       {show("featured_athletes") && fa && (() => {
