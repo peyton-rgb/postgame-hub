@@ -364,6 +364,7 @@ const PAGES_SECTION: NavSection = {
     { name: 'Legacy Briefs', href: '/dashboard/legacy-briefs', icon: NotebookIcon },
     { name: 'Pitches', href: '/dashboard/pitches', icon: StarIcon },
     { name: 'Newsletter', href: '/dashboard/newsletter', icon: MailIcon },
+    { name: 'Newsletter Composer', href: '/dashboard/newsletter-composer', icon: MailIcon },
     { name: 'Campaign Instructions', href: '/dashboard/campaign-instructions', icon: ClipboardIcon },
     { name: 'Campaign Opt-In', href: '/dashboard/campaign-opt-in', icon: UserCheckIcon },
   ],
