@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Postgame — Brand Kit</title>
+<meta name="description" content="Postgame brand assets, logos, colors, typography, and usage guidelines.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<script>
+/* ============================================================
+   ASSETS CONFIG — this is the ONLY place you edit.
+   Paste public URLs (Supabase storage) into the arrays below.
+   Empty string "" = renders as a dashed placeholder card.
+   ============================================================ */
+const ASSETS = {
+
+  /* Faint crossfading images behind the hero text.
+     Currently the apparel shots — swap for athlete/campaign
+     photos whenever. Leave empty [] for the plain gradient hero. */
+  hero: [
+    "brand-assets/fleece-black.jpg",
+    "brand-assets/tee-cream.jpg",
+    "brand-assets/fleece-white.jpg"
+  ],
+
+  /* Core logo files. All transparent PNGs except the two
+     full-color originals still hosted on Supabase. */
+  logos: {
+    primary: "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632055938-16gy1u2t.PNG",
+    black:   "brand-assets/postgame-black.png",
+    blackOrange: "brand-assets/postgame-black-orange.png",
+    grey:    "brand-assets/postgame-grey.png",
+    white:   "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png",
+    mark:    "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632107441-qdu019il.jpg"
+  },
+
+  /* School color variations — carousel under the logos.
+     name = school, url = transparent logo file. */
+  schools: [
+    { name: "", url: "" },
+    { name: "", url: "" },
+    { name: "", url: "" },
+    { name: "", url: "" },
+    { name: "", url: "" },
+    { name: "", url: "" }
+  ],
+
+  /* Apparel + content showcase — carousel at the bottom.
+     type: "image" (default) or "video" (muted auto-loop).
+     label = short caption, url = file. */
+  showcase: [
+    { label: "Black Fleece",            url: "brand-assets/fleece-black.jpg" },
+    { label: "Black Tee · 3D",          url: "brand-assets/spin-black-tee.mp4", type: "video" },
+    { label: "Cream Tee",               url: "brand-assets/tee-cream.jpg" },
+    { label: "White Fleece",            url: "brand-assets/fleece-white.jpg" },
+    { label: "Black Tee · 3D Spin",     url: "brand-assets/spin-3.mp4", type: "video" },
+    { label: "White Tee",               url: "brand-assets/tee-white.jpg" },
+    { label: "Black Tee",               url: "brand-assets/tee-black.jpg" },
+    { label: "Apparel · 3D",            url: "brand-assets/spin-2.mp4", type: "video" }
+  ]
+};
+/* ====================== end of config ====================== */
+</script>
+
+<style>
+  :root{
+    --black:#07070a;
+    --orange:#D73F09;
+    --offwhite:#FAF8F5;
+    --glass:rgba(255,255,255,0.045);
+    --glass-strong:rgba(255,255,255,0.08);
+    --stroke:rgba(255,255,255,0.10);
+    --muted:rgba(250,248,245,0.55);
+    --dim:rgba(250,248,245,0.35);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--black);
+    color:var(--offwhite);
+    font-family:Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.6;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:0 24px;}
+
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;
+    color:var(--orange);
+    display:flex;align-items:center;gap:12px;margin-bottom:18px;
+  }
+  .eyebrow::before{content:"";display:block;width:28px;height:2px;background:var(--orange);}
+
+  /* ---------- hero ---------- */
+  header{
+    min-height:92vh;
+    display:flex;flex-direction:column;justify-content:center;
+    position:relative;overflow:hidden;
+    border-bottom:1px solid var(--stroke);
+  }
+  .hero-bg{position:absolute;inset:0;z-index:0;}
+  .hero-bg img{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    opacity:0;transition:opacity 2.2s ease;
+    filter:grayscale(35%) contrast(1.05);
+  }
+  .hero-bg img.active{opacity:0.16;}
+  .hero-veil{
+    position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:
+      radial-gradient(ellipse 70% 50% at 70% 110%, rgba(215,63,9,0.16), transparent 70%),
+      linear-gradient(to bottom, rgba(7,7,10,0.55), rgba(7,7,10,0.25) 40%, rgba(7,7,10,0.85));
+  }
+  .hero-content{position:relative;z-index:2;}
+  .hero-logo{height:clamp(64px, 9vw, 110px);width:auto;margin-bottom:56px;}
+  h1.tagline{
+    font-family:'Bebas Neue', Arial, sans-serif;
+    font-size:clamp(56px, 11vw, 148px);
+    line-height:0.92;text-transform:uppercase;
+  }
+  h1.tagline .line2{color:var(--orange);display:block;}
+  .hero-sub{
+    margin-top:36px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);
+  }
+
+  /* ---------- sections ---------- */
+  section{padding:96px 0;border-bottom:1px solid var(--stroke);}
+  section:last-of-type{border-bottom:none;}
+  h2{
+    font-family:'Bebas Neue', Arial, sans-serif;
+    font-size:clamp(36px,5vw,56px);text-transform:uppercase;
+    margin-bottom:40px;line-height:1;
+  }
+  .section-note{color:var(--muted);max-width:640px;margin:-24px 0 40px;font-size:15px;}
+
+  .card{
+    background:var(--glass);
+    border:1px solid var(--stroke);
+    border-radius:18px;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+  }
+
+  /* ---------- logo grid ---------- */
+  .logo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
+  .logo-card{overflow:hidden;display:flex;flex-direction:column;}
+  .logo-stage{height:240px;display:flex;align-items:center;justify-content:center;padding:32px;position:relative;}
+  .logo-stage img{max-height:100%;max-width:80%;object-fit:contain;position:relative;z-index:1;}
+  .stage-dark{background:#0d0d12;}
+  .stage-light{background:var(--offwhite);}
+  /* checkerboard = universal "this file is transparent" signal */
+  .stage-checker{
+    background:
+      linear-gradient(45deg, #15151b 25%, transparent 25%, transparent 75%, #15151b 75%),
+      linear-gradient(45deg, #15151b 25%, #0d0d12 25%, #0d0d12 75%, #15151b 75%);
+    background-size:24px 24px;background-position:0 0,12px 12px;
+  }
+  .stage-checker-light{
+    background:
+      linear-gradient(45deg, #e9e6e1 25%, transparent 25%, transparent 75%, #e9e6e1 75%),
+      linear-gradient(45deg, #e9e6e1 25%, #FAF8F5 25%, #FAF8F5 75%, #e9e6e1 75%);
+    background-size:24px 24px;background-position:0 0,12px 12px;
+  }
+  .logo-meta{
+    padding:18px 22px;border-top:1px solid var(--stroke);
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  }
+  .logo-name{font-family:'Bebas Neue', Arial, sans-serif;font-size:22px;text-transform:uppercase;}
+  .logo-use{font-family:'JetBrains Mono', monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim);display:block;margin-top:2px;}
+  .btn-row{display:flex;gap:8px;}
+  .btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;
+    color:var(--offwhite);background:var(--glass-strong);
+    border:1px solid var(--stroke);border-radius:999px;
+    padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-block;
+    transition:all .18s ease;
+  }
+  .btn:hover{background:var(--orange);border-color:var(--orange);}
+  .btn.copied{background:var(--orange);border-color:var(--orange);}
+
+  /* ---------- placeholder cards ---------- */
+  .placeholder{
+    border:1.5px dashed rgba(250,248,245,0.22);
+    border-radius:18px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;letter-spacing:0.16em;text-transform:uppercase;
+    text-align:center;padding:20px;line-height:2;
+  }
+
+  /* ---------- carousels (marquee) ---------- */
+  .marquee{
+    overflow:hidden;position:relative;
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+    mask-image:linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  }
+  .marquee-track{
+    display:flex;gap:20px;width:max-content;
+    animation:marquee 38s linear infinite;
+  }
+  .marquee:hover .marquee-track{animation-play-state:paused;}
+  @keyframes marquee{
+    from{transform:translateX(0);}
+    to{transform:translateX(-50%);}
+  }
+  .school-card{
+    width:240px;flex-shrink:0;overflow:hidden;
+  }
+  .school-stage{height:160px;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .school-stage img{max-height:100%;max-width:85%;object-fit:contain;}
+  .school-name{
+    padding:12px 18px;border-top:1px solid var(--stroke);
+    font-family:'JetBrains Mono', monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);
+  }
+  .school-card .placeholder{height:160px;border:none;border-bottom:1.5px dashed rgba(250,248,245,0.18);border-radius:0;}
+
+  .show-card{
+    width:360px;height:260px;flex-shrink:0;overflow:hidden;position:relative;
+  }
+  .show-card img, .show-card video{width:100%;height:100%;object-fit:cover;display:block;}
+  .show-label{
+    position:absolute;left:0;right:0;bottom:0;
+    padding:14px 18px;
+    background:linear-gradient(to top, rgba(7,7,10,0.85), transparent);
+    font-family:'JetBrains Mono', monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--offwhite);
+  }
+  .show-card .placeholder{height:100%;border-radius:18px;}
+
+  /* ---------- colors ---------- */
+  .color-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  .swatch{overflow:hidden;cursor:pointer;transition:transform .18s ease;}
+  .swatch:hover{transform:translateY(-3px);}
+  .swatch-block{height:180px;}
+  .swatch-meta{padding:18px 22px;border-top:1px solid var(--stroke);}
+  .swatch-name{font-family:'Bebas Neue', Arial, sans-serif;font-size:22px;text-transform:uppercase;}
+  .swatch-hex{font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:0.1em;color:var(--muted);margin-top:4px;}
+  .swatch-hex small{color:var(--dim);letter-spacing:0.06em;}
+  .swatch-role{font-size:13px;color:var(--muted);margin-top:10px;}
+
+  /* ---------- typography ---------- */
+  .type-row{padding:36px 32px;display:grid;grid-template-columns:200px 1fr;gap:32px;align-items:start;}
+  .type-row + .type-row{margin-top:20px;}
+  .type-label{font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);line-height:2;}
+  .type-label strong{color:var(--orange);display:block;}
+  .spec-bebas{font-family:'Bebas Neue', Arial, sans-serif;font-size:clamp(40px,6vw,72px);line-height:0.95;text-transform:uppercase;}
+  .spec-mono{font-family:'JetBrains Mono', monospace;font-size:clamp(14px,2vw,18px);letter-spacing:0.16em;text-transform:uppercase;}
+  .spec-arial{font-size:clamp(15px,2vw,18px);color:var(--muted);max-width:560px;}
+
+  /* ---------- voice / rules ---------- */
+  .rule-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .rule-card{padding:28px 30px;}
+  .rule-card h3{
+    font-family:'Bebas Neue', Arial, sans-serif;font-size:26px;text-transform:uppercase;
+    margin-bottom:14px;border-left:3px solid var(--orange);padding-left:14px;line-height:1;
+  }
+  .rule-card ul{list-style:none;}
+  .rule-card li{padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:14px;color:var(--muted);}
+  .rule-card li:last-child{border-bottom:none;}
+  .rule-card li strong{color:var(--offwhite);font-weight:bold;}
+  .ok{color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:11px;margin-right:8px;}
+  .no{color:#888;font-family:'JetBrains Mono',monospace;font-size:11px;margin-right:8px;}
+
+  footer{
+    padding:56px 0;text-align:center;
+    font-family:'JetBrains Mono', monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);
+  }
+
+  @media (max-width:760px){
+    .logo-grid,.color-grid,.rule-grid{grid-template-columns:1fr;}
+    .type-row{grid-template-columns:1fr;gap:14px;}
+    header{min-height:72vh;}
+    section{padding:64px 0;}
+    .show-card{width:280px;height:210px;}
+    .school-card{width:200px;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none!important;animation:none!important;scroll-behavior:auto!important;}
+    .hero-bg img.active{opacity:0.12;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-veil"></div>
+  <div class="wrap hero-content">
+    <img class="hero-logo" id="heroLogo" src="" alt="Postgame logo">
+    <h1 class="tagline">When the game ends,<span class="line2">the Postgame begins.</span></h1>
+    <p class="hero-sub">Brand kit · Logos · Color · Type · Voice · Showcase</p>
+  </div>
+</header>
+
+<section id="logos">
+  <div class="wrap">
+    <div class="eyebrow">01 / Logos</div>
+    <h2>The Mark</h2>
+    <p class="section-note">Every file is a transparent PNG — the checkerboard behind each logo means it drops onto any background. Always use these files: never retype the wordmark, recolor it, stretch it, or rebuild it in another font.</p>
+    <div class="logo-grid" id="logoGrid"></div>
+  </div>
+</section>
+
+<section id="schools">
+  <div class="wrap">
+    <div class="eyebrow">02 / School Variations</div>
+    <h2>School Colors</h2>
+    <p class="section-note">Campaign-approved colorways of the mark for partner schools. Same rules apply — use the file, never rebuild it.</p>
+  </div>
+  <div class="marquee"><div class="marquee-track" id="schoolTrack"></div></div>
+</section>
+
+<section id="color">
+  <div class="wrap">
+    <div class="eyebrow">03 / Color</div>
+    <h2>Palette</h2>
+    <p class="section-note">Three colors. Orange is where the eye lands — CTAs, accents, active states. It is never a background. Click any swatch to copy its hex code.</p>
+    <div class="color-grid">
+      <div class="card swatch" data-copy="#D73F09" role="button" tabindex="0">
+        <div class="swatch-block" style="background:#D73F09;"></div>
+        <div class="swatch-meta">
+          <div class="swatch-name">Postgame Orange</div>
+          <div class="swatch-hex">#D73F09 <small>· click to copy</small></div>
+          <div class="swatch-role">CTAs, accents, active states. The brand moment.</div>
+        </div>
+      </div>
+      <div class="card swatch" data-copy="#07070A" role="button" tabindex="0">
+        <div class="swatch-block" style="background:#07070a;border-bottom:1px solid var(--stroke);"></div>
+        <div class="swatch-meta">
+          <div class="swatch-name">True Black</div>
+          <div class="swatch-hex">#07070A <small>· click to copy</small></div>
+          <div class="swatch-role">The base. Every surface stacks on top of this.</div>
+        </div>
+      </div>
+      <div class="card swatch" data-copy="#FAF8F5" role="button" tabindex="0">
+        <div class="swatch-block" style="background:#FAF8F5;"></div>
+        <div class="swatch-meta">
+          <div class="swatch-name">Off-White</div>
+          <div class="swatch-hex">#FAF8F5 <small>· click to copy</small></div>
+          <div class="swatch-role">Text and light surfaces. Warm, never pure white.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="type">
+  <div class="wrap">
+    <div class="eyebrow">04 / Typography</div>
+    <h2>Type System</h2>
+    <div class="card type-row">
+      <div class="type-label"><strong>Bebas Neue</strong>Display · headlines<br>Always uppercase</div>
+      <div class="spec-bebas">When the game ends,<br>the postgame begins.</div>
+    </div>
+    <div class="card type-row">
+      <div class="type-label"><strong>JetBrains Mono</strong>Labels · eyebrows · data<br>Uppercase, wide tracking</div>
+      <div class="spec-mono">Campaign recap · 24 athletes · 4.2M views</div>
+    </div>
+    <div class="card type-row">
+      <div class="type-label"><strong>Arial</strong>Body copy · UI text<br>Sentence case</div>
+      <div class="spec-arial">Body text is Arial — clean and invisible. It carries the information while Bebas Neue and the orange carry the brand. No decorative weights, no italics for emphasis.</div>
+    </div>
+  </div>
+</section>
+
+<section id="voice">
+  <div class="wrap">
+    <div class="eyebrow">05 / Voice &amp; Language</div>
+    <h2>How Postgame Talks</h2>
+    <div class="rule-grid">
+      <div class="card rule-card">
+        <h3>Voice</h3>
+        <ul>
+          <li><strong>Confident, athlete-forward, no fluff.</strong></li>
+          <li>Talk to brands and athletes like peers — never like an agency pitching them.</li>
+          <li>Short sentences. Active voice.</li>
+          <li>Sports-aware but never corny.</li>
+        </ul>
+      </div>
+      <div class="card rule-card">
+        <h3>Trademark Rules</h3>
+        <ul>
+          <li>These NCAA-owned terms never appear in any copy, caption, or asset:</li>
+          <li><span class="no">✕</span>"March Madness" → <span class="ok">✓</span><strong>"the Big Dance" / "the tournament"</strong></li>
+          <li><span class="no">✕</span>"Final Four" → <span class="ok">✓</span><strong>"the national semifinal"</strong></li>
+          <li><span class="no">✕</span>"Elite Eight" → <span class="ok">✓</span><strong>"the regional final"</strong></li>
+          <li><span class="no">✕</span>"Sweet Sixteen" → <span class="ok">✓</span><strong>"the round of 16"</strong></li>
+        </ul>
+      </div>
+      <div class="card rule-card">
+        <h3>Logo Do's</h3>
+        <ul>
+          <li><span class="ok">✓</span>Use the files on this page, at provided proportions</li>
+          <li><span class="ok">✓</span>Give the mark clear space on all sides</li>
+          <li><span class="ok">✓</span>Place on True Black, Off-White, or photography with contrast</li>
+        </ul>
+      </div>
+      <div class="card rule-card">
+        <h3>Logo Don'ts</h3>
+        <ul>
+          <li><span class="no">✕</span>Never retype "POSTGAME" in any font as a stand-in for the logo</li>
+          <li><span class="no">✕</span>Never stretch, rotate, recolor, or add effects</li>
+          <li><span class="no">✕</span>Never place on low-contrast or busy backgrounds</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="showcase">
+  <div class="wrap">
+    <div class="eyebrow">06 / Showcase</div>
+    <h2>The Brand, Worn &amp; Shot</h2>
+    <p class="section-note">Apparel, merch, and content built with this system.</p>
+  </div>
+  <div class="marquee"><div class="marquee-track" id="showTrack"></div></div>
+</section>
+
+<footer>Postgame · Brand Kit · Updated June 2026</footer>
+
+<script>
+/* ---------- helpers ---------- */
+function el(html){
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+function copyBtn(url){
+  return '<button class="btn copy-btn" data-copy="'+url+'">Copy URL</button>';
+}
+function openBtn(url){
+  return '<a class="btn" href="'+url+'" target="_blank" rel="noopener">Open</a>';
+}
+
+/* ---------- logo cards ---------- */
+const LOGO_DEFS = [
+  { key:'primary',     name:'Primary',        use:'Default — use first · dark surfaces',  stage:'stage-checker' },
+  { key:'black',       name:'All Black',      use:'Light backgrounds · print',            stage:'stage-checker-light' },
+  { key:'blackOrange', name:'Black + Orange', use:'Light backgrounds · full color',       stage:'stage-checker-light' },
+  { key:'grey',        name:'All Grey',       use:'Muted contexts · watermarks',          stage:'stage-checker-light' },
+  { key:'white',       name:'All White',      use:'Dark backgrounds · photography',       stage:'stage-checker' },
+  { key:'mark',        name:'Mark Only',      use:'Avatars · favicons · small sizes',     stage:'stage-checker' }
+];
+const grid = document.getElementById('logoGrid');
+LOGO_DEFS.forEach(def => {
+  const url = ASSETS.logos[def.key];
+  if(url){
+    grid.appendChild(el(
+      '<div class="card logo-card">'+
+        '<div class="logo-stage '+def.stage+'"><img src="'+url+'" alt="Postgame logo — '+def.name+'"></div>'+
+        '<div class="logo-meta">'+
+          '<div><span class="logo-name">'+def.name+'</span><span class="logo-use">'+def.use+' · Transparent PNG</span></div>'+
+          '<div class="btn-row">'+openBtn(url)+copyBtn(url)+'</div>'+
+        '</div>'+
+      '</div>'
+    ));
+  } else {
+    grid.appendChild(el(
+      '<div class="placeholder" style="min-height:300px;">'+def.name+'<br>Drop asset —<br>paste URL in ASSETS.logos.'+def.key+'</div>'
+    ));
+  }
+});
+
+/* ---------- school carousel ---------- */
+function buildSchoolCards(){
+  return ASSETS.schools.map((s,i) => {
+    if(s.url){
+      return '<div class="card school-card">'+
+        '<div class="school-stage stage-checker"><img src="'+s.url+'" alt="'+(s.name||'School variation')+'"></div>'+
+        '<div class="school-name">'+(s.name||'School '+(i+1))+'</div>'+
+      '</div>';
+    }
+    return '<div class="card school-card">'+
+      '<div class="placeholder">Drop logo<br>ASSETS.schools['+i+']</div>'+
+      '<div class="school-name">'+(s.name||'School '+(i+1))+'</div>'+
+    '</div>';
+  }).join('');
+}
+/* marquee needs the track doubled so the loop is seamless */
+document.getElementById('schoolTrack').innerHTML = buildSchoolCards() + buildSchoolCards();
+
+/* ---------- showcase carousel ---------- */
+function buildShowCards(){
+  return ASSETS.showcase.map((s,i) => {
+    if(s.url && s.type === 'video'){
+      return '<div class="card show-card">'+
+        '<video src="'+s.url+'" autoplay muted loop playsinline></video>'+
+        (s.label ? '<div class="show-label">'+s.label+'</div>' : '')+
+      '</div>';
+    }
+    if(s.url){
+      return '<div class="card show-card">'+
+        '<img src="'+s.url+'" alt="'+(s.label||'Showcase')+'">'+
+        (s.label ? '<div class="show-label">'+s.label+'</div>' : '')+
+      '</div>';
+    }
+    return '<div class="card show-card"><div class="placeholder">Drop photo<br>ASSETS.showcase['+i+']</div></div>';
+  }).join('');
+}
+document.getElementById('showTrack').innerHTML = buildShowCards() + buildShowCards();
+
+/* ---------- hero background crossfade ---------- */
+(function(){
+  const urls = ASSETS.hero.filter(Boolean);
+  const bg = document.getElementById('heroBg');
+  if(!urls.length) return;            /* no images yet → gradient-only hero */
+  urls.forEach(u => {
+    const img = document.createElement('img');
+    img.src = u; img.alt = '';
+    bg.appendChild(img);
+  });
+  const imgs = bg.querySelectorAll('img');
+  let i = 0;
+  imgs[0].classList.add('active');
+  if(imgs.length > 1){
+    setInterval(() => {
+      imgs[i].classList.remove('active');
+      i = (i + 1) % imgs.length;
+      imgs[i].classList.add('active');
+    }, 5200);
+  }
+})();
+
+/* hero corner logo = primary (white + orange) */
+(function(){
+  const src = ASSETS.logos.primary || ASSETS.logos.white;
+  const heroLogo = document.getElementById('heroLogo');
+  if(src) heroLogo.src = src; else heroLogo.style.display = 'none';
+})();
+
+/* ---------- copy buttons + swatches ---------- */
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('.copy-btn');
+  if(!btn) return;
+  navigator.clipboard.writeText(btn.dataset.copy).then(function(){
+    btn.classList.add('copied');
+    const prev = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(function(){ btn.classList.remove('copied'); btn.textContent = prev; }, 1400);
+  });
+});
+document.querySelectorAll('.swatch').forEach(function(sw){
+  function copyHex(){
+    navigator.clipboard.writeText(sw.dataset.copy).then(function(){
+      const hexEl = sw.querySelector('.swatch-hex small');
+      if(hexEl){ const old = hexEl.textContent; hexEl.textContent = '· copied!'; setTimeout(function(){ hexEl.textContent = old; },1400); }
+    });
+  }
+  sw.addEventListener('click', copyHex);
+  sw.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); copyHex(); } });
+});
+</script>
+
+</body>
+</html>
