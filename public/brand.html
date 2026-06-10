@@ -40,12 +40,43 @@ const ASSETS = {
   /* School color variations — carousel under the logos.
      name = school, url = transparent logo file. */
   schools: [
-    { name: "", url: "" },
-    { name: "", url: "" },
-    { name: "", url: "" },
-    { name: "", url: "" },
-    { name: "", url: "" },
-    { name: "", url: "" }
+    { name: "Alabama · Crimson", url: "brand-assets/schools/alabama-crimson-crimson-white.png", stage: "stage-checker-light" },
+    { name: "Boston College · Maroon", url: "brand-assets/schools/boston-college-maroon-gold.png", stage: "stage-checker-light" },
+    { name: "Duke · Blue", url: "brand-assets/schools/duke-blue-blue-white.png", stage: "stage-checker-light" },
+    { name: "Duke · White", url: "brand-assets/schools/duke-white-white-blue.png", stage: "stage-checker" },
+    { name: "Florida · Blue", url: "brand-assets/schools/florida-gators-blue-orange.png", stage: "stage-checker-light" },
+    { name: "Florida · White", url: "brand-assets/schools/florida-white-orange-blue.png", stage: "stage-checker" },
+    { name: "Kentucky · Blue", url: "brand-assets/schools/kentucky-blue-blue-white.png", stage: "stage-checker-light" },
+    { name: "Kentucky · White", url: "brand-assets/schools/kentucky-white-white-blue.png", stage: "stage-checker" },
+    { name: "LSU · Purple", url: "brand-assets/schools/lsu-purple-purple-yellow.png", stage: "stage-checker-light" },
+    { name: "LSU · Yellow", url: "brand-assets/schools/lsu-yellow-yellow-purple.png", stage: "stage-checker" },
+    { name: "Miami · Green", url: "brand-assets/schools/miami-green-orange-green.png", stage: "stage-checker-light" },
+    { name: "Miami · Orange", url: "brand-assets/schools/miami-orange-orange-green.png", stage: "stage-checker-light" },
+    { name: "Miami · White", url: "brand-assets/schools/miami-white-orange-green.png", stage: "stage-checker" },
+    { name: "Michigan · Blue", url: "brand-assets/schools/michigan-blue-blue-yello.png", stage: "stage-checker-light" },
+    { name: "Michigan State · White", url: "brand-assets/schools/michigan-state-white-white-green.png", stage: "stage-checker" },
+    { name: "Michigan · White", url: "brand-assets/schools/michigan-white-logo.png", stage: "stage-checker" },
+    { name: "Michigan · Yellow", url: "brand-assets/schools/michigan-yellow-yellow-blue.png", stage: "stage-checker" },
+    { name: "Ole Miss · Red", url: "brand-assets/schools/miss-red-red-blue.png", stage: "stage-checker-light" },
+    { name: "Mississippi State · Maroon", url: "brand-assets/schools/miss-state-maroon-marron-white.png", stage: "stage-checker-light" },
+    { name: "Mississippi State · White", url: "brand-assets/schools/miss-state-white-white-maroon.png", stage: "stage-checker" },
+    { name: "Ole Miss · White", url: "brand-assets/schools/miss-white-red-blue.png", stage: "stage-checker" },
+    { name: "Nebraska · Red", url: "brand-assets/schools/nebraska-red-red-white.png", stage: "stage-checker-light" },
+    { name: "Oregon · White", url: "brand-assets/schools/oregon-postgame-white-logo.png", stage: "stage-checker" },
+    { name: "Oregon · White", url: "brand-assets/schools/oregon-white-yellow.png", stage: "stage-checker" },
+    { name: "Oregon · Yellow", url: "brand-assets/schools/oregon-yellow-green.png", stage: "stage-checker" },
+    { name: "Ohio State · White", url: "brand-assets/schools/osu-white-red-grey.png", stage: "stage-checker" },
+    { name: "Penn State · White", url: "brand-assets/schools/penn-state-white-postgame-logo.png", stage: "stage-checker" },
+    { name: "Penn State · Navy", url: "brand-assets/schools/psu-navy-navy.png", stage: "stage-checker-light" },
+    { name: "Penn State · White", url: "brand-assets/schools/psu-white-navy.png", stage: "stage-checker" },
+    { name: "Texas A&M · Maroon", url: "brand-assets/schools/tamu-maroon-marron-white.png", stage: "stage-checker-light" },
+    { name: "Texas A&M · White", url: "brand-assets/schools/tamu-white-white-maroon.png", stage: "stage-checker" },
+    { name: "Texas · Orange", url: "brand-assets/schools/texas-orange-orange-white.png", stage: "stage-checker-light" },
+    { name: "UNC · Blue", url: "brand-assets/schools/unc-blue-blue-white.png", stage: "stage-checker-light" },
+    { name: "UNC · White", url: "brand-assets/schools/unc-white-white-blue.png", stage: "stage-checker" },
+    { name: "USC · Red", url: "brand-assets/schools/usc-postgame-logo-red.png", stage: "stage-checker-light" },
+    { name: "USC · White", url: "brand-assets/schools/usc-postgame-logo-white.png", stage: "stage-checker" },
+    { name: "Washington · Gold", url: "brand-assets/schools/washington-gold-gold-purple.png", stage: "stage-checker" }
   ],
 
   /* Apparel + content showcase — carousel at the bottom.
@@ -68,6 +99,14 @@ const ASSETS = {
     { label: "", url: "" },
     { label: "", url: "" },
     { label: "", url: "" },
+    { label: "", url: "" },
+    { label: "", url: "" },
+    { label: "", url: "" }
+  ],
+
+  /* Logo animations — Motion section. mp4/webm files.
+     We'll build these together later; slots are ready. */
+  motion: [
     { label: "", url: "" },
     { label: "", url: "" },
     { label: "", url: "" }
@@ -129,6 +168,24 @@ const ASSETS = {
   }
   .hero-content{position:relative;z-index:2;}
   .hero-logo{height:clamp(64px, 9vw, 110px);width:auto;margin-bottom:56px;}
+  .hero-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
+    color:var(--orange);
+    display:flex;align-items:center;gap:12px;
+    margin-bottom:22px;
+  }
+  .hero-badge::before{content:"";display:block;width:28px;height:2px;background:var(--orange);}
+
+  /* ---------- statement band ---------- */
+  .statement{padding:110px 0;}
+  .statement h2{
+    font-family:'Bebas Neue', Arial, sans-serif;
+    font-size:clamp(40px,6.5vw,84px);
+    text-transform:uppercase;line-height:0.95;margin-bottom:22px;
+  }
+  .statement h2 em{font-style:normal;color:var(--orange);}
+  .statement p{color:var(--muted);font-size:clamp(16px,2vw,19px);max-width:560px;}
   h1.tagline{
     font-family:'Bebas Neue', Arial, sans-serif;
     font-size:clamp(56px, 11vw, 148px);
@@ -321,10 +378,18 @@ const ASSETS = {
   <div class="hero-veil"></div>
   <div class="wrap hero-content">
     <img class="hero-logo" id="heroLogo" src="" alt="Postgame logo">
+    <p class="hero-badge">#1 NIL Agency in the Country</p>
     <h1 class="tagline">When the game ends,<span class="line2">the Postgame begins.</span></h1>
     <p class="hero-sub">Brand kit · Logos · Color · Type · Voice · Showcase</p>
   </div>
 </header>
+
+<section id="about" class="statement">
+  <div class="wrap">
+    <h2>We build brand campaigns <em>with athletes.</em></h2>
+    <p>The leading NIL agency connecting elite athletes with the world's most ambitious brands.</p>
+  </div>
+</section>
 
 <section id="logos">
   <div class="wrap">
@@ -459,6 +524,15 @@ const ASSETS = {
   <div class="marquee"><div class="marquee-track" id="wildTrack"></div></div>
 </section>
 
+<section id="motion">
+  <div class="wrap">
+    <div class="eyebrow">08 / Motion</div>
+    <h2>Logo In Motion</h2>
+    <p class="section-note">How the mark moves — intros, outros, and stingers. In progress.</p>
+    <div class="logo-grid" id="motionGrid"></div>
+  </div>
+</section>
+
 <footer>Postgame · Brand Kit · Updated June 2026</footer>
 
 <script>
@@ -509,7 +583,7 @@ function buildSchoolCards(){
   return ASSETS.schools.map((s,i) => {
     if(s.url){
       return '<div class="card school-card">'+
-        '<div class="school-stage stage-checker"><img src="'+s.url+'" alt="'+(s.name||'School variation')+'"></div>'+
+        '<div class="school-stage '+(s.stage||'stage-checker')+'"><img src="'+s.url+'" alt="'+(s.name||'School variation')+'" loading="lazy"></div>'+
         '<div class="school-name">'+(s.name||'School '+(i+1))+'</div>'+
       '</div>';
     }
@@ -556,7 +630,29 @@ function buildWildCards(){
 }
 document.getElementById('wildTrack').innerHTML = buildWildCards() + buildWildCards();
 
-/* ---------- hero background crossfade ---------- */
+/* ---------- motion grid ---------- */
+const motionGrid = document.getElementById('motionGrid');
+ASSETS.motion.forEach((s,i) => {
+  if(s.url){
+    motionGrid.appendChild(el(
+      '<div class="card logo-card">'+
+        '<div class="logo-stage stage-dark" style="padding:0;"><video src="'+s.url+'" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>'+
+        '<div class="logo-meta"><div><span class="logo-name">'+(s.label||('Animation '+(i+1)))+'</span></div>'+
+        '<div class="btn-row">'+openBtn(s.url)+copyBtn(s.url)+'</div></div>'+
+      '</div>'
+    ));
+  } else {
+    motionGrid.appendChild(el(
+      '<div class="placeholder" style="min-height:240px;">Animation '+(i+1)+'<br>Coming soon —<br>ASSETS.motion['+i+']</div>'
+    ));
+  }
+});
+
+/* marquee speed scales with content so long tracks don't race */
+[['schoolTrack',4],['showTrack',5],['wildTrack',5]].forEach(([id,secsPer]) => {
+  const t = document.getElementById(id);
+  t.style.animationDuration = Math.max(30, (t.children.length/2) * secsPer) + 's';
+});
 (function(){
   const urls = ASSETS.hero.filter(Boolean);
   const bg = document.getElementById('heroBg');
