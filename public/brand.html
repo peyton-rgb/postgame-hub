@@ -21,9 +21,15 @@ const ASSETS = {
      Currently the apparel shots — swap for athlete/campaign
      photos whenever. Leave empty [] for the plain gradient hero. */
   hero: [
+    "brand-assets/wild/dsc04108-1.jpg",
     "brand-assets/wild/dsc05539.jpg",
-    "brand-assets/wild/cd4a0141.jpg",
-    "brand-assets/wild/andre-seldon-new-mexico-state-football-postgame-tshirt.jpg"
+    "brand-assets/wild/screenshot-2023-11-20-at-3-48-17-pm.jpg",
+    "brand-assets/wild/img-4746-1.jpg",
+    "brand-assets/wild/untitled-2.jpg",
+    "brand-assets/wild/img-1752.jpg",
+    "brand-assets/wild/img-2466.jpg",
+    "brand-assets/wild/img-2479.jpg",
+    "brand-assets/wild/img-2522.jpg"
   ],
 
   /* Core logo files. All transparent PNGs except the two
@@ -86,16 +92,11 @@ const ASSETS = {
      description (edit freely), type: "video" for mp4. New entries go
      between the START/END markers; if name is omitted the page derives
      one from the filename. */
+  /* THE CATALOGUE — two groups. Live = on the storefront,
+     Mockups = renderings of potential products. Move a line between
+     the arrays to reclassify it. */
   /* CATALOGUE:START */
-  catalogue: [
-    { name: "Black Fleece",        desc: "Postgame fleece in true black.", url: "brand-assets/fleece-black.jpg" },
-    { name: "Black Tee · 3D",      desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-black-tee.mp4", type: "video" },
-    { name: "Cream Tee",           desc: "Postgame tee in cream.",         url: "brand-assets/tee-cream.jpg" },
-    { name: "White Fleece",        desc: "Postgame fleece in white.",      url: "brand-assets/fleece-white.jpg" },
-    { name: "Black Tee · 3D Spin", desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-3.mp4", type: "video" },
-    { name: "White Tee",           desc: "Postgame tee in white.",         url: "brand-assets/tee-white.jpg" },
-    { name: "Black Tee",           desc: "Postgame tee in black.",         url: "brand-assets/tee-black.jpg" },
-    { name: "Apparel · 3D",        desc: "Apparel — 3D product spin.",    url: "brand-assets/spin-2.mp4", type: "video" },
+  catalogueLive: [
     { url: "brand-assets/catalogue/1.jpg" },
     { url: "brand-assets/catalogue/2.jpg" },
     { url: "brand-assets/catalogue/3.jpg" },
@@ -104,12 +105,7 @@ const ASSETS = {
     { url: "brand-assets/catalogue/6.jpg" },
     { url: "brand-assets/catalogue/7.jpg" },
     { url: "brand-assets/catalogue/chatgpt-image-jan-22-2026-10-35-39-am.jpg" },
-    { url: "brand-assets/catalogue/definition-mock-back.jpg" },
-    { url: "brand-assets/catalogue/definition-mock-front.jpg" },
     { url: "brand-assets/catalogue/dsc07559.jpg" },
-    { url: "brand-assets/catalogue/fleece-black.jpg" },
-    { url: "brand-assets/catalogue/fleece-white.jpg" },
-    { url: "brand-assets/catalogue/postgame-black-dri-fit-hoodie-white-logo.jpg" },
     { url: "brand-assets/catalogue/red-visor.jpg" },
     { url: "brand-assets/catalogue/screenshot-2024-07-01-at-4-25-56-pm.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-35-44-pm.jpg" },
@@ -122,6 +118,24 @@ const ASSETS = {
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-32-pm.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-46-pm.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-56-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-10-19-42-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-9-06-04-pm.jpg" },
+    { url: "brand-assets/catalogue/white-visor.jpg" }
+  ],
+  catalogueMockups: [
+    { name: "Black Fleece",        desc: "Postgame fleece in true black.", url: "brand-assets/fleece-black.jpg" },
+    { name: "Black Tee · 3D",      desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-black-tee.mp4", type: "video" },
+    { name: "Cream Tee",           desc: "Postgame tee in cream.",         url: "brand-assets/tee-cream.jpg" },
+    { name: "White Fleece",        desc: "Postgame fleece in white.",      url: "brand-assets/fleece-white.jpg" },
+    { name: "Black Tee · 3D Spin", desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-3.mp4", type: "video" },
+    { name: "White Tee",           desc: "Postgame tee in white.",         url: "brand-assets/tee-white.jpg" },
+    { name: "Black Tee",           desc: "Postgame tee in black.",         url: "brand-assets/tee-black.jpg" },
+    { name: "Apparel · 3D",        desc: "Apparel — 3D product spin.",    url: "brand-assets/spin-2.mp4", type: "video" },
+    { url: "brand-assets/catalogue/definition-mock-back.jpg" },
+    { url: "brand-assets/catalogue/definition-mock-front.jpg" },
+    { url: "brand-assets/catalogue/fleece-black.jpg" },
+    { url: "brand-assets/catalogue/fleece-white.jpg" },
+    { url: "brand-assets/catalogue/postgame-black-dri-fit-hoodie-white-logo.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-38-52-pm.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-39-09-pm.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-39-56-pm.jpg" },
@@ -132,12 +146,9 @@ const ASSETS = {
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-13-pm.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-22-pm.jpg" },
     { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-33-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-10-19-42-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-9-06-04-pm.jpg" },
     { url: "brand-assets/catalogue/tee-black.jpg" },
     { url: "brand-assets/catalogue/tee-cream.jpg" },
-    { url: "brand-assets/catalogue/tee-white.jpg" },
-    { url: "brand-assets/catalogue/white-visor.jpg" }
+    { url: "brand-assets/catalogue/tee-white.jpg" }
   ],
   /* CATALOGUE:END */
 
@@ -225,7 +236,7 @@ const ASSETS = {
   .hero-bg{position:absolute;top:0;bottom:0;right:0;left:34%;z-index:0;}
   .hero-bg img{
     position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-    opacity:0;transition:opacity 2.2s ease;
+    opacity:0;transition:opacity 0.55s ease;
     filter:grayscale(12%) contrast(1.06);
   }
   .hero-bg img.active{opacity:0.85;}
@@ -322,6 +333,12 @@ const ASSETS = {
   }
   .pg-dl{color:var(--orange);text-decoration:none;font-weight:700;white-space:nowrap;}
   .pg-dl:hover{text-decoration:underline;}
+  .sub-eyebrow{
+    font-family:'JetBrains Mono', monospace;font-size:11px;font-weight:700;
+    letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);
+    margin:8px 0 22px;display:flex;align-items:center;gap:10px;
+  }
+  .sub-eyebrow::before{content:"";display:block;width:18px;height:2px;background:var(--orange);}
   .pg-click{cursor:pointer;transition:border-color .25s ease;}
   .pg-click:hover{border-color:rgba(215,63,9,0.55);}
   .pg-product-media{
@@ -437,16 +454,17 @@ const ASSETS = {
     transform:translateY(-6px);border-color:rgba(215,63,9,0.55);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 26px 56px rgba(0,0,0,0.55);
   }
-  .show-bg{
-    position:absolute;inset:0;z-index:0;
-    background-size:cover;background-position:center;
-    filter:blur(26px) saturate(1.15) brightness(0.7);
-    transform:scale(1.2);
+  /* card background is sampled from the image's own edges at runtime,
+     so the photo melts into the card edge-to-edge with nothing cropped */
+  .show-card.video-card{background:radial-gradient(ellipse 90% 70% at 50% 30%, rgba(215,63,9,0.2), rgba(20,20,26,1) 75%);}
+  .show-card::after{
+    content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:linear-gradient(165deg, rgba(255,255,255,0.14), transparent 36%);
+    border-radius:inherit;
   }
-  .show-bg-dark{background:radial-gradient(ellipse 90% 70% at 50% 30%, rgba(215,63,9,0.18), rgba(7,7,10,0.2) 70%);}
-  .show-stage{position:absolute;top:10px;left:10px;right:10px;bottom:50px;z-index:1;display:flex;align-items:center;justify-content:center;}
-  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;filter:drop-shadow(0 14px 30px rgba(0,0,0,0.45));}
-  .show-label{z-index:2;}
+  .show-stage{position:absolute;top:0;left:0;right:0;bottom:46px;z-index:1;display:flex;align-items:center;justify-content:center;}
+  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}
+  .show-label{z-index:3;}
 
   .wild-card{
     width:280px;height:380px;flex-shrink:0;overflow:hidden;position:relative;
@@ -515,7 +533,7 @@ const ASSETS = {
     .type-row{grid-template-columns:1fr;gap:14px;}
     header{min-height:72vh;}
     section{padding:64px 0;}
-    .show-card{width:260px;height:360px;}
+    .show-card{width:250px;height:340px;}
     .school-card{width:200px;}
     .hero-bg{left:0;}
     .hero-bg img.active{opacity:0.28;}
@@ -679,8 +697,11 @@ const ASSETS = {
       <button class="ghost-btn" id="openCatalogueModal" type="button">View full catalogue</button>
     </div>
     <p class="section-note">Apparel, merch, and content built with this system. Tap any product for details.</p>
+    <div class="sub-eyebrow">Live Products — on the storefront</div>
   </div>
-  <div class="marquee"><div class="marquee-track" id="showTrack"></div></div>
+  <div class="marquee"><div class="marquee-track" id="liveTrack"></div></div>
+  <div class="wrap"><div class="sub-eyebrow" style="margin-top:56px;">Mock-ups — renderings of potential products</div></div>
+  <div class="marquee"><div class="marquee-track" id="mockTrack"></div></div>
 </section>
 
 
@@ -772,22 +793,47 @@ function catMedia(item){
   if(item.type === 'video') return '<video src="'+item.url+'" autoplay muted loop playsinline></video>';
   return '<img src="'+item.url+'" alt="'+(item.name||prettyName(item.url))+'" loading="lazy">';
 }
-function buildShowCards(){
-  /* carousel shows the first 14; the full set lives in the popup */
-  return ASSETS.catalogue.slice(0,14).map(function(s,i){
+var CAT = ASSETS.catalogueLive.concat(ASSETS.catalogueMockups);
+function buildCatCards(list, offset){
+  /* each carousel shows up to 14; the full set lives in the popup */
+  return list.slice(0,14).map(function(s,i){
     if(!s.url) return '';
     var name = s.name || prettyName(s.url);
-    var bg = s.type === 'video'
-      ? '<div class="show-bg show-bg-dark"></div>'
-      : '<div class="show-bg" style="background-image:url(\''+s.url+'\')"></div>';
-    return '<div class="card show-card" data-cat="'+i+'">'+
-      bg+
+    return '<div class="card show-card'+(s.type==='video'?' video-card':'')+'" data-cat="'+(offset+i)+'">'+
       '<div class="show-stage">'+catMedia(s)+'</div>'+
       '<div class="show-label">'+name+'</div>'+
     '</div>';
   }).join('');
 }
-document.getElementById('showTrack').innerHTML = buildShowCards() + buildShowCards();
+var liveHTML = buildCatCards(ASSETS.catalogueLive, 0);
+var mockHTML = buildCatCards(ASSETS.catalogueMockups, ASSETS.catalogueLive.length);
+document.getElementById('liveTrack').innerHTML = liveHTML + liveHTML;
+document.getElementById('mockTrack').innerHTML = mockHTML + mockHTML;
+
+/* sample the image's border pixels and paint the card to match —
+   the photo blends seamlessly into the card, nothing gets cropped */
+function edgeFill(img){
+  var card = img.closest('.show-card, .pg-product-media');
+  if(!card || card.classList.contains('video-card')) return;
+  try{
+    var s = 32, c = document.createElement('canvas'); c.width = s; c.height = s;
+    var x = c.getContext('2d'); x.drawImage(img, 0, 0, s, s);
+    var d = x.getImageData(0, 0, s, s).data, r=0, g=0, b=0, n=0;
+    for(var i=0;i<s;i++){
+      [[i,0],[i,s-1],[0,i],[s-1,i]].forEach(function(p){
+        var o=(p[1]*s+p[0])*4; r+=d[o]; g+=d[o+1]; b+=d[o+2]; n++;
+      });
+    }
+    card.style.background = 'rgb('+Math.round(r/n)+','+Math.round(g/n)+','+Math.round(b/n)+')';
+  }catch(e){}
+}
+function applyEdgeFills(root){
+  (root||document).querySelectorAll('.show-stage img, .pg-product-media img').forEach(function(img){
+    if(img.complete && img.naturalWidth) edgeFill(img);
+    else img.addEventListener('load', function(){ edgeFill(img); }, { once:true });
+  });
+}
+applyEdgeFills();
 
 /* ---------- in the wild carousel ---------- */
 function buildWildCards(){
@@ -822,7 +868,7 @@ ASSETS.motion.forEach((s,i) => {
 });
 
 /* marquee speed scales with content so long tracks don't race */
-[['schoolTrack',4],['showTrack',5],['wildTrack',5]].forEach(([id,secsPer]) => {
+[['schoolTrack',4],['liveTrack',5],['mockTrack',5],['wildTrack',5]].forEach(([id,secsPer]) => {
   const t = document.getElementById(id);
   t.style.animationDuration = Math.max(30, (t.children.length/2) * secsPer) + 's';
 });
@@ -843,7 +889,7 @@ ASSETS.motion.forEach((s,i) => {
       imgs[i].classList.remove('active');
       i = (i + 1) % imgs.length;
       imgs[i].classList.add('active');
-    }, 5200);
+    }, 1800);
   }
 })();
 
@@ -892,28 +938,34 @@ function productModalHTML(item){
     (item.desc ? '<p class="pg-product-desc">'+item.desc+'</p>' : '')+
     '<a class="ghost-btn" href="'+item.url+'" download style="margin:20px 0 0;">Download asset</a>';
 }
-function catalogueModalHTML(){
-  var tiles = ASSETS.catalogue.filter(function(s){return s.url;}).map(function(s,i){
+function catTiles(list, offset){
+  return list.map(function(s,i){
+    if(!s.url) return '';
     var name = s.name || prettyName(s.url);
     var thumb = s.type === 'video'
       ? '<video src="'+s.url+'" muted loop playsinline></video>'
       : '<img src="'+s.url+'" alt="'+name+'" loading="lazy">';
-    return '<div class="pg-tile pg-click" data-cat-full="'+i+'">'+
+    return '<div class="pg-tile pg-click" data-cat-full="'+(offset+i)+'">'+
       '<div class="stage stage-dark">'+thumb+'</div>'+
       '<div class="meta"><span>'+name+'</span></div>'+
     '</div>';
   }).join('');
+}
+function catalogueModalHTML(){
   return '<h3>The Catalogue</h3>'+
     '<p class="pg-modal-sub">Every Postgame product. Tap one for details.</p>'+
-    '<div class="pg-grid">'+tiles+'</div>';
+    '<div class="sub-eyebrow" style="margin-top:24px;">Live Products — on the storefront</div>'+
+    '<div class="pg-grid">'+catTiles(ASSETS.catalogueLive, 0)+'</div>'+
+    '<div class="sub-eyebrow" style="margin-top:32px;">Mock-ups — renderings of potential products</div>'+
+    '<div class="pg-grid">'+catTiles(ASSETS.catalogueMockups, ASSETS.catalogueLive.length)+'</div>';
 }
 document.getElementById('openCatalogueModal').addEventListener('click', function(){ openModal(catalogueModalHTML()); });
 
 document.addEventListener('click', function(e){
   var card = e.target.closest('.show-card[data-cat]');
-  if(card){ openModal(productModalHTML(ASSETS.catalogue[+card.dataset.cat])); return; }
+  if(card){ openModal(productModalHTML(CAT[+card.dataset.cat])); applyEdgeFills(pgModalContent); return; }
   var tile = e.target.closest('[data-cat-full]');
-  if(tile){ openModal(productModalHTML(ASSETS.catalogue[+tile.dataset.catFull])); }
+  if(tile){ openModal(productModalHTML(CAT[+tile.dataset.catFull])); applyEdgeFills(pgModalContent); }
 });
 
 /* ---------- copy buttons + swatches ---------- */
