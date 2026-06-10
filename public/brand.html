@@ -82,16 +82,64 @@ const ASSETS = {
   /* Apparel + content showcase — carousel at the bottom.
      type: "image" (default) or "video" (muted auto-loop).
      label = short caption, url = file. */
-  showcase: [
-    { label: "Black Fleece",            url: "brand-assets/fleece-black.jpg" },
-    { label: "Black Tee · 3D",          url: "brand-assets/spin-black-tee.mp4", type: "video" },
-    { label: "Cream Tee",               url: "brand-assets/tee-cream.jpg" },
-    { label: "White Fleece",            url: "brand-assets/fleece-white.jpg" },
-    { label: "Black Tee · 3D Spin",     url: "brand-assets/spin-3.mp4", type: "video" },
-    { label: "White Tee",               url: "brand-assets/tee-white.jpg" },
-    { label: "Black Tee",               url: "brand-assets/tee-black.jpg" },
-    { label: "Apparel · 3D",            url: "brand-assets/spin-2.mp4", type: "video" }
+  /* THE CATALOGUE — every product. name = display name, desc = popup
+     description (edit freely), type: "video" for mp4. New entries go
+     between the START/END markers; if name is omitted the page derives
+     one from the filename. */
+  /* CATALOGUE:START */
+  catalogue: [
+    { name: "Black Fleece",        desc: "Postgame fleece in true black.", url: "brand-assets/fleece-black.jpg" },
+    { name: "Black Tee · 3D",      desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-black-tee.mp4", type: "video" },
+    { name: "Cream Tee",           desc: "Postgame tee in cream.",         url: "brand-assets/tee-cream.jpg" },
+    { name: "White Fleece",        desc: "Postgame fleece in white.",      url: "brand-assets/fleece-white.jpg" },
+    { name: "Black Tee · 3D Spin", desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-3.mp4", type: "video" },
+    { name: "White Tee",           desc: "Postgame tee in white.",         url: "brand-assets/tee-white.jpg" },
+    { name: "Black Tee",           desc: "Postgame tee in black.",         url: "brand-assets/tee-black.jpg" },
+    { name: "Apparel · 3D",        desc: "Apparel — 3D product spin.",    url: "brand-assets/spin-2.mp4", type: "video" },
+    { url: "brand-assets/catalogue/1.jpg" },
+    { url: "brand-assets/catalogue/2.jpg" },
+    { url: "brand-assets/catalogue/3.jpg" },
+    { url: "brand-assets/catalogue/4.jpg" },
+    { url: "brand-assets/catalogue/5.jpg" },
+    { url: "brand-assets/catalogue/6.jpg" },
+    { url: "brand-assets/catalogue/7.jpg" },
+    { url: "brand-assets/catalogue/chatgpt-image-jan-22-2026-10-35-39-am.jpg" },
+    { url: "brand-assets/catalogue/definition-mock-back.jpg" },
+    { url: "brand-assets/catalogue/definition-mock-front.jpg" },
+    { url: "brand-assets/catalogue/dsc07559.jpg" },
+    { url: "brand-assets/catalogue/fleece-black.jpg" },
+    { url: "brand-assets/catalogue/fleece-white.jpg" },
+    { url: "brand-assets/catalogue/postgame-black-dri-fit-hoodie-white-logo.jpg" },
+    { url: "brand-assets/catalogue/red-visor.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2024-07-01-at-4-25-56-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-35-44-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-08-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-25-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-36-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-53-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-06-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-22-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-32-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-46-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-56-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-38-52-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-39-09-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-39-56-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-19-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-35-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-46-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-57-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-13-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-22-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-33-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-10-19-42-pm.jpg" },
+    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-9-06-04-pm.jpg" },
+    { url: "brand-assets/catalogue/tee-black.jpg" },
+    { url: "brand-assets/catalogue/tee-cream.jpg" },
+    { url: "brand-assets/catalogue/tee-white.jpg" },
+    { url: "brand-assets/catalogue/white-visor.jpg" }
   ],
+  /* CATALOGUE:END */
 
   /* In the Wild — athletes wearing the product.
      Portrait photos work best. label = athlete / campaign. */
@@ -174,21 +222,22 @@ const ASSETS = {
     position:relative;overflow:hidden;
     border-bottom:1px solid var(--stroke);
   }
-  .hero-bg{position:absolute;inset:0;z-index:0;}
+  .hero-bg{position:absolute;top:0;bottom:0;right:0;left:34%;z-index:0;}
   .hero-bg img{
     position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
     opacity:0;transition:opacity 2.2s ease;
-    filter:grayscale(35%) contrast(1.05);
+    filter:grayscale(12%) contrast(1.06);
   }
-  .hero-bg img.active{opacity:0.16;}
+  .hero-bg img.active{opacity:0.85;}
   .hero-veil{
     position:absolute;inset:0;z-index:1;pointer-events:none;
     background:
-      radial-gradient(ellipse 70% 50% at 70% 110%, rgba(215,63,9,0.16), transparent 70%),
-      linear-gradient(to bottom, rgba(7,7,10,0.55), rgba(7,7,10,0.25) 40%, rgba(7,7,10,0.85));
+      linear-gradient(to right, #07070a 0%, #07070a 32%, rgba(7,7,10,0.88) 46%, rgba(7,7,10,0.30) 66%, rgba(7,7,10,0.10) 100%),
+      linear-gradient(to top, rgba(7,7,10,0.92), transparent 32%),
+      radial-gradient(ellipse 60% 45% at 18% 112%, rgba(215,63,9,0.14), transparent 70%);
   }
   .hero-content{position:relative;z-index:2;}
-  .hero-logo{height:clamp(64px, 9vw, 110px);width:auto;margin-bottom:56px;}
+  .hero-logo{height:32px;width:auto;display:block;margin-bottom:72px;}
   .hero-badge{
     font-family:'JetBrains Mono', monospace;
     font-size:12px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
@@ -213,11 +262,78 @@ const ASSETS = {
     line-height:0.92;text-transform:uppercase;
   }
   h1.tagline .line2{color:var(--orange);display:block;}
+  h1.tagline .tagline-logo{
+    height:0.72em;width:auto;display:inline-block;
+    vertical-align:baseline;transform:translateY(0.05em);margin:0 0.05em;
+  }
+  .hero-content{text-align:left;}
   .hero-sub{
     margin-top:36px;
     font-family:'JetBrains Mono', monospace;
     font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);
   }
+
+  /* ---------- section head rows + ghost buttons ---------- */
+  .section-head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:0;}
+  .section-head-row h2{margin-bottom:18px;}
+  .ghost-btn{
+    font-family:'JetBrains Mono', monospace;font-size:11px;font-weight:700;
+    letter-spacing:0.18em;text-transform:uppercase;
+    color:var(--offwhite);background:rgba(255,255,255,0.05);
+    border:1px solid var(--stroke);border-radius:999px;
+    padding:12px 22px;cursor:pointer;margin-bottom:24px;
+    text-decoration:none;display:inline-block;
+    transition:border-color .25s ease, background .25s ease;
+  }
+  .ghost-btn:hover{border-color:var(--orange);background:rgba(215,63,9,0.12);}
+
+  /* ---------- popup modals (Liquid Glass) ---------- */
+  .pg-modal{position:fixed;inset:0;z-index:200;display:none;}
+  .pg-modal.open{display:block;}
+  .pg-modal-backdrop{
+    position:absolute;inset:0;background:rgba(7,7,10,0.78);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+  .pg-modal-panel{
+    position:relative;z-index:1;max-width:980px;width:calc(100% - 40px);
+    margin:6vh auto;max-height:88vh;overflow:auto;
+    background:linear-gradient(165deg, rgba(30,30,36,0.94), rgba(13,13,17,0.96));
+    border:1px solid rgba(255,255,255,0.16);border-radius:22px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.14), 0 30px 80px rgba(0,0,0,0.65);
+    padding:34px;
+  }
+  .pg-modal-close{
+    position:absolute;top:16px;right:16px;width:38px;height:38px;z-index:2;
+    border-radius:50%;border:1px solid var(--stroke);
+    background:rgba(255,255,255,0.06);color:var(--offwhite);
+    font-size:20px;line-height:1;cursor:pointer;
+  }
+  .pg-modal-close:hover{border-color:var(--orange);}
+  .pg-modal h3{
+    font-family:'Bebas Neue', Arial, sans-serif;font-size:38px;
+    text-transform:uppercase;line-height:1;margin-bottom:8px;
+  }
+  .pg-modal-sub{color:var(--muted);font-size:14px;max-width:560px;}
+  .pg-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(180px,1fr));gap:14px;margin-top:22px;}
+  .pg-tile{border:1px solid var(--stroke);border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.04);}
+  .pg-tile .stage{height:120px;display:flex;align-items:center;justify-content:center;padding:14px;}
+  .pg-tile .stage img, .pg-tile .stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}
+  .pg-tile .meta{
+    padding:10px 12px;border-top:1px solid var(--stroke);
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    font-family:'JetBrains Mono', monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);
+  }
+  .pg-dl{color:var(--orange);text-decoration:none;font-weight:700;white-space:nowrap;}
+  .pg-dl:hover{text-decoration:underline;}
+  .pg-click{cursor:pointer;transition:border-color .25s ease;}
+  .pg-click:hover{border-color:rgba(215,63,9,0.55);}
+  .pg-product-media{
+    height:52vh;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,0.03);border:1px solid var(--stroke);
+    border-radius:16px;padding:20px;margin-top:18px;
+  }
+  .pg-product-media img, .pg-product-media video{max-width:100%;max-height:100%;object-fit:contain;}
+  .pg-product-desc{color:var(--muted);margin-top:16px;max-width:640px;line-height:1.65;font-size:15px;}
 
   /* ---------- sections ---------- */
   section{padding:96px 0;border-bottom:1px solid var(--stroke);}
@@ -313,9 +429,19 @@ const ASSETS = {
   .school-card .placeholder{height:160px;border:none;border-bottom:1.5px dashed rgba(250,248,245,0.18);border-radius:0;}
 
   .show-card{
-    width:360px;height:260px;flex-shrink:0;overflow:hidden;position:relative;
+    width:320px;height:430px;flex-shrink:0;overflow:hidden;position:relative;cursor:pointer;
+    background:linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03) 40%, rgba(255,255,255,0.07));
+    border:1px solid rgba(255,255,255,0.16);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 44px rgba(0,0,0,0.45);
+    transition:transform .35s ease, border-color .35s ease, box-shadow .35s ease;
   }
-  .show-card img, .show-card video{width:100%;height:100%;object-fit:cover;display:block;}
+  .show-card:hover{
+    transform:translateY(-6px);border-color:rgba(215,63,9,0.55);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 26px 56px rgba(0,0,0,0.55);
+  }
+  .show-stage{position:absolute;top:16px;left:16px;right:16px;bottom:54px;display:flex;align-items:center;justify-content:center;}
+  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}
 
   .wild-card{
     width:280px;height:380px;flex-shrink:0;overflow:hidden;position:relative;
@@ -334,7 +460,8 @@ const ASSETS = {
   .show-label{
     position:absolute;left:0;right:0;bottom:0;
     padding:14px 18px;
-    background:linear-gradient(to top, rgba(7,7,10,0.85), transparent);
+    background:rgba(7,7,10,0.45);border-top:1px solid rgba(255,255,255,0.12);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     font-family:'JetBrains Mono', monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--offwhite);
   }
   .show-card .placeholder{height:100%;border-radius:18px;}
@@ -383,8 +510,12 @@ const ASSETS = {
     .type-row{grid-template-columns:1fr;gap:14px;}
     header{min-height:72vh;}
     section{padding:64px 0;}
-    .show-card{width:280px;height:210px;}
+    .show-card{width:260px;height:360px;}
     .school-card{width:200px;}
+    .hero-bg{left:0;}
+    .hero-bg img.active{opacity:0.28;}
+    .hero-veil{background:linear-gradient(to bottom, rgba(7,7,10,0.78), rgba(7,7,10,0.5) 45%, rgba(7,7,10,0.94));}
+    .pg-modal-panel{margin:3vh auto;padding:22px;}
   }
   @media (prefers-reduced-motion: reduce){
     *{transition:none!important;animation:none!important;scroll-behavior:auto!important;}
@@ -400,8 +531,8 @@ const ASSETS = {
   <div class="wrap hero-content">
     <img class="hero-logo" id="heroLogo" src="" alt="Postgame logo">
     <p class="hero-badge">#1 NIL Agency in the Country</p>
-    <h1 class="tagline">When the game ends,<span class="line2">the Postgame begins.</span></h1>
-    <p class="hero-sub">Brand kit · Logos · Color · Type · Voice · Showcase</p>
+    <h1 class="tagline">When the game ends,<span class="line2">the <img class="tagline-logo" id="taglineLogo" src="" alt="Postgame"> begins.</span></h1>
+    <p class="hero-sub">Brand kit · Logos · Color · Type · Voice · Catalogue</p>
   </div>
 </header>
 
@@ -423,8 +554,13 @@ const ASSETS = {
 
 <section id="schools">
   <div class="wrap">
-    <div class="eyebrow">02 / School Variations</div>
-    <h2>School Colors</h2>
+    <div class="section-head-row">
+      <div>
+        <div class="eyebrow">02 / School Variations</div>
+        <h2>School Colors</h2>
+      </div>
+      <button class="ghost-btn" id="openSchoolsModal" type="button">View all + download</button>
+    </div>
     <p class="section-note">Campaign-approved colorways of the mark for partner schools. Same rules apply — use the file, never rebuild it.</p>
   </div>
   <div class="marquee"><div class="marquee-track" id="schoolTrack"></div></div>
@@ -529,9 +665,14 @@ const ASSETS = {
 
 <section id="showcase">
   <div class="wrap">
-    <div class="eyebrow">06 / Showcase</div>
-    <h2>The Brand, Worn &amp; Shot</h2>
-    <p class="section-note">Apparel, merch, and content built with this system.</p>
+    <div class="section-head-row">
+      <div>
+        <div class="eyebrow">06 / Catalogue</div>
+        <h2>The Catalogue</h2>
+      </div>
+      <button class="ghost-btn" id="openCatalogueModal" type="button">View full catalogue</button>
+    </div>
+    <p class="section-note">Apparel, merch, and content built with this system. Tap any product for details.</p>
   </div>
   <div class="marquee"><div class="marquee-track" id="showTrack"></div></div>
 </section>
@@ -618,21 +759,22 @@ function buildSchoolCards(){
 document.getElementById('schoolTrack').innerHTML = buildSchoolCards() + buildSchoolCards();
 
 /* ---------- showcase carousel ---------- */
+function prettyName(url){
+  return (url.split('/').pop()||'').replace(/\.[a-z0-9]+$/i,'').replace(/[-_]+/g,' ').replace(/\b\w/g, function(c){return c.toUpperCase();});
+}
+function catMedia(item){
+  if(item.type === 'video') return '<video src="'+item.url+'" autoplay muted loop playsinline></video>';
+  return '<img src="'+item.url+'" alt="'+(item.name||prettyName(item.url))+'" loading="lazy">';
+}
 function buildShowCards(){
-  return ASSETS.showcase.map((s,i) => {
-    if(s.url && s.type === 'video'){
-      return '<div class="card show-card">'+
-        '<video src="'+s.url+'" autoplay muted loop playsinline></video>'+
-        (s.label ? '<div class="show-label">'+s.label+'</div>' : '')+
-      '</div>';
-    }
-    if(s.url){
-      return '<div class="card show-card">'+
-        '<img src="'+s.url+'" alt="'+(s.label||'Showcase')+'">'+
-        (s.label ? '<div class="show-label">'+s.label+'</div>' : '')+
-      '</div>';
-    }
-    return '<div class="card show-card"><div class="placeholder">Drop photo<br>ASSETS.showcase['+i+']</div></div>';
+  /* carousel shows the first 14; the full set lives in the popup */
+  return ASSETS.catalogue.slice(0,14).map(function(s,i){
+    if(!s.url) return '';
+    var name = s.name || prettyName(s.url);
+    return '<div class="card show-card" data-cat="'+i+'">'+
+      '<div class="show-stage">'+catMedia(s)+'</div>'+
+      '<div class="show-label">'+name+'</div>'+
+    '</div>';
   }).join('');
 }
 document.getElementById('showTrack').innerHTML = buildShowCards() + buildShowCards();
@@ -700,7 +842,71 @@ ASSETS.motion.forEach((s,i) => {
   const src = ASSETS.logos.primary || ASSETS.logos.white;
   const heroLogo = document.getElementById('heroLogo');
   if(src) heroLogo.src = src; else heroLogo.style.display = 'none';
+  const tl = document.getElementById('taglineLogo');
+  if(tl){ if(src) tl.src = src; else tl.style.display = 'none'; }
 })();
+
+/* ---------- popups: schools library + catalogue ---------- */
+const pgModal = document.getElementById('pgModal');
+const pgModalContent = document.getElementById('pgModalContent');
+function openModal(htmlStr){
+  pgModalContent.innerHTML = htmlStr;
+  pgModal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(){
+  pgModal.classList.remove('open');
+  pgModalContent.innerHTML = '';
+  document.body.style.overflow = '';
+}
+document.getElementById('pgModalClose').addEventListener('click', closeModal);
+document.getElementById('pgModalBackdrop').addEventListener('click', closeModal);
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeModal(); });
+
+function schoolsModalHTML(){
+  var tiles = ASSETS.schools.filter(function(s){return s.url;}).map(function(s){
+    return '<div class="pg-tile">'+
+      '<div class="stage '+(s.stage||'stage-checker')+'"><img src="'+s.url+'" alt="'+(s.name||'')+'" loading="lazy"></div>'+
+      '<div class="meta"><span>'+(s.name||'')+'</span><a class="pg-dl" href="'+s.url+'" download>Download</a></div>'+
+    '</div>';
+  }).join('');
+  return '<h3>School Logo Library</h3>'+
+    '<p class="pg-modal-sub">Every campaign-approved colorway. Download files individually or grab the full set.</p>'+
+    '<a class="ghost-btn" href="brand-assets/postgame-schools.zip" download style="margin:14px 0 0;">Download all (.zip)</a>'+
+    '<div class="pg-grid">'+tiles+'</div>';
+}
+document.getElementById('openSchoolsModal').addEventListener('click', function(){ openModal(schoolsModalHTML()); });
+
+function productModalHTML(item){
+  var name = item.name || prettyName(item.url);
+  return '<h3>'+name+'</h3>'+
+    '<div class="pg-product-media">'+catMedia(item)+'</div>'+
+    (item.desc ? '<p class="pg-product-desc">'+item.desc+'</p>' : '')+
+    '<a class="ghost-btn" href="'+item.url+'" download style="margin:20px 0 0;">Download asset</a>';
+}
+function catalogueModalHTML(){
+  var tiles = ASSETS.catalogue.filter(function(s){return s.url;}).map(function(s,i){
+    var name = s.name || prettyName(s.url);
+    var thumb = s.type === 'video'
+      ? '<video src="'+s.url+'" muted loop playsinline></video>'
+      : '<img src="'+s.url+'" alt="'+name+'" loading="lazy">';
+    return '<div class="pg-tile pg-click" data-cat-full="'+i+'">'+
+      '<div class="stage stage-dark">'+thumb+'</div>'+
+      '<div class="meta"><span>'+name+'</span></div>'+
+    '</div>';
+  }).join('');
+  return '<h3>The Catalogue</h3>'+
+    '<p class="pg-modal-sub">Every Postgame product. Tap one for details.</p>'+
+    '<div class="pg-grid">'+tiles+'</div>';
+}
+document.getElementById('openCatalogueModal').addEventListener('click', function(){ openModal(catalogueModalHTML()); });
+
+document.addEventListener('click', function(e){
+  var card = e.target.closest('.show-card[data-cat]');
+  if(card){ openModal(productModalHTML(ASSETS.catalogue[+card.dataset.cat])); return; }
+  var tile = e.target.closest('[data-cat-full]');
+  if(tile){ openModal(productModalHTML(ASSETS.catalogue[+tile.dataset.catFull])); }
+});
 
 /* ---------- copy buttons + swatches ---------- */
 document.addEventListener('click', function(e){
@@ -725,5 +931,12 @@ document.querySelectorAll('.swatch').forEach(function(sw){
 });
 </script>
 
+<div class="pg-modal" id="pgModal" aria-hidden="true">
+  <div class="pg-modal-backdrop" id="pgModalBackdrop"></div>
+  <div class="pg-modal-panel">
+    <button class="pg-modal-close" id="pgModalClose" type="button" aria-label="Close">×</button>
+    <div id="pgModalContent"></div>
+  </div>
+</div>
 </body>
 </html>
