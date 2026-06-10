@@ -339,6 +339,16 @@ const ASSETS = {
     margin:8px 0 22px;display:flex;align-items:center;gap:10px;
   }
   .sub-eyebrow::before{content:"";display:block;width:18px;height:2px;background:var(--orange);}
+  .pg-tabs{display:flex;gap:10px;margin-top:22px;}
+  .pg-tab{
+    font-family:'JetBrains Mono', monospace;font-size:10px;font-weight:700;
+    letter-spacing:0.16em;text-transform:uppercase;
+    color:var(--muted);background:rgba(255,255,255,0.04);
+    border:1px solid var(--stroke);border-radius:999px;
+    padding:10px 18px;cursor:pointer;
+    transition:border-color .25s ease, color .25s ease, background .25s ease;
+  }
+  .pg-tab.active{color:var(--offwhite);border-color:var(--orange);background:rgba(215,63,9,0.16);}
   .pg-click{cursor:pointer;transition:border-color .25s ease;}
   .pg-click:hover{border-color:rgba(215,63,9,0.55);}
   .pg-product-media{
@@ -454,8 +464,14 @@ const ASSETS = {
     transform:translateY(-6px);border-color:rgba(215,63,9,0.55);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 26px 56px rgba(0,0,0,0.55);
   }
-  /* card background is sampled from the image's own edges at runtime,
-     so the photo melts into the card edge-to-edge with nothing cropped */
+  /* the photo itself fills the card: a bright blurred cover layer
+     behind, the sharp product contained on top — nothing cropped */
+  .show-bg{
+    position:absolute;inset:0;z-index:0;
+    background-size:cover;background-position:center;
+    filter:blur(18px) saturate(1.08);
+    transform:scale(1.15);
+  }
   .show-card.video-card{background:radial-gradient(ellipse 90% 70% at 50% 30%, rgba(215,63,9,0.2), rgba(20,20,26,1) 75%);}
   .show-card::after{
     content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
@@ -463,7 +479,7 @@ const ASSETS = {
     border-radius:inherit;
   }
   .show-stage{position:absolute;top:0;left:0;right:0;bottom:46px;z-index:1;display:flex;align-items:center;justify-content:center;}
-  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}
+  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;filter:drop-shadow(0 12px 26px rgba(0,0,0,0.35));}
   .show-label{z-index:3;}
 
   .wild-card{
@@ -697,11 +713,8 @@ const ASSETS = {
       <button class="ghost-btn" id="openCatalogueModal" type="button">View full catalogue</button>
     </div>
     <p class="section-note">Apparel, merch, and content built with this system. Tap any product for details.</p>
-    <div class="sub-eyebrow">Live Products — on the storefront</div>
   </div>
-  <div class="marquee"><div class="marquee-track" id="liveTrack"></div></div>
-  <div class="wrap"><div class="sub-eyebrow" style="margin-top:56px;">Mock-ups — renderings of potential products</div></div>
-  <div class="marquee"><div class="marquee-track" id="mockTrack"></div></div>
+  <div class="marquee"><div class="marquee-track" id="catTrack"></div></div>
 </section>
 
 
@@ -796,44 +809,21 @@ function catMedia(item){
 var CAT = ASSETS.catalogueLive.concat(ASSETS.catalogueMockups);
 function buildCatCards(list, offset){
   /* each carousel shows up to 14; the full set lives in the popup */
-  return list.slice(0,14).map(function(s,i){
+  return list.slice(0,18).map(function(s,i){
     if(!s.url) return '';
     var name = s.name || prettyName(s.url);
+    var bg = s.type === 'video' ? '' : '<div class="show-bg" style="background-image:url(\''+s.url+'\')"></div>';
     return '<div class="card show-card'+(s.type==='video'?' video-card':'')+'" data-cat="'+(offset+i)+'">'+
+      bg+
       '<div class="show-stage">'+catMedia(s)+'</div>'+
       '<div class="show-label">'+name+'</div>'+
     '</div>';
   }).join('');
 }
-var liveHTML = buildCatCards(ASSETS.catalogueLive, 0);
-var mockHTML = buildCatCards(ASSETS.catalogueMockups, ASSETS.catalogueLive.length);
-document.getElementById('liveTrack').innerHTML = liveHTML + liveHTML;
-document.getElementById('mockTrack').innerHTML = mockHTML + mockHTML;
+var catHTML = buildCatCards(CAT, 0);
+document.getElementById('catTrack').innerHTML = catHTML + catHTML;
 
-/* sample the image's border pixels and paint the card to match —
-   the photo blends seamlessly into the card, nothing gets cropped */
-function edgeFill(img){
-  var card = img.closest('.show-card, .pg-product-media');
-  if(!card || card.classList.contains('video-card')) return;
-  try{
-    var s = 32, c = document.createElement('canvas'); c.width = s; c.height = s;
-    var x = c.getContext('2d'); x.drawImage(img, 0, 0, s, s);
-    var d = x.getImageData(0, 0, s, s).data, r=0, g=0, b=0, n=0;
-    for(var i=0;i<s;i++){
-      [[i,0],[i,s-1],[0,i],[s-1,i]].forEach(function(p){
-        var o=(p[1]*s+p[0])*4; r+=d[o]; g+=d[o+1]; b+=d[o+2]; n++;
-      });
-    }
-    card.style.background = 'rgb('+Math.round(r/n)+','+Math.round(g/n)+','+Math.round(b/n)+')';
-  }catch(e){}
-}
-function applyEdgeFills(root){
-  (root||document).querySelectorAll('.show-stage img, .pg-product-media img').forEach(function(img){
-    if(img.complete && img.naturalWidth) edgeFill(img);
-    else img.addEventListener('load', function(){ edgeFill(img); }, { once:true });
-  });
-}
-applyEdgeFills();
+
 
 /* ---------- in the wild carousel ---------- */
 function buildWildCards(){
@@ -868,7 +858,7 @@ ASSETS.motion.forEach((s,i) => {
 });
 
 /* marquee speed scales with content so long tracks don't race */
-[['schoolTrack',4],['liveTrack',5],['mockTrack',5],['wildTrack',5]].forEach(([id,secsPer]) => {
+[['schoolTrack',4],['catTrack',5],['wildTrack',5]].forEach(([id,secsPer]) => {
   const t = document.getElementById(id);
   t.style.animationDuration = Math.max(30, (t.children.length/2) * secsPer) + 's';
 });
@@ -954,18 +944,28 @@ function catTiles(list, offset){
 function catalogueModalHTML(){
   return '<h3>The Catalogue</h3>'+
     '<p class="pg-modal-sub">Every Postgame product. Tap one for details.</p>'+
-    '<div class="sub-eyebrow" style="margin-top:24px;">Live Products — on the storefront</div>'+
-    '<div class="pg-grid">'+catTiles(ASSETS.catalogueLive, 0)+'</div>'+
-    '<div class="sub-eyebrow" style="margin-top:32px;">Mock-ups — renderings of potential products</div>'+
-    '<div class="pg-grid">'+catTiles(ASSETS.catalogueMockups, ASSETS.catalogueLive.length)+'</div>';
+    '<div class="pg-tabs">'+
+      '<button class="pg-tab active" data-tab="live" type="button">Live Products</button>'+
+      '<button class="pg-tab" data-tab="mock" type="button">Potential Products</button>'+
+    '</div>'+
+    '<div id="pgCatGrid" class="pg-grid">'+catTiles(ASSETS.catalogueLive, 0)+'</div>';
 }
+document.addEventListener('click', function(e){
+  var tab = e.target.closest('.pg-tab');
+  if(!tab) return;
+  document.querySelectorAll('.pg-tab').forEach(function(t){ t.classList.remove('active'); });
+  tab.classList.add('active');
+  document.getElementById('pgCatGrid').innerHTML = tab.dataset.tab === 'live'
+    ? catTiles(ASSETS.catalogueLive, 0)
+    : catTiles(ASSETS.catalogueMockups, ASSETS.catalogueLive.length);
+});
 document.getElementById('openCatalogueModal').addEventListener('click', function(){ openModal(catalogueModalHTML()); });
 
 document.addEventListener('click', function(e){
   var card = e.target.closest('.show-card[data-cat]');
-  if(card){ openModal(productModalHTML(CAT[+card.dataset.cat])); applyEdgeFills(pgModalContent); return; }
+  if(card){ openModal(productModalHTML(CAT[+card.dataset.cat])); return; }
   var tile = e.target.closest('[data-cat-full]');
-  if(tile){ openModal(productModalHTML(CAT[+tile.dataset.catFull])); applyEdgeFills(pgModalContent); }
+  if(tile){ openModal(productModalHTML(CAT[+tile.dataset.catFull])); }
 });
 
 /* ---------- copy buttons + swatches ---------- */
