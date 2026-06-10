@@ -34,7 +34,7 @@ const ASSETS = {
     blackOrange: "brand-assets/postgame-black-orange.png",
     grey:    "brand-assets/postgame-grey.png",
     white:   "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png",
-    mark:    "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632107441-qdu019il.jpg"
+    mark:    "brand-assets/postgame-mark.png"
   },
 
   /* School color variations — carousel under the logos.
@@ -60,6 +60,17 @@ const ASSETS = {
     { label: "White Tee",               url: "brand-assets/tee-white.jpg" },
     { label: "Black Tee",               url: "brand-assets/tee-black.jpg" },
     { label: "Apparel · 3D",            url: "brand-assets/spin-2.mp4", type: "video" }
+  ],
+
+  /* In the Wild — athletes wearing the product.
+     Portrait photos work best. label = athlete / campaign. */
+  wild: [
+    { label: "", url: "" },
+    { label: "", url: "" },
+    { label: "", url: "" },
+    { label: "", url: "" },
+    { label: "", url: "" },
+    { label: "", url: "" }
   ]
 };
 /* ====================== end of config ====================== */
@@ -227,6 +238,21 @@ const ASSETS = {
     width:360px;height:260px;flex-shrink:0;overflow:hidden;position:relative;
   }
   .show-card img, .show-card video{width:100%;height:100%;object-fit:cover;display:block;}
+
+  .wild-card{
+    width:280px;height:380px;flex-shrink:0;overflow:hidden;position:relative;
+  }
+  .wild-card img{width:100%;height:100%;object-fit:cover;display:block;}
+  .wild-label{
+    position:absolute;left:12px;right:12px;bottom:12px;
+    padding:12px 16px;border-radius:14px;
+    background:rgba(7,7,10,0.45);
+    border:1px solid rgba(255,255,255,0.14);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    font-family:'JetBrains Mono', monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--offwhite);
+  }
+  .wild-card .placeholder{height:100%;border-radius:18px;}
   .show-label{
     position:absolute;left:0;right:0;bottom:0;
     padding:14px 18px;
@@ -424,6 +450,15 @@ const ASSETS = {
   <div class="marquee"><div class="marquee-track" id="showTrack"></div></div>
 </section>
 
+<section id="wild">
+  <div class="wrap">
+    <div class="eyebrow">07 / In the Wild</div>
+    <h2>On the Athletes</h2>
+    <p class="section-note">The brand where it lives — athletes wearing Postgame.</p>
+  </div>
+  <div class="marquee"><div class="marquee-track" id="wildTrack"></div></div>
+</section>
+
 <footer>Postgame · Brand Kit · Updated June 2026</footer>
 
 <script>
@@ -506,6 +541,20 @@ function buildShowCards(){
   }).join('');
 }
 document.getElementById('showTrack').innerHTML = buildShowCards() + buildShowCards();
+
+/* ---------- in the wild carousel ---------- */
+function buildWildCards(){
+  return ASSETS.wild.map((s,i) => {
+    if(s.url){
+      return '<div class="card wild-card">'+
+        '<img src="'+s.url+'" alt="'+(s.label||'Athlete')+'">'+
+        (s.label ? '<div class="wild-label">'+s.label+'</div>' : '')+
+      '</div>';
+    }
+    return '<div class="card wild-card"><div class="placeholder">Drop athlete photo<br>ASSETS.wild['+i+']</div></div>';
+  }).join('');
+}
+document.getElementById('wildTrack').innerHTML = buildWildCards() + buildWildCards();
 
 /* ---------- hero background crossfade ---------- */
 (function(){
