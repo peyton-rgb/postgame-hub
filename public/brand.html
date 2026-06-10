@@ -237,7 +237,7 @@ const ASSETS = {
       radial-gradient(ellipse 60% 45% at 18% 112%, rgba(215,63,9,0.14), transparent 70%);
   }
   .hero-content{position:relative;z-index:2;}
-  .hero-logo{height:32px;width:auto;display:block;margin-bottom:72px;}
+  .hero-logo{height:clamp(56px, 7vw, 92px);width:auto;display:block;margin-bottom:56px;}
   .hero-badge{
     font-family:'JetBrains Mono', monospace;
     font-size:12px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
@@ -248,7 +248,8 @@ const ASSETS = {
   .hero-badge::before{content:"";display:block;width:28px;height:2px;background:var(--orange);}
 
   /* ---------- statement band ---------- */
-  .statement{padding:110px 0;}
+  .statement{padding:110px 0 96px;}
+  .statement .marquee{margin-top:64px;}
   .statement h2{
     font-family:'Bebas Neue', Arial, sans-serif;
     font-size:clamp(40px,6.5vw,84px);
@@ -262,10 +263,6 @@ const ASSETS = {
     line-height:0.92;text-transform:uppercase;
   }
   h1.tagline .line2{color:var(--orange);display:block;}
-  h1.tagline .tagline-logo{
-    height:0.72em;width:auto;display:inline-block;
-    vertical-align:baseline;transform:translateY(0.05em);margin:0 0.05em;
-  }
   .hero-content{text-align:left;}
   .hero-sub{
     margin-top:36px;
@@ -440,8 +437,16 @@ const ASSETS = {
     transform:translateY(-6px);border-color:rgba(215,63,9,0.55);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 26px 56px rgba(0,0,0,0.55);
   }
-  .show-stage{position:absolute;top:16px;left:16px;right:16px;bottom:54px;display:flex;align-items:center;justify-content:center;}
-  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;}
+  .show-bg{
+    position:absolute;inset:0;z-index:0;
+    background-size:cover;background-position:center;
+    filter:blur(26px) saturate(1.15) brightness(0.7);
+    transform:scale(1.2);
+  }
+  .show-bg-dark{background:radial-gradient(ellipse 90% 70% at 50% 30%, rgba(215,63,9,0.18), rgba(7,7,10,0.2) 70%);}
+  .show-stage{position:absolute;top:10px;left:10px;right:10px;bottom:50px;z-index:1;display:flex;align-items:center;justify-content:center;}
+  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;filter:drop-shadow(0 14px 30px rgba(0,0,0,0.45));}
+  .show-label{z-index:2;}
 
   .wild-card{
     width:280px;height:380px;flex-shrink:0;overflow:hidden;position:relative;
@@ -531,7 +536,7 @@ const ASSETS = {
   <div class="wrap hero-content">
     <img class="hero-logo" id="heroLogo" src="" alt="Postgame logo">
     <p class="hero-badge">#1 NIL Agency in the Country</p>
-    <h1 class="tagline">When the game ends,<span class="line2">the <img class="tagline-logo" id="taglineLogo" src="" alt="Postgame"> begins.</span></h1>
+    <h1 class="tagline">When the game ends,<span class="line2">the Postgame begins.</span></h1>
     <p class="hero-sub">Brand kit · Logos · Color · Type · Voice · Catalogue</p>
   </div>
 </header>
@@ -541,6 +546,7 @@ const ASSETS = {
     <h2>We build brand campaigns <em>with athletes.</em></h2>
     <p>The leading NIL agency connecting elite athletes with the world's most ambitious brands.</p>
   </div>
+  <div class="marquee"><div class="marquee-track" id="wildTrack"></div></div>
 </section>
 
 <section id="logos">
@@ -677,18 +683,10 @@ const ASSETS = {
   <div class="marquee"><div class="marquee-track" id="showTrack"></div></div>
 </section>
 
-<section id="wild">
-  <div class="wrap">
-    <div class="eyebrow">07 / In the Wild</div>
-    <h2>On the Athletes</h2>
-    <p class="section-note">The brand where it lives — athletes wearing Postgame.</p>
-  </div>
-  <div class="marquee"><div class="marquee-track" id="wildTrack"></div></div>
-</section>
 
 <section id="motion">
   <div class="wrap">
-    <div class="eyebrow">08 / Motion</div>
+    <div class="eyebrow">07 / Motion</div>
     <h2>Logo In Motion</h2>
     <p class="section-note">How the mark moves — intros, outros, and stingers. In progress.</p>
     <div class="logo-grid" id="motionGrid"></div>
@@ -696,6 +694,14 @@ const ASSETS = {
 </section>
 
 <footer>Postgame · Brand Kit · Updated June 2026</footer>
+
+<div class="pg-modal" id="pgModal" aria-hidden="true">
+  <div class="pg-modal-backdrop" id="pgModalBackdrop"></div>
+  <div class="pg-modal-panel">
+    <button class="pg-modal-close" id="pgModalClose" type="button" aria-label="Close">×</button>
+    <div id="pgModalContent"></div>
+  </div>
+</div>
 
 <script>
 /* ---------- helpers ---------- */
@@ -771,7 +777,11 @@ function buildShowCards(){
   return ASSETS.catalogue.slice(0,14).map(function(s,i){
     if(!s.url) return '';
     var name = s.name || prettyName(s.url);
+    var bg = s.type === 'video'
+      ? '<div class="show-bg show-bg-dark"></div>'
+      : '<div class="show-bg" style="background-image:url(\''+s.url+'\')"></div>';
     return '<div class="card show-card" data-cat="'+i+'">'+
+      bg+
       '<div class="show-stage">'+catMedia(s)+'</div>'+
       '<div class="show-label">'+name+'</div>'+
     '</div>';
@@ -842,8 +852,6 @@ ASSETS.motion.forEach((s,i) => {
   const src = ASSETS.logos.primary || ASSETS.logos.white;
   const heroLogo = document.getElementById('heroLogo');
   if(src) heroLogo.src = src; else heroLogo.style.display = 'none';
-  const tl = document.getElementById('taglineLogo');
-  if(tl){ if(src) tl.src = src; else tl.style.display = 'none'; }
 })();
 
 /* ---------- popups: schools library + catalogue ---------- */
@@ -931,12 +939,5 @@ document.querySelectorAll('.swatch').forEach(function(sw){
 });
 </script>
 
-<div class="pg-modal" id="pgModal" aria-hidden="true">
-  <div class="pg-modal-backdrop" id="pgModalBackdrop"></div>
-  <div class="pg-modal-panel">
-    <button class="pg-modal-close" id="pgModalClose" type="button" aria-label="Close">×</button>
-    <div id="pgModalContent"></div>
-  </div>
-</div>
 </body>
 </html>
