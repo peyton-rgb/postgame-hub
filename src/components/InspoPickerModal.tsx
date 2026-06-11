@@ -66,7 +66,7 @@ export default function InspoPickerModal({
     setLoading(true);
 
     const params = new URLSearchParams();
-    params.set('tagging_status', 'tagged');
+    params.set('tagging_status', 'ready');
     params.set('limit', '60');
     params.set('sort', 'hero_first');
     if (search) params.set('q', search);
@@ -156,7 +156,7 @@ export default function InspoPickerModal({
             <div className="text-center text-gray-400 py-10">Loading assets...</div>
           ) : items.length === 0 ? (
             <div className="text-center text-gray-500 py-10">
-              No tagged assets found. Upload and tag footage on the Intake page first.
+              No ready assets found. Upload and tag footage on the Intake page first.
             </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
