@@ -26,7 +26,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q')?.trim() || null;
   const contentType = searchParams.get('content_type');
-  const taggingStatus = searchParams.get('tagging_status') || 'tagged';
+  // Default "ready" = tagged OR complete (complete is the worker-path status).
+  // Absent param behaves the same as an explicit "ready".
+  const taggingStatus = searchParams.get('tagging_status') || 'ready';
   const sport = searchParams.get('sport');
   const brandId = searchParams.get('brand_id');
   const campaignId = searchParams.get('campaign_id');
@@ -43,8 +45,13 @@ export async function GET(request: NextRequest) {
     // ---- Build the data query ----
     let query = supabase.from('inspo_items').select('*');
 
-    // Tagging status filter (default: only show tagged items)
-    query = query.eq('tagging_status', taggingStatus);
+    // Tagging status filter. "ready" expands to tagged + complete; any other
+    // value is an exact match so individual statuses still work.
+    if (taggingStatus === 'ready') {
+      query = query.in('tagging_status', ['tagged', 'complete']);
+    } else {
+      query = query.eq('tagging_status', taggingStatus);
+    }
 
     // Content type enum filter
     if (contentType) {
@@ -112,7 +119,11 @@ export async function GET(request: NextRequest) {
       .from('inspo_items')
       .select('id', { count: 'exact', head: true });
 
-    countQuery = countQuery.eq('tagging_status', taggingStatus);
+    if (taggingStatus === 'ready') {
+      countQuery = countQuery.in('tagging_status', ['tagged', 'complete']);
+    } else {
+      countQuery = countQuery.eq('tagging_status', taggingStatus);
+    }
     if (contentType) countQuery = countQuery.eq('content_type', contentType);
     if (brandId) countQuery = countQuery.eq('brand_id', brandId);
     if (campaignId) countQuery = countQuery.eq('campaign_id', campaignId);
