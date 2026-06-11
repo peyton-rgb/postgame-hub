@@ -233,7 +233,7 @@ export async function tagInspoItem(
         content_type: item.content_type,
         source: item.source,
       },
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-fable-5',
       status: 'running',
     })
     .select()
@@ -460,7 +460,8 @@ export async function tagInspoItem(
   // --- Step 7: Update agent_runs with success ---
   const inputTokens = response.usage?.input_tokens || 0;
   const outputTokens = response.usage?.output_tokens || 0;
-  const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+  // Claude Fable 5 pricing: $10 / MTok input, $50 / MTok output.
+  const costUsd = (inputTokens * 10 + outputTokens * 50) / 1_000_000;
 
   await supabase
     .from('agent_runs')
