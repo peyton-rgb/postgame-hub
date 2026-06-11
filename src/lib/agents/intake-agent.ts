@@ -275,7 +275,7 @@ export async function tagInspoItem(
     }
 
     response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-fable-5',
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
       messages: [
@@ -349,7 +349,7 @@ export async function tagInspoItem(
     console.warn('First JSON parse failed for tagging, retrying...');
     try {
       const retryResponse = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-fable-5',
         max_tokens: 2048,
         system: SYSTEM_PROMPT,
         messages: [
