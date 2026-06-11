@@ -83,7 +83,7 @@ function extractFrames(videoPath) {
   return new Promise((resolve, reject) => {
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "pg-frames-"));
     ffmpeg(videoPath)
-      .outputOptions(["-vf", "fps=1", "-q:v", "5"])
+      .outputOptions(["-vf", "fps=1,scale='min(768,iw)':-2", "-q:v", "5"])
       .output(path.join(outDir, "frame-%04d.jpg"))
       .on("end", () => {
         const files = fs.readdirSync(outDir)
