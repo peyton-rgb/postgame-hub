@@ -367,14 +367,14 @@ export default function InspoLibraryPage() {
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="text-4xl mb-4">🧠</div>
               <h3 className="text-lg font-medium text-gray-300 mb-2">
-                {statusFilter === 'tagged' ? 'No tagged assets yet' : 'No assets found'}
+                {statusFilter === 'ready' || statusFilter === 'tagged' ? 'No assets yet' : 'No assets found'}
               </h3>
               <p className="text-sm text-gray-500 max-w-md">
-                {statusFilter === 'tagged'
+                {statusFilter === 'ready' || statusFilter === 'tagged'
                   ? 'Upload footage on the Intake page and tag it with Claude Vision. Tagged assets appear here automatically.'
                   : 'Try adjusting your filters or search query.'}
               </p>
-              {statusFilter === 'tagged' && (
+              {(statusFilter === 'ready' || statusFilter === 'tagged') && (
                 <a
                   href="/dashboard/intake"
                   className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
