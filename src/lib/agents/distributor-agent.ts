@@ -248,7 +248,7 @@ ${config.hashtagLimit === 0 ? 'This channel does not use hashtags — return an 
 The FTC note should be a clean, compliant disclosure for NIL/sponsored content.`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-fable-5',
     max_tokens: 2048,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
@@ -325,7 +325,7 @@ ${params.context ? `Context: ${params.context}` : ''}
 Return a JSON array of hashtag strings (without the # symbol).`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-fable-5',
     max_tokens: 512,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
