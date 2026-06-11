@@ -238,14 +238,6 @@ const ASSETS = {
     { label: "", url: "brand-assets/wild/snapinsta-to-580834057-18113039479602932-8140247195221112103-n.jpg" },
     { label: "", url: "brand-assets/wild/snapinsta-to-581088192-18112963552602932-2585780494715592899-n.jpg" },
     { label: "", url: "brand-assets/wild/untitled-2.jpg" }
-  ],
-
-  /* Logo animations — Motion section. mp4/webm files.
-     We'll build these together later; slots are ready. */
-  motion: [
-    { label: "", url: "" },
-    { label: "", url: "" },
-    { label: "", url: "" }
   ]
 };
 /* ====================== end of config ====================== */
@@ -772,16 +764,6 @@ const ASSETS = {
   <div class="cat-scroll" id="catScroll"><div class="cat-strip" id="catTrack"></div></div>
 </section>
 
-
-<section id="motion">
-  <div class="wrap">
-    <div class="eyebrow">07 / Motion</div>
-    <h2>Logo In Motion</h2>
-    <p class="section-note">How the mark moves — intros, outros, and stingers. In progress.</p>
-    <div class="logo-grid" id="motionGrid"></div>
-  </div>
-</section>
-
 <footer>Postgame · Brand Kit · Updated June 2026</footer>
 
 <div class="pg-modal" id="pgModal" aria-hidden="true">
@@ -929,24 +911,6 @@ function buildWildCards(){
   }).join('');
 }
 document.getElementById('wildTrack').innerHTML = buildWildCards();
-
-/* ---------- motion grid ---------- */
-const motionGrid = document.getElementById('motionGrid');
-ASSETS.motion.forEach((s,i) => {
-  if(s.url){
-    motionGrid.appendChild(el(
-      '<div class="card logo-card">'+
-        '<div class="logo-stage stage-dark" style="padding:0;"><video src="'+s.url+'" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>'+
-        '<div class="logo-meta"><div><span class="logo-name">'+(s.label||('Animation '+(i+1)))+'</span></div>'+
-        '<div class="btn-row">'+openBtn(s.url)+copyBtn(s.url)+'</div></div>'+
-      '</div>'
-    ));
-  } else {
-    motionGrid.appendChild(el(
-      '<div class="placeholder" style="min-height:240px;">Animation '+(i+1)+'<br>Coming soon —<br>ASSETS.motion['+i+']</div>'
-    ));
-  }
-});
 
 (function(){
   const urls = ASSETS.hero.filter(Boolean);
