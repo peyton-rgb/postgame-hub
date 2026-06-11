@@ -316,7 +316,7 @@ const ASSETS = {
 
   /* ---------- statement band ---------- */
   .statement{padding:110px 0 96px;}
-  .statement .marquee{margin-top:64px;}
+  .statement .hscroll{margin-top:64px;}
   .statement h2{
     font-family:'Bebas Neue', Arial, sans-serif;
     font-size:clamp(40px,6.5vw,84px);
@@ -482,32 +482,18 @@ const ASSETS = {
     text-align:center;padding:20px;line-height:2;
   }
 
-  /* ---------- carousels (marquee) ---------- */
-  .marquee{
-    overflow:hidden;position:relative;
-    -webkit-mask-image:linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
-    mask-image:linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
-  }
-  .marquee-track{
-    display:flex;gap:20px;width:max-content;
-    animation:marquee 38s linear infinite;
-  }
-  .marquee:hover .marquee-track{animation-play-state:paused;}
-  @keyframes marquee{
-    from{transform:translateX(0);}
-    to{transform:translateX(-50%);}
-  }
-  /* catalogue: user-scrollable strip (replaces marquee) */
-  .cat-scroll{
+  /* ---------- carousels (user-scrollable) ---------- */
+  /* user-scrollable horizontal strips (catalogue, schools, wild) — no auto-scroll */
+  .cat-scroll,.hscroll{
     overflow-x:auto;overflow-y:hidden;
     scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
     scroll-behavior:auto;cursor:grab;
     scrollbar-width:none;-ms-overflow-style:none;
   }
-  .cat-scroll::-webkit-scrollbar{display:none;height:0;}
-  .cat-scroll.dragging,.cat-scroll.dragging .show-card{cursor:grabbing;}
-  .cat-strip{display:flex;gap:20px;width:max-content;padding:6px 24px;}
-  .cat-strip .show-card{scroll-snap-align:start;}
+  .cat-scroll::-webkit-scrollbar,.hscroll::-webkit-scrollbar{display:none;height:0;}
+  .cat-scroll.dragging,.cat-scroll.dragging .show-card,.hscroll.dragging,.hscroll.dragging .card{cursor:grabbing;}
+  .cat-strip,.hstrip{display:flex;gap:20px;width:max-content;padding:6px 24px;}
+  .cat-strip .show-card,.hstrip > .card{scroll-snap-align:start;}
   .show-badge{
     position:absolute;top:12px;right:12px;z-index:4;pointer-events:none;
     background:#D73F09;color:#fff;
@@ -649,7 +635,7 @@ const ASSETS = {
     <h2>We build brand campaigns <em>with athletes.</em></h2>
     <p>The leading NIL agency connecting elite athletes with the world's most ambitious brands.</p>
   </div>
-  <div class="marquee"><div class="marquee-track" id="wildTrack"></div></div>
+  <div class="hscroll" id="wildScroll"><div class="hstrip" id="wildTrack"></div></div>
 </section>
 
 <section id="logos">
@@ -672,7 +658,7 @@ const ASSETS = {
     </div>
     <p class="section-note">Campaign-approved colorways of the mark for partner schools. Same rules apply — use the file, never rebuild it.</p>
   </div>
-  <div class="marquee"><div class="marquee-track" id="schoolTrack"></div></div>
+  <div class="hscroll" id="schoolScroll"><div class="hstrip" id="schoolTrack"></div></div>
 </section>
 
 <section id="color">
@@ -864,8 +850,7 @@ function buildSchoolCards(){
     '</div>';
   }).join('');
 }
-/* marquee needs the track doubled so the loop is seamless */
-document.getElementById('schoolTrack').innerHTML = buildSchoolCards() + buildSchoolCards();
+document.getElementById('schoolTrack').innerHTML = buildSchoolCards();
 
 /* ---------- showcase carousel ---------- */
 function prettyName(url){
@@ -911,8 +896,7 @@ function buildCatCards(merged){
 }
 document.getElementById('catTrack').innerHTML = buildCatCards(CAT_MERGED);
 /* click-drag horizontal scroll on desktop; swallow the click after a real drag */
-(function(){
-  var sc = document.getElementById('catScroll');
+function initDragScroll(sc){
   if(!sc) return;
   var down=false, startX=0, startLeft=0, moved=false;
   sc.addEventListener('mousedown', function(e){
@@ -927,7 +911,8 @@ document.getElementById('catTrack').innerHTML = buildCatCards(CAT_MERGED);
   });
   window.addEventListener('mouseup', function(){ down=false; sc.classList.remove('dragging'); });
   sc.addEventListener('click', function(e){ if(moved){ e.preventDefault(); e.stopPropagation(); moved=false; } }, true);
-})();
+}
+['catScroll','schoolScroll','wildScroll'].forEach(function(id){ initDragScroll(document.getElementById(id)); });
 
 
 
@@ -943,7 +928,7 @@ function buildWildCards(){
     return '<div class="card wild-card"><div class="placeholder">Drop athlete photo<br>ASSETS.wild['+i+']</div></div>';
   }).join('');
 }
-document.getElementById('wildTrack').innerHTML = buildWildCards() + buildWildCards();
+document.getElementById('wildTrack').innerHTML = buildWildCards();
 
 /* ---------- motion grid ---------- */
 const motionGrid = document.getElementById('motionGrid');
@@ -963,30 +948,14 @@ ASSETS.motion.forEach((s,i) => {
   }
 });
 
-/* marquee speed scales with content so long tracks don't race */
-[['schoolTrack',4],['wildTrack',5]].forEach(([id,secsPer]) => {
-  const t = document.getElementById(id);
-  t.style.animationDuration = Math.max(30, (t.children.length/2) * secsPer) + 's';
-});
 (function(){
   const urls = ASSETS.hero.filter(Boolean);
   const bg = document.getElementById('heroBg');
   if(!urls.length) return;            /* no images yet → gradient-only hero */
-  urls.forEach(u => {
-    const img = document.createElement('img');
-    img.src = u; img.alt = '';
-    bg.appendChild(img);
-  });
-  const imgs = bg.querySelectorAll('img');
-  let i = 0;
-  imgs[0].classList.add('active');
-  if(imgs.length > 1){
-    setInterval(() => {
-      imgs[i].classList.remove('active');
-      i = (i + 1) % imgs.length;
-      imgs[i].classList.add('active');
-    }, 1800);
-  }
+  const img = document.createElement('img');   /* static hero — first image only, no rotation */
+  img.src = urls[0]; img.alt = '';
+  img.classList.add('active');
+  bg.appendChild(img);
 })();
 
 /* hero corner logo = primary (white + orange) */
