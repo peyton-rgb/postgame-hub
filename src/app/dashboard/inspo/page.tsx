@@ -90,7 +90,7 @@ export default function InspoLibraryPage() {
   const [vibeFilter, setVibeFilter] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest');
-  const [statusFilter, setStatusFilter] = useState('tagged');
+  const [statusFilter, setStatusFilter] = useState('ready');
 
   // Pagination
   const [offset, setOffset] = useState(0);
@@ -317,6 +317,7 @@ export default function InspoLibraryPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-white/30"
           >
+            <option value="ready">Ready (tagged + complete)</option>
             <option value="tagged">Tagged</option>
             <option value="pending">Pending</option>
             <option value="failed">Failed</option>
@@ -335,7 +336,7 @@ export default function InspoLibraryPage() {
           </select>
 
           {/* Clear filters */}
-          {(searchQuery || contentTypeFilter || sportFilter || vibeFilter || tagFilter || statusFilter !== 'tagged' || sortBy !== 'newest') && (
+          {(searchQuery || contentTypeFilter || sportFilter || vibeFilter || tagFilter || statusFilter !== 'ready' || sortBy !== 'newest') && (
             <button
               onClick={() => {
                 setSearchQuery('');
@@ -343,7 +344,7 @@ export default function InspoLibraryPage() {
                 setSportFilter('');
                 setVibeFilter('');
                 setTagFilter('');
-                setStatusFilter('tagged');
+                setStatusFilter('ready');
                 setSortBy('newest');
               }}
               className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
