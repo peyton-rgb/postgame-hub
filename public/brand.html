@@ -97,58 +97,114 @@ const ASSETS = {
      the arrays to reclassify it. */
   /* CATALOGUE:START */
   catalogueLive: [
-    { url: "brand-assets/catalogue/1.jpg" },
-    { url: "brand-assets/catalogue/2.jpg" },
-    { url: "brand-assets/catalogue/3.jpg" },
-    { url: "brand-assets/catalogue/4.jpg" },
-    { url: "brand-assets/catalogue/5.jpg" },
-    { url: "brand-assets/catalogue/6.jpg" },
-    { url: "brand-assets/catalogue/7.jpg" },
-    { url: "brand-assets/catalogue/chatgpt-image-jan-22-2026-10-35-39-am.jpg" },
-    { url: "brand-assets/catalogue/dsc07559.jpg" },
-    { url: "brand-assets/catalogue/red-visor.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2024-07-01-at-4-25-56-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-35-44-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-08-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-25-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-36-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-36-53-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-06-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-22-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-32-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-46-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-37-56-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-10-19-42-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2026-01-13-at-9-06-04-pm.jpg" },
-    { url: "brand-assets/catalogue/white-visor.jpg" }
+    { name: "School Hoodie - Bama Grey", url: "brand-assets/catalogue-live/hoodie-bama.png" },
+    { name: "School Tee - Bama Grey", url: "brand-assets/catalogue-live/tee-bama.png" },
+    { name: "Definition Tee - White logo (front)", url: "brand-assets/catalogue-live/def-tee-white-front.png" },
+    { name: "Trucker Hat - icon logo", url: "brand-assets/catalogue-live/trucker-icon.png" },
+    { name: "Crop Hoodie - Blush", url: "brand-assets/catalogue-live/crop-hoodie-blush.png" },
+    { name: "Tank Top - Black", url: "brand-assets/catalogue-live/tank-black.png" },
+    { name: "School Hoodie - Kentucky Royal", url: "brand-assets/catalogue-live/hoodie-kentucky.png" },
+    { name: "School Tee - Duke White", url: "brand-assets/catalogue-live/tee-duke.png" },
+    { name: "Definition Tee - Grey logo (front)", url: "brand-assets/catalogue-live/def-tee-grey-front.png" },
+    { name: "Trucker Hat - wordmark", url: "brand-assets/catalogue-live/trucker-wordmark.png" },
+    { name: "Crop Hoodie - Bone", url: "brand-assets/catalogue-live/crop-hoodie-bone.png" },
+    { name: "Shiesty - Black", url: "brand-assets/catalogue-live/shiesty.png" },
+    { name: "School Hoodie - LSU Purple", url: "brand-assets/catalogue-live/hoodie-lsu.png" },
+    { name: "School Tee - LSU Purple", url: "brand-assets/catalogue-live/tee-lsu.png" },
+    { name: "Definition Tee - back print", url: "brand-assets/catalogue-live/def-tee-white-back.png" },
+    { name: "Bucket Hat - Black", url: "brand-assets/catalogue-live/bucket-black.png" },
+    { name: "Sports Bra - Black", url: "brand-assets/catalogue-live/sports-bra-black.png" },
+    { name: "School Hoodie - Michigan Navy", url: "brand-assets/catalogue-live/hoodie-michigan.png" },
+    { name: "School Tee - Miami Forest/Orange", url: "brand-assets/catalogue-live/tee-miami-orange.png" },
+    { name: "Long Sleeve - White logo", url: "brand-assets/catalogue-live/longsleeve-white.png" },
+    { name: "Bucket Hat - Grey", url: "brand-assets/catalogue-live/bucket-grey.png" },
+    { name: "Leggings - Black", url: "brand-assets/catalogue-live/leggings.png" },
+    { name: "School Hoodie - Michigan State Forest", url: "brand-assets/catalogue-live/hoodie-michigan-state.png" },
+    { name: "School Tee - Miami Forest/White", url: "brand-assets/catalogue-live/tee-miami-white.png" },
+    { name: "Long Sleeve - Grey logo", url: "brand-assets/catalogue-live/longsleeve-grey.png" },
+    { name: "Bucket Hat - White", url: "brand-assets/catalogue-live/bucket-white.png" },
+    { name: "Leggings - Thigh logo", url: "brand-assets/catalogue-live/leggings-thigh-logo.png" },
+    { name: "School Hoodie - NC State Red", url: "brand-assets/catalogue-live/hoodie-ncstate.png" },
+    { name: "School Tee - Michigan Navy", url: "brand-assets/catalogue-live/tee-michigan.png" },
+    { name: "Long Sleeve - back print", url: "brand-assets/catalogue-live/longsleeve-back.png" },
+    { name: "Visor - Red", url: "brand-assets/catalogue-live/visor-red.png" },
+    { name: "School Hoodie - Nebraska Black", url: "brand-assets/catalogue-live/hoodie-nebraska.png" },
+    { name: "School Tee - Michigan State Forest", url: "brand-assets/catalogue-live/tee-michigan-state.png" },
+    { name: "Cotton Tee - Black", url: "brand-assets/catalogue-live/cotton-tee.png" },
+    { name: "Visor - Black", url: "brand-assets/catalogue-live/visor-black.png" },
+    { name: "School Hoodie - Ole Miss Navy", url: "brand-assets/catalogue-live/hoodie-olemiss.png" },
+    { name: "School Tee - NC State Red", url: "brand-assets/catalogue-live/tee-ncstate.png" },
+    { name: "Dri-Fit Tee - Black", url: "brand-assets/catalogue-live/dri-fit-tee.png" },
+    { name: "Visor - Grey", url: "brand-assets/catalogue-live/visor-grey.png" },
+    { name: "School Hoodie - Oregon Green", url: "brand-assets/catalogue-live/hoodie-oregon.png" },
+    { name: "School Tee - Nebraska Black", url: "brand-assets/catalogue-live/tee-nebraska.png" },
+    { name: "Tee - Black", url: "brand-assets/catalogue-live/tee-black.png" },
+    { name: "Visor - White", url: "brand-assets/catalogue-live/visor-white.png" },
+    { name: "School Hoodie - OSU Grey", url: "brand-assets/catalogue-live/hoodie-osu-grey.png" },
+    { name: "School Tee - Oregon White/Yellow", url: "brand-assets/catalogue-live/tee-oregon.png" },
+    { name: "Hoodie - Black", url: "brand-assets/catalogue-live/hoodie-black.png" },
+    { name: "School Hoodie - OSU Red", url: "brand-assets/catalogue-live/hoodie-osu-red.png" },
+    { name: "School Tee - OSU Grey", url: "brand-assets/catalogue-live/tee-osu.png" },
+    { name: "Hoodie - Black/Orange logo", url: "brand-assets/catalogue-live/hoodie-black-orange.png" },
+    { name: "School Hoodie - PSU Navy", url: "brand-assets/catalogue-live/hoodie-psu.png" },
+    { name: "School Tee - PSU Navy", url: "brand-assets/catalogue-live/tee-psu.png" },
+    { name: "Hoodie - Pink", url: "brand-assets/catalogue-live/hoodie-pink.png" },
+    { name: "School Hoodie - Syracuse Orange", url: "brand-assets/catalogue-live/hoodie-syracuse.png" },
+    { name: "School Tee - TAMU Maroon", url: "brand-assets/catalogue-live/tee-tamu.png" },
+    { name: "Hoodie - Yellow", url: "brand-assets/catalogue-live/hoodie-yellow.png" },
+    { name: "School Hoodie - TAMU Maroon", url: "brand-assets/catalogue-live/hoodie-tamu.png" },
+    { name: "School Tee - UF Royal", url: "brand-assets/catalogue-live/tee-uf.png" },
+    { name: "School Hoodie - UF Royal", url: "brand-assets/catalogue-live/hoodie-uf.png" },
+    { name: "School Tee - UK Royal", url: "brand-assets/catalogue-live/tee-uk.png" },
+    { name: "School Hoodie - UM Forest", url: "brand-assets/catalogue-live/hoodie-um-forest.png" },
+    { name: "School Tee - UNC Carolina", url: "brand-assets/catalogue-live/tee-unc-blue.png" },
+    { name: "School Hoodie - UM Orange", url: "brand-assets/catalogue-live/hoodie-um-orange.png" },
+    { name: "School Tee - UNC White/Carolina", url: "brand-assets/catalogue-live/tee-unc-white.png" },
+    { name: "School Hoodie - UNC Carolina", url: "brand-assets/catalogue-live/hoodie-unc.png" },
+    { name: "School Tee - UT White/Orange", url: "brand-assets/catalogue-live/tee-ut.png" },
+    { name: "School Hoodie - UT White", url: "brand-assets/catalogue-live/hoodie-ut.png" },
+    { name: "School Tee - Washington Purple", url: "brand-assets/catalogue-live/tee-washington.png" },
+    { name: "School Hoodie - UW Purple", url: "brand-assets/catalogue-live/hoodie-uw.png" },
   ],
   catalogueMockups: [
-    { name: "Black Fleece",        desc: "Postgame fleece in true black.", url: "brand-assets/fleece-black.jpg" },
+    { name: "Trucker pair - Black/Camo", url: "brand-assets/catalogue-mockups/mock-hat-pair-black.png" },
+    { name: "Trucker pair - Cream/Camo", url: "brand-assets/catalogue-mockups/mock-hat-pair-cream.png" },
+    { name: "Cap - Black w/ cross icon", url: "brand-assets/catalogue-mockups/mock-cap-cross.png" },
+    { name: "Cap - Cream/Orange", url: "brand-assets/catalogue-mockups/mock-cap-cream-orange.png" },
+    { name: "Headband - Black", url: "brand-assets/catalogue-mockups/mock-headband.png" },
+    { name: "Tan bra + shorts set", url: "brand-assets/catalogue-mockups/mock-tan-set.png" },
+    { name: "Black tee + white hoodie pair", url: "brand-assets/catalogue-mockups/mock-tee-hoodie-pair.png" },
+    { name: "Cap - Black/Camo brim", url: "brand-assets/catalogue-mockups/mock-cap-camo.png" },
+    { name: "Tee - Black multicolor wordmark", url: "brand-assets/catalogue-mockups/mock-tee-multicolor.png" },
+    { name: "Zip Crop Hoodie - Beige", url: "brand-assets/catalogue-mockups/mock-zip-crop-beige.png" },
+    { name: "Hoodie - Pale Pink (flat)", url: "brand-assets/catalogue-mockups/mock-pink-hoodie.png" },
+    { name: "Hoodie - Pale Pink (alt)", url: "brand-assets/catalogue-mockups/mock-pink-hoodie-2.png" },
+    { name: "Crewneck - Pale Pink", url: "brand-assets/catalogue-mockups/mock-pink-crew.png" },
+    { name: "Pink off-shoulder set", url: "brand-assets/catalogue-mockups/mock-pink-set.png" },
+    { name: "Tan set (alt)", url: "brand-assets/catalogue-mockups/mock-tan-set-2.png" },
+    { name: "White crop tee + shorts set", url: "brand-assets/catalogue-mockups/mock-white-crop-set.png" },
+    { name: "Brown crop hoodie + leggings", url: "brand-assets/catalogue-mockups/mock-brown-crop-set.png" },
+    { name: "Tank - White ribbed", url: "brand-assets/catalogue-mockups/mock-white-tank.png" },
+    { name: "Cami - Camo", url: "brand-assets/catalogue-mockups/mock-camo-cami.png" },
+    { name: "Tee - Black (front)", url: "brand-assets/catalogue-mockups/mock-tee-front.png" },
+    { name: "Tee - Black (back)", url: "brand-assets/catalogue-mockups/mock-tee-back.png" },
+    { name: "Fleece - Black", url: "brand-assets/catalogue-mockups/mock-fleece-black.png" },
+    { name: "Tee - Cream", url: "brand-assets/catalogue-mockups/mock-tee-cream.png" },
+    { name: "Fleece - White", url: "brand-assets/catalogue-mockups/mock-fleece-white.png" },
+    { name: "Tee - White", url: "brand-assets/catalogue-mockups/mock-tee-white.png" },
+    { name: "Dri-Fit Hooded LS - Black", url: "brand-assets/catalogue-mockups/mock-drifit-hood.png" },
+    { name: "Hoodie - White", url: "brand-assets/catalogue-mockups/mock-hoodie-white.png" },
+    { name: "Hoodie - Black", url: "brand-assets/catalogue-mockups/mock-hoodie-black.png" },
+    { name: "Hoodie pair front+back", url: "brand-assets/catalogue-mockups/mock-hoodie-pair.png" },
+    { name: "Tee pair w/ graphic back", url: "brand-assets/catalogue-mockups/mock-tee-graphic-pair.png" },
+    { name: "Performance jersey - Black", url: "brand-assets/catalogue-mockups/mock-jersey.png" },
+    { name: "Cap - Cream/Orange (alt)", url: "brand-assets/catalogue-mockups/mock-cap-cream-orange-2.png" },
+    { name: "Cap - Black/Camo (alt)", url: "brand-assets/catalogue-mockups/mock-cap-camo-2.png" },
+    { name: "Caps pair - Dark", url: "brand-assets/catalogue-mockups/mock-caps-pair-dark.png" },
+    { name: "Caps pair - Cream", url: "brand-assets/catalogue-mockups/mock-caps-pair-cream.png" },
     { name: "Black Tee · 3D",      desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-black-tee.mp4", type: "video" },
-    { name: "Cream Tee",           desc: "Postgame tee in cream.",         url: "brand-assets/tee-cream.jpg" },
-    { name: "White Fleece",        desc: "Postgame fleece in white.",      url: "brand-assets/fleece-white.jpg" },
     { name: "Black Tee · 3D Spin", desc: "Black tee — 3D product spin.",  url: "brand-assets/spin-3.mp4", type: "video" },
-    { name: "White Tee",           desc: "Postgame tee in white.",         url: "brand-assets/tee-white.jpg" },
-    { name: "Black Tee",           desc: "Postgame tee in black.",         url: "brand-assets/tee-black.jpg" },
     { name: "Apparel · 3D",        desc: "Apparel — 3D product spin.",    url: "brand-assets/spin-2.mp4", type: "video" },
-    { url: "brand-assets/catalogue/definition-mock-back.jpg" },
-    { url: "brand-assets/catalogue/definition-mock-front.jpg" },
-    { url: "brand-assets/catalogue/fleece-black.jpg" },
-    { url: "brand-assets/catalogue/fleece-white.jpg" },
-    { url: "brand-assets/catalogue/postgame-black-dri-fit-hoodie-white-logo.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-38-52-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-39-09-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-39-56-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-19-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-35-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-46-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-40-57-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-13-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-22-pm.jpg" },
-    { url: "brand-assets/catalogue/screenshot-2025-12-28-at-7-41-33-pm.jpg" },
-    { url: "brand-assets/catalogue/tee-black.jpg" },
-    { url: "brand-assets/catalogue/tee-cream.jpg" },
-    { url: "brand-assets/catalogue/tee-white.jpg" }
   ],
   /* CATALOGUE:END */
 
@@ -441,6 +497,24 @@ const ASSETS = {
     from{transform:translateX(0);}
     to{transform:translateX(-50%);}
   }
+  /* catalogue: user-scrollable strip (replaces marquee) */
+  .cat-scroll{
+    overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+    scroll-behavior:auto;cursor:grab;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  .cat-scroll::-webkit-scrollbar{display:none;height:0;}
+  .cat-scroll.dragging,.cat-scroll.dragging .show-card{cursor:grabbing;}
+  .cat-strip{display:flex;gap:20px;width:max-content;padding:6px 24px;}
+  .cat-strip .show-card{scroll-snap-align:start;}
+  .show-badge{
+    position:absolute;top:12px;right:12px;z-index:4;pointer-events:none;
+    background:#D73F09;color:#fff;
+    font-family:'JetBrains Mono', monospace;font-size:11px;font-weight:500;
+    letter-spacing:0.12em;text-transform:uppercase;
+    padding:5px 9px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.35);
+  }
   .school-card{
     width:240px;flex-shrink:0;overflow:hidden;
   }
@@ -453,7 +527,8 @@ const ASSETS = {
   .school-card .placeholder{height:160px;border:none;border-bottom:1.5px dashed rgba(250,248,245,0.18);border-radius:0;}
 
   .show-card{
-    width:320px;height:430px;flex-shrink:0;overflow:hidden;position:relative;cursor:pointer;
+    --card-zoom:1.25;
+    width:400px;height:540px;flex-shrink:0;overflow:hidden;position:relative;cursor:pointer;
     background:linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03) 40%, rgba(255,255,255,0.07));
     border:1px solid rgba(255,255,255,0.16);
     backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
@@ -464,14 +539,7 @@ const ASSETS = {
     transform:translateY(-6px);border-color:rgba(215,63,9,0.55);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 26px 56px rgba(0,0,0,0.55);
   }
-  /* the photo itself fills the card: a bright blurred cover layer
-     behind, the sharp product contained on top — nothing cropped */
-  .show-bg{
-    position:absolute;inset:0;z-index:0;
-    background-size:cover;background-position:center;
-    filter:blur(18px) saturate(1.08);
-    transform:scale(1.15);
-  }
+  /* product photo fills the card via object-fit:cover + --card-zoom crop */
   .show-card.video-card{background:radial-gradient(ellipse 90% 70% at 50% 30%, rgba(215,63,9,0.2), rgba(20,20,26,1) 75%);}
   .show-card::after{
     content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
@@ -479,7 +547,8 @@ const ASSETS = {
     border-radius:inherit;
   }
   .show-stage{position:absolute;top:0;left:0;right:0;bottom:46px;z-index:1;display:flex;align-items:center;justify-content:center;}
-  .show-stage img, .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;filter:drop-shadow(0 12px 26px rgba(0,0,0,0.35));}
+  .show-stage img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(var(--card-zoom));transform-origin:center 48%;}
+  .show-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block;filter:drop-shadow(0 12px 26px rgba(0,0,0,0.35));}
   .show-label{z-index:3;}
 
   .wild-card{
@@ -549,7 +618,7 @@ const ASSETS = {
     .type-row{grid-template-columns:1fr;gap:14px;}
     header{min-height:72vh;}
     section{padding:64px 0;}
-    .show-card{width:250px;height:340px;}
+    .show-card{width:300px;height:405px;}
     .school-card{width:200px;}
     .hero-bg{left:0;}
     .hero-bg img.active{opacity:0.28;}
@@ -714,7 +783,7 @@ const ASSETS = {
     </div>
     <p class="section-note">Apparel, merch, and content built with this system. Tap any product for details.</p>
   </div>
-  <div class="marquee"><div class="marquee-track" id="catTrack"></div></div>
+  <div class="cat-scroll" id="catScroll"><div class="cat-strip" id="catTrack"></div></div>
 </section>
 
 
@@ -806,22 +875,59 @@ function catMedia(item){
   if(item.type === 'video') return '<video src="'+item.url+'" autoplay muted loop playsinline></video>';
   return '<img src="'+item.url+'" alt="'+(item.name||prettyName(item.url))+'" loading="lazy">';
 }
-var CAT = ASSETS.catalogueLive.concat(ASSETS.catalogueMockups);
-function buildCatCards(list, offset){
-  /* each carousel shows up to 14; the full set lives in the popup */
-  return list.slice(0,18).map(function(s,i){
-    if(!s.url) return '';
+var CAT = ASSETS.catalogueLive.concat(ASSETS.catalogueMockups); /* popup index map — unchanged */
+var nLive = ASSETS.catalogueLive.length;
+/* Merge live + mockup into one scrollable strip that alternates dark (live) /
+   white (mockup). Bresenham spread distributes every mockup (incl. the 3 spin
+   videos) evenly across the live cards: dominant L L M rhythm with a periodic
+   L M to absorb the remainder, so white cards stay rhythmic with no clump and
+   the order is identical on every load. data-cat stays the CAT (concat) index
+   so popup behaviour is unchanged. */
+function mergeCatalogue(live, mock){
+  var out=[], mi=0, acc=0, L=live.length, M=mock.length;
+  for(var i=0;i<L;i++){
+    out.push(live[i]);
+    acc+=M;
+    if(acc>=L && mi<M){ acc-=L; out.push(mock[mi++]); }
+  }
+  while(mi<M) out.push(mock[mi++]);
+  return out;
+}
+var CAT_MERGED = mergeCatalogue(
+  ASSETS.catalogueLive.map(function(s,i){ return {item:s, idx:i, type:'live'}; }),
+  ASSETS.catalogueMockups.map(function(s,i){ return {item:s, idx:nLive+i, type:'mock'}; })
+);
+function buildCatCards(merged){
+  return merged.map(function(e){
+    var s=e.item; if(!s.url) return '';
     var name = s.name || prettyName(s.url);
-    var bg = s.type === 'video' ? '' : '<div class="show-bg" style="background-image:url(\''+s.url+'\')"></div>';
-    return '<div class="card show-card'+(s.type==='video'?' video-card':'')+'" data-cat="'+(offset+i)+'">'+
-      bg+
+    var badge = e.type==='mock' ? '<div class="show-badge">Not Available</div>' : '';
+    return '<div class="card show-card'+(s.type==='video'?' video-card':'')+(e.type==='mock'?' mock-card':'')+'" data-cat="'+e.idx+'">'+
+      badge+
       '<div class="show-stage">'+catMedia(s)+'</div>'+
       '<div class="show-label">'+name+'</div>'+
     '</div>';
   }).join('');
 }
-var catHTML = buildCatCards(CAT, 0);
-document.getElementById('catTrack').innerHTML = catHTML + catHTML;
+document.getElementById('catTrack').innerHTML = buildCatCards(CAT_MERGED);
+/* click-drag horizontal scroll on desktop; swallow the click after a real drag */
+(function(){
+  var sc = document.getElementById('catScroll');
+  if(!sc) return;
+  var down=false, startX=0, startLeft=0, moved=false;
+  sc.addEventListener('mousedown', function(e){
+    down=true; moved=false; sc.classList.add('dragging');
+    startX=e.pageX; startLeft=sc.scrollLeft; e.preventDefault();
+  });
+  window.addEventListener('mousemove', function(e){
+    if(!down) return;
+    var dx=e.pageX-startX;
+    if(Math.abs(dx)>4) moved=true;
+    sc.scrollLeft=startLeft-dx;
+  });
+  window.addEventListener('mouseup', function(){ down=false; sc.classList.remove('dragging'); });
+  sc.addEventListener('click', function(e){ if(moved){ e.preventDefault(); e.stopPropagation(); moved=false; } }, true);
+})();
 
 
 
@@ -858,7 +964,7 @@ ASSETS.motion.forEach((s,i) => {
 });
 
 /* marquee speed scales with content so long tracks don't race */
-[['schoolTrack',4],['catTrack',5],['wildTrack',5]].forEach(([id,secsPer]) => {
+[['schoolTrack',4],['wildTrack',5]].forEach(([id,secsPer]) => {
   const t = document.getElementById(id);
   t.style.animationDuration = Math.max(30, (t.children.length/2) * secsPer) + 's';
 });
