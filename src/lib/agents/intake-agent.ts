@@ -33,6 +33,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import type { IntakeTagResult } from '@/lib/types/intake';
 import { prepareImageForClaude, extractImageDimensions } from '@/lib/services/image-convert';
+import { generateEmbedding, buildEmbeddingInput } from '@/lib/services/embeddings';
 
 // Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
 const anthropic = new Anthropic();
@@ -426,6 +427,34 @@ export async function tagInspoItem(
 
   if (updateError) {
     throw new Error(`Failed to save tags: ${updateError.message}`);
+  }
+
+  // --- Step 6b: Generate + store the embedding ---
+  // Runs right after the tag write succeeds. An embedding failure here must
+  // NEVER fail the tag job, so the whole block is wrapped: on error we warn
+  // and continue (the backfill script can fill this row in later).
+  try {
+    const embeddingInput = buildEmbeddingInput({
+      visual_description: tagResult.visual_description,
+      context_tags: tagResult.context_tags,
+      social_tags: tagResult.social_tags,
+      pro_tags: tagResult.pro_tags,
+      search_phrases: tagResult.vibe_words, // agent calls them vibe_words
+      brief_fit: tagResult.brief_fit,
+    });
+    const embedding = await generateEmbedding(embeddingInput);
+    const { error: embeddingError } = await supabase
+      .from('inspo_items')
+      .update({ embedding: JSON.stringify(embedding) })
+      .eq('id', inspoItemId);
+    if (embeddingError) {
+      throw new Error(embeddingError.message);
+    }
+  } catch (embeddingErr) {
+    console.warn(
+      `[intake-agent] Embedding step failed for ${inspoItemId} (tag job still succeeded):`,
+      embeddingErr instanceof Error ? embeddingErr.message : embeddingErr
+    );
   }
 
   // --- Step 7: Update agent_runs with success ---
