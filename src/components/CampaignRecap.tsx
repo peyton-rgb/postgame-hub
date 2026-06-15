@@ -7,7 +7,8 @@ import { fmt, pct, formatEngagementRate, dollar, computeStatsWithOverrides, getT
 import { PostgameLogo } from "./PostgameLogo";
 import { TopPerformerMedia } from "./TopPerformerMedia";
 import PostgameCalendar from "./PostgameCalendar";
-import FutureOpportunities from "./FutureOpportunities";
+// TEMP: Future Opportunities pulled until finalized — uncomment to restore
+// import FutureOpportunities from "./FutureOpportunities";
 import AssetModal, { type PortalAthlete, type PortalPost, type SideMetrics, type Collaborator } from "@/app/portal/[token]/library/AssetModal";
 // Replaced react-masonry-css with a local shortest-column-next implementation
 // (see BalancedMasonry below). react-masonry-css distributes sequentially,
@@ -2483,8 +2484,8 @@ export function CampaignRecap({
         </div>
       )}
 
-      {/* ── FUTURE OPPORTUNITIES (sits above the calendar) ── */}
-      <FutureOpportunities brandName={campaign.client_name} />
+      {/* TEMP: Future Opportunities pulled until finalized — uncomment to restore:
+      <FutureOpportunities brandName={campaign.client_name} /> */}
 
       {/* ── POSTGAME CALENDAR (sits above the footer) ──────── */}
       <PostgameCalendar />
