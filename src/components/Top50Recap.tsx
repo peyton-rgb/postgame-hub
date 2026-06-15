@@ -7,6 +7,7 @@ import { fmt, computeStats } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { SchoolLogo, getFullSchoolName, getSchoolColor } from "./SchoolBadge";
 import PostgameCalendar from "./PostgameCalendar";
+import FutureOpportunities from "./FutureOpportunities";
 
 // ── Rich Text Helper ─────────────────────────────────────────
 
@@ -535,6 +536,9 @@ export function Top50Recap({
           <div className="text-center py-16 text-white/20 text-sm">No athletes match your search.</div>
         )}
       </div>
+
+      {/* ── FUTURE OPPORTUNITIES (sits above the calendar) ── */}
+      <FutureOpportunities brandName={campaign.client_name} />
 
       {/* ── POSTGAME CALENDAR (sits above the footer) ─────── */}
       <PostgameCalendar />
