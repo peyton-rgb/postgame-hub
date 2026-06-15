@@ -14,8 +14,8 @@ export default function FutureOpportunities({ brandName }: FutureOpportunitiesPr
       <div className={styles.inner}>
         <h2 className={styles.headline}>Future Opportunities To Consider</h2>
         <p className={styles.intro}>
-          Ways <span className={styles.brand}>{who}</span> can activate around the moments on the
-          calendar below — each one a lane Postgame runs end-to-end.
+          Every moment on the calendar below is a chance for{" "}
+          <span className={styles.brand}>{who}</span> to show up. Here's how Postgame makes it happen.
         </p>
 
         <div className={styles.grid}>
