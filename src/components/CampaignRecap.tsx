@@ -1079,6 +1079,19 @@ export function CampaignRecap({
   ].filter(Boolean).join(", ");
   const contentTypes = campaign.settings?.content_type || autoContentTypes;
 
+  // Athlete spotlight card (Campaign Overview, right column). Data-driven via the
+  // recap's settings JSON; renders nothing unless a matching athlete is found.
+  const spotlightAthleteId = (settings as any).spotlight_athlete_id as string | undefined;
+  const spotlightMediaId = (settings as any).spotlight_media_id as string | undefined;
+  const spotlightAthlete = spotlightAthleteId
+    ? (allAthletes || []).find((a: any) => a.id === spotlightAthleteId)
+    : undefined;
+  const spotlightItems = spotlightAthlete ? (media[spotlightAthlete.id] || []) : [];
+  const spotlightPhoto =
+    (spotlightMediaId && spotlightItems.find((m: any) => m.id === spotlightMediaId)) ||
+    spotlightItems.find((m: any) => m.type !== "video" && !m.is_video_thumbnail) ||
+    null;
+
   // Roster sort: composite of "biggest names" (followers) and "top performers"
   // (total engagements). For each athlete we compute a percentile rank within
   // the campaign on each signal, then average the two. Featured athletes pin
@@ -1254,6 +1267,28 @@ export function CampaignRecap({
                   <span className="text-base font-semibold text-white/90">{row.value}</span>
                 </div>
               ))}
+              {spotlightAthlete && spotlightPhoto && (
+                <div className="mt-8 w-full max-w-[320px]">
+                  <div className="bg-white/[0.07] border border-white/[0.15] rounded-3xl p-2.5 backdrop-blur-md">
+                    <div className="rounded-[1.25rem] overflow-hidden aspect-[9/16] bg-white/[0.04]">
+                      <img src={supabaseImageUrl(spotlightPhoto.file_url, 1200) ?? spotlightPhoto.file_url} alt={spotlightAthlete.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="px-3 pt-4 pb-3">
+                      <div className="text-2xl font-black uppercase tracking-wide leading-none">{spotlightAthlete.name}</div>
+                      {spotlightAthlete.ig_handle && (
+                        <a href={`https://www.instagram.com/${spotlightAthlete.ig_handle}/`} target="_blank" rel="noopener noreferrer" className="inline-block mt-1.5 text-sm text-[#D73F09] hover:underline">@{spotlightAthlete.ig_handle}</a>
+                      )}
+                      <div className="h-px bg-white/[0.12] my-3" />
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm text-white/90">{[spotlightAthlete.school, spotlightAthlete.sport].filter(Boolean).join(" · ")}</span>
+                        {spotlightAthlete.ig_followers != null && (
+                          <span className="text-xs text-white/60 whitespace-nowrap"><b className="text-base font-black tracking-wide text-white/90">{fmt(spotlightAthlete.ig_followers)}</b> followers</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
