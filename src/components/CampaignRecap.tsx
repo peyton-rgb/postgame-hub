@@ -896,6 +896,61 @@ function EventContent({ eventMedia }: { eventMedia: Media[] }) {
   );
 }
 
+function SpotlightCarousel({ photos, name, igHandle, igFollowers, school, sport }: {
+  photos: { id: string; url: string; alt: string }[];
+  name: string; igHandle?: string | null; igFollowers?: number | null;
+  school?: string | null; sport?: string | null;
+}) {
+  const [center, setCenter] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const n = photos.length;
+  useEffect(() => {
+    if (n <= 1 || paused) return;
+    const t = setInterval(() => setCenter((c) => (c + 1) % n), 3500);
+    return () => clearInterval(t);
+  }, [n, paused]);
+  const slot = (i: number): React.CSSProperties => {
+    const base: React.CSSProperties = { position: "absolute", left: "50%", top: "50%", width: 248,
+      transition: "transform .85s cubic-bezier(.22,.61,.36,1), opacity .85s ease, filter .85s ease" };
+    if (n === 1 || i === center) return { ...base, transform: "translate(-50%,-50%) scale(1)", opacity: 1, zIndex: 3 };
+    const left = (center - 1 + n) % n, right = (center + 1) % n;
+    if (i === left)  return { ...base, transform: "translate(-50%,-50%) translateX(-150px) scale(.78)", opacity: .8, filter: "brightness(.82)", zIndex: 1 };
+    if (i === right) return { ...base, transform: "translate(-50%,-50%) translateX(150px) scale(.78)", opacity: .8, filter: "brightness(.82)", zIndex: 1 };
+    return { ...base, transform: "translate(-50%,-50%) scale(.6)", opacity: 0, zIndex: 0 };
+  };
+  return (
+    <div className="mt-8 w-full flex flex-col gap-[18px]">
+      <div className="relative h-[400px] overflow-hidden" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+        {photos.map((p, i) => (
+          <div key={p.id} style={slot(i)} className="rounded-[20px] overflow-hidden border border-white/[0.14] bg-white/[0.04] shadow-[0_24px_48px_rgba(0,0,0,0.55)]">
+            <img src={p.url} alt={p.alt} className="block w-full h-full object-cover aspect-[4/5]" />
+          </div>
+        ))}
+        {n > 1 && (
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-1 flex gap-[7px] z-[5]">
+            {photos.map((_, i) => (
+              <span key={i} className={`h-[7px] rounded-full transition-all duration-300 ${i === center ? "w-[18px] bg-[#D73F09]" : "w-[7px] bg-white/20"}`} />
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="bg-white/[0.07] border border-white/[0.1] rounded-[20px] backdrop-blur-md px-5 py-[18px] shadow-[0_18px_40px_rgba(0,0,0,0.3)]">
+        <div className="text-3xl font-black uppercase tracking-wide leading-none">{name}</div>
+        {igHandle && (
+          <a href={`https://www.instagram.com/${igHandle}/`} target="_blank" rel="noopener noreferrer" className="inline-block mt-1.5 text-sm text-[#D73F09] hover:underline">@{igHandle}</a>
+        )}
+        <div className="h-px bg-white/[0.1] my-3" />
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-sm text-white/90">{[school, sport].filter(Boolean).join(" · ")}</span>
+          {igFollowers != null && (
+            <span className="text-xs text-white/60 whitespace-nowrap"><b className="text-lg font-black tracking-wide text-white/90">{fmt(igFollowers)}</b> followers</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CampaignRecap({
   campaign,
   athletes,
@@ -1087,10 +1142,15 @@ export function CampaignRecap({
     ? (allAthletes || []).find((a: any) => a.id === spotlightAthleteId)
     : undefined;
   const spotlightItems = spotlightAthlete ? (media[spotlightAthlete.id] || []) : [];
-  const spotlightPhoto =
-    (spotlightMediaId && spotlightItems.find((m: any) => m.id === spotlightMediaId)) ||
-    spotlightItems.find((m: any) => m.type !== "video" && !m.is_video_thumbnail) ||
-    null;
+  let spotlightPhotos = spotlightItems
+    .filter((m: any) => m.type !== "video" && !m.is_video_thumbnail)
+    .map((m: any) => ({ id: m.id as string, url: m.file_url as string, alt: spotlightAthlete!.name }));
+  if (spotlightMediaId) {
+    spotlightPhotos = [
+      ...spotlightPhotos.filter((p) => p.id === spotlightMediaId),
+      ...spotlightPhotos.filter((p) => p.id !== spotlightMediaId),
+    ];
+  }
 
   // Roster sort: composite of "biggest names" (followers) and "top performers"
   // (total engagements). For each athlete we compute a percentile rank within
@@ -1267,27 +1327,15 @@ export function CampaignRecap({
                   <span className="text-base font-semibold text-white/90">{row.value}</span>
                 </div>
               ))}
-              {spotlightAthlete && spotlightPhoto && (
-                <div className="mt-8 w-full max-w-[320px]">
-                  <div className="bg-white/[0.07] border border-white/[0.15] rounded-3xl p-2.5 backdrop-blur-md">
-                    <div className="rounded-[1.25rem] overflow-hidden aspect-[9/16] bg-white/[0.04]">
-                      <img src={supabaseImageUrl(spotlightPhoto.file_url, 1200) ?? spotlightPhoto.file_url} alt={spotlightAthlete.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="px-3 pt-4 pb-3">
-                      <div className="text-2xl font-black uppercase tracking-wide leading-none">{spotlightAthlete.name}</div>
-                      {spotlightAthlete.ig_handle && (
-                        <a href={`https://www.instagram.com/${spotlightAthlete.ig_handle}/`} target="_blank" rel="noopener noreferrer" className="inline-block mt-1.5 text-sm text-[#D73F09] hover:underline">@{spotlightAthlete.ig_handle}</a>
-                      )}
-                      <div className="h-px bg-white/[0.12] my-3" />
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-sm text-white/90">{[spotlightAthlete.school, spotlightAthlete.sport].filter(Boolean).join(" · ")}</span>
-                        {spotlightAthlete.ig_followers != null && (
-                          <span className="text-xs text-white/60 whitespace-nowrap"><b className="text-base font-black tracking-wide text-white/90">{fmt(spotlightAthlete.ig_followers)}</b> followers</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {spotlightAthlete && spotlightPhotos.length > 0 && (
+                <SpotlightCarousel
+                  photos={spotlightPhotos}
+                  name={spotlightAthlete.name}
+                  igHandle={spotlightAthlete.ig_handle}
+                  igFollowers={spotlightAthlete.ig_followers}
+                  school={spotlightAthlete.school}
+                  sport={spotlightAthlete.sport}
+                />
               )}
             </div>
           </div>
