@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Postgame Athlete App — Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root{--black:#07070a;--off:#FAF8F5;--orange:#D73F09;--green:#34C759}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#17171b;font-family:Arial,Helvetica,sans-serif;color:#FAF8F5;padding:32px 16px 60px;-webkit-font-smoothing:antialiased}
+  .pgd{font-family:'Bebas Neue',sans-serif;letter-spacing:.02em;line-height:1}
+  .wrap{max-width:1120px;margin:0 auto;text-align:center}
+  .pagetitle{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.03em;margin-bottom:6px}
+  .pagesub{font-size:13px;color:rgba(250,248,245,.55);margin-bottom:36px}
+  .screens{display:flex;flex-wrap:wrap;gap:40px 36px;justify-content:center;align-items:flex-start}
+  .screenwrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .caption{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:rgba(250,248,245,.5)}
+  .phone{width:320px;background:var(--black);border-radius:34px;border:1px solid rgba(255,255,255,.13);overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  .notch{height:30px;display:flex;align-items:center;justify-content:center}
+  .pill{width:90px;height:5px;border-radius:5px;background:rgba(255,255,255,.18)}
+  .muted{color:rgba(250,248,245,.55)}
+  .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:13px 15px}
+  .fact{flex:1;background:rgba(255,255,255,.05);border-radius:12px;padding:10px;text-align:center}
+  .factlbl{font-size:11px;margin-top:5px}
+  .factsub{font-size:11px;color:rgba(250,248,245,.55)}
+  .ico{display:inline-block;color:var(--orange)}
+  .ico svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .tabbar{border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-around;padding:11px 0 16px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;color:rgba(250,248,245,.45);font-size:11px}
+  .tab svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .tab.active{color:var(--orange)}
+  .dealcard{border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+  .hero{position:relative;height:200px;overflow:hidden}
+  .heroimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%}
+  .dim{filter:grayscale(.55) brightness(.62)}
+  .chip{position:absolute;border-radius:7px;padding:5px 9px}
+  .eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .logochip{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.94);border-radius:8px;padding:6px 9px;display:flex;align-items:center}
+  .logochip img{height:15px;display:block;object-fit:contain}
+  .overlay{position:absolute;left:0;right:0;bottom:0;background:rgba(7,7,10,.62);padding:11px 14px;display:flex;align-items:center;justify-content:space-between}
+  .ctapill{border-radius:20px;padding:8px 14px;font-size:12px;font-weight:bold;text-transform:uppercase}
+  .check svg{width:16px;height:16px;stroke:var(--green);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .ackbox{width:19px;height:19px;border-radius:5px;border:2px solid rgba(250,248,245,.4);flex:none}
+  .ctabig{background:var(--orange);border-radius:14px;padding:14px;text-align:center;cursor:pointer}
+  .ghostbtn{border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:13px;text-align:center;cursor:pointer;color:rgba(250,248,245,.8)}
+  .statuspill{font-size:11px;font-weight:bold;text-transform:uppercase;border-radius:20px;padding:5px 11px}
+  .track{position:relative;margin-top:6px}
+  .step{position:relative;display:flex;gap:11px;align-items:flex-start;padding-bottom:15px;text-align:left}
+  .step:last-child{padding-bottom:0}
+  .step::before{content:'';position:absolute;left:8px;top:19px;bottom:0;width:2px;background:rgba(255,255,255,.12)}
+  .step:last-child::before{display:none}
+  .step.done::before{background:var(--orange)}
+  .dot{width:18px;height:18px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center}
+  .dot.done{background:var(--orange)}
+  .dot.current{background:var(--black);border:3px solid var(--orange)}
+  .dot.next{background:rgba(255,255,255,.15)}
+  .steplbl{font-size:13px}
+  .stepsub{font-size:11px;color:rgba(250,248,245,.5)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="pagetitle">POSTGAME ATHLETE APP</div>
+  <div class="pagesub">Full deal + payment flow — built with your real goodr &amp; CVS opt-in photos and logos. Dollar amounts on screens 3&ndash;5 are sample numbers.</div>
+
+  <div class="screens">
+
+    <!-- SCREEN 1: DEALS HOME -->
+    <div class="screenwrap">
+      <div class="caption">1 — Deals home</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 14px;display:flex;align-items:center;gap:11px">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff" class="pgd"><span style="font-size:17px">J</span></div>
+          <div style="flex:1;text-align:left">
+            <div style="font-size:11px" class="muted">Welcome back</div>
+            <div class="pgd" style="font-size:21px">JORDAN ELLIS</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px" class="muted">NIL value</div>
+            <div class="pgd" style="font-size:18px">$12,400</div>
+          </div>
+        </div>
+        <div style="padding:0 18px 10px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase" class="muted">Available deals</div>
+          <div style="font-size:11px" class="muted">2 active</div>
+        </div>
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:14px">
+          <div class="dealcard">
+            <div class="hero">
+              <img class="heroimg" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/ea1206ab-3b49-485c-9d6c-cd5384f4f850/1775061484458-Teonni_Key_Still%202026-03-17%20093058_1.19.2.png" alt="goodr campaign hero">
+              <div class="chip" style="top:12px;left:12px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2)"><span class="eyebrow" style="color:#fff">New NIL opportunity</span></div>
+              <div class="logochip"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774631732440-lmwkx0be.png" alt="goodr"></div>
+              <div class="overlay">
+                <div style="text-align:left">
+                  <div class="pgd" style="font-size:20px">SUMMER SERIES</div>
+                  <div style="font-size:12px;color:rgba(250,248,245,.78)">Free product + bonus $$</div>
+                </div>
+                <div class="ctapill" style="background:var(--green);color:#0a3d1c">Opt in now</div>
+              </div>
+            </div>
+          </div>
+          <div class="dealcard" style="border-color:rgba(255,255,255,.08)">
+            <div class="hero">
+              <img class="heroimg dim" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/4dd34b3c-8929-4130-887a-d388ca21f0b1/234a3b26-8276-4f0f-ad70-8e5d3da705e3/1775588065447-Epic_Beauty_2026_Byrum_Brown_007.jpg" alt="CVS campaign hero">
+              <div class="chip" style="top:12px;left:12px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.14)"><span class="eyebrow" style="color:rgba(255,255,255,.7)">New NIL opportunity</span></div>
+              <div class="logochip" style="background:rgba(255,255,255,.85)"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774628393427-pwoapldr.png" alt="CVS"></div>
+              <div class="overlay" style="background:rgba(7,7,10,.66)">
+                <div style="text-align:left">
+                  <div class="pgd" style="font-size:20px;color:rgba(250,248,245,.85)">MOTHER'S DAY</div>
+                  <div style="font-size:12px;color:rgba(250,248,245,.5)">Details soon</div>
+                </div>
+                <div class="ctapill" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);color:rgba(250,248,245,.7)">Coming soon</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg><span>Deals</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 6h11M4 12h11M4 18h11"/><path d="M18 5l1.5 1.5L21 4"/></svg><span>My deals</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14" r="1.2"/></svg><span>Earnings</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: OPT-IN DETAIL -->
+    <div class="screenwrap">
+      <div class="caption">2 — goodr opt-in detail</div>
+      <div class="phone">
+        <div class="hero" style="height:190px">
+          <img class="heroimg" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/ea1206ab-3b49-485c-9d6c-cd5384f4f850/1775061484458-Teonni_Key_Still%202026-03-17%20093058_1.19.2.png" alt="goodr campaign hero">
+          <div style="position:absolute;top:14px;left:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff">
+            <span class="ico" style="color:#fff"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M15 6l-6 6 6 6"/></svg></span>
+          </div>
+          <div class="logochip" style="top:14px;right:14px"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774631732440-lmwkx0be.png" alt="goodr"></div>
+          <div class="overlay" style="display:block">
+            <div class="eyebrow" style="color:rgba(250,248,245,.7)">New NIL opportunity</div>
+            <div class="pgd" style="font-size:24px">SUMMER SERIES</div>
+          </div>
+        </div>
+        <div style="padding:15px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:9px">
+            <div class="fact"><span class="ico"><svg viewBox="0 0 24 24"><path d="M3 3h7l11 11-7 7L3 10z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span><div class="factlbl">Free product</div><div class="factsub">+ bonus $$</div></div>
+            <div class="fact"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1"/></svg></span><div class="factlbl">Instagram</div><div class="factsub">story + post</div></div>
+            <div class="fact"><span class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></svg></span><div class="factlbl">Rolling</div><div class="factsub">dates after</div></div>
+          </div>
+          <div class="card" style="text-align:left">
+            <div class="pgd" style="font-size:16px;margin-bottom:9px">WHAT YOU'LL CREATE</div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px"><span class="check"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></span><span style="font-size:13px;color:rgba(250,248,245,.85)">1 story + 1 feed post</span></div>
+            <div style="display:flex;gap:8px;align-items:flex-start"><span class="check"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></span><span style="font-size:13px;color:rgba(250,248,245,.85)">&hellip;or 1 Instagram reel</span></div>
+          </div>
+          <div class="card" style="text-align:left">
+            <div class="pgd" style="font-size:16px;margin-bottom:6px">ABOUT THIS DEAL</div>
+            <span style="font-size:13px;line-height:1.5;color:rgba(250,248,245,.7)">Show goodr in your world. Natural, in-the-moment content that fits how you already post &mdash; no hard sell.</span>
+          </div>
+          <div id="ack" onclick="toggleAck()" style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;padding:2px;text-align:left">
+            <div class="ackbox" id="ackbox"></div>
+            <span style="font-size:12px;line-height:1.4;color:rgba(250,248,245,.6)">I'll disclose this as an ad (#ad / paid partnership) per FTC rules.</span>
+          </div>
+          <div class="ctabig"><span class="pgd" style="font-size:19px;color:#fff">OPT IN TO THIS DEAL</span></div>
+          <div style="font-size:11px;color:rgba(250,248,245,.4);text-align:center">Opting in confirms you to goodr. You can still ask questions after.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: CONFIRMATION -->
+    <div class="screenwrap">
+      <div class="caption">3 — You're in</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:30px 22px 24px;display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div style="width:74px;height:74px;border-radius:50%;background:rgba(52,199,89,.14);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+            <span class="check"><svg viewBox="0 0 24 24" style="width:38px;height:38px"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></span>
+          </div>
+          <div class="pgd" style="font-size:30px">YOU'RE IN</div>
+          <div style="font-size:13px;color:rgba(250,248,245,.65);margin-top:6px;line-height:1.5">You've opted into <b>goodr &mdash; Summer Series</b>. We'll send your content brief shortly.</div>
+        </div>
+        <div style="padding:0 18px;display:flex;flex-direction:column;gap:12px">
+          <div class="card" style="text-align:left">
+            <div class="pgd" style="font-size:16px;margin-bottom:11px">WHAT HAPPENS NEXT</div>
+            <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:9px"><div style="width:22px;height:22px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;flex:none" class="pgd">1</div><span style="font-size:13px;color:rgba(250,248,245,.8)">Postgame sends your brief + posting dates</span></div>
+            <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:9px"><div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.12);color:rgba(250,248,245,.8);display:flex;align-items:center;justify-content:center;font-size:12px;flex:none" class="pgd">2</div><span style="font-size:13px;color:rgba(250,248,245,.8)">Create + submit your content for approval</span></div>
+            <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.12);color:rgba(250,248,245,.8);display:flex;align-items:center;justify-content:center;font-size:12px;flex:none" class="pgd">3</div><span style="font-size:13px;color:rgba(250,248,245,.8)">Post it, then get paid</span></div>
+          </div>
+          <div class="ctabig"><span class="pgd" style="font-size:18px;color:#fff">VIEW IN MY DEALS</span></div>
+          <div class="ghostbtn" style="margin-bottom:18px"><span style="font-size:13px">Back to deals</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: MY DEALS -->
+    <div class="screenwrap">
+      <div class="caption">4 — My deals (tracker)</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 12px;text-align:left"><div class="pgd" style="font-size:26px">MY DEALS</div></div>
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:14px">
+          <div class="card" style="text-align:left;padding:15px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
+              <div style="background:rgba(255,255,255,.94);border-radius:7px;padding:5px 8px;display:flex"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774631732440-lmwkx0be.png" alt="goodr" style="height:13px"></div>
+              <div style="flex:1"><div style="font-size:13px;color:#FAF8F5">goodr</div><div style="font-size:11px;color:rgba(250,248,245,.55)">Summer Series</div></div>
+              <div class="statuspill" style="background:rgba(215,63,9,.18);color:#ff8a5c">Content due</div>
+            </div>
+            <div class="track">
+              <div class="step done"><div class="dot done"><span class="check" style="color:#fff"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:#fff;stroke-width:3"><path d="M5 12.5l4 4 9-10"/></svg></span></div><div><div class="steplbl" style="color:#FAF8F5">Opted in</div><div class="stepsub">Confirmed to goodr</div></div></div>
+              <div class="step done"><div class="dot current"></div><div><div class="steplbl" style="color:#FAF8F5">Content due</div><div class="stepsub" style="color:#ff8a5c">Upload your content for approval</div></div></div>
+              <div class="step"><div class="dot next"></div><div><div class="steplbl" style="color:rgba(250,248,245,.55)">Submitted</div><div class="stepsub">In review by Postgame + brand</div></div></div>
+              <div class="step"><div class="dot next"></div><div><div class="steplbl" style="color:rgba(250,248,245,.55)">Approved</div><div class="stepsub">Greenlit by Postgame</div></div></div>
+              <div class="step"><div class="dot next"></div><div><div class="steplbl" style="color:rgba(250,248,245,.55)">Post live</div><div class="stepsub">Download + post using your instructions</div></div></div>
+              <div class="step"><div class="dot next"></div><div><div class="steplbl" style="color:rgba(250,248,245,.55)">Paid</div><div class="stepsub">After posting confirmed</div></div></div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:rgba(250,248,245,.4);text-align:center">Tap a deal to upload content or see the brief.</div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg><span>Deals</span></div>
+          <div class="tab active"><svg viewBox="0 0 24 24"><path d="M4 6h11M4 12h11M4 18h11"/><path d="M18 5l1.5 1.5L21 4"/></svg><span>My deals</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14" r="1.2"/></svg><span>Earnings</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 4B: UPLOAD CONTENT -->
+    <div class="screenwrap">
+      <div class="caption">4b — Upload content (content due)</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 2px;display:flex;align-items:center;gap:8px">
+          <div class="pgd" style="font-size:24px;flex:1;text-align:left">UPLOAD CONTENT</div>
+          <div class="statuspill" style="background:rgba(215,63,9,.18);color:#ff8a5c">Content due</div>
+        </div>
+        <div style="padding:0 18px 12px;text-align:left"><div style="font-size:12px;color:rgba(250,248,245,.55)">goodr &middot; Summer Series &middot; due in 5 days</div></div>
+
+        <div style="padding:0 18px 12px;text-align:left">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+            <span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(250,248,245,.45)">Your uploads</span>
+            <span style="font-size:12px;color:#FAF8F5">1 of 2 uploaded</span>
+          </div>
+          <div style="height:5px;background:rgba(255,255,255,.1);border-radius:5px;overflow:hidden"><div style="width:50%;height:100%;background:var(--orange)"></div></div>
+        </div>
+
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:13px">
+
+          <div class="card" style="text-align:left;padding:13px;border-color:rgba(52,199,89,.3)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="pgd" style="font-size:15px;flex:1">FEED POST</div><div class="statuspill" style="background:rgba(52,199,89,.16);color:#34C759">Uploaded</div></div>
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:48px;height:48px;border-radius:9px;overflow:hidden;flex:none"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/ea1206ab-3b49-485c-9d6c-cd5384f4f850/1775061484458-Teonni_Key_Still%202026-03-17%20093058_1.19.2.png" style="width:100%;height:100%;object-fit:cover" alt="uploaded feed"></div>
+              <div style="flex:1"><div style="font-size:12px;color:#FAF8F5">feed_goodr_v1.jpg</div><div style="font-size:11px;color:rgba(250,248,245,.5)">4.2 MB</div></div>
+              <span style="font-size:11px;color:var(--orange);cursor:pointer">Replace</span>
+            </div>
+          </div>
+
+          <div style="text-align:left">
+            <div class="pgd" style="font-size:15px;margin-bottom:8px;color:#FAF8F5">REEL</div>
+            <div onclick="alert('Mockup only \u2014 opens your camera roll / files to upload.')" style="border:1.5px dashed rgba(255,255,255,.24);border-radius:14px;padding:26px 14px;text-align:center;cursor:pointer">
+              <span class="ico" style="color:rgba(250,248,245,.7)"><svg viewBox="0 0 24 24" style="width:26px;height:26px"><path d="M12 16V6M8 10l4-4 4 4"/><path d="M5 18h14"/></svg></span>
+              <div style="font-size:13px;color:#FAF8F5;margin-top:8px">Tap to upload your reel</div>
+              <div style="font-size:11px;color:rgba(250,248,245,.45);margin-top:3px">MP4 or MOV &middot; up to 500 MB</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:flex-start;background:rgba(255,255,255,.04);border-radius:12px;padding:11px">
+            <span class="ico" style="color:rgba(250,248,245,.6)"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg></span>
+            <span style="font-size:12px;line-height:1.45;color:rgba(250,248,245,.7)">Postgame and goodr review your content before you post. You'll get a notification the moment it's approved.</span>
+          </div>
+
+          <div class="ctabig" style="background:rgba(215,63,9,.45)"><span class="pgd" style="font-size:18px;color:rgba(255,255,255,.8)">SUBMIT FOR APPROVAL</span></div>
+          <div style="font-size:11px;color:rgba(250,248,245,.4);text-align:center;margin-bottom:4px">Upload both deliverables to submit.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: READY TO POST -->
+    <div class="screenwrap">
+      <div class="caption">5 — Ready to post (approved)</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 2px;display:flex;align-items:center;gap:8px">
+          <div class="pgd" style="font-size:24px;flex:1;text-align:left">READY TO POST</div>
+          <div class="statuspill" style="background:rgba(52,199,89,.16);color:#34C759">Approved</div>
+        </div>
+        <div style="padding:0 18px 4px;text-align:left"><div style="font-size:12px;color:rgba(250,248,245,.55)">goodr &middot; Summer Series</div></div>
+        <div style="padding:12px 18px 16px;display:flex;flex-direction:column;gap:12px">
+
+          <div class="card" style="text-align:left;padding:13px">
+            <div class="pgd" style="font-size:16px;margin-bottom:10px">YOUR APPROVED CONTENT</div>
+            <div style="position:relative;border-radius:12px;overflow:hidden;height:150px">
+              <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/ea1206ab-3b49-485c-9d6c-cd5384f4f850/1775061484458-Teonni_Key_Still%202026-03-17%20093058_1.19.2.png" style="width:100%;height:100%;object-fit:cover;object-position:center 22%" alt="approved content">
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <div style="width:46px;height:46px;border-radius:50%;background:rgba(7,7,10,.55);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff"><path d="M8 5v14l11-7z"/></svg></div>
+              </div>
+              <div style="position:absolute;bottom:8px;left:8px;background:rgba(7,7,10,.62);border-radius:6px;padding:3px 8px;font-size:11px;color:#fff">Reel &middot; 0:18</div>
+            </div>
+            <div onclick="alert('Mockup only \u2014 downloads the approved file.')" style="margin-top:11px;padding:11px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+              <span class="ico" style="color:#FAF8F5"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg></span>
+              <span style="font-size:13px;color:#FAF8F5">Download to post</span>
+            </div>
+          </div>
+
+          <div class="card" style="text-align:left">
+            <div class="pgd" style="font-size:16px;margin-bottom:11px">POSTING INSTRUCTIONS</div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(250,248,245,.55)">Platform</span><span style="font-size:12px;color:#FAF8F5">Instagram Reel</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(250,248,245,.55)">Post window</span><span style="font-size:12px;color:#FAF8F5">Jun 18 &ndash; 20</span></div>
+
+            <div style="margin-top:11px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(250,248,245,.45)">Caption</span><span onclick="copyTxt(this)" data-copy="Long days, bright sun, zero slip. goodr keeps up with me all summer. #ad" style="font-size:11px;color:var(--orange);cursor:pointer">Copy</span></div>
+              <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:10px;font-size:12px;line-height:1.5;color:rgba(250,248,245,.85)">Long days, bright sun, zero slip. goodr keeps up with me all summer. #ad</div>
+            </div>
+
+            <div style="margin-top:11px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(250,248,245,.45)">Tag + disclose</span><span onclick="copyTxt(this)" data-copy="@goodr #ad" style="font-size:11px;color:var(--orange);cursor:pointer">Copy</span></div>
+              <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:10px;font-size:12px;color:rgba(250,248,245,.85)">@goodr&nbsp;&nbsp;#ad</div>
+            </div>
+
+            <div style="margin-top:11px;display:flex;gap:8px;align-items:flex-start;background:rgba(215,63,9,.12);border:1px solid rgba(215,63,9,.3);border-radius:10px;padding:10px">
+              <span class="ico"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg></span>
+              <span style="font-size:12px;line-height:1.4;color:rgba(250,248,245,.8)">Required by law: include <b>#ad</b> and tag <b>@goodr</b> so it's a clear paid partnership.</span>
+            </div>
+          </div>
+
+          <div class="ctabig"><span class="pgd" style="font-size:18px;color:#fff">I'VE POSTED &mdash; ADD LINK</span></div>
+          <div style="font-size:11px;color:rgba(250,248,245,.4);text-align:center;margin-bottom:18px">Add your post link to confirm. Payment releases once we verify it's live.</div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 5B: READY TO POST FEED + REEL -->
+    <div class="screenwrap">
+      <div class="caption">5b — Ready to post &middot; feed + reel</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 2px;display:flex;align-items:center;gap:8px">
+          <div class="pgd" style="font-size:24px;flex:1;text-align:left">READY TO POST</div>
+          <div class="statuspill" style="background:rgba(52,199,89,.16);color:#34C759">Approved</div>
+        </div>
+        <div style="padding:0 18px 10px;text-align:left"><div style="font-size:12px;color:rgba(250,248,245,.55)">goodr &middot; Summer Series</div></div>
+
+        <div style="padding:0 18px 12px;text-align:left">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+            <span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(250,248,245,.45)">Your posts</span>
+            <span style="font-size:12px;color:#FAF8F5">1 of 2 done</span>
+          </div>
+          <div style="height:5px;background:rgba(255,255,255,.1);border-radius:5px;overflow:hidden"><div style="width:50%;height:100%;background:var(--orange)"></div></div>
+        </div>
+
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:12px">
+
+          <div class="card" style="text-align:left;padding:12px;border-color:rgba(52,199,89,.3)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:42px;height:42px;border-radius:9px;overflow:hidden;flex:none"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/ea1206ab-3b49-485c-9d6c-cd5384f4f850/1775061484458-Teonni_Key_Still%202026-03-17%20093058_1.19.2.png" style="width:100%;height:100%;object-fit:cover" alt="feed asset"></div>
+              <div style="flex:1"><div style="font-size:13px;color:#FAF8F5">Feed post</div><div style="font-size:11px;color:rgba(250,248,245,.5)">Verified Jun 18 &middot; link confirmed</div></div>
+              <div class="statuspill" style="background:rgba(52,199,89,.16);color:#34C759">Verified</div>
+            </div>
+          </div>
+
+          <div class="card" style="text-align:left;padding:13px;border-color:rgba(215,63,9,.4)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+              <div class="pgd" style="font-size:16px;flex:1">REEL</div>
+              <div class="statuspill" style="background:rgba(215,63,9,.18);color:#ff8a5c">To post</div>
+            </div>
+            <div style="position:relative;border-radius:12px;overflow:hidden;height:150px">
+              <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/17b9fca8-e5b6-4917-8f05-7b6b8dfcca27/ea1206ab-3b49-485c-9d6c-cd5384f4f850/1775061484458-Teonni_Key_Still%202026-03-17%20093058_1.19.2.png" style="width:100%;height:100%;object-fit:cover;object-position:center 18%" alt="reel asset">
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="width:44px;height:44px;border-radius:50%;background:rgba(7,7,10,.55);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="width:19px;height:19px;fill:#fff"><path d="M8 5v14l11-7z"/></svg></div></div>
+              <div style="position:absolute;bottom:8px;left:8px;background:rgba(7,7,10,.62);border-radius:6px;padding:3px 8px;font-size:11px;color:#fff">Reel 9:16 &middot; 0:18</div>
+            </div>
+            <div onclick="alert('Mockup only \u2014 downloads the approved reel.')" style="margin-top:10px;padding:10px;border-radius:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><span class="ico" style="color:#FAF8F5"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg></span><span style="font-size:13px;color:#FAF8F5">Download reel</span></div>
+            <div style="margin-top:11px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(250,248,245,.45)">Reel caption</span><span onclick="copyTxt(this)" data-copy="No squinting, no slipping. goodr is my summer go-to. #ad" style="font-size:11px;color:var(--orange);cursor:pointer">Copy</span></div>
+              <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:10px;font-size:12px;line-height:1.5;color:rgba(250,248,245,.85)">No squinting, no slipping. goodr is my summer go-to. #ad</div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:flex-start;background:rgba(215,63,9,.12);border:1px solid rgba(215,63,9,.3);border-radius:10px;padding:9px"><span class="ico"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg></span><span style="font-size:11px;line-height:1.4;color:rgba(250,248,245,.8)">Tag <b>@goodr</b> and include <b>#ad</b>.</span></div>
+            <div style="margin-top:12px">
+              <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(250,248,245,.45);margin-bottom:6px">Paste your live post link</div>
+              <input type="text" placeholder="https://instagram.com/reel/..." style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:11px;padding:11px;color:#FAF8F5;font-size:12px;font-family:Arial">
+              <div class="ctabig" style="margin-top:9px;padding:12px"><span class="pgd" style="font-size:16px;color:#fff">SUBMIT FOR VERIFICATION</span></div>
+              <div style="font-size:11px;color:rgba(250,248,245,.45);text-align:center;margin-top:7px">Your manager checks the post is live, then this turns to <span style="color:#34C759">Verified</span>.</div>
+            </div>
+          </div>
+
+          <div style="font-size:11px;color:rgba(250,248,245,.4);text-align:center;margin-bottom:18px">Payment releases once both posts are live and verified.</div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 6: EARNINGS -->
+    <div class="screenwrap">
+      <div class="caption">6 — Earnings / get paid</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 12px;text-align:left"><div class="pgd" style="font-size:26px">EARNINGS</div></div>
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;background:rgba(255,255,255,.05);border-radius:14px;padding:13px;text-align:left">
+              <div style="font-size:11px" class="muted">Total earned</div>
+              <div class="pgd" style="font-size:28px;color:#FAF8F5;margin-top:3px">$2,150</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,.05);border-radius:14px;padding:13px;text-align:left">
+              <div style="font-size:11px" class="muted">Pending</div>
+              <div class="pgd" style="font-size:28px;color:#ff8a5c;margin-top:3px">$250</div>
+            </div>
+          </div>
+
+          <div class="card" style="text-align:left;border-color:rgba(215,63,9,.4)">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14" r="1.2"/></svg></span>
+              <div style="flex:1">
+                <div class="pgd" style="font-size:16px">SET UP PAYOUTS</div>
+                <div style="font-size:12px;color:rgba(250,248,245,.65);line-height:1.45;margin-top:3px">Add the PayPal email where you want to get paid. Payouts go straight to your PayPal &mdash; Postgame never sees your bank details.</div>
+              </div>
+            </div>
+            <div class="ctabig" style="margin-top:12px;padding:11px"><span class="pgd" style="font-size:16px;color:#fff">CONNECT PAYPAL</span></div>
+          </div>
+
+          <div style="text-align:left">
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(250,248,245,.45);margin:4px 2px 8px">Recent</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(255,255,255,.07)">
+              <div style="background:rgba(255,255,255,.94);border-radius:6px;padding:4px 7px;display:flex"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774631732440-lmwkx0be.png" alt="goodr" style="height:12px"></div>
+              <div style="flex:1;text-align:left"><div style="font-size:13px;color:#FAF8F5">goodr &middot; Summer Series</div><div style="font-size:11px;color:rgba(250,248,245,.5)">Awaiting posting</div></div>
+              <div style="text-align:right"><div class="pgd" style="font-size:16px;color:#ff8a5c">$250</div><div style="font-size:10px;color:rgba(250,248,245,.45)">Pending</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 2px">
+              <div style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:rgba(250,248,245,.6);font-size:12px" class="pgd">B</div>
+              <div style="flex:1;text-align:left"><div style="font-size:13px;color:#FAF8F5">Past deal &middot; example</div><div style="font-size:11px;color:rgba(250,248,245,.5)">Paid Apr 12</div></div>
+              <div style="text-align:right"><div class="pgd" style="font-size:16px;color:var(--green)">$1,900</div><div style="font-size:10px;color:rgba(250,248,245,.45)">Paid</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg><span>Deals</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 6h11M4 12h11M4 18h11"/><path d="M18 5l1.5 1.5L21 4"/></svg><span>My deals</span></div>
+          <div class="tab active"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14" r="1.2"/></svg><span>Earnings</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:50px">
+    <div class="caption" style="margin-bottom:14px">7 — Campaign manager view (in the Hub)</div>
+    <div class="card" style="max-width:580px;margin:0 auto;text-align:left;padding:18px 20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff" class="pgd"><span style="font-size:15px">JE</span></div>
+        <div style="flex:1">
+          <div style="font-size:14px;color:#FAF8F5">Jordan Ellis</div>
+          <div style="font-size:12px;color:rgba(250,248,245,.55)">goodr &middot; Summer Series</div>
+        </div>
+        <div class="statuspill" style="background:rgba(215,63,9,.18);color:#ff8a5c">1 of 2 verified</div>
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:14px;display:flex;flex-direction:column;gap:14px">
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:150px">
+            <div style="font-size:13px;color:#FAF8F5;margin-bottom:5px">Feed post</div>
+            <a href="https://www.instagram.com" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:5px 9px;font-size:11px;color:#9cc3ff;text-decoration:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#9cc3ff;stroke-width:2;fill:none;flex:none"><path d="M14 5h5v5M19 5l-9 9M11 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg>instagram.com/p/Cx8feed</a>
+          </div>
+          <div class="statuspill" style="background:rgba(52,199,89,.16);color:#34C759">Verified</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:150px">
+            <div style="font-size:13px;color:#FAF8F5;margin-bottom:5px">Reel</div>
+            <a href="https://www.instagram.com" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:5px 9px;font-size:11px;color:#9cc3ff;text-decoration:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#9cc3ff;stroke-width:2;fill:none;flex:none"><path d="M14 5h5v5M19 5l-9 9M11 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg>instagram.com/reel/Cx9reel</a>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a href="https://www.instagram.com" target="_blank" style="border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:7px 12px;font-size:12px;color:rgba(250,248,245,.85);text-decoration:none">Open post</a>
+            <div onclick="alert('Mockup only \u2014 marks the reel Verified.')" style="background:var(--orange);border-radius:9px;padding:7px 14px;font-size:12px;color:#fff;cursor:pointer" class="pgd">VERIFY</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,.08);margin-top:14px;padding-top:13px;display:flex;align-items:center;gap:8px">
+        <span class="ico" style="color:rgba(250,248,245,.5)"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14" r="1.2"/></svg></span>
+        <span style="font-size:12px;color:rgba(250,248,245,.6)">Once both posts are verified, the deal moves to Paid and the PayPal payout is released.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:54px;margin-bottom:18px;text-align:center">
+    <div class="pgd" style="font-size:26px;color:#FAF8F5">NOTIFICATIONS, PAYMENT &amp; PROFILE</div>
+  </div>
+
+  <div class="screens">
+
+    <!-- SCREEN 8: NOTIFICATION NEW DEAL -->
+    <div class="screenwrap">
+      <div class="caption">8 — Notification &middot; new deal drops</div>
+      <div class="phone" style="position:relative;height:540px;overflow:hidden">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding-top:40px;text-align:center">
+          <div class="pgd" style="font-size:62px;color:#FAF8F5">9:41</div>
+          <div style="font-size:13px;color:rgba(250,248,245,.55);margin-top:2px">Tuesday, June 16</div>
+        </div>
+        <div style="position:absolute;left:12px;right:12px;top:160px;background:rgba(30,30,35,.97);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:13px;display:flex;gap:11px;align-items:flex-start">
+          <div style="width:34px;height:34px;border-radius:9px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;flex:none" class="pgd"><span style="font-size:18px">P</span></div>
+          <div style="flex:1;text-align:left">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;letter-spacing:.05em;color:rgba(250,248,245,.6)">Postgame</span><span style="font-size:11px;color:rgba(250,248,245,.4)">now</span></div>
+            <div style="font-size:13px;color:#FAF8F5;font-weight:bold;margin-top:3px">New deal just dropped</div>
+            <div style="font-size:12px;color:rgba(250,248,245,.72);line-height:1.4;margin-top:2px">goodr Summer Series is live &mdash; opt in now to claim your spot.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 9: NOTIFICATION STAGE NEEDED -->
+    <div class="screenwrap">
+      <div class="caption">9 — Notification &middot; next step needed</div>
+      <div class="phone" style="position:relative;height:540px;overflow:hidden">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding-top:40px;text-align:center">
+          <div class="pgd" style="font-size:62px;color:#FAF8F5">9:41</div>
+          <div style="font-size:13px;color:rgba(250,248,245,.55);margin-top:2px">Tuesday, June 16</div>
+        </div>
+        <div style="position:absolute;left:12px;right:12px;top:160px;background:rgba(30,30,35,.97);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:13px;display:flex;gap:11px;align-items:flex-start">
+          <div style="width:34px;height:34px;border-radius:9px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;flex:none" class="pgd"><span style="font-size:18px">P</span></div>
+          <div style="flex:1;text-align:left">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;letter-spacing:.05em;color:rgba(250,248,245,.6)">Postgame</span><span style="font-size:11px;color:rgba(250,248,245,.4)">now</span></div>
+            <div style="font-size:13px;color:#FAF8F5;font-weight:bold;margin-top:3px">Your goodr content is approved</div>
+            <div style="font-size:12px;color:rgba(250,248,245,.72);line-height:1.4;margin-top:2px">Time to post your reel. Tap for your file, caption, and link.</div>
+          </div>
+        </div>
+        <div style="position:absolute;left:18px;right:18px;top:300px;background:rgba(30,30,35,.7);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:11px;display:flex;gap:10px;align-items:flex-start;opacity:.7">
+          <div style="width:28px;height:28px;border-radius:8px;background:rgba(215,63,9,.6);display:flex;align-items:center;justify-content:center;color:#fff;flex:none" class="pgd"><span style="font-size:15px">P</span></div>
+          <div style="flex:1;text-align:left">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:rgba(250,248,245,.5)">Postgame</span><span style="font-size:11px;color:rgba(250,248,245,.35)">yesterday</span></div>
+            <div style="font-size:12px;color:rgba(250,248,245,.85);margin-top:2px">Your goodr brief is ready to review</div>
+          </div>
+        </div>
+        <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:11px;color:rgba(250,248,245,.4)">Each stage &mdash; brief, approval, post, payout &mdash; fires its own nudge.</div>
+      </div>
+    </div>
+
+    <!-- SCREEN 10: POPUP AWAITING VERIFICATION -->
+    <div class="screenwrap">
+      <div class="caption">10 — Popup &middot; awaiting verification</div>
+      <div class="phone" style="position:relative;height:540px;overflow:hidden">
+        <div style="position:absolute;inset:0;filter:brightness(.45)">
+          <div class="notch"><div class="pill"></div></div>
+          <div style="padding:4px 18px 12px;text-align:left"><div class="pgd" style="font-size:26px">MY DEALS</div></div>
+          <div style="margin:0 18px;height:120px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:16px"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:24px">
+          <div style="background:#15151a;border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:22px 20px;text-align:center;width:100%">
+            <div style="width:62px;height:62px;border-radius:50%;background:rgba(215,63,9,.16);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+              <span class="ico"><svg viewBox="0 0 24 24" style="width:30px;height:30px"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>
+            </div>
+            <div class="pgd" style="font-size:24px;color:#FAF8F5">LINK SUBMITTED</div>
+            <div style="font-size:13px;color:rgba(250,248,245,.7);line-height:1.5;margin-top:8px">Your reel link is in. Your campaign manager is checking it's live &mdash; we'll ping you the moment it's approved.</div>
+            <div class="statuspill" style="display:inline-block;background:rgba(215,63,9,.18);color:#ff8a5c;margin-top:14px">Pending verification</div>
+            <div class="ctabig" style="margin-top:16px;padding:12px"><span class="pgd" style="font-size:17px;color:#fff">GOT IT</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 11: POPUP LINK PAYPAL -->
+    <div class="screenwrap">
+      <div class="caption">11 — Popup &middot; link your PayPal</div>
+      <div class="phone" style="position:relative;height:540px;overflow:hidden">
+        <div style="position:absolute;inset:0;filter:brightness(.45)">
+          <div class="notch"><div class="pill"></div></div>
+          <div style="padding:4px 18px 12px;text-align:left"><div class="pgd" style="font-size:26px">DEALS</div></div>
+          <div style="margin:0 18px;height:140px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:16px"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding:0">
+          <div style="background:#15151a;border-top:1px solid rgba(255,255,255,.12);border-radius:22px 22px 0 0;padding:24px 20px 26px;text-align:center;width:100%">
+            <div style="width:46px;height:5px;border-radius:5px;background:rgba(255,255,255,.18);margin:0 auto 18px"></div>
+            <div style="width:58px;height:58px;border-radius:14px;background:#0070ba;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#fff" class="pgd"><span style="font-size:24px">PP</span></div>
+            <div class="pgd" style="font-size:24px;color:#FAF8F5">LINK YOUR PAYPAL</div>
+            <div style="font-size:13px;color:rgba(250,248,245,.7);line-height:1.5;margin-top:8px">Add your PayPal so your campaign payouts land safely. You'll need it before your first payment.</div>
+            <div class="ctabig" style="margin-top:18px;padding:13px;background:#0070ba"><span class="pgd" style="font-size:17px;color:#fff">LINK PAYPAL</span></div>
+            <div class="ghostbtn" style="margin-top:10px"><span style="font-size:13px">Remind me later</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 12: PAYMENT TERMS -->
+    <div class="screenwrap">
+      <div class="caption">12 — Payment terms</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 12px;text-align:left"><div class="pgd" style="font-size:26px">PAYMENTS</div></div>
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:12px">
+
+          <div class="card" style="text-align:center;padding:18px 16px">
+            <div class="pgd" style="font-size:52px;color:var(--orange);line-height:1">30 DAYS</div>
+            <div style="font-size:13px;color:rgba(250,248,245,.78);line-height:1.5;margin-top:6px">Payment is issued to your Postgame account <b>30 days after your posting date</b>.</div>
+          </div>
+
+          <div class="card" style="text-align:left">
+            <div style="display:flex;align-items:flex-start;gap:0">
+              <div style="flex:1;text-align:center">
+                <div style="width:14px;height:14px;border-radius:50%;background:var(--green);margin:0 auto 7px"></div>
+                <div style="font-size:11px;color:#FAF8F5">Post goes live</div>
+                <div style="font-size:10px;color:rgba(250,248,245,.45)">Day 0</div>
+              </div>
+              <div style="flex:1;text-align:center">
+                <div style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.2);margin:0 auto 7px"></div>
+                <div style="font-size:11px;color:rgba(250,248,245,.7)">Hold window</div>
+                <div style="font-size:10px;color:rgba(250,248,245,.45)">30 days</div>
+              </div>
+              <div style="flex:1;text-align:center">
+                <div style="width:14px;height:14px;border-radius:50%;background:var(--orange);margin:0 auto 7px"></div>
+                <div style="font-size:11px;color:#FAF8F5">Paid to PayPal</div>
+                <div style="font-size:10px;color:rgba(250,248,245,.45)">Day 30</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size:11px;color:rgba(250,248,245,.5);line-height:1.5;text-align:left;padding:0 2px">We hold 30 days to confirm the post stays live and Day 30 metrics are collected.</div>
+
+          <div class="card" style="text-align:left;border-color:rgba(0,112,186,.5)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:38px;height:38px;border-radius:10px;background:#0070ba;display:flex;align-items:center;justify-content:center;color:#fff;flex:none" class="pgd"><span style="font-size:16px">PP</span></div>
+              <div style="flex:1"><div style="font-size:13px;color:#FAF8F5">PayPal not linked</div><div style="font-size:11px;color:#ff8a5c">Link it to receive payment</div></div>
+            </div>
+            <div class="ctabig" style="margin-top:12px;padding:12px;background:#0070ba"><span class="pgd" style="font-size:16px;color:#fff">LINK PAYPAL TO GET PAID</span></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg><span>Deals</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 6h11M4 12h11M4 18h11"/><path d="M18 5l1.5 1.5L21 4"/></svg><span>My deals</span></div>
+          <div class="tab active"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14" r="1.2"/></svg><span>Earnings</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 13: PROFILE SETUP -->
+    <div class="screenwrap">
+      <div class="caption">13 — Profile setup</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:4px 18px 8px;text-align:left"><div class="pgd" style="font-size:24px">SET UP YOUR PROFILE</div></div>
+        <div style="padding:0 18px 12px;text-align:left">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:rgba(250,248,245,.5)">Profile 60% complete</span><span style="font-size:11px;color:var(--orange)">Link PayPal to finish</span></div>
+          <div style="height:5px;background:rgba(255,255,255,.1);border-radius:5px;overflow:hidden"><div style="width:60%;height:100%;background:var(--orange)"></div></div>
+        </div>
+        <div style="padding:6px 18px 16px;text-align:left">
+          <div style="display:flex;justify-content:center;margin-bottom:16px">
+            <div style="width:78px;height:78px;border-radius:50%;background:rgba(255,255,255,.07);border:1px dashed rgba(255,255,255,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(250,248,245,.6)"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg><span style="font-size:10px;margin-top:4px">Add photo</span></div>
+          </div>
+          <div style="font-size:11px;color:rgba(250,248,245,.45);margin-bottom:4px">Full name</div>
+          <input type="text" value="Jordan Ellis" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:11px;padding:11px;color:#FAF8F5;font-size:13px;font-family:Arial;margin-bottom:11px">
+          <div style="display:flex;gap:10px">
+            <div style="flex:1"><div style="font-size:11px;color:rgba(250,248,245,.45);margin-bottom:4px">School</div><input type="text" value="LSU" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:11px;padding:11px;color:#FAF8F5;font-size:13px;font-family:Arial;margin-bottom:11px"></div>
+            <div style="flex:1"><div style="font-size:11px;color:rgba(250,248,245,.45);margin-bottom:4px">Sport</div><input type="text" value="Gymnastics" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:11px;padding:11px;color:#FAF8F5;font-size:13px;font-family:Arial;margin-bottom:11px"></div>
+          </div>
+          <div style="font-size:11px;color:rgba(250,248,245,.45);margin-bottom:4px">Instagram handle</div>
+          <input type="text" value="@jordanellis" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:11px;padding:11px;color:#FAF8F5;font-size:13px;font-family:Arial;margin-bottom:11px">
+          <div style="font-size:11px;color:rgba(250,248,245,.45);margin-bottom:4px">PayPal email &middot; <span style="color:#ff8a5c">required for payouts</span></div>
+          <input type="text" placeholder="you@paypal.com" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(0,112,186,.5);border-radius:11px;padding:11px;color:#FAF8F5;font-size:13px;font-family:Arial;margin-bottom:14px">
+          <div class="ctabig" style="padding:13px"><span class="pgd" style="font-size:17px;color:#fff">SAVE PROFILE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 14: PROFILE VIEW -->
+    <div class="screenwrap">
+      <div class="caption">14 — Profile view</div>
+      <div class="phone">
+        <div class="notch"><div class="pill"></div></div>
+        <div style="padding:8px 18px 16px;text-align:center">
+          <div style="width:84px;height:84px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;margin:0 auto 10px" class="pgd"><span style="font-size:34px">JE</span></div>
+          <div class="pgd" style="font-size:26px;color:#FAF8F5">JORDAN ELLIS</div>
+          <div style="font-size:12px;color:rgba(250,248,245,.55)">LSU &middot; Gymnastics</div>
+        </div>
+        <div style="padding:0 18px 14px;display:flex;gap:9px">
+          <div class="fact"><div class="pgd" style="font-size:20px;color:#FAF8F5">120K</div><div class="factsub">Followers</div></div>
+          <div class="fact"><div class="pgd" style="font-size:20px;color:#FAF8F5">7</div><div class="factsub">Deals done</div></div>
+          <div class="fact"><div class="pgd" style="font-size:20px;color:#FAF8F5">$12.4K</div><div class="factsub">NIL value</div></div>
+        </div>
+        <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:12px">
+          <div class="card" style="text-align:left">
+            <div class="pgd" style="font-size:15px;margin-bottom:10px">SOCIALS</div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:13px;color:rgba(250,248,245,.85)">Instagram</span><span style="font-size:13px;color:rgba(250,248,245,.6)">@jordanellis &middot; 48.2K</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:13px;color:rgba(250,248,245,.85)">TikTok</span><span style="font-size:13px;color:rgba(250,248,245,.6)">@jordan.e &middot; 72.1K</span></div>
+          </div>
+          <div class="card" style="text-align:left">
+            <div class="pgd" style="font-size:15px;margin-bottom:10px">PAYOUTS</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:9px;background:#0070ba;display:flex;align-items:center;justify-content:center;color:#fff;flex:none" class="pgd"><span style="font-size:14px">PP</span></div>
+              <div style="flex:1"><div style="font-size:13px;color:#FAF8F5">PayPal linked</div><div style="font-size:11px;color:rgba(250,248,245,.5)">jordan@email.com</div></div>
+              <span class="check"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></span>
+            </div>
+          </div>
+          <div class="ghostbtn"><span style="font-size:13px">Edit profile</span></div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg><span>Deals</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 6h11M4 12h11M4 18h11"/><path d="M18 5l1.5 1.5L21 4"/></svg><span>My deals</span></div>
+          <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14" r="1.2"/></svg><span>Earnings</span></div>
+          <div class="tab active"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script>
+  function toggleAck(){
+    var b=document.getElementById('ackbox');
+    var on=b.getAttribute('data-on')==='1';
+    if(on){b.style.background='transparent';b.style.borderColor='rgba(250,248,245,.4)';b.innerHTML='';b.setAttribute('data-on','0');}
+    else{b.style.background='#34C759';b.style.borderColor='#34C759';b.innerHTML='<svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:#0a3d1c;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;margin:1px"><path d="M5 12.5l4 4 9-10"/></svg>';b.setAttribute('data-on','1');}
+  }
+  function copyTxt(el){
+    var t=el.getAttribute('data-copy');
+    if(navigator.clipboard){navigator.clipboard.writeText(t);}
+    var o=el.textContent; el.textContent='Copied'; setTimeout(function(){el.textContent=o;},1200);
+  }
+</script>
+</body>
+</html>
