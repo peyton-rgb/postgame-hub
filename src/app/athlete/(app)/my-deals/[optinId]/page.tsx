@@ -24,6 +24,7 @@ const STAGE_TITLE: Record<string, string> = {
   in_review: "IN REVIEW",
   ready_to_post: "READY TO POST",
   awaiting_verification: "AWAITING VERIFICATION",
+  verified: "VERIFIED",
   paid: "COMPLETE",
 };
 
@@ -101,15 +102,21 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
         </div>
       )}
 
-      {(stageKey === "ready_to_post" || stageKey === "awaiting_verification") && (
-        <PostDeliverables
-          brandName={deal.brandName || "the brand"}
-          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, live_url: d.live_url, media: d.media ? { file_url: d.media.file_url, type: d.media.type } : null }))}
-        />
+      {(stageKey === "ready_to_post" || stageKey === "awaiting_verification" || stageKey === "verified") && (
+        <>
+          {stageKey === "verified" && (
+            <StatusNote>All your posts are verified — your payout is scheduled. Track it on the Earnings tab.</StatusNote>
+          )}
+          <div style={{ height: stageKey === "verified" ? 12 : 0 }} />
+          <PostDeliverables
+            brandName={deal.brandName || "the brand"}
+            deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, live_url: d.live_url, media: d.media ? { file_url: d.media.file_url, type: d.media.type } : null }))}
+          />
+        </>
       )}
 
       {stageKey === "paid" && (
-        <StatusNote>This deal is complete and your payout is scheduled. Thanks for posting!</StatusNote>
+        <StatusNote>This deal is complete and your payout has been released. Thanks for posting!</StatusNote>
       )}
     </div>
   );

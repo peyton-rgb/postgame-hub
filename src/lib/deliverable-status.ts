@@ -66,6 +66,7 @@ export type DealStageKey =
   | "in_review"
   | "ready_to_post"
   | "awaiting_verification"
+  | "verified"
   | "paid";
 
 export type DealStage = {
@@ -99,8 +100,12 @@ export function computeDealStage(statuses: DeliverableStatus[]): DealStage {
   if (minRank === 4) {
     return { key: "ready_to_post", pill: { text: "Approved", kind: "ok" }, doneThrough: 3, currentStep: 4 };
   }
-  if (minRank === 5 || minRank === 6) {
+  if (minRank === 5) {
     return { key: "awaiting_verification", pill: { text: "Posted", kind: "due" }, doneThrough: 4, currentStep: 5 };
+  }
+  if (minRank === 6) {
+    // All posts verified — payout is scheduled but not yet released.
+    return { key: "verified", pill: { text: "Verified", kind: "ok" }, doneThrough: 4, currentStep: 5 };
   }
   return { key: "paid", pill: { text: "Paid", kind: "ok" }, doneThrough: 5, currentStep: 5 };
 }
