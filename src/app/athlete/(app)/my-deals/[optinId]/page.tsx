@@ -14,6 +14,7 @@ import { notFound } from "next/navigation";
 import { requireAthlete } from "@/lib/athlete-auth";
 import { getDealParticipation } from "@/lib/athlete-deliverables";
 import UploadDeliverables from "@/components/athlete/UploadDeliverables";
+import PostDeliverables from "@/components/athlete/PostDeliverables";
 import { slotLabel } from "@/lib/deliverable-status";
 
 export const dynamic = "force-dynamic";
@@ -68,7 +69,7 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
           optinId={deal.optinId}
           campaignId={deal.campaignId}
           athleteId={profile.id}
-          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, media: d.media ? { file_url: d.media.file_url, type: d.media.type } : null }))}
+          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, review_note: d.review_note, media: d.media ? { file_url: d.media.file_url, type: d.media.type } : null }))}
         />
       )}
 
@@ -100,12 +101,15 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
         </div>
       )}
 
-      {(stageKey === "ready_to_post" || stageKey === "awaiting_verification" || stageKey === "paid") && (
-        <StatusNote>
-          {stageKey === "ready_to_post" && "Your content is approved! The posting + payout step is coming in the next update — you'll get your file, caption, and a place to paste your live link."}
-          {stageKey === "awaiting_verification" && "Your post is in and waiting for your Postgame manager to verify it's live. Once verified, your payout is scheduled."}
-          {stageKey === "paid" && "This deal is complete. Thanks for posting!"}
-        </StatusNote>
+      {(stageKey === "ready_to_post" || stageKey === "awaiting_verification") && (
+        <PostDeliverables
+          brandName={deal.brandName || "the brand"}
+          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, live_url: d.live_url, media: d.media ? { file_url: d.media.file_url, type: d.media.type } : null }))}
+        />
+      )}
+
+      {stageKey === "paid" && (
+        <StatusNote>This deal is complete and your payout is scheduled. Thanks for posting!</StatusNote>
       )}
     </div>
   );

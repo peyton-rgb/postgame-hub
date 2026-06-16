@@ -15,6 +15,7 @@ type Deliv = {
   id: string;
   slot: string;
   status: DeliverableStatus;
+  review_note?: string | null;
   media?: { file_url: string; type: string | null } | null;
 };
 
@@ -122,9 +123,20 @@ export default function UploadDeliverables({
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <div className="a-d" style={{ fontSize: 15, flex: 1, color: "var(--a-off)" }}>{slotLabel(d.slot).toUpperCase()}</div>
               {hasFile && (
-                <span className="a-pill a-pill-ok">{d.status === "changes_requested" ? "Re-upload" : "Uploaded"}</span>
+                <span className={`a-pill ${d.status === "changes_requested" ? "a-pill-due" : "a-pill-ok"}`}>{d.status === "changes_requested" ? "Re-upload" : "Uploaded"}</span>
               )}
             </div>
+
+            {d.status === "changes_requested" && d.review_note && (
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "rgba(215,63,9,0.12)", border: "1px solid rgba(215,63,9,0.3)", borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: "var(--a-orange)", strokeWidth: 2, fill: "none", flex: "none", marginTop: 1 }}>
+                  <circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16v.5" />
+                </svg>
+                <span style={{ fontSize: 12, lineHeight: 1.4, color: "rgba(250,248,245,0.8)" }}>
+                  <b>Changes requested:</b> {d.review_note}
+                </span>
+              </div>
+            )}
 
             {hasFile ? (
               <div className="a-card" style={{ display: "flex", alignItems: "center", gap: 11, padding: 13, borderColor: "rgba(52,199,89,0.3)" }}>
