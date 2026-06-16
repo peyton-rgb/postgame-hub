@@ -30,17 +30,38 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const path = request.nextUrl.pathname;
+
   // Protect /dashboard routes — redirect to /login if not authenticated
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
+  if (!user && path.startsWith("/dashboard")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   // If logged in and hitting /login, redirect to dashboard
-  if (user && request.nextUrl.pathname === "/login") {
+  if (user && path === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // Athlete app: the login + signup pages are public; everything else under
+  // /athlete requires a session. Role gating (athlete vs staff) happens in
+  // the (app) layout via requireAthlete().
+  const isAthletePublic =
+    path === "/athlete/login" || path === "/athlete/signup";
+
+  if (!user && path.startsWith("/athlete") && !isAthletePublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/athlete/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Already signed in but sitting on an athlete auth page → into the app.
+  if (user && isAthletePublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/athlete";
     return NextResponse.redirect(url);
   }
 
@@ -48,5 +69,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/login", "/athlete/:path*"],
 };
