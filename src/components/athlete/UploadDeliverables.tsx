@@ -16,7 +16,8 @@ type Deliv = {
   slot: string;
   status: DeliverableStatus;
   review_note?: string | null;
-  media?: { file_url: string; type: string | null } | null;
+  file_url?: string | null;
+  media_type?: string | null;
 };
 
 const BUCKET = "campaign-media";
@@ -44,9 +45,9 @@ export default function UploadDeliverables({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const uploadedCount = deliverables.filter((d) => d.media || d.status !== "to_upload").length;
+  const uploadedCount = deliverables.filter((d) => d.file_url || d.status !== "to_upload").length;
   const total = deliverables.length;
-  const allUploaded = deliverables.every((d) => d.media && d.status !== "to_upload" && d.status !== "changes_requested");
+  const allUploaded = deliverables.every((d) => d.file_url && d.status !== "to_upload" && d.status !== "changes_requested");
 
   async function handleFile(deliverable: Deliv, file: File) {
     setError("");
@@ -115,9 +116,9 @@ export default function UploadDeliverables({
       </div>
 
       {deliverables.map((d) => {
-        const hasFile = !!d.media;
+        const hasFile = !!d.file_url;
         const busy = busySlot === d.slot;
-        const isVideo = d.media?.type === "video";
+        const isVideo = d.media_type === "video";
         return (
           <div key={d.id} style={{ textAlign: "left" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -145,7 +146,7 @@ export default function UploadDeliverables({
                     <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, fill: "#fff" }}><path d="M8 5v14l11-7z" /></svg>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={d.media!.file_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={d.file_url!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   )}
                 </div>
                 <div style={{ flex: 1 }}>

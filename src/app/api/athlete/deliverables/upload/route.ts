@@ -60,45 +60,28 @@ export async function POST(request: NextRequest) {
   const fileUrl = pub.publicUrl;
   const isVideo = typeof contentType === "string" && contentType.startsWith("video/");
 
-  // Create the media asset row.
-  const { data: media, error: mediaErr } = await service
-    .from("media")
-    .insert({
-      campaign_id: deliverable.optin_campaign_id,
-      athlete_id: user.id,
-      type: isVideo ? "video" : "image",
+  // Store the uploaded file directly on the deliverable (slotted feed/reel
+  // content). The shared media table can't hold it — see migration 007.
+  const now = new Date().toISOString();
+  const { error: updErr } = await service
+    .from("athlete_deliverables")
+    .update({
       file_url: fileUrl,
-      slot,
       storage_path: storagePath,
       storage_bucket: BUCKET,
       content_type: contentType ?? null,
       file_size_bytes: typeof fileSize === "number" ? fileSize : null,
-      source_system: "athlete-app",
-      hero_source: "athlete_upload",
-    })
-    .select("id,file_url")
-    .single();
-
-  if (mediaErr) {
-    console.error("media insert error:", mediaErr.message);
-    return NextResponse.json({ error: "Couldn't save your file. Please try again." }, { status: 500 });
-  }
-
-  // Link it to the deliverable and mark uploaded (resets a rejected one).
-  const { error: updErr } = await service
-    .from("athlete_deliverables")
-    .update({
-      media_id: media.id,
+      media_type: isVideo ? "video" : "image",
       status: "uploaded",
-      uploaded_at: new Date().toISOString(),
+      uploaded_at: now,
       review_note: null,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq("id", deliverable.id);
 
   if (updErr) {
     console.error("deliverable update error:", updErr.message);
-    return NextResponse.json({ error: "Couldn't update your deliverable. Please try again." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't save your file. Please try again." }, { status: 500 });
   }
 
   // Best-effort: ensure the deal's Drive folder exists (stubbed if Drive isn't
@@ -109,5 +92,5 @@ export async function POST(request: NextRequest) {
     console.error("[drive] ensure folder (upload) failed:", e);
   }
 
-  return NextResponse.json({ ok: true, mediaId: media.id, fileUrl: media.file_url, fileName });
+  return NextResponse.json({ ok: true, fileUrl, fileName });
 }

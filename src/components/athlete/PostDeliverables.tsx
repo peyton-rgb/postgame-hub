@@ -14,14 +14,16 @@ type Deliv = {
   slot: string;
   status: DeliverableStatus;
   live_url: string | null;
-  media?: { file_url: string; type: string | null } | null;
+  file_url?: string | null;
+  media_type?: string | null;
 };
 
 function PostCard({ d, brandName, onPosted }: { d: Deliv; brandName: string; onPosted: () => void }) {
   const [url, setUrl] = useState(d.live_url || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const isVideo = d.media?.type === "video";
+  const isVideo = d.media_type === "video";
+  const hasFile = !!d.file_url;
 
   const posted = d.status === "pending_verification";
   const verified = d.status === "verified" || d.status === "paid";
@@ -55,7 +57,7 @@ function PostCard({ d, brandName, onPosted }: { d: Deliv; brandName: string; onP
       </div>
 
       {/* approved content preview */}
-      {d.media && (
+      {hasFile && (
         <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", height: 150, marginBottom: 11 }}>
           {isVideo ? (
             <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -63,13 +65,13 @@ function PostCard({ d, brandName, onPosted }: { d: Deliv; brandName: string; onP
             </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={d.media.file_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={d.file_url!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           )}
         </div>
       )}
 
-      {d.media && !verified && (
-        <a href={d.media.file_url} target="_blank" rel="noreferrer" download
+      {hasFile && !verified && (
+        <a href={d.file_url!} target="_blank" rel="noreferrer" download
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 11, borderRadius: 12, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.16)", textDecoration: "none", color: "var(--a-off)", marginBottom: 11 }}>
           <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: "currentColor", strokeWidth: 2, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" }}>
             <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />

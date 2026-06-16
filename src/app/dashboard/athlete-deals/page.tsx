@@ -16,7 +16,7 @@ import StaffDeliverableActions from "@/components/dashboard/StaffDeliverableActi
 export const dynamic = "force-dynamic";
 
 const SELECT =
-  "id,slot,status,live_url,review_note,updated_at,media:media(file_url,type),athlete:profiles!athlete_id(full_name,email,ig_handle),campaign:optin_campaigns(title,brand:brands(name,logo_url))";
+  "id,slot,status,live_url,review_note,updated_at,file_url,media_type,athlete:profiles!athlete_id(full_name,email,ig_handle),campaign:optin_campaigns(title,brand:brands(name,logo_url))";
 
 function one(v: any) {
   return Array.isArray(v) ? v[0] ?? null : v ?? null;
@@ -35,7 +35,6 @@ async function fetchQueue(statuses: string[]) {
   }
   return (data ?? []).map((r: any) => ({
     ...r,
-    media: one(r.media),
     athlete: one(r.athlete),
     campaign: one(r.campaign),
   }));
@@ -44,14 +43,14 @@ async function fetchQueue(statuses: string[]) {
 function Row({ row, mode }: { row: any; mode: "review" | "verify" }) {
   const brand = one(row.campaign?.brand);
   const athleteName = row.athlete?.full_name || row.athlete?.email || "Athlete";
-  const isVideo = row.media?.type === "video";
+  const isVideo = row.media_type === "video";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap" }}>
       {/* thumb */}
       <div style={{ width: 48, height: 48, borderRadius: 9, overflow: "hidden", flex: "none", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {row.media && !isVideo ? (
+        {row.file_url && !isVideo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.media.file_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={row.file_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, fill: "#fff" }}><path d="M8 5v14l11-7z" /></svg>
         )}
@@ -68,8 +67,8 @@ function Row({ row, mode }: { row: any; mode: "review" | "verify" }) {
         )}
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        {row.media && (
-          <a href={row.media.file_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", textDecoration: "underline" }}>
+        {row.file_url && (
+          <a href={row.file_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", textDecoration: "underline" }}>
             {mode === "review" ? "View file" : "Open"}
           </a>
         )}

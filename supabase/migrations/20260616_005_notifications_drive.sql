@@ -18,14 +18,15 @@ security definer
 set search_path = public
 as $function$
 begin
+  -- NB: notifications.related_campaign_id FKs to campaign_recaps (not
+  -- optin_campaigns), so we don't set it — the deal is encoded in link_url.
   if NEW.status = 'live' and (TG_OP = 'INSERT' or OLD.status is distinct from 'live') then
-    insert into public.notifications (user_id, notification_type, title, message, link_url, related_campaign_id)
+    insert into public.notifications (user_id, notification_type, title, message, link_url)
     select p.id,
            'new_deal',
            'New deal just dropped',
            coalesce(NEW.title, 'A new deal') || ' is live — opt in now to claim your spot.',
-           '/athlete/deals/' || NEW.slug,
-           NEW.id
+           '/athlete/deals/' || NEW.slug
     from public.profiles p
     where p.role = 'athlete';
   end if;

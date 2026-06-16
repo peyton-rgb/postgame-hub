@@ -20,17 +20,11 @@ export type Deliverable = {
   optin_id: string;
   slot: string;
   status: DeliverableStatus;
-  media_id: string | null;
   live_url: string | null;
   review_note: string | null;
-  media?: {
-    id: string;
-    file_url: string;
-    thumbnail_url: string | null;
-    type: string | null;
-    content_type: string | null;
-    file_size_bytes: number | null;
-  } | null;
+  file_url: string | null;
+  thumbnail_url: string | null;
+  media_type: string | null; // 'image' | 'video'
 };
 
 export type DealParticipation = {
@@ -81,11 +75,10 @@ export async function ensureDeliverables(
 }
 
 const DELIV_SELECT =
-  "id,optin_id,slot,status,media_id,live_url,review_note,media:media(id,file_url,thumbnail_url,type,content_type,file_size_bytes)";
+  "id,optin_id,slot,status,live_url,review_note,file_url,thumbnail_url,media_type";
 
 function normalizeDeliverable(row: any): Deliverable {
-  const media = Array.isArray(row?.media) ? row.media[0] ?? null : row?.media ?? null;
-  return { ...row, media } as Deliverable;
+  return row as Deliverable;
 }
 
 // All of the athlete's deals with progress, newest first.

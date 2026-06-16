@@ -70,7 +70,7 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
           optinId={deal.optinId}
           campaignId={deal.campaignId}
           athleteId={profile.id}
-          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, review_note: d.review_note, media: d.media ? { file_url: d.media.file_url, type: d.media.type } : null }))}
+          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, review_note: d.review_note, file_url: d.file_url, media_type: d.media_type }))}
         />
       )}
 
@@ -83,9 +83,9 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
           <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 10 }}>
             {deal.deliverables.map((d) => (
               <div key={d.id} className="a-card" style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                {d.media && d.media.type !== "video" ? (
+                {d.file_url && d.media_type !== "video" ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={d.media.file_url} alt="" style={{ width: 42, height: 42, borderRadius: 9, objectFit: "cover", flex: "none" }} />
+                  <img src={d.file_url} alt="" style={{ width: 42, height: 42, borderRadius: 9, objectFit: "cover", flex: "none" }} />
                 ) : (
                   <div style={{ width: 42, height: 42, borderRadius: 9, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
                     <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, fill: "#fff" }}><path d="M8 5v14l11-7z" /></svg>
@@ -110,7 +110,7 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
           <div style={{ height: stageKey === "verified" ? 12 : 0 }} />
           <PostDeliverables
             brandName={deal.brandName || "the brand"}
-            deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, live_url: d.live_url, media: d.media ? { file_url: d.media.file_url, type: d.media.type } : null }))}
+            deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, live_url: d.live_url, file_url: d.file_url, media_type: d.media_type }))}
           />
         </>
       )}
