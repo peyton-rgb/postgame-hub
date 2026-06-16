@@ -12,6 +12,7 @@
 // ============================================================
 
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { ensureDeliverables } from "@/lib/athlete-deliverables";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
   // Verify the athlete's profile + that the campaign is real and live.
   const [{ data: profile }, { data: campaign }] = await Promise.all([
     service.from("profiles").select("id,role,full_name,email,ig_handle").eq("id", user.id).single(),
-    service.from("optin_campaigns").select("id,status,title").eq("id", campaignId).maybeSingle(),
+    service.from("optin_campaigns").select("id,status,title,required_deliverables").eq("id", campaignId).maybeSingle(),
   ]);
 
   if (!profile || profile.role !== "athlete") {
@@ -57,7 +58,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "This deal isn't open for opt-in right now." }, { status: 409 });
   }
 
-  // Idempotent: if they're already in, just succeed.
+  // Idempotent: if they're already in, just succeed (and make sure their
+  // deliverable rows exist).
   const { data: existing } = await service
     .from("athlete_campaign_optins")
     .select("id")
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
     .eq("optin_campaign_id", campaignId)
     .maybeSingle();
   if (existing) {
+    await ensureDeliverables(existing.id, user.id, campaignId, (campaign as any).required_deliverables);
     return NextResponse.json({ ok: true, alreadyOptedIn: true });
   }
 
@@ -107,6 +110,17 @@ export async function POST(request: NextRequest) {
     }
     console.error("athlete_campaign_optins insert error:", acoErr.message);
     return NextResponse.json({ error: "Couldn't record your opt-in. Please try again." }, { status: 500 });
+  }
+
+  // Create the feed/reel deliverable rows so the tracker is ready immediately.
+  const { data: created } = await service
+    .from("athlete_campaign_optins")
+    .select("id")
+    .eq("athlete_id", user.id)
+    .eq("optin_campaign_id", campaignId)
+    .maybeSingle();
+  if (created) {
+    await ensureDeliverables(created.id, user.id, campaignId, (campaign as any).required_deliverables);
   }
 
   return NextResponse.json({ ok: true });
