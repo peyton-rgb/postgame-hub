@@ -8,6 +8,7 @@
 import { requireAthlete } from "@/lib/athlete-auth";
 import { getVisibleDeals, getMyOptinsMap } from "@/lib/athlete-deals";
 import DealCard from "@/components/athlete/DealCard";
+import NotificationBell from "@/components/athlete/NotificationBell";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function AthleteHomePage() {
           <div className="a-muted" style={{ fontSize: 11 }}>Welcome back</div>
           <div className="a-d" style={{ fontSize: 21, textTransform: "uppercase" }}>{name}</div>
         </div>
+        <NotificationBell athleteId={profile.id} />
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 0 12px" }}>

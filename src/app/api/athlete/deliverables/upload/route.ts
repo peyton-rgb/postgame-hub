@@ -10,6 +10,7 @@
 // ============================================================
 
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { ensureAthleteDealFolder } from "@/lib/athlete-drive";
 import { NextRequest, NextResponse } from "next/server";
 
 const BUCKET = "campaign-media";
@@ -98,6 +99,14 @@ export async function POST(request: NextRequest) {
   if (updErr) {
     console.error("deliverable update error:", updErr.message);
     return NextResponse.json({ error: "Couldn't update your deliverable. Please try again." }, { status: 500 });
+  }
+
+  // Best-effort: ensure the deal's Drive folder exists (stubbed if Drive isn't
+  // configured). Never blocks the upload.
+  try {
+    await ensureAthleteDealFolder(optinId);
+  } catch (e) {
+    console.error("[drive] ensure folder (upload) failed:", e);
   }
 
   return NextResponse.json({ ok: true, mediaId: media.id, fileUrl: media.file_url, fileName });

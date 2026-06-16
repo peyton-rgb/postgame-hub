@@ -16,6 +16,8 @@
 import { getStaffUser } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { createPendingPayout } from "@/lib/payouts";
+import { notifyAthlete } from "@/lib/notify";
+import { slotLabel } from "@/lib/deliverable-status";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -38,12 +40,18 @@ export async function POST(request: NextRequest) {
   const service = createServiceSupabase();
   const { data: deliverable } = await service
     .from("athlete_deliverables")
-    .select("id,status,optin_id")
+    .select(
+      "id,status,optin_id,slot,athlete_id,optin_campaign_id,campaign:optin_campaigns(title,brand:brands(name))"
+    )
     .eq("id", deliverableId)
     .maybeSingle();
   if (!deliverable) {
     return NextResponse.json({ error: "Deliverable not found" }, { status: 404 });
   }
+  const campaign = Array.isArray((deliverable as any).campaign) ? (deliverable as any).campaign[0] : (deliverable as any).campaign;
+  const brand = campaign ? (Array.isArray(campaign.brand) ? campaign.brand[0] : campaign.brand) : null;
+  const brandName = brand?.name || "your brand";
+  const dealLink = `/athlete/my-deals/${deliverable.optin_id}`;
 
   const now = new Date().toISOString();
   let update: Record<string, any> = { updated_at: now };
@@ -74,6 +82,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Couldn't update. Please try again." }, { status: 500 });
   }
 
+  // Next-step nudge to the athlete (mockup screen 9).
+  if (action === "approve") {
+    await notifyAthlete(deliverable.athlete_id, {
+      type: "content_approved",
+      title: `Your ${brandName} content is approved`,
+      message: `Time to post your ${slotLabel(deliverable.slot).toLowerCase()}. Tap for your file, caption, and link.`,
+      linkUrl: dealLink,
+      campaignId: deliverable.optin_campaign_id,
+    });
+  } else if (action === "reject") {
+    await notifyAthlete(deliverable.athlete_id, {
+      type: "changes_requested",
+      title: `Changes needed on your ${brandName} content`,
+      message: update.review_note || "Tap to see what to update and re-upload.",
+      linkUrl: dealLink,
+      campaignId: deliverable.optin_campaign_id,
+    });
+  } else if (action === "verify") {
+    await notifyAthlete(deliverable.athlete_id, {
+      type: "post_verified",
+      title: `Your ${brandName} post is verified`,
+      message: `Nice — your ${slotLabel(deliverable.slot).toLowerCase()} is confirmed live.`,
+      linkUrl: dealLink,
+      campaignId: deliverable.optin_campaign_id,
+    });
+  }
+
   // After a verify, see if the whole deal is done.
   let dealComplete = false;
   if (action === "verify") {
@@ -89,6 +124,13 @@ export async function POST(request: NextRequest) {
         .eq("id", deliverable.optin_id);
       // Phase 5: schedule the payout (stubbed execution).
       await createPendingPayout(deliverable.optin_id);
+      await notifyAthlete(deliverable.athlete_id, {
+        type: "payout_scheduled",
+        title: `Payout scheduled for ${brandName}`,
+        message: "All your posts are verified. Your payout is scheduled — link your PayPal to get paid.",
+        linkUrl: "/athlete/earnings",
+        campaignId: deliverable.optin_campaign_id,
+      });
     }
   }
 
