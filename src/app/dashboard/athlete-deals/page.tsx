@@ -18,6 +18,7 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { slotLabel } from "@/lib/deliverable-status";
 import StaffDeliverableActions from "@/components/dashboard/StaffDeliverableActions";
 import VideographerLinkButton from "@/components/videographer/VideographerLinkButton";
+import AutoEditorPanel, { type Evl } from "@/components/dashboard/AutoEditorPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -120,8 +121,40 @@ function DeliverableRow({ d }: { d: any }) {
   );
 }
 
-function GroupCard({ g }: { g: Group }) {
+async function fetchEvaluations(athleteId: string, campaignId: string): Promise<Evl[]> {
+  const service = createServiceSupabase();
+  const { data, error } = await service
+    .from("content_evaluations")
+    .select("deliverable_id,overall_score,scores,compliance_pass,compliance_flags,is_top_pick,rank,rationale,is_preliminary,model,deliverable:athlete_deliverables(slot,media_type,file_url)")
+    .eq("athlete_id", athleteId)
+    .eq("optin_campaign_id", campaignId);
+  if (error) {
+    console.error("fetchEvaluations error:", error.message);
+    return [];
+  }
+  return (data ?? []).map((r: any) => {
+    const d = one(r.deliverable);
+    return {
+      deliverable_id: r.deliverable_id,
+      slot: d?.slot ?? "",
+      media_type: d?.media_type ?? null,
+      file_url: d?.file_url ?? null,
+      overall_score: r.overall_score,
+      scores: r.scores,
+      compliance_pass: r.compliance_pass,
+      compliance_flags: r.compliance_flags ?? [],
+      is_top_pick: r.is_top_pick,
+      rank: r.rank,
+      rationale: r.rationale,
+      is_preliminary: r.is_preliminary,
+      model: r.model,
+    } as Evl;
+  });
+}
+
+async function GroupCard({ g }: { g: Group }) {
   const initials = g.athleteName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+  const evaluations = await fetchEvaluations(g.athleteId, g.campaignId);
   return (
     <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "16px 18px", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -138,6 +171,8 @@ function GroupCard({ g }: { g: Group }) {
         )}
       </div>
       {g.items.map((d) => <DeliverableRow key={d.id} d={d} />)}
+
+      <AutoEditorPanel athleteId={g.athleteId} campaignId={g.campaignId} initial={evaluations} />
 
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 10, paddingTop: 12 }}>
         <VideographerLinkButton
