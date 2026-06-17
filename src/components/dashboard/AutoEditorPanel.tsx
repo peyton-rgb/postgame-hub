@@ -8,6 +8,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+export type Sug = {
+  id: string;
+  kind: string;
+  summary: string;
+  detail: string | null;
+  severity: "info" | "recommended" | "required";
+  status: "proposed" | "approved" | "dismissed";
+};
+export type Job = { id: string; type: string; status: string };
+
 export type Evl = {
   deliverable_id: string;
   slot: string;
@@ -22,6 +32,8 @@ export type Evl = {
   rationale: string | null;
   is_preliminary: boolean;
   model: string | null;
+  suggestions: Sug[];
+  jobs: Job[];
 };
 
 const CATS: { key: keyof NonNullable<Evl["scores"]>; label: string }[] = [
@@ -64,6 +76,77 @@ function Flags({ flags }: { flags: string[] }) {
   );
 }
 
+const SEV_COLOR: Record<string, string> = { required: "#ff6b6b", recommended: "#ff8a5c", info: "rgba(255,255,255,0.55)" };
+
+function SuggestionsBlock({ e }: { e: Evl }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState("");
+
+  async function suggest() {
+    setErr(""); setBusy("gen");
+    try {
+      const res = await fetch("/api/staff/auto-editor/suggest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deliverableId: e.deliverable_id }) });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed.");
+      router.refresh();
+    } catch (x: any) { setErr(x?.message || "Failed."); } finally { setBusy(null); }
+  }
+  async function act(suggestionId: string, action: "approve" | "dismiss") {
+    setErr(""); setBusy(suggestionId + action);
+    try {
+      const res = await fetch("/api/staff/auto-editor/suggestion-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ suggestionId, action }) });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed.");
+      router.refresh();
+    } catch (x: any) { setErr(x?.message || "Failed."); } finally { setBusy(null); }
+  }
+
+  const visible = e.suggestions.filter((s) => s.status !== "dismissed");
+  return (
+    <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Edit suggestions</span>
+        <button onClick={suggest} disabled={!!busy} style={{ marginLeft: "auto", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", borderRadius: 7, padding: "5px 10px", fontSize: 11, color: "rgba(255,255,255,0.85)", cursor: "pointer" }}>
+          {busy === "gen" ? "Thinking…" : visible.length ? "Re-suggest" : "Suggest edits"}
+        </button>
+      </div>
+      {err && <div style={{ fontSize: 11, color: "#ff6b6b", marginTop: 6 }}>{err}</div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+        {visible.map((s) => (
+          <div key={s.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: SEV_COLOR[s.severity] }}>{s.severity}</span>
+              <span style={{ fontSize: 12, color: "#fff" }}>{s.summary}</span>
+              {s.status === "approved" && <span style={{ fontSize: 10, color: "#34C759", marginLeft: "auto" }}>✓ queued</span>}
+            </div>
+            {s.detail && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 3 }}>{s.detail}</div>}
+            {s.status === "proposed" && (
+              <div style={{ display: "flex", gap: 8, marginTop: 7 }}>
+                <button onClick={() => act(s.id, "approve")} disabled={!!busy} style={{ background: "#D73F09", border: "none", borderRadius: 7, padding: "5px 11px", fontSize: 11, color: "#fff", fontWeight: 700, cursor: "pointer" }}>
+                  {busy === s.id + "approve" ? "…" : "Approve & auto-edit"}
+                </button>
+                <button onClick={() => act(s.id, "dismiss")} disabled={!!busy} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 7, padding: "5px 11px", fontSize: 11, color: "rgba(255,255,255,0.7)", cursor: "pointer" }}>
+                  {busy === s.id + "dismiss" ? "…" : "Dismiss"}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {e.jobs.length > 0 && (
+        <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {e.jobs.map((j) => (
+            <span key={j.id} style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.06)", borderRadius: 6, padding: "3px 8px" }}>
+              {j.type} · {j.status === "queued" ? "queued for the Edit Engine" : j.status}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Card({ e }: { e: Evl }) {
   const isVideo = e.media_type === "video";
   return (
@@ -87,6 +170,7 @@ function Card({ e }: { e: Evl }) {
         {e.rationale && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>{e.rationale}</div>}
         <Bars s={e.scores} />
         <Flags flags={e.compliance_flags} />
+        {(e.is_top_pick || !e.compliance_pass || e.suggestions.length > 0) && <SuggestionsBlock e={e} />}
       </div>
     </div>
   );

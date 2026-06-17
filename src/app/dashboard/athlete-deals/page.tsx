@@ -132,7 +132,22 @@ async function fetchEvaluations(athleteId: string, campaignId: string): Promise<
     console.error("fetchEvaluations error:", error.message);
     return [];
   }
-  return (data ?? []).map((r: any) => {
+  const evals = data ?? [];
+  const deliverableIds = evals.map((r: any) => r.deliverable_id);
+
+  // Suggestions + queued edit jobs for these deliverables.
+  const sugByDeliv = new Map<string, any[]>();
+  const jobsByDeliv = new Map<string, any[]>();
+  if (deliverableIds.length > 0) {
+    const [{ data: sugs }, { data: jobs }] = await Promise.all([
+      service.from("edit_suggestions").select("id,deliverable_id,kind,summary,detail,severity,status").in("deliverable_id", deliverableIds).order("created_at", { ascending: true }),
+      service.from("athlete_edit_jobs").select("id,deliverable_id,type,status").in("deliverable_id", deliverableIds).order("created_at", { ascending: false }),
+    ]);
+    for (const s of sugs ?? []) { const a = sugByDeliv.get(s.deliverable_id) ?? []; a.push(s); sugByDeliv.set(s.deliverable_id, a); }
+    for (const j of jobs ?? []) { const a = jobsByDeliv.get(j.deliverable_id) ?? []; a.push(j); jobsByDeliv.set(j.deliverable_id, a); }
+  }
+
+  return evals.map((r: any) => {
     const d = one(r.deliverable);
     return {
       deliverable_id: r.deliverable_id,
@@ -148,6 +163,8 @@ async function fetchEvaluations(athleteId: string, campaignId: string): Promise<
       rationale: r.rationale,
       is_preliminary: r.is_preliminary,
       model: r.model,
+      suggestions: sugByDeliv.get(r.deliverable_id) ?? [],
+      jobs: jobsByDeliv.get(r.deliverable_id) ?? [],
     } as Evl;
   });
 }
