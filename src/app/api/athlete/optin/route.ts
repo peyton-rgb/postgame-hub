@@ -1,14 +1,20 @@
 // ============================================================
 // POST /api/athlete/optin — an athlete opts into a deal
 //
-// Reuses the EXISTING opt-in pipeline: the action writes a row to
-// campaign_optin_submissions (same table the public opt-in forms use), then
-// records the app's per-athlete participation in athlete_campaign_optins so
-// "My deals" can track it. athlete_id is taken from the verified session —
-// never from the client body — so an athlete can only opt themselves in.
+// Records the opt-in in athlete_campaign_optins, keyed to BOTH the verified
+// athlete (athlete_id → profiles) AND the deal (optin_campaign_id →
+// optin_campaigns), and seeds the feed/reel deliverable rows. "My deals"
+// reads from this same table, so the deal appears immediately.
 //
-// Writes use the service role (bypasses RLS) but are always scoped to the
-// authenticated user's id.
+// We intentionally do NOT touch campaign_optin_submissions: its optin_id
+// foreign-keys the LEGACY campaign_optins table, so an optin_campaigns id
+// there would always FK-violate (this was the "Couldn't record your opt-in"
+// bug). The legacy/public submission pipeline is left untouched.
+//
+// athlete_id comes from the verified session — never the client body — so an
+// athlete can only opt themselves in. Writes use the service role but are
+// always scoped to the authenticated user's id. Idempotent via
+// UNIQUE(athlete_id, optin_campaign_id).
 // ============================================================
 
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
@@ -71,36 +77,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, alreadyOptedIn: true });
   }
 
-  // 1) Existing pipeline: record the submission.
-  const { data: submission, error: subErr } = await service
-    .from("campaign_optin_submissions")
-    .insert({
-      optin_id: campaignId,
-      ig_handle: profile.ig_handle ?? null,
-      data: {
-        source: "athlete-app",
-        athlete_id: user.id,
-        full_name: profile.full_name,
-        email: profile.email,
-        ig_handle: profile.ig_handle,
-        ftc_ack: ftcAck,
-      },
-    })
-    .select("id")
-    .single();
-
-  if (subErr) {
-    console.error("optin submission insert error:", subErr.message);
-    return NextResponse.json({ error: "Couldn't record your opt-in. Please try again." }, { status: 500 });
-  }
-
-  // 2) App participation ledger.
+  // Record the opt-in, keyed to BOTH the logged-in athlete and the
+  // optin_campaigns deal. We do NOT write to campaign_optin_submissions: its
+  // optin_id foreign-keys the LEGACY campaign_optins table, so inserting an
+  // optin_campaigns id there is a guaranteed FK violation. The legacy/public
+  // submission pipeline (campaign_optin_submissions / pending_optins) is left
+  // untouched — the athlete app keys on athlete_id, never ig_handle.
   const { error: acoErr } = await service.from("athlete_campaign_optins").insert({
     athlete_id: user.id,
     optin_campaign_id: campaignId,
     status: "opted_in",
     ftc_ack: ftcAck,
-    submission_id: submission?.id ?? null,
   });
 
   if (acoErr) {
