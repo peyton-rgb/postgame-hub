@@ -9,6 +9,7 @@
 // ============================================================
 
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { notifyManagers, dealContext } from "@/lib/manager-notify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   const { data: deliverables } = await service
     .from("athlete_deliverables")
-    .select("id,slot,status,file_url,athlete_id")
+    .select("id,slot,status,file_url,athlete_id,optin_campaign_id")
     .eq("optin_id", optinId);
 
   if (!deliverables || deliverables.length === 0) {
@@ -67,6 +68,22 @@ export async function POST(request: NextRequest) {
     if (updErr) {
       console.error("submit update error:", updErr.message);
       return NextResponse.json({ error: "Couldn't submit. Please try again." }, { status: 500 });
+    }
+
+    // One manager notification per submit (not per deliverable — avoids spam).
+    const campaignId = (deliverables[0] as any).optin_campaign_id || deliverables.find((d: any) => d.optin_campaign_id)?.optin_campaign_id;
+    if (campaignId) {
+      const ctx = await dealContext(user.id, campaignId);
+      const who = ctx.athleteName || "An athlete";
+      await notifyManagers({
+        type: "content_submitted",
+        title: `${who} submitted content for approval`,
+        message: `${ctx.brandName ? ctx.brandName + " · " : ""}${ctx.campaignTitle ?? "deal"} — ${ids.length} item${ids.length === 1 ? "" : "s"} awaiting content approval.`,
+        linkUrl: ctx.reviewLink,
+        athleteName: ctx.athleteName,
+        brandName: ctx.brandName,
+        campaignTitle: ctx.campaignTitle,
+      });
     }
   }
 

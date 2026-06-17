@@ -7,6 +7,7 @@
 // ============================================================
 
 import DashboardShell from '@/components/DashboardShell';
+import StaffNotificationBell from '@/components/dashboard/StaffNotificationBell';
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <StaffNotificationBell />
       <DashboardShell>{children}</DashboardShell>
     </div>
   );

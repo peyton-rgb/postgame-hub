@@ -9,6 +9,7 @@
 // ============================================================
 
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { notifyManagers, dealContext } from "@/lib/manager-notify";
 import { NextRequest, NextResponse } from "next/server";
 
 function isValidUrl(v: string): boolean {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
   const service = createServiceSupabase();
   const { data: deliverable } = await service
     .from("athlete_deliverables")
-    .select("id,status,athlete_id")
+    .select("id,status,athlete_id,optin_campaign_id,slot")
     .eq("id", deliverableId)
     .maybeSingle();
 
@@ -67,6 +68,21 @@ export async function POST(request: NextRequest) {
   if (updErr) {
     console.error("post-link update error:", updErr.message);
     return NextResponse.json({ error: "Couldn't save your link. Please try again." }, { status: 500 });
+  }
+
+  // Notify managers a live post is awaiting verification.
+  if ((deliverable as any).optin_campaign_id) {
+    const ctx = await dealContext(deliverable.athlete_id, (deliverable as any).optin_campaign_id);
+    const who = ctx.athleteName || "An athlete";
+    await notifyManagers({
+      type: "post_awaiting_verification",
+      title: `${who} posted — verify it's live`,
+      message: `${ctx.brandName ? ctx.brandName + " · " : ""}${ctx.campaignTitle ?? "deal"} — ${(deliverable as any).slot ?? "a deliverable"} post is awaiting verification.`,
+      linkUrl: ctx.reviewLink,
+      athleteName: ctx.athleteName,
+      brandName: ctx.brandName,
+      campaignTitle: ctx.campaignTitle,
+    });
   }
 
   return NextResponse.json({ ok: true });

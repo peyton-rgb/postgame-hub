@@ -13,6 +13,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceSupabase } from "@/lib/supabase-server";
+import { notifyManagers, dealContext } from "@/lib/manager-notify";
 
 // claude-api skill default. Override per-deploy for cost (e.g. claude-sonnet-4-6).
 const MODEL = process.env.AUTO_EDITOR_MODEL || "claude-opus-4-8";
@@ -305,6 +306,22 @@ export async function runAutoEditor(athleteId: string, campaignId: string): Prom
   if (rows.length > 0) {
     const { error } = await service.from("content_evaluations").upsert(rows, { onConflict: "deliverable_id" });
     if (error) console.error("[auto-editor] persist error:", error.message);
+  }
+
+  // Notify managers if the curator hard-gated any content on compliance.
+  const flaggedCount = evals.filter((e) => !e.compliance_pass).length;
+  if (flaggedCount > 0) {
+    const ctx = await dealContext(athleteId, campaignId);
+    const who = ctx.athleteName || "an athlete";
+    await notifyManagers({
+      type: "compliance_flag",
+      title: `Compliance flag on ${who}'s content`,
+      message: `${ctx.brandName ? ctx.brandName + " · " : ""}${ctx.campaignTitle ?? "deal"} — ${flaggedCount} item${flaggedCount === 1 ? "" : "s"} failed a compliance check and can't be a top pick until cleared.`,
+      linkUrl: ctx.reviewLink,
+      athleteName: ctx.athleteName,
+      brandName: ctx.brandName,
+      campaignTitle: ctx.campaignTitle,
+    });
   }
 
   return {

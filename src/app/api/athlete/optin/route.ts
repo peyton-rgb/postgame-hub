@@ -19,6 +19,7 @@
 
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { ensureDeliverables } from "@/lib/athlete-deliverables";
+import { notifyManagers, dealContext } from "@/lib/manager-notify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -109,6 +110,18 @@ export async function POST(request: NextRequest) {
   if (created) {
     await ensureDeliverables(created.id, user.id, campaignId, (campaign as any).required_deliverables);
   }
+
+  // Notify managers of the new opt-in (only on the fresh path above).
+  const ctx = await dealContext(user.id, campaignId);
+  await notifyManagers({
+    type: "new_optin",
+    title: `${ctx.athleteName || "An athlete"} opted into a deal`,
+    message: `${ctx.brandName ? ctx.brandName + " · " : ""}${ctx.campaignTitle ?? "deal"}.`,
+    linkUrl: ctx.reviewLink,
+    athleteName: ctx.athleteName,
+    brandName: ctx.brandName,
+    campaignTitle: ctx.campaignTitle,
+  });
 
   return NextResponse.json({ ok: true });
 }
