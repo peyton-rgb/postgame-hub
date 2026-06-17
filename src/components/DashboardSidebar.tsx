@@ -335,6 +335,7 @@ const PIPELINE_SECTIONS: NavSection[] = [
     label: 'Review',
     links: [
       { name: 'Brand Approval', href: '/dashboard/brand-approval', icon: CheckCircleIcon },
+      { name: 'Campaigns', href: '/dashboard/campaigns', icon: BarChartIcon, staffOnly: true },
       { name: 'Athlete Deals', href: '/dashboard/athlete-deals', icon: UserCheckIcon, staffOnly: true },
       { name: 'Reviews', href: '/dashboard/reviews', icon: EyeIcon },
       { name: 'Final Assets', href: '/dashboard/assets', icon: PackageIcon },

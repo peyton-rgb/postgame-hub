@@ -41,13 +41,14 @@ type Group = {
   items: any[];
 };
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(campaignId?: string): Promise<Group[]> {
   const service = createServiceSupabase();
-  const { data, error } = await service
+  let query = service
     .from("athlete_deliverables")
     .select(SELECT)
-    .in("status", ["in_review", "pending_verification"])
-    .order("updated_at", { ascending: true });
+    .in("status", ["in_review", "pending_verification"]);
+  if (campaignId) query = query.eq("optin_campaign_id", campaignId);
+  const { data, error } = await query.order("updated_at", { ascending: true });
 
   if (error) {
     console.error("athlete-deals queue error:", error.message);
@@ -202,9 +203,9 @@ async function GroupCard({ g }: { g: Group }) {
   );
 }
 
-export default async function AthleteDealsReviewPage() {
+export default async function AthleteDealsReviewPage({ searchParams }: { searchParams: { campaign?: string } }) {
   await requireStaff();
-  const groups = await fetchGroups();
+  const groups = await fetchGroups(searchParams?.campaign);
   const totalItems = groups.reduce((n, g) => n + g.items.length, 0);
 
   return (
