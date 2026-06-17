@@ -305,6 +305,7 @@ type NavLink = {
   name: string;
   href: string;
   icon: React.FC;
+  staffOnly?: boolean; // hidden unless the viewer is staff (role !== 'athlete')
 };
 
 type NavSection = {
@@ -334,7 +335,7 @@ const PIPELINE_SECTIONS: NavSection[] = [
     label: 'Review',
     links: [
       { name: 'Brand Approval', href: '/dashboard/brand-approval', icon: CheckCircleIcon },
-      { name: 'Athlete Deals', href: '/dashboard/athlete-deals', icon: UserCheckIcon },
+      { name: 'Athlete Deals', href: '/dashboard/athlete-deals', icon: UserCheckIcon, staffOnly: true },
       { name: 'Reviews', href: '/dashboard/reviews', icon: EyeIcon },
       { name: 'Final Assets', href: '/dashboard/assets', icon: PackageIcon },
     ],
@@ -398,6 +399,26 @@ export default function DashboardSidebar() {
   // text wordmark during loading or if the fetch fails.
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
+  // Whether the current viewer is staff (role !== 'athlete'), mirroring the
+  // is_staff() DB helper. staffOnly nav links stay hidden until this is
+  // confirmed true, so they never flash for a non-staff user.
+  const [isStaff, setIsStaff] = useState(false);
+
+  useEffect(() => {
+    async function checkStaff() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      if (data && data.role !== 'athlete') setIsStaff(true);
+    }
+    checkStaff();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch the Postgame brand logo once when the sidebar mounts.
   // Brand ID is hardcoded — this is the Postgame brand's row in the
   // brands table, and it doesn't change.
@@ -439,7 +460,9 @@ export default function DashboardSidebar() {
       >
         {section.label}
       </div>
-      {section.links.map((link) => {
+      {section.links
+        .filter((link) => !link.staffOnly || isStaff)
+        .map((link) => {
         const active = isActive(link.href);
         const LinkIcon = link.icon;
         return (
