@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   // Verify this deliverable belongs to the logged-in athlete.
   const { data: deliverable } = await service
     .from("athlete_deliverables")
-    .select("id,athlete_id,optin_campaign_id,media_id")
+    .select("id,athlete_id,optin_campaign_id")
     .eq("optin_id", optinId)
     .eq("slot", slot)
     .maybeSingle();

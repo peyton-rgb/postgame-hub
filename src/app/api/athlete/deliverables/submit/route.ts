@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   const { data: deliverables } = await service
     .from("athlete_deliverables")
-    .select("id,slot,status,media_id,athlete_id")
+    .select("id,slot,status,file_url,athlete_id")
     .eq("optin_id", optinId);
 
   if (!deliverables || deliverables.length === 0) {
@@ -47,8 +47,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Every deliverable must have an uploaded file (or already be further along).
+  // The upload writes file_url on the deliverable (not media_id), so check that.
   const notReady = deliverables.filter(
-    (d) => !d.media_id || d.status === "to_upload" || d.status === "changes_requested"
+    (d) => !d.file_url || d.status === "to_upload" || d.status === "changes_requested"
   );
   if (notReady.length > 0) {
     return NextResponse.json(
