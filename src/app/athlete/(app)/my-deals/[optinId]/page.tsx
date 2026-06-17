@@ -15,6 +15,7 @@ import { requireAthlete } from "@/lib/athlete-auth";
 import { getDealParticipation } from "@/lib/athlete-deliverables";
 import UploadDeliverables from "@/components/athlete/UploadDeliverables";
 import PostDeliverables from "@/components/athlete/PostDeliverables";
+import VideographerLinkButton from "@/components/videographer/VideographerLinkButton";
 import { slotLabel } from "@/lib/deliverable-status";
 
 export const dynamic = "force-dynamic";
@@ -117,6 +118,20 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
 
       {stageKey === "paid" && (
         <StatusNote>This deal is complete and your payout has been released. Thanks for posting!</StatusNote>
+      )}
+
+      {/* Delegate filming/uploading to a videographer */}
+      {(stageKey === "content_due" || stageKey === "in_review") && (
+        <div style={{ padding: "12px 18px 4px" }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(250,248,245,0.4)", marginBottom: 8 }}>
+            Working with a videographer?
+          </div>
+          <VideographerLinkButton
+            endpoint="/api/athlete/videographer-link"
+            body={{ campaignId: deal.campaignId }}
+            variant="athlete"
+          />
+        </div>
       )}
     </div>
   );

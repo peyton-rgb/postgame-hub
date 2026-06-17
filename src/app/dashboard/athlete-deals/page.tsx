@@ -17,6 +17,7 @@ import { requireStaff } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { slotLabel } from "@/lib/deliverable-status";
 import StaffDeliverableActions from "@/components/dashboard/StaffDeliverableActions";
+import VideographerLinkButton from "@/components/videographer/VideographerLinkButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,8 @@ function one(v: any) {
 
 type Group = {
   key: string;
+  athleteId: string;
+  campaignId: string;
   athleteName: string;
   athleteHandle: string | null;
   brandName: string | null;
@@ -59,6 +62,8 @@ async function fetchGroups(): Promise<Group[]> {
     if (!groups.has(key)) {
       groups.set(key, {
         key,
+        athleteId: r.athlete_id,
+        campaignId: r.optin_campaign_id,
         athleteName: athlete?.full_name || athlete?.email || "Athlete",
         athleteHandle: athlete?.ig_handle ?? null,
         brandName: brand?.name ?? null,
@@ -133,6 +138,14 @@ function GroupCard({ g }: { g: Group }) {
         )}
       </div>
       {g.items.map((d) => <DeliverableRow key={d.id} d={d} />)}
+
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 10, paddingTop: 12 }}>
+        <VideographerLinkButton
+          endpoint="/api/staff/videographer-link"
+          body={{ athleteId: g.athleteId, campaignId: g.campaignId }}
+          variant="staff"
+        />
+      </div>
     </div>
   );
 }
