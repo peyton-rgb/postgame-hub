@@ -14,6 +14,26 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 
 const MODEL = process.env.AUTO_EDITOR_MODEL || "claude-opus-4-8";
 
+// Rough pre-approval cost estimates, in Higgsfield credits, shown for triage
+// before a manager approves an edit. The exact cost is fetched later at
+// approval time — this is only a ballpark.
+//   - reframe/crop are Higgsfield media edits → a nominal credit estimate.
+//   - relight/color/trim are intentionally absent (→ null): they're handled by
+//     the desktop Adobe plugins, a different pipeline, not Higgsfield.
+//   - caption/disclosure/other are text/metadata fixes with no media cost.
+//   - any unrecognized kind defaults to null — `kind` is free-text and not
+//     constrained, so we default safely rather than guess.
+export const KIND_COST_CREDITS: Record<string, number> = {
+  reframe: 2,
+  crop: 2,
+};
+
+// Estimated credit cost for a suggestion kind, or null if it has no metered
+// Higgsfield cost (text/metadata fix, a different pipeline, or unknown kind).
+export function estimateCostCredits(kind: string): number | null {
+  return KIND_COST_CREDITS[kind] ?? null;
+}
+
 export type Suggestion = {
   kind: string;
   summary: string;
@@ -150,6 +170,7 @@ export async function generateSuggestions(deliverableId: string): Promise<{ ok: 
       detail: s.detail,
       severity: s.severity,
       status: "proposed",
+      cost_credits: estimateCostCredits(s.kind),
     }));
     const { error } = await service.from("edit_suggestions").insert(rows);
     if (error) console.error("[suggestions] insert error:", error.message);
