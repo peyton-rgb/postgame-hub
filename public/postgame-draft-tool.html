@@ -431,7 +431,36 @@ async function loadPlayersFromHub() {
       {pick:27, name:"Henri Veesaar",     school:"North Carolina", matched:false},
       {pick:28, name:"Joshua Jefferson",  school:"Iowa State",     matched:true},
       {pick:29, name:"Meleek Thomas",     school:"Arkansas",       matched:true},
-      {pick:30, name:"Isaiah Evans",      school:"Duke",           matched:false}
+      {pick:30, name:"Isaiah Evans",      school:"Duke",           matched:false},
+      // --- Round 2 (ESPN final mock 31-59; Joshua Jefferson already at pick 28) ---
+      {pick:32, name:"Zuby Ejiofor",      school:"St. John's",     matched:false, round:2},
+      {pick:33, name:"Baba Miller",       school:"Cincinnati",     matched:false, round:2},
+      {pick:34, name:"Alex Karaban",      school:"UConn",          matched:true,  round:2},
+      {pick:35, name:"Jack Kayil",        school:"Germany",        matched:false, round:2},
+      {pick:36, name:"Richie Saunders",   school:"BYU",            matched:false, round:2},
+      {pick:37, name:"Emanuel Sharp",     school:"Houston",        matched:false, round:2},
+      {pick:38, name:"Dillon Mitchell",   school:"St. John's",     matched:true,  round:2},
+      {pick:39, name:"Ryan Conwell",      school:"Louisville",     matched:true,  round:2},
+      {pick:40, name:"Braden Smith",      school:"Purdue",         matched:true,  round:2},
+      {pick:41, name:"Ja'Kobi Gillespie", school:"Tennessee",      matched:true,  round:2},
+      {pick:42, name:"Felix Okpara",      school:"Tennessee",      matched:false, round:2},
+      {pick:43, name:"Trevon Brazile",    school:"Arkansas",       matched:false, round:2},
+      {pick:44, name:"Bruce Thornton",    school:"Ohio State",     matched:false, round:2},
+      {pick:45, name:"Izaiyah Nelson",    school:"South Florida",  matched:false, round:2},
+      {pick:46, name:"Ugonna Onyenso",    school:"Virginia",       matched:false, round:2},
+      {pick:47, name:"Aaron Nkrumah",     school:"Tennessee State",matched:false, round:2},
+      {pick:48, name:"Vsevolod Ishchenko",school:"Russia",         matched:false, round:2},
+      {pick:49, name:"Jaden Bradley",     school:"Arizona",        matched:true,  round:2},
+      {pick:50, name:"Tobe Awaka",        school:"Arizona",        matched:false, round:2},
+      {pick:51, name:"Milos Uzan",        school:"Houston",        matched:false, round:2},
+      {pick:52, name:"Tre Donaldson",     school:"Miami",          matched:true,  round:2},
+      {pick:53, name:"Quadir Copeland",   school:"NC State",       matched:false, round:2},
+      {pick:54, name:"Tobi Lawal",        school:"Virginia Tech",  matched:false, round:2},
+      {pick:55, name:"Tyler Nickel",      school:"Vanderbilt",     matched:false, round:2},
+      {pick:56, name:"Bryce Hopkins",     school:"St. John's",     matched:false, round:2},
+      {pick:57, name:"Nick Martinelli",   school:"Northwestern",   matched:false, round:2},
+      {pick:58, name:"Maliq Brown",       school:"Duke",           matched:true,  round:2},
+      {pick:59, name:"Noam Yaacov",       school:"Denmark",        matched:false, round:2}
     ];
     players = nbaMock.map(d=>({
       name: d.name,
@@ -439,7 +468,7 @@ async function loadPlayersFromHub() {
       sport: '',
       hubPhoto: null,
       photo: null,
-      pick: null, team: null, round: 1,
+      pick: null, team: null, round: d.round || 1,
       matched: d.matched
     }));
     document.getElementById('loading-msg').style.display='none';
