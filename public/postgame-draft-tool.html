@@ -692,7 +692,7 @@ function draw(tgt,tctx,f){
   const logo=leagueLogo||LOGO_IMGS[league];
   if(logo){
     const bH=pH*0.90;
-    let lH=bH*0.75,lW=lH*(logo.width/logo.height);
+    let lH=bH*0.95,lW=lH*(logo.width/logo.height);
     let bW=lW+36*S; const bX=M+pTW+28*S;
     // Right-safe guard: if the pill would cross rightBound, shrink it so its
     // right edge sits exactly at rightBound, keeping the logo aspect-correct.
@@ -727,14 +727,14 @@ function draw(tgt,tctx,f){
   y-=GAP;
 
   // Round label
-  const rSz=19*S,rF=`700 ${rSz}px Arial`,rT=`${cfg.round_label} ${year} · ROUND ${rd}`;
+  const rSz=26*S,rF=`700 ${rSz}px Arial`,rT=`${cfg.round_label} ${year} · ROUND ${rd}`;
   const rH=iH(rT,rF)||rSz*0.72; y-=rH;
   ctx.font=rF; ctx.fillStyle='rgba(255,255,255,0.75)';
   ctx.fillText(rT,M,y+rH-ds(rT,rF)); y-=GAP*0.8;
 
   // Postgame logo
   if(pgLogo){
-    const lgH=30*S,lgW=pgLogo.width*(lgH/pgLogo.height);
+    const lgH=42*S,lgW=pgLogo.width*(lgH/pgLogo.height);
     ctx.drawImage(pgLogo,M,Math.max(fm==='9:16'?155*S:55*S,y-lgH),lgW,lgH);
   }
 }
