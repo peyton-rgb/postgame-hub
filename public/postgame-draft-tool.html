@@ -371,6 +371,54 @@ async function loadPlayersFromHub() {
   const cfg = LEAGUES[league];
   const sports = cfg.sport;
 
+  // NBA: use the hardcoded 2026 mock-draft board instead of fetching.
+  if (league === 'NBA') {
+    const nbaMock = [
+      {pick:1,  name:"AJ Dybantsa",       school:"BYU",            matched:false},
+      {pick:2,  name:"Darryn Peterson",   school:"Kansas",         matched:true},
+      {pick:3,  name:"Cameron Boozer",    school:"Duke",           matched:false},
+      {pick:4,  name:"Caleb Wilson",      school:"North Carolina", matched:false},
+      {pick:5,  name:"Keaton Wagler",     school:"Illinois",       matched:true},
+      {pick:6,  name:"Darius Acuff Jr.",  school:"Arkansas",       matched:true},
+      {pick:7,  name:"Mikel Brown Jr.",   school:"Louisville",     matched:true},
+      {pick:8,  name:"Kingston Flemings", school:"Houston",        matched:false},
+      {pick:9,  name:"Brayden Burries",   school:"Arizona",        matched:true},
+      {pick:10, name:"Nate Ament",        school:"Tennessee",      matched:false},
+      {pick:11, name:"Aday Mara",         school:"Michigan",       matched:false},
+      {pick:12, name:"Morez Johnson Jr.", school:"Michigan",       matched:true},
+      {pick:13, name:"Hannes Steinbach",  school:"Washington",     matched:false},
+      {pick:14, name:"Yaxel Lendeborg",   school:"Michigan",       matched:true},
+      {pick:15, name:"Cameron Carr",      school:"Baylor",         matched:false},
+      {pick:16, name:"Christian Anderson",school:"Texas Tech",     matched:true},
+      {pick:17, name:"Karim Lopez",       school:"NZ Breakers",    matched:false},
+      {pick:18, name:"Bennett Stirtz",    school:"Iowa",           matched:false},
+      {pick:19, name:"Allen Graves",      school:"Santa Clara",    matched:false},
+      {pick:20, name:"Labaron Philon",    school:"Alabama",        matched:true},
+      {pick:21, name:"Dailyn Swain",      school:"Texas",          matched:true},
+      {pick:22, name:"Ebuka Okorie",      school:"Stanford",       matched:true},
+      {pick:23, name:"Tarris Reed Jr.",   school:"UConn",          matched:true},
+      {pick:24, name:"Koa Peat",          school:"Arizona",        matched:true},
+      {pick:25, name:"Chris Cenac Jr.",   school:"Houston",        matched:true},
+      {pick:26, name:"Jayden Quaintance", school:"Kentucky",       matched:true},
+      {pick:27, name:"Henri Veesaar",     school:"North Carolina", matched:false},
+      {pick:28, name:"Joshua Jefferson",  school:"Iowa State",     matched:true},
+      {pick:29, name:"Meleek Thomas",     school:"Arkansas",       matched:true},
+      {pick:30, name:"Isaiah Evans",      school:"Duke",           matched:false}
+    ];
+    players = nbaMock.map(d=>({
+      name: d.name,
+      school: d.school,
+      sport: '',
+      hubPhoto: null,
+      photo: null,
+      pick: null, team: null, round: 1,
+      matched: d.matched
+    }));
+    document.getElementById('loading-msg').style.display='none';
+    console.log(`Loaded ${players.length} NBA mock-draft players`);
+    return;
+  }
+
   try {
     // Query deals table - filter by sport
     const sportFilters = sports.map(s=>`athlete_sport.ilike.*${s}*`).join(',');
@@ -457,6 +505,7 @@ function renderList() {
       <div style="flex:1;min-width:0">
         <div class="pn">${p.name}</div>
         <div class="pm">${dr?(p.team+' · Rd '+p.round):(p.school||'Watching...')}</div>
+        ${typeof p.matched==='boolean'?`<div style="font-size:9px;margin-top:1px;color:${p.matched?'#5a8c5a':'#8c7a4a'}">${p.matched?'✅ campaign athlete':'⚠ no match yet'}</div>`:''}
         ${!got&&!p.hubPhoto?'<div class="drop-hint">drag photo or video here</div>':''}
       </div>
     </div>`;
