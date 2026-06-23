@@ -345,6 +345,8 @@ const PIPELINE_SECTIONS: NavSection[] = [
     label: 'Graphic Creation',
     links: [
       { name: 'Draft Graphics', href: '/dashboard/graphic-creation/draft', icon: PhotoIcon },
+      { name: 'Throwback Thursday Graphics', href: '/dashboard/graphic-creation/throwback', icon: PhotoIcon },
+      { name: 'Campaign Opt-In Graphics', href: '/dashboard/graphic-creation/optin', icon: PhotoIcon },
     ],
   },
   {
