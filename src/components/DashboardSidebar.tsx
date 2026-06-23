@@ -342,6 +342,12 @@ const PIPELINE_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: 'Graphic Creation',
+    links: [
+      { name: 'Draft Graphics', href: '/dashboard/graphic-creation/draft', icon: PhotoIcon },
+    ],
+  },
+  {
     label: 'Distribution',
     links: [
       { name: 'Captions', href: '/dashboard/captions', icon: MessageIcon },
