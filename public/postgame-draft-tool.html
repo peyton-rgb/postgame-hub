@@ -965,7 +965,7 @@ async function useDriveFile(){
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileId: driveSel.id, fileName: driveSel.name, recapId: DRAFT_RECAP_ID })
+      body: JSON.stringify({ fileId: driveSel.id, fileName: driveSel.name, recapId: DRAFT_RECAP_ID, isEvent: true })
     });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.media || !data.media.file_url){
