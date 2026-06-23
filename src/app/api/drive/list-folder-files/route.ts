@@ -19,6 +19,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase-server";
 import { getDriveClient } from "@/lib/google-drive";
 import { parseDriveUrl } from "@/lib/drive-url";
 
@@ -48,6 +49,12 @@ type PickerFile = {
 
 export async function POST(request: NextRequest) {
   try {
+    const authClient = createServerSupabase();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const { folderUrl, recapId, recursive } = body as {
       folderUrl?: string;
