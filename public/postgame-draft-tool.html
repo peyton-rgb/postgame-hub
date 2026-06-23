@@ -371,6 +371,54 @@ async function loadPlayersFromHub() {
   const cfg = LEAGUES[league];
   const sports = cfg.sport;
 
+  // NBA: use the hardcoded 2026 mock-draft board instead of fetching.
+  if (league === 'NBA') {
+    const nbaMock = [
+      {pick:1,  name:"AJ Dybantsa",       school:"BYU",            matched:false},
+      {pick:2,  name:"Darryn Peterson",   school:"Kansas",         matched:true},
+      {pick:3,  name:"Cameron Boozer",    school:"Duke",           matched:false},
+      {pick:4,  name:"Caleb Wilson",      school:"North Carolina", matched:false},
+      {pick:5,  name:"Keaton Wagler",     school:"Illinois",       matched:true},
+      {pick:6,  name:"Darius Acuff Jr.",  school:"Arkansas",       matched:true},
+      {pick:7,  name:"Mikel Brown Jr.",   school:"Louisville",     matched:true},
+      {pick:8,  name:"Kingston Flemings", school:"Houston",        matched:false},
+      {pick:9,  name:"Brayden Burries",   school:"Arizona",        matched:true},
+      {pick:10, name:"Nate Ament",        school:"Tennessee",      matched:false},
+      {pick:11, name:"Aday Mara",         school:"Michigan",       matched:false},
+      {pick:12, name:"Morez Johnson Jr.", school:"Michigan",       matched:true},
+      {pick:13, name:"Hannes Steinbach",  school:"Washington",     matched:false},
+      {pick:14, name:"Yaxel Lendeborg",   school:"Michigan",       matched:true},
+      {pick:15, name:"Cameron Carr",      school:"Baylor",         matched:false},
+      {pick:16, name:"Christian Anderson",school:"Texas Tech",     matched:true},
+      {pick:17, name:"Karim Lopez",       school:"NZ Breakers",    matched:false},
+      {pick:18, name:"Bennett Stirtz",    school:"Iowa",           matched:false},
+      {pick:19, name:"Allen Graves",      school:"Santa Clara",    matched:false},
+      {pick:20, name:"Labaron Philon",    school:"Alabama",        matched:true},
+      {pick:21, name:"Dailyn Swain",      school:"Texas",          matched:true},
+      {pick:22, name:"Ebuka Okorie",      school:"Stanford",       matched:true},
+      {pick:23, name:"Tarris Reed Jr.",   school:"UConn",          matched:true},
+      {pick:24, name:"Koa Peat",          school:"Arizona",        matched:true},
+      {pick:25, name:"Chris Cenac Jr.",   school:"Houston",        matched:true},
+      {pick:26, name:"Jayden Quaintance", school:"Kentucky",       matched:true},
+      {pick:27, name:"Henri Veesaar",     school:"North Carolina", matched:false},
+      {pick:28, name:"Joshua Jefferson",  school:"Iowa State",     matched:true},
+      {pick:29, name:"Meleek Thomas",     school:"Arkansas",       matched:true},
+      {pick:30, name:"Isaiah Evans",      school:"Duke",           matched:false}
+    ];
+    players = nbaMock.map(d=>({
+      name: d.name,
+      school: d.school,
+      sport: '',
+      hubPhoto: null,
+      photo: null,
+      pick: null, team: null, round: 1,
+      matched: d.matched
+    }));
+    document.getElementById('loading-msg').style.display='none';
+    console.log(`Loaded ${players.length} NBA mock-draft players`);
+    return;
+  }
+
   try {
     // Query deals table - filter by sport
     const sportFilters = sports.map(s=>`athlete_sport.ilike.*${s}*`).join(',');
@@ -457,6 +505,7 @@ function renderList() {
       <div style="flex:1;min-width:0">
         <div class="pn">${p.name}</div>
         <div class="pm">${dr?(p.team+' · Rd '+p.round):(p.school||'Watching...')}</div>
+        ${typeof p.matched==='boolean'?`<div style="font-size:9px;margin-top:1px;color:${p.matched?'#5a8c5a':'#8c7a4a'}">${p.matched?'✅ campaign athlete':'⚠ no match yet'}</div>`:''}
         ${!got&&!p.hubPhoto?'<div class="drop-hint">drag photo or video here</div>':''}
       </div>
     </div>`;
@@ -576,6 +625,10 @@ function draw(tgt,tctx,f){
   const cvs=tgt||off; const ctx=tctx||octx;
   cvs.width=w; cvs.height=h;
   const S=w/1080, M=56*S;
+  // Right-safe inset: 9:16 reserves room for IG/TikTok action buttons on the
+  // right edge; 4:5 uses M so rightBound-M == the original w-M*2 (no change).
+  const RIGHT=fm==='9:16'?130*S:M;
+  const rightBound=w-RIGHT;
   ctx.clearRect(0,0,w,h);
 
   // PHOTO
@@ -615,7 +668,7 @@ function draw(tgt,tctx,f){
   // Player name
   let nSz=112*S,nF=`900 ${nSz}px "Arial Black",Arial`;
   ctx.font=nF;
-  while(ctx.measureText(nm).width>w-M*2&&nSz>44*S){nSz-=2*S;nF=`900 ${nSz}px "Arial Black",Arial`;ctx.font=nF;}
+  while(ctx.measureText(nm).width>rightBound-M&&nSz>44*S){nSz-=2*S;nF=`900 ${nSz}px "Arial Black",Arial`;ctx.font=nF;}
   const nH=iH(nm,nF)||nSz*0.8; y-=nH;
   ctx.fillStyle='#fff'; ctx.fillText(nm,M,y+nH-ds(nm,nF)); y-=GAP*1.2;
 
@@ -625,7 +678,7 @@ function draw(tgt,tctx,f){
   // OVERALL PICK
   let oSz=100*S,oF=`900 ${oSz}px "Arial Black",Arial`;
   ctx.font=oF;
-  while(ctx.measureText('OVERALL PICK').width>w-M*2&&oSz>40*S){oSz-=2*S;oF=`900 ${oSz}px "Arial Black",Arial`;ctx.font=oF;}
+  while(ctx.measureText('OVERALL PICK').width>rightBound-M&&oSz>40*S){oSz-=2*S;oF=`900 ${oSz}px "Arial Black",Arial`;ctx.font=oF;}
   const oH=iH('OVERALL PICK',oF)||oSz*0.8; y-=oH;
   ctx.fillStyle='#fff'; ctx.fillText('OVERALL PICK',M,y+oH-ds('OVERALL PICK',oF)); y-=GAP;
 
@@ -638,8 +691,17 @@ function draw(tgt,tctx,f){
   // League logo badge
   const logo=leagueLogo||LOGO_IMGS[league];
   if(logo){
-    const bH=pH*0.90,lH=bH*0.75,lW=lH*(logo.width/logo.height);
-    const bW=lW+36*S,bX=M+pTW+28*S,bY=y+(pH-bH)/2,r=20*S;
+    const bH=pH*0.90;
+    let lH=bH*0.95,lW=lH*(logo.width/logo.height);
+    let bW=lW+36*S; const bX=M+pTW+28*S;
+    // Right-safe guard: if the pill would cross rightBound, shrink it so its
+    // right edge sits exactly at rightBound, keeping the logo aspect-correct.
+    if(bX+bW>rightBound){
+      bW=Math.max(0,rightBound-bX);
+      lW=Math.max(0,bW-36*S);
+      lH=lW*(logo.height/logo.width);
+    }
+    const bY=y+(pH-bH)/2,r=20*S;
     ctx.fillStyle='white';
     ctx.beginPath();
     ctx.moveTo(bX+r,bY);ctx.lineTo(bX+bW-r,bY);ctx.arcTo(bX+bW,bY,bX+bW,bY+r,r);
@@ -665,14 +727,14 @@ function draw(tgt,tctx,f){
   y-=GAP;
 
   // Round label
-  const rSz=19*S,rF=`700 ${rSz}px Arial`,rT=`${cfg.round_label} ${year} · ROUND ${rd}`;
+  const rSz=26*S,rF=`700 ${rSz}px Arial`,rT=`${cfg.round_label} ${year} · ROUND ${rd}`;
   const rH=iH(rT,rF)||rSz*0.72; y-=rH;
   ctx.font=rF; ctx.fillStyle='rgba(255,255,255,0.75)';
   ctx.fillText(rT,M,y+rH-ds(rT,rF)); y-=GAP*0.8;
 
   // Postgame logo
   if(pgLogo){
-    const lgH=30*S,lgW=pgLogo.width*(lgH/pgLogo.height);
+    const lgH=42*S,lgW=pgLogo.width*(lgH/pgLogo.height);
     ctx.drawImage(pgLogo,M,Math.max(fm==='9:16'?155*S:55*S,y-lgH),lgW,lgH);
   }
 }
