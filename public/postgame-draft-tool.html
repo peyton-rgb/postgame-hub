@@ -625,6 +625,10 @@ function draw(tgt,tctx,f){
   const cvs=tgt||off; const ctx=tctx||octx;
   cvs.width=w; cvs.height=h;
   const S=w/1080, M=56*S;
+  // Right-safe inset: 9:16 reserves room for IG/TikTok action buttons on the
+  // right edge; 4:5 uses M so rightBound-M == the original w-M*2 (no change).
+  const RIGHT=fm==='9:16'?130*S:M;
+  const rightBound=w-RIGHT;
   ctx.clearRect(0,0,w,h);
 
   // PHOTO
@@ -664,7 +668,7 @@ function draw(tgt,tctx,f){
   // Player name
   let nSz=112*S,nF=`900 ${nSz}px "Arial Black",Arial`;
   ctx.font=nF;
-  while(ctx.measureText(nm).width>w-M*2&&nSz>44*S){nSz-=2*S;nF=`900 ${nSz}px "Arial Black",Arial`;ctx.font=nF;}
+  while(ctx.measureText(nm).width>rightBound-M&&nSz>44*S){nSz-=2*S;nF=`900 ${nSz}px "Arial Black",Arial`;ctx.font=nF;}
   const nH=iH(nm,nF)||nSz*0.8; y-=nH;
   ctx.fillStyle='#fff'; ctx.fillText(nm,M,y+nH-ds(nm,nF)); y-=GAP*1.2;
 
@@ -674,7 +678,7 @@ function draw(tgt,tctx,f){
   // OVERALL PICK
   let oSz=100*S,oF=`900 ${oSz}px "Arial Black",Arial`;
   ctx.font=oF;
-  while(ctx.measureText('OVERALL PICK').width>w-M*2&&oSz>40*S){oSz-=2*S;oF=`900 ${oSz}px "Arial Black",Arial`;ctx.font=oF;}
+  while(ctx.measureText('OVERALL PICK').width>rightBound-M&&oSz>40*S){oSz-=2*S;oF=`900 ${oSz}px "Arial Black",Arial`;ctx.font=oF;}
   const oH=iH('OVERALL PICK',oF)||oSz*0.8; y-=oH;
   ctx.fillStyle='#fff'; ctx.fillText('OVERALL PICK',M,y+oH-ds('OVERALL PICK',oF)); y-=GAP;
 
@@ -687,8 +691,17 @@ function draw(tgt,tctx,f){
   // League logo badge
   const logo=leagueLogo||LOGO_IMGS[league];
   if(logo){
-    const bH=pH*0.90,lH=bH*0.75,lW=lH*(logo.width/logo.height);
-    const bW=lW+36*S,bX=M+pTW+28*S,bY=y+(pH-bH)/2,r=20*S;
+    const bH=pH*0.90;
+    let lH=bH*0.75,lW=lH*(logo.width/logo.height);
+    let bW=lW+36*S; const bX=M+pTW+28*S;
+    // Right-safe guard: if the pill would cross rightBound, shrink it so its
+    // right edge sits exactly at rightBound, keeping the logo aspect-correct.
+    if(bX+bW>rightBound){
+      bW=Math.max(0,rightBound-bX);
+      lW=Math.max(0,bW-36*S);
+      lH=lW*(logo.height/logo.width);
+    }
+    const bY=y+(pH-bH)/2,r=20*S;
     ctx.fillStyle='white';
     ctx.beginPath();
     ctx.moveTo(bX+r,bY);ctx.lineTo(bX+bW-r,bY);ctx.arcTo(bX+bW,bY,bX+bW,bY+r,r);
