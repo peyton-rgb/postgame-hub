@@ -23,7 +23,7 @@ body{font-family:-apple-system,Arial,sans-serif;background:#0a0a0a;color:#fff;he
 /* SIDEBAR */
 #sidebar{width:280px;background:#111;border-right:1px solid #1e1e1e;display:flex;flex-direction:column;flex-shrink:0}
 #sb-head{padding:12px 14px 8px;border-bottom:1px solid #1e1e1e;flex-shrink:0}
-#sb-title{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#888;display:flex;align-items:center;justify-content:space-between}
+#sb-title{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#B8B8B4;display:flex;align-items:center;justify-content:space-between}
 #espn-status{font-size:10px;display:flex;align-items:center;gap:4px}
 .sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .sdot.green{background:#22c55e;animation:blink 2s infinite}
@@ -44,9 +44,9 @@ body{font-family:-apple-system,Arial,sans-serif;background:#0a0a0a;color:#fff;he
 #player-list{flex:1;overflow-y:auto;padding:5px}
 #player-list::-webkit-scrollbar{width:3px}
 #player-list::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}
-#loading-msg{padding:20px;text-align:center;color:#444;font-size:12px}
+#loading-msg{padding:20px;text-align:center;color:#9a9a96;font-size:12px}
 
-.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .12s;position:relative}
+.row{display:flex;align-items:center;gap:8px;padding:9px 9px;border-radius:6px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .12s;position:relative}
 .row:hover{background:#1a1a1a}
 .row.active{background:#1a1a1a;border-color:#2a2a2a}
 .row.drafted{border-left:3px solid #D73F09}
@@ -57,10 +57,13 @@ body{font-family:-apple-system,Arial,sans-serif;background:#0a0a0a;color:#fff;he
 .thumb.empty:hover{border-color:#444;color:#444}
 .badge{min-width:28px;height:19px;border-radius:4px;background:#D73F09;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .badge.w{background:#1a1a1a;color:#333}
-.pn{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#ccc}
-.pm{font-size:10px;color:#3a3a3a;margin-top:1px}
-.drop-hint{font-size:9px;color:#2a2a2a;margin-top:1px}
-.row:hover .drop-hint{color:#555}
+.pn{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#FAF8F5}
+.pm{font-size:10px;color:#B8B8B4;margin-top:1px}
+.drop-hint{font-size:9px;color:#7A7A76;margin-top:1px}
+.row:hover .drop-hint{color:#9a9a96}
+.mdot{flex-shrink:0;width:9px;height:9px;border-radius:50%;box-sizing:border-box;margin-left:2px}
+.mdot.on{background:#1DD98A;box-shadow:0 0 5px rgba(29,217,138,0.45)}
+.mdot:not(.on){border:1.5px solid #7A7A76}
 .binpills{display:flex;gap:4px;margin-top:3px}
 .bp{font-size:8px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:4px;cursor:pointer;border:1px solid transparent;user-select:none}
 .bp.active{background:#D73F09;color:#fff}
@@ -97,15 +100,15 @@ body{font-family:-apple-system,Arial,sans-serif;background:#0a0a0a;color:#fff;he
 .drive-fab svg{flex-shrink:0;display:block}
 #cw{position:relative;overflow:hidden;box-shadow:0 0 80px rgba(0,0,0,1);flex-shrink:0}
 #dc{display:block}
-#es{color:#252525;text-align:center;font-size:13px;line-height:2.6;pointer-events:none;user-select:none}
+#es{color:#7A7A76;text-align:center;font-size:13px;line-height:2.6;pointer-events:none;user-select:none}
 
 #ct{background:#111;border-top:1px solid #1e1e1e;padding:9px 14px;flex-shrink:0}
 .cr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:7px}
 .cr:last-child{margin-bottom:0}
 .cg{display:flex;align-items:center;gap:6px}
-.cl{font-size:11px;color:#444;white-space:nowrap}
+.cl{font-size:11px;color:#9a9a96;white-space:nowrap}
 input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
-.vo{font-size:11px;color:#666;min-width:32px}
+.vo{font-size:11px;color:#B8B8B4;min-width:32px}
 .cb{padding:4px 9px;font-size:11px;border-radius:5px;border:1px solid #1e1e1e;background:transparent;color:#666;cursor:pointer;transition:all .12s}
 .cb:hover{background:#1a1a1a;color:#ccc}
 /* Drive-popup primary buttons (Load folder / Add to card) — scoped, not .cb */
@@ -116,7 +119,7 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
 .mi{font-size:12px;padding:4px 8px;border:1px solid #1e1e1e;border-radius:5px;background:#0a0a0a;color:#ddd;outline:none}
 .mi:focus{border-color:#D73F09}
 .mi::placeholder{color:#333}
-.ht{font-size:11px;color:#222}
+.ht{font-size:11px;color:#7A7A76}
 @keyframes flash{0%,100%{background:transparent}50%{background:#D73F0920}}
 .row.just-drafted{animation:flash 1s ease 3}
 
@@ -216,7 +219,7 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
         Import from Drive
       </button>
       <div id="es">← Select a player to preview<br>
-        <span style="font-size:11px;color:#1e1e1e;">Load photos above · drag onto names · scroll to zoom</span>
+        <span style="font-size:11px;color:#5a5a57;">Load photos above · drag onto names · scroll to zoom</span>
       </div>
     </div>
     <div id="ct">
@@ -677,7 +680,7 @@ function renderList() {
   });
 
   if(!list.length) {
-    el.innerHTML='<div style="padding:16px;text-align:center;color:#333;font-size:12px;">No players match</div>';
+    el.innerHTML='<div style="padding:16px;text-align:center;color:#7A7A76;font-size:12px;">No players match</div>';
     return;
   }
 
@@ -702,13 +705,13 @@ function renderList() {
       <div style="flex:1;min-width:0">
         <div class="pn">${p.name}</div>
         <div class="pm">${dr?(p.team+' · Rd '+p.round):(p.school||'Watching...')}</div>
-        ${typeof p.matched==='boolean'?`<div style="font-size:9px;margin-top:1px;color:${p.matched?'#5a8c5a':'#8c7a4a'}">${p.matched?'✅ campaign athlete':'⚠ no match yet'}</div>`:''}
-        <div class="binpills">
+        ${ac?`<div class="binpills">
           <span class="bp ${phState}" onclick="binPill(event,${i},'photo')">${phState==='empty'?'+ ':''}Photo</span>
           <span class="bp ${vdState}" onclick="binPill(event,${i},'video')">${vdState==='empty'?'+ ':''}Video</span>
-        </div>
+        </div>`:''}
         ${!got?'<div class="drop-hint">drag photo or video here</div>':''}
       </div>
+      ${typeof p.matched==='boolean'?`<span class="mdot${p.matched?' on':''}" title="${p.matched?'campaign athlete':'no match yet'}"></span>`:''}
     </div>`;
   }).join('');
 }
