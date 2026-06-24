@@ -886,14 +886,19 @@ document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.prev
 function cSz(f){return SIZES[f];}
 function dSz(f){const a=document.getElementById('pa');const ph=a.clientHeight-24,pw=a.clientWidth-24;const{w,h}=cSz(f),r=w/h;let dh=ph,dw=dh*r;if(dw>pw){dw=pw;dh=dw/r;}return{w:Math.floor(dw),h:Math.floor(dh)};}
 
-function draw(tgt,tctx,f){
+function draw(tgt,tctx,f,plat){
   const fm=f||fmt; const{w,h}=cSz(fm);
   const cvs=tgt||off; const ctx=tctx||octx;
   cvs.width=w; cvs.height=h;
-  const S=w/1080, M=56*S;
+  const S=w/1080;
+  // Feature A: per-platform safe zone. `plat` is passed explicitly (export) or
+  // read from live state (preview); null = TODAY'S exact margins (byte-identical).
+  const platform = (arguments.length>=4 ? plat : (platformPreviewOn ? platformByRatio[fm] : null));
+  const safe = (platform && PLATFORM_SPECS[platform] && PLATFORM_SPECS[platform].safe) ? PLATFORM_SPECS[platform].safe : null;
+  const M = safe ? safe.left/100*w : 56*S;
   // Right-safe inset: 9:16 reserves room for IG/TikTok action buttons on the
   // right edge; 4:5 uses M so rightBound-M == the original w-M*2 (no change).
-  const RIGHT=fm==='9:16'?130*S:M;
+  const RIGHT = safe ? safe.right/100*w : (fm==='9:16'?130*S:M);
   const rightBound=w-RIGHT;
   ctx.clearRect(0,0,w,h);
 
@@ -928,7 +933,7 @@ function draw(tgt,tctx,f){
   const pk=cur&&cur.pick?cur.pick:'??';
   const rd=cur&&cur.round?cur.round:1;
   const cfg=LEAGUES[league];
-  const GAP=16*S, btm=fm==='9:16'?172*S:68*S;
+  const GAP=16*S, btm = safe ? safe.bottom/100*h : (fm==='9:16'?172*S:68*S);
   let y=h-btm;
 
   // Player name
@@ -1001,7 +1006,8 @@ function draw(tgt,tctx,f){
   // Postgame logo
   if(pgLogo){
     const lgH=42*S,lgW=pgLogo.width*(lgH/pgLogo.height);
-    ctx.drawImage(pgLogo,M,Math.max(fm==='9:16'?155*S:55*S,y-lgH),lgW,lgH);
+    const topClamp = (safe && safe.top!=null) ? safe.top/100*h : (fm==='9:16'?155*S:55*S);
+    ctx.drawImage(pgLogo,M,Math.max(topClamp,y-lgH),lgW,lgH);
   }
 }
 
@@ -1060,7 +1066,7 @@ async function xprt(f){
   const ec=document.createElement('canvas'); ec.width=w; ec.height=h;
   const ectx=ec.getContext('2d');
   ectx.imageSmoothingEnabled=true; ectx.imageSmoothingQuality='high';
-  draw(ec,ectx,f);
+  draw(ec,ectx,f, platformPreviewOn ? platformByRatio[f] : null);   // platform-adapted when preview on; clean when off
   curMedia=sv.m; curIsVideo=sv.v; pX=sv.x; pY=sv.y; pS=sv.s;   // restore live preview state
   const a=document.createElement('a');
   a.download=`${cur.name.replace(/\s+/g,'_')}_${f.replace(':','x')}_${league}_Draft_${year}.png`;
@@ -1264,7 +1270,7 @@ async function useDriveFile(){
 // Reels-shared types (rail/meta) render now, their unique types render as labeled
 // stubs until Stage 2. Positions are PERCENT of the card (#cw) — edit a number to move.
 const PLATFORM_SPECS = {
-  reels: { name:'Reels', ratio:'9:16', elements:[
+  reels: { name:'Reels', ratio:'9:16', safe:{left:5, right:12, bottom:22}, elements:[
     { type:'topbar', top:4, variant:'reels' },
     { type:'rail', right:4, bottom:16, size:'md', items:['heart','comment','send','dots'], trailing:'audioThumb' },
     { type:'meta', left:4, right:22, bottom:7, lines:[
@@ -1272,12 +1278,12 @@ const PLATFORM_SPECS = {
       {kind:'caption', text:'Your caption goes here…'},
       {kind:'audio', text:'Original audio · Postgame'} ] },
   ]},
-  story: { name:'Story', ratio:'9:16', elements:[
+  story: { name:'Story', ratio:'9:16', safe:{left:5, right:5, bottom:13, top:13}, elements:[
     { type:'progress', top:2, segments:4 },
     { type:'topbar', top:5, variant:'story' },
     { type:'replybar', bottom:4, left:4, right:4 },
   ]},
-  tiktok: { name:'TikTok', ratio:'9:16', elements:[
+  tiktok: { name:'TikTok', ratio:'9:16', safe:{left:5, right:12, bottom:20}, elements:[
     { type:'rail', right:4, bottom:10, size:'lg', items:['avatar','heart','comment','bookmark','share'], trailing:'disc' },
     { type:'meta', left:4, right:22, bottom:8, lines:[
       {kind:'userRow', name:'postgame'},
@@ -1285,18 +1291,18 @@ const PLATFORM_SPECS = {
       {kind:'audio', text:'original sound'} ] },
     { type:'nav', bottom:0 },
   ]},
-  shorts: { name:'Shorts', ratio:'9:16', elements:[
+  shorts: { name:'Shorts', ratio:'9:16', safe:{left:5, right:12, bottom:16}, elements:[
     { type:'rail', right:4, bottom:12, size:'lg', items:['like','dislike','comment','share','remix'], trailing:'channelAvatar' },
     { type:'meta', left:4, right:22, bottom:7, lines:[
       {kind:'handle', text:'@postgame'},
       {kind:'title', text:'Shorts title…'} ] },
     { type:'progress', bottom:5, segments:1, color:'#FF0000' },
   ]},
-  igfeed: { name:'IG feed', ratio:'4:5', elements:[
+  igfeed: { name:'IG feed', ratio:'4:5', safe:{left:5, right:5, bottom:6}, elements:[
     { type:'topbar', top:4, variant:'igfeed' },
     { type:'actions', left:3, bottom:2 },
   ]},
-  linkedin: { name:'LinkedIn', ratio:'4:5', elements:[
+  linkedin: { name:'LinkedIn', ratio:'4:5', safe:{left:5, right:5, bottom:6}, elements:[
     { type:'topbar', top:4, variant:'linkedin' },
   ]},
 };
@@ -1376,12 +1382,14 @@ function togglePlatformPreview(){
   platformPreviewOn=!platformPreviewOn;
   document.getElementById('plat-toggle').classList.toggle('active',platformPreviewOn);
   if(platformPreviewOn && !platformByRatio[fmt]) platformByRatio[fmt]=firstForRatio(fmt);  // auto-select first for this ratio
+  if(cur){draw();syncDc();}          // shift into safe zone on; restore clean layout off
   renderPlatformPicker();
   renderPlatformOverlay();
   savePlatformPref();
 }
 function setPlatform(key){
   platformByRatio[fmt]=key;          // switch only — no clear-to-none (toggle OFF is the way to no overlay)
+  if(cur){draw();syncDc();}          // re-lay-out the card text into the new safe zone
   renderPlatformPicker();
   renderPlatformOverlay();
   savePlatformPref();
