@@ -1,7 +1,8 @@
 // src/app/api/drive/update-tracker/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/drive/update-tracker
-// Body: { athleteName, links }  where links = { "Reels": url, "Story": url, ... }
+// Body: { athleteName, links, originalPhotoDriveId?, originalVideoDriveId? }
+//   links = { "Reels": url, ... } → C–H; originalPhoto/VideoDriveId → B / I.
 //
 // Writes one row in the asset-tracker sheet for an athlete: each platform
 // cell becomes =HYPERLINK(fileUrl, "platform") pointing at the uploaded file,
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { athleteName, links } = body;
+    const { athleteName, links, originalPhotoDriveId, originalVideoDriveId } = body;
     if (!athleteName || !links || typeof links !== "object") {
       return NextResponse.json(
         { error: "Missing required fields: athleteName, links" },
@@ -106,6 +107,15 @@ export async function POST(request: NextRequest) {
       const col = COLUMNS[label];
       if (!col) continue;                                // unknown label → skip defensively
       data.push({ range: `'${tab}'!${col}${rowNumber}`, values: [[hyperlink(url as string, label)]] });
+    }
+
+    // Original photo (B) + original video (I): link the source files already in Drive.
+    const driveView = (id: string) => `https://drive.google.com/file/d/${id}/view`;
+    if (originalPhotoDriveId) {
+      data.push({ range: `'${tab}'!B${rowNumber}`, values: [[hyperlink(driveView(String(originalPhotoDriveId)), "Open")]] });
+    }
+    if (originalVideoDriveId) {
+      data.push({ range: `'${tab}'!I${rowNumber}`, values: [[hyperlink(driveView(String(originalVideoDriveId)), "Open")]] });
     }
 
     // 4. One batch write. USER_ENTERED → =HYPERLINK is parsed as a real formula
