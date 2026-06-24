@@ -1,7 +1,7 @@
 // src/app/api/drive/upload-card/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/drive/upload-card
-// Body: { athleteName, filename, pngBase64 }
+// Body: { athleteName, filename, imageBase64 }  (JPEG data-URL or raw base64)
 //
 // Uploads ONE exported draft-card PNG into the athlete's folder under
 // DRAFTS/2026 NBA Draft/ in Drive. Ensures the per-athlete subfolder
@@ -34,10 +34,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { athleteName, filename, pngBase64 } = body;
-    if (!athleteName || !filename || !pngBase64) {
+    const { athleteName, filename, imageBase64 } = body;
+    if (!athleteName || !filename || !imageBase64) {
       return NextResponse.json(
-        { error: "Missing required fields: athleteName, filename, pngBase64" },
+        { error: "Missing required fields: athleteName, filename, imageBase64" },
         { status: 400 }
       );
     }
@@ -46,25 +46,25 @@ export async function POST(request: NextRequest) {
     //    ensureFolder passes supportsAllDrives:true internally (Shared Drive safe).
     const { id: folderId } = await ensureFolder(String(athleteName), DRAFTS_PARENT);
 
-    // 2. Decode the PNG (accept a raw base64 string OR a full data: URL).
-    const b64 = String(pngBase64).replace(/^data:image\/png;base64,/, "");
+    // 2. Decode the image (accept a raw base64 string OR a full data: URL of any type).
+    const b64 = String(imageBase64).replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(b64, "base64");
     if (!buffer.length) {
-      return NextResponse.json({ error: "pngBase64 decoded to 0 bytes" }, { status: 400 });
+      return NextResponse.json({ error: "imageBase64 decoded to 0 bytes" }, { status: 400 });
     }
 
-    // 3. Upload the PNG bytes into the athlete folder.
+    // 3. Upload the JPEG bytes into the athlete folder.
     //    Shared Drive → supportsAllDrives:true is REQUIRED here.
     const drive = getDriveClient();
     const res = await drive.files.create({
       supportsAllDrives: true,
       requestBody: {
         name: String(filename),
-        mimeType: "image/png",
+        mimeType: "image/jpeg",
         parents: [folderId],
       },
       media: {
-        mimeType: "image/png",
+        mimeType: "image/jpeg",
         body: Readable.from(buffer),
       },
       fields: "id, name, webViewLink",

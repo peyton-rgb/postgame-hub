@@ -1575,7 +1575,26 @@ function exportDownloadChecked(){
     }, i*350);
   });
 }
-// Upload the checked platforms' PNGs into the athlete's Drive folder
+// Convert a PNG data-URL to a JPEG data-URL at the given quality. Paints an
+// opaque black background first so any transparent region (e.g. a zoomed-out
+// photo) becomes black — matching the on-screen dark page — since JPEG has no
+// alpha. JPEG-95 of a 2160px card is ~0.4–1MB, under Vercel's ~4.5MB body limit
+// (PNG was ~5MB+ → HTTP 413). Downloads still use the PNG; only uploads convert.
+function pngToJpeg(pngDataUrl, quality){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
+      const cx=c.getContext('2d');
+      cx.fillStyle='#000'; cx.fillRect(0,0,c.width,c.height);
+      cx.drawImage(img,0,0);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror=reject;
+    img.src=pngDataUrl;
+  });
+}
+// Upload the checked platforms' cards into the athlete's Drive folder as JPEG-95
 // (POST one per platform to /api/drive/upload-card; mirrors exportDownloadChecked).
 async function exportToDriveChecked(){
   const boxes=[...document.querySelectorAll('#export-modal input[type=checkbox]:checked')];
@@ -1592,9 +1611,10 @@ async function exportToDriveChecked(){
     if(!url){ failed++; continue; }
     status.textContent=`Uploading ${done+failed+1}/${total}…`;
     try{
+      const jpeg=await pngToJpeg(url, 0.95);   // shrink under the request-body limit (PNG 413'd)
       const res=await fetch('/api/drive/upload-card',{
         method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ athleteName, filename:`${safeName}_${PLATFORM_SPECS[key].name.replace(/\s+/g,'')}.png`, pngBase64:url })
+        body:JSON.stringify({ athleteName, filename:`${safeName}_${PLATFORM_SPECS[key].name.replace(/\s+/g,'')}.jpg`, imageBase64:jpeg })
       });
       const data=await res.json().catch(()=>({}));
       if(!res.ok || !data.ok){ failed++; console.error('[upload-card]', key, data.error||('HTTP '+res.status)); }
