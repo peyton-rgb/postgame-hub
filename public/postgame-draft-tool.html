@@ -171,6 +171,22 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
 .po-disc{width:8cqw;height:8cqw;border-radius:50%;margin-top:3cqw;background:radial-gradient(circle,rgba(255,255,255,.45) 26%,rgba(20,20,20,.85) 27%,rgba(20,20,20,.85) 44%,rgba(255,255,255,.22) 45%);animation:po-spin 4s linear infinite}
 .po-chanavatar{width:8cqw;height:8cqw;border-radius:50%;margin-top:2cqw;background:rgba(255,255,255,.3);border:1.5px solid #fff}
 @keyframes po-spin{to{transform:rotate(360deg)}}
+/* ── EXPORT REVIEW MODAL ── */
+.exp-head{padding:12px 16px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between}
+.exp-title{font-size:12px;font-weight:700;letter-spacing:1px;color:#D73F09;text-transform:uppercase}
+.exp-dest{padding:10px 16px;font-size:13px;color:#B8B8B4;border-bottom:1px solid #161616}
+.exp-note{color:#7A7A76;font-size:11px}
+.exp-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:16px}
+.exp-grouplabel{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#7A7A76;margin-bottom:8px}
+.exp-grid{display:flex;flex-wrap:wrap;gap:12px}
+.exp-tile{display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.exp-thumb{border:1px solid #1e1e1e;border-radius:6px;background:#000;object-fit:cover;display:block}
+.exp-thumb.r916{width:90px;height:160px}
+.exp-thumb.r45{width:128px;height:160px}
+.exp-tile-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#ccc}
+.exp-tile-row input{accent-color:#D73F09}
+.exp-foot{padding:12px 16px;border-top:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between}
+.exp-actions{display:flex;align-items:center;gap:8px}
 @keyframes flash{0%,100%{background:transparent}50%{background:#D73F0920}}
 .row.just-drafted{animation:flash 1s ease 3}
 
@@ -253,6 +269,7 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
       <button class="fb" id="plat-toggle" onclick="togglePlatformPreview()">Platform preview</button>
       <div id="plat-picker" style="display:none;"></div>
       <div id="tbr">
+        <button class="eb" onclick="openExportReview()">Export…</button>
         <button class="eb" onclick="xprt('4:5')">⬇ 4:5</button>
         <button class="eb" onclick="xprt('9:16')">⬇ 9:16</button>
         <button class="eb primary" onclick="xprtBoth()">⬇ Export Both</button>
@@ -328,6 +345,28 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
     </div>
     <!-- LOADING phase -->
     <div id="drive-loading" style="display:none;flex:1;align-items:center;justify-content:center;color:#888;font-size:14px;">Importing…</div>
+  </div>
+</div>
+
+<!-- ── EXPORT REVIEW MODAL (added) ── -->
+<div id="export-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;">
+  <div style="width:90vw;max-width:820px;max-height:88vh;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;">
+    <div class="exp-head">
+      <div class="exp-title">Export — review</div>
+      <button class="cb" onclick="closeExportReview()">✕</button>
+    </div>
+    <div class="exp-dest"><span id="exp-dest-line"></span> <span class="exp-note">· files labeled per platform</span></div>
+    <div class="exp-body">
+      <div class="exp-group"><div class="exp-grouplabel">Vertical · 9:16</div><div id="exp-row-916" class="exp-grid"></div></div>
+      <div class="exp-group"><div class="exp-grouplabel">Feed · 4:5</div><div id="exp-row-45" class="exp-grid"></div></div>
+    </div>
+    <div class="exp-foot">
+      <button class="cb" onclick="closeExportReview()">Cancel</button>
+      <div class="exp-actions">
+        <span title="coming soon"><button class="drive-primary" id="exp-drive-btn" disabled>Export to Drive</button></span>
+        <button class="drive-primary" onclick="exportDownloadChecked()">Download</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1474,6 +1513,62 @@ function loadPlatformPref(){
   const t=document.getElementById('plat-toggle'); if(t) t.classList.toggle('active',platformPreviewOn);
   if(platformPreviewOn && !platformByRatio[fmt]) platformByRatio[fmt]=firstForRatio(fmt);
   renderPlatformPicker();
+}
+
+// ── EXPORT REVIEW (Half 1: per-platform thumbnails + local download; Drive in Half 2) ──
+// Screen-only. Each thumbnail/download is the REAL export output: the PHOTO bin,
+// text repositioned into that platform's safe zone, no chrome. Mirrors xprt's
+// photo-bin swap into its OWN offscreen canvas and restores globals synchronously,
+// so the live preview canvas is never disturbed.
+let _exportPNGs = {};   // { platformKey: dataURL } — rendered on open, reused for download
+async function renderCardPNG(ratio, platform){
+  if(!cur) return null;
+  const pb = cur.media.photo;
+  // The photo may be a url that was never viewed — build its Image first (like xprt).
+  if(pb && pb.url && !pb.el){
+    try{ pb.el = await new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>res(im); im.onerror=rej; im.src=pb.url; }); pb.thumb=pb.el.src; }catch(_){}
+  }
+  const sv={m:curMedia,v:curIsVideo,x:pX,y:pY,s:pS};        // save live globals
+  curMedia=(pb&&pb.el)?pb.el:null; curIsVideo=false;         // force the PHOTO bin
+  pX=(pb&&pb.px)||0; pY=(pb&&pb.py)||0; pS=(pb&&pb.ps)||100;
+  const {w,h}=cSz(ratio);
+  const c=document.createElement('canvas'); c.width=w; c.height=h;   // OWN offscreen canvas
+  const cx=c.getContext('2d'); cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
+  draw(c,cx,ratio,platform);                                 // explicit 4 args → platform-aware, no live-state read
+  curMedia=sv.m; curIsVideo=sv.v; pX=sv.x; pY=sv.y; pS=sv.s;  // restore synchronously — live preview untouched
+  return c.toDataURL('image/png');
+}
+async function openExportReview(){
+  if(!cur){ alert('Select a player first'); return; }
+  document.getElementById('exp-dest-line').textContent = `${year} ${LEAGUES[league].label} Draft › ${cur.name}`;
+  document.getElementById('exp-row-916').innerHTML='';
+  document.getElementById('exp-row-45').innerHTML='';
+  _exportPNGs={};
+  document.getElementById('export-modal').style.display='flex';
+  for(const [key,spec] of Object.entries(PLATFORM_SPECS)){
+    const url = await renderCardPNG(spec.ratio, key);
+    if(!url) continue;
+    _exportPNGs[key]=url;
+    const row = document.getElementById(spec.ratio==='9:16'?'exp-row-916':'exp-row-45');
+    const cls = spec.ratio==='9:16'?'r916':'r45';
+    row.insertAdjacentHTML('beforeend',
+      `<label class="exp-tile"><img class="exp-thumb ${cls}" src="${url}" alt=""><div class="exp-tile-row"><input type="checkbox" data-platform="${key}" checked><span class="exp-tlabel">${spec.name}</span></div></label>`);
+  }
+}
+function closeExportReview(){ document.getElementById('export-modal').style.display='none'; _exportPNGs={}; }
+function exportDownloadChecked(){
+  const boxes=[...document.querySelectorAll('#export-modal input[type=checkbox]:checked')];
+  if(!boxes.length){ alert('Select at least one platform'); return; }
+  const safeName=cur.name.replace(/\s+/g,'_');
+  boxes.forEach((b,i)=>{
+    const key=b.getAttribute('data-platform'); const url=_exportPNGs[key];
+    if(!url) return;
+    setTimeout(()=>{                                  // stagger — browsers throttle rapid multi-download
+      const a=document.createElement('a');
+      a.download=`${safeName}_${PLATFORM_SPECS[key].name.replace(/\s+/g,'')}.png`;
+      a.href=url; a.click();
+    }, i*350);
+  });
 }
 
 // ── INIT ──
