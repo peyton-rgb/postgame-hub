@@ -484,6 +484,7 @@ async function loadPlayersFromHub() {
       hubPhoto: null,
       photo: null,
       pick: null, team: null, round: d.round || 1,
+      px: 0, py: 0, ps: 100,
       matched: d.matched
     }));
     document.getElementById('loading-msg').style.display='none';
@@ -512,7 +513,8 @@ async function loadPlayersFromHub() {
       sport: d.athlete_sport||'',
       hubPhoto: d.athlete_photo_url||null,
       photo: null,
-      pick: null, team: null, round: 1
+      pick: null, team: null, round: 1,
+      px: 0, py: 0, ps: 100
     }));
 
     document.getElementById('loading-msg').style.display='none';
@@ -537,7 +539,7 @@ function setFilter(f) {
 function addPlayer() {
   const inp=document.getElementById('new-name');
   const name=inp.value.trim(); if(!name) return;
-  players.unshift({name,school:'',sport:'',hubPhoto:null,photo:null,pick:null,team:null,round:1});
+  players.unshift({name,school:'',sport:'',hubPhoto:null,photo:null,pick:null,team:null,round:1,px:0,py:0,ps:100});
   inp.value=''; renderList();
 }
 
@@ -641,7 +643,7 @@ function onReplace(e){
 // ── SELECT ──
 let rafId=null;
 function sel(i){
-  cur=players[i]; resetP();
+  cur=players[i]; loadFraming(cur);
   document.getElementById('iPk').value=cur.pick||'';
   document.getElementById('iT').value=cur.team||'';
   document.getElementById('iR').value=cur.round||1;
@@ -677,8 +679,17 @@ function setMedia(photo){
 }
 
 // ── CONTROLS ──
-function resetP(){pX=0;pY=0;pS=100;['sX','sY','sS'].forEach((id,j)=>document.getElementById(id).value=[0,0,100][j]);document.getElementById('vX').textContent='0';document.getElementById('vY').textContent='0';document.getElementById('vS').textContent='100%';}
-function onSld(){pX=+document.getElementById('sX').value;pY=+document.getElementById('sY').value;pS=+document.getElementById('sS').value;document.getElementById('vX').textContent=pX;document.getElementById('vY').textContent=pY;document.getElementById('vS').textContent=pS+'%';draw();syncDc();}
+function resetP(){pX=0;pY=0;pS=100;if(cur){cur.px=0;cur.py=0;cur.ps=100;}['sX','sY','sS'].forEach((id,j)=>document.getElementById(id).value=[0,0,100][j]);document.getElementById('vX').textContent='0';document.getElementById('vY').textContent='0';document.getElementById('vS').textContent='100%';if(cur){draw();syncDc();}}
+function loadFraming(p){
+  pX=(p&&p.px)||0; pY=(p&&p.py)||0; pS=(p&&p.ps)||100;
+  document.getElementById('sX').value=pX;
+  document.getElementById('sY').value=pY;
+  document.getElementById('sS').value=pS;
+  document.getElementById('vX').textContent=pX;
+  document.getElementById('vY').textContent=pY;
+  document.getElementById('vS').textContent=pS+'%';
+}
+function onSld(){pX=+document.getElementById('sX').value;pY=+document.getElementById('sY').value;pS=+document.getElementById('sS').value;if(cur){cur.px=pX;cur.py=pY;cur.ps=pS;}document.getElementById('vX').textContent=pX;document.getElementById('vY').textContent=pY;document.getElementById('vS').textContent=pS+'%';draw();syncDc();}
 function onMan(){
   if(!cur)return;
   const pk=+document.getElementById('iPk').value, tm=document.getElementById('iT').value.trim(), rd=+document.getElementById('iR').value||1;
@@ -686,7 +697,7 @@ function onMan(){
   draw();syncDc();renderList();
 }
 function setFmt(f){fmt=f;document.getElementById('b45').classList.toggle('active',f==='4:5');document.getElementById('b916').classList.toggle('active',f==='9:16');if(cur){draw();setupCvs();}}
-document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.preventDefault();pS=Math.max(50,Math.min(250,pS-(e.deltaY>0?3:-3)));document.getElementById('sS').value=pS;document.getElementById('vS').textContent=pS+'%';draw();syncDc();},{passive:false});
+document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.preventDefault();pS=Math.max(50,Math.min(250,pS-(e.deltaY>0?3:-3)));cur.ps=pS;document.getElementById('sS').value=pS;document.getElementById('vS').textContent=pS+'%';draw();syncDc();},{passive:false});
 
 // ── CANVAS ──
 function cSz(f){return SIZES[f];}
@@ -832,8 +843,8 @@ function setupCvs(){
     document.getElementById('vY').textContent=Math.round(pY);
     draw();syncDc();
   });
-  dc.addEventListener('mouseup',()=>{isDrag=false;dc.style.cursor='grab';});
-  dc.addEventListener('mouseleave',()=>{isDrag=false;dc.style.cursor='grab';});
+  dc.addEventListener('mouseup',()=>{if(isDrag&&cur){cur.px=pX;cur.py=pY;}isDrag=false;dc.style.cursor='grab';});
+  dc.addEventListener('mouseleave',()=>{if(isDrag&&cur){cur.px=pX;cur.py=pY;}isDrag=false;dc.style.cursor='grab';});
   wrap.appendChild(dc); area.appendChild(wrap); syncDc();
 }
 
