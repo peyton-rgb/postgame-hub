@@ -647,7 +647,7 @@ function saveState(){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(()=>{
     try{
-      const binOut=b=>({url:b.url||null, px:b.px||0, py:b.py||0, ps:b.ps||100});
+      const binOut=b=>({url:b.url||null, px:b.px||0, py:b.py||0, ps:b.ps||100, driveId:b.driveId||null});
       const data=players.map(p=>({
         name:p.name,
         pick:(p.pick??null), team:(p.team??null), round:p.round||1,
@@ -684,11 +684,13 @@ function loadState(){
     if(typeof photoS.py==='number') p.media.photo.py=photoS.py;
     if(typeof photoS.ps==='number') p.media.photo.ps=photoS.ps;
     if(photoS.url){ p.media.photo.url=photoS.url; rehydratePhotoBin(p); }
+    if(photoS.driveId) p.media.photo.driveId=photoS.driveId;
 
     if(typeof videoS.px==='number') p.media.video.px=videoS.px;
     if(typeof videoS.py==='number') p.media.video.py=videoS.py;
     if(typeof videoS.ps==='number') p.media.video.ps=videoS.ps;
     if(videoS.url){ p.media.video.url=videoS.url; rehydrateVideoBin(p); }
+    if(videoS.driveId) p.media.video.driveId=videoS.driveId;
   });
   if(cur){ loadFraming(cur); }                            // resync sliders to the restored active bin
   renderList();
@@ -702,7 +704,7 @@ function clearState(){
 // Each player carries p.media = { photo:{...}, video:{...} } and p.activeBin.
 // A bin: { url, el, thumb, px, py, ps }. url = serializable source (https) or
 // null for blob/local uploads; el = the live Image/<video>; thumb = list image.
-function emptyBin(){ return {url:null, el:null, thumb:null, px:0, py:0, ps:100}; }
+function emptyBin(){ return {url:null, el:null, thumb:null, px:0, py:0, ps:100, driveId:null}; }
 function newMedia(photoUrl){ const m={photo:emptyBin(), video:emptyBin()}; if(photoUrl) m.photo.url=photoUrl; return m; }
 function activeBinObj(p){ return p && p.media ? p.media[p.activeBin||'photo'] : null; }
 function hasMedia(p){ const m=p&&p.media; return !!(m && (m.photo.url||m.photo.el||m.video.url||m.video.el)); }
@@ -1284,6 +1286,7 @@ function selectDriveTile(el){
 async function useDriveFile(){
   if(!driveSel || !cur) return;
   const target = cur; // capture in case the selection changes mid-import
+  const driveId = driveSel.id; // capture the Drive fileId for the Original photo/video link (column B/I)
   driveShowPhase('loading');
   try {
     const res = await fetch('/api/drive/import', {
@@ -1306,7 +1309,7 @@ async function useDriveFile(){
       v.onloadeddata=()=>{
         const tc=document.createElement('canvas'); tc.width=76; tc.height=76;
         tc.getContext('2d').drawImage(v,0,0,76,76);
-        target.media.video = { url: fileUrl, el: v, thumb: tc.toDataURL(), px:0, py:0, ps:100 };
+        target.media.video = { url: fileUrl, el: v, thumb: tc.toDataURL(), px:0, py:0, ps:100, driveId };
         target.activeBin = 'video';
         if(cur && cur.name === target.name){ loadFraming(target); showActiveBin(target); draw(); syncDc(); }
         renderList(); saveState(); closeDriveImport();
@@ -1317,7 +1320,7 @@ async function useDriveFile(){
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        target.media.photo = { url: fileUrl, el: img, thumb: img.src, px:0, py:0, ps:100 };
+        target.media.photo = { url: fileUrl, el: img, thumb: img.src, px:0, py:0, ps:100, driveId };
         target.activeBin = 'photo';
         if(cur && cur.name === target.name){ loadFraming(target); showActiveBin(target); draw(); syncDc(); }
         renderList(); saveState(); closeDriveImport();
@@ -1622,14 +1625,16 @@ async function exportToDriveChecked(){
     }catch(e){ failed++; console.error('[upload-card]', key, e); }
   }
   btn.disabled=false;
-  // Write the tracker row (one call) with the uploaded files' links.
+  // Write the tracker row (one call): uploaded card links + original Drive sources (cols B/I).
+  const originalPhotoDriveId = (cur.media.photo && cur.media.photo.driveId) || null;
+  const originalVideoDriveId = (cur.media.video && cur.media.video.driveId) || null;
   let trackerMsg='';
   if(Object.keys(links).length){
     status.textContent='Updating tracker…';
     try{
       const tr=await fetch('/api/drive/update-tracker',{
         method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ athleteName, links })
+        body:JSON.stringify({ athleteName, links, originalPhotoDriveId, originalVideoDriveId })
       });
       const td=await tr.json().catch(()=>({}));
       if(tr.ok && td.ok){ trackerMsg=' · Tracker updated ✓'; }
