@@ -66,6 +66,9 @@ body{font-family:-apple-system,Arial,sans-serif;background:#0a0a0a;color:#fff;he
 #new-name{flex:1;background:#1a1a1a;border:1px solid #222;border-radius:6px;color:#ddd;font-size:12px;padding:5px 9px;outline:none}
 #new-name:focus{border-color:#D73F09}
 #new-name::placeholder{color:#333}
+#new-pick{width:62px;flex-shrink:0;background:#1a1a1a;border:1px solid #222;border-radius:6px;color:#ddd;font-size:12px;padding:5px 9px;outline:none}
+#new-pick:focus{border-color:#D73F09}
+#new-pick::placeholder{color:#333}
 #add-btn{padding:5px 12px;background:#D73F09;border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer}
 #add-btn:hover{background:#bf3608}
 
@@ -173,6 +176,7 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
 
     <div id="add-player-row">
       <input id="new-name" placeholder="Add player manually..." onkeydown="if(event.key==='Enter')addPlayer()">
+      <input id="new-pick" type="number" min="1" max="100" placeholder="Pick #" onkeydown="if(event.key==='Enter')addPlayer()">
       <button id="add-btn" onclick="addPlayer()">+ Add</button>
     </div>
   </div>
@@ -589,8 +593,11 @@ function setFilter(f) {
 function addPlayer() {
   const inp=document.getElementById('new-name');
   const name=inp.value.trim(); if(!name) return;
-  players.unshift({name,school:'',sport:'',hubPhoto:null,photo:null,pick:null,team:null,round:1,px:0,py:0,ps:100});
-  inp.value=''; renderList();
+  const pickInp=document.getElementById('new-pick');
+  const pk=parseInt(pickInp.value,10);
+  const pick=(!isNaN(pk)&&pk>0)?pk:null;     // valid pick → number; blank/invalid → null (current behavior)
+  players.unshift({name,school:'',sport:'',hubPhoto:null,photo:null,pick,team:null,round:1,px:0,py:0,ps:100});
+  inp.value=''; pickInp.value=''; renderList(); saveState();
 }
 
 // ── RENDER LIST ──
@@ -604,6 +611,15 @@ function renderList() {
     if(filter==='watching') return p.pick===null;
     if(filter==='no-photo') return !p.photo && !p.hubPhoto;
     return true;
+  });
+
+  // Draft order: drafted (pick !== null) first, ascending by pick; undrafted
+  // keep their array order (stable sort returns 0 within the undrafted group).
+  list.sort((a,b)=>{
+    if(a.pick===null && b.pick===null) return 0;
+    if(a.pick===null) return 1;
+    if(b.pick===null) return -1;
+    return a.pick-b.pick;
   });
 
   if(!list.length) {
