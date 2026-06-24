@@ -147,6 +147,9 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
           <span id="espn-txt">ESPN connecting...</span>
         </div>
       </div>
+      <div style="margin-top:6px;text-align:right;">
+        <button class="cb" style="font-size:9px;padding:2px 7px;" onclick="clearState()" title="Wipe saved photos & framing for this league + year">Clear saved</button>
+      </div>
     </div>
 
     <div id="sb-search">
@@ -387,6 +390,7 @@ async function setLeague(lg) {
   document.getElementById('loading-msg').style.display='block';
   document.getElementById('loading-msg').textContent='Loading from Hub...';
   await loadPlayersFromHub();
+  loadState();
 
   // Start ESPN poll
   await pollESPN();
@@ -525,6 +529,52 @@ async function loadPlayersFromHub() {
   }
 }
 
+// ── PERSISTENCE (localStorage, scoped per league+year) ──
+function stateKey(){ return `draftcard:${league}:${year}`; }
+let _saveTimer=null;
+function saveState(){
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>{
+    try{
+      const data=players.map(p=>({
+        name:p.name, photoUrl:p.photoUrl||null,
+        px:p.px||0, py:p.py||0, ps:p.ps||100,
+        pick:(p.pick??null), team:(p.team??null), round:p.round||1,
+        matched:p.matched
+      }));
+      localStorage.setItem(stateKey(), JSON.stringify(data));
+    }catch(e){ console.warn('saveState failed', e); }
+  }, 300);
+}
+function loadState(){
+  let saved;
+  try{ saved=JSON.parse(localStorage.getItem(stateKey())||'null'); }catch(e){ saved=null; }
+  if(!Array.isArray(saved)) return;
+  const byName=new Map(saved.map(s=>[s.name, s]));
+  players.forEach(p=>{
+    const s=byName.get(p.name); if(!s) return;            // skip names not in saved data
+    if(typeof s.px==='number') p.px=s.px;
+    if(typeof s.py==='number') p.py=s.py;
+    if(typeof s.ps==='number') p.ps=s.ps;
+    if(s.pick!==undefined) p.pick=s.pick;
+    if(s.team!==undefined) p.team=s.team;
+    if(s.round) p.round=s.round;
+    if(s.photoUrl){                                       // rehydrate image (loadHubPhoto-style)
+      p.photoUrl=s.photoUrl;
+      const img=new Image();
+      img.crossOrigin='anonymous';
+      img.onload=()=>{ p.photo={el:img,isVideo:false,thumb:img.src}; if(cur&&cur.name===p.name){setMedia(p.photo);draw();syncDc();} renderList(); };
+      img.onerror=()=>{ /* dead/expired URL — leave photo unset */ };
+      img.src=s.photoUrl;
+    }
+  });
+  renderList();
+}
+function clearState(){
+  try{ localStorage.removeItem(stateKey()); }catch(e){}
+  setLeague(league);   // reload fresh from Hub/mock, discarding restored state in memory too
+}
+
 // ── FILTER ──
 function setFilter(f) {
   filter=f;
@@ -598,12 +648,14 @@ function loadFileIntoPlayer(file, p, cb) {
       const tc=document.createElement('canvas'); tc.width=76;tc.height=76;
       tc.getContext('2d').drawImage(v,0,0,76,76);
       p.photo={el:v,isVideo:true,thumb:tc.toDataURL()};
+      p.photoUrl=null;
       if(cb)cb(p);
+      saveState();
     };
     v.src=url;
   } else {
     const img=new Image();
-    img.onload=()=>{ p.photo={el:img,isVideo:false,thumb:img.src}; if(cb)cb(p); };
+    img.onload=()=>{ p.photo={el:img,isVideo:false,thumb:img.src}; p.photoUrl=null; if(cb)cb(p); saveState(); };
     img.src=url;
   }
 }
@@ -661,7 +713,7 @@ function sel(i){
 function loadHubPhoto(p){
   const img=new Image();
   img.crossOrigin='anonymous';
-  img.onload=()=>{p.photo={el:img,isVideo:false,thumb:img.src};if(cur&&cur.name===p.name){setMedia(p.photo);draw();syncDc();}renderList();};
+  img.onload=()=>{p.photo={el:img,isVideo:false,thumb:img.src};p.photoUrl=p.hubPhoto;if(cur&&cur.name===p.name){setMedia(p.photo);draw();syncDc();}renderList();saveState();};
   img.onerror=()=>{setMedia(null);draw();syncDc();};
   img.src=p.hubPhoto;
 }
@@ -679,7 +731,7 @@ function setMedia(photo){
 }
 
 // ── CONTROLS ──
-function resetP(){pX=0;pY=0;pS=100;if(cur){cur.px=0;cur.py=0;cur.ps=100;}['sX','sY','sS'].forEach((id,j)=>document.getElementById(id).value=[0,0,100][j]);document.getElementById('vX').textContent='0';document.getElementById('vY').textContent='0';document.getElementById('vS').textContent='100%';if(cur){draw();syncDc();}}
+function resetP(){pX=0;pY=0;pS=100;if(cur){cur.px=0;cur.py=0;cur.ps=100;}['sX','sY','sS'].forEach((id,j)=>document.getElementById(id).value=[0,0,100][j]);document.getElementById('vX').textContent='0';document.getElementById('vY').textContent='0';document.getElementById('vS').textContent='100%';if(cur){draw();syncDc();saveState();}}
 function loadFraming(p){
   pX=(p&&p.px)||0; pY=(p&&p.py)||0; pS=(p&&p.ps)||100;
   document.getElementById('sX').value=pX;
@@ -689,15 +741,15 @@ function loadFraming(p){
   document.getElementById('vY').textContent=pY;
   document.getElementById('vS').textContent=pS+'%';
 }
-function onSld(){pX=+document.getElementById('sX').value;pY=+document.getElementById('sY').value;pS=+document.getElementById('sS').value;if(cur){cur.px=pX;cur.py=pY;cur.ps=pS;}document.getElementById('vX').textContent=pX;document.getElementById('vY').textContent=pY;document.getElementById('vS').textContent=pS+'%';draw();syncDc();}
+function onSld(){pX=+document.getElementById('sX').value;pY=+document.getElementById('sY').value;pS=+document.getElementById('sS').value;if(cur){cur.px=pX;cur.py=pY;cur.ps=pS;}document.getElementById('vX').textContent=pX;document.getElementById('vY').textContent=pY;document.getElementById('vS').textContent=pS+'%';draw();syncDc();saveState();}
 function onMan(){
   if(!cur)return;
   const pk=+document.getElementById('iPk').value, tm=document.getElementById('iT').value.trim(), rd=+document.getElementById('iR').value||1;
   if(pk&&!isNaN(pk))cur.pick=pk; if(tm)cur.team=tm; cur.round=rd;
-  draw();syncDc();renderList();
+  draw();syncDc();renderList();saveState();
 }
 function setFmt(f){fmt=f;document.getElementById('b45').classList.toggle('active',f==='4:5');document.getElementById('b916').classList.toggle('active',f==='9:16');if(cur){draw();setupCvs();}}
-document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.preventDefault();pS=Math.max(50,Math.min(250,pS-(e.deltaY>0?3:-3)));cur.ps=pS;document.getElementById('sS').value=pS;document.getElementById('vS').textContent=pS+'%';draw();syncDc();},{passive:false});
+document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.preventDefault();pS=Math.max(50,Math.min(250,pS-(e.deltaY>0?3:-3)));cur.ps=pS;document.getElementById('sS').value=pS;document.getElementById('vS').textContent=pS+'%';draw();syncDc();saveState();},{passive:false});
 
 // ── CANVAS ──
 function cSz(f){return SIZES[f];}
@@ -843,8 +895,8 @@ function setupCvs(){
     document.getElementById('vY').textContent=Math.round(pY);
     draw();syncDc();
   });
-  dc.addEventListener('mouseup',()=>{if(isDrag&&cur){cur.px=pX;cur.py=pY;}isDrag=false;dc.style.cursor='grab';});
-  dc.addEventListener('mouseleave',()=>{if(isDrag&&cur){cur.px=pX;cur.py=pY;}isDrag=false;dc.style.cursor='grab';});
+  dc.addEventListener('mouseup',()=>{if(isDrag&&cur){cur.px=pX;cur.py=pY;saveState();}isDrag=false;dc.style.cursor='grab';});
+  dc.addEventListener('mouseleave',()=>{if(isDrag&&cur){cur.px=pX;cur.py=pY;saveState();}isDrag=false;dc.style.cursor='grab';});
   wrap.appendChild(dc); area.appendChild(wrap); syncDc();
 }
 
@@ -922,7 +974,7 @@ async function pollESPN(){
         }
       });
     });
-    if(upd)renderList();
+    if(upd){renderList();saveState();}
   }catch(e){
     document.getElementById('espn-dot').className='sdot red';
     document.getElementById('espn-txt').textContent='Offline — manual';
@@ -1034,8 +1086,10 @@ async function useDriveFile(){
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       target.photo = { el: img, isVideo: false, thumb: img.src };
+      target.photoUrl = data.media.file_url;
       if(cur && cur.name === target.name){ setMedia(target.photo); draw(); syncDc(); }
       renderList();
+      saveState();
       closeDriveImport();
     };
     img.onerror = () => { alert('Imported, but the image could not be loaded for display.'); closeDriveImport(); };
