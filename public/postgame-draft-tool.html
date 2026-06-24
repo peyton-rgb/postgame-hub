@@ -82,6 +82,10 @@ body{font-family:-apple-system,Arial,sans-serif;background:#0a0a0a;color:#fff;he
 .eb.primary:hover{background:#bf3608}
 
 #pa{flex:1;display:flex;align-items:center;justify-content:center;background:#080808;overflow:hidden;position:relative}
+/* Floating "Import from Drive" overlay — frosted Liquid Glass pill. HTML only; never drawn on the canvas/exports. */
+.drive-fab{position:absolute;top:14px;left:14px;z-index:60;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.18);background:rgba(18,18,18,0.45);-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);color:#FAF8F5;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.35);transition:background .15s,border-color .15s}
+.drive-fab:hover{background:rgba(44,44,44,0.55);border-color:rgba(255,255,255,0.34)}
+.drive-fab svg{flex-shrink:0;display:block}
 #cw{position:relative;overflow:hidden;box-shadow:0 0 80px rgba(0,0,0,1);flex-shrink:0}
 #dc{display:block}
 #es{color:#252525;text-align:center;font-size:13px;line-height:2.6;pointer-events:none;user-select:none}
@@ -181,6 +185,18 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
       </div>
     </div>
     <div id="pa">
+      <!-- Floating Drive import button — HTML overlay only, never rendered into the canvas/exports -->
+      <button class="drive-fab" onclick="openDriveImport()" aria-label="Import from Drive">
+        <svg width="16" height="16" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M6.6 66.85 10.45 73.5c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+          <path d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5C.4 49.9 0 51.45 0 53h27.5z" fill="#00ac47"/>
+          <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.798l5.852 11.5z" fill="#ea4335"/>
+          <path d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+          <path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+          <path d="M73.4 26.5 60.7 4.5c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+        </svg>
+        Import from Drive
+      </button>
       <div id="es">← Select a player to preview<br>
         <span style="font-size:11px;color:#1e1e1e;">Load photos above · drag onto names · scroll to zoom</span>
       </div>
@@ -198,7 +214,6 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
           <span class="vo" id="vS">100%</span></div>
         <button class="cb" onclick="resetP()">Reset</button>
         <button class="cb" onclick="replacePhoto()">↑ Replace</button>
-        <button class="cb" onclick="openDriveImport()">☁ Drive</button>
         <input type="file" id="fi" accept="image/*,video/*" style="display:none" onchange="onReplace(event)">
       </div>
       <div class="cr">
