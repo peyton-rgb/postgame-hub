@@ -187,6 +187,8 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
 .exp-tile-row input{accent-color:#D73F09}
 .exp-foot{padding:12px 16px;border-top:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between}
 .exp-actions{display:flex;align-items:center;gap:8px}
+.exp-status{flex:1;text-align:center;padding:0 12px;font-size:12px;color:#B8B8B4;min-height:16px}
+.exp-status a{color:#FAF8F5;text-decoration:underline}
 @keyframes flash{0%,100%{background:transparent}50%{background:#D73F0920}}
 .row.just-drafted{animation:flash 1s ease 3}
 
@@ -362,8 +364,9 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
     </div>
     <div class="exp-foot">
       <button class="cb" onclick="closeExportReview()">Cancel</button>
+      <span id="exp-status" class="exp-status"></span>
       <div class="exp-actions">
-        <span title="coming soon"><button class="drive-primary" id="exp-drive-btn" disabled>Export to Drive</button></span>
+        <button class="drive-primary" id="exp-drive-btn" onclick="exportToDriveChecked()">Export to Drive</button>
         <button class="drive-primary" onclick="exportDownloadChecked()">Download</button>
       </div>
     </div>
@@ -1541,6 +1544,8 @@ async function renderCardPNG(ratio, platform){
 async function openExportReview(){
   if(!cur){ alert('Select a player first'); return; }
   document.getElementById('exp-dest-line').textContent = `${year} ${LEAGUES[league].label} Draft › ${cur.name}`;
+  const st=document.getElementById('exp-status'); if(st) st.innerHTML='';
+  const db=document.getElementById('exp-drive-btn'); if(db) db.disabled=false;
   document.getElementById('exp-row-916').innerHTML='';
   document.getElementById('exp-row-45').innerHTML='';
   _exportPNGs={};
@@ -1569,6 +1574,37 @@ function exportDownloadChecked(){
       a.href=url; a.click();
     }, i*350);
   });
+}
+// Upload the checked platforms' PNGs into the athlete's Drive folder
+// (POST one per platform to /api/drive/upload-card; mirrors exportDownloadChecked).
+async function exportToDriveChecked(){
+  const boxes=[...document.querySelectorAll('#export-modal input[type=checkbox]:checked')];
+  if(!boxes.length){ alert('Select at least one platform'); return; }
+  const athleteName=cur.name;
+  const safeName=athleteName.replace(/\s+/g,'_');
+  const btn=document.getElementById('exp-drive-btn');
+  const status=document.getElementById('exp-status');
+  btn.disabled=true;
+  const total=boxes.length; let done=0, failed=0, folderUrl=null;
+  for(const b of boxes){
+    const key=b.getAttribute('data-platform'); const url=_exportPNGs[key];
+    if(!url){ failed++; continue; }
+    status.textContent=`Uploading ${done+failed+1}/${total}…`;
+    try{
+      const res=await fetch('/api/drive/upload-card',{
+        method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ athleteName, filename:`${safeName}_${PLATFORM_SPECS[key].name.replace(/\s+/g,'')}.png`, pngBase64:url })
+      });
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok || !data.ok){ failed++; console.error('[upload-card]', key, data.error||('HTTP '+res.status)); }
+      else { done++; if(data.folderUrl) folderUrl=data.folderUrl; }
+    }catch(e){ failed++; console.error('[upload-card]', key, e); }
+  }
+  btn.disabled=false;
+  const link=folderUrl?` · <a href="${folderUrl}" target="_blank">Open folder</a>`:'';
+  status.innerHTML = failed===0
+    ? `✅ Uploaded ${done} to Drive${link}`
+    : `Uploaded ${done}, ${failed} failed${link}`;
 }
 
 // ── INIT ──
