@@ -1586,6 +1586,7 @@ async function exportToDriveChecked(){
   const status=document.getElementById('exp-status');
   btn.disabled=true;
   const total=boxes.length; let done=0, failed=0, folderUrl=null;
+  const links={};   // { platformLabel: fileWebViewLink } — collected for the tracker row
   for(const b of boxes){
     const key=b.getAttribute('data-platform'); const url=_exportPNGs[key];
     if(!url){ failed++; continue; }
@@ -1597,14 +1598,28 @@ async function exportToDriveChecked(){
       });
       const data=await res.json().catch(()=>({}));
       if(!res.ok || !data.ok){ failed++; console.error('[upload-card]', key, data.error||('HTTP '+res.status)); }
-      else { done++; if(data.folderUrl) folderUrl=data.folderUrl; }
+      else { done++; if(data.folderUrl) folderUrl=data.folderUrl; if(data.webViewLink) links[PLATFORM_SPECS[key].name]=data.webViewLink; }
     }catch(e){ failed++; console.error('[upload-card]', key, e); }
   }
   btn.disabled=false;
+  // Write the tracker row (one call) with the uploaded files' links.
+  let trackerMsg='';
+  if(Object.keys(links).length){
+    status.textContent='Updating tracker…';
+    try{
+      const tr=await fetch('/api/drive/update-tracker',{
+        method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ athleteName, links })
+      });
+      const td=await tr.json().catch(()=>({}));
+      if(tr.ok && td.ok){ trackerMsg=' · Tracker updated ✓'; }
+      else { trackerMsg=' · Tracker update failed'; console.error('[update-tracker]', td.error||('HTTP '+tr.status)); }
+    }catch(e){ trackerMsg=' · Tracker update failed'; console.error('[update-tracker]', e); }
+  }
   const link=folderUrl?` · <a href="${folderUrl}" target="_blank">Open folder</a>`:'';
-  status.innerHTML = failed===0
-    ? `✅ Uploaded ${done} to Drive${link}`
-    : `Uploaded ${done}, ${failed} failed${link}`;
+  status.innerHTML = (failed===0
+    ? `✅ Uploaded ${done} to Drive`
+    : `Uploaded ${done}, ${failed} failed`) + trackerMsg + link;
 }
 
 // ── INIT ──
