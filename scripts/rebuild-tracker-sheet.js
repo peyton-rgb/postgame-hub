@@ -17,6 +17,10 @@
 //
 // Styling: header rows 1–2 and column A (all data rows) → black #07070a bg, bold white text.
 //
+// After running this, run scripts/style-tracker-sheet.js to re-apply the
+// centered text + full grid / heavy column-A & header borders (kept in that
+// separate non-destructive script so it can be applied to a live sheet too).
+//
 // Run:  node --env-file=.env.local scripts/rebuild-tracker-sheet.js
 // ─────────────────────────────────────────────────────────────
 
@@ -86,7 +90,7 @@ const PLATFORMS = ['Reels', 'Story', 'TikTok', 'Shorts', 'IG feed', 'LinkedIn'];
     const hv = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `'${tab}'!A1:O2` });
     console.log('ROW1:', JSON.stringify((hv.data.values || [])[0]));
     console.log('ROW2:', JSON.stringify((hv.data.values || [])[1]));
-    console.log('RESULT: TRACKER REBUILT');
+    console.log('RESULT: TRACKER REBUILT — now run scripts/style-tracker-sheet.js for centering + borders.');
   } catch (e) {
     console.log('REBUILD ERROR:', e.code || '', e.message, e.errors ? JSON.stringify(e.errors) : '');
   }
