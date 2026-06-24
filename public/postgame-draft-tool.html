@@ -120,6 +120,33 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
 .mi:focus{border-color:#D73F09}
 .mi::placeholder{color:#333}
 .ht{font-size:11px;color:#7A7A76}
+/* ── PLATFORM PREVIEW chrome — screen-only over #cw, pointer-events:none, NEVER exported ── */
+.platform-overlay{position:absolute;inset:0;pointer-events:none;z-index:5;container-type:size;color:#fff;font-family:-apple-system,Arial,sans-serif;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+.po-el{position:absolute}
+.po-ic{display:inline-flex}
+.po-ic svg{width:6cqw;height:6cqw;display:block}
+.po-topbar{left:0;right:0;padding:0 4cqw}
+.po-tb-row{display:flex;align-items:center;justify-content:space-between}
+.po-tb-title{font-size:4cqw;font-weight:700;letter-spacing:.02em}
+.po-caret{font-size:2.6cqw;opacity:.9}
+.po-rail{display:flex;flex-direction:column;align-items:center;gap:3.2cqw}
+.po-rbtn{display:flex;flex-direction:column;align-items:center;gap:.6cqw}
+.po-rbtn .po-ic svg{width:7cqw;height:7cqw}
+.po-rlbl{font-size:2.6cqw;font-weight:600}
+.po-audiothumb{width:7cqw;height:7cqw;border-radius:1.4cqw;background:rgba(255,255,255,.25);border:1.5px solid rgba(255,255,255,.7);margin-top:1cqw}
+.po-meta{display:flex;flex-direction:column;gap:1.6cqw}
+.po-userrow{display:flex;align-items:center;gap:2cqw}
+.po-avatar{width:7cqw;height:7cqw;border-radius:50%;background:rgba(255,255,255,.3);border:1.5px solid rgba(255,255,255,.8);flex-shrink:0}
+.po-uname{font-size:3.4cqw;font-weight:700}
+.po-follow{font-size:3cqw;font-weight:700;border:1.2px solid rgba(255,255,255,.85);border-radius:1.4cqw;padding:.6cqw 2.4cqw}
+.po-caption{font-size:3.2cqw;font-weight:400;line-height:1.3;opacity:.96}
+.po-audio{display:flex;align-items:center;gap:1.4cqw;font-size:2.9cqw;opacity:.92}
+.po-audio .po-ic svg{width:3.4cqw;height:3.4cqw}
+.po-stub{padding:1cqw 2cqw;font-size:2.6cqw;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.35);border-radius:1cqw;text-transform:capitalize}
+#plat-picker{display:flex;align-items:center;gap:6px}
+.pp{padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid #222;background:transparent;color:#888;cursor:pointer;font-weight:500;transition:all .12s}
+.pp:hover{background:#1a1a1a;color:#ccc}
+.pp.on{background:#D73F09;color:#fff;border-color:#D73F09}
 @keyframes flash{0%,100%{background:transparent}50%{background:#D73F0920}}
 .row.just-drafted{animation:flash 1s ease 3}
 
@@ -199,6 +226,8 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
     <div id="toolbar">
       <button class="fb active" id="b45"  onclick="setFmt('4:5')">4:5 Feed</button>
       <button class="fb"        id="b916" onclick="setFmt('9:16')">9:16 Story</button>
+      <button class="fb" id="plat-toggle" onclick="togglePlatformPreview()">Platform preview</button>
+      <div id="plat-picker" style="display:none;"></div>
       <div id="tbr">
         <button class="eb" onclick="xprt('4:5')">⬇ 4:5</button>
         <button class="eb" onclick="xprt('9:16')">⬇ 9:16</button>
@@ -842,7 +871,15 @@ function onMan(){
   if(pk&&!isNaN(pk))cur.pick=pk; if(tm)cur.team=tm; cur.round=rd;
   draw();syncDc();renderList();saveState();
 }
-function setFmt(f){fmt=f;document.getElementById('b45').classList.toggle('active',f==='4:5');document.getElementById('b916').classList.toggle('active',f==='9:16');if(cur){draw();setupCvs();}}
+function setFmt(f){
+  fmt=f;
+  document.getElementById('b45').classList.toggle('active',f==='4:5');
+  document.getElementById('b916').classList.toggle('active',f==='9:16');
+  if(platformPreviewOn && !platformByRatio[fmt]) platformByRatio[fmt]=firstForRatio(fmt);  // always one active when on
+  if(cur){draw();setupCvs();}            // setupCvs() re-renders the overlay for the new ratio
+  renderPlatformPicker();                // re-filter picker to this ratio's platforms
+  savePlatformPref();
+}
 document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.preventDefault();pS=Math.max(50,Math.min(250,pS-(e.deltaY>0?3:-3)));const b=activeBinObj(cur);if(b)b.ps=pS;document.getElementById('sS').value=pS;document.getElementById('vS').textContent=pS+'%';draw();syncDc();saveState();},{passive:false});
 
 // ── CANVAS ──
@@ -991,7 +1028,7 @@ function setupCvs(){
   });
   dc.addEventListener('mouseup',()=>{if(isDrag&&cur){const b=activeBinObj(cur);if(b){b.px=pX;b.py=pY;}saveState();}isDrag=false;dc.style.cursor='grab';});
   dc.addEventListener('mouseleave',()=>{if(isDrag&&cur){const b=activeBinObj(cur);if(b){b.px=pX;b.py=pY;}saveState();}isDrag=false;dc.style.cursor='grab';});
-  wrap.appendChild(dc); area.appendChild(wrap); syncDc();
+  wrap.appendChild(dc); area.appendChild(wrap); syncDc(); renderPlatformOverlay();
 }
 
 function syncDc(){
@@ -1222,9 +1259,151 @@ async function useDriveFile(){
   }
 }
 
+// ── PLATFORM PREVIEW (screen-only chrome over #cw; NEVER drawn into the export canvas) ──
+// Stage 1: full framework + Reels fully styled. The other five specs exist; their
+// Reels-shared types (rail/meta) render now, their unique types render as labeled
+// stubs until Stage 2. Positions are PERCENT of the card (#cw) — edit a number to move.
+const PLATFORM_SPECS = {
+  reels: { name:'Reels', ratio:'9:16', elements:[
+    { type:'topbar', top:4, variant:'reels' },
+    { type:'rail', right:4, bottom:16, size:'md', items:['heart','comment','send','dots'], trailing:'audioThumb' },
+    { type:'meta', left:4, right:22, bottom:7, lines:[
+      {kind:'userRow', name:'postgame', follow:true},
+      {kind:'caption', text:'Your caption goes here…'},
+      {kind:'audio', text:'Original audio · Postgame'} ] },
+  ]},
+  story: { name:'Story', ratio:'9:16', elements:[
+    { type:'progress', top:2, segments:4 },
+    { type:'topbar', top:5, variant:'story' },
+    { type:'replybar', bottom:4, left:4, right:4 },
+  ]},
+  tiktok: { name:'TikTok', ratio:'9:16', elements:[
+    { type:'rail', right:4, bottom:10, size:'lg', items:['avatar','heart','comment','bookmark','share'], trailing:'disc' },
+    { type:'meta', left:4, right:22, bottom:8, lines:[
+      {kind:'userRow', name:'postgame'},
+      {kind:'caption', text:'caption #fyp'},
+      {kind:'audio', text:'original sound'} ] },
+    { type:'nav', bottom:0 },
+  ]},
+  shorts: { name:'Shorts', ratio:'9:16', elements:[
+    { type:'rail', right:4, bottom:12, size:'lg', items:['like','dislike','comment','share','remix'], trailing:'channelAvatar' },
+    { type:'meta', left:4, right:22, bottom:7, lines:[
+      {kind:'handle', text:'@postgame'},
+      {kind:'title', text:'Shorts title…'} ] },
+    { type:'progress', bottom:5, segments:1, color:'#FF0000' },
+  ]},
+  igfeed: { name:'IG feed', ratio:'4:5', elements:[
+    { type:'topbar', top:4, variant:'igfeed' },
+    { type:'actions', left:3, bottom:2 },
+  ]},
+  linkedin: { name:'LinkedIn', ratio:'4:5', elements:[
+    { type:'topbar', top:4, variant:'linkedin' },
+  ]},
+};
+
+const ICONS = {
+  chevronLeft:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  heart:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+  comment:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+  dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>',
+  music:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+};
+
+let platformPreviewOn=false;
+let platformByRatio={'9:16':null,'4:5':null};   // remembered pick per ratio (satisfies always-one-active + keep-memory)
+const PLATFORM_PREF_KEY='draftcard:platformPref';
+
+function firstForRatio(r){ return Object.keys(PLATFORM_SPECS).find(k=>PLATFORM_SPECS[k].ratio===r)||null; }
+
+function reelsTopbar(){
+  return `<div class="po-tb-row">
+    <span class="po-ic">${ICONS.chevronLeft}</span>
+    <span class="po-tb-title">Reels <span class="po-caret">▾</span></span>
+    <span class="po-ic">${ICONS.camera}</span>
+  </div>`;
+}
+function railHTML(e){
+  const counts={heart:'12.4k',comment:'318'};
+  const btn=it=>`<div class="po-rbtn"><span class="po-ic">${ICONS[it]||''}</span>${counts[it]?`<span class="po-rlbl">${counts[it]}</span>`:''}</div>`;
+  let html=(e.items||[]).map(btn).join('');
+  if(e.trailing==='audioThumb') html+=`<div class="po-audiothumb"></div>`;
+  return html;
+}
+function metaHTML(e){
+  return (e.lines||[]).map(l=>{
+    if(l.kind==='userRow') return `<div class="po-userrow"><span class="po-avatar"></span><span class="po-uname">${l.name}</span>${l.follow?'<span class="po-follow">Follow</span>':''}</div>`;
+    if(l.kind==='caption'||l.kind==='title') return `<div class="po-caption">${l.text}</div>`;
+    if(l.kind==='handle') return `<div class="po-uname">${l.text}</div>`;
+    if(l.kind==='audio') return `<div class="po-audio"><span class="po-ic">${ICONS.music}</span><span>${l.text}</span></div>`;
+    return '';
+  }).join('');
+}
+function buildEl(e){
+  const d=document.createElement('div');
+  d.className='po-el po-'+e.type;
+  ['top','left','right','bottom','width','height'].forEach(k=>{ if(e[k]!=null) d.style[k]=e[k]+'%'; });
+  if(e.type==='topbar' && e.variant==='reels') d.innerHTML=reelsTopbar();
+  else if(e.type==='rail') d.innerHTML=railHTML(e);
+  else if(e.type==='meta') d.innerHTML=metaHTML(e);
+  else { d.classList.add('po-stub'); d.textContent=e.type; }   // Stage 2: progress / replybar / nav / actions / non-Reels topbars
+  return d;
+}
+function renderPlatformOverlay(){
+  const cw=document.getElementById('cw');
+  cw?.querySelector('.platform-overlay')?.remove();          // idempotent teardown
+  if(!cw || !platformPreviewOn) return;
+  const key=platformByRatio[fmt];
+  if(!key) return;
+  const spec=PLATFORM_SPECS[key];
+  if(!spec || spec.ratio!==fmt) return;                      // safety: only matching ratio
+  const ov=document.createElement('div');
+  ov.className='platform-overlay';
+  spec.elements.forEach(e=>ov.appendChild(buildEl(e)));
+  cw.appendChild(ov);                                        // child of #cw — exact canvas bounds, never in export
+}
+function renderPlatformPicker(){
+  const box=document.getElementById('plat-picker');
+  if(!box) return;
+  if(!platformPreviewOn){ box.style.display='none'; box.innerHTML=''; return; }
+  const sel=platformByRatio[fmt];
+  const list=Object.entries(PLATFORM_SPECS).filter(([k,s])=>s.ratio===fmt);
+  box.innerHTML=list.map(([k,s])=>`<button class="pp${sel===k?' on':''}" onclick="setPlatform('${k}')">${s.name}</button>`).join('');
+  box.style.display='flex';
+}
+function togglePlatformPreview(){
+  platformPreviewOn=!platformPreviewOn;
+  document.getElementById('plat-toggle').classList.toggle('active',platformPreviewOn);
+  if(platformPreviewOn && !platformByRatio[fmt]) platformByRatio[fmt]=firstForRatio(fmt);  // auto-select first for this ratio
+  renderPlatformPicker();
+  renderPlatformOverlay();
+  savePlatformPref();
+}
+function setPlatform(key){
+  platformByRatio[fmt]=key;          // switch only — no clear-to-none (toggle OFF is the way to no overlay)
+  renderPlatformPicker();
+  renderPlatformOverlay();
+  savePlatformPref();
+}
+function savePlatformPref(){
+  try{ localStorage.setItem(PLATFORM_PREF_KEY, JSON.stringify({on:platformPreviewOn, byRatio:platformByRatio})); }catch(e){}
+}
+function loadPlatformPref(){
+  let p; try{ p=JSON.parse(localStorage.getItem(PLATFORM_PREF_KEY)||'null'); }catch(e){ p=null; }
+  if(p){
+    platformPreviewOn=!!p.on;
+    if(p.byRatio){ ['9:16','4:5'].forEach(r=>{ const k=p.byRatio[r]; if(k && PLATFORM_SPECS[k] && PLATFORM_SPECS[k].ratio===r) platformByRatio[r]=k; }); }  // keep mismatched-in-memory
+  }
+  const t=document.getElementById('plat-toggle'); if(t) t.classList.toggle('active',platformPreviewOn);
+  if(platformPreviewOn && !platformByRatio[fmt]) platformByRatio[fmt]=firstForRatio(fmt);
+  renderPlatformPicker();
+}
+
 // ── INIT ──
 loadPgLogo();
 setLeague('NBA');
+loadPlatformPref();
 </script>
 </body>
 </html>
