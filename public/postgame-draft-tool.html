@@ -147,6 +147,30 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
 .pp{padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid #222;background:transparent;color:#888;cursor:pointer;font-weight:500;transition:all .12s}
 .pp:hover{background:#1a1a1a;color:#ccc}
 .pp.on{background:#D73F09;color:#fff;border-color:#D73F09}
+/* ── PLATFORM PREVIEW Stage 2 element types ── */
+.po-tb-left{display:flex;align-items:center;gap:2cqw}
+.po-avatar.po-sm{width:5.5cqw;height:5.5cqw}
+.po-time{font-size:3cqw;opacity:.7}
+.po-li-id{display:flex;flex-direction:column;line-height:1.15}
+.po-headline{font-size:2.6cqw;opacity:.8;font-weight:400}
+.po-progress{left:0;right:0;display:flex;gap:1cqw;padding:0 3cqw}
+.po-seg{flex:1;height:.8cqw;background:rgba(255,255,255,.3);border-radius:1cqw;overflow:hidden}
+.po-seg-fill{display:block;height:100%}
+.po-reply-row{display:flex;align-items:center;gap:3cqw}
+.po-reply-pill{flex:1;border:1.5px solid rgba(255,255,255,.6);border-radius:99px;padding:2.4cqw 4cqw;font-size:3cqw;color:rgba(255,255,255,.85)}
+.po-replybar .po-ic svg{width:6cqw;height:6cqw}
+.po-nav{left:0;right:0}
+.po-nav-row{display:flex;align-items:center;justify-content:space-between;padding:0 6cqw}
+.po-navic svg{width:5.5cqw;height:5.5cqw}
+.po-navplus{background:#fff;color:#111;border-radius:1.6cqw;padding:.6cqw 2.6cqw;display:inline-flex}
+.po-navplus svg{width:5cqw;height:5cqw}
+.po-actions-row{display:flex;align-items:center;gap:4cqw}
+.po-actions .po-ic svg{width:6.5cqw;height:6.5cqw}
+.po-ravatar{position:relative;width:8cqw;height:8cqw;border-radius:50%;background:rgba(255,255,255,.3);border:1.5px solid #fff;flex-shrink:0}
+.po-rplus{position:absolute;bottom:-1.2cqw;left:50%;transform:translateX(-50%);width:3.4cqw;height:3.4cqw;background:#fe2c55;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.4cqw;font-weight:700;color:#fff}
+.po-disc{width:8cqw;height:8cqw;border-radius:50%;margin-top:3cqw;background:radial-gradient(circle,rgba(255,255,255,.45) 26%,rgba(20,20,20,.85) 27%,rgba(20,20,20,.85) 44%,rgba(255,255,255,.22) 45%);animation:po-spin 4s linear infinite}
+.po-chanavatar{width:8cqw;height:8cqw;border-radius:50%;margin-top:2cqw;background:rgba(255,255,255,.3);border:1.5px solid #fff}
+@keyframes po-spin{to{transform:rotate(360deg)}}
 @keyframes flash{0%,100%{background:transparent}50%{background:#D73F0920}}
 .row.just-drafted{animation:flash 1s ease 3}
 
@@ -1315,6 +1339,18 @@ const ICONS = {
   send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
   dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>',
   music:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 9V5l8 7-8 7v-4.1c-5.3 0-9 1.7-11.5 5.1 1-5.6 4.3-10.3 11.5-11z"/></svg>',
+  bookmark:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a1 1 0 0 1 1 1v18l-7-4-7 4V3a1 1 0 0 1 1-1z"/></svg>',
+  like:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M7 10l4-7a2.5 2.5 0 0 1 3 2.4V8h5a2 2 0 0 1 2 2.3l-1.3 8A2 2 0 0 1 18.7 22H7"/></svg>',
+  dislike:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1z"/><path d="M17 14l-4 7a2.5 2.5 0 0 1-3-2.4V16H5a2 2 0 0 1-2-2.3l1.3-8A2 2 0 0 1 6.3 2H17"/></svg>',
+  remix:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  profile:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  dotsH:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
 };
 
 let platformPreviewOn=false;
@@ -1331,10 +1367,15 @@ function reelsTopbar(){
   </div>`;
 }
 function railHTML(e){
-  const counts={heart:'12.4k',comment:'318'};
-  const btn=it=>`<div class="po-rbtn"><span class="po-ic">${ICONS[it]||''}</span>${counts[it]?`<span class="po-rlbl">${counts[it]}</span>`:''}</div>`;
+  const counts={heart:'12.4k',comment:'318',like:'8.1k',share:'2.4k',bookmark:'1.1k',remix:'Remix'};
+  const btn=it=>{
+    if(it==='avatar') return `<div class="po-rbtn"><span class="po-ravatar"><span class="po-rplus">+</span></span></div>`;
+    return `<div class="po-rbtn"><span class="po-ic">${ICONS[it]||''}</span>${counts[it]?`<span class="po-rlbl">${counts[it]}</span>`:''}</div>`;
+  };
   let html=(e.items||[]).map(btn).join('');
   if(e.trailing==='audioThumb') html+=`<div class="po-audiothumb"></div>`;
+  else if(e.trailing==='disc') html+=`<div class="po-disc"></div>`;
+  else if(e.trailing==='channelAvatar') html+=`<div class="po-chanavatar"></div>`;
   return html;
 }
 function metaHTML(e){
@@ -1346,14 +1387,41 @@ function metaHTML(e){
     return '';
   }).join('');
 }
+function topbarHTML(variant){
+  if(variant==='reels') return reelsTopbar();
+  if(variant==='story') return `<div class="po-tb-row"><div class="po-tb-left"><span class="po-avatar po-sm"></span><span class="po-uname">postgame</span><span class="po-time">2h</span></div><span class="po-ic">${ICONS.close}</span></div>`;
+  if(variant==='igfeed') return `<div class="po-tb-row"><div class="po-tb-left"><span class="po-avatar po-sm"></span><span class="po-uname">postgame</span></div><span class="po-ic">${ICONS.dotsH}</span></div>`;
+  if(variant==='linkedin') return `<div class="po-tb-row"><div class="po-tb-left"><span class="po-avatar"></span><div class="po-li-id"><span class="po-uname">Postgame</span><span class="po-headline">NIL · Athlete Marketing</span></div></div><span class="po-ic">${ICONS.dotsH}</span></div>`;
+  return '';
+}
+function progressHTML(e){
+  const n=e.segments||1, color=e.color||'rgba(255,255,255,.95)';
+  let out='';
+  for(let i=0;i<n;i++){ const fw=n===1?38:(i===0?100:0); out+=`<span class="po-seg"><span class="po-seg-fill" style="background:${color};width:${fw}%"></span></span>`; }
+  return out;
+}
+function replybarHTML(){
+  return `<div class="po-reply-row"><span class="po-reply-pill">Send message</span><span class="po-ic">${ICONS.heart}</span><span class="po-ic">${ICONS.share}</span></div>`;
+}
+function navHTML(){
+  const ic=k=>`<span class="po-ic po-navic">${ICONS[k]||''}</span>`;
+  return `<div class="po-nav-row">${ic('home')}${ic('search')}<span class="po-navplus">${ICONS.plus}</span>${ic('inbox')}${ic('profile')}</div>`;
+}
+function actionsHTML(){
+  return `<div class="po-actions-row"><span class="po-ic">${ICONS.heart}</span><span class="po-ic">${ICONS.comment}</span><span class="po-ic">${ICONS.send}</span></div>`;
+}
 function buildEl(e){
   const d=document.createElement('div');
   d.className='po-el po-'+e.type;
   ['top','left','right','bottom','width','height'].forEach(k=>{ if(e[k]!=null) d.style[k]=e[k]+'%'; });
-  if(e.type==='topbar' && e.variant==='reels') d.innerHTML=reelsTopbar();
+  if(e.type==='topbar') d.innerHTML=topbarHTML(e.variant);
   else if(e.type==='rail') d.innerHTML=railHTML(e);
   else if(e.type==='meta') d.innerHTML=metaHTML(e);
-  else { d.classList.add('po-stub'); d.textContent=e.type; }   // Stage 2: progress / replybar / nav / actions / non-Reels topbars
+  else if(e.type==='progress') d.innerHTML=progressHTML(e);
+  else if(e.type==='replybar') d.innerHTML=replybarHTML(e);
+  else if(e.type==='nav') d.innerHTML=navHTML(e);
+  else if(e.type==='actions') d.innerHTML=actionsHTML(e);
+  else { d.classList.add('po-stub'); d.textContent=e.type; }
   return d;
 }
 function renderPlatformOverlay(){
