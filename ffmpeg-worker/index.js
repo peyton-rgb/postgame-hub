@@ -12,6 +12,7 @@ const { createClient } = require("@supabase/supabase-js");
 // to silence the runtime warning that was killing /render-hero uploads.
 // We never actually subscribe to a channel — Storage is the only thing used.
 const WebSocketImpl = require("ws");
+const { google } = require("googleapis");
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -337,6 +338,68 @@ app.post("/render-hero", authenticate, async (req, res) => {
   }
 });
 
+// -- Google Drive upload (for the composited videos) -------------------------
+//
+// The worker uploads each composited MP4 straight to the athlete's Drive folder,
+// server-side — no request-body size limit (the reason this lives in the worker
+// and not a Vercel route). Same refresh-token auth + trash-not-delete dedup as
+// the Hub's routes; supportsAllDrives on every op (the parent is a Shared Drive).
+
+const DRAFTS_PARENT = "1NbLiNIFdCn311xCB1e6gToCBCZ39Mo7S";   // DRAFTS / 2026 NBA Draft (Shared Drive)
+const SPEC_LABEL = { reels: "Reels", story: "Story", tiktok: "TikTok", shorts: "Shorts", igfeed: "IGfeed", linkedin: "LinkedIn" };
+
+let _drive = null;
+function getDrive() {
+  if (_drive) return _drive;
+  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
+    throw new Error("GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN are required for Drive upload");
+  }
+  const oauth2 = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+  oauth2.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+  _drive = google.drive({ version: "v3", auth: oauth2 });
+  return _drive;
+}
+
+/** Find-or-create the athlete's folder under `parent`. Returns its id. */
+async function driveEnsureFolder(drive, name, parent) {
+  const safe = name.replace(/'/g, "\\'");
+  const found = await drive.files.list({
+    q: `'${parent}' in parents and mimeType='application/vnd.google-apps.folder' and name='${safe}' and trashed=false`,
+    supportsAllDrives: true, includeItemsFromAllDrives: true, corpora: "allDrives", fields: "files(id)", pageSize: 1,
+  });
+  if (found.data.files && found.data.files[0]) return found.data.files[0].id;
+  const created = await drive.files.create({
+    supportsAllDrives: true,
+    requestBody: { name, mimeType: "application/vnd.google-apps.folder", parents: [parent] },
+    fields: "id",
+  });
+  return created.data.id;
+}
+
+/** Trash every file with this exact name in the folder (replace, don't duplicate). Trash, not delete. */
+async function driveTrashByName(drive, name, parent) {
+  const safe = name.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q: `'${parent}' in parents and name='${safe}' and trashed=false`,
+    supportsAllDrives: true, includeItemsFromAllDrives: true, corpora: "allDrives", fields: "files(id)", pageSize: 100,
+  });
+  for (const f of res.data.files || []) {
+    if (f.id) await drive.files.update({ fileId: f.id, supportsAllDrives: true, requestBody: { trashed: true } });
+  }
+}
+
+/** Upload a local MP4 into the folder (server-side stream — no size limit). Returns {id, webViewLink}. */
+async function driveUpload(drive, localPath, name, folderId) {
+  const res = await drive.files.create({
+    supportsAllDrives: true,
+    requestBody: { name, mimeType: "video/mp4", parents: [folderId] },
+    media: { mimeType: "video/mp4", body: fs.createReadStream(localPath) },
+    fields: "id, webViewLink",
+  });
+  return { id: res.data.id, webViewLink: res.data.webViewLink };
+}
+
 // -- Overlay composite (Video w/ graphic) ------------------------------------
 //
 // Burns a transparent overlay PNG (the card graphic from the draft tool) onto a
@@ -395,9 +458,9 @@ function compositeOverlay(videoPath, overlayPath, w, h, outputPath) {
 // Drive upload of each output (and returns the links); Checkpoint D wires the Hub
 // + the async status/callback. For now it composites and reports per-spec size.
 app.post("/composite", authenticate, async (req, res) => {
-  const { videoUrl, overlays } = req.body || {};
-  if (!videoUrl || !Array.isArray(overlays) || overlays.length === 0) {
-    return res.status(400).json({ error: "videoUrl and a non-empty overlays[] are required" });
+  const { athleteName, videoUrl, overlays } = req.body || {};
+  if (!athleteName || !videoUrl || !Array.isArray(overlays) || overlays.length === 0) {
+    return res.status(400).json({ error: "athleteName, videoUrl and a non-empty overlays[] are required" });
   }
   for (const o of overlays) {
     if (!o || !SPEC_DIMS[o.spec] || !o.pngBase64) {
@@ -408,6 +471,10 @@ app.post("/composite", authenticate, async (req, res) => {
   let videoPath = null;
   const tmp = [];
   try {
+    const drive = getDrive();
+    const folderId = await driveEnsureFolder(drive, String(athleteName).trim(), DRAFTS_PARENT);
+    const safeName = String(athleteName).trim().replace(/\s+/g, "_");
+
     console.log(`[composite] downloading ${videoUrl}`);
     videoPath = await downloadToTemp(videoUrl);
 
@@ -417,16 +484,20 @@ app.post("/composite", authenticate, async (req, res) => {
       const overlayPath = path.join(os.tmpdir(), `pg-ovl-${spec}-${Date.now()}.png`);
       const outputPath = path.join(os.tmpdir(), `pg-comp-${spec}-${Date.now()}.mp4`);
       tmp.push(overlayPath, outputPath);
-      const b64 = String(pngBase64).replace(/^data:image\/\w+;base64,/, "");
-      fs.writeFileSync(overlayPath, Buffer.from(b64, "base64"));
-      console.log(`[composite] ${spec} ${w}x${h}`);
+      fs.writeFileSync(overlayPath, Buffer.from(String(pngBase64).replace(/^data:image\/\w+;base64,/, ""), "base64"));
+
+      console.log(`[composite] ${spec} ${w}x${h} — compositing`);
       await compositeOverlay(videoPath, overlayPath, w, h, outputPath);
-      // Checkpoint C: upload `outputPath` to the athlete's Drive folder here and
-      // attach the resulting Drive link to this result.
-      results.push({ spec, w, h, bytes: fs.statSync(outputPath).size });
+
+      const fname = `${safeName}_${SPEC_LABEL[spec]}_video.mp4`;
+      await driveTrashByName(drive, fname, folderId);                 // replace, don't duplicate
+      console.log(`[composite] ${spec} — uploading ${fname} (${fs.statSync(outputPath).size}B)`);
+      const up = await driveUpload(drive, outputPath, fname, folderId);
+
+      results.push({ spec, fileId: up.id, webViewLink: up.webViewLink, name: fname });
     }
 
-    res.json({ ok: true, results });
+    res.json({ ok: true, folderId, results });
   } catch (err) {
     console.error(`[composite] Error: ${err.message}`);
     res.status(500).json({ error: err.message });
