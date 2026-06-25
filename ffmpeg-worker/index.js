@@ -457,8 +457,22 @@ function compositeOverlay(videoPath, overlayPath, w, h, outputPath) {
 // Composites each requested spec's overlay onto the video. Checkpoint C adds the
 // Drive upload of each output (and returns the links); Checkpoint D wires the Hub
 // + the async status/callback. For now it composites and reports per-spec size.
+// POST the per-spec results back to the Hub when a job finishes (async pattern,
+// like /process → /api/tag). Carries x-ffmpeg-secret so the Hub can verify it.
+async function postCallback(url, payload) {
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-ffmpeg-secret": FFMPEG_WORKER_SECRET },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error(`[composite] callback POST failed: ${e.message}`);
+  }
+}
+
 app.post("/composite", authenticate, async (req, res) => {
-  const { athleteName, videoUrl, overlays } = req.body || {};
+  const { athleteName, videoUrl, overlays, callbackUrl, jobId } = req.body || {};
   if (!athleteName || !videoUrl || !Array.isArray(overlays) || overlays.length === 0) {
     return res.status(400).json({ error: "athleteName, videoUrl and a non-empty overlays[] are required" });
   }
@@ -497,9 +511,13 @@ app.post("/composite", authenticate, async (req, res) => {
       results.push({ spec, fileId: up.id, webViewLink: up.webViewLink, name: fname });
     }
 
+    // Async pattern: when the Hub fired this fire-and-forget with a callbackUrl,
+    // report the per-spec Drive links back so it can flip the job row to done.
+    if (callbackUrl) await postCallback(callbackUrl, { jobId, ok: true, folderId, results });
     res.json({ ok: true, folderId, results });
   } catch (err) {
     console.error(`[composite] Error: ${err.message}`);
+    if (callbackUrl) await postCallback(callbackUrl, { jobId, ok: false, error: err.message });
     res.status(500).json({ error: err.message });
   } finally {
     cleanup(videoPath, ...tmp);
