@@ -963,7 +963,7 @@ document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.prev
 function cSz(f){return SIZES[f];}
 function dSz(f){const a=document.getElementById('pa');const ph=a.clientHeight-24,pw=a.clientWidth-24;const{w,h}=cSz(f),r=w/h;let dh=ph,dw=dh*r;if(dw>pw){dw=pw;dh=dw/r;}return{w:Math.floor(dw),h:Math.floor(dh)};}
 
-function draw(tgt,tctx,f,plat){
+function draw(tgt,tctx,f,plat,overlayOnly){
   const fm=f||fmt; const{w,h}=cSz(fm);
   const cvs=tgt||off; const ctx=tctx||octx;
   cvs.width=w; cvs.height=h;
@@ -979,7 +979,9 @@ function draw(tgt,tctx,f,plat){
   const rightBound=w-RIGHT;
   ctx.clearRect(0,0,w,h);
 
-  // PHOTO
+  // PHOTO — skipped for overlay-only export so the photo area stays transparent
+  // for video compositing (the gradient + text/logo below still render).
+  if(!overlayOnly){
   if(curMedia){
     ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
     const nW=curIsVideo?curMedia.videoWidth:curMedia.naturalWidth;
@@ -995,6 +997,7 @@ function draw(tgt,tctx,f,plat){
     ctx.fillText('Drop photo or video onto player name →',w/2,h/2);
     ctx.textAlign='left';
   }
+  }  // end if(!overlayOnly) — photo block skipped for overlay export
 
   // GRADIENT
   const g=ctx.createLinearGradient(0,h*0.22,0,h);
@@ -1551,6 +1554,22 @@ async function renderCardPNG(ratio, platform){
   const cx=c.getContext('2d'); cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
   draw(c,cx,ratio,platform);                                 // explicit 4 args → platform-aware, no live-state read
   curMedia=sv.m; curIsVideo=sv.v; pX=sv.x; pY=sv.y; pS=sv.s;  // restore synchronously — live preview untouched
+  return c.toDataURL('image/png');
+}
+// Overlay-only render: the card graphic (gradient + name/team/pick/logo) on a
+// TRANSPARENT background — NO photo, NO placeholder fill — for compositing onto
+// the moving video (Video w/ graphic). Mirrors renderCardPNG's platform-aware
+// setup but forces no photo and passes overlayOnly=true. renderCardPNG and the
+// existing card render path are untouched.
+async function renderOverlayPNG(ratio, platform){
+  if(!cur) return null;
+  const sv={m:curMedia,v:curIsVideo,x:pX,y:pY,s:pS};         // save live globals
+  curMedia=null; curIsVideo=false; pX=0; pY=0; pS=100;        // force no photo bin
+  const {w,h}=cSz(ratio);
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const cx=c.getContext('2d'); cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
+  draw(c,cx,ratio,platform,true);                            // overlayOnly=true → transparent, graphic only
+  curMedia=sv.m; curIsVideo=sv.v; pX=sv.x; pY=sv.y; pS=sv.s;  // restore live preview untouched
   return c.toDataURL('image/png');
 }
 async function openExportReview(){
