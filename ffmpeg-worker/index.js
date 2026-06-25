@@ -424,8 +424,12 @@ const SPEC_DIMS = {
 /** Composite an overlay PNG onto a video at w x h (alpha-correct). */
 function compositeOverlay(videoPath, overlayPath, w, h, outputPath) {
   return new Promise((resolve, reject) => {
+    // Only the OVERLAY is cast to rgba (it needs alpha for the blend); the 4K
+    // background stays in its native (yuv) format — converting the whole video to
+    // rgba was the OOM hog (~33MB/frame). overlay respects the overlay's alpha
+    // regardless of the bg format, so the transparent area still shows the video.
     const filter =
-      `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,format=rgba[bg];` +
+      `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1[bg];` +
       `[1:v]format=rgba,scale=${w}:${h}[ovl];` +
       `[bg][ovl]overlay=0:0[comp];` +
       `[comp]format=yuv420p[out]`;
@@ -457,6 +461,16 @@ function compositeOverlay(videoPath, overlayPath, w, h, outputPath) {
 // Composites each requested spec's overlay onto the video. Checkpoint C adds the
 // Drive upload of each output (and returns the links); Checkpoint D wires the Hub
 // + the async status/callback. For now it composites and reports per-spec size.
+// Serialize ffmpeg runs across ALL requests — one composite at a time, so two
+// jobs can't collide on RAM (the OOM was two 4K composites running at once).
+// Essential for "Render All", which fires many jobs.
+let _ffmpegQueue = Promise.resolve();
+function runSerial(task) {
+  const result = _ffmpegQueue.then(task, task);
+  _ffmpegQueue = result.then(() => {}, () => {});   // keep the chain alive past failures
+  return result;
+}
+
 // POST the per-spec results back to the Hub when a job finishes (async pattern,
 // like /process → /api/tag). Carries x-ffmpeg-secret so the Hub can verify it.
 async function postCallback(url, payload) {
@@ -511,7 +525,7 @@ app.post(
       tmp.push(overlayPath, outputPath);
 
       console.log(`[composite] ${spec} ${w}x${h} — compositing`);
-      await compositeOverlay(videoPath, overlayPath, w, h, outputPath);
+      await runSerial(() => compositeOverlay(videoPath, overlayPath, w, h, outputPath));
 
       const fname = `${safeName}_${SPEC_LABEL[spec]}_video.mp4`;
       await driveTrashByName(drive, fname, folderId);                 // replace, don't duplicate
