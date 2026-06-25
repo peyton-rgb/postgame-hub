@@ -32,6 +32,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    for (const o of overlays) {
+      if (!o || !o.spec || !o.pngBase64) {
+        return NextResponse.json({ error: "each overlay needs spec + pngBase64" }, { status: 400 });
+      }
+    }
 
     const workerUrl = process.env.FFMPEG_WORKER_URL;
     const workerSecret = process.env.FFMPEG_WORKER_SECRET;
@@ -50,8 +55,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create job: " + (insErr?.message || "unknown") }, { status: 500 });
     }
 
-    // 2. Fire the worker fire-and-forget. It composites + uploads to Drive, then
-    //    POSTs results back to our callback (which flips the job to done + fills J–O).
+    // 2. Upload each overlay PNG to Supabase Storage and forward only URLs to the
+    //    worker — keeps the fire-and-forget body tiny so it flushes before Vercel
+    //    freezes the function (the fat base64 body never sent → job stuck pending).
+    const workerOverlays: { spec: string; overlayUrl: string }[] = [];
+    for (const o of overlays) {
+      const b64 = String(o.pngBase64).replace(/^data:image\/\w+;base64,/, "");
+      const objectPath = `_overlays/${job.id}_${o.spec}.png`;
+      const { error: upErr } = await supabase.storage
+        .from("campaign-media")
+        .upload(objectPath, Buffer.from(b64, "base64"), { contentType: "image/png", upsert: true });
+      if (upErr) {
+        await supabase.from("video_render_jobs").update({ status: "failed", error: "overlay upload: " + upErr.message }).eq("id", job.id);
+        return NextResponse.json({ error: "Overlay upload failed: " + upErr.message }, { status: 500 });
+      }
+      const { data: pub } = supabase.storage.from("campaign-media").getPublicUrl(objectPath);
+      workerOverlays.push({ spec: o.spec, overlayUrl: pub.publicUrl });
+    }
+
+    // 3. Fire the worker fire-and-forget — now a tiny URL body. It downloads each
+    //    overlay, composites + uploads to Drive, then POSTs results to our callback.
     const callbackUrl = `${request.nextUrl.origin}/api/drive/render-callback`;
     fetch(`${workerUrl}/composite`, {
       method: "POST",
@@ -59,7 +82,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         athleteName: String(athleteName).trim(),
         videoUrl,
-        overlays,
+        overlays: workerOverlays,
         callbackUrl,
         jobId: job.id,
       }),
