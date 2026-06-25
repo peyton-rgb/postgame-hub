@@ -367,6 +367,7 @@ input[type=range]{width:90px;accent-color:#D73F09;cursor:pointer}
       <span id="exp-status" class="exp-status"></span>
       <div class="exp-actions">
         <button class="drive-primary" id="exp-drive-btn" onclick="exportToDriveChecked()">Export to Drive</button>
+        <button class="drive-primary" id="exp-video-btn" onclick="exportVideosChecked()">Render Videos</button>
         <button class="drive-primary" onclick="exportDownloadChecked()">Download</button>
       </div>
     </div>
@@ -963,7 +964,7 @@ document.getElementById('pa').addEventListener('wheel',e=>{if(!cur)return;e.prev
 function cSz(f){return SIZES[f];}
 function dSz(f){const a=document.getElementById('pa');const ph=a.clientHeight-24,pw=a.clientWidth-24;const{w,h}=cSz(f),r=w/h;let dh=ph,dw=dh*r;if(dw>pw){dw=pw;dh=dw/r;}return{w:Math.floor(dw),h:Math.floor(dh)};}
 
-function draw(tgt,tctx,f,plat){
+function draw(tgt,tctx,f,plat,overlayOnly){
   const fm=f||fmt; const{w,h}=cSz(fm);
   const cvs=tgt||off; const ctx=tctx||octx;
   cvs.width=w; cvs.height=h;
@@ -979,7 +980,9 @@ function draw(tgt,tctx,f,plat){
   const rightBound=w-RIGHT;
   ctx.clearRect(0,0,w,h);
 
-  // PHOTO
+  // PHOTO — skipped for overlay-only export so the photo area stays transparent
+  // for video compositing (the gradient + text/logo below still render).
+  if(!overlayOnly){
   if(curMedia){
     ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
     const nW=curIsVideo?curMedia.videoWidth:curMedia.naturalWidth;
@@ -995,6 +998,7 @@ function draw(tgt,tctx,f,plat){
     ctx.fillText('Drop photo or video onto player name →',w/2,h/2);
     ctx.textAlign='left';
   }
+  }  // end if(!overlayOnly) — photo block skipped for overlay export
 
   // GRADIENT
   const g=ctx.createLinearGradient(0,h*0.22,0,h);
@@ -1553,11 +1557,28 @@ async function renderCardPNG(ratio, platform){
   curMedia=sv.m; curIsVideo=sv.v; pX=sv.x; pY=sv.y; pS=sv.s;  // restore synchronously — live preview untouched
   return c.toDataURL('image/png');
 }
+// Overlay-only render: the card graphic (gradient + name/team/pick/logo) on a
+// TRANSPARENT background — NO photo, NO placeholder fill — for compositing onto
+// the moving video (Video w/ graphic). Mirrors renderCardPNG's platform-aware
+// setup but forces no photo and passes overlayOnly=true. renderCardPNG and the
+// existing card render path are untouched.
+async function renderOverlayPNG(ratio, platform){
+  if(!cur) return null;
+  const sv={m:curMedia,v:curIsVideo,x:pX,y:pY,s:pS};         // save live globals
+  curMedia=null; curIsVideo=false; pX=0; pY=0; pS=100;        // force no photo bin
+  const {w,h}=cSz(ratio);
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const cx=c.getContext('2d'); cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
+  draw(c,cx,ratio,platform,true);                            // overlayOnly=true → transparent, graphic only
+  curMedia=sv.m; curIsVideo=sv.v; pX=sv.x; pY=sv.y; pS=sv.s;  // restore live preview untouched
+  return c.toDataURL('image/png');
+}
 async function openExportReview(){
   if(!cur){ alert('Select a player first'); return; }
   document.getElementById('exp-dest-line').textContent = `${year} ${LEAGUES[league].label} Draft › ${cur.name}`;
   const st=document.getElementById('exp-status'); if(st) st.innerHTML='';
   const db=document.getElementById('exp-drive-btn'); if(db) db.disabled=false;
+  const vbn=document.getElementById('exp-video-btn'); if(vbn) vbn.disabled=false;
   document.getElementById('exp-row-916').innerHTML='';
   document.getElementById('exp-row-45').innerHTML='';
   _exportPNGs={};
@@ -1654,6 +1675,62 @@ async function exportToDriveChecked(){
   status.innerHTML = (failed===0
     ? `✅ Uploaded ${done} to Drive`
     : `Uploaded ${done}, ${failed} failed`) + trackerMsg + link;
+}
+
+// Render "Video w/ graphic" for the checked platforms: a transparent overlay PNG
+// per spec composited onto the athlete's original video by the worker → lands in
+// Drive + fills tracker J–O. Async: kick off a job, then poll its status.
+async function exportVideosChecked(){
+  const boxes=[...document.querySelectorAll('#export-modal input[type=checkbox]:checked')];
+  if(!boxes.length){ alert('Select at least one platform'); return; }
+  const vb = cur.media.video;
+  if(!vb || !vb.url){ alert('This athlete has no original video imported from Drive — import one first.'); return; }
+  const athleteName=cur.name;
+  const btn=document.getElementById('exp-video-btn');
+  const status=document.getElementById('exp-status');
+  btn.disabled=true;
+  status.textContent='Rendering overlays…';
+  const overlays=[];
+  for(const b of boxes){
+    const key=b.getAttribute('data-platform');
+    const png=await renderOverlayPNG(PLATFORM_SPECS[key].ratio, key);   // transparent graphic per spec
+    if(png) overlays.push({ spec:key, pngBase64:png });
+  }
+  if(!overlays.length){ btn.disabled=false; status.textContent='No overlays rendered'; return; }
+  status.textContent='Starting render… (this takes a few minutes)';
+  try{
+    const res=await fetch('/api/drive/render-videos',{
+      method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ athleteName, videoUrl:vb.url, overlays })
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok || !data.jobId){ btn.disabled=false; status.textContent='Render failed: '+(data.error||('HTTP '+res.status)); return; }
+    pollRenderJob(data.jobId, overlays.length);
+  }catch(e){ btn.disabled=false; status.textContent='Render error: '+((e&&e.message)||e); }
+}
+// Poll a render job until done/failed; fill J–O happens server-side on the callback.
+function pollRenderJob(jobId, count){
+  const status=document.getElementById('exp-status');
+  const btn=document.getElementById('exp-video-btn');
+  let secs=0;
+  const t=setInterval(async()=>{
+    secs+=6;
+    try{
+      const r=await fetch('/api/drive/render-status?jobId='+encodeURIComponent(jobId),{credentials:'same-origin'});
+      const d=await r.json().catch(()=>({}));
+      if(d.status==='done'){
+        clearInterval(t); btn.disabled=false;
+        const n=d.links?Object.keys(d.links).length:count;
+        status.innerHTML=`✅ ${n} video(s) rendered → Drive + tracker J–O`;
+      } else if(d.status==='failed'){
+        clearInterval(t); btn.disabled=false;
+        status.textContent='Render failed: '+(d.error||'unknown');
+      } else {
+        status.textContent=`Rendering ${count} video(s)… ${secs}s (few min)`;
+      }
+    }catch(_){ /* transient — keep polling */ }
+    if(secs>900){ clearInterval(t); btn.disabled=false; status.textContent='Render timed out — check Drive/sheet'; }
+  }, 6000);
 }
 
 // ── INIT ──

@@ -12,6 +12,7 @@ const { createClient } = require("@supabase/supabase-js");
 // to silence the runtime warning that was killing /render-hero uploads.
 // We never actually subscribe to a channel — Storage is the only thing used.
 const WebSocketImpl = require("ws");
+const { google } = require("googleapis");
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -334,6 +335,192 @@ app.post("/render-hero", authenticate, async (req, res) => {
     res.status(500).json({ error: err.message });
   } finally {
     cleanup(inputPath, scriptPath, outputPath);
+  }
+});
+
+// -- Google Drive upload (for the composited videos) -------------------------
+//
+// The worker uploads each composited MP4 straight to the athlete's Drive folder,
+// server-side — no request-body size limit (the reason this lives in the worker
+// and not a Vercel route). Same refresh-token auth + trash-not-delete dedup as
+// the Hub's routes; supportsAllDrives on every op (the parent is a Shared Drive).
+
+const DRAFTS_PARENT = "1NbLiNIFdCn311xCB1e6gToCBCZ39Mo7S";   // DRAFTS / 2026 NBA Draft (Shared Drive)
+const SPEC_LABEL = { reels: "Reels", story: "Story", tiktok: "TikTok", shorts: "Shorts", igfeed: "IGfeed", linkedin: "LinkedIn" };
+
+let _drive = null;
+function getDrive() {
+  if (_drive) return _drive;
+  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
+    throw new Error("GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN are required for Drive upload");
+  }
+  const oauth2 = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+  oauth2.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+  _drive = google.drive({ version: "v3", auth: oauth2 });
+  return _drive;
+}
+
+/** Find-or-create the athlete's folder under `parent`. Returns its id. */
+async function driveEnsureFolder(drive, name, parent) {
+  const safe = name.replace(/'/g, "\\'");
+  const found = await drive.files.list({
+    q: `'${parent}' in parents and mimeType='application/vnd.google-apps.folder' and name='${safe}' and trashed=false`,
+    supportsAllDrives: true, includeItemsFromAllDrives: true, corpora: "allDrives", fields: "files(id)", pageSize: 1,
+  });
+  if (found.data.files && found.data.files[0]) return found.data.files[0].id;
+  const created = await drive.files.create({
+    supportsAllDrives: true,
+    requestBody: { name, mimeType: "application/vnd.google-apps.folder", parents: [parent] },
+    fields: "id",
+  });
+  return created.data.id;
+}
+
+/** Trash every file with this exact name in the folder (replace, don't duplicate). Trash, not delete. */
+async function driveTrashByName(drive, name, parent) {
+  const safe = name.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q: `'${parent}' in parents and name='${safe}' and trashed=false`,
+    supportsAllDrives: true, includeItemsFromAllDrives: true, corpora: "allDrives", fields: "files(id)", pageSize: 100,
+  });
+  for (const f of res.data.files || []) {
+    if (f.id) await drive.files.update({ fileId: f.id, supportsAllDrives: true, requestBody: { trashed: true } });
+  }
+}
+
+/** Upload a local MP4 into the folder (server-side stream — no size limit). Returns {id, webViewLink}. */
+async function driveUpload(drive, localPath, name, folderId) {
+  const res = await drive.files.create({
+    supportsAllDrives: true,
+    requestBody: { name, mimeType: "video/mp4", parents: [folderId] },
+    media: { mimeType: "video/mp4", body: fs.createReadStream(localPath) },
+    fields: "id, webViewLink",
+  });
+  return { id: res.data.id, webViewLink: res.data.webViewLink };
+}
+
+// -- Overlay composite (Video w/ graphic) ------------------------------------
+//
+// Burns a transparent overlay PNG (the card graphic from the draft tool) onto a
+// source video, sized per platform spec. Alpha-correct: both inputs are cast to
+// rgba before the overlay, so the transparent photo area shows the video through
+// — flattened to yuv420p only at the end for H.264. The filtergraph was validated
+// locally for both geometries (9:16 2160x3840, 4:5 2160x2700) before shipping.
+// Drive upload of each output is Checkpoint C; Hub wiring + async callback is
+// Checkpoint D. Does NOT touch /process or /render-hero.
+
+// Spec → output dimensions. Must match SIZES/PLATFORM_SPECS in the draft tool
+// (and renderOverlayPNG's dims) so the overlay aligns 1:1.
+const SPEC_DIMS = {
+  reels:    { w: 2160, h: 3840 },   // 9:16
+  story:    { w: 2160, h: 3840 },   // 9:16
+  tiktok:   { w: 2160, h: 3840 },   // 9:16
+  shorts:   { w: 2160, h: 3840 },   // 9:16
+  igfeed:   { w: 2160, h: 2700 },   // 4:5
+  linkedin: { w: 2160, h: 2700 },   // 4:5
+};
+
+/** Composite an overlay PNG onto a video at w x h (alpha-correct). */
+function compositeOverlay(videoPath, overlayPath, w, h, outputPath) {
+  return new Promise((resolve, reject) => {
+    const filter =
+      `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,format=rgba[bg];` +
+      `[1:v]format=rgba,scale=${w}:${h}[ovl];` +
+      `[bg][ovl]overlay=0:0[comp];` +
+      `[comp]format=yuv420p[out]`;
+    const args = [
+      "-y",
+      "-i", videoPath,
+      "-i", overlayPath,
+      "-filter_complex", filter,
+      "-map", "[out]",
+      "-map", "0:a?",
+      "-c:v", "libx264", "-crf", "20", "-preset", "medium", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", "128k",
+      "-movflags", "+faststart",
+      outputPath,
+    ];
+    const proc = spawn("ffmpeg", args);
+    let stderr = "";
+    proc.stderr.on("data", (d) => { stderr += d.toString(); });
+    proc.on("close", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(`ffmpeg composite exited ${code}: ${stderr.slice(-600)}`)));
+    proc.on("error", reject);
+  });
+}
+
+// POST /composite
+// Body: { videoUrl, overlays: [{ spec, pngBase64 }] }
+// Composites each requested spec's overlay onto the video. Checkpoint C adds the
+// Drive upload of each output (and returns the links); Checkpoint D wires the Hub
+// + the async status/callback. For now it composites and reports per-spec size.
+// POST the per-spec results back to the Hub when a job finishes (async pattern,
+// like /process → /api/tag). Carries x-ffmpeg-secret so the Hub can verify it.
+async function postCallback(url, payload) {
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-ffmpeg-secret": FFMPEG_WORKER_SECRET },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error(`[composite] callback POST failed: ${e.message}`);
+  }
+}
+
+app.post("/composite", authenticate, async (req, res) => {
+  const { athleteName, videoUrl, overlays, callbackUrl, jobId } = req.body || {};
+  if (!athleteName || !videoUrl || !Array.isArray(overlays) || overlays.length === 0) {
+    return res.status(400).json({ error: "athleteName, videoUrl and a non-empty overlays[] are required" });
+  }
+  for (const o of overlays) {
+    if (!o || !SPEC_DIMS[o.spec] || !o.pngBase64) {
+      return res.status(400).json({ error: `each overlay needs a known spec + pngBase64 (got: ${o && o.spec})` });
+    }
+  }
+
+  let videoPath = null;
+  const tmp = [];
+  try {
+    const drive = getDrive();
+    const folderId = await driveEnsureFolder(drive, String(athleteName).trim(), DRAFTS_PARENT);
+    const safeName = String(athleteName).trim().replace(/\s+/g, "_");
+
+    console.log(`[composite] downloading ${videoUrl}`);
+    videoPath = await downloadToTemp(videoUrl);
+
+    const results = [];
+    for (const { spec, pngBase64 } of overlays) {
+      const { w, h } = SPEC_DIMS[spec];
+      const overlayPath = path.join(os.tmpdir(), `pg-ovl-${spec}-${Date.now()}.png`);
+      const outputPath = path.join(os.tmpdir(), `pg-comp-${spec}-${Date.now()}.mp4`);
+      tmp.push(overlayPath, outputPath);
+      fs.writeFileSync(overlayPath, Buffer.from(String(pngBase64).replace(/^data:image\/\w+;base64,/, ""), "base64"));
+
+      console.log(`[composite] ${spec} ${w}x${h} — compositing`);
+      await compositeOverlay(videoPath, overlayPath, w, h, outputPath);
+
+      const fname = `${safeName}_${SPEC_LABEL[spec]}_video.mp4`;
+      await driveTrashByName(drive, fname, folderId);                 // replace, don't duplicate
+      console.log(`[composite] ${spec} — uploading ${fname} (${fs.statSync(outputPath).size}B)`);
+      const up = await driveUpload(drive, outputPath, fname, folderId);
+
+      results.push({ spec, fileId: up.id, webViewLink: up.webViewLink, name: fname });
+    }
+
+    // Async pattern: when the Hub fired this fire-and-forget with a callbackUrl,
+    // report the per-spec Drive links back so it can flip the job row to done.
+    if (callbackUrl) await postCallback(callbackUrl, { jobId, ok: true, folderId, results });
+    res.json({ ok: true, folderId, results });
+  } catch (err) {
+    console.error(`[composite] Error: ${err.message}`);
+    if (callbackUrl) await postCallback(callbackUrl, { jobId, ok: false, error: err.message });
+    res.status(500).json({ error: err.message });
+  } finally {
+    cleanup(videoPath, ...tmp);
   }
 });
 
