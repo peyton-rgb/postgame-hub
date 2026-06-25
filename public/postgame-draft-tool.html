@@ -592,7 +592,16 @@ async function loadPlayersFromHub() {
       {pick:56, name:"Bryce Hopkins",     school:"St. John's",     matched:false, round:2},
       {pick:57, name:"Nick Martinelli",   school:"Northwestern",   matched:false, round:2},
       {pick:58, name:"Maliq Brown",       school:"Duke",           matched:true,  round:2},
-      {pick:59, name:"Noam Yaacov",       school:"Denmark",        matched:false, round:2}
+      {pick:59, name:"Noam Yaacov",       school:"Denmark",        matched:false, round:2},
+      // --- Added post-draft: actually-drafted players the pre-draft mock missed (real 2026 picks) ---
+      {pick:25, name:"Sergio De Larrea",  school:"Spain",             matched:false},
+      {pick:41, name:"Otega Oweh",        school:"Kentucky",          matched:false, round:2},  // EXACT saved name — CONFIRM vs localStorage before merge (re-attaches his built card)
+      {pick:43, name:"Tyler Bilodeau",    school:"UCLA",              matched:false, round:2},
+      {pick:54, name:"Lajae Jones",       school:"Florida State",     matched:false, round:2},
+      {pick:57, name:"Narcisse Ngoy",     school:"France",            matched:false, round:2},
+      {pick:58, name:"Jaron Pierre Jr.",  school:"SMU",               matched:false, round:2},
+      {pick:59, name:"Trey Kaufman-Renn", school:"Purdue",            matched:false, round:2},
+      {pick:60, name:"Malique Lewis",     school:"Trinidad & Tobago", matched:false, round:2}
     ];
     players = nbaMock.map(d=>({
       name: d.name,
