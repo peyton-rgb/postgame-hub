@@ -14,11 +14,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getGoogleAuth } from "@/lib/google-auth";
+import { getDriveClient, ensureFolder, trashFilesByName } from "@/lib/google-drive";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const TRACKER_SHEET_ID = "1Av15uc0dqbCWljdhUO2CBerrDXIrzf2GswpcZtTcqMA";
+const DRAFTS_PARENT = "1NbLiNIFdCn311xCB1e6gToCBCZ39Mo7S";   // DRAFTS / 2026 NBA Draft (Shared Drive)
 
 // Platform label → column letter, "Thumbnail w/ graphic" group (C–H).
 // Column A is Athlete; B ("Original photo") and I–O (video columns) are
@@ -47,6 +49,22 @@ function hyperlink(url: string, label: string): string {
   const safeUrl = String(url).replace(/"/g, '""');
   const safeLabel = String(label).replace(/"/g, '""');
   return `=HYPERLINK("${safeUrl}","${safeLabel}")`;
+}
+
+// Clean, lowercased file extension from a Drive file's name (IMG_4821.MOV → "mov"),
+// falling back to a mimeType map, then a generic default.
+const EXT_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
+  "image/heic": "heic", "image/heif": "heif", "image/webp": "webp", "image/gif": "gif",
+  "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm",
+  "video/x-matroska": "mkv", "video/x-msvideo": "avi",
+};
+function cleanExt(name?: string | null, mimeType?: string | null): string {
+  if (name && name.includes(".")) {
+    const e = name.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (e) return e;
+  }
+  return (mimeType && EXT_BY_MIME[mimeType]) || "bin";
 }
 
 export async function POST(request: NextRequest) {
@@ -109,13 +127,44 @@ export async function POST(request: NextRequest) {
       data.push({ range: `'${tab}'!${col}${rowNumber}`, values: [[hyperlink(url as string, label)]] });
     }
 
-    // Original photo (B) + original video (I): link the source files already in Drive.
+    // Original photo (B) + original video (I): COPY the source into the athlete's
+    // folder (Drive-to-Drive, no upload — sidesteps the 4.5MB request limit), then
+    // link B/I to the in-folder copy. Replace any prior copy so a re-export refreshes.
     const driveView = (id: string) => `https://drive.google.com/file/d/${id}/view`;
-    if (originalPhotoDriveId) {
-      data.push({ range: `'${tab}'!B${rowNumber}`, values: [[hyperlink(driveView(String(originalPhotoDriveId)), "Open")]] });
-    }
-    if (originalVideoDriveId) {
-      data.push({ range: `'${tab}'!I${rowNumber}`, values: [[hyperlink(driveView(String(originalVideoDriveId)), "Open")]] });
+    if (originalPhotoDriveId || originalVideoDriveId) {
+      const { id: folderId } = await ensureFolder(String(athleteName).trim(), DRAFTS_PARENT);
+      const drive = getDriveClient();
+      const safeName = String(athleteName).trim().replace(/\s+/g, "_");
+
+      const copyOriginalInto = async (
+        sourceId: string,
+        kind: "OriginalPhoto" | "OriginalVideo"
+      ): Promise<string | null> => {
+        try {
+          const meta = await drive.files.get({ fileId: sourceId, supportsAllDrives: true, fields: "name, mimeType" });
+          const name = `${safeName}_${kind}.${cleanExt(meta.data.name, meta.data.mimeType)}`;
+          await trashFilesByName(name, folderId);                 // replace, don't duplicate
+          const copied = await drive.files.copy({
+            fileId: sourceId,
+            supportsAllDrives: true,
+            requestBody: { name, parents: [folderId] },
+            fields: "id",
+          });
+          return copied.data.id ?? null;
+        } catch (e) {
+          console.error(`[update-tracker] copy ${kind} failed:`, e);
+          return null;                                            // sheet write still proceeds
+        }
+      };
+
+      if (originalPhotoDriveId) {
+        const copyId = await copyOriginalInto(String(originalPhotoDriveId), "OriginalPhoto");
+        if (copyId) data.push({ range: `'${tab}'!B${rowNumber}`, values: [[hyperlink(driveView(copyId), "Open")]] });
+      }
+      if (originalVideoDriveId) {
+        const copyId = await copyOriginalInto(String(originalVideoDriveId), "OriginalVideo");
+        if (copyId) data.push({ range: `'${tab}'!I${rowNumber}`, values: [[hyperlink(driveView(copyId), "Open")]] });
+      }
     }
 
     // 4. One batch write. USER_ENTERED → =HYPERLINK is parsed as a real formula

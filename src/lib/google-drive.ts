@@ -469,3 +469,37 @@ export async function ensureFolder(
   const id = await createFolder(name, parentFolderId);
   return { id, created: true };
 }
+
+/**
+ * Trash every (non-trashed) file with an exact `name` inside `parentFolderId`,
+ * so a re-export replaces rather than stacking duplicate copies. Mirrors
+ * findFolderByName's exact-name query, minus the folder mimeType filter, and
+ * trashes ALL matches. Uses trash (files.update trashed:true), never permanent
+ * delete. Returns how many files were trashed.
+ */
+export async function trashFilesByName(
+  name: string,
+  parentFolderId: string
+): Promise<number> {
+  const drive = getDriveClient();
+  const safeName = name.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q: `'${parentFolderId}' in parents and name = '${safeName}' and trashed = false`,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: "allDrives",
+    fields: "files(id)",
+    pageSize: 100,
+  });
+  const ids = (res.data.files ?? [])
+    .map((f) => f.id)
+    .filter((id): id is string => !!id);
+  for (const id of ids) {
+    await drive.files.update({
+      fileId: id,
+      supportsAllDrives: true,
+      requestBody: { trashed: true },
+    });
+  }
+  return ids.length;
+}
