@@ -337,6 +337,104 @@ app.post("/render-hero", authenticate, async (req, res) => {
   }
 });
 
+// -- Overlay composite (Video w/ graphic) ------------------------------------
+//
+// Burns a transparent overlay PNG (the card graphic from the draft tool) onto a
+// source video, sized per platform spec. Alpha-correct: both inputs are cast to
+// rgba before the overlay, so the transparent photo area shows the video through
+// — flattened to yuv420p only at the end for H.264. The filtergraph was validated
+// locally for both geometries (9:16 2160x3840, 4:5 2160x2700) before shipping.
+// Drive upload of each output is Checkpoint C; Hub wiring + async callback is
+// Checkpoint D. Does NOT touch /process or /render-hero.
+
+// Spec → output dimensions. Must match SIZES/PLATFORM_SPECS in the draft tool
+// (and renderOverlayPNG's dims) so the overlay aligns 1:1.
+const SPEC_DIMS = {
+  reels:    { w: 2160, h: 3840 },   // 9:16
+  story:    { w: 2160, h: 3840 },   // 9:16
+  tiktok:   { w: 2160, h: 3840 },   // 9:16
+  shorts:   { w: 2160, h: 3840 },   // 9:16
+  igfeed:   { w: 2160, h: 2700 },   // 4:5
+  linkedin: { w: 2160, h: 2700 },   // 4:5
+};
+
+/** Composite an overlay PNG onto a video at w x h (alpha-correct). */
+function compositeOverlay(videoPath, overlayPath, w, h, outputPath) {
+  return new Promise((resolve, reject) => {
+    const filter =
+      `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,format=rgba[bg];` +
+      `[1:v]format=rgba,scale=${w}:${h}[ovl];` +
+      `[bg][ovl]overlay=0:0[comp];` +
+      `[comp]format=yuv420p[out]`;
+    const args = [
+      "-y",
+      "-i", videoPath,
+      "-i", overlayPath,
+      "-filter_complex", filter,
+      "-map", "[out]",
+      "-map", "0:a?",
+      "-c:v", "libx264", "-crf", "20", "-preset", "medium", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", "128k",
+      "-movflags", "+faststart",
+      outputPath,
+    ];
+    const proc = spawn("ffmpeg", args);
+    let stderr = "";
+    proc.stderr.on("data", (d) => { stderr += d.toString(); });
+    proc.on("close", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(`ffmpeg composite exited ${code}: ${stderr.slice(-600)}`)));
+    proc.on("error", reject);
+  });
+}
+
+// POST /composite
+// Body: { videoUrl, overlays: [{ spec, pngBase64 }] }
+// Composites each requested spec's overlay onto the video. Checkpoint C adds the
+// Drive upload of each output (and returns the links); Checkpoint D wires the Hub
+// + the async status/callback. For now it composites and reports per-spec size.
+app.post("/composite", authenticate, async (req, res) => {
+  const { videoUrl, overlays } = req.body || {};
+  if (!videoUrl || !Array.isArray(overlays) || overlays.length === 0) {
+    return res.status(400).json({ error: "videoUrl and a non-empty overlays[] are required" });
+  }
+  for (const o of overlays) {
+    if (!o || !SPEC_DIMS[o.spec] || !o.pngBase64) {
+      return res.status(400).json({ error: `each overlay needs a known spec + pngBase64 (got: ${o && o.spec})` });
+    }
+  }
+
+  let videoPath = null;
+  const tmp = [];
+  try {
+    console.log(`[composite] downloading ${videoUrl}`);
+    videoPath = await downloadToTemp(videoUrl);
+
+    const results = [];
+    for (const { spec, pngBase64 } of overlays) {
+      const { w, h } = SPEC_DIMS[spec];
+      const overlayPath = path.join(os.tmpdir(), `pg-ovl-${spec}-${Date.now()}.png`);
+      const outputPath = path.join(os.tmpdir(), `pg-comp-${spec}-${Date.now()}.mp4`);
+      tmp.push(overlayPath, outputPath);
+      const b64 = String(pngBase64).replace(/^data:image\/\w+;base64,/, "");
+      fs.writeFileSync(overlayPath, Buffer.from(b64, "base64"));
+      console.log(`[composite] ${spec} ${w}x${h}`);
+      await compositeOverlay(videoPath, overlayPath, w, h, outputPath);
+      // Checkpoint C: upload `outputPath` to the athlete's Drive folder here and
+      // attach the resulting Drive link to this result.
+      results.push({ spec, w, h, bytes: fs.statSync(outputPath).size });
+    }
+
+    res.json({ ok: true, results });
+  } catch (err) {
+    console.error(`[composite] Error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  } finally {
+    cleanup(videoPath, ...tmp);
+  }
+});
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => console.log(`FFmpeg worker listening on :${PORT}`));
