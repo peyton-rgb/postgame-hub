@@ -471,14 +471,25 @@ async function postCallback(url, payload) {
   }
 }
 
-app.post("/composite", authenticate, async (req, res) => {
+app.post(
+  "/composite",
+  // PHASE-1 CONFIRM LOG — fires on any arrival, before auth (remove after fix verified).
+  (req, _res, next) => {
+    console.log("[composite] request received", {
+      jobId: req.body && req.body.jobId,
+      specs: req.body && Array.isArray(req.body.overlays) ? req.body.overlays.length : 0,
+    });
+    next();
+  },
+  authenticate,
+  async (req, res) => {
   const { athleteName, videoUrl, overlays, callbackUrl, jobId } = req.body || {};
   if (!athleteName || !videoUrl || !Array.isArray(overlays) || overlays.length === 0) {
     return res.status(400).json({ error: "athleteName, videoUrl and a non-empty overlays[] are required" });
   }
   for (const o of overlays) {
-    if (!o || !SPEC_DIMS[o.spec] || !o.pngBase64) {
-      return res.status(400).json({ error: `each overlay needs a known spec + pngBase64 (got: ${o && o.spec})` });
+    if (!o || !SPEC_DIMS[o.spec] || !o.overlayUrl) {
+      return res.status(400).json({ error: `each overlay needs a known spec + overlayUrl (got: ${o && o.spec})` });
     }
   }
 
@@ -493,12 +504,11 @@ app.post("/composite", authenticate, async (req, res) => {
     videoPath = await downloadToTemp(videoUrl);
 
     const results = [];
-    for (const { spec, pngBase64 } of overlays) {
+    for (const { spec, overlayUrl } of overlays) {
       const { w, h } = SPEC_DIMS[spec];
-      const overlayPath = path.join(os.tmpdir(), `pg-ovl-${spec}-${Date.now()}.png`);
+      const overlayPath = await downloadToTemp(overlayUrl);   // tiny PNG — reuse the same downloader as the video
       const outputPath = path.join(os.tmpdir(), `pg-comp-${spec}-${Date.now()}.mp4`);
       tmp.push(overlayPath, outputPath);
-      fs.writeFileSync(overlayPath, Buffer.from(String(pngBase64).replace(/^data:image\/\w+;base64,/, ""), "base64"));
 
       console.log(`[composite] ${spec} ${w}x${h} — compositing`);
       await compositeOverlay(videoPath, overlayPath, w, h, outputPath);
