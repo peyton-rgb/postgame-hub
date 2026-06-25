@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Readable } from "stream";
 import { createServerSupabase } from "@/lib/supabase-server";
-import { getDriveClient, ensureFolder } from "@/lib/google-drive";
+import { getDriveClient, ensureFolder, trashFilesByName } from "@/lib/google-drive";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -53,7 +53,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "imageBase64 decoded to 0 bytes" }, { status: 400 });
     }
 
-    // 3. Upload the JPEG bytes into the athlete folder.
+    // 3. Replace, don't duplicate: trash any existing card with this exact name
+    //    first, so a re-export refreshes the folder instead of stacking copies.
+    await trashFilesByName(String(filename), folderId);
+
+    // 4. Upload the JPEG bytes into the athlete folder.
     //    Shared Drive → supportsAllDrives:true is REQUIRED here.
     const drive = getDriveClient();
     const res = await drive.files.create({
