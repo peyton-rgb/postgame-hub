@@ -471,7 +471,18 @@ async function postCallback(url, payload) {
   }
 }
 
-app.post("/composite", authenticate, async (req, res) => {
+app.post(
+  "/composite",
+  // PHASE-1 CONFIRM LOG — fires on any arrival, before auth (remove after fix verified).
+  (req, _res, next) => {
+    console.log("[composite] request received", {
+      jobId: req.body && req.body.jobId,
+      specs: req.body && Array.isArray(req.body.overlays) ? req.body.overlays.length : 0,
+    });
+    next();
+  },
+  authenticate,
+  async (req, res) => {
   const { athleteName, videoUrl, overlays, callbackUrl, jobId } = req.body || {};
   if (!athleteName || !videoUrl || !Array.isArray(overlays) || overlays.length === 0) {
     return res.status(400).json({ error: "athleteName, videoUrl and a non-empty overlays[] are required" });
