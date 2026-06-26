@@ -5,40 +5,46 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Anton&display=swap" rel="stylesheet">
 <style>
-:root{--blk:#07070a;--org:#D73F09;--crm:#FAF8F5;}
+:root{--blk:#07070a;--org:#D73F09;--crm:#FAF8F5;--line:rgba(255,255,255,.08);--dim:rgba(255,255,255,.5)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{background:var(--blk);color:var(--crm);font-family:Arial,Helvetica,sans-serif;line-height:1.4}
-.wrap{max-width:720px;margin:0 auto;padding:0 16px 64px}
-.hero{padding:28px 0 18px;border-bottom:1px solid rgba(255,255,255,.08)}
-.hero img{height:26px;margin-bottom:16px;display:block}
-.hero h1{font-family:'Anton',sans-serif;font-size:clamp(44px,13vw,76px);line-height:.86;letter-spacing:1px}
-.hero .sub{font-family:'Bebas Neue',sans-serif;color:var(--org);font-size:16px;letter-spacing:1.5px;margin-top:10px}
-.hero .meta{font-size:13px;opacity:.65;margin-top:5px}
-nav{position:sticky;top:0;z-index:10;display:flex;gap:8px;overflow-x:auto;padding:12px 0;background:rgba(7,7,10,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06)}
-nav a{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.5px;color:var(--crm);text-decoration:none;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 14px;white-space:nowrap}
-nav a.act{background:var(--org);border-color:var(--org)}
-h2{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;margin:30px 0 12px;padding-bottom:4px;border-bottom:2px solid var(--org)}
-.day-head{display:flex;align-items:baseline;gap:10px;border-left:4px solid var(--org);padding-left:10px;margin:26px 0 14px}
-.day-head .d{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px}
-.day-head .dt{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--org)}
-.day-head .ct{font-size:12px;opacity:.5;margin-left:auto}
-.card{display:flex;align-items:center;gap:14px;padding:11px;margin-bottom:10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
-.avatar{width:58px;height:58px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.06);flex-shrink:0}
-.card.ph .avatar{border:1px solid var(--org)}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px 56px}
+a.link{color:var(--org);text-decoration:none}
+a.link:active{opacity:.7}
+/* hero */
+.hero{padding:24px 0 16px;border-bottom:1px solid var(--line)}
+.hero img{height:24px;margin-bottom:14px;display:block}
+.hero h1{font-family:'Anton',sans-serif;font-size:clamp(38px,10.5vw,60px);line-height:.88;letter-spacing:1px}
+.hero .sub{font-family:'Bebas Neue',sans-serif;color:var(--org);font-size:15px;letter-spacing:1.5px;margin-top:9px}
+.hero .meta{font-size:13px;opacity:.7;margin-top:6px}
+.hero .loc{font-size:13px;margin-top:4px}
+.hero .loc b{font-weight:normal;opacity:.7}
+.note{font-size:11px;opacity:.5;margin-top:8px}
+/* section heads */
+h2{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:30px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+/* team / crew */
+.lead{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;color:var(--org);margin:16px 0 6px}
+.crew{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.crew .nm{font-weight:bold;font-size:14px}
+.crew .ph2{font-size:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:.5px}
+.crew .ph2.empty{color:var(--dim)}
+/* schedule */
+.day-head{display:flex;align-items:baseline;gap:10px;background:var(--org);color:#fff;padding:6px 11px;margin:24px 0 0}
+.day-head .d{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px}
+.day-head .dt{font-family:'Bebas Neue',sans-serif;font-size:15px;opacity:.9}
+.day-head .ct{font-size:11px;opacity:.85;margin-left:auto;letter-spacing:.5px}
+.card{display:flex;align-items:center;gap:13px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.avatar{width:52px;height:52px;border-radius:4px;object-fit:cover;background:#15151a;flex-shrink:0}
+.card.ph .avatar{outline:1px solid var(--org);outline-offset:-1px}
 .info{flex:1;min-width:0}
 .name{font-size:15px;font-weight:bold}
 .school{font-size:12.5px;opacity:.6;margin-top:2px}
-.time{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;background:var(--org);color:#fff;padding:5px 11px;border-radius:8px;white-space:nowrap}
-.time.tbd{background:transparent;border:1px solid var(--org);color:var(--org)}
-.crew{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 14px;margin-bottom:8px;border-radius:10px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}
-.crew .nm{font-weight:bold;font-size:14px}
-.crew .ph2{font-size:13px;color:var(--org);font-family:'Bebas Neue',sans-serif;letter-spacing:.5px}
-.crew .ph2.empty{color:rgba(255,255,255,.3)}
-.lead{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--org);margin:14px 0 8px}
-.needs{background:rgba(215,63,9,.08);border:1px solid rgba(215,63,9,.32);border-radius:14px;padding:16px;font-size:13px;margin-top:14px}
-.needs b{color:var(--org);display:block;margin:10px 0 3px;font-size:12px;letter-spacing:.5px}
+.time{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;color:var(--crm);white-space:nowrap}
+.time.tbd{color:var(--org)}
+/* needs attention */
+.needs{background:#0d0d11;border:1px solid var(--org);padding:15px;font-size:13px;margin-top:12px}
+.needs b{color:var(--org);display:block;margin:11px 0 3px;font-size:11px;letter-spacing:1px}
 .needs b:first-child{margin-top:0}
-.note{font-size:11px;opacity:.55;margin:6px 0 0}
 </style></head>
 <body><div class="wrap">
 
@@ -47,10 +53,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;margi
   <h1>RUN OF<br>SHOW</h1>
   <div class="sub">RAISING CANE'S &times; POSTGAME — DALLAS SHOOT WEEK</div>
   <div class="meta">June 29 – July 3, 2026 &nbsp;·&nbsp; Dallas, TX (DFW / DAL)</div>
+  <div class="loc"><b>Studio 1 —</b> <a class="link" href="https://www.google.com/maps/search/?api=1&query=2401+S+Ervay+St+Suite+206+Dallas+TX+75215">SC Pictures</a> &nbsp;·&nbsp; <b>Studio 2 —</b> <a class="link" href="https://www.google.com/maps/search/?api=1&query=1107+Dragon+Street+Dallas+TX+75207">Heights Studio</a></div>
   <div class="note">Production reference — compensation details intentionally excluded.</div>
 </header>
 
-<nav id="nav"></nav>
 <h2>TEAM &amp; CREW</h2>
 <div id="team"></div>
 <h2>SHOOT SCHEDULE</h2>
@@ -61,8 +67,17 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;margi
 </div>
 <script>
 const TEAM={
- postgame:[["Peyton",""],["Desmond Lindsay",""],["Dominick Madonna",""],["Andreas Cassanova",""],["Caleb Keisel",""]],
- crew:[["Andres",""],["Max",""],["Homero",""]]
+ postgame:[
+  ["Peyton Jula","+19415678565"],
+  ["Desmond Lindsay","+19412284257"],
+  ["Dominick Madonna","+13525307027"],
+  ["Andreas Cassanova","+19545524420"],
+  ["Caleb Keisel","+19417690839"]
+ ],
+ crew:[
+  ["Max Thomason","+16417772514"],
+  ["Homero Amado","+12103897737"]
+ ]
 };
 const DAYS=[
  {id:"mon",d:"MONDAY",dt:"JUNE 29",a:[
@@ -91,16 +106,16 @@ const DAYS=[
   ["3:15 PM","Addy Brown","UCLA"]]}
 ];
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
-// nav
-document.getElementById("nav").innerHTML=DAYS.map(x=>`<a href="#${x.id}">${x.d.slice(0,3)}</a>`).join("");
-// team
-const row=(n,p)=>`<div class="crew"><span class="nm">${n}</span><span class="ph2 ${p?"":"empty"}">${p||"—"}</span></div>`;
+// p is E.164 (e.g. "+19415678565"); href uses it raw, display formats the last 10 digits
+const fmt=p=>{const d=p.replace(/\D/g,"").slice(-10);return d.length===10?`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`:p;};
+// team — phone is the only tappable element per row (tel: link, orange); blank => dim em-dash
+const row=(n,p)=>`<div class="crew"><span class="nm">${n}</span>${p?`<a class="link ph2" href="tel:${p}">${fmt(p)}</a>`:`<span class="ph2 empty">—</span>`}</div>`;
 document.getElementById("team").innerHTML=
  `<div class="lead">POSTGAME TEAM</div>`+TEAM.postgame.map(r=>row(r[0],r[1])).join("")+
  `<div class="lead">PRODUCTION CREW</div>`+TEAM.crew.map(r=>row(r[0],r[1])).join("");
 // schedule
 document.getElementById("sched").innerHTML=DAYS.map(x=>
- `<div class="day-head" id="${x.id}"><span class="d">${x.d}</span><span class="dt">${x.dt}</span><span class="ct">${x.a.length} athletes</span></div>`+
+ `<div class="day-head"><span class="d">${x.d}</span><span class="dt">${x.dt}</span><span class="ct">${x.a.length} ATHLETES</span></div>`+
  x.a.map(p=>`<div class="card${p[3]?" ph":""}"><img class="avatar" src="run-of-show/heads/${slug(p[1])}.png" alt="${p[1]}" loading="lazy"><div class="info"><div class="name">${p[1]}</div><div class="school">${p[2]}</div></div><span class="time${p[0]==="TBD"?" tbd":""}">${p[0]}</span></div>`).join("")
 ).join("");
 // needs attention
