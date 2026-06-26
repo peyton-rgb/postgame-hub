@@ -53,7 +53,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:
   <h1>RUN OF<br>SHOW</h1>
   <div class="sub">RAISING CANE'S &times; POSTGAME — DALLAS SHOOT WEEK</div>
   <div class="meta">June 29 – July 3, 2026 &nbsp;·&nbsp; Dallas, TX (DFW / DAL)</div>
-  <div class="loc"><b>Studio:</b> <a class="link" href="#">Add studio name / address</a></div>
+  <div class="loc"><b>Studio 1 —</b> <a class="link" href="https://www.google.com/maps/search/?api=1&query=2401+S+Ervay+St+Suite+206+Dallas+TX+75215">SC Pictures</a> &nbsp;·&nbsp; <b>Studio 2 —</b> <a class="link" href="https://www.google.com/maps/search/?api=1&query=1107+Dragon+Street+Dallas+TX+75207">Heights Studio</a></div>
   <div class="note">Production reference — compensation details intentionally excluded.</div>
 </header>
 
@@ -67,8 +67,17 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:
 </div>
 <script>
 const TEAM={
- postgame:[["Peyton",""],["Desmond Lindsay",""],["Dominick Madonna",""],["Andreas Cassanova",""],["Caleb Keisel",""]],
- crew:[["Andres",""],["Max",""],["Homero",""]]
+ postgame:[
+  ["Peyton Jula","+19415678565"],
+  ["Desmond Lindsay","+19412284257"],
+  ["Dominick Madonna","+13525307027"],
+  ["Andreas Cassanova","+19545524420"],
+  ["Caleb Keisel","+19417690839"]
+ ],
+ crew:[
+  ["Max Thomason","+16417772514"],
+  ["Homero Amado","+12103897737"]
+ ]
 };
 const DAYS=[
  {id:"mon",d:"MONDAY",dt:"JUNE 29",a:[
@@ -97,9 +106,10 @@ const DAYS=[
   ["3:15 PM","Addy Brown","UCLA"]]}
 ];
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
-const tel=p=>p?`+1${p.replace(/\D/g,"")}`:"";
+// p is E.164 (e.g. "+19415678565"); href uses it raw, display formats the last 10 digits
+const fmt=p=>{const d=p.replace(/\D/g,"").slice(-10);return d.length===10?`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`:p;};
 // team — phone is the only tappable element per row (tel: link, orange); blank => dim em-dash
-const row=(n,p)=>`<div class="crew"><span class="nm">${n}</span>${p?`<a class="link ph2" href="tel:${tel(p)}">${p}</a>`:`<span class="ph2 empty">—</span>`}</div>`;
+const row=(n,p)=>`<div class="crew"><span class="nm">${n}</span>${p?`<a class="link ph2" href="tel:${p}">${fmt(p)}</a>`:`<span class="ph2 empty">—</span>`}</div>`;
 document.getElementById("team").innerHTML=
  `<div class="lead">POSTGAME TEAM</div>`+TEAM.postgame.map(r=>row(r[0],r[1])).join("")+
  `<div class="lead">PRODUCTION CREW</div>`+TEAM.crew.map(r=>row(r[0],r[1])).join("");
