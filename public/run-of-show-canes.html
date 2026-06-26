@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run of Show — Raising Cane's × Postgame</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Anton&display=swap" rel="stylesheet">
+<style>
+:root{--blk:#07070a;--org:#D73F09;--crm:#FAF8F5;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--blk);color:var(--crm);font-family:Arial,Helvetica,sans-serif;line-height:1.4}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px 64px}
+.hero{padding:28px 0 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.hero img{height:26px;margin-bottom:16px;display:block}
+.hero h1{font-family:'Anton',sans-serif;font-size:clamp(44px,13vw,76px);line-height:.86;letter-spacing:1px}
+.hero .sub{font-family:'Bebas Neue',sans-serif;color:var(--org);font-size:16px;letter-spacing:1.5px;margin-top:10px}
+.hero .meta{font-size:13px;opacity:.65;margin-top:5px}
+nav{position:sticky;top:0;z-index:10;display:flex;gap:8px;overflow-x:auto;padding:12px 0;background:rgba(7,7,10,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06)}
+nav a{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.5px;color:var(--crm);text-decoration:none;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 14px;white-space:nowrap}
+nav a.act{background:var(--org);border-color:var(--org)}
+h2{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;margin:30px 0 12px;padding-bottom:4px;border-bottom:2px solid var(--org)}
+.day-head{display:flex;align-items:baseline;gap:10px;border-left:4px solid var(--org);padding-left:10px;margin:26px 0 14px}
+.day-head .d{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px}
+.day-head .dt{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--org)}
+.day-head .ct{font-size:12px;opacity:.5;margin-left:auto}
+.card{display:flex;align-items:center;gap:14px;padding:11px;margin-bottom:10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
+.avatar{width:58px;height:58px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.06);flex-shrink:0}
+.card.ph .avatar{border:1px solid var(--org)}
+.info{flex:1;min-width:0}
+.name{font-size:15px;font-weight:bold}
+.school{font-size:12.5px;opacity:.6;margin-top:2px}
+.time{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;background:var(--org);color:#fff;padding:5px 11px;border-radius:8px;white-space:nowrap}
+.time.tbd{background:transparent;border:1px solid var(--org);color:var(--org)}
+.crew{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 14px;margin-bottom:8px;border-radius:10px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}
+.crew .nm{font-weight:bold;font-size:14px}
+.crew .ph2{font-size:13px;color:var(--org);font-family:'Bebas Neue',sans-serif;letter-spacing:.5px}
+.crew .ph2.empty{color:rgba(255,255,255,.3)}
+.lead{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--org);margin:14px 0 8px}
+.needs{background:rgba(215,63,9,.08);border:1px solid rgba(215,63,9,.32);border-radius:14px;padding:16px;font-size:13px;margin-top:14px}
+.needs b{color:var(--org);display:block;margin:10px 0 3px;font-size:12px;letter-spacing:.5px}
+.needs b:first-child{margin-top:0}
+.note{font-size:11px;opacity:.55;margin:6px 0 0}
+</style></head>
+<body><div class="wrap">
+
+<header class="hero">
+  <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png" alt="Postgame">
+  <h1>RUN OF<br>SHOW</h1>
+  <div class="sub">RAISING CANE'S &times; POSTGAME — DALLAS SHOOT WEEK</div>
+  <div class="meta">June 29 – July 3, 2026 &nbsp;·&nbsp; Dallas, TX (DFW / DAL)</div>
+  <div class="note">Production reference — compensation details intentionally excluded.</div>
+</header>
+
+<nav id="nav"></nav>
+<h2>TEAM &amp; CREW</h2>
+<div id="team"></div>
+<h2>SHOOT SCHEDULE</h2>
+<div id="sched"></div>
+<h2>NEEDS ATTENTION</h2>
+<div id="needs"></div>
+
+</div>
+<script>
+const TEAM={
+ postgame:[["Peyton",""],["Desmond Lindsay",""],["Dominick Madonna",""],["Andreas Cassanova",""],["Caleb Keisel",""]],
+ crew:[["Andres",""],["Max",""],["Homero",""]]
+};
+const DAYS=[
+ {id:"mon",d:"MONDAY",dt:"JUNE 29",a:[
+  ["9:00 AM","Ahnay Adams","Miami (FL)"],["10:00 AM","Kennedy Lee","San Diego State"],
+  ["10:30 AM","Ian Jackson","St. John's"],["11:30 AM","Nylah Wilson","West Virginia",1],
+  ["12:30 PM","Taryn Sides","Kansas State"],["1:15 PM","Hannah Hidalgo","Notre Dame"],
+  ["2:00 PM","Wes Enis","South Florida"],["2:45 PM","Mercy Miller","Houston"],
+  ["4:30 PM","Daniel Jacobsen","Purdue"]]},
+ {id:"tue",d:"TUESDAY",dt:"JUNE 30",a:[
+  ["9:45 AM","Karter Knox","Louisville"],["10:30 AM","Cruz Davis","Texas Tech",1],
+  ["1:15 PM","Janae Kent","Texas A&M"],["6:00 PM","Connor Essegian","Nebraska"]]},
+ {id:"wed",d:"WEDNESDAY",dt:"JULY 1",a:[
+  ["9:00 AM","Taylor Charles","Princeton"],["9:45 AM","Kennedy Smith","USC"],
+  ["12:30 PM","John Mobley Jr","Ohio State"],["1:15 PM","Jordana Acodio","Georgia"],
+  ["2:00 PM","Jermaine O'Neil Jr","SMU"],["2:45 PM","Billy Richmond","Arkansas"]]},
+ {id:"thu",d:"THURSDAY",dt:"JULY 2",a:[
+  ["9:00 AM","Blake Buchanan","Iowa State"],["11:30 AM","Isaac Williams","Baylor"],
+  ["12:30 PM","Jalynn Bristow","Texas Tech"],["1:15 PM","Boogie Fland","Florida"],
+  ["2:00 PM","Madison Booker","Texas"],["3:15 PM","Taylen Kinney","Kansas",1],
+  ["TBD","Kylee Kitts","Ohio State"]]},
+ {id:"fri",d:"FRIDAY",dt:"JULY 3",a:[
+  ["9:00 AM","KJ Lewis","USC",1],["9:45 AM","Zoom Diallo","Kentucky"],
+  ["10:30 AM","Amari Whiting","Oklahoma State"],["11:30 AM","Tajianna Roberts","Louisville"],
+  ["12:30 PM","Nic Anderson","Loyola Chicago"],["1:15 PM","Derek Dixon","North Carolina"],
+  ["2:00 PM","Acaden Lewis","Miami (FL)"],["2:45 PM","Trey Autry","Wisconsin",1],
+  ["3:15 PM","Addy Brown","UCLA"]]}
+];
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
+// nav
+document.getElementById("nav").innerHTML=DAYS.map(x=>`<a href="#${x.id}">${x.d.slice(0,3)}</a>`).join("");
+// team
+const row=(n,p)=>`<div class="crew"><span class="nm">${n}</span><span class="ph2 ${p?"":"empty"}">${p||"—"}</span></div>`;
+document.getElementById("team").innerHTML=
+ `<div class="lead">POSTGAME TEAM</div>`+TEAM.postgame.map(r=>row(r[0],r[1])).join("")+
+ `<div class="lead">PRODUCTION CREW</div>`+TEAM.crew.map(r=>row(r[0],r[1])).join("");
+// schedule
+document.getElementById("sched").innerHTML=DAYS.map(x=>
+ `<div class="day-head" id="${x.id}"><span class="d">${x.d}</span><span class="dt">${x.dt}</span><span class="ct">${x.a.length} athletes</span></div>`+
+ x.a.map(p=>`<div class="card${p[3]?" ph":""}"><img class="avatar" src="run-of-show/heads/${slug(p[1])}.png" alt="${p[1]}" loading="lazy"><div class="info"><div class="name">${p[1]}</div><div class="school">${p[2]}</div></div><span class="time${p[0]==="TBD"?" tbd":""}">${p[0]}</span></div>`).join("")
+).join("");
+// needs attention
+document.getElementById("needs").innerHTML=`<div class="needs">
+<b>PHOTOS TO SOURCE (drop a headshot in)</b>Nylah Wilson · Cruz Davis · Taylen Kinney · KJ Lewis · Trey Autry
+<b>SCHOOL UPDATED FROM WORKBOOK (confirm)</b>Wes Enis → South Florida (was Creighton) · Amari Whiting → Oklahoma State (was Iowa) · Derek Dixon → North Carolina (was Arizona)
+<b>HEADSHOT SHOWS PRIOR TEAM (right athlete, last season's jersey)</b>Karter Knox (Arkansas→Louisville) · Jordana Acodio (Seton Hall→Georgia) · Zoom Diallo (Washington→Kentucky) · Acaden Lewis (Villanova→Miami)
+<b>SCHEDULING</b>Kylee Kitts (Thu) — time not set · Janae Kent (Tue 1:15) — flight dates say 7/3, confirm · Madison Booker (Thu 2:00) — awaiting confirmation · Acaden Lewis (Fri 2:00) — itinerary on hold, no inbound · Mackenzie Mgbako (Texas A&M) — choosing a new shoot day, not yet slotted</div>`;
+</script>
+</body></html>
