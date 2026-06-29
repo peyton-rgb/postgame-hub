@@ -54,11 +54,6 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:21px;letter-spacing:2px;text-tr
 .ath .t{margin-left:auto;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;color:var(--crm);background:rgba(255,255,255,.07);padding:5px 11px;border-radius:5px;white-space:nowrap}
 .ath .t.tbd{background:transparent;border:1px solid var(--org);color:var(--org)}
 
-/* NEEDS ATTENTION */
-.needs{border:1px solid rgba(215,63,9,.35);background:rgba(215,63,9,.06);padding:16px 18px;margin-top:16px;font-size:13px;line-height:1.5}
-.needs b{display:block;color:var(--org);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin:13px 0 3px}
-.needs b:first-child{margin-top:0}
-.foot{font-size:11px;color:var(--dim);margin-top:22px;text-align:center}
 
 /* DESKTOP ENHANCE */
 @media (min-width:560px){
@@ -95,11 +90,6 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:21px;letter-spacing:2px;text-tr
 <h2>Shoot Schedule</h2>
 <div id="sched"></div>
 
-<h2>Needs Attention</h2>
-<div id="needs"></div>
-
-<div class="foot">Production reference — compensation details intentionally excluded.</div>
-
 </div>
 <script>
 const TEAM={
@@ -126,11 +116,5 @@ document.getElementById("sched").innerHTML=DAYS.map(x=>
  `<div class="day"><span class="dow">${x.d}</span><span class="date">${x.dt}</span><span class="cnt">${x.a.length} Athletes</span></div>`+
  x.a.map(a=>`<div class="ath${a[3]?" ph":""}"><img src="run-of-show/heads/${slug(a[1])}.png" alt="${a[1]}" loading="lazy"><div class="info"><div class="nm">${a[1]}</div><div class="sch">${a[2]}</div></div><span class="t${a[0]==="TBD"?" tbd":""}">${a[0]}</span></div>`).join("")
 ).join("");
-
-document.getElementById("needs").innerHTML=`<div class="needs">
-<b>Photos to source (drop a headshot in)</b>Cruz Davis · Trey Autry
-<b>School updated from workbook (confirm)</b>Wes Enis → South Florida (was Creighton) · Amari Whiting → Oklahoma State (was Iowa) · Derek Dixon → North Carolina (was Arizona)
-<b>Headshot shows prior team (right athlete, last season's jersey)</b>Karter Knox (Arkansas→Louisville) · Jordana Acodio (Seton Hall→Georgia) · Zoom Diallo (Washington→Kentucky) · Acaden Lewis (Villanova→Miami)
-<b>Scheduling</b>Janae Kent (Tue 1:15) — flight dates say 7/3, confirm · Madison Booker (Thu 2:00) — awaiting confirmation · Acaden Lewis (Fri 2:00) — itinerary on hold, no inbound</div>`;
 </script>
 </body></html>
