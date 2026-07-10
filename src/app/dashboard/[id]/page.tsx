@@ -1796,10 +1796,20 @@ export default function CampaignEditor() {
     };
 
     const newPublished = !campaign.published;
-    const updatePayload: { published: boolean; settings: typeof newSettings; thumbnail_url?: string } = {
+    const updatePayload: { published: boolean; status?: string; settings: typeof newSettings; thumbnail_url?: string } = {
       published: newPublished,
       settings: newSettings,
     };
+
+    // Keep status in sync with the publish toggle — the public site filters on
+    // status, not the published boolean. Special case: never clobber an archived
+    // recap on unpublish; unarchiving is done from the Recaps dashboard.
+    const currentStatus = (campaign as Campaign & { status?: string }).status;
+    if (newPublished) {
+      updatePayload.status = 'published';
+    } else if (currentStatus !== 'archived') {
+      updatePayload.status = 'draft';
+    }
 
     // When publishing a recap with no card photo yet, fall back to its first
     // image so nothing ever goes live blank. Never touches the photo on unpublish
