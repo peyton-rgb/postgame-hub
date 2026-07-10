@@ -439,6 +439,8 @@ export default function RecapsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusTab, setStatusTab] = useState<RecapStatus>('published');
+  const [brandFilter, setBrandFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'az' | 'brand'>('newest');
 
   useEffect(() => {
     async function fetchRecaps() {
@@ -466,6 +468,18 @@ export default function RecapsPage() {
     return counts;
   }, [recaps]);
 
+  // Brand dropdown options — distinct brands present in the loaded recaps,
+  // keyed by brand_id, labelled by brand.name, sorted A–Z.
+  const brandOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of recaps) {
+      if (r.brand?.id) map.set(r.brand.id, r.brand.name);
+    }
+    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [recaps]);
+
   // Filtered results
   const filtered = useMemo(() => {
     return recaps.filter((r) => {
@@ -474,9 +488,34 @@ export default function RecapsPage() {
         r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.client_name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = normalizeStatus(r.status) === statusTab;
-      return matchesSearch && matchesStatus;
+      const matchesBrand = brandFilter === 'all' || r.brand?.id === brandFilter;
+      return matchesSearch && matchesStatus && matchesBrand;
     });
-  }, [recaps, searchTerm, statusTab]);
+  }, [recaps, searchTerm, statusTab, brandFilter]);
+
+  // Sorted view of the filtered list
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    switch (sortBy) {
+      case 'oldest':
+        return list.sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      case 'az':
+        return list.sort((a, b) => a.name.localeCompare(b.name));
+      case 'brand':
+        return list.sort((a, b) => {
+          const brandCmp = (a.brand?.name || '').localeCompare(b.brand?.name || '');
+          if (brandCmp !== 0) return brandCmp;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      case 'newest':
+      default:
+        return list.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+    }
+  }, [filtered, sortBy]);
 
   return (
     <DashboardContent>
@@ -534,6 +573,28 @@ export default function RecapsPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#D73F09]/50 transition-colors"
         />
+        <select
+          value={brandFilter}
+          onChange={(e) => setBrandFilter(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/80 focus:outline-none focus:border-[#D73F09]/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white"
+        >
+          <option value="all">All brands</option>
+          {brandOptions.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/80 focus:outline-none focus:border-[#D73F09]/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white"
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="az">A–Z</option>
+          <option value="brand">By brand</option>
+        </select>
       </div>
 
       {/* Loading state */}
@@ -556,25 +617,25 @@ export default function RecapsPage() {
       )}
 
       {/* Results grid */}
-      {!loading && filtered.length > 0 && (
+      {!loading && sorted.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((recap) => (
+          {sorted.map((recap) => (
             <RecapCard key={recap.id} recap={recap} />
           ))}
         </div>
       )}
 
       {/* Empty state */}
-      {!loading && filtered.length === 0 && (
+      {!loading && sorted.length === 0 && (
         <div className="text-center py-16">
           <div className="text-white/20 text-lg font-semibold mb-2">
-            {searchTerm
+            {searchTerm || brandFilter !== 'all'
               ? 'No matching recaps found'
               : `No ${statusTab === 'draft' ? 'drafts' : statusTab === 'archived' ? 'archived recaps' : 'published recaps'} yet`}
           </div>
           <p className="text-sm text-white/15">
-            {searchTerm
-              ? 'Try adjusting your search'
+            {searchTerm || brandFilter !== 'all'
+              ? 'Try adjusting your search or filters'
               : statusTab === 'archived'
               ? 'Archived recaps leave the public site but stay in the brand portal'
               : 'Campaign recaps will appear here as campaigns are completed'}
