@@ -265,7 +265,16 @@ function CardPhotoPicker({
 
 // ---- Recap Card ----
 
-function RecapCard({ recap }: { recap: CampaignRecap }) {
+function RecapCard({
+  recap,
+  onArchive,
+  onUnarchive,
+}: {
+  recap: CampaignRecap;
+  onArchive: (r: CampaignRecap) => void;
+  onUnarchive: (r: CampaignRecap) => void;
+}) {
+  const status = normalizeStatus(recap.status);
   const brandColor = recap.brand?.primary_color || '#D73F09';
   const brandLogo = recap.brand?.logo_url || recap.client_logo_url;
   const initials = recap.client_name
@@ -277,6 +286,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
 
   const [thumbnailUrl, setThumbnailUrl] = useState(recap.thumbnail_url);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   return (
     <div className="group bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300">
@@ -338,6 +348,49 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
             <circle cx="12" cy="13" r="3" />
           </svg>
         </button>
+
+        {/* Archive trigger — published cards only */}
+        {status === 'published' && (
+          <button
+            onClick={() => setConfirmArchive(true)}
+            aria-label="Archive recap"
+            title="Archive"
+            className="absolute bottom-3 left-3 w-8 h-8 rounded-lg bg-black/60 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/70 opacity-0 group-hover:opacity-100 hover:bg-black/80 hover:text-white hover:border-[#D73F09]/50 transition-all"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="4" width="20" height="4" rx="1" />
+              <path d="M4 8v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+              <path d="M10 12h4" />
+            </svg>
+          </button>
+        )}
+
+        {/* Inline archive confirm */}
+        {confirmArchive && (
+          <div className="absolute inset-0 z-10 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
+            <p className="text-xs text-white/80 leading-relaxed mb-3">
+              Archive <span className="font-semibold text-white">{recap.name}</span>? It leaves
+              the public site and this grid but stays in the brand&apos;s portal.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmArchive(false)}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmArchive(false);
+                  onArchive(recap);
+                }}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-[#D73F09] text-white hover:bg-[#D73F09]/85 transition-all"
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <CardPhotoPicker
@@ -416,7 +469,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
           >
             Edit
           </Link>
-          {normalizeStatus(recap.status) === 'published' && (
+          {status === 'published' && (
             <Link
               href={`/recap/${recap.slug}`}
               target="_blank"
@@ -425,6 +478,14 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
             >
               View Live
             </Link>
+          )}
+          {status === 'archived' && (
+            <button
+              onClick={() => onUnarchive(recap)}
+              className="flex-1 text-center text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-[#D73F09]/10 text-[#D73F09] hover:bg-[#D73F09]/20 transition-all"
+            >
+              Unarchive
+            </button>
           )}
         </div>
       </div>
@@ -516,6 +577,50 @@ export default function RecapsPage() {
         );
     }
   }, [filtered, sortBy]);
+
+  // Archive tab: group the visible archived recaps under brand headers,
+  // preserving the active sort order within each group, groups A–Z.
+  const archiveGroups = useMemo(() => {
+    if (statusTab !== 'archived') return [];
+    const groups = new Map<
+      string,
+      { key: string; name: string; logo: string | null; color: string; recaps: CampaignRecap[] }
+    >();
+    for (const r of sorted) {
+      const key = r.brand?.id || `client:${r.client_name}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          name: r.brand?.name || r.client_name,
+          logo: r.brand?.logo_url || r.client_logo_url,
+          color: r.brand?.primary_color || '#D73F09',
+          recaps: [],
+        });
+      }
+      groups.get(key)!.recaps.push(r);
+    }
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [statusTab, sorted]);
+
+  // Optimistically flip a recap's status, then persist. Revert on error.
+  async function setRecapStatus(recap: CampaignRecap, newStatus: RecapStatus) {
+    const prevStatus = recap.status;
+    setRecaps((rs) => rs.map((r) => (r.id === recap.id ? { ...r, status: newStatus } : r)));
+    const supabase = createBrowserSupabase();
+    const { error } = await supabase
+      .from('campaign_recaps')
+      .update({ status: newStatus })
+      .eq('id', recap.id);
+    if (error) {
+      setRecaps((rs) => rs.map((r) => (r.id === recap.id ? { ...r, status: prevStatus } : r)));
+      alert(
+        `Failed to ${newStatus === 'archived' ? 'archive' : 'unarchive'} "${recap.name}": ${error.message}`
+      );
+    }
+  }
+
+  const handleArchive = (r: CampaignRecap) => setRecapStatus(r, 'archived');
+  const handleUnarchive = (r: CampaignRecap) => setRecapStatus(r, 'published');
 
   return (
     <DashboardContent>
@@ -616,11 +721,61 @@ export default function RecapsPage() {
         </div>
       )}
 
-      {/* Results grid */}
-      {!loading && sorted.length > 0 && (
+      {/* Results grid — flat for Published/Drafts */}
+      {!loading && sorted.length > 0 && statusTab !== 'archived' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {sorted.map((recap) => (
-            <RecapCard key={recap.id} recap={recap} />
+            <RecapCard
+              key={recap.id}
+              recap={recap}
+              onArchive={handleArchive}
+              onUnarchive={handleUnarchive}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Archive tab — grouped under brand headers */}
+      {!loading && sorted.length > 0 && statusTab === 'archived' && (
+        <div className="space-y-10">
+          {archiveGroups.map((group) => (
+            <section key={group.key}>
+              {/* Brand header */}
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/[0.06]">
+                {group.logo ? (
+                  <img
+                    src={group.logo}
+                    alt={group.name}
+                    className="w-8 h-8 object-contain rounded"
+                  />
+                ) : (
+                  <div
+                    className="w-8 h-8 rounded flex items-center justify-center"
+                    style={{ backgroundColor: `${group.color}20` }}
+                  >
+                    <span className="text-[10px] font-bold" style={{ color: group.color }}>
+                      {group.name.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <h2 className="d text-2xl text-white leading-none">{group.name}</h2>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/40">
+                  {group.recaps.length}
+                </span>
+              </div>
+
+              {/* Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.recaps.map((recap) => (
+                  <RecapCard
+                    key={recap.id}
+                    recap={recap}
+                    onArchive={handleArchive}
+                    onUnarchive={handleUnarchive}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
