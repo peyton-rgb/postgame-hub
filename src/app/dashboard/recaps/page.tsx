@@ -43,18 +43,40 @@ interface CampaignRecap {
   } | null;
 }
 
+// ---- Status ----
+
+type RecapStatus = 'published' | 'draft' | 'archived';
+
+// Normalize whatever is in the DB to one of the three known statuses.
+function normalizeStatus(status: string | null | undefined): RecapStatus {
+  if (status === 'published' || status === 'archived') return status;
+  return 'draft';
+}
+
+const STATUS_STYLES: Record<RecapStatus, { label: string; className: string }> = {
+  published: {
+    label: 'Published',
+    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  },
+  draft: {
+    label: 'Draft',
+    className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
+  },
+  archived: {
+    label: 'Archived',
+    className: 'bg-white/10 text-white/50 border-white/15',
+  },
+};
+
 // ---- Status Badge ----
 
-function StatusBadge({ published }: { published: boolean }) {
+function StatusBadge({ status }: { status: RecapStatus }) {
+  const s = STATUS_STYLES[status];
   return (
     <span
-      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-        published
-          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
-          : 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20'
-      }`}
+      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${s.className}`}
     >
-      {published ? 'Published' : 'Draft'}
+      {s.label}
     </span>
   );
 }
@@ -292,7 +314,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
 
         {/* Status badge overlay */}
         <div className="absolute top-3 right-3">
-          <StatusBadge published={recap.published} />
+          <StatusBadge status={normalizeStatus(recap.status)} />
         </div>
 
         {/* Featured badge */}
@@ -394,7 +416,7 @@ function RecapCard({ recap }: { recap: CampaignRecap }) {
           >
             Edit
           </Link>
-          {recap.published && (
+          {normalizeStatus(recap.status) === 'published' && (
             <Link
               href={`/recap/${recap.slug}`}
               target="_blank"
@@ -416,7 +438,7 @@ export default function RecapsPage() {
   const [recaps, setRecaps] = useState<CampaignRecap[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [publishFilter, setPublishFilter] = useState<'all' | 'published' | 'drafts'>('published');
+  const [statusTab, setStatusTab] = useState<RecapStatus>('published');
 
   useEffect(() => {
     async function fetchRecaps() {
@@ -437,6 +459,13 @@ export default function RecapsPage() {
     fetchRecaps();
   }, []);
 
+  // Count pills per status tab (over the full loaded list)
+  const statusCounts = useMemo(() => {
+    const counts: Record<RecapStatus, number> = { published: 0, draft: 0, archived: 0 };
+    for (const r of recaps) counts[normalizeStatus(r.status)]++;
+    return counts;
+  }, [recaps]);
+
   // Filtered results
   const filtered = useMemo(() => {
     return recaps.filter((r) => {
@@ -444,12 +473,10 @@ export default function RecapsPage() {
         !searchTerm ||
         r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.client_name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesPublish =
-        publishFilter === 'all' ||
-        (publishFilter === 'published' ? r.published : !r.published);
-      return matchesSearch && matchesPublish;
+      const matchesStatus = normalizeStatus(r.status) === statusTab;
+      return matchesSearch && matchesStatus;
     });
-  }, [recaps, searchTerm, publishFilter]);
+  }, [recaps, searchTerm, statusTab]);
 
   return (
     <DashboardContent>
@@ -464,6 +491,40 @@ export default function RecapsPage() {
         </p>
       </div>
 
+      {/* Status tabs */}
+      <div className="flex gap-1 mb-5 border-b border-white/[0.06]">
+        {([
+          { value: 'published', label: 'Published' },
+          { value: 'draft', label: 'Drafts' },
+          { value: 'archived', label: 'Archive' },
+        ] as const).map((tab) => {
+          const active = statusTab === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setStatusTab(tab.value)}
+              className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                active ? 'text-[#D73F09]' : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              {tab.label}
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                  active
+                    ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
+                    : 'bg-white/5 border-white/10 text-white/40'
+                }`}
+              >
+                {statusCounts[tab.value]}
+              </span>
+              {active && (
+                <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#D73F09] rounded-full" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Search + filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <input
@@ -473,25 +534,6 @@ export default function RecapsPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#D73F09]/50 transition-colors"
         />
-        <div className="flex gap-2 flex-wrap">
-          {([
-            { value: 'all', label: 'All' },
-            { value: 'published', label: 'Published' },
-            { value: 'drafts', label: 'Drafts' },
-          ] as const).map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setPublishFilter(opt.value)}
-              className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${
-                publishFilter === opt.value
-                  ? 'bg-[#D73F09]/15 border-[#D73F09]/30 text-[#D73F09]'
-                  : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Loading state */}
@@ -526,13 +568,15 @@ export default function RecapsPage() {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
           <div className="text-white/20 text-lg font-semibold mb-2">
-            {searchTerm || publishFilter !== 'all'
+            {searchTerm
               ? 'No matching recaps found'
-              : 'No campaign recaps yet'}
+              : `No ${statusTab === 'draft' ? 'drafts' : statusTab === 'archived' ? 'archived recaps' : 'published recaps'} yet`}
           </div>
           <p className="text-sm text-white/15">
-            {searchTerm || publishFilter !== 'all'
-              ? 'Try adjusting your search or filters'
+            {searchTerm
+              ? 'Try adjusting your search'
+              : statusTab === 'archived'
+              ? 'Archived recaps leave the public site but stay in the brand portal'
               : 'Campaign recaps will appear here as campaigns are completed'}
           </p>
         </div>
