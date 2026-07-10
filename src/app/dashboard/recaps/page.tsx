@@ -263,16 +263,186 @@ function CardPhotoPicker({
   );
 }
 
+// ---- Delete Dialog ----
+
+interface DeletePreflight {
+  recap: { id: string; name: string };
+  blockers: { table: string; label: string; count: number }[];
+  warnings: { mediaCount: number; athleteCount: number; slotCount: number; slotted: boolean };
+}
+
+function DeleteRecapDialog({
+  recap,
+  onClose,
+  onDeleted,
+}: {
+  recap: CampaignRecap;
+  onClose: () => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [preflight, setPreflight] = useState<DeletePreflight | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/recaps/${recap.id}`);
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(json.error || 'Failed to load delete details');
+        } else {
+          setPreflight(json as DeletePreflight);
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(String(e?.message || e));
+      }
+      if (!cancelled) setLoading(false);
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [recap.id]);
+
+  async function doDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/recaps/${recap.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Delete failed');
+        setDeleting(false);
+        return;
+      }
+      onDeleted(recap.id);
+    } catch (e: any) {
+      setError(String(e?.message || e));
+      setDeleting(false);
+    }
+  }
+
+  const blockers = preflight?.blockers ?? [];
+  const isBlocked = blockers.length > 0;
+  const w = preflight?.warnings;
+  const canDelete = !isBlocked && !deleting && confirmText.trim().toUpperCase() === 'DELETE';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !deleting) onClose();
+      }}
+    >
+      <div className="w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/10">
+          <div className="text-[10px] font-bold tracking-widest text-red-400 uppercase">
+            Delete recap
+          </div>
+          <h2 className="text-lg font-black text-white truncate">{recap.name}</h2>
+        </div>
+
+        <div className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <svg className="animate-spin h-7 w-7 text-white/40" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+          ) : isBlocked ? (
+            // Blockers: explanation instead of a delete control.
+            <div>
+              <p className="text-sm text-white/70 leading-relaxed mb-3">
+                This recap can&apos;t be deleted — it&apos;s referenced by:
+              </p>
+              <ul className="space-y-1.5 mb-4">
+                {blockers.map((b) => (
+                  <li key={b.table} className="text-sm text-white/80 flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-red-400" />
+                    {b.count} {b.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-white/40 leading-relaxed">
+                Remove or re-point those references first, then delete this recap.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-white/70 leading-relaxed mb-3">
+                This permanently deletes{' '}
+                <span className="font-semibold text-white">{w?.mediaCount ?? 0} media files</span> and{' '}
+                <span className="font-semibold text-white">{w?.athleteCount ?? 0} athlete rows</span>.
+                This cannot be undone.
+              </p>
+              {w?.slotted && (
+                <p className="text-sm text-red-400 leading-relaxed mb-4 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  ⚠ This recap is live on the website ({w.slotCount} slot
+                  {w.slotCount === 1 ? '' : 's'}) — deleting removes that content from the public
+                  site.
+                </p>
+              )}
+              <label className="block text-xs text-white/50 mb-1.5">
+                Type <span className="font-mono font-semibold text-white/80">DELETE</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                autoFocus
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-red-500/50 transition-colors"
+                placeholder="DELETE"
+              />
+            </div>
+          )}
+
+          {error && <div className="mt-4 text-sm text-red-400">{error}</div>}
+        </div>
+
+        <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            disabled={deleting}
+            className="text-[12px] font-semibold px-4 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
+          >
+            {isBlocked ? 'Close' : 'Cancel'}
+          </button>
+          {!loading && !isBlocked && (
+            <button
+              onClick={doDelete}
+              disabled={!canDelete}
+              className="text-[12px] font-semibold px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-500/85 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {deleting ? 'Deleting…' : 'Delete recap'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Recap Card ----
 
 function RecapCard({
   recap,
   onArchive,
   onUnarchive,
+  onRequestDelete,
 }: {
   recap: CampaignRecap;
   onArchive: (r: CampaignRecap) => void;
   onUnarchive: (r: CampaignRecap) => void;
+  onRequestDelete: (r: CampaignRecap) => void;
 }) {
   const status = normalizeStatus(recap.status);
   const brandColor = recap.brand?.primary_color || '#D73F09';
@@ -322,8 +492,18 @@ function RecapCard({
           </div>
         )}
 
-        {/* Status badge overlay */}
-        <div className="absolute top-3 right-3">
+        {/* Status badge + delete overlay */}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          <button
+            onClick={() => onRequestDelete(recap)}
+            aria-label="Delete recap"
+            title="Delete"
+            className="w-6 h-6 rounded-md bg-black/60 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/70 opacity-0 group-hover:opacity-100 hover:bg-red-500/80 hover:text-white hover:border-red-500/50 transition-all"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
           <StatusBadge status={normalizeStatus(recap.status)} />
         </div>
 
@@ -502,6 +682,7 @@ export default function RecapsPage() {
   const [statusTab, setStatusTab] = useState<RecapStatus>('published');
   const [brandFilter, setBrandFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'az' | 'brand'>('newest');
+  const [deleteTarget, setDeleteTarget] = useState<CampaignRecap | null>(null);
 
   useEffect(() => {
     async function fetchRecaps() {
@@ -622,6 +803,12 @@ export default function RecapsPage() {
   const handleArchive = (r: CampaignRecap) => setRecapStatus(r, 'archived');
   const handleUnarchive = (r: CampaignRecap) => setRecapStatus(r, 'published');
 
+  // Remove a deleted recap from the loaded list and close the dialog.
+  function handleDeleted(id: string) {
+    setRecaps((rs) => rs.filter((r) => r.id !== id));
+    setDeleteTarget(null);
+  }
+
   return (
     <DashboardContent>
       {/* Page header */}
@@ -730,6 +917,7 @@ export default function RecapsPage() {
               recap={recap}
               onArchive={handleArchive}
               onUnarchive={handleUnarchive}
+              onRequestDelete={setDeleteTarget}
             />
           ))}
         </div>
@@ -772,6 +960,7 @@ export default function RecapsPage() {
                     recap={recap}
                     onArchive={handleArchive}
                     onUnarchive={handleUnarchive}
+                    onRequestDelete={setDeleteTarget}
                   />
                 ))}
               </div>
@@ -796,6 +985,15 @@ export default function RecapsPage() {
               : 'Campaign recaps will appear here as campaigns are completed'}
           </p>
         </div>
+      )}
+
+      {/* Delete dialog */}
+      {deleteTarget && (
+        <DeleteRecapDialog
+          recap={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={handleDeleted}
+        />
       )}
     </DashboardContent>
   );
