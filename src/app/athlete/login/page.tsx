@@ -52,7 +52,7 @@ export default function AthleteLoginPage() {
           </div>
           {error && <div className="a-err">{error}</div>}
           <button type="submit" className="a-cta" disabled={loading}>
-            <span className="a-d" style={{ fontSize: 18 }}>{loading ? "SIGNING IN…" : "SIGN IN"}</span>
+            <span className="a-anton" style={{ fontSize: 15 }}>{loading ? "SIGNING IN…" : "SIGN IN"}</span>
           </button>
         </form>
 

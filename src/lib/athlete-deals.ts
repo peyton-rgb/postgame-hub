@@ -28,6 +28,7 @@ export type Deal = {
   accent_color: string | null;
   status: string;
   social_platforms: string[] | null;
+  required_deliverables: string[] | null;
   brand: DealBrand | null;
 };
 
@@ -39,7 +40,7 @@ export type MyOptin = {
 };
 
 const DEAL_SELECT =
-  "id,slug,title,headline,goal,requirements,payout,deadline,hero_image_url,accent_color,status,social_platforms,brand:brands(name,logo_url,logo_white_url,primary_color)";
+  "id,slug,title,headline,goal,requirements,payout,deadline,hero_image_url,accent_color,status,social_platforms,required_deliverables,brand:brands(name,logo_url,logo_white_url,primary_color)";
 
 // Brand embeds come back as an array from PostgREST depending on the FK
 // shape; normalize to a single object.
@@ -48,24 +49,23 @@ function normalizeDeal(row: any): Deal {
   return { ...row, brand } as Deal;
 }
 
-// Deals shown on the home screen: live (opt-in-able) + draft (coming soon),
-// matching the mockup. Ended/archived statuses are excluded.
+// Deals shown on the home feed: LIVE (opt-in-able) only. Drafts are
+// unpublished and must never surface to athletes — the earlier
+// status IN ('live','draft') leaked unpublished campaigns into the feed.
+// Coming-soon drops are a separate, deferred feature.
 export async function getVisibleDeals(): Promise<Deal[]> {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("optin_campaigns")
     .select(DEAL_SELECT)
-    .in("status", ["live", "draft"])
-    .order("status", { ascending: true }) // 'draft' < 'live' alphabetically; live first below
+    .eq("status", "live")
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("getVisibleDeals error:", error.message);
     return [];
   }
-  const deals = (data ?? []).map(normalizeDeal);
-  // Live deals first, then coming-soon drafts.
-  return deals.sort((a, b) => (a.status === b.status ? 0 : a.status === "live" ? -1 : 1));
+  return (data ?? []).map(normalizeDeal);
 }
 
 export async function getDealBySlug(slug: string): Promise<Deal | null> {
