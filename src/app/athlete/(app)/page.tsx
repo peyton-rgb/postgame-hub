@@ -10,6 +10,7 @@ import { requireAthlete } from "@/lib/athlete-auth";
 import { getVisibleDeals, getMyOptinsMap } from "@/lib/athlete-deals";
 import DealCard from "@/components/athlete/DealCard";
 import NotificationBell from "@/components/athlete/NotificationBell";
+import ScrollTopOnMount from "@/components/athlete/ScrollTopOnMount";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,9 @@ export default async function AthleteHomePage() {
 
   return (
     <div>
+      {/* Always open the feed at the top with the header visible. */}
+      <ScrollTopOnMount />
+
       {/* Sticky app header */}
       <div className="a-apphead">
         {/* eslint-disable-next-line @next/next/no-img-element */}
