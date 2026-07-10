@@ -23,10 +23,17 @@
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  /* Fluid on phones: fill the device, never force a wider layout that would
+     make iOS Safari shrink-to-fit (load zoomed out). */
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-/* Mobile-first app frame: phone-width column, centered on larger screens. */
+/* Mobile-first app frame: fluid full-width, capped at 460px, centered on
+   larger screens. width:100% is explicit so it never shrink-wraps wide. */
 .athlete-app .a-frame {
+  width: 100%;
   max-width: 460px;
   margin: 0 auto;
   min-height: 100vh;
