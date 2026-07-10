@@ -66,7 +66,7 @@ export default function AthleteSignupPage() {
             your account, then sign in to finish setting up your profile.
           </p>
           <Link href="/athlete/login" className="a-cta" style={{ marginTop: 22, textDecoration: "none" }}>
-            <span className="a-d" style={{ fontSize: 18 }}>GO TO SIGN IN</span>
+            <span className="a-anton" style={{ fontSize: 15 }}>GO TO SIGN IN</span>
           </Link>
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function AthleteSignupPage() {
           </div>
           {error && <div className="a-err">{error}</div>}
           <button type="submit" className="a-cta" disabled={loading}>
-            <span className="a-d" style={{ fontSize: 18 }}>{loading ? "CREATING…" : "CREATE ACCOUNT"}</span>
+            <span className="a-anton" style={{ fontSize: 15 }}>{loading ? "CREATING…" : "CREATE ACCOUNT"}</span>
           </button>
         </form>
 

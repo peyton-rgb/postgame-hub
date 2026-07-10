@@ -132,7 +132,7 @@ export default function OnboardingForm({ profile }: { profile: AthleteProfile })
         {error && <div className="a-err">{error}</div>}
 
         <button type="submit" className="a-cta" disabled={saving || uploading} style={{ marginTop: 4 }}>
-          <span className="a-d" style={{ fontSize: 18 }}>{saving ? "SAVING…" : isEdit ? "SAVE CHANGES" : "FINISH SETUP"}</span>
+          <span className="a-anton" style={{ fontSize: 15 }}>{saving ? "SAVING…" : isEdit ? "SAVE CHANGES" : "FINISH SETUP"}</span>
         </button>
       </form>
     </div>

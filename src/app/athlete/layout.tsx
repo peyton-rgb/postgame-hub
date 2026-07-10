@@ -8,7 +8,19 @@
 // The marketing SiteNav is hidden on /athlete via SiteNav's HIDDEN_ROUTES.
 // ============================================================
 
+import { Anton } from "next/font/google";
 import "./athlete.css";
+
+// Anton (heavy button/label face) scoped to the athlete app only. Bebas Neue
+// (display) is already loaded globally as --font-bebas by the root layout;
+// Arial is the body face. We attach Anton's CSS variable to the athlete
+// wrapper so it never leaks into the marketing site or staff dashboard.
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-anton",
+  display: "swap",
+});
 
 export default function AthleteRootLayout({
   children,
@@ -16,7 +28,7 @@ export default function AthleteRootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="athlete-app">
+    <div className={`athlete-app ${anton.variable}`}>
       <div className="a-frame">{children}</div>
     </div>
   );

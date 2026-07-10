@@ -77,7 +77,7 @@ export default function OptInForm({
       {error && <div className="a-err">{error}</div>}
 
       <button className="a-cta" onClick={optIn} disabled={loading}>
-        <span className="a-d" style={{ fontSize: 19 }}>{loading ? "OPTING IN…" : "OPT IN TO THIS DEAL"}</span>
+        <span className="a-anton" style={{ fontSize: 15 }}>{loading ? "OPTING IN…" : "OPT IN TO THIS DEAL"}</span>
       </button>
       <div style={{ fontSize: 11, color: "rgba(250,248,245,0.4)", textAlign: "center" }}>
         Opting in confirms you to {brandName}. You can still ask questions after.

@@ -1,14 +1,27 @@
-// Deal tracker card (mockup screen 4): brand header, status pill, and the
-// 6-step progress rail. Presentational; links into the deal detail.
+// Deal tracker card (postgame-app.html — mydeals): brand header, a status
+// dot + letterspaced label, the 6-segment progress bar, and — only when a
+// deliverable is actually awaiting the athlete — the orange ACTION NEEDED
+// block. Presentational; the whole card links into the deal detail where the
+// upload / post action is completed.
 
 import Link from "next/link";
-import { TRACKER_STEPS, type DealStage } from "@/lib/deliverable-status";
+import { type DealStage } from "@/lib/deliverable-status";
 
-function pillStyle(kind: "due" | "ok" | "neutral"): React.CSSProperties {
-  if (kind === "ok") return { background: "rgba(52,199,89,0.16)", color: "var(--a-green)" };
-  if (kind === "due") return { background: "rgba(215,63,9,0.18)", color: "var(--a-orange-soft)" };
-  return { background: "rgba(255,255,255,0.12)", color: "rgba(250,248,245,0.7)" };
-}
+const SEG_LABELS = ["OPT IN", "CREATE", "SUBMIT", "APPROVED", "POST", "PAID"];
+
+// Stages where the athlete personally owes the next move.
+const ACTION_COPY: Partial<Record<DealStage["key"], string>> = {
+  content_due: "Shoot and upload your content to keep this deal on track.",
+  ready_to_post: "You're approved — post your content and drop the live link.",
+};
+
+// Quiet status line for stages that are waiting on someone else.
+const WAIT_COPY: Partial<Record<DealStage["key"], string>> = {
+  in_review: "In review — Postgame and the brand are checking your content.",
+  awaiting_verification: "Posted — we're verifying your live link. Nothing needed from you.",
+  verified: "Verified — your payout is scheduled.",
+  paid: "Complete — your payout has been released.",
+};
 
 export default function DealTrackerCard({
   optinId,
@@ -23,45 +36,59 @@ export default function DealTrackerCard({
   title: string;
   stage: DealStage;
 }) {
+  const actionCopy = ACTION_COPY[stage.key];
+  const waitCopy = WAIT_COPY[stage.key];
+
   return (
     <Link href={`/athlete/my-deals/${optinId}`} style={{ textDecoration: "none", color: "inherit" }}>
-      <div className="a-card" style={{ textAlign: "left", padding: 15 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 13 }}>
+      <div className="a-card" style={{ padding: 16 }}>
+        {/* Brand header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {brandLogo && (
-            <div style={{ background: "rgba(255,255,255,0.94)", borderRadius: 7, padding: "5px 8px", display: "flex" }}>
+            <span style={{ background: "rgba(255,255,255,0.94)", borderRadius: 8, padding: "5px 8px", display: "flex", flex: "none" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={brandLogo} alt={brandName || "brand"} style={{ height: 13 }} />
-            </div>
+              <img src={brandLogo} alt={brandName || "brand"} style={{ height: 15, maxWidth: 74, objectFit: "contain" }} />
+            </span>
           )}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, color: "var(--a-off)" }}>{brandName}</div>
-            <div style={{ fontSize: 11, color: "rgba(250,248,245,0.55)" }}>{title}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="a-d" style={{ fontSize: 22, textTransform: "uppercase" }}>{title}</div>
+            <div style={{ fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: "bold", color: "rgba(250,248,245,0.4)", marginTop: 3 }}>
+              {brandName}
+            </div>
           </div>
-          <div className="a-pill" style={pillStyle(stage.pill.kind)}>{stage.pill.text}</div>
         </div>
 
-        <div className="a-track">
-          {TRACKER_STEPS.map((step, i) => {
+        {/* Status */}
+        <div className="a-status">
+          <span className={`a-statusdot ${stage.pill.kind}`} />
+          <span className="a-statustext">{stage.pill.text}</span>
+        </div>
+
+        {/* Progress segments */}
+        <div className="a-segbar">
+          {SEG_LABELS.map((_, i) => {
             const done = i <= stage.doneThrough;
-            const current = i === stage.currentStep && !done;
-            const dotClass = done ? "done" : current ? "current" : "next";
-            return (
-              <div key={i} className={`a-step${done ? " done" : ""}`}>
-                <div className={`a-dot ${dotClass}`}>
-                  {done && (
-                    <svg viewBox="0 0 24 24" style={{ width: 11, height: 11, stroke: "#fff", strokeWidth: 3, fill: "none" }}>
-                      <path d="M5 12.5l4 4 9-10" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, color: done || current ? "var(--a-off)" : "rgba(250,248,245,0.55)" }}>{step.label}</div>
-                  <div style={{ fontSize: 11, color: current ? "var(--a-orange-soft)" : "rgba(250,248,245,0.5)" }}>{step.sub}</div>
-                </div>
-              </div>
-            );
+            const cur = i === stage.currentStep && !done;
+            return <span key={i} className={`a-seg${done ? " done" : cur ? " cur" : ""}`} />;
           })}
         </div>
+        <div className="a-seglabels">
+          {SEG_LABELS.map((label, i) => {
+            const done = i <= stage.doneThrough;
+            const cur = i === stage.currentStep && !done;
+            return <span key={i} className={done ? "done" : cur ? "cur" : ""}>{label}</span>;
+          })}
+        </div>
+
+        {/* Action needed vs quiet wait line */}
+        {actionCopy ? (
+          <div className="a-alert">
+            <div className="a-alert-eyebrow">Action needed</div>
+            <div className="a-alert-msg">{actionCopy}</div>
+          </div>
+        ) : waitCopy ? (
+          <div className="a-stageline">{waitCopy}</div>
+        ) : null}
       </div>
     </Link>
   );
