@@ -9,5 +9,11 @@
     "src/app/api/heroes/render/route.ts": {
       "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/recap-intake",
+      "schedule": "*/10 * * * *"
+    }
+  ]
 }
