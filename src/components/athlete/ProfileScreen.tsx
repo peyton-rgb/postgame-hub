@@ -1,20 +1,23 @@
 "use client";
 
-// Profile v5 (postgame-app.html — profiletab, Phase 2R): identity card with
-// real name/handles/school/sport + real DEALS + EARNED stats, a campaign
-// history rail from the athlete's own opt-ins, and a settings card whose rows
-// open sheets. Edit Profile, Platforms and Payment settings perform real
-// own-profile writes; Squad/Contracts/Shipping are honest empty states (no
-// backing tables yet).
+// Profile v5 (postgame-app.html — profiletab). Phase 3 wires the settings
+// sheets to real data now that the tables exist: Contracts, Shipping & sizes,
+// Your Squad and the W-9 row in Payment all read/write real rows; the identity
+// card surfaces class year and synced reach. Edit Profile, Platforms and
+// Payment perform real own-profile writes.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserSupabase } from "@/lib/supabase";
 import AthleteSheet from "@/components/athlete/AthleteSheet";
-import PayPalLinkForm from "@/components/athlete/PayPalLinkForm";
+import ContractsSheet from "@/components/athlete/ContractsSheet";
+import ShippingSheet from "@/components/athlete/ShippingSheet";
+import SquadSheet from "@/components/athlete/SquadSheet";
+import PaymentSheet from "@/components/athlete/PaymentSheet";
 import SignOutButton from "@/components/athlete/SignOutButton";
-import { formatMoney } from "@/lib/athlete-format";
+import { formatMoney, formatReach, formatLongDate } from "@/lib/athlete-format";
+import type { ContractRow, ShippingRow, SquadInvite } from "@/lib/athlete-account";
 
 export type RailItem = {
   optinId: string;
@@ -33,12 +36,19 @@ type Props = {
   tiktokHandle: string | null;
   school: string | null;
   sport: string | null;
+  classYear: string | null;
   paypalLinked: boolean;
   paypalEmail: string | null;
-  reach: string;
+  reachTotal: number | null;
+  reachSyncedAt: string | null;
   dealsCount: number;
   earnedCents: number;
   campaigns: RailItem[];
+  contracts: ContractRow[];
+  shipping: ShippingRow | null;
+  squad: SquadInvite[];
+  w9Status: string;
+  w9Year: number | null;
 };
 
 function cleanHandle(v: string) {
@@ -59,6 +69,14 @@ export default function ProfileScreen(props: Props) {
   const first = parts.join(" ");
   const initial = (props.name || "?").charAt(0).toUpperCase();
   const linkedPlatforms = [props.igHandle, props.tiktokHandle].filter(Boolean).length;
+
+  const metaLine =
+    [props.school, props.sport, props.classYear].filter(Boolean).join(" · ") || "Add your school & sport";
+
+  const pendingInvites = props.squad.filter((i) => i.status !== "joined").length;
+  const w9Needed = props.w9Status !== "on_file";
+  const paymentStatus = !props.paypalLinked ? "Not linked" : w9Needed ? "W-9 needed" : "Linked";
+  const paymentDot: "due" | "ok" = props.paypalLinked && !w9Needed ? "ok" : "due";
 
   return (
     <div style={{ padding: "0 18px" }}>
@@ -98,12 +116,12 @@ export default function ProfileScreen(props: Props) {
         <div style={{ marginTop: 14, fontSize: 12.5, color: "rgba(250,248,245,0.7)" }}>
           {props.igHandle ? `@${props.igHandle}` : "Add your Instagram in Platforms"}
         </div>
-        <div className="a-idmeta">{[props.school, props.sport].filter(Boolean).join(" · ") || "Add your school & sport"}</div>
+        <div className="a-idmeta">{metaLine}</div>
 
         {/* Stats */}
         <div className="a-pstat">
           <div className="s2">
-            <div className="v2">{props.reach}</div>
+            <div className="v2">{formatReach(props.reachTotal)}</div>
             <div className="u2">Reach</div>
           </div>
           <div className="s2">
@@ -115,6 +133,11 @@ export default function ProfileScreen(props: Props) {
             <div className="u2">Earned</div>
           </div>
         </div>
+        {props.reachTotal != null && props.reachSyncedAt && (
+          <div style={{ textAlign: "center", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,248,245,0.35)", marginTop: 8 }}>
+            Reach synced {formatLongDate(props.reachSyncedAt)}
+          </div>
+        )}
 
         <button
           className="a-cta"
@@ -166,15 +189,25 @@ export default function ProfileScreen(props: Props) {
       {/* Settings */}
       <div className="a-card" style={{ marginTop: 22, padding: "2px 15px" }}>
         <SettingRow label="Linked platforms" onClick={() => setSheet("platforms")} dot="ok" status={`${linkedPlatforms} linked`} />
-        <SettingRow label="Your squad" onClick={() => setSheet("squad")} />
-        <SettingRow label="Contracts" onClick={() => setSheet("contracts")} />
-        <SettingRow label="Shipping & sizes" onClick={() => setSheet("shipping")} />
         <SettingRow
-          label="Payment settings"
-          onClick={() => setSheet("payment")}
-          dot={props.paypalLinked ? "ok" : "due"}
-          status={props.paypalLinked ? "Linked" : "Not linked"}
+          label="Your squad"
+          onClick={() => setSheet("squad")}
+          dot={pendingInvites > 0 ? "due" : props.squad.length > 0 ? "ok" : undefined}
+          status={pendingInvites > 0 ? `${pendingInvites} pending` : props.squad.length > 0 ? `${props.squad.length}` : undefined}
         />
+        <SettingRow
+          label="Contracts"
+          onClick={() => setSheet("contracts")}
+          dot={props.contracts.length > 0 ? "ok" : undefined}
+          status={props.contracts.length > 0 ? `${props.contracts.length}` : undefined}
+        />
+        <SettingRow
+          label="Shipping & sizes"
+          onClick={() => setSheet("shipping")}
+          dot={props.shipping ? "ok" : "due"}
+          status={props.shipping ? "Saved" : "Add"}
+        />
+        <SettingRow label="Payment settings" onClick={() => setSheet("payment")} dot={paymentDot} status={paymentStatus} />
       </div>
 
       <div style={{ marginTop: 16 }}>
@@ -185,30 +218,18 @@ export default function ProfileScreen(props: Props) {
       <EditSheet {...props} open={sheet === "edit"} onClose={close} supabase={supabase} router={router} />
       <PlatformsSheet {...props} open={sheet === "platforms"} onClose={close} supabase={supabase} router={router} />
 
-      <AthleteSheet open={sheet === "squad"} onClose={close} title="Your squad" subtitle="Invite teammates and track who you brought in.">
-        <div className="a-sheet-empty">Squad invites are coming soon. Athletes you refer to Postgame will show up here.</div>
-      </AthleteSheet>
-
-      <AthleteSheet open={sheet === "contracts"} onClose={close} title="Contracts" subtitle="Your signed deal paperwork, in one place.">
-        <div className="a-sheet-empty">Contracts you sign through Postgame will be stored here.</div>
-      </AthleteSheet>
-
-      <AthleteSheet open={sheet === "shipping"} onClose={close} title="Shipping & sizes" subtitle="So brands can send you product.">
-        <div className="a-sheet-empty">Add your sizes and shipping address so brands can send you product — coming soon.</div>
-      </AthleteSheet>
-
-      <AthleteSheet open={sheet === "payment"} onClose={close} title="Payment settings" subtitle="Where your payouts land.">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0 14px" }}>
-          <span className={`a-dot-s ${props.paypalLinked ? "ok" : "due"}`} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13.5, fontWeight: "bold" }}>PayPal</div>
-            <div style={{ fontSize: 11, color: "rgba(250,248,245,0.5)" }}>
-              {props.paypalLinked ? props.paypalEmail : "Not linked yet"}
-            </div>
-          </div>
-        </div>
-        <PayPalLinkForm initialEmail={props.paypalEmail} onSuccess={close} />
-      </AthleteSheet>
+      <SquadSheet open={sheet === "squad"} onClose={close} profileId={props.profileId} invites={props.squad} />
+      <ContractsSheet open={sheet === "contracts"} onClose={close} contracts={props.contracts} />
+      <ShippingSheet open={sheet === "shipping"} onClose={close} profileId={props.profileId} initial={props.shipping} />
+      <PaymentSheet
+        open={sheet === "payment"}
+        onClose={close}
+        profileId={props.profileId}
+        paypalLinked={props.paypalLinked}
+        paypalEmail={props.paypalEmail}
+        w9Status={props.w9Status}
+        w9Year={props.w9Year}
+      />
     </div>
   );
 }
@@ -240,13 +261,14 @@ function SettingRow({
   );
 }
 
-// --- Edit Profile sheet (writes name/school/sport to own profile row) ---
+// --- Edit Profile sheet (writes name/school/sport/class year to own row) ---
 function EditSheet({
   open,
   onClose,
   name,
   school,
   sport,
+  classYear,
   profileId,
   supabase,
   router,
@@ -254,6 +276,7 @@ function EditSheet({
   const [n, setN] = useState(name ?? "");
   const [sc, setSc] = useState(school ?? "");
   const [sp, setSp] = useState(sport ?? "");
+  const [cy, setCy] = useState(classYear ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -262,7 +285,12 @@ function EditSheet({
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ full_name: n.trim() || null, school: sc.trim() || null, sport: sp.trim() || null })
+      .update({
+        full_name: n.trim() || null,
+        school: sc.trim() || null,
+        sport: sp.trim() || null,
+        class_year: cy.trim() || null,
+      })
       .eq("id", profileId);
     if (error) {
       setError(error.message);
@@ -290,6 +318,10 @@ function EditSheet({
             <label className="a-label">Sport</label>
             <input className="a-input" value={sp} onChange={(e) => setSp(e.target.value)} placeholder="Track & Field" />
           </div>
+        </div>
+        <div>
+          <label className="a-label">Class year</label>
+          <input className="a-input" value={cy} onChange={(e) => setCy(e.target.value)} placeholder="2027 · So." />
         </div>
         {error && <div className="a-err">{error}</div>}
         <button className="a-cta" onClick={save} disabled={saving}>

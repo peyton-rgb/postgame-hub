@@ -7,6 +7,7 @@
 // honestly.
 
 import { useState } from "react";
+import Link from "next/link";
 import AthleteSheet from "@/components/athlete/AthleteSheet";
 import PayPalLinkForm from "@/components/athlete/PayPalLinkForm";
 import { formatMoney, formatDate } from "@/lib/athlete-format";
@@ -63,6 +64,7 @@ export default function EarningsWallet({
   currency,
   paypalLinked,
   paypalEmail,
+  w9Needed,
   upcoming,
   previous,
 }: {
@@ -70,6 +72,7 @@ export default function EarningsWallet({
   currency: string;
   paypalLinked: boolean;
   paypalEmail: string | null;
+  w9Needed: boolean;
   upcoming: WalletPayout[];
   previous: WalletPayout[];
 }) {
@@ -96,6 +99,18 @@ export default function EarningsWallet({
         <div className="a-bal-amt">{formatMoney(availableCents, currency)}</div>
         <div className="a-bal-sub">{balSub}</div>
       </div>
+
+      {/* W-9 alert — only while a W-9 is still needed (blocks getting paid) */}
+      {w9Needed && (
+        <div className="a-w9alert">
+          <span className="w9ic">!</span>
+          <div className="w9body">
+            <div className="w9t">W-9 needed</div>
+            <div className="w9s">Add your W-9 so Postgame can pay you. Takes a few taps in Payment settings.</div>
+          </div>
+          <Link href="/athlete/profile" className="a-w9update">Add W-9</Link>
+        </div>
+      )}
 
       {/* PayPal link / withdraw */}
       {!paypalLinked ? (
