@@ -47,7 +47,10 @@ export default function AthleteLoginPage() {
             <input className="a-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required />
           </div>
           <div>
-            <label className="a-label">Password</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <label className="a-label">Password</label>
+              <Link href="/athlete/forgot" style={{ fontSize: 12, color: "var(--a-orange)" }}>Forgot password?</Link>
+            </div>
             <input className="a-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" required />
           </div>
           {error && <div className="a-err">{error}</div>}
