@@ -468,3 +468,44 @@
 .a-dot-s.due { background: var(--a-orange-soft); }
 .a-dot-s.ok { background: var(--a-green); }
 .a-dot-s.neutral { background: rgba(250, 248, 245, 0.5); }
+
+/* ============================================================
+   Phase 3 — profile sheet wiring (contracts, shipping, squad, W-9)
+   ============================================================ */
+
+/* Contracts list */
+.a-crow { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--a-line); }
+.a-crow:last-child { border-bottom: none; }
+.a-crow .cbody { min-width: 0; flex: 1; }
+.a-crow .ctitle { font-size: 13.5px; font-weight: bold; color: var(--a-off); }
+.a-crow .cmeta { font-size: 11px; color: rgba(250, 248, 245, 0.45); margin-top: 3px; }
+.a-viewpdf { flex: 0 0 auto; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--a-off); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--a-line); border-radius: 999px; padding: 8px 13px; cursor: pointer; text-decoration: none; display: inline-flex; }
+.a-viewpdf:active { transform: scale(0.96); }
+.a-viewpdf.disabled { color: rgba(250, 248, 245, 0.35); cursor: default; }
+
+/* Size grid + address (shipping) */
+.a-sizegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.a-fieldrow { display: flex; gap: 12px; }
+.a-fieldrow > * { flex: 1; min-width: 0; }
+
+/* Squad invites */
+.a-srow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--a-line); }
+.a-srow:last-child { border-bottom: none; }
+.a-sav { width: 38px; height: 38px; border-radius: 50%; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 13px; letter-spacing: 0.04em; color: rgba(250, 248, 245, 0.75); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--a-line); }
+.a-sav.joined { color: var(--a-green); background: rgba(9, 215, 63, 0.12); border-color: rgba(9, 215, 63, 0.4); }
+.a-srow .sbody { min-width: 0; flex: 1; }
+.a-srow .sname { font-size: 13.5px; font-weight: bold; color: var(--a-off); }
+.a-srow .ssub { font-size: 11px; color: rgba(250, 248, 245, 0.45); margin-top: 2px; }
+.a-invitebtn { flex: 0 0 auto; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--a-orange); background: rgba(215, 63, 9, 0.12); border: 1px solid rgba(215, 63, 9, 0.35); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+.a-invitebtn:active { transform: scale(0.96); }
+.a-invitebtn.sent { color: rgba(250, 248, 245, 0.5); background: transparent; border-color: var(--a-line); cursor: default; }
+.a-sjoined { flex: 0 0 auto; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--a-green); }
+
+/* W-9 alert (earnings banner + payment-sheet row) */
+.a-w9alert { display: flex; align-items: flex-start; gap: 11px; background: rgba(215, 63, 9, 0.1); border: 1px solid rgba(215, 63, 9, 0.4); border-radius: 16px; padding: 14px 15px; margin-top: 16px; }
+.a-w9alert .w9ic { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 7px; background: rgba(215, 63, 9, 0.2); color: var(--a-orange); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; }
+.a-w9alert .w9body { flex: 1; min-width: 0; }
+.a-w9alert .w9t { font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--a-orange); }
+.a-w9alert .w9s { font-size: 12px; color: rgba(250, 248, 245, 0.7); margin-top: 4px; line-height: 1.5; }
+.a-w9update { flex: 0 0 auto; align-self: center; display: inline-flex; align-items: center; text-decoration: none; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #fff; background: var(--a-orange); border: none; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.a-w9update:active { transform: scale(0.96); }

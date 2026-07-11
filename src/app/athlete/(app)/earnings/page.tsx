@@ -7,6 +7,7 @@
 
 import { requireAthlete } from "@/lib/athlete-auth";
 import { getEarnings } from "@/lib/payouts";
+import { createServerSupabase } from "@/lib/supabase-server";
 import NotificationBell from "@/components/athlete/NotificationBell";
 import EarningsWallet, { type WalletPayout } from "@/components/athlete/EarningsWallet";
 
@@ -21,6 +22,16 @@ const WITHDRAWABLE = new Set(["available", "ready", "withdrawable"]);
 export default async function EarningsPage() {
   const profile = await requireAthlete();
   const earnings = await getEarnings(profile.id);
+
+  // W-9 status drives the orange alert (shown only while it's still needed).
+  const supabase = createServerSupabase();
+  const { data: w9Row, error: w9Err } = await supabase
+    .from("profiles")
+    .select("w9_status")
+    .eq("id", profile.id)
+    .maybeSingle();
+  if (w9Err) console.error("[earnings] w9_status:", w9Err.message);
+  const w9Needed = (w9Row?.w9_status ?? "needed") !== "on_file";
 
   const toWallet = (p: (typeof earnings.payouts)[number]): WalletPayout => ({
     id: p.id,
@@ -64,6 +75,7 @@ export default async function EarningsPage() {
         currency="USD"
         paypalLinked={!!profile.paypal_linked}
         paypalEmail={profile.paypal_email}
+        w9Needed={w9Needed}
         upcoming={upcoming}
         previous={previous}
       />
