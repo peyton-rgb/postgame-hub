@@ -46,11 +46,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Athlete app: the login + signup pages are public; everything else under
-  // /athlete requires a session. Role gating (athlete vs staff) happens in
-  // the (app) layout via requireAthlete().
+  // Athlete app: the login + signup + password-reset pages are public;
+  // everything else under /athlete requires a session. Role gating (athlete vs
+  // staff) happens in the (app) layout via requireAthlete().
+  const isAthleteRecovery =
+    path === "/athlete/forgot" || path === "/athlete/reset-password";
   const isAthletePublic =
-    path === "/athlete/login" || path === "/athlete/signup";
+    path === "/athlete/login" ||
+    path === "/athlete/signup" ||
+    isAthleteRecovery;
 
   if (!user && path.startsWith("/athlete") && !isAthletePublic) {
     const url = request.nextUrl.clone();
@@ -59,7 +63,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Already signed in but sitting on an athlete auth page → into the app.
-  if (user && isAthletePublic) {
+  // Recovery routes are excluded: a password-reset link establishes a
+  // short-lived recovery session, and bouncing it to /athlete would abort the
+  // reset before the athlete can set their new password.
+  if (user && isAthletePublic && !isAthleteRecovery) {
     const url = request.nextUrl.clone();
     url.pathname = "/athlete";
     return NextResponse.redirect(url);

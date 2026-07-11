@@ -1,73 +1,55 @@
 // ============================================================
-// Profile view (mockup screen 14)
+// Profile v5 (postgame-app.html — profiletab, Phase 2R)
 //
-// Shows the athlete's identity + social handles + payout status, with
-// links to edit the profile and (Phase 5) manage payouts.
+// Real identity + stats + campaign history + settings sheets. Server fetches
+// the athlete's profile, opt-ins (deals/history) and earnings; the interactive
+// screen + sheets live in ProfileScreen (client).
 // ============================================================
 
-import Link from "next/link";
 import { requireAthlete } from "@/lib/athlete-auth";
-import SignOutButton from "@/components/athlete/SignOutButton";
+import { getMyDeals } from "@/lib/athlete-deliverables";
+import { getEarnings } from "@/lib/payouts";
+import ProfileScreen, { type RailItem } from "@/components/athlete/ProfileScreen";
 
-function Row({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-      <span className="a-muted" style={{ fontSize: 13 }}>{label}</span>
-      <span style={{ fontSize: 13, color: value ? "var(--a-off)" : "rgba(250,248,245,0.4)" }}>{value || "Not set"}</span>
-    </div>
-  );
-}
+export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const profile = await requireAthlete();
+  const [deals, earnings] = await Promise.all([getMyDeals(profile.id), getEarnings(profile.id)]);
+
   const name = profile.full_name || profile.display_name || "Athlete";
-  const initial = name.charAt(0).toUpperCase();
-  const ig = profile.ig_handle ? `@${profile.ig_handle}` : null;
-  const tiktok = profile.tiktok_handle ? `@${profile.tiktok_handle}` : null;
+  const earnedCents = earnings.paidCents + earnings.pendingCents;
+
+  const campaigns: RailItem[] = deals.map((d) => ({
+    optinId: d.optinId,
+    title: d.title,
+    brandName: d.brandName,
+    brandLogo: d.brandLogo,
+    heroImage: d.heroImage,
+    pill: d.stage.pill,
+  }));
 
   return (
-    <div style={{ padding: "10px 18px 0" }}>
-      <div className="a-d" style={{ fontSize: 26, padding: "4px 0 16px" }}>PROFILE</div>
-
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: 20 }}>
-        <div style={{ width: 84, height: 84, borderRadius: "50%", overflow: "hidden", background: "var(--a-orange)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <span className="a-d" style={{ fontSize: 38, color: "#fff" }}>{initial}</span>
-          )}
-        </div>
-        <div className="a-d" style={{ fontSize: 24, textTransform: "uppercase" }}>{name}</div>
-        {(profile.school || profile.sport) && (
-          <div className="a-muted" style={{ fontSize: 13, marginTop: 3 }}>
-            {[profile.sport, profile.school].filter(Boolean).join(" · ")}
-          </div>
-        )}
+    <div style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)" }}>
+      <div style={{ padding: "0 18px 4px" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/postgame-logo-white.png" alt="Postgame" style={{ width: 104, display: "block" }} />
       </div>
-
-      <div className="a-card" style={{ padding: "2px 15px", marginBottom: 14 }}>
-        <Row label="Email" value={profile.email} />
-        <Row label="Instagram" value={ig} />
-        <Row label="TikTok" value={tiktok} />
-        <Row label="School" value={profile.school} />
-        <Row label="Sport" value={profile.sport} />
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "11px 0" }}>
-          <span className="a-muted" style={{ fontSize: 13 }}>Payouts</span>
-          <span className={`a-pill ${profile.paypal_linked ? "a-pill-ok" : "a-pill-due"}`}>
-            {profile.paypal_linked ? "PayPal linked" : "Not set up"}
-          </span>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <Link href="/athlete/onboarding" className="a-cta" style={{ textDecoration: "none" }}>
-          <span className="a-d" style={{ fontSize: 17 }}>EDIT PROFILE</span>
-        </Link>
-        <Link href="/athlete/earnings" className="a-ghost" style={{ textDecoration: "none" }}>
-          <span style={{ fontSize: 13 }}>Manage payouts</span>
-        </Link>
-        <SignOutButton />
-      </div>
+      <ProfileScreen
+        profileId={profile.id}
+        name={name}
+        avatarUrl={profile.avatar_url}
+        igHandle={profile.ig_handle}
+        tiktokHandle={profile.tiktok_handle}
+        school={profile.school}
+        sport={profile.sport}
+        paypalLinked={!!profile.paypal_linked}
+        paypalEmail={profile.paypal_email}
+        reach="—"
+        dealsCount={deals.length}
+        earnedCents={earnedCents}
+        campaigns={campaigns}
+      />
     </div>
   );
 }
