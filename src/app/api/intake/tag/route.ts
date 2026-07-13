@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
-import { extractImageDimensions } from "@/lib/services/image-convert";
+import { extractImageDimensions, prepareImageForClaude } from "@/lib/services/image-convert";
 
 // ---------------------------------------------------------------------------
 // POST /api/tag
@@ -86,14 +86,18 @@ async function callClaude(
   humanTags: TagRequestBody["human_tags"],
   briefContext?: string
 ): Promise<Record<string, unknown>> {
-  const imageBlocks = frames.map((f) => ({
-    type: "image" as const,
-    source: {
-      type: "base64" as const,
-      media_type: f.media_type,
-      data: f.data,
-    },
-  }));
+  const imageBlocks = await Promise.all(
+    frames.map(async (f) => {
+      const { base64, mediaType } = await prepareImageForClaude(
+        Buffer.from(f.data, "base64"),
+        "frame.jpg" // frames are JPEG/PNG, never HEIC; filename only drives HEIC detection
+      );
+      return {
+        type: "image" as const,
+        source: { type: "base64" as const, media_type: mediaType, data: base64 },
+      };
+    })
+  );
 
   const timestampNote =
     frames.length > 1
