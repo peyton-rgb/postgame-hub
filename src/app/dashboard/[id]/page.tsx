@@ -7,6 +7,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import type { Campaign, Athlete, Media, VisibleSections, KpiTargets, HeroMetricOverrideKey, CollabGroup } from "@/lib/types";
 import { SchoolBadge } from "@/components/SchoolBadge";
 import { ThumbnailModal } from "@/components/ThumbnailModal";
+import { ThumbnailGate, type BlockingCard } from "@/components/ThumbnailGate";
 import { MasonryPreview } from "@/components/MasonryPreview";
 import { parseMetricsCSV, mergeAthleteData, detectCollabGroups, type ParsedAthlete } from "@/lib/csv-parser";
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
@@ -816,6 +817,7 @@ export default function CampaignEditor() {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [showThumbGate, setShowThumbGate] = useState(false);
   const [pendingVideo, setPendingVideo] = useState<{ athleteId: string; file: File; isCollab?: boolean } | null>(null);
 
   const collabGroups = useMemo<CollabGroup[]>(
@@ -844,6 +846,37 @@ export default function CampaignEditor() {
       }),
     [collabGroups, containerBySet, athletes],
   );
+
+  // Videos on SELECTED / visible cards that still lack a thumbnail. The Preview
+  // gate blocks on exactly these — unselected athletes and event media are ignored.
+  // Solo = selected athletes' media[athleteId]; collab = media[groupId] for any
+  // collab card whose members include a selected athlete (i.e. the card renders).
+  const blockingVideoCards = useMemo<BlockingCard[]>(() => {
+    const out: BlockingCard[] = [];
+    const blankThumb = (t?: string | null) => !t || !String(t).trim();
+    const isBlocking = (m: Media) => m.type === "video" && blankThumb(m.thumbnail_url) && !!m.file_url;
+    const extOf = (u?: string | null) => {
+      const mm = (u || "").split("?")[0].match(/\.([a-z0-9]+)$/i);
+      return mm ? mm[1].toLowerCase() : undefined;
+    };
+    for (const aId of selected) {
+      const ath = athletes.find((a) => a.id === aId);
+      for (const m of media[aId] || []) {
+        if (!isBlocking(m)) continue;
+        out.push({ key: `m-${m.id}`, mediaId: m.id, bucketKey: aId, kind: "solo", fileUrl: m.file_url!, label: ath?.name || "Athlete", cardType: "Cover photo", ext: extOf(m.file_url) });
+      }
+    }
+    const sel = new Set(selected);
+    for (const g of collabGroups) {
+      if (!g.athleteIds.some((gid) => sel.has(gid))) continue;
+      const label = collabCardData.find((cd) => cd.group.id === g.id)?.teamName || g.athleteNames.slice(0, 2).join(" + ");
+      for (const m of media[g.id] || []) {
+        if (!isBlocking(m)) continue;
+        out.push({ key: `m-${m.id}`, mediaId: m.id, bucketKey: g.id, kind: "collab", fileUrl: m.file_url!, label, cardType: "Collab post", ext: extOf(m.file_url) });
+      }
+    }
+    return out;
+  }, [selected, media, athletes, collabGroups, collabCardData]);
 
   // containerId -> { feed?, reel? } group ids, so a (team folder, slot) import
   // from the Drive picker resolves to the right synthetic collab group id.
@@ -1449,6 +1482,30 @@ export default function CampaignEditor() {
     setPendingVideo(null);
   }
 
+  // Thumbnail gate: upload the chosen frame/image and UPDATE the existing media
+  // row's thumbnail_url (an update on an existing row, not insert-time). Returns
+  // the saved public URL, or null on failure.
+  async function resolveThumbnail(card: BlockingCard, file: File): Promise<string | null> {
+    const converted = await convertHeicIfNeeded(file);
+    const prefix = card.kind === "collab" ? `collab-${card.bucketKey}` : card.bucketKey;
+    const path = `${id}/${prefix}/${Date.now()}-thumb-${converted.name}`;
+    const url = await uploadFile(converted, path);
+    if (!url) return null;
+    const { error } = await supabase.from("media").update({ thumbnail_url: url }).eq("id", card.mediaId);
+    if (error) return null;
+    setMedia((prev) => ({
+      ...prev,
+      [card.bucketKey]: (prev[card.bucketKey] || []).map((m) => (m.id === card.mediaId ? { ...m, thumbnail_url: url } : m)),
+    }));
+    return url;
+  }
+
+  // Preview gate: block on any selected video card missing a thumbnail.
+  function handlePreviewClick() {
+    if (blockingVideoCards.length > 0) setShowThumbGate(true);
+    else setShowPreview(true);
+  }
+
   async function handleFolderConnected(folderId: string) {
     if (!campaign) return;
     const { data, error } = await supabase
@@ -1920,6 +1977,15 @@ export default function CampaignEditor() {
         />
       )}
 
+      {showThumbGate && (
+        <ThumbnailGate
+          cards={blockingVideoCards}
+          onResolve={resolveThumbnail}
+          onOpenPreview={() => { setShowThumbGate(false); setShowPreview(true); }}
+          onCancel={() => setShowThumbGate(false)}
+        />
+      )}
+
       <CampaignEditorBanner recapId={id} />
 
       {/* Header */}
@@ -1995,7 +2061,7 @@ export default function CampaignEditor() {
               </button>
             )}
           </div>
-          <button onClick={() => setShowPreview(true)}
+          <button onClick={handlePreviewClick}
             className="px-5 py-2 text-sm font-bold rounded-lg bg-[#D73F09] text-white hover:bg-[#c43808]">
             Preview Recap →
           </button>
@@ -3100,7 +3166,7 @@ export default function CampaignEditor() {
             disabled={step === 3 && selected.length === 0}
             className="px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-30">Next →</button>
         ) : (
-          <button onClick={() => setShowPreview(true)}
+          <button onClick={handlePreviewClick}
             className="px-6 py-2 bg-[#D73F09] rounded-lg text-sm font-bold">Preview Recap →</button>
         )}
       </div>

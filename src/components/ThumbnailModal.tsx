@@ -1,12 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-
-function formatTime(s: number) {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
+import { useState, useRef } from "react";
+import { VideoFrameScrubber } from "./VideoFrameScrubber";
 
 export function ThumbnailModal({
   athleteName,
@@ -20,8 +15,6 @@ export function ThumbnailModal({
   videoFile?: File;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [mode, setMode] = useState<"upload" | "frame">(videoFile ? "frame" : "upload");
 
@@ -31,45 +24,9 @@ export function ThumbnailModal({
   const [uploading, setUploading] = useState(false);
   const [converting, setConverting] = useState(false);
 
-  // Frame mode state
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [framePreview, setFramePreview] = useState<string | null>(null);
+  // Frame mode state (capture is delegated to VideoFrameScrubber)
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [videoError, setVideoError] = useState(false);
-
-  // Create and cleanup video object URL
-  useEffect(() => {
-    if (!videoFile) return;
-    const url = URL.createObjectURL(videoFile);
-    setVideoUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [videoFile]);
-
-  // Capture frame from video
-  const captureFrame = useCallback(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState < 2) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const f = new File([blob], `frame-${Date.now()}.jpg`, { type: "image/jpeg" });
-        setCapturedFile(f);
-        setFramePreview(canvas.toDataURL("image/jpeg", 0.9));
-      },
-      "image/jpeg",
-      0.9
-    );
-  }, []);
 
   const handleFile = async (f: File | undefined) => {
     if (!f) return;
@@ -150,7 +107,7 @@ export function ThumbnailModal({
         )}
 
         {/* ── Frame Selection Mode ── */}
-        {mode === "frame" && videoUrl && (
+        {mode === "frame" && videoFile && (
           <div className="mb-6">
             {videoError ? (
               <div className="aspect-[4/5] rounded-xl border-2 border-dashed border-white/15 bg-black flex flex-col items-center justify-center gap-3">
@@ -166,50 +123,12 @@ export function ThumbnailModal({
                 </span>
               </div>
             ) : (
-              <>
-                <div className="rounded-xl overflow-hidden border border-white/10 bg-black mb-3">
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    muted
-                    playsInline
-                    preload="metadata"
-                    className="w-full block"
-                    style={{ objectPosition: "center 20%" }}
-                    onLoadedMetadata={() => {
-                      const v = videoRef.current;
-                      if (v) {
-                        setDuration(v.duration);
-                        v.currentTime = 0;
-                      }
-                    }}
-                    onSeeked={captureFrame}
-                    onError={() => setVideoError(true)}
-                  />
-                </div>
-
-                {/* Scrub slider */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] text-white/40 font-mono w-8 text-right">{formatTime(currentTime)}</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration || 1}
-                    step={0.05}
-                    value={currentTime}
-                    onChange={(e) => {
-                      const t = parseFloat(e.target.value);
-                      setCurrentTime(t);
-                      if (videoRef.current) videoRef.current.currentTime = t;
-                    }}
-                    className="flex-1 h-1 accent-brand cursor-pointer"
-                  />
-                  <span className="text-[10px] text-white/40 font-mono w-8">{formatTime(duration)}</span>
-                </div>
-
-              </>
+              <VideoFrameScrubber
+                videoFile={videoFile}
+                onFrame={setCapturedFile}
+                onUndecodable={() => setVideoError(true)}
+              />
             )}
-            <canvas ref={canvasRef} className="hidden" />
           </div>
         )}
 
