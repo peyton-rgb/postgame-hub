@@ -417,6 +417,21 @@ export default function PackageClient({
           Fonts
         </h2>
         <div className="pad">
+          {/* Bind non-bundled brand fonts to their url so their specimen renders
+              in the real face. Bundled faces are already @font-face'd globally. */}
+          {fonts.some((f) => f.faceUrl) ? (
+            <style
+              dangerouslySetInnerHTML={{
+                __html: fonts
+                  .filter((f) => f.faceUrl)
+                  .map(
+                    (f) =>
+                      `@font-face{font-family:'${f.family}';src:url('${f.faceUrl}') format('opentype');font-display:swap;}`
+                  )
+                  .join("\n"),
+              }}
+            />
+          ) : null}
           <div className="fonts">
             {fonts.map((f) => (
               <div className="fontcard" key={f.name}>
@@ -494,13 +509,23 @@ export default function PackageClient({
             </div>
           ) : (
             filtered.map((r) => {
-              const thumb = thumbs[r.slug];
+              // Pre-rendered stored PNG (top ~100) → instant thumbnail + direct
+              // download, no canvas. Rows without tag_url keep generate-on-click.
+              const pre = !!r.tag_url;
+              const thumb = thumbs[r.slug]; // client-generated strip (on-click rows)
               const isBusy = busy[r.slug];
+              const ready = pre || !!thumb;
               return (
                 <div className={"row " + (r.pin ? "pin" : "")} key={r.source + r.slug}>
                   <div className="rank">{r.rank ?? "•"}</div>
                   <div className="thumbwrap">
-                    {thumb ? (
+                    {pre ? (
+                      // Full stored tag, CSS-cropped to the name band (bottom).
+                      <div className="thumb tagimg">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={r.tag_url!} alt={`${r.name} name tag`} loading="lazy" />
+                      </div>
+                    ) : thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img className="thumb" src={thumb} alt={`${r.name} name tag`} />
                     ) : (
@@ -518,13 +543,13 @@ export default function PackageClient({
                   ) : null}
                   <div className="sp" />
                   <button
-                    className={"btn " + (thumb ? "dl" : "gen")}
+                    className={"btn " + (ready ? "dl" : "gen")}
                     disabled={isBusy}
                     onClick={() => generate(r)}
                   >
                     {isBusy
                       ? "Generating…"
-                      : thumb
+                      : ready
                         ? "↓ Download tag"
                         : "✦ Generate tag"}
                   </button>
@@ -546,24 +571,24 @@ export default function PackageClient({
       <style jsx global>{`
         @font-face {
           font-family: "Veneer";
-          src: url("/fonts/Veneer.otf") format("opentype");
+          src: url("/fonts/veneer.otf") format("opentype");
           font-display: swap;
         }
         @font-face {
           font-family: "BerthCity";
-          src: url("/fonts/BerthCity-Bold.otf") format("opentype");
+          src: url("/fonts/berthold-city-bold.otf") format("opentype");
           font-weight: 700;
           font-display: swap;
         }
         @font-face {
           font-family: "Proxima";
-          src: url("/fonts/Proxima-Regular.otf") format("opentype");
+          src: url("/fonts/proxima-nova-regular.otf") format("opentype");
           font-weight: 400;
           font-display: swap;
         }
         @font-face {
           font-family: "Proxima";
-          src: url("/fonts/Proxima-Bold.otf") format("opentype");
+          src: url("/fonts/proxima-nova-bold.otf") format("opentype");
           font-weight: 700;
           font-display: swap;
         }
@@ -870,6 +895,24 @@ export default function PackageClient({
           padding: 0 16px;
           font-size: 17px;
           border: 1px dashed #4a4a4e;
+        }
+        /* Stored 1080×1920 tag, CSS-cropped to its lower name band so the row
+           preview matches the on-click generated strip. */
+        .thumb.tagimg {
+          height: 64px;
+          width: 230px;
+          overflow: hidden;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          background: #18181a;
+          border-radius: 8px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+        }
+        .thumb.tagimg img {
+          width: 230px;
+          height: auto;
+          display: block;
         }
         .chip2 {
           font-size: 9px;

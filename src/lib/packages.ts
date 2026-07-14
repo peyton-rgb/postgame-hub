@@ -29,6 +29,10 @@ export type BrandKit = {
   logo_light_url: string | null;
   logo_white_url: string | null;
   logo_mark_url: string | null;
+  // Optional richer font list: [{name, role, url}]. When present (non-empty)
+  // it drives the Fonts grab-bar; otherwise we fall back to
+  // font_primary/font_secondary so brands without it keep working.
+  brand_fonts: { name: string; role: string; url: string }[] | null;
 };
 
 export type AssetPackage = {
@@ -121,12 +125,12 @@ export function brandLogos(
 // download (specimen only). The canvas generator hard-requires BerthCity +
 // Proxima, which are always bundled regardless of the brand.
 const BUNDLED_FONTS: Record<string, { family: string; files: string[] }> = {
-  "berthold city": { family: "BerthCity", files: ["/fonts/BerthCity-Bold.otf"] },
+  "berthold city": { family: "BerthCity", files: ["/fonts/berthold-city-bold.otf"] },
   "proxima nova": {
     family: "Proxima",
-    files: ["/fonts/Proxima-Regular.otf", "/fonts/Proxima-Bold.otf"],
+    files: ["/fonts/proxima-nova-regular.otf", "/fonts/proxima-nova-bold.otf"],
   },
-  veneer: { family: "Veneer", files: ["/fonts/Veneer.otf"] },
+  veneer: { family: "Veneer", files: ["/fonts/veneer.otf"] },
 };
 
 export type FontSpec = {
@@ -134,9 +138,42 @@ export type FontSpec = {
   role: string;
   family: string; // CSS family to render the specimen in
   files: string[]; // downloadable OTF(s)
+  // When set, the page injects an @font-face binding `family` to this url so
+  // the specimen renders in the real face even for a font we don't pre-bundle.
+  faceUrl?: string;
 };
 
+// CSS-safe family token for a brand font that isn't one of the pre-registered
+// bundled faces. The page @font-faces this token to the font's url.
+function customFamily(name: string): string {
+  return `pkgfont-${slugify(name) || "font"}`;
+}
+
 export function brandFonts(b: BrandKit): FontSpec[] {
+  // Preferred: the richer `brand_fonts` list ([{name, role, url}]). Each entry
+  // renders its specimen in the real face and downloads its own url. Bundled
+  // faces (BerthCity/Proxima/Veneer) reuse the families the page already
+  // registers globally; anything else gets an @font-face injected from `url`.
+  if (Array.isArray(b.brand_fonts) && b.brand_fonts.length) {
+    return b.brand_fonts
+      .filter((f) => f && f.name)
+      .map((f) => {
+        const bundled = BUNDLED_FONTS[f.name.trim().toLowerCase()];
+        const files = f.url ? [f.url] : [];
+        if (bundled) {
+          return { name: f.name, role: f.role || "", family: bundled.family, files };
+        }
+        return {
+          name: f.name,
+          role: f.role || "",
+          family: customFamily(f.name),
+          files,
+          faceUrl: f.url || undefined,
+        };
+      });
+  }
+
+  // Fallback: the two legacy slots, so brands without `brand_fonts` still work.
   const out: FontSpec[] = [];
   const add = (name: string | null, role: string, hostedUrl: string | null) => {
     if (!name) return;
@@ -144,8 +181,8 @@ export function brandFonts(b: BrandKit): FontSpec[] {
     if (bundled) {
       out.push({ name, role, family: bundled.family, files: bundled.files });
     } else if (hostedUrl) {
-      // Hosted family: specimen falls back to a serif/sans; download the file.
-      out.push({ name, role, family: name, files: [hostedUrl] });
+      // Hosted family: specimen renders in the real face via injected @font-face.
+      out.push({ name, role, family: customFamily(name), files: [hostedUrl], faceUrl: hostedUrl });
     } else {
       out.push({ name, role, family: name, files: [] });
     }
