@@ -80,9 +80,15 @@ function renderTag(name: string, sub: string): HTMLCanvasElement {
   ctx.textBaseline = "alphabetic";
   const NAME = (name || "").toUpperCase(),
     SUB = (sub || "").toUpperCase();
-  const nsize = fitF(ctx, NAME, "BerthCity", 112, 0.1, SAFE - 28, 40);
-  ctx.font = "700 " + nsize + "px 'BerthCity'";
-  ctx.letterSpacing = Math.round(nsize * 0.1) + "px";
+  // Fixed name size — no width-based auto-fit. Peyton: "one set size, don't
+  // care about length." Every name renders at the same letter-height; long
+  // names simply render wider, and the very longest run past the 1080px right
+  // edge — that is intended and accepted.
+  // TODO(optional): if clipping should later be avoided, floor ONLY names
+  // physically wider than the frame (scale down just those). Not wanted now.
+  const NAME_SIZE = 96;
+  ctx.font = "700 " + NAME_SIZE + "px 'BerthCity'";
+  ctx.letterSpacing = Math.round(NAME_SIZE * 0.1) + "px";
   const nm = ctx.measureText(NAME),
     nA = nm.actualBoundingBoxAscent,
     nD = nm.actualBoundingBoxDescent;
@@ -97,7 +103,7 @@ function renderTag(name: string, sub: string): HTMLCanvasElement {
     sD = sm.actualBoundingBoxDescent;
     sH = sm.actualBoundingBoxAscent + sD;
   }
-  const nsGap = SUB ? Math.round(nsize * 0.16) : 0;
+  const nsGap = SUB ? Math.round(NAME_SIZE * 0.16) : 0;
   const subBottom = GB,
     subInkTop = subBottom - sH;
   const nameInkBottom = SUB ? subInkTop - nsGap : subBottom;
@@ -107,8 +113,8 @@ function renderTag(name: string, sub: string): HTMLCanvasElement {
   ctx.fillStyle = grad(ctx, nameInkTop, subBottom, GOLD_STOPS);
   ctx.fillRect(M, nameInkTop, SW, subBottom - nameInkTop);
   // white name w/ soft drop shadow — flat, no trim/emboss
-  ctx.font = "700 " + nsize + "px 'BerthCity'";
-  ctx.letterSpacing = Math.round(nsize * 0.1) + "px";
+  ctx.font = "700 " + NAME_SIZE + "px 'BerthCity'";
+  ctx.letterSpacing = Math.round(NAME_SIZE * 0.1) + "px";
   ctx.save();
   ctx.shadowColor = "rgba(7,7,10,0.55)";
   ctx.shadowBlur = 9;
