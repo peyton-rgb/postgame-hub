@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { AssetPackage, BrandKit, Talent } from "@/lib/packages";
 import PackageClient from "./PackageClient";
+import PackageShell from "./PackageShell";
 
 // Public, token-gated editor asset package (grab-and-go brand kit + name-tag
 // generator). Mirrors the brand portal at /portal/[token]:
@@ -93,7 +94,11 @@ export default async function PackagePage({ params }: Props) {
   const data = await loadPackage(token);
   if (!data) notFound();
 
+  // Postgame owns the chrome; the client owns the content. The shell frames the
+  // client-skinned package (unchanged) in the Postgame dark wrapper.
   return (
-    <PackageClient pkg={data.pkg} brand={data.brand} talent={data.talent} />
+    <PackageShell pkg={data.pkg}>
+      <PackageClient pkg={data.pkg} brand={data.brand} talent={data.talent} />
+    </PackageShell>
   );
 }
