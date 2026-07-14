@@ -387,6 +387,7 @@ const TOOLS_SECTION: NavSection = {
     { name: 'Campaign Briefs', href: '/dashboard/campaign-briefs', icon: FilesIcon },
     { name: 'Brands', href: '/dashboard/brands', icon: BuildingIcon },
     { name: 'Brand Portals', href: '/dashboard/brand-portals', icon: ExternalLinkIcon },
+    { name: 'Asset Packages', href: '/packages', icon: PackageIcon },
     { name: 'Media Library', href: '/media-library', icon: PhotoIcon },
     { name: 'BTS Submissions', href: '/dashboard/bts', icon: CameraIcon },
     { name: 'Website Editor', href: '/dashboard/website', icon: BrowserIcon },
