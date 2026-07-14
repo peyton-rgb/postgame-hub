@@ -25,7 +25,7 @@ export const fetchCache = "force-no-store";
 type Props = { params: Promise<{ token: string }> };
 
 const BRAND_COLUMNS =
-  "id, name, slug, primary_color, secondary_color, brand_colors, font_primary, font_secondary, font_primary_url, font_secondary_url, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, logo_mark_url";
+  "id, name, slug, primary_color, secondary_color, brand_colors, font_primary, font_secondary, font_primary_url, font_secondary_url, brand_fonts, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, logo_mark_url";
 
 // Service-role client (server-only) whose every request opts out of the Next
 // Data Cache. `createServiceSupabase()` would otherwise let Next cache the
