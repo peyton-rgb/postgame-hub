@@ -92,15 +92,19 @@ export function pickHeroLogo(b: BrandKit): string | null {
   );
 }
 
-// Labeled, de-duped logo files for the "Logos" grab bar. `dark` = the file is a
-// light/white mark meant to sit on a colored field (preview it on the brand red).
+// Labeled, de-duped logo files for the "Logos" grab bar. `onColor: true` = a
+// white/reverse mark, previewed on the brand's colored field (`.onred`);
+// `false` = a full-color, black, or dark mark, previewed on white (`.light`).
+// De-duped by URL below so the same file never renders in two cards.
 export function brandLogos(
   b: BrandKit
 ): { label: string; url: string; onColor: boolean; file: string }[] {
   const raw: { label: string; url: string | null; onColor: boolean }[] = [
     { label: "Primary", url: b.logo_primary_url, onColor: false },
     { label: "White", url: b.logo_white_url, onColor: true },
-    { label: "Light", url: b.logo_light_url, onColor: true },
+    // logo_light_url holds the black 1-color mark for light backgrounds, so it
+    // previews on white — not on the brand color.
+    { label: "Black", url: b.logo_light_url, onColor: false },
     { label: "Dark", url: b.logo_dark_url, onColor: false },
     { label: "Mark", url: b.logo_mark_url, onColor: false },
   ];
