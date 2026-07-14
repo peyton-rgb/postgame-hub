@@ -1,4 +1,4 @@
-import { createServiceSupabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { AssetPackage, BrandKit, Talent } from "@/lib/packages";
@@ -16,14 +16,37 @@ import PackageClient from "./PackageClient";
 //     stays the gate.
 
 export const dynamic = "force-dynamic";
+// Belt-and-suspenders with the no-store client below: the status gate is
+// security-sensitive (a draft must never leak), and Supabase-js reads through
+// `fetch`, which Next will otherwise Data-Cache. Force every fetch in this
+// segment to bypass the cache so `status` is always read live.
+export const fetchCache = "force-no-store";
 
 type Props = { params: Promise<{ token: string }> };
 
 const BRAND_COLUMNS =
   "id, name, slug, primary_color, secondary_color, brand_colors, font_primary, font_secondary, font_primary_url, font_secondary_url, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, logo_mark_url";
 
+// Service-role client (server-only) whose every request opts out of the Next
+// Data Cache. `createServiceSupabase()` would otherwise let Next cache the
+// asset_packages read, so a package that was ever loaded while live would keep
+// serving after being set back to draft. The token still gates everything.
+function serviceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: (input: any, init?: any) =>
+          fetch(input, { ...init, cache: "no-store" }),
+      },
+    }
+  );
+}
+
 async function loadPackage(token: string) {
-  const supabase = createServiceSupabase();
+  const supabase = serviceClient();
   const { data: pkg } = await supabase
     .from("asset_packages")
     .select("*")
