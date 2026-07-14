@@ -1,0 +1,2842 @@
+[
+{
+"name": "Lionel Messi",
+"subtext": "8x Ballon d'Or · World Cup champion",
+"slug": "lionel-messi"
+},
+{
+"name": "Cristiano Ronaldo",
+"subtext": "5x Ballon d'Or · all-time top scorer",
+"slug": "cristiano-ronaldo"
+},
+{
+"name": "Kylian Mbappé",
+"subtext": "World Cup champion · France star",
+"slug": "kylian-mbappe"
+},
+{
+"name": "Neymar",
+"subtext": "Brazil superstar",
+"slug": "neymar"
+},
+{
+"name": "Erling Haaland",
+"subtext": "Goal-scoring machine",
+"slug": "erling-haaland"
+},
+{
+"name": "Pelé",
+"subtext": "3x World Cup winner · soccer king",
+"slug": "pele"
+},
+{
+"name": "Diego Maradona",
+"subtext": "World Cup champion · legend",
+"slug": "diego-maradona"
+},
+{
+"name": "Ronaldinho",
+"subtext": "World Cup champ · Ballon d'Or",
+"slug": "ronaldinho"
+},
+{
+"name": "Zinedine Zidane",
+"subtext": "World Cup champion · icon",
+"slug": "zinedine-zidane"
+},
+{
+"name": "Kevin De Bruyne",
+"subtext": "Premier League maestro",
+"slug": "kevin-de-bruyne"
+},
+{
+"name": "Mohamed Salah",
+"subtext": "Egyptian King · PL star",
+"slug": "mohamed-salah"
+},
+{
+"name": "Robert Lewandowski",
+"subtext": "Prolific striker",
+"slug": "robert-lewandowski"
+},
+{
+"name": "Harry Kane",
+"subtext": "England captain · goal record",
+"slug": "harry-kane"
+},
+{
+"name": "Jude Bellingham",
+"subtext": "England & Real Madrid star",
+"slug": "jude-bellingham"
+},
+{
+"name": "Vinícius Júnior",
+"subtext": "Real Madrid winger",
+"slug": "vinicius-junior"
+},
+{
+"name": "Luka Modrić",
+"subtext": "Ballon d'Or midfielder",
+"slug": "luka-modric"
+},
+{
+"name": "Sergio Ramos",
+"subtext": "Defensive icon",
+"slug": "sergio-ramos"
+},
+{
+"name": "Andrés Iniesta",
+"subtext": "World Cup winner",
+"slug": "andres-iniesta"
+},
+{
+"name": "Xavi",
+"subtext": "Barcelona legend",
+"slug": "xavi"
+},
+{
+"name": "Luis Suárez",
+"subtext": "Prolific striker",
+"slug": "luis-suarez"
+},
+{
+"name": "Gareth Bale",
+"subtext": "Wales legend",
+"slug": "gareth-bale"
+},
+{
+"name": "Wayne Rooney",
+"subtext": "England record scorer",
+"slug": "wayne-rooney"
+},
+{
+"name": "Steven Gerrard",
+"subtext": "Liverpool legend",
+"slug": "steven-gerrard"
+},
+{
+"name": "Frank Lampard",
+"subtext": "Chelsea legend",
+"slug": "frank-lampard"
+},
+{
+"name": "Thierry Henry",
+"subtext": "Arsenal legend",
+"slug": "thierry-henry"
+},
+{
+"name": "Christian Pulisic",
+"subtext": "USMNT captain",
+"slug": "christian-pulisic"
+},
+{
+"name": "Megan Rapinoe",
+"subtext": "World Cup champ · Olympic gold",
+"slug": "megan-rapinoe"
+},
+{
+"name": "Marta",
+"subtext": "Brazil legend · all-time scorer",
+"slug": "marta"
+},
+{
+"name": "Michael Jordan",
+"subtext": "6x NBA champion · GOAT",
+"slug": "michael-jordan"
+},
+{
+"name": "Kobe Bryant",
+"subtext": "5x NBA champion · Lakers legend",
+"slug": "kobe-bryant"
+},
+{
+"name": "Magic Johnson",
+"subtext": "5x NBA champion · Lakers icon",
+"slug": "magic-johnson"
+},
+{
+"name": "Larry Bird",
+"subtext": "3x NBA champion · Celtics legend",
+"slug": "larry-bird"
+},
+{
+"name": "Kareem Abdul-Jabbar",
+"subtext": "6x NBA champion · scoring king",
+"slug": "kareem-abdul-jabbar"
+},
+{
+"name": "Wilt Chamberlain",
+"subtext": "100-point game · legend",
+"slug": "wilt-chamberlain"
+},
+{
+"name": "Tim Duncan",
+"subtext": "5x NBA champion · Spurs legend",
+"slug": "tim-duncan"
+},
+{
+"name": "Kevin Garnett",
+"subtext": "NBA champion · MVP",
+"slug": "kevin-garnett"
+},
+{
+"name": "Dirk Nowitzki",
+"subtext": "NBA champion · MVP",
+"slug": "dirk-nowitzki"
+},
+{
+"name": "Stephen Curry",
+"subtext": "4x NBA champion · greatest shooter",
+"slug": "stephen-curry"
+},
+{
+"name": "Giannis Antetokounmpo",
+"subtext": "NBA champion · 2x MVP",
+"slug": "giannis-antetokounmpo"
+},
+{
+"name": "Nikola Jokić",
+"subtext": "NBA champion · 3x MVP",
+"slug": "nikola-jokic"
+},
+{
+"name": "Luka Dončić",
+"subtext": "All-NBA superstar",
+"slug": "luka-doncic"
+},
+{
+"name": "Joel Embiid",
+"subtext": "NBA MVP",
+"slug": "joel-embiid"
+},
+{
+"name": "Jayson Tatum",
+"subtext": "NBA champion · All-Star",
+"slug": "jayson-tatum"
+},
+{
+"name": "Devin Booker",
+"subtext": "All-NBA guard",
+"slug": "devin-booker"
+},
+{
+"name": "Damian Lillard",
+"subtext": "All-NBA · Dame Time",
+"slug": "damian-lillard"
+},
+{
+"name": "Jimmy Butler",
+"subtext": "6x NBA All-Star",
+"slug": "jimmy-butler"
+},
+{
+"name": "Kawhi Leonard",
+"subtext": "2x NBA champion · Finals MVP",
+"slug": "kawhi-leonard"
+},
+{
+"name": "Russell Westbrook",
+"subtext": "NBA MVP · triple-double king",
+"slug": "russell-westbrook"
+},
+{
+"name": "Kyrie Irving",
+"subtext": "NBA champion · handles wizard",
+"slug": "kyrie-irving"
+},
+{
+"name": "Ja Morant",
+"subtext": "All-NBA guard",
+"slug": "ja-morant"
+},
+{
+"name": "Zion Williamson",
+"subtext": "No.1 pick · phenom",
+"slug": "zion-williamson"
+},
+{
+"name": "Chris Paul",
+"subtext": "12x NBA All-Star",
+"slug": "chris-paul"
+},
+{
+"name": "Carmelo Anthony",
+"subtext": "Hall of Fame scorer",
+"slug": "carmelo-anthony"
+},
+{
+"name": "Dwyane Wade",
+"subtext": "3x NBA champion · Hall of Famer",
+"slug": "dwyane-wade"
+},
+{
+"name": "Caitlin Clark",
+"subtext": "WNBA phenom · scoring record",
+"slug": "caitlin-clark"
+},
+{
+"name": "A'ja Wilson",
+"subtext": "WNBA champion · MVP",
+"slug": "a-ja-wilson"
+},
+{
+"name": "Breanna Stewart",
+"subtext": "WNBA champion · MVP",
+"slug": "breanna-stewart"
+},
+{
+"name": "Sue Bird",
+"subtext": "4x WNBA champion · legend",
+"slug": "sue-bird"
+},
+{
+"name": "Angel Reese",
+"subtext": "WNBA star · national champ",
+"slug": "angel-reese"
+},
+{
+"name": "Patrick Mahomes",
+"subtext": "3x Super Bowl champ · MVP",
+"slug": "patrick-mahomes"
+},
+{
+"name": "Josh Allen",
+"subtext": "Bills star QB",
+"slug": "josh-allen"
+},
+{
+"name": "Travis Kelce",
+"subtext": "Super Bowl champ · All-Pro TE",
+"slug": "travis-kelce"
+},
+{
+"name": "Aaron Rodgers",
+"subtext": "Super Bowl champ · 4x MVP",
+"slug": "aaron-rodgers"
+},
+{
+"name": "Peyton Manning",
+"subtext": "2x Super Bowl champ · 5x MVP",
+"slug": "peyton-manning"
+},
+{
+"name": "Deion Sanders",
+"subtext": "Hall of Fame · Prime Time",
+"slug": "deion-sanders"
+},
+{
+"name": "Ray Lewis",
+"subtext": "2x Super Bowl champ · Hall of Famer",
+"slug": "ray-lewis"
+},
+{
+"name": "Reggie White",
+"subtext": "Hall of Fame · Super Bowl champ",
+"slug": "reggie-white"
+},
+{
+"name": "Dan Marino",
+"subtext": "Hall of Fame QB",
+"slug": "dan-marino"
+},
+{
+"name": "John Elway",
+"subtext": "2x Super Bowl champ",
+"slug": "john-elway"
+},
+{
+"name": "Troy Aikman",
+"subtext": "3x Super Bowl champ · Hall of Famer",
+"slug": "troy-aikman"
+},
+{
+"name": "Bo Jackson",
+"subtext": "Two-sport legend",
+"slug": "bo-jackson"
+},
+{
+"name": "Lamar Jackson",
+"subtext": "2x NFL MVP",
+"slug": "lamar-jackson"
+},
+{
+"name": "Jalen Hurts",
+"subtext": "Super Bowl champ · Eagles QB",
+"slug": "jalen-hurts"
+},
+{
+"name": "Justin Herbert",
+"subtext": "Chargers star QB",
+"slug": "justin-herbert"
+},
+{
+"name": "Christian McCaffrey",
+"subtext": "All-Pro RB",
+"slug": "christian-mccaffrey"
+},
+{
+"name": "Saquon Barkley",
+"subtext": "Super Bowl champ · All-Pro RB",
+"slug": "saquon-barkley"
+},
+{
+"name": "Derrick Henry",
+"subtext": "All-Pro RB · King Henry",
+"slug": "derrick-henry"
+},
+{
+"name": "Tyreek Hill",
+"subtext": "All-Pro WR",
+"slug": "tyreek-hill"
+},
+{
+"name": "Davante Adams",
+"subtext": "All-Pro WR",
+"slug": "davante-adams"
+},
+{
+"name": "Aaron Donald",
+"subtext": "Hall of Fame DT · DPOY",
+"slug": "aaron-donald"
+},
+{
+"name": "Micah Parsons",
+"subtext": "All-Pro edge",
+"slug": "micah-parsons"
+},
+{
+"name": "Myles Garrett",
+"subtext": "Defensive POY · All-Pro",
+"slug": "myles-garrett"
+},
+{
+"name": "T.J. Watt",
+"subtext": "Defensive POY · All-Pro",
+"slug": "t-j-watt"
+},
+{
+"name": "Travis Hunter",
+"subtext": "Heisman winner · two-way star",
+"slug": "travis-hunter"
+},
+{
+"name": "Shohei Ohtani",
+"subtext": "MVP · two-way superstar",
+"slug": "shohei-ohtani"
+},
+{
+"name": "Mike Trout",
+"subtext": "3x AL MVP",
+"slug": "mike-trout"
+},
+{
+"name": "Mookie Betts",
+"subtext": "World Series champ · MVP",
+"slug": "mookie-betts"
+},
+{
+"name": "Bryce Harper",
+"subtext": "2x NL MVP",
+"slug": "bryce-harper"
+},
+{
+"name": "Ronald Acuña Jr.",
+"subtext": "NL MVP",
+"slug": "ronald-acuna-jr"
+},
+{
+"name": "Juan Soto",
+"subtext": "All-Star slugger",
+"slug": "juan-soto"
+},
+{
+"name": "Fernando Tatís Jr.",
+"subtext": "electric superstar",
+"slug": "fernando-tatis-jr"
+},
+{
+"name": "Ken Griffey Jr.",
+"subtext": "Hall of Fame · The Kid",
+"slug": "ken-griffey-jr"
+},
+{
+"name": "Barry Bonds",
+"subtext": "all-time HR king",
+"slug": "barry-bonds"
+},
+{
+"name": "Albert Pujols",
+"subtext": "3x MVP · 700 HR club",
+"slug": "albert-pujols"
+},
+{
+"name": "Ichiro Suzuki",
+"subtext": "Hall of Famer · hit king",
+"slug": "ichiro-suzuki"
+},
+{
+"name": "Clayton Kershaw",
+"subtext": "3x Cy Young · champion",
+"slug": "clayton-kershaw"
+},
+{
+"name": "Justin Verlander",
+"subtext": "3x Cy Young champ",
+"slug": "justin-verlander"
+},
+{
+"name": "Wayne Gretzky",
+"subtext": "The Great One · all-time scorer",
+"slug": "wayne-gretzky"
+},
+{
+"name": "Sidney Crosby",
+"subtext": "3x Stanley Cup champ · captain",
+"slug": "sidney-crosby"
+},
+{
+"name": "Connor McDavid",
+"subtext": "NHL's best · MVP",
+"slug": "connor-mcdavid"
+},
+{
+"name": "Auston Matthews",
+"subtext": "goal-scoring star",
+"slug": "auston-matthews"
+},
+{
+"name": "Nathan MacKinnon",
+"subtext": "Stanley Cup champ · MVP",
+"slug": "nathan-mackinnon"
+},
+{
+"name": "Mario Lemieux",
+"subtext": "Hall of Fame legend",
+"slug": "mario-lemieux"
+},
+{
+"name": "Bobby Orr",
+"subtext": "Hall of Fame icon",
+"slug": "bobby-orr"
+},
+{
+"name": "Roger Federer",
+"subtext": "20x Grand Slam champion",
+"slug": "roger-federer"
+},
+{
+"name": "Rafael Nadal",
+"subtext": "22x Grand Slam champion",
+"slug": "rafael-nadal"
+},
+{
+"name": "Venus Williams",
+"subtext": "7x Grand Slam champ",
+"slug": "venus-williams"
+},
+{
+"name": "Carlos Alcaraz",
+"subtext": "multi-Slam champion",
+"slug": "carlos-alcaraz"
+},
+{
+"name": "Coco Gauff",
+"subtext": "Grand Slam champion",
+"slug": "coco-gauff"
+},
+{
+"name": "Naomi Osaka",
+"subtext": "4x Grand Slam champ",
+"slug": "naomi-osaka"
+},
+{
+"name": "Iga Swiatek",
+"subtext": "multi-Slam No.1",
+"slug": "iga-swiatek"
+},
+{
+"name": "Andre Agassi",
+"subtext": "8x Grand Slam champ",
+"slug": "andre-agassi"
+},
+{
+"name": "Pete Sampras",
+"subtext": "14x Grand Slam champ",
+"slug": "pete-sampras"
+},
+{
+"name": "Muhammad Ali",
+"subtext": "3x heavyweight champ · The Greatest",
+"slug": "muhammad-ali"
+},
+{
+"name": "Canelo Álvarez",
+"subtext": "undisputed champion",
+"slug": "canelo-alvarez"
+},
+{
+"name": "Tyson Fury",
+"subtext": "heavyweight champion",
+"slug": "tyson-fury"
+},
+{
+"name": "Manny Pacquiao",
+"subtext": "8-division world champion",
+"slug": "manny-pacquiao"
+},
+{
+"name": "Conor McGregor",
+"subtext": "2-division UFC champion",
+"slug": "conor-mcgregor"
+},
+{
+"name": "Jon Jones",
+"subtext": "UFC GOAT · champion",
+"slug": "jon-jones"
+},
+{
+"name": "Khabib Nurmagomedov",
+"subtext": "undefeated UFC champ",
+"slug": "khabib-nurmagomedov"
+},
+{
+"name": "Israel Adesanya",
+"subtext": "UFC champion",
+"slug": "israel-adesanya"
+},
+{
+"name": "Ronda Rousey",
+"subtext": "UFC pioneer · champion",
+"slug": "ronda-rousey"
+},
+{
+"name": "Amanda Nunes",
+"subtext": "2-division UFC champ",
+"slug": "amanda-nunes"
+},
+{
+"name": "Tiger Woods",
+"subtext": "15x major champion",
+"slug": "tiger-woods"
+},
+{
+"name": "Rory McIlroy",
+"subtext": "4x major champion",
+"slug": "rory-mcilroy"
+},
+{
+"name": "Scottie Scheffler",
+"subtext": "Masters champion · No.1",
+"slug": "scottie-scheffler"
+},
+{
+"name": "Jack Nicklaus",
+"subtext": "18x major champion",
+"slug": "jack-nicklaus"
+},
+{
+"name": "Phil Mickelson",
+"subtext": "6x major champion",
+"slug": "phil-mickelson"
+},
+{
+"name": "Lewis Hamilton",
+"subtext": "7x F1 world champion",
+"slug": "lewis-hamilton"
+},
+{
+"name": "Max Verstappen",
+"subtext": "F1 world champion",
+"slug": "max-verstappen"
+},
+{
+"name": "Dale Earnhardt Jr.",
+"subtext": "NASCAR icon",
+"slug": "dale-earnhardt-jr"
+},
+{
+"name": "Jeff Gordon",
+"subtext": "4x NASCAR champion",
+"slug": "jeff-gordon"
+},
+{
+"name": "Usain Bolt",
+"subtext": "8x Olympic gold sprinter",
+"slug": "usain-bolt"
+},
+{
+"name": "Michael Phelps",
+"subtext": "23x Olympic gold",
+"slug": "michael-phelps"
+},
+{
+"name": "Simone Biles",
+"subtext": "most decorated gymnast ever",
+"slug": "simone-biles"
+},
+{
+"name": "Katie Ledecky",
+"subtext": "Olympic swimming legend",
+"slug": "katie-ledecky"
+},
+{
+"name": "Sha'Carri Richardson",
+"subtext": "world champ sprinter",
+"slug": "sha-carri-richardson"
+},
+{
+"name": "Shaun White",
+"subtext": "3x Olympic gold",
+"slug": "shaun-white"
+},
+{
+"name": "The Rock",
+"subtext": "WWE legend · Hollywood icon",
+"slug": "the-rock"
+},
+{
+"name": "Stone Cold Steve Austin",
+"subtext": "WWE Hall of Famer",
+"slug": "stone-cold-steve-austin"
+},
+{
+"name": "Hulk Hogan",
+"subtext": "WWE icon",
+"slug": "hulk-hogan"
+},
+{
+"name": "Ric Flair",
+"subtext": "16x world champion",
+"slug": "ric-flair"
+},
+{
+"name": "Triple H",
+"subtext": "WWE Hall of Famer",
+"slug": "triple-h"
+},
+{
+"name": "Batista",
+"subtext": "WWE champion · actor",
+"slug": "batista"
+},
+{
+"name": "Taylor Swift",
+"subtext": "record-breaking global superstar",
+"slug": "taylor-swift"
+},
+{
+"name": "Beyoncé",
+"subtext": "most Grammy-winning artist ever",
+"slug": "beyonce"
+},
+{
+"name": "Drake",
+"subtext": "chart-topping rap superstar",
+"slug": "drake"
+},
+{
+"name": "Rihanna",
+"subtext": "global music & business mogul",
+"slug": "rihanna"
+},
+{
+"name": "Bad Bunny",
+"subtext": "global Latin superstar",
+"slug": "bad-bunny"
+},
+{
+"name": "The Weeknd",
+"subtext": "chart-topping hitmaker",
+"slug": "the-weeknd"
+},
+{
+"name": "Kendrick Lamar",
+"subtext": "Pulitzer-winning rapper",
+"slug": "kendrick-lamar"
+},
+{
+"name": "Eminem",
+"subtext": "best-selling rap icon",
+"slug": "eminem"
+},
+{
+"name": "Adele",
+"subtext": "Grammy-winning powerhouse",
+"slug": "adele"
+},
+{
+"name": "Ed Sheeran",
+"subtext": "global pop superstar",
+"slug": "ed-sheeran"
+},
+{
+"name": "Bruno Mars",
+"subtext": "Grammy-winning showman",
+"slug": "bruno-mars"
+},
+{
+"name": "Justin Bieber",
+"subtext": "global pop star",
+"slug": "justin-bieber"
+},
+{
+"name": "Ariana Grande",
+"subtext": "Grammy-winning pop star",
+"slug": "ariana-grande"
+},
+{
+"name": "Billie Eilish",
+"subtext": "Grammy & Oscar winner",
+"slug": "billie-eilish"
+},
+{
+"name": "Post Malone",
+"subtext": "chart-topping star",
+"slug": "post-malone"
+},
+{
+"name": "Snoop Dogg",
+"subtext": "hip-hop icon",
+"slug": "snoop-dogg"
+},
+{
+"name": "Dr. Dre",
+"subtext": "hip-hop mogul",
+"slug": "dr-dre"
+},
+{
+"name": "50 Cent",
+"subtext": "rap & business mogul",
+"slug": "50-cent"
+},
+{
+"name": "Cardi B",
+"subtext": "Grammy-winning rapper",
+"slug": "cardi-b"
+},
+{
+"name": "Nicki Minaj",
+"subtext": "rap superstar",
+"slug": "nicki-minaj"
+},
+{
+"name": "Usher",
+"subtext": "R&B icon",
+"slug": "usher"
+},
+{
+"name": "SZA",
+"subtext": "Grammy-winning R&B star",
+"slug": "sza"
+},
+{
+"name": "Doja Cat",
+"subtext": "chart-topping star",
+"slug": "doja-cat"
+},
+{
+"name": "Leonardo DiCaprio",
+"subtext": "Oscar-winning actor",
+"slug": "leonardo-dicaprio"
+},
+{
+"name": "Denzel Washington",
+"subtext": "2x Oscar winner",
+"slug": "denzel-washington"
+},
+{
+"name": "Tom Cruise",
+"subtext": "blockbuster icon",
+"slug": "tom-cruise"
+},
+{
+"name": "Will Smith",
+"subtext": "Oscar-winning actor",
+"slug": "will-smith"
+},
+{
+"name": "Dwayne Johnson",
+"subtext": "box-office superstar",
+"slug": "dwayne-johnson"
+},
+{
+"name": "Brad Pitt",
+"subtext": "Oscar-winning star",
+"slug": "brad-pitt"
+},
+{
+"name": "Robert Downey Jr.",
+"subtext": "Oscar winner · Iron Man",
+"slug": "robert-downey-jr"
+},
+{
+"name": "Tom Hanks",
+"subtext": "2x Oscar winner",
+"slug": "tom-hanks"
+},
+{
+"name": "Morgan Freeman",
+"subtext": "Oscar-winning legend",
+"slug": "morgan-freeman"
+},
+{
+"name": "Samuel L. Jackson",
+"subtext": "Hollywood icon",
+"slug": "samuel-l-jackson"
+},
+{
+"name": "Zendaya",
+"subtext": "Emmy-winning star",
+"slug": "zendaya"
+},
+{
+"name": "Margot Robbie",
+"subtext": "star & producer",
+"slug": "margot-robbie"
+},
+{
+"name": "Timothée Chalamet",
+"subtext": "acclaimed actor",
+"slug": "timothee-chalamet"
+},
+{
+"name": "Scarlett Johansson",
+"subtext": "blockbuster star",
+"slug": "scarlett-johansson"
+},
+{
+"name": "Jennifer Lawrence",
+"subtext": "Oscar-winning star",
+"slug": "jennifer-lawrence"
+},
+{
+"name": "Dave Chappelle",
+"subtext": "Grammy & Emmy comedian",
+"slug": "dave-chappelle"
+},
+{
+"name": "Jerry Seinfeld",
+"subtext": "comedy legend",
+"slug": "jerry-seinfeld"
+},
+{
+"name": "Jimmy Fallon",
+"subtext": "Tonight Show host",
+"slug": "jimmy-fallon"
+},
+{
+"name": "Elon Musk",
+"subtext": "Tesla & SpaceX CEO",
+"slug": "elon-musk"
+},
+{
+"name": "Jeff Bezos",
+"subtext": "Amazon founder",
+"slug": "jeff-bezos"
+},
+{
+"name": "Mark Zuckerberg",
+"subtext": "Meta founder & CEO",
+"slug": "mark-zuckerberg"
+},
+{
+"name": "Oprah Winfrey",
+"subtext": "media mogul · icon",
+"slug": "oprah-winfrey"
+},
+{
+"name": "MrBeast",
+"subtext": "world's biggest YouTuber",
+"slug": "mrbeast"
+},
+{
+"name": "Kim Kardashian",
+"subtext": "media & business mogul",
+"slug": "kim-kardashian"
+},
+{
+"name": "Kylie Jenner",
+"subtext": "beauty mogul",
+"slug": "kylie-jenner"
+},
+{
+"name": "Bill Gates",
+"subtext": "Microsoft co-founder",
+"slug": "bill-gates"
+},
+{
+"name": "Mark Cuban",
+"subtext": "entrepreneur · investor",
+"slug": "mark-cuban"
+},
+{
+"name": "Vince Carter",
+"subtext": "Hall of Fame dunk legend",
+"slug": "vince-carter"
+},
+{
+"name": "Tracy McGrady",
+"subtext": "Hall of Fame scorer",
+"slug": "tracy-mcgrady"
+},
+{
+"name": "Steve Nash",
+"subtext": "2x NBA MVP",
+"slug": "steve-nash"
+},
+{
+"name": "Jason Kidd",
+"subtext": "NBA champion · Hall of Famer",
+"slug": "jason-kidd"
+},
+{
+"name": "Ray Allen",
+"subtext": "2x NBA champ · 3-point king",
+"slug": "ray-allen"
+},
+{
+"name": "Reggie Miller",
+"subtext": "Hall of Fame sharpshooter",
+"slug": "reggie-miller"
+},
+{
+"name": "Gary Payton",
+"subtext": "NBA champ · The Glove",
+"slug": "gary-payton"
+},
+{
+"name": "Charles Barkley",
+"subtext": "NBA MVP · Hall of Famer",
+"slug": "charles-barkley"
+},
+{
+"name": "Hakeem Olajuwon",
+"subtext": "2x NBA champ · MVP",
+"slug": "hakeem-olajuwon"
+},
+{
+"name": "David Robinson",
+"subtext": "2x NBA champ · MVP",
+"slug": "david-robinson"
+},
+{
+"name": "Isiah Thomas",
+"subtext": "2x NBA champ · Hall of Famer",
+"slug": "isiah-thomas"
+},
+{
+"name": "Karl Malone",
+"subtext": "2x NBA MVP",
+"slug": "karl-malone"
+},
+{
+"name": "John Stockton",
+"subtext": "NBA assist king",
+"slug": "john-stockton"
+},
+{
+"name": "Clyde Drexler",
+"subtext": "NBA champ · Hall of Famer",
+"slug": "clyde-drexler"
+},
+{
+"name": "Bill Russell",
+"subtext": "11x NBA champion",
+"slug": "bill-russell"
+},
+{
+"name": "Jerry West",
+"subtext": "Hall of Famer · The Logo",
+"slug": "jerry-west"
+},
+{
+"name": "Oscar Robertson",
+"subtext": "MVP · triple-double pioneer",
+"slug": "oscar-robertson"
+},
+{
+"name": "Yao Ming",
+"subtext": "Hall of Fame center",
+"slug": "yao-ming"
+},
+{
+"name": "Pau Gasol",
+"subtext": "2x NBA champ · Hall of Famer",
+"slug": "pau-gasol"
+},
+{
+"name": "Manu Ginóbili",
+"subtext": "4x NBA champ · Hall of Famer",
+"slug": "manu-ginobili"
+},
+{
+"name": "Tony Parker",
+"subtext": "4x NBA champ · Finals MVP",
+"slug": "tony-parker"
+},
+{
+"name": "Chauncey Billups",
+"subtext": "NBA champ · Finals MVP",
+"slug": "chauncey-billups"
+},
+{
+"name": "Metta World Peace",
+"subtext": "NBA champion",
+"slug": "metta-world-peace"
+},
+{
+"name": "Baron Davis",
+"subtext": "2x NBA All-Star",
+"slug": "baron-davis"
+},
+{
+"name": "Michael Cooper",
+"subtext": "5x NBA champ · Lakers legend",
+"slug": "michael-cooper"
+},
+{
+"name": "Shawn Kemp",
+"subtext": "6x NBA All-Star",
+"slug": "shawn-kemp"
+},
+{
+"name": "Dikembe Mutombo",
+"subtext": "4x Defensive POY",
+"slug": "dikembe-mutombo"
+},
+{
+"name": "Anthony Davis",
+"subtext": "NBA champion · All-NBA big",
+"slug": "anthony-davis"
+},
+{
+"name": "Paul George",
+"subtext": "9x NBA All-Star",
+"slug": "paul-george"
+},
+{
+"name": "Bam Adebayo",
+"subtext": "All-Star · All-Defense",
+"slug": "bam-adebayo"
+},
+{
+"name": "Donovan Mitchell",
+"subtext": "All-NBA guard",
+"slug": "donovan-mitchell"
+},
+{
+"name": "Jaylen Brown",
+"subtext": "NBA champ · Finals MVP",
+"slug": "jaylen-brown"
+},
+{
+"name": "De'Aaron Fox",
+"subtext": "All-Star speedster",
+"slug": "de-aaron-fox"
+},
+{
+"name": "Shai Gilgeous-Alexander",
+"subtext": "MVP · scoring champion",
+"slug": "shai-gilgeous-alexander"
+},
+{
+"name": "Tyrese Maxey",
+"subtext": "All-Star guard",
+"slug": "tyrese-maxey"
+},
+{
+"name": "Jalen Green",
+"subtext": "high-flying guard",
+"slug": "jalen-green"
+},
+{
+"name": "Scottie Barnes",
+"subtext": "Rookie of the Year",
+"slug": "scottie-barnes"
+},
+{
+"name": "Evan Mobley",
+"subtext": "Defensive POY",
+"slug": "evan-mobley"
+},
+{
+"name": "Franz Wagner",
+"subtext": "rising All-Star",
+"slug": "franz-wagner"
+},
+{
+"name": "Jaren Jackson Jr.",
+"subtext": "Defensive POY",
+"slug": "jaren-jackson-jr"
+},
+{
+"name": "Julius Randle",
+"subtext": "All-NBA forward",
+"slug": "julius-randle"
+},
+{
+"name": "Pascal Siakam",
+"subtext": "NBA champ · All-Star",
+"slug": "pascal-siakam"
+},
+{
+"name": "Jrue Holiday",
+"subtext": "2x NBA champ · All-Defense",
+"slug": "jrue-holiday"
+},
+{
+"name": "Zach LaVine",
+"subtext": "2x NBA All-Star",
+"slug": "zach-lavine"
+},
+{
+"name": "DeMar DeRozan",
+"subtext": "6x NBA All-Star",
+"slug": "demar-derozan"
+},
+{
+"name": "Rudy Gobert",
+"subtext": "4x Defensive POY",
+"slug": "rudy-gobert"
+},
+{
+"name": "Alperen Sengun",
+"subtext": "All-Star big man",
+"slug": "alperen-sengun"
+},
+{
+"name": "Brandon Ingram",
+"subtext": "All-Star scorer",
+"slug": "brandon-ingram"
+},
+{
+"name": "CJ McCollum",
+"subtext": "sharpshooting guard",
+"slug": "cj-mccollum"
+},
+{
+"name": "Kristaps Porzingis",
+"subtext": "stretch big · champion",
+"slug": "kristaps-porzingis"
+},
+{
+"name": "Amen Thompson",
+"subtext": "rising two-way star",
+"slug": "amen-thompson"
+},
+{
+"name": "Sabrina Ionescu",
+"subtext": "WNBA All-Star · 3-point champ",
+"slug": "sabrina-ionescu"
+},
+{
+"name": "Kelsey Plum",
+"subtext": "WNBA champ · scoring star",
+"slug": "kelsey-plum"
+},
+{
+"name": "Napheesa Collier",
+"subtext": "WNBA All-Star · DPOY",
+"slug": "napheesa-collier"
+},
+{
+"name": "Jewell Loyd",
+"subtext": "WNBA champ · scoring champ",
+"slug": "jewell-loyd"
+},
+{
+"name": "Arike Ogunbowale",
+"subtext": "WNBA scoring star",
+"slug": "arike-ogunbowale"
+},
+{
+"name": "Brittney Griner",
+"subtext": "WNBA champ · Olympic gold",
+"slug": "brittney-griner"
+},
+{
+"name": "Maya Moore",
+"subtext": "4x WNBA champion",
+"slug": "maya-moore"
+},
+{
+"name": "Elena Delle Donne",
+"subtext": "2x WNBA MVP",
+"slug": "elena-delle-donne"
+},
+{
+"name": "Nneka Ogwumike",
+"subtext": "WNBA champ · MVP",
+"slug": "nneka-ogwumike"
+},
+{
+"name": "Lisa Leslie",
+"subtext": "2x WNBA champ · MVP",
+"slug": "lisa-leslie"
+},
+{
+"name": "Sheryl Swoopes",
+"subtext": "3x WNBA champ · MVP",
+"slug": "sheryl-swoopes"
+},
+{
+"name": "Paige Bueckers",
+"subtext": "No.1 pick · college phenom",
+"slug": "paige-bueckers"
+},
+{
+"name": "Jim Brown",
+"subtext": "Hall of Fame · NFL legend",
+"slug": "jim-brown"
+},
+{
+"name": "Walter Payton",
+"subtext": "Hall of Fame · Sweetness",
+"slug": "walter-payton"
+},
+{
+"name": "Marshall Faulk",
+"subtext": "MVP · Hall of Famer",
+"slug": "marshall-faulk"
+},
+{
+"name": "LaDainian Tomlinson",
+"subtext": "MVP · Hall of Famer",
+"slug": "ladainian-tomlinson"
+},
+{
+"name": "Adrian Peterson",
+"subtext": "MVP · Hall of Fame RB",
+"slug": "adrian-peterson"
+},
+{
+"name": "Terrell Owens",
+"subtext": "Hall of Fame WR",
+"slug": "terrell-owens"
+},
+{
+"name": "Calvin Johnson",
+"subtext": "Hall of Fame · Megatron",
+"slug": "calvin-johnson"
+},
+{
+"name": "Larry Fitzgerald",
+"subtext": "future Hall of Fame WR",
+"slug": "larry-fitzgerald"
+},
+{
+"name": "Tony Gonzalez",
+"subtext": "Hall of Fame TE",
+"slug": "tony-gonzalez"
+},
+{
+"name": "Ed Reed",
+"subtext": "Hall of Fame safety",
+"slug": "ed-reed"
+},
+{
+"name": "Charles Woodson",
+"subtext": "Hall of Fame DB",
+"slug": "charles-woodson"
+},
+{
+"name": "Brian Urlacher",
+"subtext": "Hall of Fame LB",
+"slug": "brian-urlacher"
+},
+{
+"name": "Patrick Willis",
+"subtext": "Hall of Fame LB",
+"slug": "patrick-willis"
+},
+{
+"name": "DeMarcus Ware",
+"subtext": "Hall of Fame pass rusher",
+"slug": "demarcus-ware"
+},
+{
+"name": "Michael Strahan",
+"subtext": "Hall of Famer · TV host",
+"slug": "michael-strahan"
+},
+{
+"name": "Drew Brees",
+"subtext": "Super Bowl champ · record passer",
+"slug": "drew-brees"
+},
+{
+"name": "Ben Roethlisberger",
+"subtext": "2x Super Bowl champ",
+"slug": "ben-roethlisberger"
+},
+{
+"name": "Philip Rivers",
+"subtext": "8x Pro Bowl QB",
+"slug": "philip-rivers"
+},
+{
+"name": "Kurt Warner",
+"subtext": "Super Bowl MVP · Hall of Famer",
+"slug": "kurt-warner"
+},
+{
+"name": "Steve Young",
+"subtext": "Super Bowl MVP · Hall of Famer",
+"slug": "steve-young"
+},
+{
+"name": "Warren Moon",
+"subtext": "Hall of Fame QB",
+"slug": "warren-moon"
+},
+{
+"name": "Terrell Davis",
+"subtext": "Super Bowl MVP · Hall of Famer",
+"slug": "terrell-davis"
+},
+{
+"name": "CeeDee Lamb",
+"subtext": "All-Pro WR",
+"slug": "ceedee-lamb"
+},
+{
+"name": "A.J. Brown",
+"subtext": "All-Pro WR",
+"slug": "a-j-brown"
+},
+{
+"name": "DK Metcalf",
+"subtext": "Pro Bowl WR",
+"slug": "dk-metcalf"
+},
+{
+"name": "Cooper Kupp",
+"subtext": "Super Bowl MVP · Triple Crown",
+"slug": "cooper-kupp"
+},
+{
+"name": "Stefon Diggs",
+"subtext": "4x Pro Bowl WR",
+"slug": "stefon-diggs"
+},
+{
+"name": "Nick Bosa",
+"subtext": "Defensive POY",
+"slug": "nick-bosa"
+},
+{
+"name": "Chris Jones",
+"subtext": "All-Pro DT · champion",
+"slug": "chris-jones"
+},
+{
+"name": "Fred Warner",
+"subtext": "All-Pro LB",
+"slug": "fred-warner"
+},
+{
+"name": "Sauce Gardner",
+"subtext": "All-Pro corner",
+"slug": "sauce-gardner"
+},
+{
+"name": "Patrick Surtain II",
+"subtext": "Defensive POY",
+"slug": "patrick-surtain-ii"
+},
+{
+"name": "Trevor Lawrence",
+"subtext": "No.1 pick · Jaguars QB",
+"slug": "trevor-lawrence"
+},
+{
+"name": "Jordan Love",
+"subtext": "Packers QB",
+"slug": "jordan-love"
+},
+{
+"name": "Tua Tagovailoa",
+"subtext": "Pro Bowl QB",
+"slug": "tua-tagovailoa"
+},
+{
+"name": "Dak Prescott",
+"subtext": "Cowboys star QB",
+"slug": "dak-prescott"
+},
+{
+"name": "Brock Purdy",
+"subtext": "49ers QB",
+"slug": "brock-purdy"
+},
+{
+"name": "C.J. Stroud",
+"subtext": "Rookie of the Year",
+"slug": "c-j-stroud"
+},
+{
+"name": "Caleb Williams",
+"subtext": "Heisman winner · No.1 pick",
+"slug": "caleb-williams"
+},
+{
+"name": "Jared Goff",
+"subtext": "Super Bowl QB",
+"slug": "jared-goff"
+},
+{
+"name": "Baker Mayfield",
+"subtext": "No.1 pick · Buccaneers QB",
+"slug": "baker-mayfield"
+},
+{
+"name": "Bijan Robinson",
+"subtext": "All-Pro RB",
+"slug": "bijan-robinson"
+},
+{
+"name": "Jonathan Taylor",
+"subtext": "All-Pro RB",
+"slug": "jonathan-taylor"
+},
+{
+"name": "Josh Jacobs",
+"subtext": "Pro Bowl RB",
+"slug": "josh-jacobs"
+},
+{
+"name": "George Kittle",
+"subtext": "All-Pro TE",
+"slug": "george-kittle"
+},
+{
+"name": "Mark Andrews",
+"subtext": "Pro Bowl TE",
+"slug": "mark-andrews"
+},
+{
+"name": "Maxx Crosby",
+"subtext": "All-Pro edge",
+"slug": "maxx-crosby"
+},
+{
+"name": "Von Miller",
+"subtext": "Super Bowl MVP · pass rusher",
+"slug": "von-miller"
+},
+{
+"name": "Khalil Mack",
+"subtext": "Defensive POY",
+"slug": "khalil-mack"
+},
+{
+"name": "Jalen Ramsey",
+"subtext": "All-Pro corner",
+"slug": "jalen-ramsey"
+},
+{
+"name": "Marvin Harrison Jr.",
+"subtext": "star rookie WR",
+"slug": "marvin-harrison-jr"
+},
+{
+"name": "Ashton Jeanty",
+"subtext": "electric college RB",
+"slug": "ashton-jeanty"
+},
+{
+"name": "José Altuve",
+"subtext": "World Series champ · MVP",
+"slug": "jose-altuve"
+},
+{
+"name": "Corey Seager",
+"subtext": "2x World Series MVP",
+"slug": "corey-seager"
+},
+{
+"name": "Trea Turner",
+"subtext": "World Series champ · All-Star",
+"slug": "trea-turner"
+},
+{
+"name": "Yordan Alvarez",
+"subtext": "World Series champ · slugger",
+"slug": "yordan-alvarez"
+},
+{
+"name": "Pete Alonso",
+"subtext": "HR Derby champ · slugger",
+"slug": "pete-alonso"
+},
+{
+"name": "Vladimir Guerrero Jr.",
+"subtext": "All-Star slugger",
+"slug": "vladimir-guerrero-jr"
+},
+{
+"name": "Bobby Witt Jr.",
+"subtext": "five-tool superstar",
+"slug": "bobby-witt-jr"
+},
+{
+"name": "Gunnar Henderson",
+"subtext": "All-Star · Rookie of the Year",
+"slug": "gunnar-henderson"
+},
+{
+"name": "Elly De La Cruz",
+"subtext": "electric superstar",
+"slug": "elly-de-la-cruz"
+},
+{
+"name": "Julio Rodríguez",
+"subtext": "All-Star · Rookie of the Year",
+"slug": "julio-rodriguez"
+},
+{
+"name": "Corbin Carroll",
+"subtext": "Rookie of the Year",
+"slug": "corbin-carroll"
+},
+{
+"name": "Paul Skenes",
+"subtext": "Rookie of the Year · ace",
+"slug": "paul-skenes"
+},
+{
+"name": "Gerrit Cole",
+"subtext": "Cy Young · ace",
+"slug": "gerrit-cole"
+},
+{
+"name": "Jacob deGrom",
+"subtext": "2x Cy Young",
+"slug": "jacob-degrom"
+},
+{
+"name": "Max Scherzer",
+"subtext": "3x Cy Young · champion",
+"slug": "max-scherzer"
+},
+{
+"name": "Chipper Jones",
+"subtext": "MVP · Hall of Famer",
+"slug": "chipper-jones"
+},
+{
+"name": "Randy Johnson",
+"subtext": "5x Cy Young · Hall of Famer",
+"slug": "randy-johnson"
+},
+{
+"name": "Pedro Martínez",
+"subtext": "3x Cy Young · Hall of Famer",
+"slug": "pedro-martinez"
+},
+{
+"name": "Greg Maddux",
+"subtext": "4x Cy Young · Hall of Famer",
+"slug": "greg-maddux"
+},
+{
+"name": "Frank Thomas",
+"subtext": "2x MVP · Hall of Famer",
+"slug": "frank-thomas"
+},
+{
+"name": "Cal Ripken Jr.",
+"subtext": "Iron Man · Hall of Famer",
+"slug": "cal-ripken-jr"
+},
+{
+"name": "Nolan Ryan",
+"subtext": "strikeout king · Hall of Famer",
+"slug": "nolan-ryan"
+},
+{
+"name": "Reggie Jackson",
+"subtext": "Mr. October · Hall of Famer",
+"slug": "reggie-jackson"
+},
+{
+"name": "Hank Aaron",
+"subtext": "HR king · Hall of Famer",
+"slug": "hank-aaron"
+},
+{
+"name": "Willie Mays",
+"subtext": "Hall of Fame · Say Hey Kid",
+"slug": "willie-mays"
+},
+{
+"name": "Jackie Robinson",
+"subtext": "broke the color barrier · icon",
+"slug": "jackie-robinson"
+},
+{
+"name": "Manny Ramírez",
+"subtext": "2x World Series champ",
+"slug": "manny-ramirez"
+},
+{
+"name": "Cale Makar",
+"subtext": "Stanley Cup champ · Norris winner",
+"slug": "cale-makar"
+},
+{
+"name": "Leon Draisaitl",
+"subtext": "Hart MVP · scoring champ",
+"slug": "leon-draisaitl"
+},
+{
+"name": "Nikita Kucherov",
+"subtext": "2x Cup champ · scoring champ",
+"slug": "nikita-kucherov"
+},
+{
+"name": "David Pastrňák",
+"subtext": "goal-scoring star",
+"slug": "david-pastrnak"
+},
+{
+"name": "Matthew Tkachuk",
+"subtext": "Stanley Cup champ · All-Star",
+"slug": "matthew-tkachuk"
+},
+{
+"name": "Brady Tkachuk",
+"subtext": "Senators captain",
+"slug": "brady-tkachuk"
+},
+{
+"name": "Jack Eichel",
+"subtext": "Stanley Cup champ · star center",
+"slug": "jack-eichel"
+},
+{
+"name": "Kirill Kaprizov",
+"subtext": "Wild superstar",
+"slug": "kirill-kaprizov"
+},
+{
+"name": "Igor Shesterkin",
+"subtext": "Vezina goaltender",
+"slug": "igor-shesterkin"
+},
+{
+"name": "Andrei Vasilevskiy",
+"subtext": "2x Cup champ · Vezina",
+"slug": "andrei-vasilevskiy"
+},
+{
+"name": "Steven Stamkos",
+"subtext": "2x Cup champ · sniper",
+"slug": "steven-stamkos"
+},
+{
+"name": "Brad Marchand",
+"subtext": "Cup champ · agitator",
+"slug": "brad-marchand"
+},
+{
+"name": "Gordie Howe",
+"subtext": "Mr. Hockey · legend",
+"slug": "gordie-howe"
+},
+{
+"name": "Patrick Roy",
+"subtext": "4x Cup champ · Hall of Famer",
+"slug": "patrick-roy"
+},
+{
+"name": "Martin Brodeur",
+"subtext": "3x Cup champ · Hall of Famer",
+"slug": "martin-brodeur"
+},
+{
+"name": "Jaromír Jágr",
+"subtext": "Hall of Fame legend",
+"slug": "jaromir-jagr"
+},
+{
+"name": "Steve Yzerman",
+"subtext": "3x Cup champ · Hall of Famer",
+"slug": "steve-yzerman"
+},
+{
+"name": "Mark Messier",
+"subtext": "6x Cup champ · Hall of Famer",
+"slug": "mark-messier"
+},
+{
+"name": "Henrik Lundqvist",
+"subtext": "Vezina goaltender · Hall of Famer",
+"slug": "henrik-lundqvist"
+},
+{
+"name": "Karim Benzema",
+"subtext": "Ballon d'Or · Champions League king",
+"slug": "karim-benzema"
+},
+{
+"name": "Antoine Griezmann",
+"subtext": "World Cup champ · France star",
+"slug": "antoine-griezmann"
+},
+{
+"name": "Toni Kroos",
+"subtext": "Champions League legend",
+"slug": "toni-kroos"
+},
+{
+"name": "Virgil van Dijk",
+"subtext": "world-class defender",
+"slug": "virgil-van-dijk"
+},
+{
+"name": "Trent Alexander-Arnold",
+"subtext": "Liverpool star",
+"slug": "trent-alexander-arnold"
+},
+{
+"name": "Bukayo Saka",
+"subtext": "Arsenal star",
+"slug": "bukayo-saka"
+},
+{
+"name": "Phil Foden",
+"subtext": "Man City star",
+"slug": "phil-foden"
+},
+{
+"name": "Declan Rice",
+"subtext": "England midfielder",
+"slug": "declan-rice"
+},
+{
+"name": "Marcus Rashford",
+"subtext": "England forward",
+"slug": "marcus-rashford"
+},
+{
+"name": "Son Heung-min",
+"subtext": "Tottenham captain · Golden Boot",
+"slug": "son-heung-min"
+},
+{
+"name": "Rodri",
+"subtext": "Ballon d'Or midfielder",
+"slug": "rodri"
+},
+{
+"name": "Pedri",
+"subtext": "Barcelona maestro",
+"slug": "pedri"
+},
+{
+"name": "Federico Valverde",
+"subtext": "Real Madrid engine",
+"slug": "federico-valverde"
+},
+{
+"name": "Victor Osimhen",
+"subtext": "prolific striker",
+"slug": "victor-osimhen"
+},
+{
+"name": "Sadio Mané",
+"subtext": "African icon",
+"slug": "sadio-mane"
+},
+{
+"name": "N'Golo Kanté",
+"subtext": "World Cup champ · midfield engine",
+"slug": "n-golo-kante"
+},
+{
+"name": "Sergio Agüero",
+"subtext": "Man City legend",
+"slug": "sergio-aguero"
+},
+{
+"name": "Gianluigi Buffon",
+"subtext": "World Cup-winning keeper",
+"slug": "gianluigi-buffon"
+},
+{
+"name": "Andrea Pirlo",
+"subtext": "World Cup champ · maestro",
+"slug": "andrea-pirlo"
+},
+{
+"name": "Francesco Totti",
+"subtext": "Roma legend · World Cup champ",
+"slug": "francesco-totti"
+},
+{
+"name": "Didier Drogba",
+"subtext": "Chelsea legend",
+"slug": "didier-drogba"
+},
+{
+"name": "Ronaldo Nazário",
+"subtext": "2x World Cup champ · phenomenon",
+"slug": "ronaldo-nazario"
+},
+{
+"name": "Gerard Piqué",
+"subtext": "World Cup & Champions League champ",
+"slug": "gerard-pique"
+},
+{
+"name": "Clint Dempsey",
+"subtext": "USMNT legend",
+"slug": "clint-dempsey"
+},
+{
+"name": "Landon Donovan",
+"subtext": "USMNT all-time great",
+"slug": "landon-donovan"
+},
+{
+"name": "Tim Howard",
+"subtext": "USMNT goalkeeper legend",
+"slug": "tim-howard"
+},
+{
+"name": "Mia Hamm",
+"subtext": "2x World Cup champ · icon",
+"slug": "mia-hamm"
+},
+{
+"name": "Carli Lloyd",
+"subtext": "2x World Cup champ · Olympic gold",
+"slug": "carli-lloyd"
+},
+{
+"name": "Sophia Smith",
+"subtext": "USWNT forward",
+"slug": "sophia-smith"
+},
+{
+"name": "Trinity Rodman",
+"subtext": "USWNT winger",
+"slug": "trinity-rodman"
+},
+{
+"name": "Jannik Sinner",
+"subtext": "Grand Slam champion · No.1",
+"slug": "jannik-sinner"
+},
+{
+"name": "Daniil Medvedev",
+"subtext": "Grand Slam champion",
+"slug": "daniil-medvedev"
+},
+{
+"name": "Andy Murray",
+"subtext": "3x Grand Slam champ · Olympic gold",
+"slug": "andy-murray"
+},
+{
+"name": "Aryna Sabalenka",
+"subtext": "Grand Slam champ · No.1",
+"slug": "aryna-sabalenka"
+},
+{
+"name": "Maria Sharapova",
+"subtext": "5x Grand Slam champ",
+"slug": "maria-sharapova"
+},
+{
+"name": "Martina Navratilova",
+"subtext": "18x Grand Slam champ",
+"slug": "martina-navratilova"
+},
+{
+"name": "Chris Evert",
+"subtext": "18x Grand Slam champ",
+"slug": "chris-evert"
+},
+{
+"name": "Billie Jean King",
+"subtext": "tennis icon · pioneer",
+"slug": "billie-jean-king"
+},
+{
+"name": "John McEnroe",
+"subtext": "7x Grand Slam champ",
+"slug": "john-mcenroe"
+},
+{
+"name": "Björn Borg",
+"subtext": "11x Grand Slam champ",
+"slug": "bjorn-borg"
+},
+{
+"name": "Boris Becker",
+"subtext": "6x Grand Slam champ",
+"slug": "boris-becker"
+},
+{
+"name": "Jessica Pegula",
+"subtext": "top-ranked American",
+"slug": "jessica-pegula"
+},
+{
+"name": "Oleksandr Usyk",
+"subtext": "undisputed heavyweight champ",
+"slug": "oleksandr-usyk"
+},
+{
+"name": "Anthony Joshua",
+"subtext": "2x heavyweight champ",
+"slug": "anthony-joshua"
+},
+{
+"name": "Deontay Wilder",
+"subtext": "KO artist · ex-champ",
+"slug": "deontay-wilder"
+},
+{
+"name": "Gervonta Davis",
+"subtext": "KO champion · Tank",
+"slug": "gervonta-davis"
+},
+{
+"name": "Ryan Garcia",
+"subtext": "boxing star",
+"slug": "ryan-garcia"
+},
+{
+"name": "Naoya Inoue",
+"subtext": "undisputed champ · Monster",
+"slug": "naoya-inoue"
+},
+{
+"name": "Sugar Ray Leonard",
+"subtext": "boxing legend",
+"slug": "sugar-ray-leonard"
+},
+{
+"name": "George Foreman",
+"subtext": "2x heavyweight champ",
+"slug": "george-foreman"
+},
+{
+"name": "Evander Holyfield",
+"subtext": "undisputed champ · Hall of Famer",
+"slug": "evander-holyfield"
+},
+{
+"name": "Lennox Lewis",
+"subtext": "undisputed heavyweight champ",
+"slug": "lennox-lewis"
+},
+{
+"name": "Oscar De La Hoya",
+"subtext": "11-time world champ",
+"slug": "oscar-de-la-hoya"
+},
+{
+"name": "Islam Makhachev",
+"subtext": "UFC champion",
+"slug": "islam-makhachev"
+},
+{
+"name": "Alex Pereira",
+"subtext": "UFC 2-division champ",
+"slug": "alex-pereira"
+},
+{
+"name": "Max Holloway",
+"subtext": "UFC champ · BMF",
+"slug": "max-holloway"
+},
+{
+"name": "Dustin Poirier",
+"subtext": "UFC fan favorite",
+"slug": "dustin-poirier"
+},
+{
+"name": "Charles Oliveira",
+"subtext": "UFC ex-champ · submission king",
+"slug": "charles-oliveira"
+},
+{
+"name": "Kamaru Usman",
+"subtext": "UFC champ",
+"slug": "kamaru-usman"
+},
+{
+"name": "Leon Edwards",
+"subtext": "UFC champion",
+"slug": "leon-edwards"
+},
+{
+"name": "Georges St-Pierre",
+"subtext": "UFC GOAT · champion",
+"slug": "georges-st-pierre"
+},
+{
+"name": "Anderson Silva",
+"subtext": "UFC legend · champion",
+"slug": "anderson-silva"
+},
+{
+"name": "Brock Lesnar",
+"subtext": "UFC & WWE champion",
+"slug": "brock-lesnar"
+},
+{
+"name": "Valentina Shevchenko",
+"subtext": "UFC champion",
+"slug": "valentina-shevchenko"
+},
+{
+"name": "Zhang Weili",
+"subtext": "UFC champion",
+"slug": "zhang-weili"
+},
+{
+"name": "Francis Ngannou",
+"subtext": "heavyweight KO king",
+"slug": "francis-ngannou"
+},
+{
+"name": "Brooks Koepka",
+"subtext": "5x major champion",
+"slug": "brooks-koepka"
+},
+{
+"name": "Jordan Spieth",
+"subtext": "3x major champion",
+"slug": "jordan-spieth"
+},
+{
+"name": "Justin Thomas",
+"subtext": "2x major champion",
+"slug": "justin-thomas"
+},
+{
+"name": "Xander Schauffele",
+"subtext": "2x major · Olympic gold",
+"slug": "xander-schauffele"
+},
+{
+"name": "Collin Morikawa",
+"subtext": "2x major champion",
+"slug": "collin-morikawa"
+},
+{
+"name": "Bryson DeChambeau",
+"subtext": "US Open champ",
+"slug": "bryson-dechambeau"
+},
+{
+"name": "Jon Rahm",
+"subtext": "2x major champion",
+"slug": "jon-rahm"
+},
+{
+"name": "Dustin Johnson",
+"subtext": "2x major champion",
+"slug": "dustin-johnson"
+},
+{
+"name": "Nelly Korda",
+"subtext": "No.1 · Olympic gold",
+"slug": "nelly-korda"
+},
+{
+"name": "Annika Sörenstam",
+"subtext": "golf legend",
+"slug": "annika-sorenstam"
+},
+{
+"name": "Charles Leclerc",
+"subtext": "Ferrari F1 star",
+"slug": "charles-leclerc"
+},
+{
+"name": "Lando Norris",
+"subtext": "F1 race winner",
+"slug": "lando-norris"
+},
+{
+"name": "Fernando Alonso",
+"subtext": "2x F1 world champion",
+"slug": "fernando-alonso"
+},
+{
+"name": "Michael Schumacher",
+"subtext": "7x F1 world champion",
+"slug": "michael-schumacher"
+},
+{
+"name": "Ayrton Senna",
+"subtext": "3x F1 champion · legend",
+"slug": "ayrton-senna"
+},
+{
+"name": "Jimmie Johnson",
+"subtext": "7x NASCAR champion",
+"slug": "jimmie-johnson"
+},
+{
+"name": "Dale Earnhardt",
+"subtext": "7x NASCAR champion · Intimidator",
+"slug": "dale-earnhardt"
+},
+{
+"name": "Richard Petty",
+"subtext": "7x NASCAR champion · The King",
+"slug": "richard-petty"
+},
+{
+"name": "Kyle Busch",
+"subtext": "2x NASCAR champion",
+"slug": "kyle-busch"
+},
+{
+"name": "Chase Elliott",
+"subtext": "NASCAR champion",
+"slug": "chase-elliott"
+},
+{
+"name": "Carl Lewis",
+"subtext": "9x Olympic gold",
+"slug": "carl-lewis"
+},
+{
+"name": "Allyson Felix",
+"subtext": "most decorated US track Olympian",
+"slug": "allyson-felix"
+},
+{
+"name": "Eliud Kipchoge",
+"subtext": "marathon world record · Olympic gold",
+"slug": "eliud-kipchoge"
+},
+{
+"name": "Nadia Comăneci",
+"subtext": "perfect-10 gymnast · legend",
+"slug": "nadia-comaneci"
+},
+{
+"name": "Gabby Douglas",
+"subtext": "Olympic all-around champ",
+"slug": "gabby-douglas"
+},
+{
+"name": "Caeleb Dressel",
+"subtext": "Olympic swimming champ",
+"slug": "caeleb-dressel"
+},
+{
+"name": "Chloe Kim",
+"subtext": "2x Olympic gold snowboarder",
+"slug": "chloe-kim"
+},
+{
+"name": "Nathan Chen",
+"subtext": "Olympic figure skating champ",
+"slug": "nathan-chen"
+},
+{
+"name": "Lindsey Vonn",
+"subtext": "Olympic gold skier",
+"slug": "lindsey-vonn"
+},
+{
+"name": "Mikaela Shiffrin",
+"subtext": "most World Cup wins ever",
+"slug": "mikaela-shiffrin"
+},
+{
+"name": "Tony Hawk",
+"subtext": "skateboarding legend",
+"slug": "tony-hawk"
+},
+{
+"name": "Travis Pastrana",
+"subtext": "action sports legend",
+"slug": "travis-pastrana"
+},
+{
+"name": "Rey Mysterio",
+"subtext": "WWE Hall of Famer · lucha icon",
+"slug": "rey-mysterio"
+},
+{
+"name": "AJ Styles",
+"subtext": "WWE champion · phenomenal",
+"slug": "aj-styles"
+},
+{
+"name": "Drew McIntyre",
+"subtext": "WWE champion",
+"slug": "drew-mcintyre"
+},
+{
+"name": "Gunther",
+"subtext": "Intercontinental record-holder",
+"slug": "gunther"
+},
+{
+"name": "Kevin Owens",
+"subtext": "WWE champion",
+"slug": "kevin-owens"
+},
+{
+"name": "Sami Zayn",
+"subtext": "fan-favorite champion",
+"slug": "sami-zayn"
+},
+{
+"name": "Bobby Lashley",
+"subtext": "WWE champion · All Mighty",
+"slug": "bobby-lashley"
+},
+{
+"name": "Bayley",
+"subtext": "grand slam champion",
+"slug": "bayley"
+},
+{
+"name": "Asuka",
+"subtext": "Empress of Tomorrow",
+"slug": "asuka"
+},
+{
+"name": "Trish Stratus",
+"subtext": "Hall of Famer",
+"slug": "trish-stratus"
+},
+{
+"name": "Lita",
+"subtext": "Hall of Famer",
+"slug": "lita"
+},
+{
+"name": "Kenny Omega",
+"subtext": "wrestling ace",
+"slug": "kenny-omega"
+},
+{
+"name": "Jon Moxley",
+"subtext": "AEW champion",
+"slug": "jon-moxley"
+},
+{
+"name": "MJF",
+"subtext": "AEW champion",
+"slug": "mjf"
+},
+{
+"name": "Chris Jericho",
+"subtext": "6x world champion · legend",
+"slug": "chris-jericho"
+},
+{
+"name": "Sting",
+"subtext": "wrestling icon",
+"slug": "sting"
+},
+{
+"name": "Kanye West",
+"subtext": "Grammy-winning icon",
+"slug": "kanye-west"
+},
+{
+"name": "J. Cole",
+"subtext": "platinum rap star",
+"slug": "j-cole"
+},
+{
+"name": "Tyler, the Creator",
+"subtext": "Grammy-winning artist",
+"slug": "tyler-the-creator"
+},
+{
+"name": "Future",
+"subtext": "chart-topping rapper",
+"slug": "future"
+},
+{
+"name": "21 Savage",
+"subtext": "Grammy-winning rapper",
+"slug": "21-savage"
+},
+{
+"name": "Megan Thee Stallion",
+"subtext": "Grammy-winning rapper",
+"slug": "megan-thee-stallion"
+},
+{
+"name": "Justin Timberlake",
+"subtext": "Grammy-winning superstar",
+"slug": "justin-timberlake"
+},
+{
+"name": "Pharrell Williams",
+"subtext": "Grammy-winning producer",
+"slug": "pharrell-williams"
+},
+{
+"name": "John Legend",
+"subtext": "EGOT winner",
+"slug": "john-legend"
+},
+{
+"name": "Alicia Keys",
+"subtext": "15x Grammy winner",
+"slug": "alicia-keys"
+},
+{
+"name": "Mariah Carey",
+"subtext": "best-selling diva",
+"slug": "mariah-carey"
+},
+{
+"name": "Lady Gaga",
+"subtext": "Grammy & Oscar winner",
+"slug": "lady-gaga"
+},
+{
+"name": "Katy Perry",
+"subtext": "chart-topping pop star",
+"slug": "katy-perry"
+},
+{
+"name": "Miley Cyrus",
+"subtext": "Grammy-winning star",
+"slug": "miley-cyrus"
+},
+{
+"name": "Selena Gomez",
+"subtext": "pop star & mogul",
+"slug": "selena-gomez"
+},
+{
+"name": "Harry Styles",
+"subtext": "Grammy-winning superstar",
+"slug": "harry-styles"
+},
+{
+"name": "Dua Lipa",
+"subtext": "Grammy-winning pop star",
+"slug": "dua-lipa"
+},
+{
+"name": "Olivia Rodrigo",
+"subtext": "Grammy-winning star",
+"slug": "olivia-rodrigo"
+},
+{
+"name": "Sabrina Carpenter",
+"subtext": "chart-topping pop star",
+"slug": "sabrina-carpenter"
+},
+{
+"name": "Bruce Springsteen",
+"subtext": "rock legend · The Boss",
+"slug": "bruce-springsteen"
+},
+{
+"name": "Elton John",
+"subtext": "music legend",
+"slug": "elton-john"
+},
+{
+"name": "Paul McCartney",
+"subtext": "Beatles legend",
+"slug": "paul-mccartney"
+},
+{
+"name": "Shakira",
+"subtext": "global superstar",
+"slug": "shakira"
+},
+{
+"name": "Jennifer Lopez",
+"subtext": "music & film superstar",
+"slug": "jennifer-lopez"
+},
+{
+"name": "Karol G",
+"subtext": "global Latin star",
+"slug": "karol-g"
+},
+{
+"name": "Peso Pluma",
+"subtext": "global corridos star",
+"slug": "peso-pluma"
+},
+{
+"name": "J Balvin",
+"subtext": "reggaeton superstar",
+"slug": "j-balvin"
+},
+{
+"name": "Daddy Yankee",
+"subtext": "reggaeton pioneer",
+"slug": "daddy-yankee"
+},
+{
+"name": "Morgan Wallen",
+"subtext": "country superstar",
+"slug": "morgan-wallen"
+},
+{
+"name": "Luke Combs",
+"subtext": "country superstar",
+"slug": "luke-combs"
+},
+{
+"name": "Chris Stapleton",
+"subtext": "Grammy-winning country star",
+"slug": "chris-stapleton"
+},
+{
+"name": "Carrie Underwood",
+"subtext": "country superstar",
+"slug": "carrie-underwood"
+},
+{
+"name": "Dolly Parton",
+"subtext": "country legend",
+"slug": "dolly-parton"
+},
+{
+"name": "Zach Bryan",
+"subtext": "country breakout star",
+"slug": "zach-bryan"
+},
+{
+"name": "Jelly Roll",
+"subtext": "Grammy-nominated star",
+"slug": "jelly-roll"
+},
+{
+"name": "Calvin Harris",
+"subtext": "chart-topping DJ",
+"slug": "calvin-harris"
+},
+{
+"name": "Marshmello",
+"subtext": "global DJ",
+"slug": "marshmello"
+},
+{
+"name": "Tiësto",
+"subtext": "legendary DJ",
+"slug": "tiesto"
+},
+{
+"name": "Al Pacino",
+"subtext": "Oscar-winning legend",
+"slug": "al-pacino"
+},
+{
+"name": "Robert De Niro",
+"subtext": "2x Oscar winner",
+"slug": "robert-de-niro"
+},
+{
+"name": "Meryl Streep",
+"subtext": "3x Oscar winner",
+"slug": "meryl-streep"
+},
+{
+"name": "Julia Roberts",
+"subtext": "Oscar-winning star",
+"slug": "julia-roberts"
+},
+{
+"name": "George Clooney",
+"subtext": "Oscar-winning star",
+"slug": "george-clooney"
+},
+{
+"name": "Matt Damon",
+"subtext": "Oscar-winning writer & star",
+"slug": "matt-damon"
+},
+{
+"name": "Ben Affleck",
+"subtext": "Oscar-winning filmmaker",
+"slug": "ben-affleck"
+},
+{
+"name": "Matthew McConaughey",
+"subtext": "Oscar-winning actor",
+"slug": "matthew-mcconaughey"
+},
+{
+"name": "Chris Hemsworth",
+"subtext": "Thor · blockbuster star",
+"slug": "chris-hemsworth"
+},
+{
+"name": "Chris Evans",
+"subtext": "Captain America · star",
+"slug": "chris-evans"
+},
+{
+"name": "Ryan Gosling",
+"subtext": "acclaimed actor",
+"slug": "ryan-gosling"
+},
+{
+"name": "Emma Stone",
+"subtext": "2x Oscar winner",
+"slug": "emma-stone"
+},
+{
+"name": "Keanu Reeves",
+"subtext": "action icon",
+"slug": "keanu-reeves"
+},
+{
+"name": "Jackie Chan",
+"subtext": "action legend",
+"slug": "jackie-chan"
+},
+{
+"name": "Sylvester Stallone",
+"subtext": "action icon · Rocky",
+"slug": "sylvester-stallone"
+},
+{
+"name": "Arnold Schwarzenegger",
+"subtext": "action icon · Terminator",
+"slug": "arnold-schwarzenegger"
+},
+{
+"name": "Eddie Murphy",
+"subtext": "comedy legend",
+"slug": "eddie-murphy"
+},
+{
+"name": "Jim Carrey",
+"subtext": "comedy icon",
+"slug": "jim-carrey"
+},
+{
+"name": "Adam Sandler",
+"subtext": "comedy superstar",
+"slug": "adam-sandler"
+},
+{
+"name": "Michael B. Jordan",
+"subtext": "star & producer",
+"slug": "michael-b-jordan"
+},
+{
+"name": "Idris Elba",
+"subtext": "acclaimed actor",
+"slug": "idris-elba"
+},
+{
+"name": "Jason Momoa",
+"subtext": "Aquaman · blockbuster star",
+"slug": "jason-momoa"
+},
+{
+"name": "Steven Spielberg",
+"subtext": "legendary director",
+"slug": "steven-spielberg"
+},
+{
+"name": "Martin Scorsese",
+"subtext": "legendary director",
+"slug": "martin-scorsese"
+},
+{
+"name": "Quentin Tarantino",
+"subtext": "acclaimed director",
+"slug": "quentin-tarantino"
+},
+{
+"name": "Christopher Nolan",
+"subtext": "Oscar-winning director",
+"slug": "christopher-nolan"
+},
+{
+"name": "Jordan Peele",
+"subtext": "Oscar-winning filmmaker",
+"slug": "jordan-peele"
+},
+{
+"name": "Joe Rogan",
+"subtext": "podcast king · commentator",
+"slug": "joe-rogan"
+},
+{
+"name": "Jimmy Kimmel",
+"subtext": "late-night host",
+"slug": "jimmy-kimmel"
+},
+{
+"name": "Stephen Colbert",
+"subtext": "late-night host",
+"slug": "stephen-colbert"
+},
+{
+"name": "Conan O'Brien",
+"subtext": "comedy legend",
+"slug": "conan-o-brien"
+},
+{
+"name": "Chris Rock",
+"subtext": "comedy legend",
+"slug": "chris-rock"
+},
+{
+"name": "Bill Burr",
+"subtext": "stand-up star",
+"slug": "bill-burr"
+},
+{
+"name": "Theo Von",
+"subtext": "comedian · podcaster",
+"slug": "theo-von"
+},
+{
+"name": "Gordon Ramsay",
+"subtext": "celebrity chef",
+"slug": "gordon-ramsay"
+},
+{
+"name": "Guy Fieri",
+"subtext": "celebrity chef",
+"slug": "guy-fieri"
+},
+{
+"name": "Warren Buffett",
+"subtext": "legendary investor",
+"slug": "warren-buffett"
+},
+{
+"name": "Tim Cook",
+"subtext": "Apple CEO",
+"slug": "tim-cook"
+},
+{
+"name": "Jensen Huang",
+"subtext": "NVIDIA CEO",
+"slug": "jensen-huang"
+},
+{
+"name": "Richard Branson",
+"subtext": "Virgin founder",
+"slug": "richard-branson"
+},
+{
+"name": "Daymond John",
+"subtext": "entrepreneur · Shark",
+"slug": "daymond-john"
+},
+{
+"name": "Barbara Corcoran",
+"subtext": "real-estate mogul · Shark",
+"slug": "barbara-corcoran"
+},
+{
+"name": "PewDiePie",
+"subtext": "YouTube pioneer",
+"slug": "pewdiepie"
+},
+{
+"name": "Ninja",
+"subtext": "gaming superstar",
+"slug": "ninja"
+},
+{
+"name": "Kai Cenat",
+"subtext": "top streamer",
+"slug": "kai-cenat"
+},
+{
+"name": "Adin Ross",
+"subtext": "top streamer",
+"slug": "adin-ross"
+},
+{
+"name": "Jake Paul",
+"subtext": "YouTuber · boxer",
+"slug": "jake-paul"
+},
+{
+"name": "KSI",
+"subtext": "YouTuber · boxer · artist",
+"slug": "ksi"
+},
+{
+"name": "Mark Rober",
+"subtext": "science YouTube star",
+"slug": "mark-rober"
+},
+{
+"name": "Charli D'Amelio",
+"subtext": "TikTok superstar",
+"slug": "charli-d-amelio"
+},
+{
+"name": "Addison Rae",
+"subtext": "TikTok star · actress",
+"slug": "addison-rae"
+},
+{
+"name": "Khaby Lame",
+"subtext": "world's top TikToker",
+"slug": "khaby-lame"
+},
+{
+"name": "Emma Chamberlain",
+"subtext": "creator · entrepreneur",
+"slug": "emma-chamberlain"
+},
+{
+"name": "Dude Perfect",
+"subtext": "trick-shot YouTube kings",
+"slug": "dude-perfect"
+},
+{
+"name": "Speedy Morman",
+"subtext": "host · interviewer",
+"slug": "speedy-morman"
+},
+{
+"name": "OG Anunoby",
+"subtext": "2026 NBA Champ · elite Knicks wing",
+"slug": "og-anunoby"
+},
+{
+"name": "Mitchell Robinson",
+"subtext": "2026 NBA Champ · Knicks center",
+"slug": "mitchell-robinson"
+},
+{
+"name": "Miles McBride",
+"subtext": "2026 NBA Champ · Knicks guard",
+"slug": "miles-mcbride"
+},
+{
+"name": "Jose Alvarado",
+"subtext": "2026 NBA Champ · Knicks guard",
+"slug": "jose-alvarado"
+},
+{
+"name": "Jeremy Sochan",
+"subtext": "2026 NBA Champ · Knicks forward",
+"slug": "jeremy-sochan"
+},
+{
+"name": "Mike Brown",
+"subtext": "2026 NBA champion head coach",
+"slug": "mike-brown"
+}
+]
