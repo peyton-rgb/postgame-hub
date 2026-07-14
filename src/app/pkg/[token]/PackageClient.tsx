@@ -599,11 +599,12 @@ export default function PackageClient({
           --pk-ink: #141414;
           --pk-paper: #fbf6e9;
           --pk-line: #eadfbe;
-          min-height: 100vh;
-          background: var(--pk-paper);
+          /* Transparent pass-through: PackageShell supplies the dark Postgame
+             frame and page background, and the .wrap card floats inside it.
+             (Was a full-bleed cream page bg before the shell wrapped it.) */
+          background: transparent;
           color: var(--pk-ink);
           font-family: "Proxima", Arial, sans-serif;
-          padding: 22px;
         }
         .wrap {
           max-width: 1020px;
