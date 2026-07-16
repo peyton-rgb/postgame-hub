@@ -57,6 +57,66 @@ export type Talent = {
   sort_order: number | null;
 };
 
+// ── settings.graphics / .music / .sfx manifest ──
+//
+// Name tags earn a table (package_talent) because each row carries state the
+// page mutates around: status chips, ranking, a rendered tag_url. Overlays and
+// music are static shipped files with no per-row state, so they ride in the
+// package's `settings` jsonb instead of two more tables. Written by
+// scripts/upload-canes-editor-assets.ts, which uploads the files and records
+// exactly what it uploaded.
+//
+// Paths stay relative (category + file) rather than absolute URLs so the
+// manifest survives a Supabase project/bucket move; packageAssetUrl() rebuilds
+// the public URL at render.
+
+export type PkgGraphic = { category: string; file: string; label: string };
+export type PkgMusic = { file: string; title: string; len?: string };
+
+export const GRAPHIC_PREFIX = "asset-graphics";
+export const MUSIC_PREFIX = "asset-music";
+export const SFX_PREFIX = "asset-sfx";
+
+// Ordered so the filter chips read the way the pack is organised (README order)
+// instead of however the manifest happens to be sorted.
+export const GRAPHIC_CATEGORIES = [
+  "headlines",
+  "badges",
+  "banners",
+  "arched",
+  "brand",
+] as const;
+
+function manifestList<T>(pkg: AssetPackage, key: string): T[] {
+  const v = (pkg.settings as Record<string, unknown> | null)?.[key];
+  return Array.isArray(v) ? (v as T[]) : [];
+}
+
+export function packageGraphics(pkg: AssetPackage): PkgGraphic[] {
+  return manifestList<PkgGraphic>(pkg, "graphics").filter((g) => g?.file);
+}
+
+export function packageMusic(pkg: AssetPackage): PkgMusic[] {
+  return manifestList<PkgMusic>(pkg, "music").filter((m) => m?.file);
+}
+
+export function packageSfx(pkg: AssetPackage): PkgMusic[] {
+  return manifestList<PkgMusic>(pkg, "sfx").filter((m) => m?.file);
+}
+
+// Public Storage URL for a manifest entry. `parts` are path segments under
+// `<prefix>/<pkg.slug>/` — encoded so filenames with spaces or apostrophes
+// (Cane's) can't produce a broken URL.
+export function packageAssetUrl(
+  pkg: AssetPackage,
+  prefix: string,
+  ...parts: string[]
+): string {
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/+$/, "");
+  const path = [prefix, pkg.slug, ...parts].map(encodeURIComponent).join("/");
+  return `${base}/storage/v1/object/public/campaign-media/${path}`;
+}
+
 // A search row shared by the roster and the celeb library.
 export type TagRow = {
   name: string;
