@@ -12,6 +12,14 @@ import {
   brandLogos,
   brandFonts,
   brandGold,
+  packageGraphics,
+  packageMusic,
+  packageSfx,
+  packageAssetUrl,
+  GRAPHIC_CATEGORIES,
+  GRAPHIC_PREFIX,
+  MUSIC_PREFIX,
+  SFX_PREFIX,
 } from "@/lib/packages";
 
 // ============================================================
@@ -204,6 +212,7 @@ export default function PackageClient({
   const [customName, setCustomName] = useState("");
   const [customBio, setCustomBio] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [gcat, setGcat] = useState<string>("all");
 
   const red = brand.primary_color || "#D71C2E";
   const yellow = brand.secondary_color || "#FFDD00";
@@ -214,9 +223,39 @@ export default function PackageClient({
   const fonts = useMemo(() => brandFonts(brand), [brand]);
   const rosterLabel = pkg.roster_label || "Names";
 
+  // Overlays + beds ride in the package manifest (settings jsonb), written by
+  // scripts/upload-canes-editor-assets.ts. A package without them just renders
+  // the sections empty, so this stays brand-agnostic like the rest of the page.
+  const graphics = useMemo(() => packageGraphics(pkg), [pkg]);
+  const music = useMemo(() => packageMusic(pkg), [pkg]);
+  const sfx = useMemo(() => packageSfx(pkg), [pkg]);
+
+  // Only offer chips for categories the manifest actually has, in pack order.
+  const gcats = useMemo(() => {
+    const have = new Set(graphics.map((g) => g.category));
+    return GRAPHIC_CATEGORIES.filter((c) => have.has(c));
+  }, [graphics]);
+
+  const shownGraphics = useMemo(
+    () => (gcat === "all" ? graphics : graphics.filter((g) => g.category === gcat)),
+    [graphics, gcat]
+  );
+
   const showToast = useCallback((m: string) => {
     setToast(m);
     window.setTimeout(() => setToast(null), 1600);
+  }, []);
+
+  // One player at a time — starting a track stops whatever else was going,
+  // across both the music and SFX sections.
+  const soloAudio = useCallback((e: React.SyntheticEvent<HTMLAudioElement>) => {
+    const cur = e.currentTarget;
+    cur
+      .closest(".pkg")
+      ?.querySelectorAll("audio")
+      .forEach((a) => {
+        if (a !== cur) a.pause();
+      });
   }, []);
 
   // Roster rows (ranked + status chips) followed by the shared celeb library,
@@ -464,6 +503,148 @@ export default function PackageClient({
           </div>
         </div>
 
+        {/* Graphic overlays */}
+        <h2 className="sec">
+          <span className="bar" />
+          Graphic overlays{" "}
+          <span className="hint">
+            &nbsp;transparent PNG — drop straight over the cut
+          </span>
+        </h2>
+        <div className="pad">
+          {graphics.length ? (
+            <>
+              {gcats.length > 1 ? (
+                <div className="chips">
+                  <button
+                    className={"chip3 " + (gcat === "all" ? "on" : "")}
+                    onClick={() => setGcat("all")}
+                  >
+                    All <span className="n">{graphics.length}</span>
+                  </button>
+                  {gcats.map((c) => (
+                    <button
+                      key={c}
+                      className={"chip3 " + (gcat === c ? "on" : "")}
+                      onClick={() => setGcat(c)}
+                    >
+                      {c}{" "}
+                      <span className="n">
+                        {graphics.filter((g) => g.category === c).length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="gfx">
+                {shownGraphics.map((g) => {
+                  const url = packageAssetUrl(pkg, GRAPHIC_PREFIX, g.category, g.file);
+                  return (
+                    <div className="gcard" key={g.category + "/" + g.file}>
+                      {/* Checker so a white-filled overlay still reads as art
+                          and not as an empty card. */}
+                      <div className="gview">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={g.label} loading="lazy" />
+                      </div>
+                      <div className="gmeta">
+                        <span className="lb" title={g.label}>
+                          {g.label}
+                        </span>
+                        <button
+                          className="btn dl"
+                          onClick={() => {
+                            downloadRemote(url, g.file);
+                            showToast(`Downloading ${g.file}`);
+                          }}
+                        >
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="mut">Graphic overlays coming soon.</p>
+          )}
+        </div>
+
+        {/* Music */}
+        <h2 className="sec">
+          <span className="bar" />
+          Music{" "}
+          <span className="hint">&nbsp;instrumental beds — pick one per cut</span>
+        </h2>
+        <div className="pad">
+          {music.length ? (
+            <div className="tracks">
+              {music.map((m) => {
+                const url = packageAssetUrl(pkg, MUSIC_PREFIX, m.file);
+                return (
+                  <div className="track" key={m.file}>
+                    <div className="tmeta">
+                      <span className="tt">{m.title}</span>
+                      {m.len ? <span className="tl">{m.len}</span> : null}
+                    </div>
+                    <audio controls preload="none" src={url} onPlay={soloAudio} />
+                    <button
+                      className="btn dl"
+                      onClick={() => {
+                        downloadRemote(url, m.file);
+                        showToast(`Downloading ${m.title}`);
+                      }}
+                    >
+                      Download
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mut">Music coming soon.</p>
+          )}
+        </div>
+
+        {/* SFX */}
+        <h2 className="sec">
+          <span className="bar" />
+          SFX <span className="hint">&nbsp;whooshes, impacts, crowd, air-horn</span>
+        </h2>
+        <div className="pad">
+          {sfx.length ? (
+            <div className="tracks">
+              {sfx.map((s) => {
+                const url = packageAssetUrl(pkg, SFX_PREFIX, s.file);
+                return (
+                  <div className="track" key={s.file}>
+                    <div className="tmeta">
+                      <span className="tt">{s.title}</span>
+                      {s.len ? <span className="tl">{s.len}</span> : null}
+                    </div>
+                    <audio controls preload="none" src={url} onPlay={soloAudio} />
+                    <button
+                      className="btn dl"
+                      onClick={() => {
+                        downloadRemote(url, s.file);
+                        showToast(`Downloading ${s.title}`);
+                      }}
+                    >
+                      Download
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty">
+              Sound effects land here once they&rsquo;re cleared — whooshes,
+              impacts, crowd, air-horn.
+            </div>
+          )}
+        </div>
+
         {/* Name tags */}
         <h2 className="sec">
           <span className="bar" />
@@ -565,9 +746,17 @@ export default function PackageClient({
           )}
         </div>
 
+        {/* Brand rule — confirmed twice in the Cane's production meeting, so it
+            sits with the assets rather than only in the pack's README.txt. */}
+        <div className="rule">
+          <span className="rl">Brand rule</span>
+          Only Raising Cane&rsquo;s branding — no other logos (incl. no Fanatics
+          logos).
+        </div>
+
         <div className="foot">
-          Tags generate on click, in-browser · logos, colors &amp; fonts
-          included · nothing to install.
+          Tags generate on click, in-browser · logos, colors, fonts, overlays
+          &amp; music included · nothing to install.
         </div>
       </div>
 
@@ -781,6 +970,169 @@ export default function PackageClient({
         .fontbtn {
           margin-top: 10px;
         }
+        /* Category chips */
+        .chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          margin-bottom: 13px;
+        }
+        .chip3 {
+          font-family: "Proxima", sans-serif;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+          text-transform: uppercase;
+          padding: 7px 12px;
+          border-radius: 20px;
+          border: 1.5px solid var(--pk-line);
+          background: #fff;
+          color: #8a7c5a;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .chip3:hover {
+          border-color: var(--pk-red);
+          color: var(--pk-red);
+        }
+        .chip3.on {
+          background: var(--pk-red);
+          border-color: var(--pk-red);
+          color: #fff;
+        }
+        .chip3 .n {
+          font-size: 10px;
+          opacity: 0.75;
+        }
+        /* Graphic overlays */
+        .gfx {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 14px;
+        }
+        .gcard {
+          border: 1px solid var(--pk-line);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        /* Neutral checker: the overlays are red/white/black, so a white card
+           would swallow the white-filled badges. */
+        .gview {
+          height: 118px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 13px;
+          background-color: #fff;
+          background-image: linear-gradient(45deg, #e8e8e8 25%, transparent 25%),
+            linear-gradient(-45deg, #e8e8e8 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #e8e8e8 75%),
+            linear-gradient(-45deg, transparent 75%, #e8e8e8 75%);
+          background-size: 14px 14px;
+          background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+        }
+        .gview img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+        }
+        .gmeta {
+          padding: 9px 11px;
+          border-top: 1px solid var(--pk-line);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+        }
+        /* Two lines before clipping: several overlays only differ at the end of
+           the name ("One Love Stack" vs "One Love Flag Stack"), so a one-line
+           ellipsis would hide the thing you pick between. */
+        .gmeta .lb {
+          font-size: 12px;
+          font-weight: 700;
+          min-width: 0;
+          line-height: 1.25;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .gmeta .btn {
+          flex: none;
+          padding: 7px 10px;
+        }
+        /* Music + SFX */
+        .tracks {
+          display: grid;
+          gap: 10px;
+        }
+        .track {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 11px 13px;
+          border: 1px solid var(--pk-line);
+          border-radius: 12px;
+        }
+        .track:hover {
+          border-color: #e0cf9f;
+        }
+        .tmeta {
+          min-width: 168px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .tmeta .tt {
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .tmeta .tl {
+          font-size: 11px;
+          color: #9a8a63;
+          font-variant-numeric: tabular-nums;
+        }
+        .track audio {
+          flex: 1;
+          min-width: 0;
+          height: 34px;
+        }
+        .track .btn {
+          flex: none;
+        }
+        .empty {
+          border: 1.5px dashed var(--pk-line);
+          border-radius: 12px;
+          padding: 20px 16px;
+          text-align: center;
+          color: #9a8a63;
+          font-size: 13px;
+        }
+        /* Brand rule */
+        .rule {
+          margin: 18px 30px 0;
+          padding: 12px 14px;
+          border: 1px solid rgba(204, 24, 36, 0.28);
+          background: #fdf3f3;
+          border-radius: 11px;
+          color: #8f2b21;
+          font-size: 12.5px;
+          line-height: 1.45;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 8px;
+        }
+        .rule .rl {
+          font-family: "Veneer", sans-serif;
+          font-size: 12px;
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+          color: var(--pk-red);
+          flex: none;
+        }
         .btn {
           font-family: "Proxima", sans-serif;
           font-size: 12px;
@@ -985,6 +1337,11 @@ export default function PackageClient({
           font-size: 13px;
           z-index: 99;
         }
+        @media (max-width: 960px) {
+          .gfx {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
         @media (max-width: 720px) {
           .logos,
           .fonts {
@@ -996,6 +1353,36 @@ export default function PackageClient({
           .thumb.gen {
             min-width: 120px;
             font-size: 14px;
+          }
+          .gfx {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          /* Label over button: side-by-side truncates both at this width. */
+          .gmeta {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 7px;
+          }
+          .gmeta .btn {
+            justify-content: center;
+          }
+          /* Native audio controls need ~200px before they start dropping
+             buttons, so the track stacks rather than squeezing the player. */
+          .track {
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+          .tmeta {
+            min-width: 0;
+            flex: 1;
+          }
+          .track audio {
+            order: 3;
+            flex-basis: 100%;
+            width: 100%;
+          }
+          .rule {
+            margin: 16px 14px 0;
           }
         }
       `}</style>
