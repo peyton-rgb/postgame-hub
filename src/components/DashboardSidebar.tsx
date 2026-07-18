@@ -377,6 +377,7 @@ const PAGES_SECTION: NavSection = {
     { name: 'Newsletter', href: '/dashboard/newsletter', icon: MailIcon },
     { name: 'Campaign Instructions', href: '/dashboard/campaign-instructions', icon: ClipboardIcon },
     { name: 'Campaign Opt-In', href: '/dashboard/campaign-opt-in', icon: UserCheckIcon },
+    { name: 'Card Composer', href: '/card-composer.html', icon: SparklesIcon },
   ],
 };
 
@@ -475,16 +476,23 @@ export default function DashboardSidebar() {
         .map((link) => {
         const active = isActive(link.href);
         const LinkIcon = link.icon;
+        const cls = `flex items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors ${
+          active
+            ? 'bg-[#D73F09]/15 text-[#D73F09] font-medium'
+            : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+        }`;
+        // Static files in /public (e.g. the card composer .html) are not
+        // Next.js routes, so render a plain anchor and open in a new tab.
+        if (link.href.endsWith('.html')) {
+          return (
+            <a key={link.href + link.name} href={link.href} target="_blank" rel="noopener noreferrer" className={cls}>
+              <LinkIcon />
+              {link.name}
+            </a>
+          );
+        }
         return (
-          <Link
-            key={link.href + link.name}
-            href={link.href}
-            className={`flex items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors ${
-              active
-                ? 'bg-[#D73F09]/15 text-[#D73F09] font-medium'
-                : 'text-white/50 hover:text-white/80 hover:bg-white/5'
-            }`}
-          >
+          <Link key={link.href + link.name} href={link.href} className={cls}>
             <LinkIcon />
             {link.name}
           </Link>
