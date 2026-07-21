@@ -3182,7 +3182,14 @@ export default function CampaignEditor() {
                   <span className="text-[11px] text-gray-500 font-bold">
                     {coverPhotoAthletes.filter((a) => (media[a.id]?.length ?? 0) > 0).length} / {coverPhotoAthletes.length} with content
                   </span>
-                  {/* Grid/List toggle — List view wired in the Content Gallery sub-step */}
+                  <button
+                    type="button"
+                    onClick={() => setDriveImportOpen(true)}
+                    className="text-[10px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] border border-[#D73F09]/40 rounded-lg px-3 py-1.5 transition-colors"
+                  >
+                    Bulk select content
+                  </button>
+                  {/* Grid/List toggle */}
                   <div className="flex rounded-lg border border-gray-700 overflow-hidden">
                     {(["grid", "list"] as const).map((v) => (
                       <button
@@ -3200,6 +3207,7 @@ export default function CampaignEditor() {
               <p className="text-xs text-gray-500 mb-4 ml-9">
                 Everyone else's content, by athlete. Import, arrange, and set covers here.
               </p>
+              {galleryView === "grid" ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                 {coverPhotoAthletes.map((a) => {
                   const items = media[a.id] || [];
@@ -3211,9 +3219,10 @@ export default function CampaignEditor() {
                   return (
                     <div key={a.id} id={`upload-athlete-${a.id}`} className="group relative scroll-mt-24">
                       <div
-                        onClick={() => fileRefs.current[a.id]?.click()}
+                        onClick={() => { if (coverSrc) fileRefs.current[a.id]?.click(); else setDriveFolderAthlete(a); }}
                         onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
                         onDragOver={(e) => e.preventDefault()}
+                        title={coverSrc ? "Add more content" : "Select content from this athlete's Drive folder"}
                         className={`aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
                           coverSrc
                             ? "border-transparent hover:border-[#D73F09]"
@@ -3234,11 +3243,11 @@ export default function CampaignEditor() {
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 px-1">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                             </svg>
+                            <span className="text-[8px] font-bold uppercase tracking-wider text-gray-500 text-center leading-tight">Select content</span>
                           </div>
                         )}
                         <input ref={(el: HTMLInputElement | null) => { fileRefs.current[a.id] = el; }}
@@ -3356,6 +3365,72 @@ export default function CampaignEditor() {
                   );
                 })}
               </div>
+              ) : (
+              <div className="space-y-1.5">
+                {coverPhotoAthletes.map((a) => {
+                  const items = media[a.id] || [];
+                  const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
+                  const cover = firstImage || items[0];
+                  const coverSrc = cover ? (cover.type !== "video" ? cover.file_url : cover.thumbnail_url) : null;
+                  return (
+                    <div key={a.id} id={`upload-athlete-${a.id}`} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0a0a0a] p-2 scroll-mt-24">
+                      <div className="w-10 h-12 rounded overflow-hidden border border-white/10 flex-shrink-0 bg-[#111]">
+                        {coverSrc ? (
+                          <img src={supabaseImageUrl(coverSrc, 100) ?? coverSrc} className="w-full h-full object-cover" alt="" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[7px] uppercase text-gray-600">None</div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold uppercase truncate text-gray-200">{a.name}</div>
+                        <div className="text-[9px] text-gray-500 truncate">{a.school} · {items.length} file{items.length === 1 ? "" : "s"}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {items.length === 0 ? (
+                          <button type="button" onClick={() => setDriveFolderAthlete(a)} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-2 py-1">
+                            Select content
+                          </button>
+                        ) : (
+                          <>
+                            {items.slice(0, 4).map((m) => {
+                              const t = m.thumbnail_url || (m.type !== "video" ? m.file_url : null);
+                              return (
+                                <div key={m.id} className="relative group/lr w-8 h-8 rounded overflow-hidden border border-gray-700 flex-shrink-0">
+                                  {t ? (
+                                    <img src={supabaseImageUrl(t, 80) ?? t} className="w-full h-full object-cover" alt="" loading="lazy" />
+                                  ) : (
+                                    <div className="w-full h-full bg-[#1a1a1a]" />
+                                  )}
+                                  <button type="button" onClick={() => removeMedia(a.id, m.id)} className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-black/80 text-white text-[7px] flex items-center justify-center hover:bg-red-600 opacity-0 group-hover/lr:opacity-100 transition-opacity">×</button>
+                                </div>
+                              );
+                            })}
+                            {items.length > 4 && <span className="text-[9px] text-gray-500 font-bold">+{items.length - 4}</span>}
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const input = document.createElement("input");
+                            input.type = "file";
+                            input.accept = "image/*,video/*,.heic,.heif";
+                            input.multiple = true;
+                            input.onchange = (ev) => handleFiles(a.id, (ev.target as HTMLInputElement).files);
+                            input.click();
+                          }}
+                          className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white px-1.5 py-1"
+                        >
+                          Upload
+                        </button>
+                        <button type="button" onClick={() => setDriveFolderAthlete(a)} className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white px-1.5 py-1">
+                          Drive
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              )}
             </div>
 
             <DrivePicker
