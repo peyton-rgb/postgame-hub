@@ -809,6 +809,10 @@ export default function CampaignEditor() {
   const [media, setMedia] = useState<Record<string, Media[]>>({});
   const [collabContainers, setCollabContainers] = useState<CollabContainerInfo[]>([]);
   const [importedDriveIds, setImportedDriveIds] = useState<string[]>([]);
+  // Content Upload section controls (Phase 3). Ranked-by drives Top Performers;
+  // gallery view toggles Content Gallery grid/list. List view is wired in a later sub-step.
+  const [topPerfRank, setTopPerfRank] = useState<"engagement" | "impressions">("engagement");
+  const [galleryView, setGalleryView] = useState<"grid" | "list">("grid");
   const [collabSlotDest, setCollabSlotDest] = useState<PickerSlotDest | null>(null);
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
@@ -2957,21 +2961,52 @@ export default function CampaignEditor() {
               )}
             </div>
 
-            {/* Team Collab Posts — one card per detected collab GROUP (per
+            {/* ── SECTION 1: TOP PERFORMERS (scaffold — ranking built in sub-step 2) ── */}
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <span className="w-6 h-6 rounded-full bg-[#D73F09] text-white text-[11px] font-black flex items-center justify-center flex-shrink-0">1</span>
+                <h3 className="text-lg font-black uppercase tracking-wide">Top Performers</h3>
+                <span className="text-[11px] text-gray-500 font-mono">Top 8</span>
+                <button
+                  type="button"
+                  onClick={() => setTopPerfRank((r) => (r === "engagement" ? "impressions" : "engagement"))}
+                  className="ml-auto text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-white border border-gray-700 rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  Ranked by: {topPerfRank === "engagement" ? "Engagement rate" : "Impressions"}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mb-4 ml-9">
+                Your highest-performing posts — pick their cover first, they carry the recap.
+              </p>
+              <div className="rounded-xl border border-dashed border-gray-800 bg-[#0a0a0a] p-6 text-center">
+                <div className="text-xs text-gray-600">
+                  Ranked post strip is built in the next sub-step — it will surface the top 8 posts by{" "}
+                  {topPerfRank === "engagement" ? "engagement rate" : "impressions"} that still need a cover.
+                </div>
+              </div>
+            </div>
+
+            {/* ── SECTION 2: COLLAB POSTS — one card per detected collab GROUP (per
                 platform). A team that posted both a feed and a reel (e.g. UF
                 Softball) shows up as two cards. Each card sources assets from
-                the team's Drive folder via the matching collab_containers row;
-                imports write collab:<groupId>. A group whose athlete set has no
-                container (e.g. Western Kentucky until linked) renders a disabled
-                "Drive folder not linked" state with no upload action. */}
+                the team's Drive folder via the matching collab_containers row.
+                A group whose athlete set has no container renders a disabled
+                "Drive folder not linked" state with no upload action. ── */}
             {collabCardData.length > 0 && (
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black uppercase tracking-wider">Team Collab Posts</h3>
-                  <span className="text-xs text-gray-500 font-bold">
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="w-6 h-6 rounded-full bg-[#D73F09] text-white text-[11px] font-black flex items-center justify-center flex-shrink-0">2</span>
+                  <h3 className="text-lg font-black uppercase tracking-wide">Collab Posts</h3>
+                  <span className="text-[11px] text-gray-500 font-mono">
+                    {collabCardData.length} team{collabCardData.length === 1 ? "" : "s"}
+                  </span>
+                  <span className="ml-auto text-[11px] text-gray-500 font-bold">
                     {collabCardData.filter((c) => c.items.length > 0).length} / {collabCardData.length} with content
                   </span>
                 </div>
+                <p className="text-xs text-gray-500 mb-4 ml-9">
+                  Posts shared by several athletes at once — auto-detected from the tracker, handled as one.
+                </p>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {collabCardData.map(({ group, container, teamName, items }) => (
                     <TeamCollabCard
@@ -2989,14 +3024,36 @@ export default function CampaignEditor() {
               </div>
             )}
 
-            {/* Cover Photo Grid */}
+            {/* ── SECTION 3: CONTENT GALLERY (existing per-athlete cover grid) ── */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-black uppercase tracking-wider">Cover Photos</h3>
-                <span className="text-xs text-gray-500 font-bold">
-                  {coverPhotoAthletes.filter((a) => (media[a.id]?.length ?? 0) > 0).length} / {coverPhotoAthletes.length} assigned
+              <div className="flex items-center gap-3 mb-1">
+                <span className="w-6 h-6 rounded-full bg-[#D73F09] text-white text-[11px] font-black flex items-center justify-center flex-shrink-0">3</span>
+                <h3 className="text-lg font-black uppercase tracking-wide">Content Gallery</h3>
+                <span className="text-[11px] text-gray-500 font-mono">
+                  {coverPhotoAthletes.length} athlete{coverPhotoAthletes.length === 1 ? "" : "s"}
                 </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500 font-bold">
+                    {coverPhotoAthletes.filter((a) => (media[a.id]?.length ?? 0) > 0).length} / {coverPhotoAthletes.length} with content
+                  </span>
+                  {/* Grid/List toggle — List view wired in the Content Gallery sub-step */}
+                  <div className="flex rounded-lg border border-gray-700 overflow-hidden">
+                    {(["grid", "list"] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setGalleryView(v)}
+                        className={`px-2.5 py-1 text-[10px] font-bold uppercase transition-colors ${galleryView === v ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-gray-500 mb-4 ml-9">
+                Everyone else's content, by athlete. Import, arrange, and set covers here.
+              </p>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                 {coverPhotoAthletes.map((a) => {
                   const items = media[a.id] || [];
