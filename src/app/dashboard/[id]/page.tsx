@@ -20,7 +20,7 @@ import TeamCollabCard from "@/components/TeamCollabCard";
 import CampaignEditorBanner from "@/components/CampaignEditorBanner";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { computeStats, pct, dollar } from "@/lib/recap-helpers";
+import { computeStats, pct, dollar, getTopPerformers, getTopPerformersByImpressions, formatEngagementRate } from "@/lib/recap-helpers";
 import dynamic from "next/dynamic";
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
 
@@ -1992,17 +1992,28 @@ export default function CampaignEditor() {
   );
   const uploadedCount = Object.keys(media).filter((k) => media[k]?.length > 0).length;
 
-  // Top performers by engagement rate (from ALL athletes, not just selected)
-  const topPerformers = [...athletes]
-    .map((a) => {
-      const m = a.metrics || {};
-      const rates = [m.ig_feed?.engagement_rate, m.ig_reel?.engagement_rate, m.tiktok?.engagement_rate].filter((r): r is number => r != null && r > 0);
-      const best = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
-      return { ...a, bestEngRate: best };
-    })
-    .filter((a) => a.bestEngRate > 0)
-    .sort((a, b) => b.bestEngRate - a.bestEngRate)
-    .slice(0, 5);
+  // Top Performers for the Content Upload strip — ranked by engagement rate or
+  // impressions (toggle), top 8, matching the recap's own ranking. An athlete
+  // whose top post is a collab is folded into that collab entry.
+  const topPerformers = (topPerfRank === "engagement" ? getTopPerformers : getTopPerformersByImpressions)(
+    selectedAthletes,
+    collabGroups,
+    8,
+  );
+  const topPerformerCards = topPerformers.map((e, i) => {
+    const items = media[e.id] || [];
+    const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
+    const cover = firstImage || items[0];
+    const coverSrc = cover ? (cover.type !== "video" ? cover.file_url : cover.thumbnail_url) : null;
+    const name = e.kind === "collab"
+      ? (collabCardData.find((cd) => cd.group.id === e.id)?.teamName || e.athleteNames.slice(0, 2).join(" + "))
+      : e.name;
+    const sub = e.kind === "collab"
+      ? `${e.athleteIds.length} athletes · ${e.bestPlatform}`
+      : `${e.school || ""} · ${e.bestPlatform}`;
+    const metric = topPerfRank === "engagement" ? formatEngagementRate(e.bestEngRate) : fmt(e.totalImpressions);
+    return { id: e.id, rank: i + 1, name, sub, coverSrc, isCollab: e.kind === "collab", metric };
+  });
 
   const steps = [
     { n: 1, title: "Athletes & Metrics", desc: "Enter data or import CSV" },
@@ -2978,12 +2989,66 @@ export default function CampaignEditor() {
               <p className="text-xs text-gray-500 mb-4 ml-9">
                 Your highest-performing posts — pick their cover first, they carry the recap.
               </p>
-              <div className="rounded-xl border border-dashed border-gray-800 bg-[#0a0a0a] p-6 text-center">
-                <div className="text-xs text-gray-600">
-                  Ranked post strip is built in the next sub-step — it will surface the top 8 posts by{" "}
-                  {topPerfRank === "engagement" ? "engagement rate" : "impressions"} that still need a cover.
+              {topPerformers.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-800 bg-[#0a0a0a] p-6 text-center">
+                  <div className="text-xs text-gray-600">
+                    No ranked posts yet — add engagement metrics on Step 1 and your top posts appear here.
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {topPerformerCards.map((c) => (
+                    <div key={c.id} className="w-[150px] flex-shrink-0">
+                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/10 bg-[#0f0f10]">
+                        {c.coverSrc ? (
+                          <img
+                            src={supabaseImageUrl(c.coverSrc, 300) ?? c.coverSrc}
+                            className="w-full h-full object-cover [image-rendering:-webkit-optimize-contrast]"
+                            alt={c.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              if (img.src.includes("/render/image/public/")) {
+                                img.src = img.src.replace("/render/image/public/", "/object/public/").split("?")[0];
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] font-bold uppercase tracking-wider text-gray-600 px-2 text-center">
+                            No cover yet
+                          </div>
+                        )}
+                        <span className="absolute top-2 left-2 text-[9px] font-black text-white bg-black/70 border border-white/20 rounded px-1.5 py-0.5">#{c.rank}</span>
+                        <span className="absolute top-2 right-2 text-[10px] font-black text-white bg-[#D73F09]/90 rounded px-1.5 py-0.5">{c.metric}</span>
+                        <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-black/85 to-transparent">
+                          <div className="text-xs font-black uppercase tracking-wide text-white truncate">{c.name}</div>
+                          <div className="text-[8px] font-bold uppercase tracking-wider text-gray-300 truncate">
+                            {c.sub}{c.isCollab ? " · Collab" : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        {c.coverSrc ? (
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 border border-green-500/25 rounded-lg py-1.5 text-center">
+                            ✓ Cover set
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const el = document.getElementById(c.isCollab ? `upload-collab-${c.id}` : `upload-athlete-${c.id}`);
+                              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }}
+                            className="w-full text-[10px] font-bold uppercase tracking-wider text-white bg-[#D73F09] hover:bg-[#ff5722] rounded-lg py-1.5 transition-colors"
+                          >
+                            Pick cover
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── SECTION 2: COLLAB POSTS — one card per detected collab GROUP (per
@@ -3009,16 +3074,17 @@ export default function CampaignEditor() {
                 </p>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {collabCardData.map(({ group, container, teamName, items }) => (
-                    <TeamCollabCard
-                      key={group.id}
-                      teamName={teamName}
-                      platformLabel={group.platformLabel}
-                      participantNames={group.athleteNames}
-                      items={items}
-                      driveLinked={!!container}
-                      onAddFromDrive={container ? () => openCollabDrive(group, container.driveFolderId) : undefined}
-                      onRemoveMedia={(mediaId) => removeMedia(group.id, mediaId)}
-                    />
+                    <div key={group.id} id={`upload-collab-${group.id}`}>
+                      <TeamCollabCard
+                        teamName={teamName}
+                        platformLabel={group.platformLabel}
+                        participantNames={group.athleteNames}
+                        items={items}
+                        driveLinked={!!container}
+                        onAddFromDrive={container ? () => openCollabDrive(group, container.driveFolderId) : undefined}
+                        onRemoveMedia={(mediaId) => removeMedia(group.id, mediaId)}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -3063,7 +3129,7 @@ export default function CampaignEditor() {
                   const coverSrc = cover?.type !== "video" ? cover?.file_url : cover?.thumbnail_url;
 
                   return (
-                    <div key={a.id} className="group relative">
+                    <div key={a.id} id={`upload-athlete-${a.id}`} className="group relative scroll-mt-24">
                       <div
                         onClick={() => fileRefs.current[a.id]?.click()}
                         onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
