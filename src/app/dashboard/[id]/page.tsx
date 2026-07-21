@@ -79,6 +79,19 @@ function fmt(n: number): string {
   return n.toLocaleString();
 }
 
+// Placeholder crest initials from a school/team name (NEVER a real school mark).
+// Strips filler words, then 3 letters of a single word or the leading initials.
+function crestInitials(name: string): string {
+  const stop = new Set(["university", "college", "of", "the", "state", "at", "softball", "baseball", "volleyball", "football"]);
+  const words = name
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-z]/gi, ""))
+    .filter((w) => w && !stop.has(w.toLowerCase()));
+  if (words.length === 0) return name.replace(/[^a-z]/gi, "").slice(0, 3).toUpperCase() || "—";
+  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+  return words.map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+}
+
 // Order-independent key for an athlete-id set — used to match a detected collab
 // group to the collab_containers row that covers the same set of athletes.
 const collabSetKey = (ids: string[]) => [...ids].sort().join("|");
@@ -949,6 +962,31 @@ export default function CampaignEditor() {
     [collabUrlKeys],
   );
 
+  // Pooled/solo per-platform tags for a collab card, straight from
+  // detectCollabGroups: the card's own platform is pooled; a platform where any
+  // team athlete posted individually (a post_url not shared as a collab) is solo.
+  const collabPlatformTags = (group: CollabGroup): { label: string; kind: "pooled" | "solo" }[] => {
+    const short: Record<string, string> = { ig_feed: "Feed", ig_reel: "Reel", tiktok: "TikTok" };
+    const tags: { label: string; kind: "pooled" | "solo" }[] = [
+      { label: `${short[group.platform] ?? group.platformLabel} · pooled`, kind: "pooled" },
+    ];
+    const soloSet = new Set<string>();
+    const check = (plat: string, url?: string | null) => {
+      if (url && !collabUrlKeys.has(`${plat}|${url.trim()}`)) soloSet.add(plat);
+    };
+    for (const aid of group.athleteIds) {
+      const m = athletes.find((a) => a.id === aid)?.metrics;
+      if (!m) continue;
+      check("ig_feed", m.ig_feed?.post_url); check("ig_feed", m.ig_feed_2?.post_url);
+      check("ig_reel", m.ig_reel?.post_url); check("ig_reel", m.ig_reel_2?.post_url);
+      check("tiktok", m.tiktok?.post_url); check("tiktok", m.tiktok_2?.post_url);
+    }
+    for (const p of ["ig_feed", "ig_reel", "tiktok"]) {
+      if (p !== group.platform && soloSet.has(p)) tags.push({ label: `${short[p]} · solo`, kind: "solo" });
+    }
+    return tags;
+  };
+
   const [publishing, setPublishing] = useState(false);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -1500,6 +1538,35 @@ export default function CampaignEditor() {
       .insert({ athlete_id: athleteId, campaign_id: id, type: "image", file_url: url, sort_order: existing.length })
       .select().single();
     if (data) setMedia((prev) => ({ ...prev, [athleteId]: [...(prev[athleteId] || []), data] }));
+  }
+
+  // Local upload straight to a collab group (athlete_id NULL, drive_file_id
+  // "collab:<groupId>"). Videos route through the thumbnail gate like solo videos.
+  async function uploadCollabImage(groupId: string, file: File) {
+    const converted = await convertHeicIfNeeded(file);
+    const path = `${id}/collab-${groupId}/${Date.now()}-${converted.name}`;
+    const url = await uploadFile(converted, path);
+    if (!url) return;
+    const existing = media[groupId] || [];
+    const { data, error } = await supabase
+      .from("media")
+      .insert({ athlete_id: null, campaign_id: id, type: "image", file_url: url, sort_order: existing.length, drive_file_id: `collab:${groupId}` })
+      .select().single();
+    if (error) { console.error("[uploadCollabImage]", error); return; }
+    if (data) setMedia((prev) => ({ ...prev, [groupId]: [...(prev[groupId] || []), data] }));
+  }
+
+  async function handleCollabFiles(groupId: string, fileList: FileList | null) {
+    if (!fileList) return;
+    for (const file of Array.from(fileList)) {
+      const name = file.name.toLowerCase();
+      const isHeic = name.endsWith(".heic") || name.endsWith(".heif");
+      if (file.type.startsWith("image/") || isHeic) {
+        await uploadCollabImage(groupId, file);
+      } else if (file.type.startsWith("video/")) {
+        setPendingVideo({ athleteId: groupId, file, isCollab: true });
+      }
+    }
   }
 
   async function uploadVideoWithThumbnail(thumbnailFile: File) {
@@ -3073,19 +3140,32 @@ export default function CampaignEditor() {
                   Posts shared by several athletes at once — auto-detected from the tracker, handled as one.
                 </p>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {collabCardData.map(({ group, container, teamName, items }) => (
-                    <div key={group.id} id={`upload-collab-${group.id}`}>
-                      <TeamCollabCard
-                        teamName={teamName}
-                        platformLabel={group.platformLabel}
-                        participantNames={group.athleteNames}
-                        items={items}
-                        driveLinked={!!container}
-                        onAddFromDrive={container ? () => openCollabDrive(group, container.driveFolderId) : undefined}
-                        onRemoveMedia={(mediaId) => removeMedia(group.id, mediaId)}
-                      />
-                    </div>
-                  ))}
+                  {collabCardData.map(({ group, container, teamName, items }) => {
+                    const crestSchool = athletes.find((a) => a.id === group.athleteIds[0])?.school || teamName;
+                    return (
+                      <div key={group.id} id={`upload-collab-${group.id}`}>
+                        <TeamCollabCard
+                          teamName={teamName}
+                          platformLabel={group.platformLabel}
+                          crestLabel={crestInitials(crestSchool)}
+                          platformTags={collabPlatformTags(group)}
+                          participantNames={group.athleteNames}
+                          items={items}
+                          driveLinked={!!container}
+                          onAddFromDrive={container ? () => openCollabDrive(group, container.driveFolderId) : undefined}
+                          onUpload={() => {
+                            const input = document.createElement("input");
+                            input.type = "file";
+                            input.accept = "image/*,video/*,.heic,.heif";
+                            input.multiple = true;
+                            input.onchange = (ev) => handleCollabFiles(group.id, (ev.target as HTMLInputElement).files);
+                            input.click();
+                          }}
+                          onRemoveMedia={(mediaId) => removeMedia(group.id, mediaId)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

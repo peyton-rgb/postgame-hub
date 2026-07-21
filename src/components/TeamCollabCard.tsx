@@ -25,6 +25,11 @@ interface TeamCollabCardProps {
   teamName: string;
   /** Single-platform label, e.g. "IG Feed" or "IG Reel". */
   platformLabel: string;
+  /** Placeholder school crest — 2-3 letter initials (never a real school mark). */
+  crestLabel?: string;
+  /** Per-platform pooled/solo tags from detectCollabGroups. Supersedes the plain
+   *  platformLabel badge when provided. */
+  platformTags?: { label: string; kind: "pooled" | "solo" }[];
   /** Participant athlete display names. */
   participantNames: string[];
   /** Assigned media for this group (drive_file_id = "collab:<groupId>"). */
@@ -33,6 +38,8 @@ interface TeamCollabCardProps {
   driveLinked: boolean;
   /** Open the Drive picker scoped to this group's team folder. Only when linked. */
   onAddFromDrive?: () => void;
+  /** Upload local files straight to this collab group. */
+  onUpload?: () => void;
   /** Remove a single asset. */
   onRemoveMedia?: (mediaId: string) => void;
   /** How many thumbnails to show before "+N more". */
@@ -89,10 +96,13 @@ function Thumb({ m, onRemove }: { m: Media; onRemove?: (id: string) => void }) {
 export default function TeamCollabCard({
   teamName,
   platformLabel,
+  crestLabel,
+  platformTags,
   participantNames,
   items,
   driveLinked,
   onAddFromDrive,
+  onUpload,
   onRemoveMedia,
   maxThumbs = 6,
 }: TeamCollabCardProps) {
@@ -110,8 +120,16 @@ export default function TeamCollabCard({
 
       <div className="flex-1 min-w-0">
         {/* Title band */}
-        <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-800 bg-[#111]">
-          <div className="min-w-0">
+        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-800 bg-[#111]">
+          {crestLabel && (
+            <div
+              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-black text-white bg-white/10 border border-white/20"
+              title="Placeholder crest"
+            >
+              {crestLabel}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-[#D73F09] text-white tracking-wider">
                 Collab
@@ -119,18 +137,37 @@ export default function TeamCollabCard({
               <h4 className="text-sm font-black uppercase tracking-wide truncate text-white">
                 {teamName}
               </h4>
-              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase border border-[#D73F09]/50 text-[#D73F09] tracking-wider whitespace-nowrap">
-                {platformLabel}
-              </span>
+              {!platformTags && (
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase border border-[#D73F09]/50 text-[#D73F09] tracking-wider whitespace-nowrap">
+                  {platformLabel}
+                </span>
+              )}
             </div>
             <div className="text-[10px] text-gray-500 truncate mt-0.5" title={participants}>
-              Participants: {participants}
+              {participantNames.length} athlete{participantNames.length === 1 ? "" : "s"} · {participants}
             </div>
           </div>
         </div>
 
         {/* Content area */}
         <div className="p-3">
+          {/* Pooled / solo per-platform tags */}
+          {platformTags && platformTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {platformTags.map((t) => (
+                <span
+                  key={t.label}
+                  className={`text-[8px] font-black uppercase tracking-wider rounded px-2 py-1 ${
+                    t.kind === "pooled"
+                      ? "bg-[#D73F09] text-white"
+                      : "bg-white/5 text-gray-400 border border-gray-700"
+                  }`}
+                >
+                  {t.label}
+                </span>
+              ))}
+            </div>
+          )}
           {empty ? (
             <div className="h-[52px] flex items-center justify-center">
               <span className="text-[10px] text-gray-600 font-medium text-center px-2">
@@ -151,29 +188,40 @@ export default function TeamCollabCard({
           )}
 
           {/* Action footer */}
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-[9px] text-gray-500 font-bold">
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <span className="text-[9px] text-gray-500 font-bold whitespace-nowrap">
               {items.length} asset{items.length === 1 ? "" : "s"} selected
             </span>
-            {driveLinked ? (
-              <button
-                type="button"
-                onClick={onAddFromDrive}
-                className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] transition-colors"
-              >
-                {empty ? "Add from Drive" : "Edit from Drive"}
-              </button>
-            ) : (
-              <span
-                className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-600"
-                title="No collab_containers row links a Drive folder to this athlete set."
-              >
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><line x1="12" y1="2" x2="12" y2="12" />
-                </svg>
-                Drive folder not linked
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {onUpload && (
+                <button
+                  type="button"
+                  onClick={onUpload}
+                  className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white transition-colors"
+                >
+                  Upload
+                </button>
+              )}
+              {driveLinked ? (
+                <button
+                  type="button"
+                  onClick={onAddFromDrive}
+                  className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] transition-colors"
+                >
+                  {empty ? "Add from Drive" : "Edit from Drive"}
+                </button>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-600"
+                  title="No collab_containers row links a Drive folder to this athlete set."
+                >
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><line x1="12" y1="2" x2="12" y2="12" />
+                  </svg>
+                  Not linked
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
