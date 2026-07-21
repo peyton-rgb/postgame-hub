@@ -94,6 +94,10 @@ export async function POST(request: NextRequest) {
           // feed/reel slot for the team collab card; null if the caller
           // didn't specify one (legacy / untargeted collab import).
           slot: slot === "feed" || slot === "reel" ? slot : null,
+          // Keep the real Drive file id so re-imports can be greyed out — the
+          // collab: marker occupies drive_file_id, so dedup keys on source_id.
+          source_system: "drive",
+          source_id: fileId,
         };
 
     const { data: insertedMedia, error: insertError } = await supabase

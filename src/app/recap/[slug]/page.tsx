@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
 import { detectCollabGroups } from "@/lib/csv-parser";
+import { deriveContainerCollab } from "@/lib/collab-reconcile";
 import type { Athlete } from "@/lib/types";
 import type { Metadata } from "next";
 // PostgameCalendar is now rendered inside CampaignRecap and Top50Recap
@@ -89,10 +90,45 @@ export default async function RecapPage({ params, searchParams }: Props) {
     linkedAthletesByMedia[l.media_id].push(l.athlete_id);
   }
 
+  // Collab reconciliation: fold "collab:c-<containerId>-<slot>" media onto its
+  // URL-derived group id, and surface a container-derived card for pre-URL teams
+  // (imported team content with no shared post URL in the tracker yet).
+  const { data: containers } = await supabase
+    .from("collab_containers")
+    .select("id, collab_container_athletes(included, athletes(id))")
+    .eq("campaign_id", campaign.id);
+  const containerLite = (containers || []).map((c: any) => ({
+    containerId: c.id,
+    athleteIds: (c.collab_container_athletes || [])
+      .filter((x: any) => x.included !== false && x.athletes)
+      .map((x: any) => x.athletes.id),
+  }));
+  const collabCounts: Record<string, number> = {};
+  for (const m of (media || []) as any[]) {
+    if (typeof m.drive_file_id === "string" && m.drive_file_id.startsWith("collab:")) {
+      const k = m.drive_file_id.slice("collab:".length);
+      collabCounts[k] = (collabCounts[k] || 0) + 1;
+    }
+  }
+  const urlCollabGroups = detectCollabGroups<Athlete>(
+    (athletes || []) as Athlete[],
+    (a) => a.id,
+  ).collabGroups;
+  const athleteNameById = new Map<string, string>(
+    (athletes || []).map((a: any) => [a.id, a.name]),
+  );
+  const { containerGroups, remap: collabKeyRemap } = deriveContainerCollab(
+    urlCollabGroups,
+    containerLite,
+    (key) => collabCounts[key] || 0,
+    (aid) => athleteNameById.get(aid),
+  );
+
   const mediaByAthlete: Record<string, any[]> = {};
   (media || []).forEach((m: any) => {
     if (typeof m.drive_file_id === "string" && m.drive_file_id.startsWith("collab:")) {
-      const groupId = m.drive_file_id.slice("collab:".length);
+      const rawKey = m.drive_file_id.slice("collab:".length);
+      const groupId = collabKeyRemap[rawKey] ?? rawKey;
       if (!mediaByAthlete[groupId]) mediaByAthlete[groupId] = [];
       mediaByAthlete[groupId].push(m);
       return;
@@ -128,13 +164,9 @@ export default async function RecapPage({ params, searchParams }: Props) {
     );
   }
 
-  // Recompute collab groups from the persisted athletes (the CSV-time groups
-  // aren't stored in the DB). The `id` getter ties group.athleteIds back to
-  // Athlete.id so the recap can do media[group.athleteIds[0]] lookups.
-  const { collabGroups } = detectCollabGroups<Athlete>(
-    allAthletes as Athlete[],
-    (a) => a.id,
-  );
+  // Collab groups: URL-derived (from persisted athletes) + container-derived
+  // cards for pre-URL teams. Media is keyed to match via collabKeyRemap above.
+  const collabGroups = [...urlCollabGroups, ...containerGroups];
 
   // Event content: athlete-less, non-collab, link-less media for the
   // gallery-first Event Content section. Only for event campaigns — every
