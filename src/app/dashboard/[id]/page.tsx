@@ -10,6 +10,7 @@ import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { ThumbnailGate, type BlockingCard } from "@/components/ThumbnailGate";
 import { MasonryPreview } from "@/components/MasonryPreview";
 import { parseMetricsCSV, mergeAthleteData, detectCollabGroups, type ParsedAthlete } from "@/lib/csv-parser";
+import { deriveContainerCollab, containerGroupId } from "@/lib/collab-reconcile";
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 // heic2any is browser-only; imported dynamically inside convertHeicIfNeeded()
@@ -807,6 +808,7 @@ export default function CampaignEditor() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [media, setMedia] = useState<Record<string, Media[]>>({});
   const [collabContainers, setCollabContainers] = useState<CollabContainerInfo[]>([]);
+  const [importedDriveIds, setImportedDriveIds] = useState<string[]>([]);
   const [collabSlotDest, setCollabSlotDest] = useState<PickerSlotDest | null>(null);
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
@@ -833,18 +835,34 @@ export default function CampaignEditor() {
     return m;
   }, [collabContainers]);
 
-  // One card per collab group, paired with its container (null = unlinked, e.g.
-  // Western Kentucky until its container is set up).
+  // Container-derived collab groups for pre-URL teams: a card for each
+  // (container, slot) that has imported media but no shared post URL yet. Once a
+  // URL appears, deriveContainerCollab stops emitting the card (the load-time
+  // remap folds its media onto the URL card instead). See collab-reconcile.ts.
+  const containerOnlyGroups = useMemo<CollabGroup[]>(
+    () =>
+      deriveContainerCollab(
+        collabGroups,
+        collabContainers.map((c) => ({ containerId: c.containerId, athleteIds: c.athleteIds })),
+        (key) => (media[key] || []).length,
+        (aid) => athletes.find((a) => a.id === aid)?.name,
+      ).containerGroups,
+    [collabGroups, collabContainers, media, athletes],
+  );
+
+  // One card per collab group (URL-derived + container-derived), paired with its
+  // container (null = unlinked). `items` is the media under the card's key — the
+  // load-time remap already folded any container-keyed media onto a URL card.
   const collabCardData = useMemo(
     () =>
-      collabGroups.map((group) => {
+      [...collabGroups, ...containerOnlyGroups].map((group) => {
         const container = containerBySet.get(collabSetKey(group.athleteIds)) ?? null;
         const a0 = athletes.find((a) => a.id === group.athleteIds[0]);
         const derived = a0 ? `${a0.school || ""} ${a0.sport || ""}`.trim() : "";
         const teamName = container?.teamName || derived || group.athleteNames.slice(0, 2).join(" + ");
-        return { group, container, teamName };
+        return { group, container, teamName, items: media[group.id] || [] };
       }),
-    [collabGroups, containerBySet, athletes],
+    [collabGroups, containerOnlyGroups, containerBySet, athletes, media],
   );
 
   // Videos on SELECTED / visible cards that still lack a thumbnail. The Preview
@@ -867,29 +885,36 @@ export default function CampaignEditor() {
       }
     }
     const sel = new Set(selected);
-    for (const g of collabGroups) {
+    for (const cd of collabCardData) {
+      const g = cd.group;
       if (!g.athleteIds.some((gid) => sel.has(gid))) continue;
-      const label = collabCardData.find((cd) => cd.group.id === g.id)?.teamName || g.athleteNames.slice(0, 2).join(" + ");
-      for (const m of media[g.id] || []) {
+      const label = cd.teamName || g.athleteNames.slice(0, 2).join(" + ");
+      for (const m of cd.items) {
         if (!isBlocking(m)) continue;
         out.push({ key: `m-${m.id}`, mediaId: m.id, bucketKey: g.id, kind: "collab", fileUrl: m.file_url!, label, cardType: "Collab post", ext: extOf(m.file_url) });
       }
     }
     return out;
-  }, [selected, media, athletes, collabGroups, collabCardData]);
+  }, [selected, media, athletes, collabCardData]);
 
   // containerId -> { feed?, reel? } group ids, so a (team folder, slot) import
   // from the Drive picker resolves to the right synthetic collab group id.
   const collabGroupByContainerSlot = useMemo(() => {
     const m: Record<string, { feed?: string; reel?: string }> = {};
-    for (const { group, container } of collabCardData) {
-      if (!container) continue;
-      const slot: "feed" | "reel" = group.platform === "ig_feed" ? "feed" : "reel";
-      if (!m[container.containerId]) m[container.containerId] = {};
-      m[container.containerId][slot] = group.id;
+    for (const c of collabContainers) {
+      m[c.containerId] = {};
+      for (const slot of ["feed", "reel"] as const) {
+        const platform = slot === "feed" ? "ig_feed" : "ig_reel";
+        const urlGroup = collabGroups.find(
+          (g) => collabSetKey(g.athleteIds) === collabSetKey(c.athleteIds) && g.platform === platform,
+        );
+        // URL id when a shared post URL exists (unchanged for existing teams),
+        // else the container id so pre-URL imports still land somewhere.
+        m[c.containerId][slot] = urlGroup ? urlGroup.id : containerGroupId(c.containerId, slot);
+      }
     }
     return m;
-  }, [collabCardData]);
+  }, [collabContainers, collabGroups]);
 
   // Cover Photos filter — mirrors the recap: an athlete who appears in a collab
   // group renders only inside the team collab card UNLESS they also made a solo
@@ -1025,12 +1050,41 @@ export default function CampaignEditor() {
       setTotalImpressions(camp.settings.total_impressions ?? "");
     }
 
+    // Team collab containers (detected team Drive folders). Loaded BEFORE grouping
+    // media so pre-URL container media can be folded onto its URL card if one exists.
+    const { data: containers, error: containersError } = await supabase
+      .from("collab_containers")
+      .select("id, team_name, school, sport, drive_folder_id, collab_container_athletes(included, athletes(id, name, sort_order))")
+      .eq("campaign_id", id);
+    if (containersError) console.error("[loadData] collab_containers:", containersError);
+    const containerInfo: CollabContainerInfo[] = (containers || []).map((c: any) => ({
+      containerId: c.id,
+      driveFolderId: c.drive_folder_id ?? null,
+      teamName: c.team_name,
+      athleteIds: (c.collab_container_athletes || [])
+        .filter((m: any) => m.included !== false && m.athletes)
+        .map((m: any) => m.athletes.id),
+    }));
+    setCollabContainers(containerInfo);
+
+    // Reconciliation remap: fold "collab:c-<containerId>-<slot>" media onto the
+    // URL-derived group id once that team's shared post URL is in the tracker.
+    const urlGroups = detectCollabGroups(aths || [], (a) => a.id).collabGroups;
+    const { remap: collabKeyRemap } = deriveContainerCollab(
+      urlGroups,
+      containerInfo.map((c) => ({ containerId: c.containerId, athleteIds: c.athleteIds })),
+      () => 1,
+      () => undefined,
+    );
+
     const grouped: Record<string, Media[]> = {};
     (med || []).forEach((m: Media) => {
-      // Collab media has athlete_id = NULL and drive_file_id = "collab:<groupId>"
-      // (groupId is a synthetic string like "ig_reel-abc123f", not a UUID).
+      // Collab media: athlete_id = NULL, drive_file_id = "collab:<key>". The key is
+      // a URL-derived group id ("ig_reel-abc") or a container id ("c-<uuid>-reel");
+      // container keys fold onto the URL group id when one exists.
       if (m.drive_file_id?.startsWith("collab:")) {
-        const groupId = m.drive_file_id.slice("collab:".length);
+        const rawKey = m.drive_file_id.slice("collab:".length);
+        const groupId = collabKeyRemap[rawKey] ?? rawKey;
         if (!grouped[groupId]) grouped[groupId] = [];
         grouped[groupId].push(m);
         return;
@@ -1043,24 +1097,15 @@ export default function CampaignEditor() {
     setLoading(false);
     setEventMedia(await collectEventMedia(camp?.settings?.campaign_type === "event", med || []));
 
-    // Team collab cards — driven by collab_containers (detected team Drive
-    // folders). Participant names come through the collab_container_athletes
-    // junction -> athletes. Their feed/reel media is the "collab:<id>" media
-    // already grouped above (split by slot at render time).
-    const { data: containers } = await supabase
-      .from("collab_containers")
-      .select("id, team_name, school, sport, drive_folder_id, collab_container_athletes(included, athletes(id, name, sort_order))")
-      .eq("campaign_id", id);
-    setCollabContainers(
-      (containers || []).map((c: any) => ({
-        containerId: c.id,
-        driveFolderId: c.drive_folder_id ?? null,
-        teamName: c.team_name,
-        athleteIds: (c.collab_container_athletes || [])
-          .filter((m: any) => m.included !== false && m.athletes)
-          .map((m: any) => m.athletes.id),
-      })),
-    );
+    // Drive file ids already imported for this campaign — greys them out in the
+    // DrivePicker. Athlete/event drive imports store the real id in drive_file_id;
+    // collab imports store it in source_id (drive_file_id holds the collab: marker).
+    const driveIds = new Set<string>();
+    (med || []).forEach((m: any) => {
+      if (m.drive_file_id && !String(m.drive_file_id).startsWith("collab:")) driveIds.add(m.drive_file_id);
+      if (m.source_id) driveIds.add(m.source_id);
+    });
+    setImportedDriveIds([...driveIds]);
 
     // Fetch brand kit logos if brand_id exists
     if (camp?.brand_id) {
@@ -2924,17 +2969,17 @@ export default function CampaignEditor() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-black uppercase tracking-wider">Team Collab Posts</h3>
                   <span className="text-xs text-gray-500 font-bold">
-                    {collabCardData.filter((c) => (media[c.group.id] || []).length > 0).length} / {collabCardData.length} with content
+                    {collabCardData.filter((c) => c.items.length > 0).length} / {collabCardData.length} with content
                   </span>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {collabCardData.map(({ group, container, teamName }) => (
+                  {collabCardData.map(({ group, container, teamName, items }) => (
                     <TeamCollabCard
                       key={group.id}
                       teamName={teamName}
                       platformLabel={group.platformLabel}
                       participantNames={group.athleteNames}
-                      items={media[group.id] || []}
+                      items={items}
                       driveLinked={!!container}
                       onAddFromDrive={container ? () => openCollabDrive(group, container.driveFolderId) : undefined}
                       onRemoveMedia={(mediaId) => removeMedia(group.id, mediaId)}
@@ -3120,6 +3165,7 @@ export default function CampaignEditor() {
               onImport={handleDriveImport}
               onImportToCollab={handleImportToCollab}
               initialDestination={collabSlotDest ? { driveFolderId: collabSlotDest.driveFolderId, slot: collabSlotDest.slot } : null}
+              alreadyImportedFileIds={importedDriveIds}
             />
 
             {tier3PickerAthlete && campaign?.admin_campaign_id && (
