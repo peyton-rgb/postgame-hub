@@ -149,6 +149,8 @@ export default function DrivePicker({
   const [activeAthleteId, setActiveAthleteId] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, Set<string>>>({});
   const [filterType, setFilterType] = useState<"all" | "image" | "video">("all");
+  const [rosterSearch, setRosterSearch] = useState("");
+  const [unselectedOnly, setUnselectedOnly] = useState(false);
   const [mode, setMode] = useState<"connect" | "selecting" | "importing" | "complete">("selecting");
   const [folderUrlInput, setFolderUrlInput] = useState("");
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -186,6 +188,8 @@ export default function DrivePicker({
   const resetImportState = (nextMode: "connect" | "selecting") => {
     setSelections({});
     setFilterType("all");
+    setRosterSearch("");
+    setUnselectedOnly(false);
     setAbortController(null);
     setWasAborted(false);
     setImportProgress({
@@ -459,6 +463,13 @@ export default function DrivePicker({
   const currentSelectedIds =
     (isTeamView ? teamPoolSelection : activeAthleteId ? selections[activeAthleteId] : undefined) ||
     new Set<string>();
+  // "Unselected only" narrows the grid to files not yet selected in the current
+  // destination and not already imported. Selection/import counts are unaffected.
+  const visibleFiles = unselectedOnly
+    ? displayFiles.filter(
+        ({ file }) => !currentSelectedIds.has(file.id) && !alreadyImportedSet.has(file.id),
+      )
+    : displayFiles;
   const toggleCurrent = (fileId: string) => {
     if (alreadyImportedSet.has(fileId)) return; // already-imported files aren't selectable
     if (isTeamView) toggleTeamPoolFile(fileId);
@@ -498,6 +509,15 @@ export default function DrivePicker({
       };
     });
   }, [driveData, athletes, selections, teamFolders]);
+
+  // ── Roster search: filter the sidebar teams + athletes by name ──
+  const rosterQuery = rosterSearch.trim().toLowerCase();
+  const filteredTeamFolders = rosterQuery
+    ? teamFolders.filter((t) => t.teamName.toLowerCase().includes(rosterQuery))
+    : teamFolders;
+  const filteredAthleteTabs = rosterQuery
+    ? athleteTabs.filter((t) => t.name.toLowerCase().includes(rosterQuery))
+    : athleteTabs;
 
   // ── Toggle file selection ──
   const toggleFile = (athleteId: string, fileId: string) => {
@@ -899,13 +919,23 @@ export default function DrivePicker({
           <div className="flex-1 flex overflow-hidden">
             {/* Left sidebar — teams + athletes */}
             <div className="w-64 border-r border-white/10 overflow-y-auto bg-black/40">
+              {/* Roster search */}
+              <div className="p-3 border-b border-white/10 sticky top-0 z-10 bg-[#0a0a0a]">
+                <input
+                  value={rosterSearch}
+                  onChange={(e) => setRosterSearch(e.target.value)}
+                  placeholder="Search roster…"
+                  aria-label="Search roster"
+                  className="w-full bg-[#111] border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-[#D73F09] placeholder:text-gray-600"
+                />
+              </div>
               {/* TEAMS section */}
-              {teamFolders.length > 0 && (
+              {filteredTeamFolders.length > 0 && (
                 <>
                   <div className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 border-b border-white/10">
-                    Teams ({teamFolders.length})
+                    Teams ({filteredTeamFolders.length})
                   </div>
-                  {teamFolders.map((team) => {
+                  {filteredTeamFolders.map((team) => {
                     const isActive = team.folderId === activeTeamFolderId;
                     return (
                       <button
@@ -936,9 +966,14 @@ export default function DrivePicker({
 
               {/* ATHLETES section */}
               <div className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 border-b border-white/10">
-                Athletes ({athletes.length})
+                Athletes ({filteredAthleteTabs.length})
               </div>
-              {athleteTabs.map((tab) => {
+              {filteredAthleteTabs.length === 0 && rosterQuery && (
+                <div className="px-4 py-6 text-center text-[11px] text-gray-600">
+                  No matches for “{rosterSearch.trim()}”
+                </div>
+              )}
+              {filteredAthleteTabs.map((tab) => {
                 const isActive = tab.id === activeAthleteId && !activeTeamFolderId;
                 return (
                   <button
@@ -1030,6 +1065,19 @@ export default function DrivePicker({
                       </button>
                     ))}
                   </div>
+                  {/* Unselected-only toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setUnselectedOnly((v) => !v)}
+                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded transition-colors ${
+                      unselectedOnly
+                        ? "bg-[#D73F09] text-white"
+                        : "bg-white/5 text-gray-400 hover:text-gray-300"
+                    }`}
+                    title="Show only files not yet selected or imported"
+                  >
+                    Unselected
+                  </button>
                   {/* Bulk actions (athlete or team view) */}
                   {displayFiles.length > 0 && (
                     <>
@@ -1056,27 +1104,33 @@ export default function DrivePicker({
                   <div className="text-center text-gray-500 mt-20">
                     <div className="text-sm">Select an athlete or team</div>
                   </div>
-                ) : displayFiles.length === 0 ? (
+                ) : visibleFiles.length === 0 ? (
                   <div className="text-center text-gray-500 mt-20">
-                    <div className="text-sm">
-                      {isTeamView ? (
-                        "No files in this team folder"
-                      ) : (
-                        <>
-                          No content for{" "}
-                          <span className="text-white font-bold">{activeAthlete?.name}</span>
-                        </>
-                      )}
-                    </div>
-                    {!isTeamView && (
-                      <div className="text-xs mt-2">
-                        No personal folder match and no team pool files.
-                      </div>
+                    {unselectedOnly && displayFiles.length > 0 ? (
+                      <div className="text-sm">Everything here is already selected or imported.</div>
+                    ) : (
+                      <>
+                        <div className="text-sm">
+                          {isTeamView ? (
+                            "No files in this team folder"
+                          ) : (
+                            <>
+                              No content for{" "}
+                              <span className="text-white font-bold">{activeAthlete?.name}</span>
+                            </>
+                          )}
+                        </div>
+                        {!isTeamView && (
+                          <div className="text-xs mt-2">
+                            No personal folder match and no team pool files.
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                    {displayFiles.map(({ file, teamName }) => {
+                    {visibleFiles.map(({ file, teamName }) => {
                       const isVideo = file.mimeType.startsWith("video/");
                       const isAlreadyImported = alreadyImportedSet.has(file.id);
                       const isSelected = !isAlreadyImported && currentSelectedIds.has(file.id);
