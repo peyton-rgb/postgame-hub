@@ -4,6 +4,7 @@ import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
 import { detectCollabGroups } from "@/lib/csv-parser";
 import { deriveContainerCollab } from "@/lib/collab-reconcile";
+import { consolidateCollabGroups } from "@/lib/collab-consolidate";
 import type { Athlete } from "@/lib/types";
 import type { Metadata } from "next";
 // PostgameCalendar is now rendered inside CampaignRecap and Top50Recap
@@ -124,13 +125,26 @@ export default async function RecapPage({ params, searchParams }: Props) {
     (aid) => athleteNameById.get(aid),
   );
 
+  // Consolidate the per-platform collab groups into one card per athlete-set
+  // (platforms shown as tags). idToCanonical folds a team's feed/reel media
+  // onto its single card; the original per-platform key is kept too so Top
+  // Performers still resolves each platform post. See collab-consolidate.ts.
+  const { merged: collabGroups, idToCanonical: collabIdToCanonical } =
+    consolidateCollabGroups([...urlCollabGroups, ...containerGroups]);
+
   const mediaByAthlete: Record<string, any[]> = {};
   (media || []).forEach((m: any) => {
     if (typeof m.drive_file_id === "string" && m.drive_file_id.startsWith("collab:")) {
       const rawKey = m.drive_file_id.slice("collab:".length);
       const groupId = collabKeyRemap[rawKey] ?? rawKey;
-      if (!mediaByAthlete[groupId]) mediaByAthlete[groupId] = [];
-      mediaByAthlete[groupId].push(m);
+      const canonical = collabIdToCanonical[groupId] ?? groupId;
+      if (!mediaByAthlete[canonical]) mediaByAthlete[canonical] = [];
+      mediaByAthlete[canonical].push(m);
+      // Keep the original per-platform key too (Top Performers reads per post).
+      if (canonical !== groupId) {
+        if (!mediaByAthlete[groupId]) mediaByAthlete[groupId] = [];
+        mediaByAthlete[groupId].push(m);
+      }
       return;
     }
     if (m.athlete_id) {
@@ -163,10 +177,6 @@ export default async function RecapPage({ params, searchParams }: Props) {
       />
     );
   }
-
-  // Collab groups: URL-derived (from persisted athletes) + container-derived
-  // cards for pre-URL teams. Media is keyed to match via collabKeyRemap above.
-  const collabGroups = [...urlCollabGroups, ...containerGroups];
 
   // Event content: athlete-less, non-collab, link-less media for the
   // gallery-first Event Content section. Only for event campaigns — every

@@ -281,6 +281,10 @@ export interface Media {
 export interface CollabSource {
   platform: "ig_feed" | "ig_reel" | "tiktok";
   url: string;
+  /** When a source has been folded into a merged (per-athlete-set) group, the id
+   *  of the original per-platform group it came from — so per-source consumers
+   *  (Top Performers) can still key media to the exact platform post. */
+  srcGroupId?: string;
   metrics: {
     views?: number;
     impressions?: number;
