@@ -2,15 +2,16 @@
 
 // ─────────────────────────────────────────────────────────────
 // TeamCollabCard — dashboard (Upload Content) card for ONE collab
-// group. Under the Hybrid model a card maps to a single detected
-// collab group (a platform's shared post for an athlete set), so a
-// team that posted both a feed and a reel shows up as two cards.
+// TEAM (athlete set). The per-platform collab groups are consolidated
+// upstream into one card: `items` is the union of every platform's
+// media and `platformTags` shows each platform as pooled/solo.
 //
-// The group's media lives in the existing media table as
-// drive_file_id = "collab:<groupId>" with athlete_id = NULL. Assets
-// are added from the team's Drive folder (resolved via the matching
-// collab_containers row). A group whose athlete set has no container
-// renders a disabled "Drive folder not linked" state — no upload.
+// Collab media lives in the existing media table as
+// drive_file_id = "collab:<groupId>" with athlete_id = NULL, pooled
+// under the merged (canonical) group id. Assets are added from the
+// team's Drive folder (resolved via the matching collab_containers
+// row). A team whose athlete set has no container renders a disabled
+// "Drive folder not linked" state — no upload.
 //
 // Visual language: dark dashboard card + the recap collab treatment
 // (orange #D73F09 left spine + title band) so the brand and the
@@ -23,7 +24,8 @@ import { supabaseImageUrl } from "@/lib/supabase-image";
 interface TeamCollabCardProps {
   /** Team display name, e.g. "UF Softball". */
   teamName: string;
-  /** Single-platform label, e.g. "IG Feed" or "IG Reel". */
+  /** Platform label — a single platform or a merged "IG Feed + Reel". Only shown
+   *  as a fallback badge when platformTags is absent. */
   platformLabel: string;
   /** Placeholder school crest — 2-3 letter initials (never a real school mark). */
   crestLabel?: string;
