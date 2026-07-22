@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
       ok: true,
       athletes,
       count: athletes.length,
+      // Raw CSV so the editor can run its own parseMetricsCSV + merge-into-grid
+      // (the create modal uses `athletes` for a direct insert instead).
+      csv: tracker.csv,
       sheetId: tracker.sheetId,
       gid: tracker.gid,
     });

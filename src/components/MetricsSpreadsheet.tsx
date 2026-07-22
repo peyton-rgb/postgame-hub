@@ -417,18 +417,17 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
   }, [rows, deletedIds, onSave]);
 
   // CSV bulk import
-  const handleCsvFile = useCallback((file: File) => {
-    if (!file.name.endsWith(".csv")) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const { athletes: parsed } = parseMetricsCSV(text);
-      console.log("CSV PARSED:", parsed.length, "rows, first row:", JSON.stringify(parsed[0]));
-      if (!parsed.length) return;
+  // Shared merge: parse CSV text and MERGE athletes by name into the editable
+  // grid (matched rows refreshed, new rows added, others left untouched) — staged
+  // for review and written only on Save. Used by BOTH Import CSV (a File) and
+  // Import Sheet (a pasted Google Sheet link). Returns the parsed athlete count.
+  const mergeCsvText = useCallback((text: string, sourceLabel: string): number => {
+    const { athletes: parsed } = parseMetricsCSV(text);
+    if (!parsed.length) return 0;
 
-      setCsvFileName(file.name);
+    setCsvFileName(sourceLabel);
 
-      setRows((prev) => {
+    setRows((prev) => {
         const existing = new Map<string, number>();
         prev.forEach((r, i) => {
           const k = normalizeName(r.name);
@@ -500,10 +499,53 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
       });
 
       setIsDirty(true);
+      return parsed.length;
+  }, []);
+
+  const handleCsvFile = useCallback((file: File) => {
+    if (!file.name.endsWith(".csv")) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      mergeCsvText((e.target?.result as string) || "", file.name);
       setIsDragging(false);
     };
     reader.readAsText(file);
-  }, []);
+  }, [mergeCsvText]);
+
+  // Import from a pasted Google Sheet link — same merge as Import CSV, just the
+  // CSV comes from /api/recap/import-sheet (server-side, shared Postgame token).
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetImporting, setSheetImporting] = useState(false);
+  const [sheetMsg, setSheetMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const handleSheetImport = useCallback(async () => {
+    const url = sheetUrl.trim();
+    if (!url) return;
+    setSheetImporting(true);
+    setSheetMsg(null);
+    try {
+      const res = await fetch("/api/recap/import-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const json = await res.json().catch(() => ({ ok: false, reason: `HTTP ${res.status}` }));
+      if (json.ok && typeof json.csv === "string") {
+        const n = mergeCsvText(json.csv, `Google Sheet${json.gid ? ` (tab ${json.gid})` : ""}`);
+        setSheetMsg(
+          n > 0
+            ? { ok: true, text: `Merged ${n} athlete${n === 1 ? "" : "s"} into the grid — review and Save.` }
+            : { ok: false, text: "Sheet parsed to 0 athletes — check the tab (gid) points at the metrics tab." },
+        );
+        if (n > 0) setSheetUrl("");
+      } else {
+        setSheetMsg({ ok: false, text: `Couldn't read this sheet: ${json.reason || "unknown error"}. Make sure it's shared with the Postgame Google account.` });
+      }
+    } catch (e: any) {
+      setSheetMsg({ ok: false, text: String(e?.message || e) });
+    } finally {
+      setSheetImporting(false);
+    }
+  }, [sheetUrl, mergeCsvText]);
 
   // Global drag handlers for the entire component
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -668,6 +710,20 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               </div>
             )}
           </div>
+          <input
+            value={sheetUrl}
+            onChange={(e) => { setSheetUrl(e.target.value); setSheetMsg(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && sheetUrl.trim() && !sheetImporting) handleSheetImport(); }}
+            placeholder="Paste Google Sheet link…"
+            className="w-44 px-2.5 py-1.5 bg-black border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-[#D73F09] placeholder:text-gray-600"
+          />
+          <button
+            onClick={handleSheetImport}
+            disabled={!sheetUrl.trim() || sheetImporting}
+            className="px-3 py-1.5 border border-gray-700 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-gray-500 disabled:opacity-40 whitespace-nowrap"
+          >
+            {sheetImporting ? "Importing…" : "Import Sheet"}
+          </button>
           <button
             onClick={() => {
               const input = document.createElement("input");
@@ -695,6 +751,13 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
           )}
         </div>
       </div>
+
+      {/* Sheet import status */}
+      {sheetMsg && (
+        <div className={`text-xs ${sheetMsg.ok ? "text-green-400" : "text-red-400/90"}`}>
+          {sheetMsg.text}
+        </div>
+      )}
 
       {/* CSV status */}
       {csvFileName && (
