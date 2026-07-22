@@ -838,6 +838,9 @@ export default function CampaignEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [showThumbGate, setShowThumbGate] = useState(false);
   const [pendingVideo, setPendingVideo] = useState<{ athleteId: string; file: File; isCollab?: boolean } | null>(null);
+  // A video-only cover awaiting a scrubbed frame (Phase 4). Reuses ThumbnailModal
+  // by URL; the chosen frame updates thumbnail_url, feeding cover + preview gate.
+  const [frameTarget, setFrameTarget] = useState<{ bucketKey: string; kind: "solo" | "collab"; media: Media } | null>(null);
 
   const collabGroups = useMemo<CollabGroup[]>(
     () => detectCollabGroups(athletes, (a) => a.id).collabGroups,
@@ -1616,6 +1619,23 @@ export default function CampaignEditor() {
     return url;
   }
 
+  // Set a video-only athlete/collab cover from a scrubbed frame — same write as
+  // the preview gate (UPDATE thumbnail_url), so the cover shows AND the gate clears.
+  async function setVideoCoverFrame(target: { bucketKey: string; kind: "solo" | "collab"; media: Media }, file: File) {
+    await resolveThumbnail(
+      {
+        key: `frame-${target.media.id}`,
+        mediaId: target.media.id,
+        bucketKey: target.bucketKey,
+        kind: target.kind,
+        fileUrl: target.media.file_url || "",
+        label: "",
+        cardType: "Cover photo",
+      },
+      file,
+    );
+  }
+
   // Preview gate: block on any selected video card missing a thumbnail.
   function handlePreviewClick() {
     if (blockingVideoCards.length > 0) setShowThumbGate(true);
@@ -2101,6 +2121,19 @@ export default function CampaignEditor() {
           onUpload={async (file) => await uploadVideoWithThumbnail(file)}
           onCancel={() => setPendingVideo(null)}
           videoFile={pendingVideo.file}
+        />
+      )}
+
+      {frameTarget && (
+        <ThumbnailModal
+          athleteName={
+            frameTarget.kind === "collab"
+              ? (collabCardData.find((cd) => cd.group.id === frameTarget.bucketKey)?.teamName || "Collab Post")
+              : (athletes.find((a) => a.id === frameTarget.bucketKey)?.name || "")
+          }
+          onUpload={async (file) => { await setVideoCoverFrame(frameTarget, file); setFrameTarget(null); }}
+          onCancel={() => setFrameTarget(null)}
+          videoUrl={frameTarget.media.file_url || undefined}
         />
       )}
 
@@ -3215,14 +3248,20 @@ export default function CampaignEditor() {
                   const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
                   const cover = firstImage || items[0];
                   const coverSrc = cover?.type !== "video" ? cover?.file_url : cover?.thumbnail_url;
+                  // Video-only athlete with no cover frame yet — offer the scrubber.
+                  const videoNeedingFrame = !coverSrc ? items.find((m) => m.type === "video" && m.file_url) : undefined;
 
                   return (
                     <div key={a.id} id={`upload-athlete-${a.id}`} className="group relative scroll-mt-24">
                       <div
-                        onClick={() => { if (coverSrc) fileRefs.current[a.id]?.click(); else setDriveFolderAthlete(a); }}
+                        onClick={() => {
+                          if (coverSrc) fileRefs.current[a.id]?.click();
+                          else if (videoNeedingFrame) setFrameTarget({ bucketKey: a.id, kind: "solo", media: videoNeedingFrame });
+                          else setDriveFolderAthlete(a);
+                        }}
                         onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
                         onDragOver={(e) => e.preventDefault()}
-                        title={coverSrc ? "Add more content" : "Select content from this athlete's Drive folder"}
+                        title={coverSrc ? "Add more content" : videoNeedingFrame ? "Pick a cover frame from the video" : "Select content from this athlete's Drive folder"}
                         className={`aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
                           coverSrc
                             ? "border-transparent hover:border-[#D73F09]"
@@ -3242,6 +3281,20 @@ export default function CampaignEditor() {
                               }
                             }}
                           />
+                        ) : videoNeedingFrame ? (
+                          <div className="relative w-full h-full bg-black">
+                            <video
+                              src={videoNeedingFrame.file_url ?? undefined}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/45 flex flex-col items-center justify-center gap-1">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="8 5 19 12 8 19 8 5" /></svg>
+                              <span className="text-[8px] font-bold uppercase tracking-wider text-white text-center leading-tight">Pick cover frame</span>
+                            </div>
+                          </div>
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 px-1">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -3372,6 +3425,7 @@ export default function CampaignEditor() {
                   const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
                   const cover = firstImage || items[0];
                   const coverSrc = cover ? (cover.type !== "video" ? cover.file_url : cover.thumbnail_url) : null;
+                  const videoNeedingFrame = !coverSrc ? items.find((m) => m.type === "video" && m.file_url) : undefined;
                   return (
                     <div key={a.id} id={`upload-athlete-${a.id}`} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#0a0a0a] p-2 scroll-mt-24">
                       <div className="w-10 h-12 rounded overflow-hidden border border-white/10 flex-shrink-0 bg-[#111]">
@@ -3407,6 +3461,11 @@ export default function CampaignEditor() {
                             })}
                             {items.length > 4 && <span className="text-[9px] text-gray-500 font-bold">+{items.length - 4}</span>}
                           </>
+                        )}
+                        {videoNeedingFrame && (
+                          <button type="button" onClick={() => setFrameTarget({ bucketKey: a.id, kind: "solo", media: videoNeedingFrame })} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-1.5 py-1">
+                            Pick frame
+                          </button>
                         )}
                         <button
                           type="button"
