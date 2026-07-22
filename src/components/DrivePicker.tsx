@@ -73,6 +73,12 @@ interface DrivePickerProps {
   initialDestination?: { driveFolderId: string | null; slot: "feed" | "reel" } | null;
   /** Drive file IDs already imported for this campaign. Greyed out and not selectable. */
   alreadyImportedFileIds?: string[];
+  /** Pre-select this athlete on open (e.g. from a "Pick cover" / "Select content"
+   *  entry) so the picker lands on their folder + files. */
+  initialAthleteId?: string | null;
+  /** Fired once, after the folders load, when initialAthleteId's athlete has NO
+   *  matched folder — the caller falls back to the paste-a-link picker for them. */
+  onNoFolderMatch?: (athleteId: string) => void;
 }
 
 interface ImportProgress {
@@ -126,6 +132,8 @@ export default function DrivePicker({
   onImportToCollab,
   initialDestination,
   alreadyImportedFileIds,
+  initialAthleteId,
+  onNoFolderMatch,
 }: DrivePickerProps) {
   const supabase = useMemo(() => createBrowserSupabase(), []);
   // Drive files already imported for this campaign — greyed out, not selectable.
@@ -203,7 +211,7 @@ export default function DrivePicker({
     setError(null);
     setIsLoading(false);
     setDriveData(null);
-    setActiveAthleteId(athletes[0]?.id || null);
+    setActiveAthleteId(initialAthleteId ?? athletes[0]?.id ?? null);
     setFolderUrlInput("");
     setConnectError(null);
     setIsConnecting(false);
@@ -255,14 +263,26 @@ export default function DrivePicker({
       })
       .then((data: DriveData) => {
         setDriveData(data);
-        // Set first athlete as active
-        if (athletes.length > 0) {
-          setActiveAthleteId(athletes[0].id);
-        }
+        // Pre-selected athlete (Pick cover / Select content) wins; else first athlete.
+        if (initialAthleteId) setActiveAthleteId(initialAthleteId);
+        else if (athletes.length > 0) setActiveAthleteId(athletes[0].id);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, [isOpen, folderId, athletes, mode]);
+
+  // Pre-selected athlete with NO matched folder → the roster picker can't show
+  // them anything, so hand off to the caller's paste-a-link fallback. Once per open.
+  const noMatchFired = useRef(false);
+  useEffect(() => { noMatchFired.current = false; }, [isOpen, initialAthleteId]);
+  useEffect(() => {
+    if (!isOpen || !initialAthleteId || !driveData || noMatchFired.current) return;
+    const a = athletes.find((x) => x.id === initialAthleteId);
+    if (a && !matchAthleteToFolder(a.name, driveData.athletes)) {
+      noMatchFired.current = true;
+      onNoFolderMatch?.(initialAthleteId);
+    }
+  }, [isOpen, initialAthleteId, driveData, athletes, onNoFolderMatch]);
 
   // ── Detect team folders & auto-create their collab containers ──
   useEffect(() => {
