@@ -8,15 +8,18 @@ export function ThumbnailModal({
   onUpload,
   onCancel,
   videoFile,
+  videoUrl,
 }: {
   athleteName: string;
   onUpload: (file: File) => void;
   onCancel: () => void;
   videoFile?: File;
+  /** Scrub an already-uploaded video by URL (e.g. a Drive-imported clip). */
+  videoUrl?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<"upload" | "frame">(videoFile ? "frame" : "upload");
+  const [mode, setMode] = useState<"upload" | "frame">(videoFile || videoUrl ? "frame" : "upload");
 
   // Upload mode state
   const [preview, setPreview] = useState<string | null>(null);
@@ -76,7 +79,7 @@ export function ThumbnailModal({
         className="bg-black border border-white/15 rounded-2xl p-8 w-[440px] max-w-[90vw]"
       >
         <div className="text-xs font-bold uppercase tracking-[2px] text-brand mb-1">
-          Video Uploaded
+          {videoFile ? "Video Uploaded" : "Video Cover"}
         </div>
         <h2 className="text-lg font-black mb-2">Set a Thumbnail</h2>
         <p className="text-sm text-white/40 mb-5">
@@ -84,8 +87,8 @@ export function ThumbnailModal({
           <span className="text-white font-bold">{athleteName}</span>&apos;s video.
         </p>
 
-        {/* Tab toggle — only show when videoFile is available */}
-        {videoFile && (
+        {/* Tab toggle — shown when a video (file or URL) is available */}
+        {(videoFile || videoUrl) && (
           <div className="flex bg-[#111] border border-white/10 rounded-lg p-0.5 mb-5">
             <button
               onClick={() => setMode("frame")}
@@ -107,7 +110,7 @@ export function ThumbnailModal({
         )}
 
         {/* ── Frame Selection Mode ── */}
-        {mode === "frame" && videoFile && (
+        {mode === "frame" && (videoFile || videoUrl) && (
           <div className="mb-6">
             {videoError ? (
               <div className="aspect-[4/5] rounded-xl border-2 border-dashed border-white/15 bg-black flex flex-col items-center justify-center gap-3">
@@ -125,6 +128,7 @@ export function ThumbnailModal({
             ) : (
               <VideoFrameScrubber
                 videoFile={videoFile}
+                videoUrl={videoUrl}
                 onFrame={setCapturedFile}
                 onUndecodable={() => setVideoError(true)}
               />
