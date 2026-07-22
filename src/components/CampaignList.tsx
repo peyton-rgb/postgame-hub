@@ -25,6 +25,11 @@ export default function CampaignList() {
   const [confirmDelete, setConfirmDelete] = useState<Campaign | null>(null);
   const [trackers, setTrackers] = useState<Campaign[]>([]);
   const [selectedTrackerId, setSelectedTrackerId] = useState<string>("");
+  // Google Sheet link intake — reads the tracker via /api/recap/import-sheet
+  // (server-side, shared Postgame token). Check validates before create.
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetChecking, setSheetChecking] = useState(false);
+  const [sheetCheck, setSheetCheck] = useState<{ ok: boolean; count?: number; athletes?: any[]; reason?: string; gid?: string } | null>(null);
   const [brands, setBrands] = useState<any[]>([]);
   const [selectedBrandId, setSelectedBrandId] = useState("");
   const [brandCampaigns, setBrandCampaigns] = useState<any[]>([]);
@@ -89,6 +94,26 @@ export default function CampaignList() {
     setBrandCampaigns(data || []);
   }
 
+  async function checkSheet() {
+    const url = sheetUrl.trim();
+    if (!url) return;
+    setSheetChecking(true);
+    setSheetCheck(null);
+    try {
+      const res = await fetch("/api/recap/import-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const json = await res.json().catch(() => ({ ok: false, reason: `HTTP ${res.status}` }));
+      setSheetCheck(json);
+    } catch (e: any) {
+      setSheetCheck({ ok: false, reason: String(e?.message || e) });
+    } finally {
+      setSheetChecking(false);
+    }
+  }
+
   async function createCampaign() {
     if (!newName.trim() || !newClient.trim()) return;
     setCreating(true);
@@ -149,6 +174,14 @@ export default function CampaignList() {
         } catch (err) {
           console.error("Tracker import error:", err);
         }
+      } else if (sheetCheck?.ok && sheetCheck.athletes?.length) {
+        // A checked Google Sheet link — insert the server-parsed rows.
+        try {
+          const athleteRows = sheetCheck.athletes.map((a: any) => ({ ...a, campaign_id: data.id }));
+          await supabase.from("athletes").insert(athleteRows);
+        } catch (err) {
+          console.error("Sheet import error:", err);
+        }
       } else if (csvFile) {
         // If CSV was attached, parse and import athletes
         try {
@@ -184,6 +217,8 @@ export default function CampaignList() {
       setNewClient("");
       setRecapType("recap");
       setCsvFile(null);
+      setSheetUrl("");
+      setSheetCheck(null);
       setSelectedTrackerId("");
       setSelectedBrandId("");
       setSelectedBrandCampaignId("");
@@ -375,7 +410,7 @@ export default function CampaignList() {
                   value={selectedTrackerId}
                   onChange={(e) => {
                     setSelectedTrackerId(e.target.value);
-                    if (e.target.value) setCsvFile(null); // clear CSV if tracker selected
+                    if (e.target.value) { setCsvFile(null); setSheetUrl(""); setSheetCheck(null); } // clear other sources
                   }}
                   className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none"
                 >
@@ -394,9 +429,48 @@ export default function CampaignList() {
               </div>
             )}
 
-            {/* CSV Upload Zone — hidden when a tracker is selected */}
+            {/* Content sources — hidden when a tracker is selected */}
             {!selectedTrackerId && (
               <>
+                {/* Google Sheet link */}
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Import from Google Sheet link <span className="text-gray-700 normal-case">(optional)</span>
+                </label>
+                <div className="flex gap-2 mb-1.5">
+                  <input
+                    value={sheetUrl}
+                    onChange={(e) => {
+                      setSheetUrl(e.target.value);
+                      setSheetCheck(null);
+                      if (e.target.value.trim()) setCsvFile(null); // sheet + CSV are mutually exclusive
+                    }}
+                    placeholder="https://docs.google.com/spreadsheets/d/…"
+                    className="flex-1 px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={checkSheet}
+                    disabled={!sheetUrl.trim() || sheetChecking}
+                    className="px-4 py-3 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-40 whitespace-nowrap"
+                  >
+                    {sheetChecking ? "Checking…" : "Check link"}
+                  </button>
+                </div>
+                {sheetCheck ? (
+                  sheetCheck.ok ? (
+                    <p className="text-[10px] text-green-500/80 mb-5">
+                      ✓ {sheetCheck.count} athlete{sheetCheck.count === 1 ? "" : "s"} found{sheetCheck.gid ? ` (tab gid ${sheetCheck.gid})` : ""} — imported on create.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-red-400/80 mb-5">
+                      Couldn&apos;t read this sheet: {sheetCheck.reason || "unknown error"}. Make sure it&apos;s shared with the Postgame Google account.
+                    </p>
+                  )
+                ) : (
+                  <div className="text-[10px] text-gray-600 mb-5">Paste a tracker tab link — the gid in the URL picks the tab.</div>
+                )}
+
+                {/* CSV upload */}
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
                   Import Roster CSV <span className="text-gray-700 normal-case">(optional)</span>
                 </label>
@@ -409,7 +483,7 @@ export default function CampaignList() {
                     dragCounterRef.current = 0;
                     setCsvDragging(false);
                     const f = e.dataTransfer.files[0];
-                    if (f && f.name.endsWith(".csv")) setCsvFile(f);
+                    if (f && f.name.endsWith(".csv")) { setCsvFile(f); setSheetUrl(""); setSheetCheck(null); }
                   }}
                   onClick={() => {
                     const input = document.createElement("input");
@@ -417,7 +491,7 @@ export default function CampaignList() {
                     input.accept = ".csv";
                     input.onchange = (ev) => {
                       const f = (ev.target as HTMLInputElement).files?.[0];
-                      if (f) setCsvFile(f);
+                      if (f) { setCsvFile(f); setSheetUrl(""); setSheetCheck(null); }
                     };
                     input.click();
                   }}
@@ -462,7 +536,7 @@ export default function CampaignList() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowCreate(false); setCsvFile(null); setCsvDragging(false); setSelectedTrackerId(""); setSelectedBrandId(""); setSelectedBrandCampaignId(""); setBrandCampaigns([]); setRecapType("recap"); }}
+                onClick={() => { setShowCreate(false); setCsvFile(null); setSheetUrl(""); setSheetCheck(null); setCsvDragging(false); setSelectedTrackerId(""); setSelectedBrandId(""); setSelectedBrandCampaignId(""); setBrandCampaigns([]); setRecapType("recap"); }}
                 disabled={creating}
                 className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500 disabled:opacity-50"
               >
@@ -478,7 +552,7 @@ export default function CampaignList() {
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                     Creating...
                   </span>
-                ) : selectedTrackerId ? "Create & Link Tracker" : csvFile ? "Create & Import" : "Create Campaign"}
+                ) : selectedTrackerId ? "Create & Link Tracker" : sheetCheck?.ok ? "Create & Import from Sheet" : csvFile ? "Create & Import" : "Create Campaign"}
               </button>
             </div>
           </div>
