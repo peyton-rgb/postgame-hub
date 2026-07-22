@@ -1874,9 +1874,22 @@ export default function CampaignEditor() {
     return { succeeded, failed, errors };
   }
 
-  async function removeMedia(athleteId: string, mediaId: string) {
+  // Delete one asset. A merged collab card unions media across the team's
+  // per-platform member ids (canonical + any folded feed/reel bucket), so an
+  // asset shown on the card may live under a DIFFERENT key than the one the
+  // card was rendered with — filtering only prev[bucketKey] would leave it on
+  // screen after the DB row is gone. Remove the id from every bucket that holds
+  // it. (Solo athlete buckets are unaffected: an id lives in exactly one.)
+  async function removeMedia(bucketKey: string, mediaId: string) {
     await supabase.from("media").delete().eq("id", mediaId);
-    setMedia((prev) => ({ ...prev, [athleteId]: (prev[athleteId] || []).filter((m) => m.id !== mediaId) }));
+    setMedia((prev) => {
+      const next: Record<string, Media[]> = {};
+      for (const key of Object.keys(prev)) {
+        const list = prev[key];
+        next[key] = list.some((m) => m.id === mediaId) ? list.filter((m) => m.id !== mediaId) : list;
+      }
+      return next;
+    });
   }
 
   // Step 3 athletes drag-and-drop. Fires when a row is dropped in a new
@@ -3294,12 +3307,14 @@ export default function CampaignEditor() {
               )}
             </div>
 
-            {/* ── SECTION 2: COLLAB POSTS — one card per detected collab GROUP (per
-                platform). A team that posted both a feed and a reel (e.g. UF
-                Softball) shows up as two cards. Each card sources assets from
-                the team's Drive folder via the matching collab_containers row.
-                A group whose athlete set has no container renders a disabled
-                "Drive folder not linked" state with no upload action. ── */}
+            {/* ── SECTION 2: COLLAB POSTS — one card per TEAM (athlete set). The
+                per-platform collab groups are consolidated (consolidateCollabGroups)
+                into a single card whose `items` union every platform's media and
+                whose platforms show as pooled/solo tags; adds/removes act on the
+                merged (canonical) group. Each card sources assets from the team's
+                Drive folder via the matching collab_containers row. A team whose
+                athlete set has no container renders a disabled "Drive folder not
+                linked" state with no upload action. ── */}
             {collabCardData.length > 0 && (
               <div>
                 <div className="flex items-center gap-3 mb-1">
