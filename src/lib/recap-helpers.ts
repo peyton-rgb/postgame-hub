@@ -534,13 +534,6 @@ type CollabTopPerformerEntry = CollabGroup & {
 
 export type TopPerformerEntry = AthleteTopPerformerEntry | CollabTopPerformerEntry;
 
-function bestPlatformKey(label: string): Platform | null {
-  if (label === "IG Feed") return "ig_feed";
-  if (label === "IG Reel") return "ig_reel";
-  if (label === "TikTok") return "tiktok";
-  return null;
-}
-
 function buildCollabUrlSet(collabGroups: CollabGroup[]): Set<string> {
   const set = new Set<string>();
   for (const g of collabGroups) for (const s of g.sources) {
@@ -591,34 +584,52 @@ function collabTopPerformerEntries(collabGroups: CollabGroup[]): CollabTopPerfor
   });
 }
 
-/** Find the collab group that an athlete's best-platform post belongs to. */
-function findCollabGroupForAthlete(
-  a: Athlete,
-  platformKey: Platform | null,
-  collabGroups: CollabGroup[],
-  collabUrls: Set<string>,
-): CollabGroup | undefined {
-  if (!platformKey) return undefined;
-  const m = a.metrics;
+/**
+ * URL of the athlete's best-ENGAGEMENT post — the single post that drives their
+ * rank in the Engagement view. Mirrors bestEngWithPlatform's rate comparison
+ * (Post 1 via bestRateForPlatform + Post 2 slots) but returns the winning URL.
+ */
+function bestEngPostUrl(m: AthleteMetrics | undefined): string | undefined {
   if (!m) return undefined;
+  let best = { rate: 0, url: undefined as string | undefined };
+  const consider = (rate: number, url?: string) => { if (rate > best.rate) best = { rate, url }; };
+  consider(bestRateForPlatform(m, "ig_feed"), m.ig_feed?.post_url);
+  consider(bestRateForPlatform(m, "ig_reel"), m.ig_reel?.post_url);
+  consider(bestRateForPlatform(m, "tiktok"), m.tiktok?.post_url);
+  if (m.ig_feed_2?.post_url) consider(Math.max(m.ig_feed_2.engagement_rate_followers ?? 0, m.ig_feed_2.engagement_rate_impressions ?? 0), m.ig_feed_2.post_url);
+  if (m.ig_reel_2?.post_url) consider(Math.max(m.ig_reel_2.engagement_rate_followers ?? 0, m.ig_reel_2.engagement_rate_impressions ?? 0), m.ig_reel_2.post_url);
+  if (m.tiktok_2?.post_url) consider(Math.max(m.tiktok_2.engagement_rate_followers ?? 0, m.tiktok_2.engagement_rate_impressions ?? 0), m.tiktok_2.post_url);
+  return best.url;
+}
 
-  // Check all URL slots for this athlete to find a collab match
-  const urlsToCheck: (string | undefined)[] = [];
-  if (platformKey === "ig_feed") {
-    urlsToCheck.push(m.ig_feed?.post_url, m.ig_feed_2?.post_url);
-  } else if (platformKey === "ig_reel") {
-    urlsToCheck.push(m.ig_reel?.post_url, m.ig_reel_2?.post_url);
-  } else {
-    urlsToCheck.push(m.tiktok?.post_url, m.tiktok_2?.post_url);
-  }
+/**
+ * URL of the athlete's highest-IMPRESSION post — the single post that drives
+ * their rank in the Impressions view (feed impressions / reel + tiktok views).
+ */
+function bestImpressionPostUrl(m: AthleteMetrics | undefined): string | undefined {
+  if (!m) return undefined;
+  let best = { imp: 0, url: undefined as string | undefined };
+  const consider = (imp: number, url?: string) => { if (imp > best.imp) best = { imp, url }; };
+  consider(m.ig_feed?.impressions ?? 0, m.ig_feed?.post_url);
+  consider(m.ig_feed_2?.impressions ?? 0, m.ig_feed_2?.post_url);
+  consider(m.ig_reel?.views ?? 0, m.ig_reel?.post_url);
+  consider(m.ig_reel_2?.views ?? 0, m.ig_reel_2?.post_url);
+  consider(m.tiktok?.views ?? 0, m.tiktok?.post_url);
+  consider(m.tiktok_2?.views ?? 0, m.tiktok_2?.post_url);
+  return best.url;
+}
 
-  for (const url of urlsToCheck) {
-    if (url && collabUrls.has(url)) {
-      const group = collabGroups.find((g) => g.sources.some((s) => s.url === url));
-      if (group) return group;
-    }
-  }
-  return undefined;
+/**
+ * Whether the athlete's ranking-driving post in a given mode is a collab post —
+ * meaning they're already shown on the Collab card and would otherwise
+ * double-count. Keyed to the SAME post that determines the entry's metric, so
+ * an athlete whose top solo post ranks stays, while one ranked by a collab post
+ * (e.g. a collab-only participant, or one whose biggest post is the shared one)
+ * drops. Excluding on the ranking post — not "any collab post" — is what keeps
+ * legitimate solo achievements in the list.
+ */
+function rankingPostIsCollab(url: string | undefined, collabUrls: Set<string>): boolean {
+  return !!url && collabUrls.has(url);
 }
 
 export function getTopPerformers(
@@ -634,8 +645,9 @@ export function getTopPerformers(
   const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
-      const key = bestPlatformKey(platform);
-      if (findCollabGroupForAthlete(a, key, collabGroups, collabUrls)) return null;
+      // Engagement view ranks by the best-engagement post — exclude only when
+      // THAT post is the collab (else a legit solo post is wrongly dropped).
+      if (rankingPostIsCollab(bestEngPostUrl(a.metrics), collabUrls)) return null;
 
       return {
         ...a,
@@ -667,8 +679,10 @@ export function getTopPerformersByImpressions(
   const athleteEntries: AthleteTopPerformerEntry[] = athletes
     .map((a) => {
       const { rate, platform } = bestEngWithPlatform(a.metrics);
-      const key = bestPlatformKey(platform);
-      if (findCollabGroupForAthlete(a, key, collabGroups, collabUrls)) return null;
+      // Impressions view ranks by the highest-impression post — exclude only
+      // when THAT post is the collab (the phantom case: a participant whose
+      // biggest post is the shared one, e.g. Reggie/Carson on the collab reel).
+      if (rankingPostIsCollab(bestImpressionPostUrl(a.metrics), collabUrls)) return null;
 
       return {
         ...a,
