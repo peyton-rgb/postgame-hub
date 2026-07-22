@@ -1,4 +1,5 @@
 import type { AthleteMetrics, CollabGroup, CollabSource as CollabPostSource } from "./types";
+import { normalizeHandle } from "./handles";
 
 export interface ParsedAthlete {
   first: string;
@@ -670,7 +671,7 @@ export function parseInfoCSV(csvText: string): ParsedAthlete[] {
       first: titleCase(first),
       last: titleCase(last),
       name: titleCase(fullName),
-      ig_handle: rawHandle.replace(/^\s+|\s+$/g, ""),
+      ig_handle: normalizeHandle(rawHandle),
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
       content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",
       reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
@@ -1159,7 +1160,7 @@ export function parseMetricsCSV(csvText: string): { athletes: ParsedAthlete[]; c
       first: titleCase(first),
       last: titleCase(last),
       name: titleCase(fullName),
-      ig_handle: iHandle !== -1 ? (cols[iHandle]?.replace(/^\s+|\s+$/g, "") || "") : "",
+      ig_handle: iHandle !== -1 ? normalizeHandle(cols[iHandle]) : "",
       ig_followers: iFollowers !== -1 ? (parseNum(cols[iFollowers]) || 0) : 0,
       content_rating: iContentRating !== -1 ? (cols[iContentRating]?.trim() || "") : "",
       reach_level: iReachLevel !== -1 ? (cols[iReachLevel]?.trim() || "") : "",
