@@ -43,6 +43,25 @@ const CONTENT_TYPE_COLORS: Record<ContentType, string> = {
   inspo_external: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
 };
 
+// Triage status → pill styling. Green = approved (money green, already used in
+// the Hub), Postgame orange = pending (the attention accent — "needs review"),
+// neutral frosted = rejected (deliberately NOT a red; the design system defines
+// no red and forbids introducing one without sign-off).
+const TRIAGE_PILL: Record<string, { label: string; className: string }> = {
+  approved: { label: 'Approved', className: 'bg-green-600/20 text-green-300 border-green-600/30' },
+  pending: { label: 'Pending', className: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30' },
+  rejected: { label: 'Rejected', className: 'bg-white/10 text-gray-400 border-white/10' },
+};
+
+function triagePill(status: string | null): { label: string; className: string } {
+  return (
+    (status && TRIAGE_PILL[status]) || {
+      label: status || 'Untriaged',
+      className: 'bg-white/10 text-gray-400 border-white/10',
+    }
+  );
+}
+
 // Tag category labels for the detail panel
 const TAG_CATEGORIES = {
   pro_tags: {
@@ -91,6 +110,8 @@ export default function InspoLibraryPage() {
   const [tagFilter, setTagFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [statusFilter, setStatusFilter] = useState('ready');
+  // Triage queue filter: '' = all, or pending / approved / rejected.
+  const [triageFilter, setTriageFilter] = useState('');
 
   // Pagination
   const [offset, setOffset] = useState(0);
@@ -110,6 +131,7 @@ export default function InspoLibraryPage() {
     if (vibeFilter) params.set('vibe', vibeFilter);
     if (tagFilter) params.set('tag', tagFilter);
     if (statusFilter) params.set('tagging_status', statusFilter);
+    if (triageFilter) params.set('triage_status', triageFilter);
     params.set('sort', sortBy);
     params.set('limit', String(LIMIT));
     params.set('offset', String(currentOffset));
@@ -126,7 +148,7 @@ export default function InspoLibraryPage() {
     }
 
     setLoading(false);
-  }, [searchQuery, contentTypeFilter, sportFilter, vibeFilter, tagFilter, sortBy, statusFilter]);
+  }, [searchQuery, contentTypeFilter, sportFilter, vibeFilter, tagFilter, sortBy, statusFilter, triageFilter]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
@@ -208,6 +230,42 @@ export default function InspoLibraryPage() {
     } catch (err) {
       console.error('Failed to toggle hero:', err);
     }
+  };
+
+  // --- Triage: approve / reject ---
+  // Mirrors handleToggleHero exactly — a direct client-side inspo_items update
+  // (the "Auth users full access" RLS policy permits it), local state updated on
+  // success. When a triage filter is active and the new status no longer matches
+  // it, the item drops out of the list immediately (total ticks down to match).
+  const [triaging, setTriaging] = useState<string | null>(null);
+
+  const handleTriage = async (item: InspoItem, newStatus: 'approved' | 'rejected') => {
+    if (item.triage_status === newStatus) return;
+    setTriaging(item.id);
+    try {
+      const { error } = await supabase
+        .from('inspo_items')
+        .update({ triage_status: newStatus })
+        .eq('id', item.id);
+
+      if (error) {
+        console.error('Failed to set triage status:', error.message);
+      } else {
+        const dropsOut = !!triageFilter && triageFilter !== newStatus;
+        setItems((prev) =>
+          dropsOut
+            ? prev.filter((i) => i.id !== item.id)
+            : prev.map((i) => (i.id === item.id ? { ...i, triage_status: newStatus } : i))
+        );
+        if (dropsOut) setTotal((t) => Math.max(0, t - 1));
+        setSelectedItem((prev) =>
+          prev && prev.id === item.id ? { ...prev, triage_status: newStatus } : prev
+        );
+      }
+    } catch (err) {
+      console.error('Failed to set triage status:', err);
+    }
+    setTriaging(null);
   };
 
   // --- Format file size ---
@@ -324,6 +382,18 @@ export default function InspoLibraryPage() {
             <option value="reviewed">Reviewed</option>
           </select>
 
+          {/* Triage filter — work the approval queue */}
+          <select
+            value={triageFilter}
+            onChange={(e) => setTriageFilter(e.target.value)}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-white/30"
+          >
+            <option value="">All Triage</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+
           {/* Sort */}
           <select
             value={sortBy}
@@ -336,7 +406,7 @@ export default function InspoLibraryPage() {
           </select>
 
           {/* Clear filters */}
-          {(searchQuery || contentTypeFilter || sportFilter || vibeFilter || tagFilter || statusFilter !== 'ready' || sortBy !== 'newest') && (
+          {(searchQuery || contentTypeFilter || sportFilter || vibeFilter || tagFilter || triageFilter || statusFilter !== 'ready' || sortBy !== 'newest') && (
             <button
               onClick={() => {
                 setSearchQuery('');
@@ -344,6 +414,7 @@ export default function InspoLibraryPage() {
                 setSportFilter('');
                 setVibeFilter('');
                 setTagFilter('');
+                setTriageFilter('');
                 setStatusFilter('ready');
                 setSortBy('newest');
               }}
@@ -544,6 +615,46 @@ export default function InspoLibraryPage() {
                 >
                   {selectedItem.is_hero ? '★ Hero' : '☆ Mark Hero'}
                 </button>
+              </div>
+
+              {/* Triage — approve makes the asset eligible for vibe search */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Triage
+                  </h4>
+                  <span
+                    className={`inline-block px-2 py-0.5 text-xs rounded-full border ${
+                      triagePill(selectedItem.triage_status).className
+                    }`}
+                  >
+                    {triagePill(selectedItem.triage_status).label}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleTriage(selectedItem, 'approved')}
+                    disabled={triaging === selectedItem.id}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors disabled:opacity-50 ${
+                      selectedItem.triage_status === 'approved'
+                        ? 'bg-green-600/20 text-green-300 border border-green-600/30 hover:bg-green-600/30'
+                        : 'bg-white/10 hover:bg-white/20 text-green-300'
+                    }`}
+                  >
+                    ✓ Approve
+                  </button>
+                  <button
+                    onClick={() => handleTriage(selectedItem, 'rejected')}
+                    disabled={triaging === selectedItem.id}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors disabled:opacity-50 ${
+                      selectedItem.triage_status === 'rejected'
+                        ? 'bg-white/15 text-gray-200 border border-white/20 hover:bg-white/20'
+                        : 'bg-white/10 hover:bg-white/20 text-gray-400'
+                    }`}
+                  >
+                    Reject
+                  </button>
+                </div>
               </div>
 
               {/* Visual description */}
