@@ -10,6 +10,7 @@ import { ThumbnailModal } from "@/components/ThumbnailModal";
 import { ThumbnailGate, type BlockingCard } from "@/components/ThumbnailGate";
 import { MasonryPreview } from "@/components/MasonryPreview";
 import { parseMetricsCSV, mergeAthleteData, detectCollabGroups, type ParsedAthlete } from "@/lib/csv-parser";
+import { normalizeHandle } from "@/lib/handles";
 import { deriveContainerCollab, containerGroupId } from "@/lib/collab-reconcile";
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
@@ -262,16 +263,6 @@ function Top50RosterEditor({
         await supabase.from("athletes").delete().in("id", existingIds);
       }
 
-      // Extract IG handle from a value that might be a full URL or @handle
-      const extractIgHandle = (raw: string): string => {
-        if (!raw) return "";
-        // Full URL: https://www.instagram.com/alexkaraban_/?hl=en → alexkaraban_
-        const urlMatch = raw.match(/instagram\.com\/([^/?#]+)/i);
-        if (urlMatch) return urlMatch[1];
-        // Strip leading @
-        return raw.replace(/^@/, "").trim();
-      };
-
       const toInsert: Record<string, unknown>[] = [];
       for (let i = 1; i < lines.length; i++) {
         const cols = parseCsvRow(lines[i]);
@@ -288,7 +279,7 @@ function Top50RosterEditor({
         const rank = iRank !== -1 ? parseInt(cols[iRank]) || i : i;
         const school = iSchool !== -1 ? cols[iSchool] || "" : "";
         const sport = iSport !== -1 ? cols[iSport] || "" : "";
-        const igHandle = iHandle !== -1 ? extractIgHandle(cols[iHandle] || "") : "";
+        const igHandle = iHandle !== -1 ? normalizeHandle(cols[iHandle]) : "";
         const igFollowers = iFollowers !== -1 ? parseInt(cols[iFollowers]?.replace(/[^0-9]/g, "")) || 0 : 0;
         const notes = iNotes !== -1 ? cols[iNotes] || "" : "";
         const campaignTag = iTag !== -1 ? cols[iTag] || "" : "";
