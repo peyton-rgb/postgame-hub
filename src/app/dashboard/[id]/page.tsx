@@ -803,6 +803,46 @@ type PickerSlotDest = {
   slot: "feed" | "reel";
 };
 
+// Videos that would render black in the recap and need a poster/frame. A video
+// blocks the preview gate ONLY when its card has no image — a photo cover means
+// the video isn't the cover, and ensureVideoPosters() gives it the cover photo
+// as a poster instead of force-marching the user into the frame scrubber.
+function computeBlockingCards(
+  mediaMap: Record<string, Media[]>,
+  selectedIds: string[],
+  roster: Athlete[],
+  collabCards: { group: CollabGroup; teamName: string; items: Media[] }[],
+): BlockingCard[] {
+  const out: BlockingCard[] = [];
+  const blankThumb = (t?: string | null) => !t || !String(t).trim();
+  const isBlockingVideo = (m: Media) => m.type === "video" && blankThumb(m.thumbnail_url) && !!m.file_url;
+  const hasImage = (items: Media[]) => items.some((m) => m.type === "image");
+  const extOf = (u?: string | null) => {
+    const mm = (u || "").split("?")[0].match(/\.([a-z0-9]+)$/i);
+    return mm ? mm[1].toLowerCase() : undefined;
+  };
+  for (const aId of selectedIds) {
+    const items = mediaMap[aId] || [];
+    if (hasImage(items)) continue; // photo cover exists → the video is not the cover
+    const ath = roster.find((a) => a.id === aId);
+    for (const m of items) {
+      if (!isBlockingVideo(m)) continue;
+      out.push({ key: `m-${m.id}`, mediaId: m.id, bucketKey: aId, kind: "solo", fileUrl: m.file_url!, label: ath?.name || "Athlete", cardType: "Cover photo", ext: extOf(m.file_url) });
+    }
+  }
+  const sel = new Set(selectedIds);
+  for (const cd of collabCards) {
+    if (!cd.group.athleteIds.some((gid) => sel.has(gid))) continue;
+    if (hasImage(cd.items)) continue;
+    const label = cd.teamName || cd.group.athleteNames.slice(0, 2).join(" + ");
+    for (const m of cd.items) {
+      if (!isBlockingVideo(m)) continue;
+      out.push({ key: `m-${m.id}`, mediaId: m.id, bucketKey: cd.group.id, kind: "collab", fileUrl: m.file_url!, label, cardType: "Collab post", ext: extOf(m.file_url) });
+    }
+  }
+  return out;
+}
+
 export default function CampaignEditor() {
   const params = useParams();
   const id = params.id as string;
@@ -830,6 +870,10 @@ export default function CampaignEditor() {
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
   const [driveFolderAthlete, setDriveFolderAthlete] = useState<Athlete | null>(null);
+  // When the Drive picker is opened via a Top Performer "Pick cover" button, the
+  // first imported image is promoted to that athlete's cover on import (see
+  // AthleteDriveFolderPicker onImported below). Normal opens leave this false.
+  const [driveCoverIntent, setDriveCoverIntent] = useState(false);
   const [eventPickerOpen, setEventPickerOpen] = useState(false);
   const [eventMedia, setEventMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
@@ -889,33 +933,10 @@ export default function CampaignEditor() {
   // gate blocks on exactly these — unselected athletes and event media are ignored.
   // Solo = selected athletes' media[athleteId]; collab = media[groupId] for any
   // collab card whose members include a selected athlete (i.e. the card renders).
-  const blockingVideoCards = useMemo<BlockingCard[]>(() => {
-    const out: BlockingCard[] = [];
-    const blankThumb = (t?: string | null) => !t || !String(t).trim();
-    const isBlocking = (m: Media) => m.type === "video" && blankThumb(m.thumbnail_url) && !!m.file_url;
-    const extOf = (u?: string | null) => {
-      const mm = (u || "").split("?")[0].match(/\.([a-z0-9]+)$/i);
-      return mm ? mm[1].toLowerCase() : undefined;
-    };
-    for (const aId of selected) {
-      const ath = athletes.find((a) => a.id === aId);
-      for (const m of media[aId] || []) {
-        if (!isBlocking(m)) continue;
-        out.push({ key: `m-${m.id}`, mediaId: m.id, bucketKey: aId, kind: "solo", fileUrl: m.file_url!, label: ath?.name || "Athlete", cardType: "Cover photo", ext: extOf(m.file_url) });
-      }
-    }
-    const sel = new Set(selected);
-    for (const cd of collabCardData) {
-      const g = cd.group;
-      if (!g.athleteIds.some((gid) => sel.has(gid))) continue;
-      const label = cd.teamName || g.athleteNames.slice(0, 2).join(" + ");
-      for (const m of cd.items) {
-        if (!isBlocking(m)) continue;
-        out.push({ key: `m-${m.id}`, mediaId: m.id, bucketKey: g.id, kind: "collab", fileUrl: m.file_url!, label, cardType: "Collab post", ext: extOf(m.file_url) });
-      }
-    }
-    return out;
-  }, [selected, media, athletes, collabCardData]);
+  const blockingVideoCards = useMemo<BlockingCard[]>(
+    () => computeBlockingCards(media, selected, athletes, collabCardData),
+    [selected, media, athletes, collabCardData],
+  );
 
   // containerId -> { feed?, reel? } group ids, so a (team folder, slot) import
   // from the Drive picker resolves to the right synthetic collab group id.
@@ -1637,8 +1658,45 @@ export default function CampaignEditor() {
   }
 
   // Preview gate: block on any selected video card missing a thumbnail.
-  function handlePreviewClick() {
-    if (blockingVideoCards.length > 0) setShowThumbGate(true);
+  // A photo is always the preferred cover; a video should never be the FORCED
+  // cover, but must never render black either. So for any selected card that has
+  // a photo, un-postered videos quietly inherit the cover photo as their poster
+  // (persisted) — no scrubber. Genuinely photo-less cards are left for the gate.
+  // Returns the updated media map so callers can gate on the post-poster state.
+  async function ensureVideoPosters(): Promise<Record<string, Media[]>> {
+    const next: Record<string, Media[]> = { ...media };
+    const writes: Promise<unknown>[] = [];
+    const patch = (key: string, items: Media[]) => {
+      const poster = items.find((m) => m.type === "image")?.file_url;
+      if (!poster) return; // no photo → genuine video-only → leave for the gate
+      let changed = false;
+      const patched = items.map((m) => {
+        if (m.type === "video" && (!m.thumbnail_url || !String(m.thumbnail_url).trim())) {
+          changed = true;
+          writes.push(supabase.from("media").update({ thumbnail_url: poster }).eq("id", m.id));
+          return { ...m, thumbnail_url: poster };
+        }
+        return m;
+      });
+      if (changed) next[key] = patched;
+    };
+    for (const aId of selected) patch(aId, media[aId] || []);
+    const sel = new Set(selected);
+    for (const cd of collabCardData) {
+      if (!cd.group.athleteIds.some((gid) => sel.has(gid))) continue;
+      patch(cd.group.id, cd.items);
+    }
+    if (writes.length) {
+      await Promise.all(writes);
+      setMedia(next);
+    }
+    return next;
+  }
+
+  async function handlePreviewClick() {
+    const next = await ensureVideoPosters();
+    const blocking = computeBlockingCards(next, selected, athletes, collabCardData);
+    if (blocking.length > 0) setShowThumbGate(true);
     else setShowPreview(true);
   }
 
@@ -1809,26 +1867,35 @@ export default function CampaignEditor() {
     await Promise.all(updates);
   }
 
-  async function setCoverPhoto(athleteId: string, mediaId: string) {
-    const items = media[athleteId] || [];
+  // Pure reorder for making `mediaId` the cover: cover image first, then video,
+  // then remaining images. Returns null if the target isn't an image. Takes an
+  // explicit `items` array so callers can reorder a freshly-merged list (e.g.
+  // right after a Drive import) without reading stale `media` state.
+  function reorderForCover(items: Media[], mediaId: string) {
     const target = items.find((m) => m.id === mediaId);
-    if (!target || target.type === "video") return; // only images can be covers
-
-    // Reorder: cover image first, then video, then remaining images
+    if (!target || target.type === "video") return null; // only images can be covers
     const video = items.find((m) => m.type === "video");
     const otherImages = items.filter((m) => m.id !== mediaId && m.type !== "video");
-    const newItems = [target, ...(video ? [video] : []), ...otherImages];
+    return { newItems: [target, ...(video ? [video] : []), ...otherImages], video, target };
+  }
 
-    // Update sort_order in DB and set cover as video thumbnail
+  // Persist a cover reorder: rewrite sort_order for the whole bucket and, if
+  // there's a video, copy the cover image's url into its thumbnail_url.
+  async function persistCoverOrder(newItems: Media[], video: Media | undefined, targetUrl: string | null) {
     for (let i = 0; i < newItems.length; i++) {
       await supabase.from("media").update({ sort_order: i }).eq("id", newItems[i].id);
     }
-    // Set the cover photo as the video's thumbnail
     if (video) {
-      await supabase.from("media").update({ thumbnail_url: target.file_url }).eq("id", video.id);
-      video.thumbnail_url = target.file_url;
+      await supabase.from("media").update({ thumbnail_url: targetUrl }).eq("id", video.id);
+      video.thumbnail_url = targetUrl;
     }
-    setMedia((prev) => ({ ...prev, [athleteId]: newItems }));
+  }
+
+  async function setCoverPhoto(athleteId: string, mediaId: string) {
+    const r = reorderForCover(media[athleteId] || [], mediaId);
+    if (!r) return;
+    await persistCoverOrder(r.newItems, r.video, r.target.file_url);
+    setMedia((prev) => ({ ...prev, [athleteId]: r.newItems }));
   }
 
   function matchFileToAthlete(fileName: string, athleteList: Athlete[], relativePath?: string): Athlete | null {
@@ -1989,6 +2056,9 @@ export default function CampaignEditor() {
     };
 
     const newPublished = !campaign.published;
+    // Guarantee no black video tiles go public: photo-covered videos inherit a
+    // poster before the recap is published (publish bypasses the preview gate).
+    if (newPublished) await ensureVideoPosters();
     const updatePayload: { published: boolean; status?: string; settings: typeof newSettings; thumbnail_url?: string } = {
       published: newPublished,
       settings: newSettings,
@@ -2099,7 +2169,7 @@ export default function CampaignEditor() {
       ? `${e.athleteIds.length} athletes · ${e.bestPlatform}`
       : `${e.school || ""} · ${e.bestPlatform}`;
     const metric = topPerfRank === "engagement" ? formatEngagementRate(e.bestEngRate) : fmt(e.totalImpressions);
-    return { id: e.id, rank: i + 1, name, sub, coverSrc, isCollab: e.kind === "collab", metric };
+    return { id: e.id, rank: i + 1, name, sub, coverSrc, hasContent: items.length > 0, isCollab: e.kind === "collab", metric };
   });
 
   const steps = [
@@ -3136,8 +3206,29 @@ export default function CampaignEditor() {
                           <button
                             type="button"
                             onClick={() => {
-                              const el = document.getElementById(c.isCollab ? `upload-collab-${c.id}` : `upload-athlete-${c.id}`);
-                              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              // No content yet → open this athlete's Drive picker
+                              // directly, in cover mode (first imported image becomes
+                              // the cover). Only scroll when a cover already
+                              // exists — the button only shows when it doesn't, so
+                              // in practice a solo "Pick cover" always opens Drive.
+                              const scrollToCard = () => {
+                                const el = document.getElementById(c.isCollab ? `upload-collab-${c.id}` : `upload-athlete-${c.id}`);
+                                el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              };
+                              if (c.coverSrc) {
+                                scrollToCard();
+                                return;
+                              }
+                              if (c.isCollab) {
+                                const cd = collabCardData.find((d) => d.group.id === c.id);
+                                if (cd?.container) openCollabDrive(cd.group, cd.container.driveFolderId);
+                                else scrollToCard(); // no linked Drive folder — nowhere to import from
+                                return;
+                              }
+                              const athlete = athletes.find((a) => a.id === c.id);
+                              if (!athlete) { scrollToCard(); return; }
+                              setDriveCoverIntent(true);
+                              setDriveFolderAthlete(athlete);
                             }}
                             className="w-full text-[10px] font-bold uppercase tracking-wider text-white bg-[#D73F09] hover:bg-[#ff5722] rounded-lg py-1.5 transition-colors"
                           >
@@ -3256,12 +3347,12 @@ export default function CampaignEditor() {
                       <div
                         onClick={() => {
                           if (coverSrc) fileRefs.current[a.id]?.click();
-                          else if (videoNeedingFrame) setFrameTarget({ bucketKey: a.id, kind: "solo", media: videoNeedingFrame });
+                          else if (videoNeedingFrame) { setDriveCoverIntent(true); setDriveFolderAthlete(a); }
                           else setDriveFolderAthlete(a);
                         }}
                         onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
                         onDragOver={(e) => e.preventDefault()}
-                        title={coverSrc ? "Add more content" : videoNeedingFrame ? "Pick a cover frame from the video" : "Select content from this athlete's Drive folder"}
+                        title={coverSrc ? "Add more content" : videoNeedingFrame ? "Grab a cover photo from Drive (or use a video frame)" : "Select content from this athlete's Drive folder"}
                         className={`aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
                           coverSrc
                             ? "border-transparent hover:border-[#D73F09]"
@@ -3291,8 +3382,15 @@ export default function CampaignEditor() {
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute inset-0 bg-black/45 flex flex-col items-center justify-center gap-1">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="8 5 19 12 8 19 8 5" /></svg>
-                              <span className="text-[8px] font-bold uppercase tracking-wider text-white text-center leading-tight">Pick cover frame</span>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                              <span className="text-[8px] font-bold uppercase tracking-wider text-white text-center leading-tight">Pick cover</span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setFrameTarget({ bucketKey: a.id, kind: "solo", media: videoNeedingFrame }); }}
+                                className="mt-0.5 text-[7px] font-bold uppercase tracking-wider text-white/70 underline hover:text-white"
+                              >
+                                use a frame
+                              </button>
                             </div>
                           </div>
                         ) : (
@@ -3463,9 +3561,14 @@ export default function CampaignEditor() {
                           </>
                         )}
                         {videoNeedingFrame && (
-                          <button type="button" onClick={() => setFrameTarget({ bucketKey: a.id, kind: "solo", media: videoNeedingFrame })} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-1.5 py-1">
-                            Pick frame
-                          </button>
+                          <>
+                            <button type="button" onClick={() => { setDriveCoverIntent(true); setDriveFolderAthlete(a); }} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-1.5 py-1">
+                              Pick cover
+                            </button>
+                            <button type="button" onClick={() => setFrameTarget({ bucketKey: a.id, kind: "solo", media: videoNeedingFrame })} className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white px-1.5 py-1">
+                              Frame
+                            </button>
+                          </>
                         )}
                         <button
                           type="button"
@@ -3527,12 +3630,24 @@ export default function CampaignEditor() {
                 recapId={id}
                 athleteId={driveFolderAthlete.id}
                 athleteName={driveFolderAthlete.name}
-                onClose={() => setDriveFolderAthlete(null)}
+                onClose={() => { setDriveFolderAthlete(null); setDriveCoverIntent(false); }}
                 onImported={(newMedia) => {
-                  setMedia((prev) => ({
-                    ...prev,
-                    [driveFolderAthlete.id]: [...(prev[driveFolderAthlete.id] || []), ...newMedia],
-                  }));
+                  const bucketId = driveFolderAthlete.id;
+                  const asCover = driveCoverIntent;
+                  setMedia((prev) => {
+                    const merged = [...(prev[bucketId] || []), ...newMedia];
+                    // Opened via "Pick cover": promote the first imported image to
+                    // cover (reorder to front + persist sort_order/thumbnail).
+                    if (asCover) {
+                      const firstImg = newMedia.find((m) => m.type !== "video");
+                      const r = firstImg ? reorderForCover(merged, firstImg.id) : null;
+                      if (r) {
+                        void persistCoverOrder(r.newItems, r.video, r.target.file_url);
+                        return { ...prev, [bucketId]: r.newItems };
+                      }
+                    }
+                    return { ...prev, [bucketId]: merged };
+                  });
                 }}
               />
             )}
