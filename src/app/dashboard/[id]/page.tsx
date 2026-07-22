@@ -830,6 +830,10 @@ export default function CampaignEditor() {
   const [driveImportOpen, setDriveImportOpen] = useState(false);
   const [tier3PickerAthlete, setTier3PickerAthlete] = useState<Athlete | null>(null);
   const [driveFolderAthlete, setDriveFolderAthlete] = useState<Athlete | null>(null);
+  // When the Drive picker is opened via a Top Performer "Pick cover" button, the
+  // first imported image is promoted to that athlete's cover on import (see
+  // AthleteDriveFolderPicker onImported below). Normal opens leave this false.
+  const [driveCoverIntent, setDriveCoverIntent] = useState(false);
   const [eventPickerOpen, setEventPickerOpen] = useState(false);
   const [eventMedia, setEventMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1809,26 +1813,35 @@ export default function CampaignEditor() {
     await Promise.all(updates);
   }
 
-  async function setCoverPhoto(athleteId: string, mediaId: string) {
-    const items = media[athleteId] || [];
+  // Pure reorder for making `mediaId` the cover: cover image first, then video,
+  // then remaining images. Returns null if the target isn't an image. Takes an
+  // explicit `items` array so callers can reorder a freshly-merged list (e.g.
+  // right after a Drive import) without reading stale `media` state.
+  function reorderForCover(items: Media[], mediaId: string) {
     const target = items.find((m) => m.id === mediaId);
-    if (!target || target.type === "video") return; // only images can be covers
-
-    // Reorder: cover image first, then video, then remaining images
+    if (!target || target.type === "video") return null; // only images can be covers
     const video = items.find((m) => m.type === "video");
     const otherImages = items.filter((m) => m.id !== mediaId && m.type !== "video");
-    const newItems = [target, ...(video ? [video] : []), ...otherImages];
+    return { newItems: [target, ...(video ? [video] : []), ...otherImages], video, target };
+  }
 
-    // Update sort_order in DB and set cover as video thumbnail
+  // Persist a cover reorder: rewrite sort_order for the whole bucket and, if
+  // there's a video, copy the cover image's url into its thumbnail_url.
+  async function persistCoverOrder(newItems: Media[], video: Media | undefined, targetUrl: string | null) {
     for (let i = 0; i < newItems.length; i++) {
       await supabase.from("media").update({ sort_order: i }).eq("id", newItems[i].id);
     }
-    // Set the cover photo as the video's thumbnail
     if (video) {
-      await supabase.from("media").update({ thumbnail_url: target.file_url }).eq("id", video.id);
-      video.thumbnail_url = target.file_url;
+      await supabase.from("media").update({ thumbnail_url: targetUrl }).eq("id", video.id);
+      video.thumbnail_url = targetUrl;
     }
-    setMedia((prev) => ({ ...prev, [athleteId]: newItems }));
+  }
+
+  async function setCoverPhoto(athleteId: string, mediaId: string) {
+    const r = reorderForCover(media[athleteId] || [], mediaId);
+    if (!r) return;
+    await persistCoverOrder(r.newItems, r.video, r.target.file_url);
+    setMedia((prev) => ({ ...prev, [athleteId]: r.newItems }));
   }
 
   function matchFileToAthlete(fileName: string, athleteList: Athlete[], relativePath?: string): Athlete | null {
@@ -2099,7 +2112,7 @@ export default function CampaignEditor() {
       ? `${e.athleteIds.length} athletes · ${e.bestPlatform}`
       : `${e.school || ""} · ${e.bestPlatform}`;
     const metric = topPerfRank === "engagement" ? formatEngagementRate(e.bestEngRate) : fmt(e.totalImpressions);
-    return { id: e.id, rank: i + 1, name, sub, coverSrc, isCollab: e.kind === "collab", metric };
+    return { id: e.id, rank: i + 1, name, sub, coverSrc, hasContent: items.length > 0, isCollab: e.kind === "collab", metric };
   });
 
   const steps = [
@@ -3136,8 +3149,28 @@ export default function CampaignEditor() {
                           <button
                             type="button"
                             onClick={() => {
-                              const el = document.getElementById(c.isCollab ? `upload-collab-${c.id}` : `upload-athlete-${c.id}`);
-                              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              // No content yet → open this athlete's Drive picker
+                              // directly, in cover mode (first imported image becomes
+                              // the cover). Content exists but no cover → scroll to the
+                              // gallery/collab card where the cover UI lives.
+                              const scrollToCard = () => {
+                                const el = document.getElementById(c.isCollab ? `upload-collab-${c.id}` : `upload-athlete-${c.id}`);
+                                el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              };
+                              if (c.hasContent) {
+                                scrollToCard();
+                                return;
+                              }
+                              if (c.isCollab) {
+                                const cd = collabCardData.find((d) => d.group.id === c.id);
+                                if (cd?.container) openCollabDrive(cd.group, cd.container.driveFolderId);
+                                else scrollToCard(); // no linked Drive folder — nowhere to import from
+                                return;
+                              }
+                              const athlete = athletes.find((a) => a.id === c.id);
+                              if (!athlete) { scrollToCard(); return; }
+                              setDriveCoverIntent(true);
+                              setDriveFolderAthlete(athlete);
                             }}
                             className="w-full text-[10px] font-bold uppercase tracking-wider text-white bg-[#D73F09] hover:bg-[#ff5722] rounded-lg py-1.5 transition-colors"
                           >
@@ -3527,12 +3560,24 @@ export default function CampaignEditor() {
                 recapId={id}
                 athleteId={driveFolderAthlete.id}
                 athleteName={driveFolderAthlete.name}
-                onClose={() => setDriveFolderAthlete(null)}
+                onClose={() => { setDriveFolderAthlete(null); setDriveCoverIntent(false); }}
                 onImported={(newMedia) => {
-                  setMedia((prev) => ({
-                    ...prev,
-                    [driveFolderAthlete.id]: [...(prev[driveFolderAthlete.id] || []), ...newMedia],
-                  }));
+                  const bucketId = driveFolderAthlete.id;
+                  const asCover = driveCoverIntent;
+                  setMedia((prev) => {
+                    const merged = [...(prev[bucketId] || []), ...newMedia];
+                    // Opened via "Pick cover": promote the first imported image to
+                    // cover (reorder to front + persist sort_order/thumbnail).
+                    if (asCover) {
+                      const firstImg = newMedia.find((m) => m.type !== "video");
+                      const r = firstImg ? reorderForCover(merged, firstImg.id) : null;
+                      if (r) {
+                        void persistCoverOrder(r.newItems, r.video, r.target.file_url);
+                        return { ...prev, [bucketId]: r.newItems };
+                      }
+                    }
+                    return { ...prev, [bucketId]: merged };
+                  });
                 }}
               />
             )}
