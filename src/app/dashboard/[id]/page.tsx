@@ -874,6 +874,10 @@ export default function CampaignEditor() {
   // first imported image is promoted to that athlete's cover on import (see
   // AthleteDriveFolderPicker onImported below). Normal opens leave this false.
   const [driveCoverIntent, setDriveCoverIntent] = useState(false);
+  // Athlete pre-selected for the bulk DrivePicker (Pick cover / Select content),
+  // with cover intent. The picker falls back to the paste-a-link picker when the
+  // athlete has no matched folder (onNoFolderMatch → handleNoFolderMatch).
+  const [drivePreselect, setDrivePreselect] = useState<{ athleteId: string; cover: boolean } | null>(null);
   const [eventPickerOpen, setEventPickerOpen] = useState(false);
   const [eventMedia, setEventMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1730,6 +1734,9 @@ export default function CampaignEditor() {
     let succeeded = 0;
     let failed = 0;
     const errors: Array<{ file: string; error: string }> = [];
+    // Cover mode (Pick cover): promote the first imported image for this athlete.
+    const coverAthleteId = drivePreselect?.cover ? drivePreselect.athleteId : null;
+    let coverImageId: string | null = null;
 
     outer: for (const [athleteId, files] of Object.entries(selections)) {
       for (const file of files) {
@@ -1765,6 +1772,9 @@ export default function CampaignEditor() {
               ...prev,
               [athleteId]: [...(prev[athleteId] || []), newMedia],
             }));
+            if (coverAthleteId && athleteId === coverAthleteId && newMedia?.type === "image" && !coverImageId) {
+              coverImageId = newMedia.id;
+            }
           }
         } catch (e: any) {
           failed++;
@@ -1776,7 +1786,41 @@ export default function CampaignEditor() {
       }
     }
 
+    // Promote the first imported image to this athlete's cover (uses the freshly
+    // appended media via the functional update).
+    if (coverAthleteId && coverImageId) {
+      const aId = coverAthleteId;
+      const mid = coverImageId;
+      setMedia((prev) => {
+        const r = reorderForCover(prev[aId] || [], mid);
+        if (!r) return prev;
+        void persistCoverOrder(r.newItems, r.video, r.target.file_url);
+        return { ...prev, [aId]: r.newItems };
+      });
+    }
+
     return { current, total, currentFile: "", succeeded, failed, errors };
+  }
+
+  // Route an athlete's Drive entry (Pick cover / Select content) to the bulk
+  // roster picker, pre-selected to them. `cover` promotes the first imported
+  // image to their cover. No-match athletes fall back via handleNoFolderMatch.
+  function pickFromBulkDrive(athleteId: string, cover: boolean) {
+    setDrivePreselect({ athleteId, cover });
+    setCollabSlotDest(null);
+    setDriveImportOpen(true);
+  }
+
+  // The bulk picker found no matched folder for the pre-selected athlete — fall
+  // back to the paste-a-link picker so their folder can be pointed at manually.
+  function handleNoFolderMatch(athleteId: string) {
+    const cover = drivePreselect?.cover ?? false;
+    setDriveImportOpen(false);
+    setDrivePreselect(null);
+    const a = athletes.find((x) => x.id === athleteId);
+    if (!a) return;
+    if (cover) setDriveCoverIntent(true);
+    setDriveFolderAthlete(a);
   }
 
   // Open the Drive picker scoped to a collab group's team folder. The slot is
@@ -3227,8 +3271,7 @@ export default function CampaignEditor() {
                               }
                               const athlete = athletes.find((a) => a.id === c.id);
                               if (!athlete) { scrollToCard(); return; }
-                              setDriveCoverIntent(true);
-                              setDriveFolderAthlete(athlete);
+                              pickFromBulkDrive(athlete.id, true);
                             }}
                             className="w-full text-[10px] font-bold uppercase tracking-wider text-white bg-[#D73F09] hover:bg-[#ff5722] rounded-lg py-1.5 transition-colors"
                           >
@@ -3347,8 +3390,8 @@ export default function CampaignEditor() {
                       <div
                         onClick={() => {
                           if (coverSrc) fileRefs.current[a.id]?.click();
-                          else if (videoNeedingFrame) { setDriveCoverIntent(true); setDriveFolderAthlete(a); }
-                          else setDriveFolderAthlete(a);
+                          else if (videoNeedingFrame) pickFromBulkDrive(a.id, true);
+                          else pickFromBulkDrive(a.id, false);
                         }}
                         onDrop={(e) => { e.preventDefault(); handleFiles(a.id, e.dataTransfer?.files); }}
                         onDragOver={(e) => e.preventDefault()}
@@ -3486,7 +3529,7 @@ export default function CampaignEditor() {
                             the campaign parent — campaign-level DrivePicker can't reach it). */}
                         <div
                           className="flex-shrink-0 w-7 h-7 rounded border border-gray-700 hover:border-[#D73F09] flex items-center justify-center cursor-pointer transition-colors"
-                          onClick={(e) => { e.stopPropagation(); setDriveFolderAthlete(a); }}
+                          onClick={(e) => { e.stopPropagation(); pickFromBulkDrive(a.id, false); }}
                           title="Import from a Drive folder"
                         >
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3539,7 +3582,7 @@ export default function CampaignEditor() {
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {items.length === 0 ? (
-                          <button type="button" onClick={() => setDriveFolderAthlete(a)} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-2 py-1">
+                          <button type="button" onClick={() => pickFromBulkDrive(a.id, false)} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-2 py-1">
                             Select content
                           </button>
                         ) : (
@@ -3562,7 +3605,7 @@ export default function CampaignEditor() {
                         )}
                         {videoNeedingFrame && (
                           <>
-                            <button type="button" onClick={() => { setDriveCoverIntent(true); setDriveFolderAthlete(a); }} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-1.5 py-1">
+                            <button type="button" onClick={() => pickFromBulkDrive(a.id, true)} className="text-[9px] font-bold uppercase tracking-wider text-[#D73F09] hover:text-[#ff5722] px-1.5 py-1">
                               Pick cover
                             </button>
                             <button type="button" onClick={() => setFrameTarget({ bucketKey: a.id, kind: "solo", media: videoNeedingFrame })} className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white px-1.5 py-1">
@@ -3584,7 +3627,7 @@ export default function CampaignEditor() {
                         >
                           Upload
                         </button>
-                        <button type="button" onClick={() => setDriveFolderAthlete(a)} className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white px-1.5 py-1">
+                        <button type="button" onClick={() => pickFromBulkDrive(a.id, false)} className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-white px-1.5 py-1">
                           Drive
                         </button>
                       </div>
@@ -3597,7 +3640,7 @@ export default function CampaignEditor() {
 
             <DrivePicker
               isOpen={driveImportOpen}
-              onClose={() => { setDriveImportOpen(false); setCollabSlotDest(null); }}
+              onClose={() => { setDriveImportOpen(false); setCollabSlotDest(null); setDrivePreselect(null); }}
               folderId={campaign?.drive_folder_id}
               recapId={id}
               onFolderConnected={handleFolderConnected}
@@ -3606,6 +3649,8 @@ export default function CampaignEditor() {
               onImportToCollab={handleImportToCollab}
               initialDestination={collabSlotDest ? { driveFolderId: collabSlotDest.driveFolderId, slot: collabSlotDest.slot } : null}
               alreadyImportedFileIds={importedDriveIds}
+              initialAthleteId={drivePreselect?.athleteId ?? null}
+              onNoFolderMatch={handleNoFolderMatch}
             />
 
             {tier3PickerAthlete && campaign?.admin_campaign_id && (
