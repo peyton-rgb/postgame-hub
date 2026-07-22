@@ -12,6 +12,7 @@ import { MasonryPreview } from "@/components/MasonryPreview";
 import { parseMetricsCSV, mergeAthleteData, detectCollabGroups, type ParsedAthlete } from "@/lib/csv-parser";
 import { normalizeHandle } from "@/lib/handles";
 import { deriveContainerCollab, containerGroupId } from "@/lib/collab-reconcile";
+import { consolidateCollabGroups, rekeyCollabMedia } from "@/lib/collab-consolidate";
 import MetricsSpreadsheet from "@/components/MetricsSpreadsheet";
 import Link from "next/link";
 // heic2any is browser-only; imported dynamically inside convertHeicIfNeeded()
@@ -913,14 +914,20 @@ export default function CampaignEditor() {
   // container (null = unlinked). `items` is the media under the card's key — the
   // load-time remap already folded any container-keyed media onto a URL card.
   const collabCardData = useMemo(
-    () =>
-      [...collabGroups, ...containerOnlyGroups].map((group) => {
+    () => {
+      // One card per athlete-set (platforms as tags), not one per platform group.
+      const { merged, membersByCanonical } = consolidateCollabGroups([...collabGroups, ...containerOnlyGroups]);
+      return merged.map((group) => {
         const container = containerBySet.get(collabSetKey(group.athleteIds)) ?? null;
         const a0 = athletes.find((a) => a.id === group.athleteIds[0]);
         const derived = a0 ? `${a0.school || ""} ${a0.sport || ""}`.trim() : "";
         const teamName = container?.teamName || derived || group.athleteNames.slice(0, 2).join(" + ");
-        return { group, container, teamName, items: media[group.id] || [] };
-      }),
+        // Union media across every platform group folded into this card.
+        const memberIds = membersByCanonical[group.id] || [group.id];
+        const items = memberIds.flatMap((mid) => media[mid] || []);
+        return { group, container, teamName, items };
+      });
+    },
     [collabGroups, containerOnlyGroups, containerBySet, athletes, media],
   );
 
@@ -981,14 +988,20 @@ export default function CampaignEditor() {
     [collabUrlKeys],
   );
 
-  // Pooled/solo per-platform tags for a collab card, straight from
-  // detectCollabGroups: the card's own platform is pooled; a platform where any
-  // team athlete posted individually (a post_url not shared as a collab) is solo.
+  // Pooled/solo per-platform tags for a collab card. A merged card can be pooled
+  // on more than one platform (a team that shared both a feed and a reel), so
+  // every shared-post platform in the card's sources is a "pooled" tag; a
+  // platform where a team athlete posted individually (a post_url not shared as
+  // a collab) is a "solo" tag. Order feed → reel → tiktok.
   const collabPlatformTags = (group: CollabGroup): { label: string; kind: "pooled" | "solo" }[] => {
     const short: Record<string, string> = { ig_feed: "Feed", ig_reel: "Reel", tiktok: "TikTok" };
-    const tags: { label: string; kind: "pooled" | "solo" }[] = [
-      { label: `${short[group.platform] ?? group.platformLabel} · pooled`, kind: "pooled" },
-    ];
+    const order = ["ig_feed", "ig_reel", "tiktok"];
+    const pooled = new Set<string>(group.sources.map((s) => s.platform));
+    if (pooled.size === 0) pooled.add(group.platform); // container-derived (no sources yet)
+    const tags: { label: string; kind: "pooled" | "solo" }[] = [];
+    for (const p of order) {
+      if (pooled.has(p)) tags.push({ label: `${short[p]} · pooled`, kind: "pooled" });
+    }
     const soloSet = new Set<string>();
     const check = (plat: string, url?: string | null) => {
       if (url && !collabUrlKeys.has(`${plat}|${url.trim()}`)) soloSet.add(plat);
@@ -1000,8 +1013,8 @@ export default function CampaignEditor() {
       check("ig_reel", m.ig_reel?.post_url); check("ig_reel", m.ig_reel_2?.post_url);
       check("tiktok", m.tiktok?.post_url); check("tiktok", m.tiktok_2?.post_url);
     }
-    for (const p of ["ig_feed", "ig_reel", "tiktok"]) {
-      if (p !== group.platform && soloSet.has(p)) tags.push({ label: `${short[p]} · solo`, kind: "solo" });
+    for (const p of order) {
+      if (!pooled.has(p) && soloSet.has(p)) tags.push({ label: `${short[p]} · solo`, kind: "solo" });
     }
     return tags;
   };
@@ -2147,6 +2160,11 @@ export default function CampaignEditor() {
   if (!campaign) return <div className="min-h-screen flex items-center justify-center text-gray-500">Campaign not found</div>;
 
   if (showPreview) {
+    // Consolidate collab groups the same way the public recap page does, so the
+    // in-editor preview shows one card per team (platforms as tags) with content.
+    const { merged: previewCollabGroups, membersByCanonical: previewMembers } =
+      consolidateCollabGroups([...collabGroups, ...containerOnlyGroups]);
+    const previewMedia = rekeyCollabMedia(media, previewMembers);
     // Merge unsaved editor state into campaign so the preview reflects current values
     const previewCampaign = {
       ...campaign,
@@ -2166,8 +2184,8 @@ export default function CampaignEditor() {
         campaign={previewCampaign}
         athletes={athletes.filter((a) => selected.includes(a.id))}
         allAthletes={athletes}
-        media={media}
-        collabGroups={collabGroups}
+        media={previewMedia}
+        collabGroups={previewCollabGroups}
         eventMedia={eventMedia}
         onBack={() => setShowPreview(false)}
         onPublish={togglePublish}

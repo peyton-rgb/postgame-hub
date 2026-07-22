@@ -553,6 +553,44 @@ function collabTotalImpressions(g: CollabGroup): number {
   return g.metrics.views ?? g.metrics.impressions ?? 0;
 }
 
+const COLLAB_PLATFORM_LABEL: Record<CollabGroup["platform"], string> = {
+  ig_feed: "IG Feed",
+  ig_reel: "IG Reel",
+  tiktok: "TikTok",
+};
+
+/**
+ * One Top-Performer entry PER collab post (source), not per group. A team that
+ * shared both a feed and a reel is one merged card in the gallery but still
+ * ranks each post individually here — so consolidating collab cards upstream
+ * leaves Top Performers unchanged. Each entry keeps the platform post's own
+ * id/url/metrics (via srcGroupId) so its thumbnail resolves exactly as before.
+ * Groups with no sources (pre-URL container cards) still emit one group-level
+ * entry, matching the previous per-group behavior.
+ */
+function collabTopPerformerEntries(collabGroups: CollabGroup[]): CollabTopPerformerEntry[] {
+  return collabGroups.flatMap((g) => {
+    if (!g.sources.length) {
+      return [{
+        ...g,
+        kind: "collab" as const,
+        bestEngRate: g.combinedEngagementRate,
+        bestPlatform: g.platformLabel,
+        totalImpressions: collabTotalImpressions(g),
+      }];
+    }
+    return g.sources.map((s) => ({
+      ...g,
+      id: s.srcGroupId ?? g.id,
+      url: s.url || g.url,
+      kind: "collab" as const,
+      bestEngRate: s.combinedEngagementRate,
+      bestPlatform: COLLAB_PLATFORM_LABEL[s.platform] ?? g.platformLabel,
+      totalImpressions: s.metrics.views ?? s.metrics.impressions ?? 0,
+    }));
+  });
+}
+
 /** Find the collab group that an athlete's best-platform post belongs to. */
 function findCollabGroupForAthlete(
   a: Athlete,
@@ -609,13 +647,7 @@ export function getTopPerformers(
     })
     .filter((e): e is AthleteTopPerformerEntry => e !== null && e.bestEngRate > 0);
 
-  const collabEntries: CollabTopPerformerEntry[] = collabGroups.map((g) => ({
-    ...g,
-    kind: "collab" as const,
-    bestEngRate: g.combinedEngagementRate,
-    bestPlatform: g.platformLabel,
-    totalImpressions: collabTotalImpressions(g),
-  }));
+  const collabEntries = collabTopPerformerEntries(collabGroups);
 
   return [...athleteEntries, ...collabEntries]
     .sort((a, b) => b.bestEngRate - a.bestEngRate)
@@ -648,13 +680,7 @@ export function getTopPerformersByImpressions(
     })
     .filter((e): e is AthleteTopPerformerEntry => e !== null && e.totalImpressions > 0);
 
-  const collabEntries: CollabTopPerformerEntry[] = collabGroups.map((g) => ({
-    ...g,
-    kind: "collab" as const,
-    bestEngRate: g.combinedEngagementRate,
-    bestPlatform: g.platformLabel,
-    totalImpressions: collabTotalImpressions(g),
-  }));
+  const collabEntries = collabTopPerformerEntries(collabGroups);
 
   return [...athleteEntries, ...collabEntries]
     .sort((a, b) => b.totalImpressions - a.totalImpressions)
