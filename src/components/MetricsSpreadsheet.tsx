@@ -355,6 +355,18 @@ function blankRow(): EditableRow {
 
 // ─── Component ───────────────────────────────────────────
 
+// The Google Sheets mark — green document + white grid (not the Drive triangle).
+function GoogleSheetsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden className="flex-shrink-0">
+      <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#0F9D58" />
+      <path d="M14 2l6 6h-5a1 1 0 0 1-1-1V2z" fill="#0A7C3A" />
+      <rect x="7.5" y="11" width="9" height="7.5" fill="#fff" />
+      <path d="M7.5 13.5h9M7.5 16h9M10.5 11v7.5M13.5 11v7.5" stroke="#0F9D58" strokeWidth="0.9" />
+    </svg>
+  );
+}
+
 export default function MetricsSpreadsheet({ athletes, campaignId, onSave, saving, hiddenColumns: initialHidden, onHiddenColumnsChange }: Props) {
   const [rows, setRows] = useState<EditableRow[]>(() => athletes.map(athleteToRow));
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
@@ -517,6 +529,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
   const [sheetUrl, setSheetUrl] = useState("");
   const [sheetImporting, setSheetImporting] = useState(false);
   const [sheetMsg, setSheetMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [sheetPromptOpen, setSheetPromptOpen] = useState(false); // empty-state paste reveal
   const handleSheetImport = useCallback(async () => {
     const url = sheetUrl.trim();
     if (!url) return;
@@ -710,20 +723,27 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               </div>
             )}
           </div>
-          <input
-            value={sheetUrl}
-            onChange={(e) => { setSheetUrl(e.target.value); setSheetMsg(null); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && sheetUrl.trim() && !sheetImporting) handleSheetImport(); }}
-            placeholder="Paste Google Sheet link…"
-            className="w-44 px-2.5 py-1.5 bg-black border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-[#D73F09] placeholder:text-gray-600"
-          />
-          <button
-            onClick={handleSheetImport}
-            disabled={!sheetUrl.trim() || sheetImporting}
-            className="px-3 py-1.5 border border-gray-700 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-gray-500 disabled:opacity-40 whitespace-nowrap"
-          >
-            {sheetImporting ? "Importing…" : "Import Sheet"}
-          </button>
+          {/* Sheet-link import — toolbar version (populated recaps; empty recaps
+              use the peer button in the empty-state card below). */}
+          {rows.length > 0 && (
+            <>
+              <input
+                value={sheetUrl}
+                onChange={(e) => { setSheetUrl(e.target.value); setSheetMsg(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && sheetUrl.trim() && !sheetImporting) handleSheetImport(); }}
+                placeholder="Paste Google Sheet link…"
+                className="w-44 px-2.5 py-1.5 bg-black border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-[#D73F09] placeholder:text-gray-600"
+              />
+              <button
+                onClick={handleSheetImport}
+                disabled={!sheetUrl.trim() || sheetImporting}
+                className="px-3 py-1.5 border border-gray-700 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-gray-500 disabled:opacity-40 whitespace-nowrap inline-flex items-center gap-1.5"
+              >
+                <GoogleSheetsIcon size={14} />
+                {sheetImporting ? "Importing…" : "Import Sheet"}
+              </button>
+            </>
+          )}
           <button
             onClick={() => {
               const input = document.createElement("input");
@@ -794,8 +814,8 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
           <div className="text-gray-500 text-sm mb-1">No athletes yet</div>
-          <div className="text-gray-600 text-xs mb-4">Drag & drop a CSV file here, or use the buttons below</div>
-          <div className="flex items-center justify-center gap-3">
+          <div className="text-gray-600 text-xs mb-4">Add your roster — paste a tracker sheet link, drop a CSV, or add manually.</div>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             <button onClick={addRow}
               className="px-4 py-2 bg-[#D73F09] rounded-lg text-sm font-bold text-white hover:bg-[#c43808]">
               + Add Athlete
@@ -814,7 +834,38 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
               className="px-4 py-2 border border-gray-700 rounded-lg text-sm font-bold text-gray-400 hover:text-white">
               Import CSV
             </button>
+            <button
+              onClick={() => setSheetPromptOpen((v) => !v)}
+              className={`px-4 py-2 border rounded-lg text-sm font-bold inline-flex items-center gap-2 transition-colors ${
+                sheetPromptOpen ? "border-[#0F9D58]/60 text-white bg-[#0F9D58]/10" : "border-gray-700 text-gray-400 hover:text-white"
+              }`}
+            >
+              <GoogleSheetsIcon size={16} />
+              Import from Sheet
+            </button>
           </div>
+          {sheetPromptOpen && (
+            <div className="mt-4 flex items-center justify-center gap-2 max-w-md mx-auto">
+              <input
+                value={sheetUrl}
+                autoFocus
+                onChange={(e) => { setSheetUrl(e.target.value); setSheetMsg(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && sheetUrl.trim() && !sheetImporting) handleSheetImport(); }}
+                placeholder="Paste Google Sheet link…"
+                className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-sm text-white outline-none focus:border-[#0F9D58] placeholder:text-gray-600"
+              />
+              <button
+                onClick={handleSheetImport}
+                disabled={!sheetUrl.trim() || sheetImporting}
+                className="px-4 py-2 bg-[#0F9D58] hover:bg-[#0c8a4d] rounded-lg text-sm font-bold text-white disabled:opacity-40 whitespace-nowrap"
+              >
+                {sheetImporting ? "Importing…" : "Import"}
+              </button>
+            </div>
+          )}
+          {sheetMsg && !sheetMsg.ok && (
+            <div className="mt-3 text-xs text-red-400/90 max-w-md mx-auto">{sheetMsg.text}</div>
+          )}
         </div>
       ) : (
         <div ref={tableRef} className="overflow-auto border border-gray-800 rounded-xl max-h-[600px]">
