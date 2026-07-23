@@ -1038,6 +1038,12 @@ export default function CampaignEditor() {
   const [hiddenPlatformCards, setHiddenPlatformCards] = useState<string[]>([]);
   const [savingInfo, setSavingInfo] = useState(false);
 
+  // Explicit Save / Republish UI state (component-only, no DB columns).
+  const [justSaved, setJustSaved] = useState(false);           // transient "Saved" on the Save button
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [republishing, setRepublishing] = useState(false);
+  const [republishFlash, setRepublishFlash] = useState(false); // transient "Live page updated"
+
   // Brand logo state
   const [brandLogoUrl, setBrandLogoUrl] = useState("");
   const [brandKitLogos, setBrandKitLogos] = useState<{ url: string; label: string }[]>([]);
@@ -1359,6 +1365,33 @@ export default function CampaignEditor() {
     setImportingTracker(false);
   }
 
+  // Keep a ref to the latest campaign so deferred/debounced writes always build
+  // from CURRENT settings, never a stale closure snapshot. This is what stops the
+  // autosave from clobbering hidden-column / hidden-hero toggles that other code
+  // paths write directly (see the two hidden_columns writes below).
+  const campaignRef = useRef<typeof campaign>(campaign);
+  useEffect(() => { campaignRef.current = campaign; }, [campaign]);
+
+  // Single builder for the settings jsonb we persist. Every settings write
+  // spreads `base` (the current DB settings) then overlays editor state, so no
+  // write drops a key another path just set. Replaces the literal that used to be
+  // duplicated in five places.
+  function buildSettingsPayload(base: any) {
+    return {
+      ...base,
+      description, quarter, campaign_type: campaignType,
+      platform, content_type: contentType, tags,
+      visible_sections: visibleSections,
+      hidden_heroes: hiddenHeroes,
+      hidden_platform_cards: hiddenPlatformCards,
+      brand_logo_url: brandLogoUrl,
+      key_takeaways: keyTakeaways,
+      kpi_targets: kpiTargets,
+      budget: budget === "" ? undefined : budget,
+      total_impressions: totalImpressions === "" ? undefined : totalImpressions,
+    };
+  }
+
   async function saveCampaignName(field: "name" | "client_name", value: string) {
     if (!campaign || !value.trim()) return;
     const { data } = await supabase
@@ -1373,24 +1406,16 @@ export default function CampaignEditor() {
   async function saveCampaignInfo() {
     if (!campaign) return;
     setSavingInfo(true);
-    const newSettings = {
-      ...campaign.settings,
-      description, quarter, campaign_type: campaignType,
-      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
-      brand_logo_url: brandLogoUrl,
-      key_takeaways: keyTakeaways,
-      kpi_targets: kpiTargets,
-      budget: budget === "" ? undefined : budget,
-      total_impressions: totalImpressions === "" ? undefined : totalImpressions,
-    };
+    const newSettings = buildSettingsPayload(campaignRef.current?.settings ?? campaign.settings);
     const { data } = await supabase
       .from("campaign_recaps")
-      .update({ settings: newSettings })
+      .update({ settings: newSettings, updated_at: new Date().toISOString() })
       .eq("id", campaign.id)
       .select()
       .single();
     if (data) {
       setCampaign(data);
+      savedSnapshot.current = JSON.stringify(buildSettingsPayload(data.settings));
       await fetch(`/api/revalidate?path=/recap/${data.slug}`);
     }
     setSavingInfo(false);
@@ -1399,6 +1424,14 @@ export default function CampaignEditor() {
   // Auto-save campaign info with debounce
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const initialLoadDone = useRef(false);
+  // JSON snapshot of the last-saved settings payload. isDirty compares the current
+  // payload against this; seeded at the end of the initial load, refreshed on every
+  // successful save. Null until seeded (so nothing reads as dirty before load ends).
+  const savedSnapshot = useRef<string | null>(null);
+  // Latest saveCampaignInfo + current dirty flag, read by the unmount flush (whose
+  // [] effect would otherwise capture stale first-render values).
+  const saveInfoRef = useRef<typeof saveCampaignInfo>(saveCampaignInfo);
+  const isDirtyRef = useRef(false);
 
   useEffect(() => {
     // Skip auto-save during initial data load
@@ -1406,37 +1439,96 @@ export default function CampaignEditor() {
 
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      const newSettings = {
-        ...campaign.settings,
-        description, quarter, campaign_type: campaignType,
-        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
-        brand_logo_url: brandLogoUrl,
-        key_takeaways: keyTakeaways,
-        kpi_targets: kpiTargets,
-        budget: budget === "" ? undefined : budget,
-        total_impressions: totalImpressions === "" ? undefined : totalImpressions,
-      };
-      console.log("AUTO-SAVE firing:", { budget, totalImpressions, newSettings: JSON.stringify(newSettings).slice(0, 200) });
+      // Build from the freshest settings (via ref), not the captured snapshot, so
+      // hidden-column / hidden-hero toggles written elsewhere are never clobbered.
+      const newSettings = buildSettingsPayload(campaignRef.current?.settings ?? {});
       const { data } = await supabase
         .from("campaign_recaps")
-        .update({ settings: newSettings })
+        .update({ settings: newSettings, updated_at: new Date().toISOString() })
         .eq("id", campaign.id)
         .select()
         .single();
-      if (data) setCampaign(data);
+      if (data) {
+        setCampaign(data);
+        savedSnapshot.current = JSON.stringify(buildSettingsPayload(data.settings));
+        // Autosaved edits reach the DB but the public recap serves a cached copy;
+        // revalidate so the live page reflects them (matches saveCampaignInfo).
+        if (data?.slug) await fetch(`/api/revalidate?path=/recap/${data.slug}`);
+      }
     }, 1500);
 
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
   }, [description, quarter, campaignType, platform, contentType, tags, visibleSections, hiddenHeroes, hiddenPlatformCards, brandLogoUrl, keyTakeaways, kpiTargets, budget, totalImpressions]);
 
+  // Keep the refs the unmount flush reads in sync with the latest render.
+  useEffect(() => { saveInfoRef.current = saveCampaignInfo; });
+
+  // Flush-on-unmount: when the editor tears down (SPA route change, etc.) with a
+  // pending debounced save, don't discard it — clear the timer and fire the save.
+  // Reads dirty + the save fn from refs so this [] effect isn't a stale closure.
+  // The beforeunload handler below still covers hard unloads (reload / tab close).
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+      if (isDirtyRef.current) void saveInfoRef.current();
+    };
+  }, []);
+
   // Mark initial load as done after campaign data is populated
   useEffect(() => {
     if (campaign && !initialLoadDone.current) {
       // Small delay to let all state setters finish from loadData
-      const t = setTimeout(() => { initialLoadDone.current = true; }, 500);
+      const t = setTimeout(() => {
+        // Seed the saved-settings snapshot now that editor state is populated, so
+        // a freshly loaded recap reads as clean (not dirty).
+        savedSnapshot.current = JSON.stringify(buildSettingsPayload(campaign.settings));
+        initialLoadDone.current = true;
+      }, 500);
       return () => clearTimeout(t);
     }
   }, [campaign]);
+
+  // ── Explicit Save / Republish + unsaved-changes tracking ────────────
+  const fmtTime = () => new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+  // Dirty = the payload we WOULD persist differs from the last-saved snapshot.
+  // Reads clean until the snapshot is seeded at the end of the initial load.
+  const isDirty =
+    savedSnapshot.current !== null &&
+    JSON.stringify(buildSettingsPayload(campaign?.settings ?? {})) !== savedSnapshot.current;
+  useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+
+  // Explicit Save: flush the pending autosave, persist, surface a transient "Saved".
+  async function handleSave() {
+    if (!campaign) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    await saveCampaignInfo();
+    setLastSavedAt(fmtTime());
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2000);
+  }
+
+  // Republish: save, then refresh the cached public page. Does NOT touch the
+  // `published` boolean or `status` — the recap is already live.
+  async function handleRepublish() {
+    if (!campaign) return;
+    setRepublishing(true);
+    await saveCampaignInfo(); // already revalidates
+    if (campaign.slug) await fetch(`/api/revalidate?path=/recap/${campaign.slug}`);
+    setLastSavedAt(fmtTime());
+    setRepublishing(false);
+    setRepublishFlash(true);
+    setTimeout(() => setRepublishFlash(false), 2500);
+  }
+
+  // Warn before a real page unload (reload / tab close / external nav) while edits
+  // are unsaved. SPA step changes flush via handleSave() instead of this.
+  useEffect(() => {
+    if (!isDirty) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [isDirty]);
 
   async function saveMetrics(rows: { _key: string; _isNew: boolean; id?: string; name: string; ig_handle: string; ig_followers: number | ""; school: string; sport: string; gender: string; content_rating: string; reach_level: string; notes: string; post_type: string; metrics: import("@/lib/types").AthleteMetrics }[], deletedIds: string[]) {
     setSavingMetrics(true);
@@ -2105,16 +2197,7 @@ export default function CampaignEditor() {
   async function togglePublish() {
     if (!campaign) return;
     setPublishing(true);
-    const newSettings = {
-      ...campaign.settings,
-      description, quarter, campaign_type: campaignType,
-      platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
-      brand_logo_url: brandLogoUrl,
-      key_takeaways: keyTakeaways,
-      kpi_targets: kpiTargets,
-      budget: budget === "" ? undefined : budget,
-      total_impressions: totalImpressions === "" ? undefined : totalImpressions,
-    };
+    const newSettings = buildSettingsPayload(campaignRef.current?.settings ?? campaign.settings);
 
     const newPublished = !campaign.published;
     // Guarantee no black video tiles go public: photo-covered videos inherit a
@@ -2164,6 +2247,7 @@ export default function CampaignEditor() {
     }
     if (data) {
       setCampaign(data);
+      savedSnapshot.current = JSON.stringify(buildSettingsPayload(data.settings));
       await fetch(`/api/revalidate?path=/recap/${data.slug}`);
     }
     setPublishing(false);
@@ -2181,16 +2265,7 @@ export default function CampaignEditor() {
     // Merge unsaved editor state into campaign so the preview reflects current values
     const previewCampaign = {
       ...campaign,
-      settings: {
-        ...campaign.settings,
-        description, quarter, campaign_type: campaignType,
-        platform, content_type: contentType, tags, visible_sections: visibleSections, hidden_heroes: hiddenHeroes, hidden_platform_cards: hiddenPlatformCards,
-        brand_logo_url: brandLogoUrl,
-        key_takeaways: keyTakeaways,
-        kpi_targets: kpiTargets,
-        budget: budget === "" ? undefined : budget,
-        total_impressions: totalImpressions === "" ? undefined : totalImpressions,
-      },
+      settings: buildSettingsPayload(campaign.settings),
     };
     return (
       <MasonryPreview
@@ -3725,17 +3800,54 @@ export default function CampaignEditor() {
       </div>
 
       {/* Footer nav */}
-      <div className="fixed bottom-0 left-0 right-0 px-8 py-4 border-t border-gray-800 bg-black/95 backdrop-blur-xl flex justify-between items-center">
-        <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1}
-          className="px-5 py-2 border border-gray-700 rounded-lg text-sm font-bold disabled:opacity-30">← Back</button>
-        {step < 4 ? (
-          <button onClick={() => setStep(step + 1)}
-            disabled={step === 3 && selected.length === 0}
-            className="px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-30">Next →</button>
-        ) : (
-          <button onClick={handlePreviewClick}
-            className="px-6 py-2 bg-[#D73F09] rounded-lg text-sm font-bold">Preview Recap →</button>
-        )}
+      <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-8 py-4 border-t border-gray-800 bg-black/95 backdrop-blur-xl flex justify-between items-center gap-2 sm:gap-3">
+        <button
+          onClick={async () => { if (isDirty) await handleSave(); setStep(Math.max(1, step - 1)); }}
+          disabled={step === 1 || savingInfo}
+          className="px-3 sm:px-5 py-2 border border-gray-700 rounded-lg text-sm font-bold disabled:opacity-30 shrink-0 whitespace-nowrap">← Back</button>
+
+        {/* Centre status — hidden on the narrowest screens so three buttons never overflow */}
+        <div className="hidden sm:flex flex-1 min-w-0 items-center justify-center gap-2 overflow-hidden text-xs">
+          {republishFlash ? (
+            <span className="text-green-400 font-bold whitespace-nowrap">Live page updated</span>
+          ) : isDirty ? (
+            <span className="flex items-center gap-1.5 text-amber-400 font-bold whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Unsaved changes
+            </span>
+          ) : savingInfo ? (
+            <span className="text-gray-400 whitespace-nowrap">Saving…</span>
+          ) : lastSavedAt ? (
+            <span className="text-gray-500 whitespace-nowrap">Saved {lastSavedAt}</span>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <button
+            onClick={handleSave}
+            disabled={!isDirty || savingInfo}
+            className="px-3 sm:px-5 py-2 border border-gray-600 rounded-lg text-sm font-bold disabled:opacity-30 hover:border-gray-400 transition-colors whitespace-nowrap">
+            {savingInfo ? "Saving…" : justSaved ? "Saved" : "Save"}
+          </button>
+          {campaign.published && (
+            <button
+              onClick={handleRepublish}
+              disabled={republishing || savingInfo}
+              className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-40 whitespace-nowrap">
+              {republishing ? "Publishing…" : "Republish"}
+            </button>
+          )}
+          {step < 4 ? (
+            <button
+              onClick={async () => { if (isDirty) await handleSave(); setStep(step + 1); }}
+              disabled={(step === 3 && selected.length === 0) || savingInfo}
+              className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-30 whitespace-nowrap">Next →</button>
+          ) : (
+            <button
+              onClick={async () => { if (isDirty) await handleSave(); await handlePreviewClick(); }}
+              disabled={savingInfo}
+              className="px-3 sm:px-6 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-30 whitespace-nowrap">Preview Recap →</button>
+          )}
+        </div>
       </div>
 
       {/* Campaign-level event content import — top-level so it mounts on any step (button is in step 2) */}
