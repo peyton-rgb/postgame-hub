@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Red Bull Half Court · Tailgate Edition — Postgame × Red Bull</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="description" content="Red Bull Half Court lands in the middle of college football Saturday — a 3-point showdown at the heart of the tailgate.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--red:#DB0007;--red2:#DB0007;--yellow:#FFC900;--ink:#0a0a0e;
+  --muted:rgba(255,255,255,.7);--faint:rgba(255,255,255,.44);--hair:rgba(255,255,255,.12)}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:#fff;font-family:'Inter',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+.folio{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:12px}
+.folio::before{content:"";width:24px;height:3px;background:var(--red);flex:none}
+.title{text-transform:none;font-family:'Archivo',sans-serif;font-weight:800;line-height:1.0;letter-spacing:-.02em}
+.caption{font-size:15px;line-height:1.65;color:var(--muted)}
+.caption b{color:#fff}
+.ref{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.ref b{color:#fff}
+.pill{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;padding:9px 17px;display:inline-block}
+.accent{color:#FFC900}
+.grain{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.05;background-image:radial-gradient(rgba(255,255,255,.9) .5px,transparent .5px);background-size:3px 3px;mix-blend-mode:overlay}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:14px 28px;background:linear-gradient(180deg,rgba(0,0,0,.85),rgba(0,0,0,0));font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
+.lockup{width:170px;height:22px;background:url('assets/lockup.png') left center/contain no-repeat}
+.progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--red),var(--red2));z-index:55;width:0%}
+
+.rv{opacity:0;transform:translateY(34px);transition:opacity .8s ease,transform .8s ease}
+.rv.in{opacity:1;transform:none}
+.d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.26s}
+
+.stat .n{font-family:'Archivo';font-weight:800;font-size:46px;line-height:.9}
+.stat .l{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:6px}
+
+/* ================= FULL-BLEED SPLIT SECTIONS ================= */
+.split{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden;background:var(--ink)}
+.side{position:absolute;top:0;bottom:0;width:62%;z-index:0}
+.side.right{right:0}.side.left{left:0}
+.side video,.side img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block}
+.side.duo{display:flex}
+.side.duo>*{flex:1;height:100%;min-width:0}
+.side.duo video,.side.duo img{height:100%}
+/* gradient melt: asset bleeds into content side */
+.melt{position:absolute;inset:0;z-index:1;pointer-events:none}
+.melt.to-r{background:
+  linear-gradient(90deg,var(--ink) 0%,var(--ink) 34%,rgba(10,10,14,.85) 46%,rgba(10,10,14,.45) 62%,rgba(10,10,14,0) 88%),
+  linear-gradient(180deg,var(--ink) 0%,rgba(10,10,14,0) 16%,rgba(10,10,14,0) 84%,var(--ink) 100%)}
+.melt.to-l{background:
+  linear-gradient(270deg,var(--ink) 0%,var(--ink) 34%,rgba(10,10,14,.85) 46%,rgba(10,10,14,.45) 62%,rgba(10,10,14,0) 88%),
+  linear-gradient(180deg,var(--ink) 0%,rgba(10,10,14,0) 16%,rgba(10,10,14,0) 84%,var(--ink) 100%)}
+.melt.vert{background:linear-gradient(180deg,rgba(10,10,14,.55),rgba(10,10,14,0) 30%,rgba(10,10,14,0) 62%,var(--ink) 96%)}
+.split .txt{position:relative;z-index:2;width:44%;padding:130px 0 130px 6vw}
+.split.flip .txt{margin-left:auto;padding:120px 6vw 120px 0}
+.livechip{position:absolute;z-index:3;top:86px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.25);border-radius:100px;padding:6px 12px;backdrop-filter:blur(6px);display:flex;align-items:center;gap:7px}
+
+.side.right~.livechip,.livechip.r{right:26px}
+.livechip.l{left:26px}
+.sndhint{position:absolute;z-index:3;bottom:26px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.75);background:rgba(0,0,0,.55);border-radius:100px;padding:7px 13px;cursor:pointer;backdrop-filter:blur(6px)}
+.sndhint.r{right:26px}.sndhint.l{left:26px}
+
+/* hero / bg sections */
+.full{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
+.scrim{position:absolute;inset:0;z-index:1}
+.fg{position:relative;z-index:2;width:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+.pillar{border-top:3px solid rgba(255,255,255,.18);padding-top:16px}
+.pillar.hot{border-top-color:var(--red)}
+.pillar .o{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.pillar.hot .o{color:#FFC900}
+.pillar h3{font-family:'Archivo';font-weight:800;font-size:26px;text-transform:uppercase;margin-top:8px}
+.pillar p{font-size:12.5px;line-height:1.55;color:var(--muted);margin-top:8px}
+/* roster carousel */
+.caro{overflow:hidden;position:relative;margin-top:36px}
+.caro::before,.caro::after{content:"";position:absolute;top:0;bottom:0;width:120px;z-index:2;pointer-events:none}
+.caro::before{left:0;background:linear-gradient(90deg,var(--ink),transparent)}
+.caro::after{right:0;background:linear-gradient(270deg,var(--ink),transparent)}
+.track{display:flex;gap:18px;width:max-content;animation:roll 42s linear infinite}
+.caro:hover .track{animation-play-state:paused}
+@keyframes roll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.card{position:relative;width:225px;height:300px;border-radius:12px;overflow:hidden;flex:none;
+  border:1px solid var(--hair);background:#101018}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card .tag{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(0,0,0,.72);
+  backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 10px}
+.card .tag .nm{font-family:'Archivo';font-weight:800;font-size:18px;text-transform:uppercase;line-height:1}
+.card .tag .sb{font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-top:3px}
+.card.namecard{display:grid;place-items:center;background:
+  radial-gradient(120% 120% at 50% 20%,rgba(219,0,7,.18),rgba(16,16,24,0) 60%),#101018}
+.card.namecard .nm2{font-family:'Archivo';font-weight:800;font-size:26px;text-transform:uppercase;
+  text-align:center;line-height:1.02;padding:0 14px}
+.card.namecard .sb2{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-top:8px;text-align:center}
+/* tour fight cards */
+.tour{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:38px}
+.vs{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--hair);background:#101018}
+.vs .halves{display:flex;height:250px}
+.vs .halves>div{flex:1;overflow:hidden;position:relative}
+.vs .halves img{width:100%;height:100%;object-fit:cover;display:block}
+.vs .halves .ath img{object-position:center 12%}
+.vs .seam{position:absolute;left:50%;top:0;bottom:56px;width:2px;background:rgba(255,255,255,.25);transform:translateX(-50%)}
+.vs .roundel{position:absolute;left:50%;top:96px;transform:translate(-50%,0);width:54px;height:54px;border-radius:50%;
+  background:var(--red);border:3px solid #FFC900;display:grid;place-items:center;z-index:3;
+  font-family:'Archivo';font-weight:800;font-size:20px;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.vs .bar{padding:12px 14px;background:rgba(0,0,0,.55);border-top:1px solid var(--hair)}
+.vs .bar .m{font-family:'Archivo';font-weight:800;font-size:17px;text-transform:uppercase;line-height:1.05}
+.vs .bar .s{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-top:4px}
+.vs.txtonly .halves .ath{display:grid;place-items:center;background:radial-gradient(120% 120% at 50% 25%,rgba(219,0,7,.2),rgba(16,16,24,0) 60%),#12121c}
+.vs.txtonly .halves .ath .nm{font-family:'Archivo';font-weight:800;font-size:22px;text-transform:uppercase;text-align:center;line-height:1.05;padding:0 12px}
+@media(max-width:900px){.tour{grid-template-columns:1fr 1fr}}
+/* fan gauntlet tiers */
+.tiers{margin-top:24px;display:flex;flex-direction:column;gap:10px;max-width:560px}
+.tier{display:flex;align-items:center;gap:14px;border:1px solid var(--hair);border-radius:12px;padding:12px 16px;background:rgba(255,255,255,.03);transition:background .2s,border-color .2s}
+.tier:hover{background:rgba(255,255,255,.055);border-color:rgba(255,201,0,.35)}
+.tier .lv{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.4);border:1px solid var(--hair);border-radius:6px;padding:5px 7px;white-space:nowrap}
+.tier .tname{flex:1;min-width:0}
+.tier .tname b{display:block;font-family:'Archivo';font-weight:800;font-size:14px;letter-spacing:.01em}
+.tier .tname span{font-size:10.5px;color:rgba(255,255,255,.45);font-weight:600}
+.tier .prize{flex:none;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:100px;background:rgba(255,201,0,.12);border:1px solid rgba(255,201,0,.4);color:#FFC900;white-space:nowrap}
+/* mustard playlist */
+.plist{margin-top:22px;border:1px solid var(--hair);border-radius:14px;background:rgba(255,255,255,.03);overflow:hidden;max-width:520px}
+.plist .ph{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--hair)}
+.plist .ph img{width:40px;height:40px;border-radius:6px;object-fit:cover;filter:brightness(1.5)}
+.plist .ph .t1{font-family:'Archivo';font-weight:800;font-size:13px;letter-spacing:.02em}
+.plist .ph .t2{font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:2px}
+.plist .tr{display:flex;align-items:center;gap:12px;padding:7.5px 16px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .2s}
+.plist .tr:last-child{border-bottom:0}
+.plist .tr:hover{background:rgba(255,255,255,.04)}
+.plist .cv{width:36px;height:36px;border-radius:6px;flex:none;box-shadow:0 3px 10px rgba(0,0,0,.5);position:relative;overflow:hidden}
+.plist .cv::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,0) 45%)}
+.plist .no2{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.35);width:16px}
+.plist .tt{flex:1;min-width:0}
+.plist .tt b{display:block;font-size:12.5px;font-weight:700;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plist .tt span{font-size:10px;color:rgba(255,255,255,.42);font-weight:600}
+.plist .cert{flex:none;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:100px;border:1px solid rgba(255,201,0,.4);color:#FFC900;white-space:nowrap}
+/* walk-in scene: ghost can behind text + labeled flavor unit */
+.ghostcan{position:absolute;top:50%;transform:translateY(-50%) rotate(-7deg);height:118%;width:auto;
+  opacity:.08;z-index:1;pointer-events:none;filter:saturate(1.1)}
+.schoolrow{display:flex;align-items:center;gap:10px;margin-top:8px}
+.schoolrow img{height:34px;width:34px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+.flavorunit{display:flex;align-items:center;gap:16px;margin-top:24px}
+.flavorunit img{height:150px;width:auto;filter:drop-shadow(0 14px 28px rgba(0,0,0,.6))}
+.flavorunit .fl{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.5);line-height:1.7}
+.flavorunit .fl b{display:block;color:rgba(255,255,255,.92);font-size:12px;letter-spacing:.12em}
+@media(max-width:900px){.ghostcan{display:none}}
+/* 12-week slate — fixture cards */
+.wkgrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:44px}
+.wk{position:relative;border:1px solid var(--hair);border-radius:16px;padding:26px 28px 24px;
+  background:rgba(255,255,255,.025);overflow:hidden;transition:background .25s,border-color .25s}
+.wk:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.22)}
+.wk .top{display:flex;justify-content:space-between;align-items:center}
+.wk .n{font-family:'Archivo';font-weight:800;font-size:13px;letter-spacing:.14em;color:rgba(255,255,255,.42);text-transform:uppercase}
+.wk .dt{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+.wk .match{display:flex;align-items:center;gap:16px;margin-top:20px;flex-wrap:wrap}
+.wk .team{display:flex;align-items:center;gap:11px}
+.wk .team img{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 3px 10px rgba(0,0,0,.5))}
+.wk .team:not(.host) img{filter:grayscale(1) brightness(1.15) opacity(.5) drop-shadow(0 3px 10px rgba(0,0,0,.5))}
+.wk .team .tn{font-family:'Archivo';font-weight:800;font-size:clamp(18px,1.7vw,23px);letter-spacing:-.015em;color:rgba(255,255,255,.72)}
+.wk .at{font-family:'Archivo';font-weight:800;font-size:30px;color:#FFC900;line-height:1}
+.wk .team.host img{width:58px;height:58px}
+.wk .team.host .tn{font-size:clamp(21px,2vw,27px);color:#fff}
+.wk .hostlbl{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,201,0,.75);margin-top:3px}
+.wk .venue{font-size:11.5px;font-weight:600;letter-spacing:.05em;color:rgba(255,255,255,.42);margin-top:12px}
+.wk hr{border:0;border-top:1px solid var(--hair);margin:16px 0 14px}
+.wk .hoop{font-family:'Archivo';font-weight:800;font-size:18px;letter-spacing:-.01em}
+.wk .hoop .bdg{display:inline-block;font-family:'Inter';font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  padding:3px 9px;border-radius:100px;margin-left:8px;vertical-align:2px;border:1px solid rgba(255,255,255,.32);color:rgba(255,255,255,.6)}
+.wk .sub{font-size:11px;font-weight:600;letter-spacing:.04em;color:rgba(255,255,255,.42);margin-top:5px}
+.wk .alum{font-size:10.5px;font-weight:600;letter-spacing:.03em;color:rgba(255,201,0,.72);margin-top:9px;line-height:1.55}
+@media(max-width:900px){.wkgrid{grid-template-columns:1fr}}
+.brandlogo{display:block;height:44px;width:auto;margin-bottom:20px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6))}
+.chapter{padding:130px 0 70px;background:var(--ink);text-align:left}
+.chapter .num{font-family:'Archivo';font-weight:800;font-size:15vw;line-height:.8;color:rgba(255,255,255,.05);
+  position:absolute;right:2vw;top:30px;pointer-events:none;user-select:none}
+footer{padding:60px 28px;text-align:center;color:var(--faint);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+
+@media(max-width:900px){
+  .split{min-height:auto;display:block}
+  .side{position:relative;width:100%;height:78vh}
+  .side.duo{height:64vh}
+  .melt.to-r,.melt.to-l{background:linear-gradient(180deg,rgba(10,10,14,0) 55%,var(--ink) 96%)}
+  .split .txt,.split.flip .txt{width:auto;padding:34px 24px 70px}
+  .pillars{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="progress" id="prog"></div>
+<div class="topbar"><span id="tlock" style="display:flex;align-items:center;gap:12px">
+  <img id="tpg" src="assets/logo_postgame.png" alt="postgame" style="height:18px;display:none">
+  <span id="tdiv" style="width:1px;height:18px;background:rgba(255,255,255,.35);display:none"></span>
+  <img src="assets/logo_redbull.png" alt="Red Bull" style="height:22px">
+</span><span>2026 Season · Confidential</span></div>
+
+<!-- ============ HERO — RED BULL WORLD ============ -->
+<section class="full" style="background:#001E3C">
+  <div class="bg" style="background:
+    radial-gradient(110% 80% at 50% 0%,rgba(255,255,255,.10),rgba(255,255,255,0) 55%),
+    linear-gradient(180deg,#012a5f 0%,#001E3C 55%,#001428 100%)"></div>
+  <!-- half-court painted in Red Bull red, behind the text -->
+  <div class="scrim" style="overflow:hidden">
+    <!-- brand lines aligned to the topbar logo, fading as they approach it -->
+    <!-- color handoff first (under the court) -->
+    <div style="position:absolute;left:0;right:0;bottom:0;height:26%;background:linear-gradient(180deg,rgba(0,16,31,0),#00101f 72%,#000d18 100%)"></div>
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice"
+      style="position:absolute;inset:0;width:100%;height:100%;-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 66%,transparent 88%);mask-image:linear-gradient(180deg,#000 0%,#000 66%,transparent 88%)">
+      <defs>
+        <linearGradient id="ftfade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#DB0007"/><stop offset=".18" stop-color="#DB0007"/>
+          <stop offset=".35" stop-color="#DB0007" stop-opacity="0"/><stop offset=".65" stop-color="#DB0007" stop-opacity="0"/>
+          <stop offset=".82" stop-color="#DB0007"/><stop offset="1" stop-color="#DB0007"/>
+        </linearGradient>
+      </defs>
+      <g stroke="#DB0007" fill="none" stroke-width="2.8" opacity=".66">
+        <!-- baseline -->
+        <line x1="170" y1="880" x2="1270" y2="880" stroke-width="3.4"/>
+        <!-- three-point line: corner segments + arc (r = 23.75ft @ 25px/ft) -->
+        <line x1="170" y1="880" x2="170" y2="525"/>
+        <line x1="1270" y1="880" x2="1270" y2="525"/>
+        <path d="M 170 525 A 594 594 0 0 1 1270 525"/>
+        <!-- the key -->
+        <rect x="520" y="405" width="400" height="475"/>
+        <!-- free-throw circle: solid top / dashed bottom -->
+        <path d="M 570 405 A 150 150 0 0 1 870 405"/>
+        <path d="M 870 405 A 150 150 0 0 1 570 405" stroke-dasharray="16 13"/>
+        
+      </g>
+      <!-- free-throw line runs edge-to-edge through the logo, fading out at center -->
+      <line x1="170" y1="405" x2="1270" y2="405" stroke="url(#ftfade)" stroke-width="2.8" opacity=".8"/>
+    </svg>
+  </div>
+  <div class="fg" style="width:100%;max-width:1180px;margin:0 auto;padding:max(120px,calc(100vh - 34.375vw - 28px)) 28px 120px;text-align:center">
+    <img src="assets/logo_redbull.png" alt="Red Bull" class="rv" style="height:56px;filter:drop-shadow(0 6px 22px rgba(0,0,0,.5))">
+    <h1 class="title rv d1" style="font-size:clamp(56px,8vw,112px);margin-top:36px;text-shadow:0 4px 30px rgba(0,10,30,.6)">Half Court</h1>
+    <div class="title rv d1" style="font-size:clamp(26px,3vw,42px);color:#FFC900;margin-top:6px">Tailgate Edition</div>
+    <p class="caption rv d2" style="font-size:17px;max-width:46ch;margin:26px auto 0;color:rgba(255,255,255,.82);text-shadow:0 2px 14px rgba(0,10,30,.8)">
+      Red Bull's court, dropped into the middle of college football Saturday — a 3-point showdown
+      between your shooter and the stars of every campus.</p>
+    <div class="rv d3" style="margin-top:46px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.5)">2026 · a Postgame production ↓</div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 01 ============ -->
+<section class="full" style="background:var(--ink)">
+  <div class="bg" style="background:linear-gradient(180deg,#000d18 0%,#07080d 34%,var(--ink) 62%)"></div>
+  <div class="scrim" style="overflow:hidden">
+    <!-- single orange thread picks up where Red Bull's world dissolves -->
+    <div style="position:absolute;left:50%;top:0;width:2px;height:11%;background:linear-gradient(180deg,rgba(215,63,9,0),#D73F09);transform:translateX(-50%)"></div>
+  </div>
+  <div class="fg" style="width:100%;max-width:1180px;margin:0 auto;padding:170px 28px 130px;text-align:center">
+    <img src="assets/logo_pg_primary.png" alt="postgame" class="rv" style="height:56px;width:auto">
+    <h2 class="title rv d1" style="font-size:clamp(38px,5vw,66px);margin-top:38px;max-width:22ch;margin-left:auto;margin-right:auto">
+      Red Bull has the court.<br><span style="color:#D73F09">Postgame has the campus.</span></h2>
+    <p class="caption rv d2" style="margin:26px auto 0;max-width:58ch;font-size:16px">
+      Activating college athletes is a maze — NIL contracts, agents, school rules, shifting rosters.
+      That's the part we own. Postgame handles the athlete contracting, the campus logistics, and
+      the day-of production end to end — white-glove, one team, one call — so the activation shows
+      up on the lot exactly as Red Bull drew it. We run this play every week for the biggest brands
+      in sport. Three recent receipts, next.</p>
+  </div>
+</section>
+
+<!-- ============ PROOF 01 · CANE'S — video full-bleed right ============ -->
+<section class="split">
+  <div class="side right">
+    <video poster="assets/canes_poster.jpg" muted loop playsinline preload="metadata" class="autoplay-io"><source src="assets/canes_recap.mp4" type="video/mp4"><source src="assets/canes_recap.webm" type="video/webm"></video>
+  </div>
+  <div class="melt to-r"></div>
+  
+  <span class="sndhint r" data-snd>🔇 tap for sound</span>
+  <div class="txt">
+    <img class="brandlogo rv" src="assets/logo_canes.png" alt="Raising Cane's">
+    <div class="folio rv">Proof · 01</div>
+    <h2 class="title rv d1" style="font-size:clamp(40px,4.8vw,62px);margin-top:12px">Raising Cane's<br>× Fanatics Fest</h2>
+    <p class="rv d1" style="font-weight:600;color:rgba(255,255,255,.85);margin-top:12px;font-size:16px">The Dunk Tank — with Tom Brady &amp; Rob Gronkowski</p>
+    <p class="caption rv d2" style="margin-top:14px;max-width:44ch">
+      A full activation floor at Fanatics Fest NYC: the celebrity dunk tank, Sauce Dunk, the
+      Chicken-Finger Hail Mary, Cane's Cam, and a VIP lounge — concepted, produced, shot, and
+      turned into a same-day content engine. <b>Teaser live by noon; the dunk reel posted before
+      the crowd left the building.</b></p>
+    <div class="rv d3" style="display:flex;gap:36px;margin-top:26px">
+      <div class="stat"><div class="n">6</div><div class="l">event segments</div></div>
+      <div class="stat"><div class="n">2</div><div class="l">GOAT-level celebrities</div></div>
+      <div class="stat"><div class="n accent" style="font-size:30px;padding-top:8px">Same-day</div><div class="l">turnaround</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROOF 02 · C4 — video left · Alijah behind right ============ -->
+<section class="split flip" style="min-height:100vh">
+  <!-- Alijah cutout layer: studio black merges with ink -->
+  <div style="position:absolute;top:0;bottom:0;right:-2%;width:46%;z-index:0">
+    <img src="assets/c4_martin.jpg" alt="Alijah Martin — national champion, C4 band on"
+      style="width:100%;height:100%;object-fit:cover;object-position:center 6%">
+  </div>
+  
+  <!-- video full-bleed left -->
+  <div class="side left" style="width:34%">
+    <video poster="assets/c4_poster.jpg" muted loop playsinline preload="metadata" class="autoplay-io"><source src="assets/c4_tiktok.mp4" type="video/mp4"><source src="assets/c4_tiktok.webm" type="video/webm"></video>
+  </div>
+  <div class="melt" style="background:
+    linear-gradient(90deg,rgba(10,10,14,0) 0%,rgba(10,10,14,0) 24%,rgba(10,10,14,.85) 35%,rgba(10,10,14,.96) 44%,rgba(10,10,14,.96) 60%,rgba(10,10,14,.85) 69%,rgba(10,10,14,0) 80%,rgba(10,10,14,0) 100%),
+    linear-gradient(180deg,var(--ink) 0%,rgba(10,10,14,0) 14%,rgba(10,10,14,0) 86%,var(--ink) 100%)"></div>
+  
+  <span class="sndhint l" data-snd>🔇 tap for sound</span>
+  <div class="txt" style="width:34%;margin-left:36%;padding:130px 0">
+    <img class="brandlogo rv" src="assets/logo_c4.png" alt="C4 Energy">
+    <div class="folio rv">Proof · 02</div>
+    <h2 class="title rv d1" style="font-size:clamp(38px,4.4vw,56px);margin-top:12px">C4 Energy<br>× The Natty</h2>
+    <p class="rv d1" style="font-weight:600;color:rgba(255,255,255,.85);margin-top:12px;font-size:15px">National-championship activation · Florida basketball</p>
+    <p class="caption rv d2" style="margin-top:14px">
+      An energy-drink brand, a championship moment, and the school's basketball stars — the exact
+      anatomy of this pitch, already executed. The trophy shot ran with the C4 band front and
+      center, carried by the athlete's own channels. <b>We've run this play in this exact
+      category.</b></p>
+    <div class="ref rv d3" style="margin-top:16px"><b>Left —</b> the clip, as it hit the feed &nbsp;·&nbsp; <b>Right —</b> Alijah Martin, national champion</div>
+  </div>
+</section>
+
+<!-- ============ PROOF 03 · HOLLISTER — lineup bg · QBs right ============ -->
+<section class="split" style="min-height:100vh">
+  <div class="bg" style="background-image:url('assets/hollister_lineup.jpg');background-size:cover;background-position:center 15%;filter:saturate(1.05)"></div>
+  <div class="scrim" style="background:
+    linear-gradient(90deg,rgba(10,10,14,.96) 0%,rgba(10,10,14,.88) 34%,rgba(10,10,14,.35) 62%,rgba(10,10,14,.15) 100%),
+    linear-gradient(180deg,rgba(10,10,14,.85) 0%,rgba(10,10,14,0) 22%,rgba(10,10,14,0) 74%,var(--ink) 100%)"></div>
+  <div class="side right" style="width:34%">
+    <img src="assets/hollister_qbs.jpg" alt="DJ Lagway and Tommy Castellanos — the rivalry frame" style="object-position:center 10%">
+  </div>
+  <div class="melt" style="background:
+    linear-gradient(270deg,rgba(10,10,14,0) 0%,rgba(10,10,14,0) 24%,rgba(10,10,14,.8) 34%,rgba(10,10,14,0) 46%),
+    linear-gradient(180deg,var(--ink) 0%,rgba(10,10,14,0) 14%,rgba(10,10,14,0) 86%,var(--ink) 100%)"></div>
+  
+  <div class="txt">
+    <img class="brandlogo rv" src="assets/logo_hollister.png" alt="Hollister" style="height:38px">
+    <div class="folio rv">Proof · 03</div>
+    <h2 class="title rv d1" style="font-size:clamp(38px,4.6vw,58px);margin-top:12px">Design Collab<br>— Rivalry Week</h2>
+    <p class="caption rv d2" style="margin-top:14px;max-width:42ch">
+      Licensed design collab and photoshoot built around rivalry week — Texas, Ohio State,
+      Michigan, Florida, FSU and more, athletes fronting the looks and carrying the drop to their
+      own audiences. QBs DJ Lagway and Tommy Castellanos squared up across the state line.
+      <b>Proof we run brand-side creative and athlete draw as one production.</b></p>
+    <div class="ref rv d3" style="margin-top:16px"><b>The pattern —</b> rivalry energy + athlete-fronted creative = the drop sells itself</div>
+  </div>
+</section>
+
+<!-- ============ THE PITCH ============ -->
+<section class="full">
+  <div class="bg" style="background-image:url('assets/athens_crowd.jpg');background-position:center 30%"></div>
+  <div class="scrim" style="background:
+    linear-gradient(90deg,rgba(0,8,22,.95) 0%,rgba(0,8,22,.88) 42%,rgba(0,8,22,.45) 72%,rgba(0,8,22,.25) 100%),
+    linear-gradient(180deg,rgba(0,8,22,.5),rgba(0,8,22,.25) 45%,rgba(10,10,14,.98))"></div>
+  <div class="fg wrap" style="padding:140px 28px">
+    <div class="folio rv">Chapter 02 — The Pitch</div>
+    <h2 class="title rv d1" style="font-size:clamp(48px,7.4vw,100px);margin-top:16px;max-width:20ch">
+      Drop the half court in the <span class="accent">middle of the lot.</span></h2>
+    <p class="caption rv d2" style="font-size:18px;margin-top:22px;max-width:58ch">
+      Red Bull Half Court already runs in 20+ countries — a court the brand can drop anywhere on earth
+      series, with its own twist rule and a world final in Manila. It has never touched a college
+      football Saturday. <b>Postgame brings the school's basketball stars to the tailgate and makes
+      the court the loudest thing on the lot.</b></p>
+    <div class="rv d3" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:30px">
+      <span class="pill">The 3-point showdown</span>
+      <span class="pill">School hoopers = the draw</span>
+      <span class="pill" style="border-color:var(--red);color:rgba(255,255,255,.7)">Gameday = the stage</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCENE 03 · SHOWTIME — MUSTARD ============ -->
+<section class="split">
+  <div class="side right" style="width:52%">
+    <img src="assets/dj_mustard.jpg" alt="Mustard on the decks" style="object-position:center 30%;filter:brightness(1.65) saturate(1.15) contrast(1.03)">
+  </div>
+  <div class="melt" style="background:
+    linear-gradient(90deg,var(--ink) 0%,var(--ink) 42%,rgba(10,10,14,.55) 52%,rgba(10,10,14,0) 64%),
+    linear-gradient(180deg,rgba(10,10,14,.35) 0%,rgba(10,10,14,0) 14%,rgba(10,10,14,0) 84%,var(--ink) 100%)"></div>
+  <div class="txt">
+    <div class="folio rv">Scene 01 — Showtime</div>
+    <h2 class="title rv d1" style="font-size:clamp(40px,4.8vw,62px);margin-top:12px">Your MC is<br><span class="accent">DJ Mustard.</span></h2>
+    <p class="caption rv d2" style="margin-top:16px;max-width:46ch">
+      At the posted hour DJ Mustard takes the aux — builds the athlete intros one name at a
+      time, then MCs every rack of the competition live over the beat. <b>The booking writes
+      itself: &ldquo;Parking Lot&rdquo; with Travis Scott, played on the biggest parking lot in
+      America.</b></p>
+    <div class="plist rv d3">
+      <div class="ph"><img src="assets/dj_mustard.jpg" alt="">
+        <span><div class="t1">DJ Mustard&rsquo;s Catalogue</div><div class="t2">Certified · plays itself on the lot</div></span></div>
+      <div class="tr"><span class="no2">01</span><span class="cv" style="background:linear-gradient(140deg,#d31c25,#3c0508 70%)"></span><span class="tt"><b>Not Like Us</b><span>Kendrick Lamar · prod. Mustard</span></span><span class="cert">5× Grammy · RotY</span></div><div class="tr"><span class="no2">02</span><span class="cv" style="background:linear-gradient(140deg,#f27b2a,#2a2a2e 65%)"></span><span class="tt"><b>Parking Lot</b><span>Mustard ft. Travis Scott</span></span><span class="cert">The booking</span></div><div class="tr"><span class="no2">03</span><span class="cv" style="background:linear-gradient(140deg,#e8b23a,#171006 72%)"></span><span class="tt"><b>Rack City</b><span>Tyga · prod. Mustard</span></span><span class="cert">Multi-Platinum</span></div><div class="tr"><span class="no2">04</span><span class="cv" style="background:linear-gradient(140deg,#4656d8,#160a33 70%)"></span><span class="tt"><b>Ballin'</b><span>Mustard ft. Roddy Ricch</span></span><span class="cert">Multi-Platinum</span></div><div class="tr"><span class="no2">05</span><span class="cv" style="background:linear-gradient(140deg,#3fc6e0,#083445 72%)"></span><span class="tt"><b>Pure Water</b><span>Mustard &amp; Migos</span></span><span class="cert">Platinum</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCENE 01 · THE SHOOTOUT ============ -->
+<section class="split">
+  <div class="bg" style="background-image:url('assets/lethal_heli_wide.jpg');background-position:center 20%;transform:scaleX(-1)"></div>
+  <div class="scrim" style="background:
+    linear-gradient(90deg,rgba(10,10,14,.95) 0%,rgba(10,10,14,.82) 40%,rgba(10,10,14,.3) 72%,rgba(10,10,14,.15) 100%),
+    linear-gradient(180deg,rgba(10,10,14,.6),rgba(10,10,14,0) 25%,rgba(10,10,14,0) 70%,var(--ink) 100%)"></div>
+  <div class="txt">
+    <div class="folio rv">Scene 02 — The 3-Point Shootout</div>
+    <h2 class="title rv d1" style="font-size:clamp(44px,5.6vw,74px);margin-top:12px">Lethal Shooter<br><span class="accent">vs. the House</span></h2>
+    <p class="rv d1" style="font-weight:600;color:rgba(255,255,255,.85);margin-top:14px;font-size:17px;max-width:42ch">
+      The 3-point shootout: Red Bull's own shooting savant against the school's stars.</p>
+    <p class="caption rv d2" style="margin-top:14px;max-width:44ch">
+      Think the pregame kicking contest that eats College GameDay every Saturday — the spectacle
+      the whole crowd drifts toward, films, and argues about. Ours is a 3-point shootout:
+      Matthews — Red Bull's own, trainer to NBA and WNBA stars — takes the arc against the school's
+      signed shooters. Best of 25, crowd counts every make, winner takes the belt for the campus.
+      <b>A promotable, repeatable main event — announced all week, clipped all weekend.</b></p>
+    
+  </div>
+</section>
+
+<!-- ============ THE CHAIN — the trophy ============ -->
+<section class="full" style="background:#0d0a0a">
+  <div class="scrim" style="background:radial-gradient(46% 40% at 50% 52%,rgba(255,170,40,.10),rgba(13,10,10,0) 70%)"></div>
+  <div class="fg wrap" style="padding:120px 28px 110px;text-align:center">
+    <div class="folio rv" style="justify-content:center">The Trophy</div>
+    <h2 class="title rv d1" style="font-size:clamp(42px,5.4vw,72px);margin-top:14px">One chain.<br><span class="accent">Every campus wants it.</span></h2>
+    <img src="assets/chain_redbull.png" alt="The Red Bull chain" class="rv d2" style="height:min(58vh,560px);width:auto;margin-top:34px;filter:drop-shadow(0 26px 60px rgba(0,0,0,.75))">
+    <p class="caption rv d3" style="margin:30px auto 0;max-width:52ch;font-size:15px">
+      Won at center court, worn all season, defended at the next stop — the Red Bull chain travels
+      with whoever holds it. Lethal Shooter arrives in Baton Rouge wearing it.
+      <b>Twelve campuses get a shot to take it off his neck.</b></p>
+  </div>
+</section>
+
+<!-- ============ THE TOUR — dates board ============ -->
+<section class="split" style="min-height:100vh;background:#0d0a0a">
+  <div class="bg" style="background-image:url('assets/halfcourt_aerial.jpg');background-position:center;opacity:.2;filter:saturate(.85)"></div>
+  <div class="scrim" style="background:
+    radial-gradient(90% 60% at 50% 40%,rgba(13,10,10,.55),rgba(13,10,10,.92) 75%),
+    linear-gradient(180deg,var(--ink),rgba(13,10,10,.72) 16%,rgba(13,10,10,.9) 70%,var(--ink))"></div>
+  <div class="fg wrap" style="padding:120px 28px 110px">
+    <div class="folio rv">The 12-Week Slate — Follow the Football</div>
+    <h2 class="title rv d1" style="font-size:clamp(36px,4.6vw,56px);margin-top:12px;max-width:24ch">
+      Twelve Saturdays. <span class="accent">The biggest game each week — and the hooper who owns that campus.</span></h2>
+    <p class="caption rv d2" style="margin-top:14px;max-width:64ch">
+      The court follows the sport's center of gravity: each week's marquee football game sets the
+      stop, and the host school's basketball star headlines the 3-point shootout against Lethal
+      Shooter. Five stops are covered by athletes <b>already signed with Postgame</b> — the rest we contract
+      with Red Bull, campus by campus. And every stop carries an <b style="color:#FFC900">alum card</b>:
+      if the current star can't headline, the school's basketball legends can — retired icons and
+      WNBA stars are in their offseason on fall Saturdays, and September stops fall inside the NBA
+      offseason window.</p>
+    <div class="wkgrid rv d2"><div class="wk"><div class="top"><span class="n">Week 01</span><span class="dt">Sat Sep 5</span></div><div class="match"><span class="team"><img src="assets/sch_clemson.png" alt="Clemson"><span class="tn">Clemson</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_lsu.png" alt="LSU"><span><span class="tn">LSU</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Tiger Stadium · Baton Rouge</div><hr><div class="hoop">Mikaylah Williams</div><div class="sub">LSU · + MiLaysia Fulwiley · vs Lethal Shooter</div><div class="alum">Alum card — Shaq · Angel Reese · Seimone Augustus</div></div><div class="wk"><div class="top"><span class="n">Week 02</span><span class="dt">Sat Sep 12</span></div><div class="match"><span class="team"><img src="assets/sch_ohiost.png" alt="Ohio State"><span class="tn">Ohio State</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_texas.png" alt="Texas"><span><span class="tn">Texas</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">DKR · Austin</div><hr><div class="hoop">Madison Booker<span class="bdg">To contract</span></div><div class="sub">Texas WBB · the biggest name in Austin</div><div class="alum">Alum card — Kevin Durant (offseason window) · T.J. Ford</div></div><div class="wk"><div class="top"><span class="n">Week 03</span><span class="dt">Sep · TBC</span></div><div class="match"><span class="team"><img src="assets/sch_oklahoma.png" alt="Oklahoma"><span class="tn">Oklahoma</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_michigan.png" alt="Michigan"><span><span class="tn">Michigan</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">The Big House · Ann Arbor</div><hr><div class="hoop">Elliott Cadeau<span class="bdg">To contract</span></div><div class="sub">Michigan · lead guard</div><div class="alum">Alum card — Jalen Rose · Chris Webber · Juwan Howard</div></div><div class="wk"><div class="top"><span class="n">Week 04</span><span class="dt">TBC</span></div><div class="match"><span class="team"><img src="assets/sch_miami.png" alt="Miami"><span class="tn">Miami</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_notredame.png" alt="Notre Dame"><span><span class="tn">Notre Dame</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Notre Dame Stadium · South Bend</div><hr><div class="hoop">Hannah Hidalgo</div><div class="sub">Notre Dame · vs Lethal Shooter</div><div class="alum">Alum card — Skylar Diggins · Arike Ogunbowale</div></div><div class="wk"><div class="top"><span class="n">Week 05</span><span class="dt">TBC</span></div><div class="match"><span class="team"><img src="assets/sch_georgia.png" alt="Georgia"><span class="tn">Georgia</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_alabama.png" alt="Alabama"><span><span class="tn">Alabama</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Bryant-Denny · Tuscaloosa</div><hr><div class="hoop">Top Tide hooper<span class="bdg">To contract</span></div><div class="sub">scout with Red Bull</div><div class="alum">Alum card — Mo Williams · JaMychal Green</div></div><div class="wk"><div class="top"><span class="n">Week 06</span><span class="dt">Sat Oct 10</span></div><div class="match"><span class="team"><img src="assets/sch_oklahoma.png" alt="Oklahoma"><span class="tn">Oklahoma</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_texas.png" alt="Texas"><span><span class="tn">Texas</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Red River · Cotton Bowl, Dallas</div><hr><div class="hoop">Madison Booker<span class="bdg">To contract</span></div><div class="sub">state-fair takeover stop</div><div class="alum">Alum card — Blake Griffin (already Red Bull family) · T.J. Ford</div></div><div class="wk"><div class="top"><span class="n">Week 07</span><span class="dt">Sat Oct 17</span></div><div class="match"><span class="team"><img src="assets/sch_ohiost.png" alt="Ohio State"><span class="tn">Ohio State</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_indiana.png" alt="Indiana"><span><span class="tn">Indiana</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Memorial Stadium · Bloomington</div><hr><div class="hoop">Top Hoosier hooper<span class="bdg">To contract</span></div><div class="sub">scout with Red Bull</div><div class="alum">Alum card — Victor Oladipo · Isiah Thomas · Cody Zeller</div></div><div class="wk"><div class="top"><span class="n">Week 08</span><span class="dt">Sat Oct 24</span></div><div class="match"><span class="team"><img src="assets/sch_oregon.png" alt="Oregon"><span class="tn">Oregon</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_illinois.png" alt="Illinois"><span><span class="tn">Illinois</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Memorial Stadium · Champaign</div><hr><div class="hoop">Top Illini hooper<span class="bdg">To contract</span></div><div class="sub">scout with Red Bull</div><div class="alum">Alum card — Deron Williams · Dee Brown</div></div><div class="wk"><div class="top"><span class="n">Week 09</span><span class="dt">Sat Oct 31</span></div><div class="match"><span class="team"><img src="assets/sch_ohiost.png" alt="Ohio State"><span class="tn">Ohio State</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_usc.png" alt="USC"><span><span class="tn">USC</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">The Coliseum · Los Angeles</div><hr><div class="hoop">JuJu Watkins</div><div class="sub">USC · + Jazzy Davidson · vs Lethal Shooter</div><div class="alum">Alum card — Lisa Leslie · Nick Young · Cheryl Miller</div></div><div class="wk"><div class="top"><span class="n">Week 10</span><span class="dt">Nov · alt venue</span></div><div class="match"><span class="team"><img src="assets/sch_alabama.png" alt="Alabama"><span class="tn">Alabama</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_lsu.png" alt="LSU"><span><span class="tn">LSU</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Tiger Stadium · Baton Rouge</div><hr><div class="hoop">Mikaylah Williams</div><div class="sub">LSU · + MiLaysia Fulwiley</div><div class="alum">Alum card — Shaq · Angel Reese</div></div><div class="wk"><div class="top"><span class="n">Week 11</span><span class="dt">Nov · TBC</span></div><div class="match"><span class="team host"><img src="assets/sch_kansas.png" alt="Kansas"><span><span class="tn">Kansas</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">Rivalry Saturday · David Booth Stadium, Lawrence</div><hr><div class="hoop">Taylen Kinney</div><div class="sub">Kansas · No. 1 PG · + Tyran Stokes</div><div class="alum">Alum card — Paul Pierce · Mario Chalmers · Danny Manning</div></div><div class="wk"><div class="top"><span class="n">Week 12</span><span class="dt">Sat Nov 28</span></div><div class="match"><span class="team"><img src="assets/sch_michigan.png" alt="Michigan"><span class="tn">Michigan</span></span><span class="at">@</span><span class="team host"><img src="assets/sch_ohiost.png" alt="Ohio State"><span><span class="tn">Ohio State</span><div class="hostlbl">Activation campus</div></span></span></div><div class="venue">The Shoe · Columbus</div><hr><div class="hoop">Top Buckeye hooper<span class="bdg">To contract</span></div><div class="sub">+ Jeremiah Smith crossover — Red Bull's own</div><div class="alum">Alum card — Greg Oden · Evan Turner · Jared Sullinger</div></div></div>
+  </div>
+</section>
+
+<!-- ============ SCENE 02 · THE FAN EXPERIENCE ============ -->
+<section class="split flip">
+  <div class="side left">
+    <img src="assets/halfcourt_aerial.jpg" alt="The Red Bull half court" style="object-position:center">
+  </div>
+  <div class="melt to-l"></div>
+  <span class="livechip l">Open run — all day on the lot</span>
+  <div class="txt">
+    <div class="folio rv">Scene 03 — The Fan Experience</div>
+    <h2 class="title rv d1" style="font-size:clamp(40px,4.8vw,62px);margin-top:12px">Every fan on the lot<br><span class="accent">gets a shot.</span></h2>
+    <p class="caption rv d2" style="margin-top:16px;max-width:46ch">
+      The court is a game all day — five benchmarks, five prizes, every make tracked live on
+      the leaderboard. Clear a level, win the prize on the spot, and your run is filmed and handed
+      back as a clip.</p>
+    <div class="tiers rv d3"><div class="tier"><span class="lv">LVL 01</span><span class="tname"><b>First Bucket</b><span>Make your first shot</span></span><span class="prize">Ice-cold Red Bull</span></div><div class="tier"><span class="lv">LVL 02</span><span class="tname"><b>Heat Check</b><span>3 makes in a row</span></span><span class="prize">Rally towel</span></div><div class="tier"><span class="lv">LVL 03</span><span class="tname"><b>On Fire</b><span>5 in a row</span></span><span class="prize">Tailgate Edition tee</span></div><div class="tier"><span class="lv">LVL 04</span><span class="tname"><b>Buzzer Beater</b><span>7 makes in 30 seconds</span></span><span class="prize">Lot Champion snapback</span></div><div class="tier"><span class="lv">LVL 05</span><span class="tname"><b>King of the Lot</b><span>Top the leaderboard at close</span></span><span class="prize">Halftime shot on the main court</span></div></div>
+  </div>
+</section>
+
+<!-- ============ THE STACK — the walk-in scenes ============ -->
+<section style="padding:110px 0 30px;background:#0d0a0a">
+  <div class="wrap">
+    <div class="folio rv">The Stack — Red Bull's Own Close the Loop</div>
+    <h2 class="title rv d1" style="font-size:clamp(36px,4.6vw,56px);margin-top:12px;max-width:26ch">
+      The walk-in is the shot.<br><span class="accent">The can is in every frame.</span></h2>
+    <p class="caption rv d2" style="margin-top:14px;max-width:62ch">
+      Red Bull's college football four already own the most-filmed moment of gameday. Here's how
+      they close the loop on the activation — scene by scene.</p>
+  </div>
+</section>
+<section class="split flip" style="min-height:86vh"><img class="ghostcan" src="assets/can_product.png" alt="" style="right:-3vw">
+  <div class="side left" style="width:52%">
+    <img src="assets/imm_manning.jpg" alt="Arch Manning" style="object-position:center 12%">
+  </div>
+  <div class="melt to-l"></div>
+  <div class="txt" style="width:38%">
+    <div class="folio rv">Scene 01 — The Walk-In</div>
+    <h3 class="title rv d1" style="font-size:clamp(34px,4vw,52px);margin-top:10px">Arch Manning</h3>
+    <div class="schoolrow rv d1"><img src="assets/sch_texas.png" alt="Texas"><span style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;letter-spacing:.1em;text-transform:uppercase">Texas · DKR · Austin</span></div>
+    <p class="caption rv d2" style="margin-top:16px;max-width:40ch">Suit on, crowd five deep, every phone up. He walks the gauntlet into DKR — <b>a Red Bull in his hand</b> — right past the court where the shootout tips at nine.</p>
+    <div class="flavorunit rv d3"><img src="assets/can_product.png" alt="Red Bull Energy Drink — Original">
+      <span class="fl">He walks with<b>Red Bull Energy Drink</b><b style="color:#FFC900">Original</b></span></div>
+  </div>
+</section>
+<section class="split" style="min-height:86vh"><img class="ghostcan" src="assets/can_dragonfruit.png" alt="" style="left:-3vw">
+  <div class="side right" style="width:52%">
+    <img src="assets/imm_lagway.jpg" alt="DJ Lagway" style="object-position:center 12%">
+  </div>
+  <div class="melt to-r"></div>
+  <div class="txt" style="width:38%">
+    <div class="folio rv">Scene 02 — The Walk-In</div>
+    <h3 class="title rv d1" style="font-size:clamp(34px,4vw,52px);margin-top:10px">DJ Lagway</h3>
+    <div class="schoolrow rv d1"><img src="assets/sch_baylor.png" alt="Baylor"><span style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;letter-spacing:.1em;text-transform:uppercase">Baylor · McLane Stadium · Waco</span></div>
+    <p class="caption rv d2" style="margin-top:16px;max-width:40ch">Baylor's new QB1, walking into McLane on the Brazos with <b>a Red Bull</b> in hand — the transfer story every camera in Texas is chasing this fall, and the can is in every frame.</p>
+    <div class="flavorunit rv d3"><img src="assets/can_dragonfruit.png" alt="Red Bull Green Edition — Dragon Fruit">
+      <span class="fl">He walks with<b>Red Bull Green Edition</b><b style="color:#FFC900">Dragon Fruit</b></span></div>
+  </div>
+</section>
+<section class="split flip" style="min-height:86vh"><img class="ghostcan" src="assets/can_product.png" alt="" style="right:-3vw">
+  <div class="side left" style="width:52%">
+    <img src="assets/imm_smith.jpg" alt="Jeremiah Smith" style="object-position:center 12%">
+  </div>
+  <div class="melt to-l"></div>
+  <div class="txt" style="width:38%">
+    <div class="folio rv">Scene 03 — The Walk-In</div>
+    <h3 class="title rv d1" style="font-size:clamp(34px,4vw,52px);margin-top:10px">Jeremiah Smith</h3>
+    <div class="schoolrow rv d1"><img src="assets/sch_ohiost.png" alt="Ohio State"><span style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;letter-spacing:.1em;text-transform:uppercase">Ohio State · The Shoe · Columbus</span></div>
+    <p class="caption rv d2" style="margin-top:16px;max-width:40ch">The most-photographed player in college football, walking through the lot on rivalry Saturday, <b>Red Bull in hand</b>, past ten thousand fans holding the same can.</p>
+    <div class="flavorunit rv d3"><img src="assets/can_product.png" alt="Red Bull Energy Drink — Original">
+      <span class="fl">He walks with<b>Red Bull Energy Drink</b><b style="color:#FFC900">Original</b></span></div>
+  </div>
+</section>
+<section class="split" style="min-height:86vh"><img class="ghostcan" src="assets/can_lime.png" alt="" style="left:-3vw">
+  <div class="side right" style="width:52%">
+    <img src="assets/imm_moore.jpg" alt="Dakorien Moore" style="object-position:center 12%">
+  </div>
+  <div class="melt to-r"></div>
+  <div class="txt" style="width:38%">
+    <div class="folio rv">Scene 04 — The Walk-In</div>
+    <h3 class="title rv d1" style="font-size:clamp(34px,4vw,52px);margin-top:10px">Dakorien Moore</h3>
+    <div class="schoolrow rv d1"><img src="assets/sch_oregon.png" alt="Oregon"><span style="font-weight:600;color:rgba(255,255,255,.6);font-size:13px;letter-spacing:.1em;text-transform:uppercase">Oregon · Autzen · Eugene</span></div>
+    <p class="caption rv d2" style="margin-top:16px;max-width:40ch">Pregame warmups, hood up, ball in one hand — <b>a Red Bull in the other</b> as he walks onto the field. No shoot day. No set. The Saturday machine does the work.</p>
+    <div class="flavorunit rv d3"><img src="assets/can_lime.png" alt="Red Bull Summer Edition — Sudachi Lime">
+      <span class="fl">He walks with<b>Red Bull Summer Edition</b><b style="color:#FFC900">Sudachi Lime</b></span></div>
+  </div>
+</section>
+
+<!-- ============ THE ASK ============ -->
+<section class="full">
+  <div class="bg" style="background-image:url('assets/athens_crowd.jpg');background-position:center 30%"></div>
+  <div class="scrim" style="background:linear-gradient(180deg,rgba(7,7,10,.92),rgba(7,7,10,.78) 45%,rgba(7,7,10,.97))"></div>
+  <div class="fg wrap" style="padding:150px 28px;text-align:center">
+    <div class="folio rv" style="justify-content:center">The Ask</div>
+    <h2 class="title rv d1" style="font-size:clamp(44px,6.4vw,86px);margin-top:16px">The ball is in<br><span class="accent">your court.</span></h2>
+    <p class="caption rv d2" style="font-size:16px;margin:24px auto 0;max-width:54ch">
+      Lock a three-stop pilot off the slate — starting Week 1, Clemson at LSU, where Mikaylah
+      Williams and MiLaysia Fulwiley are already signed and Lethal Shooter takes the arc at the
+      biggest tailgate in America. Postgame handles the contracting, the logistics, and the
+      production, white-glove. <b>Green-light by August 1 and the court is on the lot for kickoff
+      weekend.</b></p>
+    <div class="rv d3" style="display:flex;justify-content:center;align-items:center;gap:18px;margin-top:44px">
+      <img src="assets/logo_pg_primary.png" alt="postgame" style="height:30px">
+      <span style="width:1px;height:26px;background:rgba(255,255,255,.35)"></span>
+      <img src="assets/logo_redbull.png" alt="Red Bull" style="height:30px">
+    </div>
+    <p class="rv d3" style="margin-top:26px;font-weight:600;font-size:14px;letter-spacing:.08em;color:rgba(255,255,255,.75)">peyton@pstgm.com</p>
+  </div>
+</section>
+
+<footer>Postgame × Red Bull · 2026 · Confidential — for discussion only</footer>
+
+<script>
+// scroll reveal
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.16});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+// topbar logo swap: Red Bull on hero → co-lockup after
+const tpg=document.getElementById('tpg'),tdiv=document.getElementById('tdiv');
+function swapLock(){const past=scrollY>innerHeight*0.8;
+  tpg.style.display=past?'block':'none';tdiv.style.display=past?'block':'none';}
+addEventListener('scroll',swapLock,{passive:true});swapLock();
+// progress
+const prog=document.getElementById('prog');
+addEventListener('scroll',()=>{const h=document.documentElement;prog.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'},{passive:true});
+// autoplay videos only while in view
+const vio=new IntersectionObserver(es=>es.forEach(e=>{const v=e.target;
+  if(e.isIntersecting){v.play().catch(()=>{})}else{v.pause()}}),{threshold:.35});
+document.querySelectorAll('video.autoplay-io').forEach(v=>vio.observe(v));
+// tap-for-sound chips
+document.querySelectorAll('[data-snd]').forEach(chip=>{
+  chip.addEventListener('click',()=>{
+    const v=chip.closest('.split').querySelector('video');
+    if(!v)return;v.muted=!v.muted;
+    chip.textContent=v.muted?'🔇 tap for sound':'🔊 sound on';
+    if(!v.muted)v.play().catch(()=>{});
+  });
+});
+</script>
+</body>
+</html>
