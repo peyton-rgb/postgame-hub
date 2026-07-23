@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "recaps:outstanding": "node --import ./scripts/register-alias.mjs --env-file=.env.local scripts/list-outstanding-recaps.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
