@@ -541,9 +541,10 @@ export default function PackageClient({
                   const url = packageAssetUrl(pkg, GRAPHIC_PREFIX, g.category, g.file);
                   return (
                     <div className="gcard" key={g.category + "/" + g.file}>
-                      {/* Checker so a white-filled overlay still reads as art
-                          and not as an empty card. */}
-                      <div className="gview">
+                      {/* Light checker so a white-filled overlay still reads as
+                          art; the white/reverse variants flip to a dark tile
+                          (g.dark) they'd otherwise disappear into. */}
+                      <div className={"gview" + (g.dark ? " dark" : "")}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt={g.label} loading="lazy" />
                       </div>
@@ -1032,6 +1033,15 @@ export default function PackageClient({
             linear-gradient(-45deg, transparent 75%, #e8e8e8 75%);
           background-size: 14px 14px;
           background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+        }
+        /* White/reverse variants: a dark checker so the white fill reads. Same
+           tile geometry as the light one, inverted. */
+        .gview.dark {
+          background-color: #17171a;
+          background-image: linear-gradient(45deg, #26262b 25%, transparent 25%),
+            linear-gradient(-45deg, #26262b 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #26262b 75%),
+            linear-gradient(-45deg, transparent 75%, #26262b 75%);
         }
         .gview img {
           max-width: 100%;
