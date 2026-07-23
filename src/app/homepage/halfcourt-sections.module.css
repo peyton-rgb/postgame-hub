@@ -1,0 +1,439 @@
+/* ============================================================
+   Half Court proof sections — lifted from /pitch/halfcourt.
+   Fully scoped under .root so the generic source classnames
+   (.title, .bg, .split, .melt, .stat, …) can't collide with
+   the Hub's global styles or Tailwind in either direction.
+   ============================================================ */
+
+.root {
+  --hc-red: #db0007;
+  --hc-yellow: #ffc900;
+  --hc-orange: #d73f09;
+  --hc-ink: #0a0a0e;
+  --hc-muted: rgba(255, 255, 255, 0.7);
+  --hc-faint: rgba(255, 255, 255, 0.44);
+  --hc-hair: rgba(255, 255, 255, 0.12);
+
+  position: relative;
+  background: var(--hc-ink);
+  color: #fff;
+  overflow-x: hidden;
+}
+
+/* ---- shared type ---- */
+.folio {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.folio::before {
+  content: "";
+  width: 24px;
+  height: 3px;
+  background: var(--hc-orange);
+  flex: none;
+}
+.title {
+  text-transform: none;
+  font-family: "Archivo", "Arial Black", Arial, sans-serif;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.caption {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--hc-muted);
+}
+.caption b {
+  color: #fff;
+}
+.brandlogo {
+  display: block;
+  height: 44px;
+  width: auto;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.6));
+}
+
+/* ---- stats (proof blocks) ---- */
+.statN {
+  font-family: "Archivo", "Arial Black", Arial, sans-serif;
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 0.9;
+}
+.statL {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hc-faint);
+  margin-top: 6px;
+}
+.accent {
+  color: var(--hc-yellow);
+}
+
+/* ---- scroll reveal ---- */
+.rv {
+  opacity: 0;
+  transform: translateY(34px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.rv.in {
+  opacity: 1;
+  transform: none;
+}
+.d1 {
+  transition-delay: 0.08s;
+}
+.d2 {
+  transition-delay: 0.16s;
+}
+.d3 {
+  transition-delay: 0.26s;
+}
+
+/* ============ INTRO / CREDENTIALS ============ */
+.intro {
+  position: relative;
+  overflow: hidden;
+  background: var(--hc-ink);
+}
+.introBgLogo {
+  position: absolute;
+  right: -6%;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 34%;
+  opacity: 0.05;
+  pointer-events: none;
+}
+.introInner {
+  position: relative;
+  z-index: 2;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 28px 110px;
+}
+.introTitle {
+  font-size: clamp(38px, 5vw, 64px);
+  margin-top: 14px;
+  max-width: 18ch;
+}
+.introTitle span {
+  color: var(--hc-orange);
+}
+.introBody {
+  max-width: 60ch;
+  margin-top: 24px;
+}
+.introBody p {
+  font-size: 15.5px;
+}
+.introBody p + p {
+  margin-top: 16px;
+}
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 56px;
+  border-top: 1px solid var(--hc-hair);
+  max-width: 880px;
+}
+.statCell {
+  padding: 30px 20px 0 34px;
+  border-right: 1px solid var(--hc-hair);
+}
+.statCell:first-child {
+  padding-left: 20px;
+}
+.statCell:last-child {
+  border-right: none;
+}
+.statKicker {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hc-orange);
+}
+.statNum {
+  font-size: clamp(40px, 4.6vw, 58px);
+  margin-top: 10px;
+}
+
+/* ---- brand marquee ---- */
+.brandtick {
+  overflow: hidden;
+  margin-top: 64px;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.btrow {
+  display: flex;
+  align-items: center;
+  gap: 96px;
+  width: max-content;
+  animation: hcBtk 27s linear infinite;
+  padding-right: 96px;
+}
+.btrow img {
+  height: 54px;
+  width: auto;
+  max-width: 190px;
+  object-fit: contain;
+  flex: none;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.45));
+}
+@keyframes hcBtk {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ============ SPLIT PROOF SECTIONS ============ */
+.split {
+  position: relative;
+  min-height: 62vh; /* reduced from 100vh per mockup review */
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: var(--hc-ink);
+}
+.side {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 62%;
+  z-index: 0;
+}
+.side.right {
+  right: 0;
+}
+.side.left {
+  left: 0;
+}
+.side video,
+.side img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  display: block;
+}
+.melt {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.meltToR {
+  background: linear-gradient(
+      90deg,
+      var(--hc-ink) 0%,
+      var(--hc-ink) 34%,
+      rgba(10, 10, 14, 0.85) 46%,
+      rgba(10, 10, 14, 0.45) 62%,
+      rgba(10, 10, 14, 0) 88%
+    ),
+    linear-gradient(
+      180deg,
+      var(--hc-ink) 0%,
+      rgba(10, 10, 14, 0) 16%,
+      rgba(10, 10, 14, 0) 84%,
+      var(--hc-ink) 100%
+    );
+}
+.bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.txt {
+  position: relative;
+  z-index: 2;
+}
+.canesText {
+  width: 44%;
+  padding: 130px 0 130px 6vw;
+}
+.c4Text {
+  width: 34%;
+  margin-left: 36%;
+  padding: 130px 0;
+}
+.hollisterText {
+  width: 44%;
+  padding: 130px 0 130px 6vw;
+}
+
+/* C4 athlete cutout layer */
+.c4Cutout {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -2%;
+  width: 46%;
+  z-index: 0;
+}
+.c4Cutout img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 6%;
+}
+.c4Video {
+  width: 34%;
+}
+.hollisterSide {
+  width: 34%;
+}
+.hollisterSide img {
+  object-position: center 10%;
+}
+
+/* tap-for-sound chip */
+.sndhint {
+  position: absolute;
+  z-index: 3;
+  bottom: 26px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 100px;
+  padding: 7px 13px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.sndhint.r {
+  right: 26px;
+}
+.sndhint.l {
+  left: 26px;
+}
+
+/* ============ MOBILE (≤900px) ============ */
+@media (max-width: 900px) {
+  .introInner {
+    padding: 32px 20px 72px;
+  }
+  .statGrid {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+  .statCell,
+  .statCell:first-child {
+    padding: 22px 0 0;
+    border-right: none;
+    border-bottom: 1px solid var(--hc-hair);
+  }
+  .statCell:last-child {
+    border-bottom: none;
+  }
+  .brandtick {
+    margin-top: 44px;
+  }
+  .btrow {
+    gap: 56px;
+    padding-right: 56px;
+  }
+  .btrow img {
+    height: 40px;
+  }
+
+  /* split → stacked column: media band on top, copy below */
+  .split {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+  }
+  .side,
+  .c4Video,
+  .hollisterSide,
+  .c4Cutout {
+    position: relative;
+    top: auto;
+    bottom: auto;
+    right: auto;
+    left: auto;
+    width: 100%;
+    height: 46vh;
+    z-index: 0;
+    order: -1;
+  }
+  .c4Cutout {
+    display: none; /* keep one media band on mobile: the video */
+  }
+  .side video,
+  .side img,
+  .c4Video video,
+  .hollisterSide img {
+    object-position: center 20%;
+  }
+  /* the .melt gradient assumes side-by-side; drop it on mobile */
+  .melt {
+    display: none;
+  }
+  /* full-width top→bottom scrim over the media band */
+  .scrim {
+    background: linear-gradient(
+      180deg,
+      rgba(10, 10, 14, 0) 0%,
+      rgba(10, 10, 14, 0.15) 55%,
+      var(--hc-ink) 100%
+    ) !important;
+  }
+  .bg {
+    opacity: 0.35;
+  }
+  .txt,
+  .canesText,
+  .c4Text,
+  .hollisterText {
+    width: 100%;
+    margin: 0;
+    padding: 28px 20px 44px;
+  }
+  .sndhint {
+    top: auto;
+    bottom: calc(46vh + 12px);
+  }
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  .rv {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .d1,
+  .d2,
+  .d3 {
+    transition-delay: 0s;
+  }
+  .btrow {
+    animation: none;
+  }
+}
