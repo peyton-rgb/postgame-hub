@@ -8,6 +8,7 @@ import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
 import { resolveHeroPlaybackUrl } from "@/lib/hero-render";
 import HomepageRotator from "@/components/HomepageRotator";
 import { getHomepageRotatorCampaigns, type RotatorSlide } from "@/lib/getHomepageRotatorCampaigns";
+import HalfcourtSections from "./HalfcourtSections";
 
 export const revalidate = 60;
 
@@ -195,6 +196,10 @@ export default async function HomepagePage() {
           </div>
         </div>
       </section>
+
+      {/* Credentials + campaign proof blocks, lifted from /pitch/halfcourt.
+          Fully scoped via CSS module (halfcourt-sections.module.css). */}
+      <HalfcourtSections />
 
       {/* Stats */}
       {show("stats") && stats.length > 0 && (
