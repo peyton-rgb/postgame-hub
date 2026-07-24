@@ -526,3 +526,89 @@ img, video { display: block; max-width: 100%; }
 @media (max-width: 480px) {
   .recap-container [data-masonry] { column-count: 1 !important; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   /board — personal task manager (Liquid Glass surfaces)
+   Appended additively; scoped under .pg-board-* to avoid collisions.
+   ════════════════════════════════════════════════════════════ */
+.pg-board-col { }
+
+.pg-board-dropzone {
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid transparent;
+}
+.pg-board-dropzone--over {
+  background: var(--orange-dim);
+  border: 1px solid var(--glass-border);
+}
+
+.pg-board-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  padding: 12px 13px;
+  cursor: grab;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+  touch-action: none;
+}
+.pg-board-card:hover {
+  background: var(--glass-bg-2);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.pg-board-card:active { cursor: grabbing; }
+.pg-board-card--overlay {
+  cursor: grabbing;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  border-color: var(--orange);
+  transform: rotate(1.5deg);
+}
+
+.pg-board-modal {
+  background: rgba(17, 17, 19, 0.92);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+
+.pg-board-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: 5px;
+}
+
+.pg-board-input {
+  width: 100%;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.pg-board-input::placeholder { color: var(--text-4); }
+.pg-board-input:focus {
+  border-color: var(--orange);
+  background: rgba(255, 255, 255, 0.07);
+}
+.pg-board-input option { background: #111; color: #fff; }
+
+.pg-board-spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--orange);
+  animation: pgBoardSpin 0.8s linear infinite;
+}
+@keyframes pgBoardSpin { to { transform: rotate(360deg); } }
