@@ -1,125 +1,126 @@
 // ============================================================
-// /board — task-manager configuration
+// /board — "THE BOARD" v5 configuration
 //
-// Single source of truth for columns, the legacy→column status
-// read-map, canonical status slugs, lanes, and priority styling.
-//
-// v1 is a PERSONAL board (just the signed-in user). Nothing here
-// hardcodes single-user assumptions — widening to a team later is a
-// fetch/RLS change, not a rewrite of this file.
+// Sections, source/lane maps, filter predicates, and small helpers.
+// Mirrors docs/board-v5-reference.html (the design source of truth).
 // ============================================================
 
-export type ColumnKey =
-  | "to_do"
-  | "in_progress"
-  | "waiting_on_me"
-  | "blocked"
-  | "done";
+import type { BoardTask } from "./types";
 
-export interface ColumnDef {
-  key: ColumnKey;
-  label: string;
+// ── Sections (render order) ──
+export interface SectionDef {
+  key: string;
+  num: string;
+  title: string;
+  accent?: boolean;
 }
 
-// Kanban columns — order matters (left → right).
-export const COLUMNS: ColumnDef[] = [
-  { key: "to_do", label: "To Do" },
-  { key: "in_progress", label: "In Progress" },
-  { key: "waiting_on_me", label: "Waiting on Me" },
-  { key: "blocked", label: "Blocked" },
-  { key: "done", label: "Done" },
+export const SECTIONS: SectionDef[] = [
+  { key: "urgent", num: "01", title: "DO THIS WEEK", accent: true },
+  { key: "you", num: "02", title: "WAITING ON YOU" },
+  { key: "ready", num: "03", title: "READY TO GO" },
+  { key: "flight", num: "04", title: "IN FLIGHT" },
+  { key: "shipped", num: "05", title: "SHIPPED — TAILS" },
+  { key: "park", num: "06", title: "PARKING LOT" },
 ];
 
-export const COLUMN_KEYS: ColumnKey[] = COLUMNS.map((c) => c.key);
+export const SECTION_KEYS = SECTIONS.map((s) => s.key);
+export const SHIPPED_KEY = "shipped";
 
-// Legacy free-form `status` values → column. Applied in the UI only;
-// no DB migration. New/edited rows write the canonical ColumnKey slug
-// (see statusForColumn), but we keep reading legacy values forever.
-const LEGACY_STATUS_MAP: Record<string, ColumnKey> = {
-  ready: "to_do",
-  scoped: "to_do",
-  "spec-ready": "to_do",
-  "pr-ready": "to_do",
-  housekeeping: "to_do",
-  "in-progress": "in_progress",
-  "waiting-on-you": "waiting_on_me",
-  "needs-design-pick": "waiting_on_me",
-  blocked: "blocked",
-  done: "done",
-};
-
-// Resolve any stored status (canonical slug OR legacy value) to a column.
-// Unknown values fall back to To Do so a task is never lost off-board.
-export function columnForStatus(status: string | null | undefined): ColumnKey {
-  if (!status) return "to_do";
-  const raw = status.trim();
-  if ((COLUMN_KEYS as string[]).includes(raw)) return raw as ColumnKey;
-  const lower = raw.toLowerCase();
-  return LEGACY_STATUS_MAP[lower] ?? "to_do";
+// Any legacy/unknown section falls into Parking Lot so a row is never lost.
+export function sectionForKey(section: string | null | undefined): string {
+  const k = (section || "").trim();
+  return SECTION_KEYS.includes(k) ? k : "park";
 }
 
-// The canonical value we WRITE when a task lands in a column.
-export function statusForColumn(key: ColumnKey): string {
-  return key;
-}
+// ── Source platform keys (icon + label) ──
+export const SOURCE_KEYS = [
+  "slack",
+  "gmail",
+  "gcal",
+  "github",
+  "asana",
+  "frameio",
+  "hub",
+  "planning",
+] as const;
+export type SourceKey = (typeof SOURCE_KEYS)[number];
 
-// ── Lanes (colored tag chip + top-of-board filter) ──
-export type Lane = "BUILD" | "CONTENT" | "OPS";
-
-export const LANES: Lane[] = ["BUILD", "CONTENT", "OPS"];
-
-export const LANE_STYLE: Record<Lane, { label: string; color: string; bg: string; border: string }> = {
-  BUILD: {
-    label: "BUILD",
-    color: "#D73F09",
-    bg: "rgba(215, 63, 9, 0.14)",
-    border: "rgba(215, 63, 9, 0.42)",
-  },
-  CONTENT: {
-    label: "CONTENT",
-    color: "#8b7cf6",
-    bg: "rgba(139, 124, 246, 0.14)",
-    border: "rgba(139, 124, 246, 0.42)",
-  },
-  OPS: {
-    label: "OPS",
-    color: "#2dd4a7",
-    bg: "rgba(45, 212, 167, 0.13)",
-    border: "rgba(45, 212, 167, 0.4)",
-  },
+export const SOURCE_LABEL: Record<SourceKey, string> = {
+  slack: "Slack",
+  gmail: "Gmail",
+  gcal: "Calendar",
+  github: "GitHub",
+  asana: "Asana",
+  frameio: "Frame.io",
+  hub: "Hub",
+  planning: "Planning",
 };
 
-export function laneStyle(lane: string | null | undefined) {
-  const key = (lane || "").toUpperCase() as Lane;
-  return LANE_STYLE[key] ?? {
-    label: lane || "—",
-    color: "rgba(255,255,255,0.55)",
-    bg: "rgba(255,255,255,0.06)",
-    border: "rgba(255,255,255,0.14)",
-  };
+// Normalize a free-form `source` value to a known icon key (default: planning).
+export function sourceKey(source: string | null | undefined): SourceKey {
+  const k = (source || "").trim().toLowerCase();
+  return (SOURCE_KEYS as readonly string[]).includes(k) ? (k as SourceKey) : "planning";
 }
 
-// ── Priority (visual treatment on each card) ──
-export type Priority = "urgent" | "high" | "normal" | "low";
+// ── Lanes ──
+export const LANES = ["BUILD", "CONTENT", "OPS"] as const;
 
-export const PRIORITIES: Priority[] = ["urgent", "high", "normal", "low"];
-
-export const PRIORITY_STYLE: Record<Priority, { label: string; color: string; accent: string }> = {
-  urgent: { label: "Urgent", color: "#ff4d4d", accent: "#ff4d4d" },
-  high: { label: "High", color: "#ff9f45", accent: "#ff9f45" },
-  normal: { label: "Normal", color: "rgba(255,255,255,0.55)", accent: "rgba(255,255,255,0.28)" },
-  low: { label: "Low", color: "rgba(255,255,255,0.4)", accent: "rgba(255,255,255,0.16)" },
-};
-
-export function priorityStyle(priority: string | null | undefined) {
-  const key = (priority || "normal").toLowerCase() as Priority;
-  return PRIORITY_STYLE[key] ?? PRIORITY_STYLE.normal;
+// ── Priority ──
+export function isHot(priority: string | null | undefined): boolean {
+  const p = (priority || "").toLowerCase();
+  return p === "urgent" || p === "high";
 }
 
-// Sort urgent → low for any priority-aware ordering/UX.
-export const PRIORITY_RANK: Record<string, number> = {
-  urgent: 0,
-  high: 1,
-  normal: 2,
-  low: 3,
-};
+// ── Court ──
+export const COURTS = ["You", "You + me", "Me + Code", "Rolling", "Done", "Later"];
+
+// Filter chips (label + key), matching the v5 reference.
+export interface FilterDef {
+  key: string;
+  label: string;
+}
+export const FILTERS: FilterDef[] = [
+  { key: "all", label: "All" },
+  { key: "week", label: "This Week" },
+  { key: "you", label: "Waiting on You" },
+  { key: "hub", label: "Hub Builds" },
+  { key: "content", label: "Content" },
+];
+
+// A task counts for "This Week" when it has a due date within the next 7 days.
+export function isThisWeek(t: BoardTask): boolean {
+  const du = daysUntil(t.due_date);
+  return du !== null && du >= 0 && du <= 7;
+}
+
+export function matchesFilter(t: BoardTask, filter: string): boolean {
+  switch (filter) {
+    case "week":
+      return isThisWeek(t);
+    case "you":
+      return t.court === "You" || t.court === "You + me";
+    case "hub":
+      return (t.lane || "").toUpperCase() === "BUILD";
+    case "content":
+      return (t.lane || "").toUpperCase() === "CONTENT";
+    case "all":
+    default:
+      return true;
+  }
+}
+
+// Whole days from local "today" to an ISO yyyy-mm-dd (null if no date).
+export function daysUntil(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+// Real Postgame mark (brand-kits bucket) — never typography.
+export const POSTGAME_LOGO_URL =
+  "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632055938-16gy1u2t.PNG";
