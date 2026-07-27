@@ -1,27 +1,25 @@
 "use client";
 
 // ============================================================
-// /board — add / edit task modal
-//
-// One modal serves both create (task === null) and edit. Delete lives
-// here too, behind a confirm step. Returns a TaskDraft to the parent,
-// which owns all Supabase writes + optimistic state.
+// /board — v5 add / edit / delete modal (all fields)
 // ============================================================
 
 import { useEffect, useState } from "react";
 import type { BoardTask, TaskDraft } from "./types";
-import { COLUMNS, LANES, PRIORITIES, columnForStatus, laneStyle, priorityStyle } from "./board-config";
+import { SECTIONS, LANES, COURTS, SOURCE_KEYS, SOURCE_LABEL, sectionForKey } from "./board-config";
+
+const PRIORITIES = ["urgent", "high", "normal", "low"];
 
 export default function TaskModal({
   task,
-  defaultStatus,
+  defaultSection,
   saving,
   onSave,
   onDelete,
   onClose,
 }: {
   task: BoardTask | null;
-  defaultStatus: string;
+  defaultSection: string;
   saving: boolean;
   onSave: (draft: TaskDraft) => void;
   onDelete: (task: BoardTask) => void;
@@ -30,16 +28,22 @@ export default function TaskModal({
   const isEdit = !!task;
   const [title, setTitle] = useState(task?.title ?? "");
   const [detail, setDetail] = useState(task?.detail ?? "");
+  const [section, setSection] = useState(task ? sectionForKey(task.section) : defaultSection);
+  const [court, setCourt] = useState(task?.court ?? "You");
+  const [timing, setTiming] = useState(task?.timing ?? "");
+  const [nextStep, setNextStep] = useState(task?.next_step ?? "");
   const [lane, setLane] = useState((task?.lane ?? "BUILD").toUpperCase());
   const [priority, setPriority] = useState((task?.priority ?? "normal").toLowerCase());
-  const [status, setStatus] = useState<string>(task ? columnForStatus(task.status) : defaultStatus);
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
+  const [source, setSource] = useState(task?.source ?? "");
+  const [sourceUrl, setSourceUrl] = useState(task?.source_url ?? "");
+  const [isAgent, setIsAgent] = useState(!!task?.is_agent);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-    }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -53,153 +57,162 @@ export default function TaskModal({
       detail: detail.trim(),
       lane,
       priority,
-      status,
-      due_date: dueDate ? dueDate : null,
+      section,
+      court,
+      timing: timing.trim(),
+      next_step: nextStep.trim(),
+      due_date: dueDate || null,
+      source: source.trim(),
+      source_url: sourceUrl.trim(),
+      is_agent: isAgent,
     });
   }
 
   return (
     <div
-      className="fixed inset-0 z-[10000] grid place-items-center p-4"
-      style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(6px)" }}
+      className="tb-modal-overlay"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        className="w-full max-w-[440px] rounded-3xl p-6 pg-board-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={isEdit ? "Edit task" : "New task"}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="d text-[24px] text-white tracking-wide">{isEdit ? "Edit Task" : "New Task"}</h2>
-          <button onClick={onClose} aria-label="Close" className="text-white/40 hover:text-white text-2xl leading-none">
-            ×
-          </button>
-        </div>
+      <div className="tb-modal" role="dialog" aria-modal="true" aria-label={isEdit ? "Edit task" : "New task"}>
+        <h2>{isEdit ? "Edit Task" : "New Task"}</h2>
 
-        <label className="pg-board-label">Title</label>
+        <label className="tb-label">Title</label>
         <input
           autoFocus
+          className="tb-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          placeholder="What is it?"
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
           }}
-          placeholder="What needs doing?"
-          className="pg-board-input"
         />
 
-        <label className="pg-board-label mt-3">Detail</label>
+        <label className="tb-label">Context</label>
         <textarea
+          className="tb-input"
+          rows={2}
           value={detail}
           onChange={(e) => setDetail(e.target.value)}
-          placeholder="Notes, context, links…"
-          rows={3}
-          className="pg-board-input resize-none"
+          placeholder="One line of background…"
+          style={{ resize: "none" }}
         />
 
-        <div className="grid grid-cols-2 gap-3 mt-3">
+        <label className="tb-label">Next action</label>
+        <textarea
+          className="tb-input"
+          rows={2}
+          value={nextStep}
+          onChange={(e) => setNextStep(e.target.value)}
+          placeholder="The concrete next step…"
+          style={{ resize: "none" }}
+        />
+
+        <div className="tb-row">
           <div>
-            <label className="pg-board-label">Column</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="pg-board-input">
-              {COLUMNS.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
+            <label className="tb-label">Section</label>
+            <select className="tb-input" value={section} onChange={(e) => setSection(e.target.value)}>
+              {SECTIONS.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.title}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="pg-board-label">Due date</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="pg-board-input" />
+            <label className="tb-label">Court</label>
+            <select className="tb-input" value={court} onChange={(e) => setCourt(e.target.value)}>
+              {COURTS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <div className="mt-3">
-          <label className="pg-board-label">Lane</label>
-          <div className="flex gap-2">
-            {LANES.map((l) => {
-              const s = laneStyle(l);
-              const active = lane === l;
-              return (
-                <button
-                  key={l}
-                  onClick={() => setLane(l)}
-                  className="flex-1 text-[12px] font-semibold uppercase tracking-wide py-2 rounded-lg transition"
-                  style={{
-                    color: active ? s.color : "rgba(255,255,255,0.5)",
-                    background: active ? s.bg : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${active ? s.border : "rgba(255,255,255,0.08)"}`,
-                  }}
-                >
-                  {l}
-                </button>
-              );
-            })}
+        <div className="tb-row">
+          <div>
+            <label className="tb-label">Timing label</label>
+            <input
+              className="tb-input"
+              value={timing}
+              onChange={(e) => setTiming(e.target.value)}
+              placeholder="Ready now, Blocked, No date…"
+            />
+          </div>
+          <div>
+            <label className="tb-label">Due date</label>
+            <input type="date" className="tb-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
 
-        <div className="mt-3">
-          <label className="pg-board-label">Priority</label>
-          <div className="flex gap-2">
-            {PRIORITIES.map((p) => {
-              const s = priorityStyle(p);
-              const active = priority === p;
-              return (
-                <button
-                  key={p}
-                  onClick={() => setPriority(p)}
-                  className="flex-1 text-[12px] font-semibold capitalize py-2 rounded-lg transition"
-                  style={{
-                    color: active ? s.color : "rgba(255,255,255,0.5)",
-                    background: active ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${active ? s.accent : "rgba(255,255,255,0.08)"}`,
-                  }}
-                >
-                  {p}
-                </button>
-              );
-            })}
+        <label className="tb-label">Lane</label>
+        <div className="tb-chips">
+          {LANES.map((l) => (
+            <button key={l} className={`tb-pick${lane === l ? " on" : ""}`} onClick={() => setLane(l)}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        <label className="tb-label">Priority</label>
+        <div className="tb-chips">
+          {PRIORITIES.map((p) => (
+            <button key={p} className={`tb-pick${priority === p ? " on" : ""}`} onClick={() => setPriority(p)}>
+              {p}
+            </button>
+          ))}
+        </div>
+
+        <div className="tb-row">
+          <div>
+            <label className="tb-label">Source</label>
+            <select className="tb-input" value={source} onChange={(e) => setSource(e.target.value)}>
+              <option value="">None</option>
+              {SOURCE_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {SOURCE_LABEL[k]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="tb-label">Source link</label>
+            <input
+              className="tb-input"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder="https://…"
+            />
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mt-6">
+        <label className="tb-label">Agent flag</label>
+        <div className="tb-chips">
+          <button className={`tb-pick${isAgent ? " on" : ""}`} onClick={() => setIsAgent((v) => !v)}>
+            {isAgent ? "AGENT ✓" : "Mark as agent-runnable"}
+          </button>
+        </div>
+
+        <div className="tb-modal-actions">
           {isEdit &&
             (confirmDelete ? (
-              <div className="flex items-center gap-2 mr-auto">
-                <button
-                  onClick={() => onDelete(task!)}
-                  disabled={saving}
-                  className="text-[13px] font-semibold text-white px-3 py-2 rounded-lg"
-                  style={{ background: "#c0281a" }}
-                >
-                  Confirm delete
-                </button>
-                <button onClick={() => setConfirmDelete(false)} className="text-[13px] text-white/50 hover:text-white">
-                  Cancel
-                </button>
-              </div>
+              <button className="tb-btn danger-solid" disabled={saving} onClick={() => onDelete(task!)}>
+                Confirm delete
+              </button>
             ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                disabled={saving}
-                className="mr-auto text-[13px] text-white/45 hover:text-[#ff6b6b] transition"
-              >
+              <button className="tb-btn danger" disabled={saving} onClick={() => setConfirmDelete(true)}>
                 Delete
               </button>
             ))}
-          <button onClick={onClose} className="text-[13px] text-white/55 hover:text-white px-3 py-2">
+          <button className="tb-btn ghost" onClick={onClose}>
             Cancel
           </button>
-          <button
-            onClick={submit}
-            disabled={!canSave}
-            className="text-[13px] font-semibold text-white px-4 py-2 rounded-lg transition disabled:opacity-40"
-            style={{ background: "var(--orange)" }}
-          >
-            {saving ? "Saving…" : isEdit ? "Save changes" : "Add task"}
+          <button className="tb-btn primary" disabled={!canSave} onClick={submit}>
+            {saving ? "Saving…" : isEdit ? "Save" : "Add task"}
           </button>
         </div>
       </div>
