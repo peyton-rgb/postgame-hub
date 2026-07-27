@@ -200,8 +200,17 @@ footer{padding:60px 28px;text-align:center;color:var(--faint);font-size:11px;let
   .side.duo{height:64vh}
   .melt.to-r,.melt.to-l{background:linear-gradient(180deg,rgba(10,10,14,0) 55%,var(--ink) 96%)}
   .split .txt,.split.flip .txt{width:auto;padding:34px 24px 70px}
-  .pillars{grid-template-columns:1fr 1fr}
+  /* !important so per-section inline grid-template-columns still collapses on mobile */
+  .pillars{grid-template-columns:1fr 1fr!important}
 }
+
+/* national footprint grid — §3 Team Red Bull, Curated */
+.natgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:18px;margin-top:44px;max-width:900px}
+.natgrid img{width:100%;aspect-ratio:1;object-fit:contain;
+  filter:grayscale(1) brightness(1.6) opacity(.42);transition:filter .3s}
+.natgrid:hover img{filter:grayscale(1) brightness(1.6) opacity(.28)}
+.natgrid img:hover{filter:none;opacity:1}
+@media(max-width:900px){.natgrid{grid-template-columns:repeat(4,1fr);gap:14px}}
 </style>
 </head>
 <body>
@@ -278,6 +287,36 @@ footer{padding:60px 28px;text-align:center;color:var(--faint);font-size:11px;let
         <div class="title statnum" data-n="300" data-suf="+" style="font-size:clamp(40px,4.6vw,58px);margin-top:10px">0+</div></div>
     </div>
     <div class="brandtick rv d3"><div class="btrow"><img src="assets/tick_canes.png" alt="Raising Cane's"><img src="assets/tick_adidas.png" alt="adidas"><img src="assets/tick_hollister.png" alt="Hollister"><img src="assets/tick_cvs.png" alt="CVS"><img src="assets/tick_wendys.png" alt="Wendy's"><img src="assets/tick_goodr.png" alt="goodr"><img src="assets/tick_stanley.png" alt="Stanley"><img src="assets/tick_heydude.svg" alt="HEYDUDE"><img src="assets/tick_crocs.svg" alt="Crocs"><img src="assets/tick_7eleven.png" alt="7-Eleven"><img src="assets/tick_tacojohns.png" alt="Taco John's"><img src="assets/tick_armani.png" alt="Armani"><img src="assets/tick_c4.png" alt="C4 Energy"><img src="assets/tick_canes.png" alt="Raising Cane's"><img src="assets/tick_adidas.png" alt="adidas"><img src="assets/tick_hollister.png" alt="Hollister"><img src="assets/tick_cvs.png" alt="CVS"><img src="assets/tick_wendys.png" alt="Wendy's"><img src="assets/tick_goodr.png" alt="goodr"><img src="assets/tick_stanley.png" alt="Stanley"><img src="assets/tick_heydude.svg" alt="HEYDUDE"><img src="assets/tick_crocs.svg" alt="Crocs"><img src="assets/tick_7eleven.png" alt="7-Eleven"><img src="assets/tick_tacojohns.png" alt="Taco John's"><img src="assets/tick_armani.png" alt="Armani"><img src="assets/tick_c4.png" alt="C4 Energy"></div></div>
+  </div>
+</section>
+
+<!-- ============ THE ATHLETE FUNNEL ============ -->
+<section style="background:var(--ink);position:relative;overflow:hidden">
+  <div class="fg wrap" style="padding:110px 28px">
+    <div class="folio rv">The Athlete Funnel</div>
+    <h2 class="title rv d1" style="font-size:clamp(40px,5.2vw,70px);margin-top:14px;max-width:16ch">
+      Every athlete.<br><span class="accent">One network.</span></h2>
+    <div class="rv d2" style="max-width:62ch;margin-top:26px">
+      <p class="caption" style="font-size:15.5px">
+        Postgame has access to every athlete in college sports — <b>70,000 paid through our
+        deals</b>, and a direct line to the rest.</p>
+      <p class="caption" style="font-size:15.5px;margin-top:16px">That distribution does two things.</p>
+    </div>
+    <div class="pillars rv d3" style="grid-template-columns:repeat(2,1fr);margin-top:44px;max-width:900px">
+      <div class="pillar hot"><div class="o">One</div><h3>Any athlete,<br>brand standard</h3>
+        <p>We build partnerships with any athlete, to brand standard, on a timely turnaround.
+        No hunting for a way in — the way in already exists.</p></div>
+      <div class="pillar hot"><div class="o">Two</div><h3>It drives<br>cost down</h3>
+        <p>Because we work across so many brands, athletes and agents come to Postgame for
+        favorable pricing to land more campaigns. Scale cuts both ways: faster access, better rate.</p></div>
+    </div>
+    <div class="rv d3" style="margin-top:46px;border-left:3px solid var(--red);padding:6px 0 6px 22px;max-width:70ch">
+      <div style="font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)">Operating proof</div>
+      <p class="caption" style="font-size:15px;margin-top:10px">
+        Postgame manages <b>the world's largest athlete ambassador program for adidas</b>, and runs
+        the <b>Allstate receivers team</b>. Programs at that scale don't get handed to vendors —
+        they get handed to operators.</p>
+    </div>
   </div>
 </section>
 
@@ -364,6 +403,62 @@ footer{padding:60px 28px;text-align:center;color:var(--faint);font-size:11px;let
   </div>
 </section>
 
+<!-- ============ POSTGAME WINS ============ -->
+<section style="background:#0d0a0a;position:relative;overflow:hidden">
+  <div class="fg wrap" style="padding:120px 28px">
+    <div class="folio rv">Postgame Wins</div>
+    <h2 class="title rv d1" style="font-size:clamp(40px,5vw,66px);margin-top:14px;max-width:18ch">
+      Speed is<br><span class="accent">the product.</span></h2>
+    <p class="caption rv d2" style="font-size:15.5px;margin-top:22px;max-width:56ch">
+      From moment to signed deal, faster than anyone else in the space.</p>
+    <div class="tiers rv d3" style="max-width:760px">
+      <div class="tier">
+        <span class="lv">24 HRS</span>
+        <div class="tname"><b>Lamont Butler</b><span>Signed 24 hours after the shot.</span></div>
+        <span class="prize">Speed</span></div>
+      <div class="tier">
+        <span class="lv">RUN</span>
+        <div class="tname"><b>Postgame × DJ Burns</b><span>The March Madness run.</span></div></div>
+      <div class="tier">
+        <span class="lv">RUN</span>
+        <div class="tname"><b>Postgame × C4</b><span>March Madness.</span></div></div>
+      <div class="tier">
+        <span class="lv">RUN</span>
+        <div class="tname"><b>Postgame × Raising Cane's</b><span>NCAA basketball.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TOP ATHLETE PARTNERSHIPS ============ -->
+<section style="background:var(--ink);position:relative;overflow:hidden">
+  <div class="fg wrap" style="padding:120px 28px">
+    <div class="folio rv">Top Athlete Partnerships</div>
+    <h2 class="title rv d1" style="font-size:clamp(40px,5vw,66px);margin-top:14px;max-width:20ch">
+      We partner early.<br><span class="accent">The market catches up later.</span></h2>
+    <div class="wkgrid rv d2">
+      <div class="wk" style="padding:28px 30px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)">Bet · 01</div>
+        <h3 class="title" style="font-size:clamp(28px,3vw,38px);margin-top:12px">Jayden Daniels</h3>
+        <p class="caption" style="margin-top:16px;font-size:14.5px">
+          Signed preseason. Postgame partners Jayden Daniels with <b>HeyDude</b> and
+          <b>Urban Outfitters</b> — before the season, before the moment.</p>
+        <p class="caption" style="margin-top:14px;font-size:14.5px">
+          <b>Then he wins the Heisman.</b> The relationship was already locked in when the value spiked.</p>
+      </div>
+      <div class="wk" style="padding:28px 30px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)">Bet · 02</div>
+        <h3 class="title" style="font-size:clamp(28px,3vw,38px);margin-top:12px">Travis Hunter</h3>
+        <p class="caption" style="margin-top:16px;font-size:14.5px">
+          Postgame partners Travis Hunter with <b>CVS</b> and <b>HeyDude</b> — the
+          <b>&ldquo;HOLIDUDE&rdquo;</b> campaign.</p>
+        <p class="caption" style="margin-top:14px;font-size:14.5px">
+          Hunter wins the Heisman, and the relationship converts into a long-term deal with HeyDude.
+          <b>Early partner, long-term ambassador.</b></p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ THE CONCEPT ============ -->
 <section class="full" style="background:#001E3C">
   <div class="bg" style="background:linear-gradient(180deg,#0a1526,#070d18 55%,#04080f)"></div>
@@ -443,6 +538,61 @@ footer{padding:60px 28px;text-align:center;color:var(--faint);font-size:11px;let
   </div>
 </section>
 
+<!-- ============ TEAM RED BULL, CURATED ============ -->
+<section class="full" style="background:#001E3C">
+  <div class="bg" style="background:linear-gradient(180deg,#0a1526,#070d18 60%,#04080f)"></div>
+  <div class="fg wrap" style="padding:130px 28px">
+    <div class="folio rv">The List</div>
+    <h2 class="title rv d1" style="font-size:clamp(42px,5.6vw,74px);margin-top:14px;max-width:16ch">
+      Team Red Bull,<br><span class="accent">curated.</span></h2>
+    <div class="rv d2" style="max-width:60ch;margin-top:26px">
+      <p class="caption" style="font-size:15.5px">
+        A curated list of <b>50 of the top athletes across the country</b> — Team Red Bull,
+        built by Postgame.</p>
+      <p class="caption" style="font-size:15.5px;margin-top:16px">
+        Not one-off bookings. Long-term partnerships, inked off the back of real events and live
+        activations — the athlete shows up, performs, and the relationship converts into an ongoing
+        deal. <b>The Half Court slate is where that list gets built.</b></p>
+    </div>
+    <div class="natgrid rv d3">
+      <img src="assets/sch_alabama.png" alt="Alabama"><img src="assets/sch_georgia.png" alt="Georgia">
+      <img src="assets/sch_texas.png" alt="Texas"><img src="assets/sch_ohiost.png" alt="Ohio State">
+      <img src="assets/sch_michigan.png" alt="Michigan"><img src="assets/sch_oregon.png" alt="Oregon">
+      <img src="assets/sch_lsu.png" alt="LSU"><img src="assets/sch_usc.png" alt="USC">
+      <img src="assets/sch_notredame.png" alt="Notre Dame"><img src="assets/sch_clemson.png" alt="Clemson">
+      <img src="assets/sch_oklahoma.png" alt="Oklahoma"><img src="assets/sch_miami.png" alt="Miami">
+      <img src="assets/sch_kansas.png" alt="Kansas"><img src="assets/sch_indiana.png" alt="Indiana">
+      <img src="assets/sch_illinois.png" alt="Illinois"><img src="assets/sch_baylor.png" alt="Baylor">
+    </div>
+    <div class="rv d3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:52px;border-top:1px solid var(--hair);max-width:880px">
+      <div style="padding:30px 20px 0;border-right:1px solid var(--hair)">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#FFC900">Curated athletes</div>
+        <div class="title statnum" data-n="50" data-suf="" style="font-size:clamp(40px,4.6vw,58px);margin-top:10px">0</div></div>
+      <div style="padding:30px 20px 0 34px;border-right:1px solid var(--hair)">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#FFC900">The roster</div>
+        <div class="title" style="font-size:clamp(22px,2.4vw,32px);margin-top:10px;line-height:1.1">Team Red Bull</div></div>
+      <div style="padding:30px 20px 0 34px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#FFC900">Inked off</div>
+        <div class="title" style="font-size:clamp(22px,2.4vw,32px);margin-top:10px;line-height:1.1">Live activations</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE CURATION ============ -->
+<section style="background:var(--ink);position:relative;overflow:hidden">
+  <div class="fg wrap" style="padding:100px 28px">
+    <div style="max-width:74ch">
+      <div class="folio rv">The Curation</div>
+      <h2 class="title rv d1" style="font-size:clamp(34px,4.4vw,56px);margin-top:14px">
+        We know who.<br><span class="accent">We know what.</span></h2>
+      <p class="caption rv d2" style="font-size:16px;margin-top:24px;max-width:56ch">
+        Curation isn't a guess. We're experts in the space — we know who to partner with, and at
+        what rate. That's what a 50-athlete curated list actually requires:
+        <b>reading the market in real time, not just reach.</b></p>
+    </div>
+  </div>
+</section>
+
 <!-- ============ THE CROSSOVER · ATHLETES VS THE FANS ============ -->
 <section class="full">
   <div class="bg" style="background-image:url('assets/athens_crowd.jpg');background-position:center 60%;opacity:.4"></div>
@@ -493,6 +643,31 @@ footer{padding:60px 28px;text-align:center;color:var(--faint);font-size:11px;let
     <div class="plist rv d2" style="max-width:none">
       <div class="ph"><span><div class="t1">The Gauntlet</div><div class="t2">Five benchmarks · won on the spot</div></span></div>
       <div class="tier"><span class="lv">LVL 01</span><span class="tname"><b>First Bucket</b><span>Make your first shot</span></span><span class="prize">Ice-cold Red Bull</span></div><div class="tier"><span class="lv">LVL 02</span><span class="tname"><b>Heat Check</b><span>3 makes in a row</span></span><span class="prize">Rally towel</span></div><div class="tier"><span class="lv">LVL 03</span><span class="tname"><b>On Fire</b><span>5 in a row</span></span><span class="prize">Tailgate Edition tee</span></div><div class="tier"><span class="lv">LVL 04</span><span class="tname"><b>Buzzer Beater</b><span>7 makes in 30 seconds</span></span><span class="prize">Lot Champion snapback</span></div><div class="tier king"><span class="lv">LVL 05</span><span class="tname"><b>Top of the Board</b><span>Top the leaderboard at close</span></span><span class="prize">Signed ball from the headliner</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GUARANTEED TURNOUT ============ -->
+<section style="background:#0d0a0a;position:relative;overflow:hidden">
+  <div class="fg wrap" style="padding:120px 28px">
+    <div class="folio rv">Guaranteed Turnout</div>
+    <h2 class="title rv d1" style="font-size:clamp(40px,5.2vw,70px);margin-top:14px;max-width:17ch">
+      The network<br><span class="accent">fills the lot.</span></h2>
+    <div class="rv d2" style="max-width:60ch;margin-top:26px">
+      <p class="caption" style="font-size:15.5px">
+        Doing an event on campus? Postgame's volume network can notify <b>every</b> college athlete
+        on that campus — and guarantee turnout.</p>
+      <p class="caption" style="font-size:15.5px;margin-top:16px">
+        That's not a media buy. It's a direct line to the roster. <b>The court doesn't just draw a
+        crowd — Postgame makes sure the crowd shows up.</b></p>
+    </div>
+    <div class="pillars rv d3" style="grid-template-columns:repeat(3,1fr);margin-top:48px;max-width:900px">
+      <div class="pillar"><div class="o">Step 01</div><h3>We set<br>the date</h3>
+        <p>Stop locked to the football calendar.</p></div>
+      <div class="pillar"><div class="o">Step 02</div><h3>The network<br>fires</h3>
+        <p>Every athlete on that campus gets notified directly.</p></div>
+      <div class="pillar hot"><div class="o">Step 03</div><h3>The lot<br>fills</h3>
+        <p>Turnout guaranteed — not hoped for.</p></div>
     </div>
   </div>
 </section>
@@ -609,6 +784,30 @@ footer{padding:60px 28px;text-align:center;color:var(--faint);font-size:11px;let
     <p class="caption rv d2" style="margin-top:16px;max-width:40ch">Pregame warmups, hood up, ball in one hand — <b>a Red Bull in the other</b> as he walks onto the field. No shoot day. No set. The Saturday machine does the work.</p>
     <div class="flavorunit rv d3"><img src="assets/can_lime.png" alt="Red Bull Summer Edition — Sudachi Lime">
       <span class="fl">He walks with<b>Red Bull Summer Edition</b><b style="color:#FFC900">Sudachi Lime</b></span></div>
+  </div>
+</section>
+
+<!-- ============ RED BULL AT SCALE ============ -->
+<section class="full" style="background:#001E3C">
+  <div class="bg" style="background:linear-gradient(180deg,#0a1526,#070d18 55%,#04080f)"></div>
+  <div class="fg wrap" style="padding:130px 28px">
+    <div class="folio rv">The Model</div>
+    <h2 class="title rv d1" style="font-size:clamp(42px,5.6vw,76px);margin-top:14px;max-width:16ch">
+      Ambassadors aren't bought.<br><span class="accent">They're grown.</span></h2>
+    <p class="caption rv d2" style="font-size:15.5px;margin-top:26px;max-width:58ch">
+      <b>Volume beats one-off.</b> Instead of paying top-tier rates for athletes with no existing
+      relationship, Red Bull micro-partners early — small deals, low cost, real relationship — and
+      builds toward long-range brand ambassadors.</p>
+    <div class="pillars rv d3" style="grid-template-columns:repeat(3,1fr);margin-top:52px;max-width:980px">
+      <div class="pillar"><div class="o">Stop 01</div><h3>Sign</h3>
+        <p>One stop on the slate. Small deal, low cost, real relationship.</p></div>
+      <div class="pillar"><div class="o">Stop 02</div><h3>Prove</h3>
+        <p>The fit shows on camera, at a live activation, in front of a crowd.</p></div>
+      <div class="pillar hot"><div class="o">Stop 03</div><h3>Expand</h3>
+        <p>The deal grows into a long-range ambassador relationship.</p></div>
+    </div>
+    <p class="caption rv d3" style="font-size:17px;margin-top:44px;max-width:52ch;color:rgba(255,255,255,.9)">
+      <b>The Half Court slate is the on-ramp.</b></p>
   </div>
 </section>
 
