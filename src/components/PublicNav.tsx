@@ -10,6 +10,7 @@
 // ============================================================
 
 import Link from 'next/link';
+import { PostgameLogo } from '@/components/PostgameLogo';
 
 interface PublicNavProps {
   variant?: 'dark' | 'light';
@@ -26,11 +27,10 @@ export default function PublicNav({ variant = 'dark' }: PublicNavProps) {
           : 'bg-white/90 backdrop-blur-sm text-black border-b border-black/10'
       }`}
     >
-      <Link
-        href="/"
-        className="text-sm font-medium tracking-[0.15em]"
-      >
-        P<span className="text-[#D73F09]">+</span>STGAME
+      {/* The mark is a file, never typography. The light variant sits on a
+          white ground, so it needs the dark-ink mark to read. */}
+      <Link href="/" className="flex items-center">
+        <PostgameLogo size="sm" ink={isDark ? 'light' : 'dark'} />
       </Link>
 
       <div className="flex items-center gap-6">

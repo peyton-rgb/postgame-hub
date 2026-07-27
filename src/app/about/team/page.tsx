@@ -1,3 +1,5 @@
+import { PostgameLogo } from "@/components/PostgameLogo";
+
 export const revalidate = 60;
 
 const styles = `
@@ -9,7 +11,7 @@ const styles = `
 
   /* Nav */
   .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border);}
-  .nav-logo{font-size:22px;font-weight:900;color:var(--orange);text-decoration:none;}
+  .nav-logo{display:flex;align-items:center;text-decoration:none;}
   .nav-links{display:flex;align-items:center;gap:32px;}
   .nav-links a{color:var(--text-muted);font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.05em;transition:color 0.2s;}
   .nav-links a:hover{color:var(--text);}
@@ -140,7 +142,7 @@ export default function TeamPage() {
 
       {/* Nav */}
       <nav className="nav">
-        <a href="/homepage" className="nav-logo">POSTGAME</a>
+        <a href="/homepage" className="nav-logo"><PostgameLogo size="md" /></a>
         <div className="nav-links">
           <a href="/clients">Clients</a>
           <a href="/campaigns">Campaigns</a>

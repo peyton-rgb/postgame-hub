@@ -20,6 +20,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { PostgameLogo } from '@/components/PostgameLogo';
 import PublicNav from '@/components/PublicNav';
 import { createBrowserSupabase } from '@/lib/supabase';
 
@@ -212,7 +213,7 @@ function MetricCard({
   return (
     <div className="relative group bg-[#111] border border-white/[0.06] rounded-xl p-5 text-center overflow-hidden hover:border-white/10 transition-all duration-500">
       <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-500"
         style={{
           background: `radial-gradient(ellipse at center, ${brandColor}08 0%, transparent 70%)`,
         }}
@@ -997,8 +998,8 @@ export default function CaseStudyDetailPage() {
 
       {/* ====== FOOTER ====== */}
       <footer className="bg-black py-12 px-6 text-center border-t border-white/5">
-        <div className="text-sm font-medium tracking-[0.15em] mb-3">
-          P<span className="text-[#D73F09]">+</span>STGAME
+        <div className="flex justify-center mb-3">
+          <PostgameLogo size="sm" />
         </div>
         <div className="text-[11px] text-white/25 max-w-md mx-auto leading-relaxed">
           Postgame&trade; manages the largest sports marketing and influencer
