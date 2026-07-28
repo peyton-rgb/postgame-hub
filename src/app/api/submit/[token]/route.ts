@@ -72,17 +72,10 @@ function linkBlockedReason(link: SubmissionLink | null): { status: number; error
   return null;
 }
 
-/** Drive-folder-safe name: keep letters/numbers/space/_-, collapse whitespace. */
-function sanitizeSegment(s: string): string {
-  return String(s ?? "")
-    .replace(/[^\p{L}\p{N} _-]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Same, but no spaces — used inside filenames so the trailing _NN stays parseable. */
-function compactSegment(s: string): string {
-  return sanitizeSegment(s).replace(/\s+/g, "");
+/** Compact, title-cased name token for filenames — letters/numbers only, so
+ *  the trailing _NN stays parseable ("o'brien" → "OBrien", "peyton" → "Peyton"). */
+function fileNamePart(s: string): string {
+  return titleCase(cleanNamePart(s)).replace(/[^\p{L}\p{N}]/gu, "");
 }
 
 /** Title-case a name, capitalizing after start / space / hyphen / apostrophe
@@ -340,7 +333,7 @@ async function handleInit(req: NextRequest, link: SubmissionLink, who: Submitter
   const folderLabel = athleteFolderName(who.first, who.last);
   const athlete = await ensureFolder(folderLabel, content.id);
 
-  const fileBase = `${compactSegment(who.last)}_${compactSegment(who.first)}`;
+  const fileBase = `${fileNamePart(who.first)}_${fileNamePart(who.last)}`;
   let index = await nextFileIndex(athlete.id, fileBase);
 
   const auth = getGoogleAuth();
