@@ -196,7 +196,9 @@ const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
 
 // Athlete-facing branding for the page header + campaign chip. Two steps, no
 // UUID-sniffing of the text column:
-//   brand_id set  → chip name = brands.name, client logo = light ?? primary
+//   brand_id set  → chip name = brands.name, client logo = logo_primary_url
+//                   (rendered bare on black; render nothing if absent — no
+//                    logo_light_url fallback, no placeholder)
 //   brand_id null → chip name = brand_campaigns.brand (plain text), no logo
 async function loadBranding(
   campaign: { brand_id: string | null; brand: string | null } | null
@@ -207,21 +209,20 @@ async function loadBranding(
 
   const { data } = await supabase
     .from("brands")
-    .select("id, name, logo_primary_url, logo_light_url")
+    .select("id, name, logo_primary_url")
     .in("id", ids);
 
   const rows = (data ?? []) as Array<{
     id: string;
     name: string | null;
     logo_primary_url: string | null;
-    logo_light_url: string | null;
   }>;
   const pg = rows.find((r) => r.id === POSTGAME_BRAND_ID);
   const client = campaign?.brand_id ? rows.find((r) => r.id === campaign.brand_id) : null;
 
   return {
     postgameLogoUrl: pg?.logo_primary_url ?? null,
-    clientLogoUrl: client ? client.logo_light_url ?? client.logo_primary_url : null,
+    clientLogoUrl: client?.logo_primary_url ?? null,
     brandName: client?.name ?? campaign?.brand ?? null,
   };
 }

@@ -616,16 +616,25 @@ function Sheet({ children }: { children: React.ReactNode }) {
 function BrandMarks({ postgame, client }: { postgame: string | null; client: string | null }) {
   if (!postgame && !client) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-      {postgame && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={postgame} alt="Postgame" width={122} height={25} style={{ width: 122, height: 25, objectFit: "contain" }} />
-      )}
-      {client && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={client} alt="" style={{ maxWidth: 64, maxHeight: 22, width: "auto", height: "auto", objectFit: "contain" }} />
-      )}
-    </div>
+    <>
+      <style>{`
+        .pg-client-logo { max-width: 70px; max-height: 18px; width: auto; height: auto; object-fit: contain; }
+        @media (min-width: 640px) { .pg-client-logo { max-width: 84px; max-height: 22px; } }
+      `}</style>
+      {/* Horizontal lockup: Postgame wordmark · 1px divider · client mark,
+          all bare on the black ground (no plate). Divider only when both show. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {postgame && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={postgame} alt="Postgame" width={122} height={25} style={{ width: 122, height: 25, objectFit: "contain" }} />
+        )}
+        {postgame && client && <div style={{ width: 1, height: 22, background: off(0.16) }} />}
+        {client && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={client} alt="" className="pg-client-logo" />
+        )}
+      </div>
+    </>
   );
 }
 
