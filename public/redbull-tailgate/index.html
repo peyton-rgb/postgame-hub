@@ -697,6 +697,36 @@ h2{font-family:'Bebas Neue';font-weight:400;font-size:clamp(48px,6.6vw,98px);lin
  .wkrow{grid-template-columns:1fr;gap:9px}
  .wkrow .wk b{display:inline;margin-right:9px}
 }
+
+/* ===== MOBILE OVERFLOW FIX — must stay last in this stylesheet =====
+   The @media(max-width:900px) block near .split is later overridden by
+   `.split.right .txt{grid-template-columns:minmax(400px,var(--fw)) 1fr}`,
+   which is declared outside any media query further down. Equal specificity,
+   later source order, so it wins on phones and pins a 400px column inside a
+   390px viewport — inflating the document to 768px. Re-asserted here. */
+@media(max-width:900px){
+ .split .txt,.split.right .txt{grid-template-columns:1fr;gap:30px}
+ .split{--fw:100%}
+ .split .txt>*{min-width:0}
+ .split.right .inner,.split.right .shot,.split.right .slabs{grid-column:1}
+ .split .inner,.split.right .inner{max-width:100%;text-align:left}
+ .split.right .mA p{margin-left:0}
+ .band{margin-left:0}
+ /* .col{max-width:min(38%,470px)} has no mobile override — on a phone this
+    squeezes the whole copy column of the overview sections to ~125px */
+ .col{max-width:100%}
+ .full.right .fg .col{margin-left:0;text-align:left}
+ .full.right .col .lede,.full.right .col .tiers{margin-left:0}
+ .full.right .mA p{margin-left:0}
+ /* .cap/.dots are placed with calc(50vw - 640px + 30px), which goes negative below 1280px */
+ .split .cap,.split.left .cap,.split.right .cap{left:auto;right:24px}
+ .split .dots,.split.left .dots,.split.right .dots{right:auto;left:24px}
+}
+@media(max-width:560px){
+ /* these labels are white-space:nowrap; the long ones set the page width on a phone */
+ .lab,.mA .lab,.folio{white-space:normal;flex-wrap:wrap}
+ .band>div{padding:16px 12px 14px}
+}
 </style></head><body>
 
 <div class="grain"></div>
