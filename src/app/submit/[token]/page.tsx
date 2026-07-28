@@ -1,19 +1,28 @@
 // src/app/submit/[token]/page.tsx
 // ─────────────────────────────────────────────────────────────
-// PUBLIC athlete content upload page. No login. The athlete opens a
-// tokenized link, enters their details, and drops up to max_files
-// photos/videos. Files upload straight to Google Drive via a
-// server-minted resumable session (chunked + resume-on-drop, built for
-// 100–300MB video on campus wifi), then each is finalized server-side.
+// PUBLIC athlete content upload page. No login. Design: Postgame
+// "floating glass sheet" (variant G / G2), Liquid Glass Dark.
 //
-// Design: Postgame Liquid Glass Dark (globals.css tokens). This page is
-// athlete-facing — no internal language ("Tier 3") appears anywhere.
+// Every translucent surface is off-white (#FAF8F5) at low alpha over the
+// #07070A ground — never a grey hex. Type: Bebas Neue (display), Arimo
+// (body), JetBrains Mono (labels). No internal "Tier 3" language.
+//
+// Upload logic (resumable relay through /api/submit/[token]) is unchanged —
+// this file is a styling pass plus per-row retry.
 // ─────────────────────────────────────────────────────────────
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { Arimo } from "next/font/google";
+
+const arimo = Arimo({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-arimo",
+  display: "swap",
+});
 
 // 4MB chunks (a multiple of 256KB per Google's resumable protocol, and under
 // Vercel's ~4.5MB request-body cap since each chunk is relayed through our own
@@ -22,9 +31,12 @@ const CHUNK_SIZE = 4 * 1024 * 1024;
 
 interface LinkConfig {
   campaignName: string;
+  brandName: string | null;
   minPhotos: number;
   minVideos: number;
   maxFiles: number;
+  postgameLogoUrl: string | null;
+  clientLogoUrl: string | null;
 }
 
 type FileKind = "photo" | "video";
@@ -46,7 +58,7 @@ function classify(file: File): FileKind {
 }
 
 function humanSize(bytes: number): string {
-  if (!bytes) return "0 B";
+  if (!bytes) return "0 MB";
   const units = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
@@ -54,18 +66,10 @@ function humanSize(bytes: number): string {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// ── Resumable upload to a Drive session, RELAYED through our own route ──
-//
-// Google's resumable session URL returns no CORS headers, so the browser
-// can't PUT to it directly (net::ERR_FAILED). Instead every chunk is PUT to
-// our same-origin /api/submit/[token] endpoint, which forwards it to the
-// session URL server-side. Chunks are ≤4MB (Vercel body cap); the session
-// state lives at Google, so the server never holds a whole file.
+// ── Resumable upload, RELAYED through our own route (Drive session has no CORS) ──
 
 type ChunkResult = { done: boolean; fileId?: string | null; rangeEnd?: number | null };
 
-// Relay one chunk (or an empty offset-probe) to the proxy. `range` is the
-// Content-Range value; an empty blob with "bytes */total" probes the offset.
 function relayChunk(
   token: string,
   sessionUrl: string,
@@ -151,6 +155,17 @@ async function resumableUpload(
   throw new Error("Upload did not complete");
 }
 
+// ── Design tokens ─────────────────────────────────────────────
+const OFF = "#FAF8F5";
+const ORANGE = "#D73F09";
+const DANGER = "#E5484D";
+const off = (a: number) => `rgba(250,248,245,${a})`;
+const orange = (a: number) => `rgba(215,63,9,${a})`;
+const MONO = "var(--font-mono), monospace";
+const BODY = "var(--font-arimo), Arial, sans-serif";
+
+type Phase = "form" | "uploading" | "partial" | "done";
+
 // ── Page ──────────────────────────────────────────────────────
 
 export default function SubmitPage() {
@@ -159,6 +174,7 @@ export default function SubmitPage() {
 
   const [config, setConfig] = useState<LinkConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deadLogo, setDeadLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [firstName, setFirstName] = useState("");
@@ -167,12 +183,12 @@ export default function SubmitPage() {
   const [school, setSchool] = useState("");
 
   const [files, setFiles] = useState<Picked[]>([]);
-  const [phase, setPhase] = useState<"form" | "uploading" | "done">("form");
+  const [phase, setPhase] = useState<Phase>("form");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  // Resolve the link → campaign name + requirements.
+  // Resolve the link → campaign name, branding + requirements.
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -180,7 +196,10 @@ export default function SubmitPage() {
       try {
         const res = await fetch(`/api/submit/${encodeURIComponent(token)}`);
         const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body.error || "This upload link isn't valid.");
+        if (!res.ok) {
+          if (!cancelled) setDeadLogo(body.postgameLogoUrl ?? null);
+          throw new Error(body.error || "This upload link isn't active.");
+        }
         if (!cancelled) setConfig(body);
       } catch (e: any) {
         if (!cancelled) setLoadError(e.message);
@@ -193,7 +212,6 @@ export default function SubmitPage() {
     };
   }, [token]);
 
-  // Revoke object URLs on unmount.
   useEffect(() => {
     return () => {
       files.forEach((f) => f.previewUrl && URL.revokeObjectURL(f.previewUrl));
@@ -201,28 +219,35 @@ export default function SubmitPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Conclude the upload pass once nothing is queued/uploading anymore.
+  useEffect(() => {
+    if (phase !== "uploading") return;
+    if (files.length === 0) return;
+    const active = files.some((f) => f.status === "uploading" || f.status === "queued");
+    if (active) return;
+    setPhase(files.every((f) => f.status === "done") ? "done" : "partial");
+  }, [files, phase]);
+
   const photoCount = files.filter((f) => f.kind === "photo").length;
   const videoCount = files.filter((f) => f.kind === "video").length;
+  const locked = phase !== "form";
 
   const addFiles = useCallback(
-    (incoming: FileList | File[]) => {
+    (incoming: File[]) => {
       if (!config) return;
-      // Snapshot on entry — never read a (possibly live) FileList inside the
-      // deferred setFiles updater, which runs AFTER the caller's event handler
-      // (e.g. after an input's value="" reset would have emptied it).
-      const list = Array.from(incoming);
       setSubmitError(null);
       setFiles((prev) => {
         const room = config.maxFiles - prev.length;
         if (room <= 0) return prev;
         const next = [...prev];
-        for (const file of list.slice(0, room)) {
+        for (const file of incoming.slice(0, room)) {
           const kind = classify(file);
           next.push({
             id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
             file,
             kind,
-            previewUrl: kind === "photo" && file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
+            previewUrl:
+              kind === "photo" && file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
             progress: 0,
             status: "queued",
           });
@@ -241,22 +266,27 @@ export default function SubmitPage() {
     });
   };
 
-  const fieldsFilled =
-    firstName.trim() && lastName.trim() && igHandle.trim() && school.trim();
+  const fieldsFilled = firstName.trim() && lastName.trim() && igHandle.trim() && school.trim();
   const meetsPhotos = config ? photoCount >= config.minPhotos : false;
   const meetsVideos = config ? videoCount >= config.minVideos : false;
-  const canSubmit =
-    !!fieldsFilled && files.length > 0 && meetsPhotos && meetsVideos && phase === "form";
+  const canSubmit = !!fieldsFilled && files.length > 0 && meetsPhotos && meetsVideos && phase === "form";
+  const hasFailed = files.some((f) => f.status === "error");
 
   const setProgress = (id: string, fraction: number) =>
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, progress: fraction } : f)));
   const setFileStatus = (id: string, status: Picked["status"], error?: string) =>
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, status, error } : f)));
 
-  const handleSubmit = async () => {
-    if (!token || !config || !canSubmit) return;
+  // Upload (or re-upload) a set of files: mint sessions for just those, then
+  // relay + finalize each. The completion effect flips phase when it settles.
+  const runUpload = async (targets: Picked[]) => {
+    if (!token || targets.length === 0) return;
     setPhase("uploading");
     setSubmitError(null);
+    const targetIds = new Set(targets.map((t) => t.id));
+    setFiles((prev) =>
+      prev.map((f) => (targetIds.has(f.id) ? { ...f, status: "uploading", progress: 0, error: undefined } : f))
+    );
 
     const who = {
       firstName: firstName.trim(),
@@ -265,15 +295,15 @@ export default function SubmitPage() {
       school: school.trim(),
     };
 
+    let sessionByClient: Record<string, string> = {};
     try {
-      // 1. Mint a resumable session per file.
       const initRes = await fetch(`/api/submit/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "init",
           ...who,
-          files: files.map((f) => ({
+          files: targets.map((f) => ({
             clientId: f.id,
             name: f.file.name,
             mimeType: f.file.type,
@@ -283,79 +313,55 @@ export default function SubmitPage() {
       });
       const initBody = await initRes.json().catch(() => ({}));
       if (!initRes.ok) throw new Error(initBody.error || "Couldn't start the upload.");
-
-      const sessionByClient: Record<string, string> = {};
       for (const u of initBody.uploads ?? []) sessionByClient[u.clientId] = u.sessionUrl;
-
-      // 2. Upload sequentially (kinder to campus wifi), finalize each.
-      let anyFailed = false;
-      for (const f of files) {
-        const sessionUrl = sessionByClient[f.id];
-        if (!sessionUrl) {
-          setFileStatus(f.id, "error", "No upload slot");
-          anyFailed = true;
-          continue;
-        }
-        setFileStatus(f.id, "uploading");
-        try {
-          const fileId = await resumableUpload(token, f.file, sessionUrl, (frac) => setProgress(f.id, frac));
-          const finRes = await fetch(`/api/submit/${encodeURIComponent(token)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "finalize", ...who, fileId }),
-          });
-          if (!finRes.ok) {
-            const b = await finRes.json().catch(() => ({}));
-            throw new Error(b.error || "Couldn't save the file.");
-          }
-          setFileStatus(f.id, "done");
-          setProgress(f.id, 1);
-        } catch (e: any) {
-          setFileStatus(f.id, "error", e.message || "Upload failed");
-          anyFailed = true;
-        }
-      }
-
-      if (anyFailed) {
-        setSubmitError("Some files didn't finish. Fix the ones marked in red and submit again.");
-        setPhase("form");
-      } else {
-        setPhase("done");
-      }
     } catch (e: any) {
-      setSubmitError(e.message || "Something went wrong. Please try again.");
-      setPhase("form");
+      setFiles((prev) =>
+        prev.map((f) => (targetIds.has(f.id) ? { ...f, status: "error", error: e.message } : f))
+      );
+      return;
+    }
+
+    for (const f of targets) {
+      const sessionUrl = sessionByClient[f.id];
+      if (!sessionUrl) {
+        setFileStatus(f.id, "error", "No upload slot");
+        continue;
+      }
+      setFileStatus(f.id, "uploading");
+      try {
+        const fileId = await resumableUpload(token, f.file, sessionUrl, (frac) => setProgress(f.id, frac));
+        const finRes = await fetch(`/api/submit/${encodeURIComponent(token)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "finalize", ...who, fileId }),
+        });
+        if (!finRes.ok) {
+          const b = await finRes.json().catch(() => ({}));
+          throw new Error(b.error || "Couldn't save the file.");
+        }
+        setFileStatus(f.id, "done");
+        setProgress(f.id, 1);
+      } catch (e: any) {
+        setFileStatus(f.id, "error", e.message || "Upload failed");
+      }
     }
   };
 
-  // ── Styles (Liquid Glass Dark tokens from globals.css) ──
-  const mono: React.CSSProperties = { fontFamily: "var(--font-mono), monospace" };
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    background: "var(--glass-bg)",
-    border: "1px solid var(--glass-border)",
-    borderRadius: "var(--r-sm)",
-    padding: "13px 15px",
-    color: "var(--text)",
-    fontSize: 15,
-    fontFamily: "Arial, sans-serif",
-    outline: "none",
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    runUpload(files);
   };
-  const labelStyle: React.CSSProperties = {
-    ...mono,
-    fontSize: 10.5,
-    letterSpacing: "0.14em",
-    textTransform: "uppercase",
-    color: "var(--text-3)",
-    marginBottom: 7,
-    display: "block",
+  const retryFile = (id: string) => {
+    const f = files.find((x) => x.id === id);
+    if (f) runUpload([f]);
   };
+  const retryFailed = () => runUpload(files.filter((f) => f.status === "error"));
 
   // ── States ──
   if (loading) {
     return (
-      <Shell>
-        <div style={{ ...mono, color: "var(--text-3)", fontSize: 12, letterSpacing: "0.1em" }}>
+      <Shell arimoVar={arimo.variable}>
+        <div style={{ fontFamily: MONO, color: off(0.45), fontSize: 11, letterSpacing: "0.1em" }}>
           LOADING…
         </div>
       </Shell>
@@ -363,121 +369,135 @@ export default function SubmitPage() {
   }
 
   if (loadError || !config) {
+    // Dead link — minimal, leaks nothing.
     return (
-      <Shell>
-        <div style={{ maxWidth: 420, textAlign: "center" }}>
-          <div className="d" style={{ fontSize: 40, marginBottom: 10 }}>
+      <Shell arimoVar={arimo.variable}>
+        <BrandMarks postgame={deadLogo} client={null} />
+        <div style={{ textAlign: "center", maxWidth: 360 }}>
+          <div className="d" style={{ fontSize: 40, lineHeight: 0.88, color: OFF }}>
             LINK UNAVAILABLE
           </div>
-          <div style={{ color: "var(--text-3)", fontSize: 14 }}>{loadError}</div>
+          <div style={{ fontFamily: BODY, fontSize: 15, lineHeight: 1.52, color: off(0.6), marginTop: 12 }}>
+            This upload link isn&apos;t active.
+          </div>
         </div>
       </Shell>
     );
   }
 
+  const chip = [config.brandName, config.campaignName].filter(Boolean).join(" · ").toUpperCase();
+  const reqSub = `${config.minPhotos} PHOTO${config.minPhotos === 1 ? "" : "S"} + ${config.minVideos} VIDEO${config.minVideos === 1 ? "" : "S"}`;
+
   if (phase === "done") {
-    const total = files.length;
     return (
-      <Shell>
-        <div className="glass" style={{ maxWidth: 520, width: "100%", padding: 40, textAlign: "center", borderRadius: "var(--r-lg)" }}>
+      <Shell arimoVar={arimo.variable}>
+        <BrandMarks postgame={config.postgameLogoUrl} client={config.clientLogoUrl} />
+        <Sheet>
           <div
             style={{
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               borderRadius: "50%",
-              background: "var(--orange-dim)",
-              border: "1.5px solid var(--orange)",
+              background: orange(0.14),
+              border: `1px solid ${orange(0.5)}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 20px",
-              color: "var(--orange)",
-              fontSize: 30,
+              color: ORANGE,
+              fontSize: 26,
             }}
           >
             ✓
           </div>
-          <div className="d" style={{ fontSize: 44, lineHeight: 0.95, marginBottom: 12 }}>
+          <div className="d" style={{ fontSize: 40, lineHeight: 0.88, color: OFF, textAlign: "center" }}>
             YOU&apos;RE ALL SET
           </div>
-          <div style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.5 }}>
-            Thanks, {firstName.trim()} — {total} file{total === 1 ? "" : "s"} uploaded for{" "}
-            <span style={{ color: "var(--text)" }}>{config.campaignName}</span>. Our team takes it from here.
+          <div style={{ fontFamily: BODY, fontSize: 15, lineHeight: 1.52, color: off(0.6), textAlign: "center" }}>
+            Thanks, {firstName.trim()} — {files.length} file{files.length === 1 ? "" : "s"} uploaded for{" "}
+            <span style={{ color: OFF }}>{config.campaignName}</span>.
           </div>
-        </div>
+          <div style={{ fontFamily: BODY, fontSize: 15, lineHeight: 1.52, color: off(0.45), textAlign: "center" }}>
+            Forgot something? Open this link again and add more. Your files stay together.
+          </div>
+        </Sheet>
       </Shell>
     );
   }
 
-  const busy = phase === "uploading";
-
   return (
-    <Shell>
+    <Shell arimoVar={arimo.variable}>
       <style>{`
-        .sub-input:focus { border-color: var(--orange) !important; background: var(--glass-bg-2) !important; }
-        .sub-input::placeholder { color: var(--text-4); }
-        .drop-zone.over { border-color: var(--orange) !important; background: var(--orange-dim) !important; }
+        .pg-in:focus { border-color: ${orange(0.55)} !important; background: ${off(0.09)} !important; }
+        .pg-in::placeholder { color: ${off(0.36)}; }
+        .pg-drop.over { border-color: ${orange(0.6)} !important; background: ${orange(0.06)} !important; }
       `}</style>
 
-      <div style={{ width: "100%", maxWidth: 720 }}>
-        {/* Header */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ ...mono, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--orange)" }}>
-            {config.campaignName}
-          </div>
-          <div className="d" style={{ fontSize: 52, lineHeight: 0.92, marginTop: 8 }}>
-            SUBMIT YOUR CONTENT
-          </div>
-          <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 10, lineHeight: 1.5, maxWidth: 480 }}>
-            Add your best photos and videos from the shoot. Upload up to {config.maxFiles} files —
-            at least {config.minPhotos} photo{config.minPhotos === 1 ? "" : "s"} and {config.minVideos}{" "}
-            video{config.minVideos === 1 ? "" : "s"}.
-          </div>
-        </div>
+      <BrandMarks postgame={config.postgameLogoUrl} client={config.clientLogoUrl} />
 
-        {/* Details */}
-        <div className="glass" style={{ padding: 22, borderRadius: "var(--r-md)", marginBottom: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div>
-              <label style={labelStyle}>First Name</label>
-              <input className="sub-input" style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={busy} placeholder="First" />
-            </div>
-            <div>
-              <label style={labelStyle}>Last Name</label>
-              <input className="sub-input" style={inputStyle} value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={busy} placeholder="Last" />
-            </div>
-            <div>
-              <label style={labelStyle}>Instagram Handle</label>
-              <input className="sub-input" style={inputStyle} value={igHandle} onChange={(e) => setIgHandle(e.target.value)} disabled={busy} placeholder="@yourhandle" />
-            </div>
-            <div>
-              <label style={labelStyle}>School</label>
-              <input className="sub-input" style={inputStyle} value={school} onChange={(e) => setSchool(e.target.value)} disabled={busy} placeholder="Your school" />
-            </div>
-          </div>
-        </div>
-
-        {/* Dropzone */}
+      <Sheet>
+        {/* Campaign chip */}
         <div
-          className={`drop-zone glass${dragOver ? " over" : ""}`}
-          onClick={() => !busy && fileInputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); if (!busy) setDragOver(true); }}
+          style={{
+            borderRadius: 999,
+            background: orange(0.14),
+            border: `1px solid ${orange(0.4)}`,
+            padding: "7px 14px",
+            fontFamily: MONO,
+            fontWeight: 500,
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            color: ORANGE,
+          }}
+        >
+          {chip}
+        </div>
+
+        {/* Headline */}
+        <div className="d" style={{ fontSize: 40, lineHeight: 0.88, color: OFF, textAlign: "center" }}>
+          SUBMIT YOUR CONTENT
+        </div>
+
+        {/* Intro */}
+        <div style={{ fontFamily: BODY, fontSize: 15, lineHeight: 1.52, color: off(0.6), textAlign: "center" }}>
+          Photos and videos for this campaign. Originals, not screenshots.
+        </div>
+
+        {/* Fields */}
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 14, marginTop: 2 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Field label="FIRST NAME" value={firstName} onChange={setFirstName} placeholder="First" disabled={locked} />
+            <Field label="LAST NAME" value={lastName} onChange={setLastName} placeholder="Last" disabled={locked} />
+          </div>
+          <Field label="INSTAGRAM HANDLE" value={igHandle} onChange={setIgHandle} placeholder="@yourhandle" disabled={locked} />
+          <Field label="SCHOOL" value={school} onChange={setSchool} placeholder="Your school" disabled={locked} />
+        </div>
+
+        {/* Drop zone */}
+        <div
+          className={`pg-drop${dragOver ? " over" : ""}`}
+          onClick={() => !locked && fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!locked) setDragOver(true);
+          }}
           onDragLeave={() => setDragOver(false)}
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
-            // Snapshot to an array — dataTransfer.files is a live collection and
-            // addFiles reads it later inside a setFiles updater (see onChange note).
             const dropped = Array.from(e.dataTransfer.files);
-            if (!busy && dropped.length) addFiles(dropped);
+            if (!locked && dropped.length) addFiles(dropped);
           }}
           style={{
-            borderRadius: "var(--r-md)",
-            border: "1.5px dashed var(--glass-border)",
-            padding: "34px 22px",
+            width: "100%",
+            borderRadius: 18,
+            border: `1px dashed ${off(0.18)}`,
+            padding: "32px 16px",
             textAlign: "center",
-            cursor: busy ? "default" : "pointer",
-            marginBottom: 18,
+            cursor: locked ? "default" : "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
             transition: "border-color .2s, background .2s",
           }}
         >
@@ -488,162 +508,105 @@ export default function SubmitPage() {
             accept="image/*,video/*,.heic,.heif"
             style={{ display: "none" }}
             onChange={(e) => {
-              // Snapshot to a real array BEFORE clearing the input — e.target.files
-              // is a *live* FileList, and addFiles reads it later inside a setFiles
-              // updater. Clearing value="" would empty it before that read.
               const picked = e.target.files ? Array.from(e.target.files) : [];
               e.target.value = "";
               if (picked.length) addFiles(picked);
             }}
           />
-          <div className="d" style={{ fontSize: 24, color: "var(--text-2)" }}>
-            DROP FILES OR TAP TO BROWSE
+          <div className="d" style={{ fontSize: 22, color: OFF }}>
+            ADD YOUR CONTENT
           </div>
-          <div style={{ ...mono, fontSize: 11, color: "var(--text-4)", marginTop: 8, letterSpacing: "0.05em" }}>
-            PHOTOS &amp; VIDEOS · UP TO {config.maxFiles} FILES · LARGE VIDEO OK
+          <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: 9, letterSpacing: "0.1em", color: off(0.45) }}>
+            {reqSub}
           </div>
         </div>
 
-        {/* Requirement meter */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
-          <Req label={`${photoCount}/${config.minPhotos} photos`} met={meetsPhotos} />
-          <Req label={`${videoCount}/${config.minVideos} video${config.minVideos === 1 ? "" : "s"}`} met={meetsVideos} />
-          <Req label={`${files.length}/${config.maxFiles} files`} met={files.length <= config.maxFiles && files.length > 0} />
-        </div>
-
-        {/* File list */}
+        {/* Requirement pills */}
         {files.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+          <div style={{ width: "100%", display: "flex", gap: 8 }}>
+            <ReqPill label={`${photoCount}/${config.minPhotos} PHOTOS`} met={meetsPhotos} />
+            <ReqPill label={`${videoCount}/${config.minVideos} VIDEO${config.minVideos === 1 ? "" : "S"}`} met={meetsVideos} />
+          </div>
+        )}
+
+        {/* File rows */}
+        {files.length > 0 && (
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
             {files.map((f) => (
-              <div
+              <FileRow
                 key={f.id}
-                className="glass-sm"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: 10,
-                  borderRadius: "var(--r-sm)",
-                  border: f.status === "error" ? "1px solid rgba(255,80,80,.5)" : "1px solid var(--glass-border)",
-                }}
-              >
-                {/* Thumb */}
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 8,
-                    flex: "0 0 auto",
-                    background: "var(--glass-bg-2)",
-                    overflow: "hidden",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 16,
-                    color: "var(--text-3)",
-                  }}
-                >
-                  {f.previewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={f.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : f.kind === "video" ? (
-                    "▶"
-                  ) : (
-                    "🖼"
-                  )}
-                </div>
-
-                {/* Name + progress */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {f.file.name}
-                  </div>
-                  <div style={{ ...mono, fontSize: 10, color: "var(--text-4)", marginTop: 2 }}>
-                    {f.kind.toUpperCase()} · {humanSize(f.file.size)}
-                    {f.status === "error" && f.error ? ` · ${f.error}` : ""}
-                  </div>
-                  {(f.status === "uploading" || f.status === "done") && (
-                    <div style={{ height: 3, background: "var(--glass-border)", borderRadius: 2, marginTop: 6, overflow: "hidden" }}>
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${Math.round(f.progress * 100)}%`,
-                          background: "var(--orange)",
-                          transition: "width .2s",
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Status / remove */}
-                <div style={{ flex: "0 0 auto", ...mono, fontSize: 11, color: "var(--text-3)" }}>
-                  {f.status === "done" ? (
-                    <span style={{ color: "var(--orange)" }}>✓</span>
-                  ) : f.status === "uploading" ? (
-                    `${Math.round(f.progress * 100)}%`
-                  ) : f.status === "error" ? (
-                    <span style={{ color: "rgb(255,110,110)" }}>!</span>
-                  ) : (
-                    !busy && (
-                      <button
-                        onClick={() => removeFile(f.id)}
-                        style={{ background: "none", border: "none", color: "var(--text-4)", cursor: "pointer", fontSize: 16 }}
-                        aria-label="Remove"
-                      >
-                        ✕
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
+                f={f}
+                canRemove={phase === "form"}
+                onRemove={() => removeFile(f.id)}
+                onRetry={() => retryFile(f.id)}
+              />
             ))}
           </div>
         )}
 
+        {/* Partial-failure / error message */}
+        {phase === "partial" && (
+          <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: 9, letterSpacing: "0.06em", color: DANGER, textAlign: "center", lineHeight: 1.5 }}>
+            SOME FILES DIDN&apos;T UPLOAD. RETRY THE ONES MARKED BELOW.
+          </div>
+        )}
         {submitError && (
-          <div style={{ ...mono, fontSize: 12, color: "rgb(255,120,120)", marginBottom: 14, lineHeight: 1.5 }}>
+          <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: 9, letterSpacing: "0.06em", color: DANGER, textAlign: "center", lineHeight: 1.5 }}>
             {submitError}
           </div>
         )}
 
-        {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="d"
-          style={{
-            width: "100%",
-            padding: "16px",
-            borderRadius: "var(--r-md)",
-            border: "none",
-            fontSize: 22,
-            letterSpacing: "0.04em",
-            cursor: canSubmit ? "pointer" : "not-allowed",
-            color: canSubmit ? "#fff" : "var(--text-4)",
-            background: canSubmit ? "var(--orange)" : "var(--glass-bg)",
-            transition: "background .2s, color .2s",
-          }}
-        >
-          {busy ? "UPLOADING…" : "SUBMIT CONTENT"}
-        </button>
-      </div>
+        {/* Submit / retry */}
+        {phase === "partial" ? (
+          <SubmitButton label="RETRY FAILED" enabled={hasFailed} onClick={retryFailed} />
+        ) : (
+          <SubmitButton
+            label={phase === "uploading" ? "UPLOADING…" : "SUBMIT CONTENT"}
+            enabled={canSubmit}
+            onClick={handleSubmit}
+          />
+        )}
+      </Sheet>
     </Shell>
   );
 }
 
-// ── Small presentational bits ─────────────────────────────────
+// ── Presentational pieces ─────────────────────────────────────
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, arimoVar }: { children: React.ReactNode; arimoVar?: string }) {
+  return (
+    <div
+      className={`pg-submit ${arimoVar ?? ""}`}
+      style={{
+        minHeight: "100vh",
+        background: "#07070A",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 26,
+        padding: "46px 20px 34px",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column", alignItems: "center", gap: 26 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Sheet({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        minHeight: "100vh",
-        background: "var(--bg)",
+        width: "100%",
+        background: off(0.055),
+        border: `1px solid ${off(0.13)}`,
+        borderRadius: 24,
+        padding: "30px 22px 26px",
         display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        padding: "48px 20px 80px",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 16,
       }}
     >
       {children}
@@ -651,26 +614,225 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Req({ label, met }: { label: string; met: boolean }) {
+function BrandMarks({ postgame, client }: { postgame: string | null; client: string | null }) {
+  if (!postgame && !client) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+      {postgame && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={postgame} alt="Postgame" width={122} height={25} style={{ width: 122, height: 25, objectFit: "contain" }} />
+      )}
+      {client && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={client} alt="" style={{ maxWidth: 64, maxHeight: 22, width: "auto", height: "auto", objectFit: "contain" }} />
+      )}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  disabled: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <label style={{ fontFamily: MONO, fontWeight: 500, fontSize: 9, letterSpacing: "0.12em", color: off(0.45) }}>
+        {label}
+      </label>
+      <input
+        className="pg-in"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        placeholder={placeholder}
+        style={{
+          height: 48,
+          borderRadius: 999,
+          paddingLeft: 18,
+          paddingRight: 14,
+          background: off(0.06),
+          border: `1px solid ${off(0.13)}`,
+          color: OFF,
+          fontFamily: BODY,
+          fontSize: 16,
+          outline: "none",
+          width: "100%",
+        }}
+      />
+    </div>
+  );
+}
+
+function ReqPill({ label, met }: { label: string; met: boolean }) {
   return (
     <div
       style={{
-        fontFamily: "var(--font-mono), monospace",
-        fontSize: 10.5,
+        flex: 1,
+        textAlign: "center",
+        borderRadius: 999,
+        padding: "8px 0",
+        border: `1px solid ${met ? orange(0.5) : off(0.14)}`,
+        color: met ? ORANGE : off(0.45),
+        fontFamily: MONO,
+        fontWeight: 500,
+        fontSize: 9,
         letterSpacing: "0.06em",
-        textTransform: "uppercase",
-        padding: "7px 12px",
-        borderRadius: 8,
-        border: `1px solid ${met ? "var(--orange)" : "var(--glass-border)"}`,
-        color: met ? "var(--orange)" : "var(--text-3)",
-        background: met ? "var(--orange-dim)" : "transparent",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
       }}
     >
-      <span>{met ? "✓" : "○"}</span>
       {label}
     </div>
+  );
+}
+
+function FileRow({
+  f,
+  canRemove,
+  onRemove,
+  onRetry,
+}: {
+  f: Picked;
+  canRemove: boolean;
+  onRemove: () => void;
+  onRetry: () => void;
+}) {
+  const failed = f.status === "error";
+  const pct = Math.round(f.progress * 100);
+  const statusText =
+    f.status === "uploading"
+      ? `${pct}% · ${humanSize(f.progress * f.file.size)} OF ${humanSize(f.file.size)}`
+      : f.status === "done"
+        ? "UPLOADED"
+        : failed
+          ? "UPLOAD FAILED"
+          : `${f.kind.toUpperCase()} · ${humanSize(f.file.size)}`;
+  const statusColor = f.status === "done" ? orange(0.9) : failed ? DANGER : off(0.45);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 14px 10px 10px",
+        borderRadius: 14,
+        background: off(0.05),
+        border: `1px solid ${failed ? `rgba(229,72,77,0.5)` : off(0.1)}`,
+      }}
+    >
+      {/* Thumb */}
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 10,
+          flex: "0 0 auto",
+          background: off(0.1),
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: off(0.45),
+          fontSize: 15,
+        }}
+      >
+        {f.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={f.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          "▶"
+        )}
+      </div>
+
+      {/* Name + progress + status */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: BODY,
+            fontSize: 15,
+            color: OFF,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {f.file.name}
+        </div>
+        {f.status === "uploading" && (
+          <div style={{ height: 4, borderRadius: 999, background: off(0.1), margin: "6px 0", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: ORANGE, transition: "width .2s" }} />
+          </div>
+        )}
+        <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: 9, letterSpacing: "0.04em", color: statusColor, marginTop: f.status === "uploading" ? 0 : 3 }}>
+          {statusText}
+        </div>
+      </div>
+
+      {/* Trailing action */}
+      <div style={{ flex: "0 0 auto" }}>
+        {failed ? (
+          <button
+            onClick={onRetry}
+            style={{
+              background: "none",
+              border: `1px solid ${orange(0.5)}`,
+              borderRadius: 999,
+              padding: "6px 12px",
+              color: ORANGE,
+              fontFamily: MONO,
+              fontWeight: 500,
+              fontSize: 9,
+              letterSpacing: "0.06em",
+              cursor: "pointer",
+            }}
+          >
+            RETRY
+          </button>
+        ) : f.status === "done" ? (
+          <span style={{ color: ORANGE, fontSize: 15 }}>✓</span>
+        ) : canRemove ? (
+          <button
+            onClick={onRemove}
+            aria-label="Remove"
+            style={{ background: "none", border: "none", color: off(0.36), cursor: "pointer", fontSize: 16 }}
+          >
+            ✕
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SubmitButton({ label, enabled, onClick }: { label: string; enabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!enabled}
+      style={{
+        width: "100%",
+        borderRadius: 999,
+        padding: "19px 0",
+        border: "none",
+        background: enabled ? ORANGE : off(0.08),
+        color: enabled ? OFF : off(0.3),
+        fontFamily: MONO,
+        fontWeight: 500,
+        fontSize: 11,
+        letterSpacing: "0.12em",
+        cursor: enabled ? "pointer" : "not-allowed",
+        transition: "background .2s, color .2s",
+      }}
+    >
+      {label}
+    </button>
   );
 }

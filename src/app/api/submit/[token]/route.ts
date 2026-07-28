@@ -178,10 +178,52 @@ async function loadCampaign(campaignId: string) {
   const supabase = createServiceSupabase();
   const { data } = await supabase
     .from("brand_campaigns")
-    .select("id, name, drive_folder_id")
+    .select("id, name, drive_folder_id, brand_id, brand")
     .eq("id", campaignId)
     .single();
-  return data as { id: string; name: string | null; drive_folder_id: string | null } | null;
+  return data as {
+    id: string;
+    name: string | null;
+    drive_folder_id: string | null;
+    brand_id: string | null;
+    brand: string | null;
+  } | null;
+}
+
+// Postgame's own brand row — its logo_primary_url is the white wordmark WITH
+// the orange plus (logo_light_url is all-white, so we don't use it here).
+const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
+
+// Athlete-facing branding for the page header + campaign chip. Two steps, no
+// UUID-sniffing of the text column:
+//   brand_id set  → chip name = brands.name, client logo = light ?? primary
+//   brand_id null → chip name = brand_campaigns.brand (plain text), no logo
+async function loadBranding(
+  campaign: { brand_id: string | null; brand: string | null } | null
+): Promise<{ brandName: string | null; postgameLogoUrl: string | null; clientLogoUrl: string | null }> {
+  const supabase = createServiceSupabase();
+  const ids = [POSTGAME_BRAND_ID];
+  if (campaign?.brand_id) ids.push(campaign.brand_id);
+
+  const { data } = await supabase
+    .from("brands")
+    .select("id, name, logo_primary_url, logo_light_url")
+    .in("id", ids);
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    name: string | null;
+    logo_primary_url: string | null;
+    logo_light_url: string | null;
+  }>;
+  const pg = rows.find((r) => r.id === POSTGAME_BRAND_ID);
+  const client = campaign?.brand_id ? rows.find((r) => r.id === campaign.brand_id) : null;
+
+  return {
+    postgameLogoUrl: pg?.logo_primary_url ?? null,
+    clientLogoUrl: client ? client.logo_light_url ?? client.logo_primary_url : null,
+    brandName: client?.name ?? campaign?.brand ?? null,
+  };
 }
 
 // ── GET: resolve link → athlete-facing config ─────────────────
@@ -189,14 +231,22 @@ async function loadCampaign(campaignId: string) {
 export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
   const link = await resolveLink(params.token);
   const blocked = linkBlockedReason(link);
-  if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
+  if (blocked) {
+    // The dead-link screen still shows the Postgame mark, so return it here.
+    const { postgameLogoUrl } = await loadBranding(null);
+    return NextResponse.json({ error: blocked.error, postgameLogoUrl }, { status: blocked.status });
+  }
 
   const campaign = await loadCampaign(link!.campaign_id);
+  const branding = await loadBranding(campaign);
   return NextResponse.json({
     campaignName: campaign?.name ?? "Your Campaign",
+    brandName: branding.brandName,
     minPhotos: link!.min_photos,
     minVideos: link!.min_videos,
     maxFiles: link!.max_files,
+    postgameLogoUrl: branding.postgameLogoUrl,
+    clientLogoUrl: branding.clientLogoUrl,
   });
 }
 
