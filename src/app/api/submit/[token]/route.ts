@@ -85,6 +85,28 @@ function compactSegment(s: string): string {
   return sanitizeSegment(s).replace(/\s+/g, "");
 }
 
+/** Title-case a name, capitalizing after start / space / hyphen / apostrophe
+ *  ("o'brien" → "O'Brien", "mary-jane" → "Mary-Jane"). */
+function titleCase(s: string): string {
+  return s.toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (_m, sep, ch) => sep + ch.toUpperCase());
+}
+
+/** A name part cleaned for a Drive folder name: keep letters, numbers, spaces,
+ *  apostrophes and hyphens; drop characters Drive dislikes (/ \ : * ? " < > |). */
+function cleanNamePart(s: string): string {
+  return String(s ?? "")
+    .replace(/[^\p{L}\p{N} '’-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Athlete folder name, e.g. "Peyton Jula's Content" — title-cased,
+ *  possessive, Drive-safe, regardless of how the athlete typed their name. */
+function athleteFolderName(first: string, last: string): string {
+  const full = `${titleCase(cleanNamePart(first))} ${titleCase(cleanNamePart(last))}`.trim();
+  return `${full || "Athlete"}'s Content`;
+}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -315,7 +337,7 @@ async function handleInit(req: NextRequest, link: SubmissionLink, who: Submitter
   // Content / Lastname_Firstname — both find-or-create so a repeat
   // submission merges into the existing folder instead of duplicating it.
   const content = await ensureFolder("Content", campaign.drive_folder_id);
-  const folderLabel = `${sanitizeSegment(who.last)}_${sanitizeSegment(who.first)}`;
+  const folderLabel = athleteFolderName(who.first, who.last);
   const athlete = await ensureFolder(folderLabel, content.id);
 
   const fileBase = `${compactSegment(who.last)}_${compactSegment(who.first)}`;
@@ -357,7 +379,7 @@ async function handleFinalize(req: NextRequest, link: SubmissionLink, who: Submi
   // uploaded file really landed there — this endpoint is public, so we
   // never trust a caller-supplied folder/parent.
   const content = await ensureFolder("Content", campaign.drive_folder_id);
-  const folderLabel = `${sanitizeSegment(who.last)}_${sanitizeSegment(who.first)}`;
+  const folderLabel = athleteFolderName(who.first, who.last);
   const athlete = await ensureFolder(folderLabel, content.id);
 
   const drive = getDriveClient();
