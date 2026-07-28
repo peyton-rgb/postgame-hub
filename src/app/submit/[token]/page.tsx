@@ -158,7 +158,6 @@ async function resumableUpload(
 // ── Design tokens ─────────────────────────────────────────────
 const OFF = "#FAF8F5";
 const ORANGE = "#D73F09";
-const DANGER = "#E5484D";
 const off = (a: number) => `rgba(250,248,245,${a})`;
 const orange = (a: number) => `rgba(215,63,9,${a})`;
 const MONO = "var(--font-mono), monospace";
@@ -544,14 +543,14 @@ export default function SubmitPage() {
           </div>
         )}
 
-        {/* Partial-failure / error message */}
+        {/* Partial-failure / error message — on-palette, no colour */}
         {phase === "partial" && (
-          <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: 9, letterSpacing: "0.06em", color: DANGER, textAlign: "center", lineHeight: 1.5 }}>
-            SOME FILES DIDN&apos;T UPLOAD. RETRY THE ONES MARKED BELOW.
+          <div style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.5, color: off(0.72), textAlign: "center" }}>
+            Some files didn&apos;t upload. Retry the ones marked below.
           </div>
         )}
         {submitError && (
-          <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: 9, letterSpacing: "0.06em", color: DANGER, textAlign: "center", lineHeight: 1.5 }}>
+          <div style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.5, color: off(0.72), textAlign: "center" }}>
             {submitError}
           </div>
         )}
@@ -714,7 +713,9 @@ function FileRow({
         : failed
           ? "UPLOAD FAILED"
           : `${f.kind.toUpperCase()} · ${humanSize(f.file.size)}`;
-  const statusColor = f.status === "done" ? orange(0.9) : failed ? DANGER : off(0.45);
+  // Failed status is stated at full contrast (not coloured) — orange is
+  // reserved for the RETRY the athlete should tap. Rule 5: orange = destination.
+  const statusColor = f.status === "done" ? orange(0.9) : failed ? OFF : off(0.45);
 
   return (
     <div
@@ -725,7 +726,8 @@ function FileRow({
         padding: "10px 14px 10px 10px",
         borderRadius: 14,
         background: off(0.05),
-        border: `1px solid ${failed ? `rgba(229,72,77,0.5)` : off(0.1)}`,
+        // Brighter border (not colour) is what marks a failed row as different.
+        border: `1px solid ${failed ? off(0.28) : off(0.1)}`,
       }}
     >
       {/* Thumb */}
@@ -783,14 +785,13 @@ function FileRow({
             onClick={onRetry}
             style={{
               background: "none",
-              border: `1px solid ${orange(0.5)}`,
-              borderRadius: 999,
-              padding: "6px 12px",
+              border: "none",
+              padding: 0,
               color: ORANGE,
               fontFamily: MONO,
               fontWeight: 500,
               fontSize: 9,
-              letterSpacing: "0.06em",
+              letterSpacing: "0.04em",
               cursor: "pointer",
             }}
           >
