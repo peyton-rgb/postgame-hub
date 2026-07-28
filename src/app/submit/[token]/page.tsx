@@ -220,12 +220,16 @@ export default function SubmitPage() {
   const addFiles = useCallback(
     (incoming: FileList | File[]) => {
       if (!config) return;
+      // Snapshot on entry — never read a (possibly live) FileList inside the
+      // deferred setFiles updater, which runs AFTER the caller's event handler
+      // (e.g. after an input's value="" reset would have emptied it).
+      const list = Array.from(incoming);
       setSubmitError(null);
       setFiles((prev) => {
         const room = config.maxFiles - prev.length;
         if (room <= 0) return prev;
         const next = [...prev];
-        for (const file of Array.from(incoming).slice(0, room)) {
+        for (const file of list.slice(0, room)) {
           const kind = classify(file);
           next.push({
             id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
@@ -475,7 +479,10 @@ export default function SubmitPage() {
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
-            if (!busy && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+            // Snapshot to an array — dataTransfer.files is a live collection and
+            // addFiles reads it later inside a setFiles updater (see onChange note).
+            const dropped = Array.from(e.dataTransfer.files);
+            if (!busy && dropped.length) addFiles(dropped);
           }}
           style={{
             borderRadius: "var(--r-md)",
@@ -494,8 +501,12 @@ export default function SubmitPage() {
             accept="image/*,video/*,.heic,.heif"
             style={{ display: "none" }}
             onChange={(e) => {
-              if (e.target.files) addFiles(e.target.files);
+              // Snapshot to a real array BEFORE clearing the input — e.target.files
+              // is a *live* FileList, and addFiles reads it later inside a setFiles
+              // updater. Clearing value="" would empty it before that read.
+              const picked = e.target.files ? Array.from(e.target.files) : [];
               e.target.value = "";
+              if (picked.length) addFiles(picked);
             }}
           />
           <div className="d" style={{ fontSize: 24, color: "var(--text-2)" }}>
