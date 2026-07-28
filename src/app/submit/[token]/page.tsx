@@ -15,8 +15,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 
-// 16MB chunks (a multiple of 256KB, as Google's resumable protocol requires).
-const CHUNK_SIZE = 16 * 1024 * 1024;
+// 4MB chunks (a multiple of 256KB per Google's resumable protocol, and under
+// Vercel's ~4.5MB request-body cap since each chunk is relayed through our own
+// route — Google's session URL has no CORS, so the browser can't PUT directly).
+const CHUNK_SIZE = 4 * 1024 * 1024;
 
 interface LinkConfig {
   campaignName: string;
@@ -52,38 +54,49 @@ function humanSize(bytes: number): string {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// ── Resumable upload to a Drive session URL (chunked, resume-on-drop) ──
+// ── Resumable upload to a Drive session, RELAYED through our own route ──
+//
+// Google's resumable session URL returns no CORS headers, so the browser
+// can't PUT to it directly (net::ERR_FAILED). Instead every chunk is PUT to
+// our same-origin /api/submit/[token] endpoint, which forwards it to the
+// session URL server-side. Chunks are ≤4MB (Vercel body cap); the session
+// state lives at Google, so the server never holds a whole file.
 
-function putChunk(
+type ChunkResult = { done: boolean; fileId?: string | null; rangeEnd?: number | null };
+
+// Relay one chunk (or an empty offset-probe) to the proxy. `range` is the
+// Content-Range value; an empty blob with "bytes */total" probes the offset.
+function relayChunk(
+  token: string,
   sessionUrl: string,
   blob: Blob,
-  start: number,
-  end: number,
-  total: number,
+  range: string,
   onLoaded: (loaded: number) => void
-): Promise<{ done: boolean; fileId?: string | null; rangeEnd?: number | null }> {
+): Promise<ChunkResult> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", sessionUrl, true);
-    xhr.setRequestHeader("Content-Range", `bytes ${start}-${end - 1}/${total}`);
+    xhr.open("PUT", `/api/submit/${encodeURIComponent(token)}?action=chunk`, true);
+    xhr.setRequestHeader("x-goog-session", sessionUrl);
+    xhr.setRequestHeader("x-goog-range", range);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onLoaded(e.loaded);
     };
     xhr.onload = () => {
-      if (xhr.status === 200 || xhr.status === 201) {
-        let fileId: string | null = null;
+      if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          fileId = JSON.parse(xhr.responseText).id ?? null;
+          resolve(JSON.parse(xhr.responseText) as ChunkResult);
         } catch {
-          /* ignore — parent verification will still catch a bad id */
+          reject(new Error("Unexpected server response"));
         }
-        resolve({ done: true, fileId });
-      } else if (xhr.status === 308) {
-        const range = xhr.getResponseHeader("Range");
-        const m = range?.match(/bytes=0-(\d+)/);
-        resolve({ done: false, rangeEnd: m ? parseInt(m[1], 10) : null });
       } else {
-        reject(new Error(`Upload failed (${xhr.status})`));
+        let msg = `Upload failed (${xhr.status})`;
+        try {
+          const b = JSON.parse(xhr.responseText);
+          if (b?.error) msg = b.error;
+        } catch {
+          /* keep default */
+        }
+        reject(new Error(msg));
       }
     };
     xhr.onerror = () => reject(new Error("Network interrupted"));
@@ -91,38 +104,8 @@ function putChunk(
   });
 }
 
-// Ask the session how many bytes it already has, so we can resume.
-function queryOffset(
-  sessionUrl: string,
-  total: number
-): Promise<{ done: boolean; fileId?: string | null; rangeEnd?: number | null }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", sessionUrl, true);
-    xhr.setRequestHeader("Content-Range", `bytes */${total}`);
-    xhr.onload = () => {
-      if (xhr.status === 200 || xhr.status === 201) {
-        let fileId: string | null = null;
-        try {
-          fileId = JSON.parse(xhr.responseText).id ?? null;
-        } catch {
-          /* ignore */
-        }
-        resolve({ done: true, fileId });
-      } else if (xhr.status === 308) {
-        const range = xhr.getResponseHeader("Range");
-        const m = range?.match(/bytes=0-(\d+)/);
-        resolve({ done: false, rangeEnd: m ? parseInt(m[1], 10) : null });
-      } else {
-        reject(new Error(`Resume check failed (${xhr.status})`));
-      }
-    };
-    xhr.onerror = () => reject(new Error("Network interrupted"));
-    xhr.send(null);
-  });
-}
-
 async function resumableUpload(
+  token: string,
   file: File,
   sessionUrl: string,
   onProgress: (fraction: number) => void
@@ -136,8 +119,12 @@ async function resumableUpload(
     const end = Math.min(offset + CHUNK_SIZE, total);
     try {
       const base = offset;
-      const r = await putChunk(sessionUrl, file.slice(offset, end), offset, end, total, (loaded) =>
-        onProgress(Math.min((base + loaded) / total, 0.999))
+      const r = await relayChunk(
+        token,
+        sessionUrl,
+        file.slice(offset, end),
+        `bytes ${offset}-${end - 1}/${total}`,
+        (loaded) => onProgress(Math.min((base + loaded) / total, 0.999))
       );
       attempts = 0;
       if (r.done) {
@@ -151,8 +138,8 @@ async function resumableUpload(
       attempts++;
       if (attempts > 5) throw err;
       await sleep(1000 * attempts);
-      // Re-sync from the server before retrying this chunk.
-      const q = await queryOffset(sessionUrl, total);
+      // Re-sync the offset from the session before retrying this chunk.
+      const q = await relayChunk(token, sessionUrl, new Blob([]), `bytes */${total}`, () => {});
       if (q.done) {
         onProgress(1);
         if (!q.fileId) throw new Error("Upload finished without a file id");
@@ -311,7 +298,7 @@ export default function SubmitPage() {
         }
         setFileStatus(f.id, "uploading");
         try {
-          const fileId = await resumableUpload(f.file, sessionUrl, (frac) => setProgress(f.id, frac));
+          const fileId = await resumableUpload(token, f.file, sessionUrl, (frac) => setProgress(f.id, frac));
           const finRes = await fetch(`/api/submit/${encodeURIComponent(token)}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

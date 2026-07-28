@@ -185,6 +185,68 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
   });
 }
 
+// ── PUT: relay one resumable chunk to Drive (same-origin, dodges CORS) ──
+//
+// The browser CAN'T PUT straight to Google's resumable session URL — those
+// responses carry no Access-Control-Allow-Origin, so a cross-origin PUT is
+// blocked. Instead the browser streams each chunk to THIS same-origin
+// endpoint, which relays it to the session URL server-side (servers have no
+// CORS constraint). Chunks stay ≤4MB to fit under Vercel's ~4.5MB body cap;
+// the resumable session at Google holds the cross-request state.
+//
+// Headers:
+//   x-goog-session : the Drive resumable session URL returned by `init`
+//   x-goog-range   : Content-Range, e.g. "bytes 0-4194303/300000000"
+//                    ("bytes */300000000" with an empty body = offset probe)
+
+const DRIVE_UPLOAD_PREFIX = "https://www.googleapis.com/upload/drive/";
+
+export async function PUT(req: NextRequest, { params }: { params: { token: string } }) {
+  const link = await resolveLink(params.token);
+  const blocked = linkBlockedReason(link);
+  if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
+
+  const sessionUrl = req.headers.get("x-goog-session") ?? "";
+  const range = req.headers.get("x-goog-range") ?? "";
+  // SSRF guard: this endpoint is public, so only ever relay to a real Drive
+  // upload session — never an arbitrary caller-supplied host.
+  if (!sessionUrl.startsWith(DRIVE_UPLOAD_PREFIX)) {
+    return NextResponse.json({ error: "Invalid upload session." }, { status: 400 });
+  }
+  if (!/^bytes /.test(range)) {
+    return NextResponse.json({ error: "Missing chunk range." }, { status: 400 });
+  }
+
+  const buf = Buffer.from(await req.arrayBuffer());
+  const isProbe = /^bytes \*\//.test(range); // "bytes */total" → status probe, no body
+
+  let gRes: Response;
+  try {
+    gRes = await fetch(sessionUrl, {
+      method: "PUT",
+      headers: { "Content-Range": range },
+      body: isProbe ? undefined : buf,
+    });
+  } catch (e) {
+    console.error("[submit] chunk relay fetch failed:", e);
+    return NextResponse.json({ error: "Upload relay failed." }, { status: 502 });
+  }
+
+  if (gRes.status === 200 || gRes.status === 201) {
+    const file = await gRes.json().catch(() => ({} as any));
+    return NextResponse.json({ done: true, fileId: file.id ?? null });
+  }
+  if (gRes.status === 308) {
+    const r = gRes.headers.get("Range");
+    const m = r?.match(/bytes=0-(\d+)/);
+    return NextResponse.json({ done: false, rangeEnd: m ? parseInt(m[1], 10) : null });
+  }
+
+  const text = await gRes.text().catch(() => "");
+  console.error("[submit] chunk relay error:", gRes.status, text.slice(0, 300));
+  return NextResponse.json({ error: `Drive rejected the chunk (${gRes.status}).` }, { status: 502 });
+}
+
 // ── POST: init | finalize ─────────────────────────────────────
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
