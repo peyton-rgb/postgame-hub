@@ -37,7 +37,10 @@ export async function middleware(request: NextRequest) {
   // RLS already hides package data from anon, but staff pages should bounce to
   // login rather than render an empty shell. (The public /pkg/[token] grab-and-go
   // page is intentionally NOT gated here — it has its own share-token gate.)
-  if (!user && (path.startsWith("/dashboard") || path.startsWith("/packages"))) {
+  if (
+    !user &&
+    (path.startsWith("/dashboard") || path.startsWith("/packages") || path.startsWith("/board"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -80,5 +83,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/packages/:path*", "/packages", "/login", "/athlete/:path*"],
+  matcher: ["/dashboard/:path*", "/packages/:path*", "/packages", "/board/:path*", "/board", "/login", "/athlete/:path*"],
 };

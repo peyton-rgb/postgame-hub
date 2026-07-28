@@ -321,7 +321,7 @@ function Tile({ tile, onOpen }: { tile: LibraryTile; onOpen?: (tile: LibraryTile
         onClick={(e) => e.stopPropagation()}
         aria-label="Download"
         title="Download"
-        className="absolute top-2 right-2 grid place-items-center w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 grid place-items-center w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
         style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(6px)" }}
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -333,7 +333,7 @@ function Tile({ tile, onOpen }: { tile: LibraryTile; onOpen?: (tile: LibraryTile
 
       {/* Athlete name on hover */}
       {tile.athleteName ? (
-        <figcaption className="absolute left-0 right-0 bottom-0 px-3 pt-8 pb-2.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+        <figcaption className="absolute left-0 right-0 bottom-0 px-3 pt-8 pb-2.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity pointer-events-none"
           style={{ background: "linear-gradient(180deg, transparent, rgba(8,8,11,0.9))" }}>
           <span style={{ ...BEBAS, color: OFFWHITE, fontSize: 18, letterSpacing: 0.5 }} className="uppercase leading-none">
             {tile.athleteName}

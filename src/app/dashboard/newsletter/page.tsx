@@ -53,6 +53,15 @@ interface Newsletter {
 
 const DEFAULT_BRAND_COLOR = "#D73F09";
 
+// The Postgame mark is a file, never typography. Email clients don't run React
+// and ignore most CSS, so the template can't use <PostgameLogo>; it needs a
+// plain <img> with an absolute URL. This is the primary mark (white wordmark,
+// orange "+"), which reads against the #0a0a0a email ground and is the same
+// asset SiteNav serves on the site. If images are blocked the recipient sees
+// alt text only — the mark is absent rather than wrong, which is correct.
+const POSTGAME_EMAIL_LOGO_URL =
+  "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632055938-16gy1u2t.PNG";
+
 function newBlock(type: Block["type"]): Block {
   const id = Math.random().toString(36).slice(2);
   const defaults: Record<Block["type"], Record<string,string>> = {
@@ -109,7 +118,7 @@ function generateMailchimpHTML(nl: Newsletter): string {
   const logoRow = nl.brand_logo ? `<tr><td align="center" style="padding:24px 40px 0;background:${bg};">
     <img src="${nl.brand_logo}" alt="Logo" style="height:40px;width:auto;display:block;margin:0 auto;" />
   </td></tr>` : `<tr><td align="center" style="padding:24px 40px 0;background:${bg};">
-    <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:900;color:${brandColor};letter-spacing:0.06em;">POSTGAME</div>
+    <img src="${POSTGAME_EMAIL_LOGO_URL}" alt="Postgame" width="180" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:180px;margin:0 auto;" />
   </td></tr>`;
 
   return `<!DOCTYPE html>
@@ -402,7 +411,7 @@ export default function NewsletterPage() {
                     </div>
                     <div>
                       <label style={S.label}>Logo URL (optional)</label>
-                      <input style={S.input} value={active.brand_logo||""} onChange={e=>updateActive({brand_logo:e.target.value})} placeholder="https://... or leave blank for POSTGAME text" />
+                      <input style={S.input} value={active.brand_logo||""} onChange={e=>updateActive({brand_logo:e.target.value})} placeholder="https://... or leave blank for the Postgame logo image" />
                     </div>
                   </div>
                   {brands.length > 0 && (

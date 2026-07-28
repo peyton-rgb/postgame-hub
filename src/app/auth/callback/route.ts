@@ -22,6 +22,27 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
 
+  // ─── TEMPORARY DIAGNOSTIC — REMOVE after root-causing the missing PKCE
+  // verifier (tracked in the follow-up revert PR). Logs NO cookie values and
+  // NO secrets: only the query param KEYS (not the raw `code` value), whether
+  // `code` is present, the NAMES of incoming cookies (to see if the verifier
+  // cookie arrived), the request host, and the user-agent (to tell whether
+  // failing attempts come from a different browser/profile than succeeding
+  // ones).
+  const cookieNames = request.cookies.getAll().map((c) => c.name);
+  console.log(
+    "[authorize-callback-diag]",
+    JSON.stringify({
+      host: request.nextUrl.host,
+      queryKeys: [...searchParams.keys()],
+      hasCode: code !== null,
+      cookieNames,
+      hasVerifierCookie: cookieNames.some((n) => n.endsWith("-code-verifier")),
+      userAgent: request.headers.get("user-agent"),
+    })
+  );
+  // ─── END TEMPORARY DIAGNOSTIC ───
+
   // Only allow same-origin relative redirects for `next` — never an
   // attacker-supplied absolute URL.
   const safeNext = next.startsWith("/") ? next : "/dashboard";

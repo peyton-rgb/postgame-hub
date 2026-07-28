@@ -21,6 +21,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { PostgameLogo } from '@/components/PostgameLogo';
 import Image from 'next/image';
 import {
   featuredBrands,
@@ -153,7 +154,7 @@ function FeaturedCard({ brand }: { brand: Brand }) {
 
       {/* Animated mesh gradient overlay — shifts with mouse position */}
       <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-500"
         style={{
           background: `radial-gradient(ellipse 60% 60% at ${mousePos.x}% ${mousePos.y}%, ${brand.primaryColor}30, transparent 70%)`,
         }}
@@ -207,7 +208,7 @@ function FeaturedCard({ brand }: { brand: Brand }) {
         )}
 
         {/* Brand name + category below logo */}
-        <div className="mt-4 text-center transition-all duration-500 group-hover:translate-y-0 translate-y-1 opacity-70 group-hover:opacity-100">
+        <div className="mt-4 text-center transition-all duration-500 group-hover:translate-y-0 translate-y-1 opacity-70 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
           <div className="text-sm font-bold text-white tracking-wide">
             {brand.name}
           </div>
@@ -226,13 +227,13 @@ function FeaturedCard({ brand }: { brand: Brand }) {
 
       {/* Animated corner accent lines */}
       <div
-        className="absolute top-0 right-0 w-16 h-16 opacity-0 group-hover:opacity-100 transition-all duration-500"
+        className="absolute top-0 right-0 w-16 h-16 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-all duration-500"
         style={{
           background: `linear-gradient(225deg, ${brand.primaryColor}40 0%, transparent 60%)`,
         }}
       />
       <div
-        className="absolute bottom-0 left-0 w-16 h-16 opacity-0 group-hover:opacity-100 transition-all duration-500"
+        className="absolute bottom-0 left-0 w-16 h-16 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-all duration-500"
         style={{
           background: `linear-gradient(45deg, ${brand.primaryColor}40 0%, transparent 60%)`,
         }}
@@ -263,13 +264,13 @@ function PartnerCard({ brand }: { brand: Brand }) {
     <div className="group relative flex items-center gap-4 bg-[#111] border border-white/10 rounded-xl px-5 py-4 hover:border-white/20 transition-all duration-300 cursor-pointer overflow-hidden">
       {/* Brand color accent bar on left */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-[3px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        className="absolute left-0 top-0 bottom-0 w-[3px] opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-300"
         style={{ backgroundColor: brand.primaryColor }}
       />
 
       {/* Subtle brand color glow on hover */}
       <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-500"
         style={{
           background: `radial-gradient(ellipse at 0% 50%, ${brand.primaryColor}08, transparent 60%)`,
         }}
@@ -561,8 +562,8 @@ export default function ClientsPage() {
 
       {/* ====== FOOTER ====== */}
       <footer className="bg-black py-10 px-6 text-center border-t border-white/5">
-        <div className="text-sm font-medium tracking-[0.15em] mb-3">
-          P<span className="text-[#D73F09]">+</span>STGAME
+        <div className="flex justify-center mb-3">
+          <PostgameLogo size="sm" />
         </div>
         <div className="text-[11px] text-white/25 max-w-md mx-auto leading-relaxed">
           Postgame™ manages the largest sports marketing and influencer

@@ -239,7 +239,7 @@ export default async function BrandPortalPage({ params }: Props) {
                     >
                       {safeName}
                     </div>
-                    <div className="flex items-center gap-[7px] mt-3 text-[10px] uppercase tracking-[2px] opacity-0 translate-y-[6px] transition-all duration-[400ms] group-hover:opacity-100 group-hover:translate-y-0">
+                    <div className="flex items-center gap-[7px] mt-3 text-[10px] uppercase tracking-[2px] opacity-0 translate-y-[6px] transition-all duration-[400ms] group-hover:opacity-100 group-hover:translate-y-0 [@media(hover:none)]:opacity-100">
                       View recap <span style={{ color: ORANGE }}>&rarr;</span>
                     </div>
                   </div>

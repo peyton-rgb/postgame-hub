@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Deal } from "@/lib/types";
 import Link from "next/link";
+import { PostgameLogo } from "@/components/PostgameLogo";
 import "@/styles/motion.css";
 
 /* ── Extended deal with joined fields ─────────────────────────── */
@@ -204,7 +205,7 @@ export default function DealsPage() {
 
       {/* ── Nav ─────────────────────────────────────────────── */}
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isCompact ? "12px 16px" : "16px 48px", background: isMobile ? "#000" : "rgba(10,10,10,0.92)", backdropFilter: isMobile ? undefined : "blur(16px)", boxShadow: isMobile ? "none" : "0 1px 0 rgba(255,255,255,0.08)" }}>
-        <a href="/homepage" style={{ fontSize: isCompact ? 18 : 22, fontWeight: 900, color: "#D73F09", textDecoration: "none" }}>POSTGAME</a>
+        <a href="/homepage" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}><PostgameLogo size="md" /></a>
         {!isCompact ? (
           <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
             {NAV_LINKS.map(([l, h]) => (
@@ -230,7 +231,7 @@ export default function DealsPage() {
           <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 260, background: "rgba(8,8,8,0.98)", borderLeft: "1px solid rgba(255,255,255,0.08)", zIndex: 50, transform: menuOpen ? "translateX(0)" : "translateX(100%)", transition: "transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94)", display: "flex", flexDirection: "column" }}>
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <span style={{ fontSize: 18, fontWeight: 900, color: "#D73F09" }}>POSTGAME</span>
+              <PostgameLogo size="sm" />
               <button onClick={() => setMenuOpen(false)} style={{ width: 32, height: 32, border: "none", background: "none", color: "rgba(255,255,255,0.5)", fontSize: 20, cursor: "pointer", padding: 0 }}>✕</button>
             </div>
             {/* Links */}
