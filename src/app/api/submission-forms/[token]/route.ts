@@ -91,11 +91,43 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     byAthlete.set(key, a);
   }
 
-  const athletes = [...byAthlete.values()].map((a) => ({
+  // Roster is a DIRECT read of campaign_rosters keyed to campaign_recaps — not a
+  // bridge. Empty until the tracker-sheet import populates it; wiring the read
+  // now makes "not started" and the list's 42/54 light up automatically then.
+  const { data: roster } = await svc
+    .from("campaign_rosters")
+    .select("first_name, last_name, ig_handle, school")
+    .eq("campaign_id", link.campaign_id);
+  const rosterRows = roster ?? [];
+
+  const submittedKeys = new Set([...byAthlete.keys()]);
+
+  const submittedAthletes = [...byAthlete.values()].map((a) => ({
     ...a,
     total: a.photos + a.videos,
     belowMinimum: a.photos < link.min_photos || a.videos < link.min_videos,
+    notStarted: false,
   }));
+
+  // Roster athletes who haven't submitted, matched on ig_handle (fallback name).
+  const notStartedAthletes = rosterRows
+    .filter((r) => {
+      const key = (r.ig_handle || `${r.first_name ?? ""} ${r.last_name ?? ""}`).toLowerCase().trim();
+      return key && !submittedKeys.has(key);
+    })
+    .map((r) => ({
+      name: `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || (r.ig_handle ?? "Unknown"),
+      handle: r.ig_handle ?? null,
+      school: r.school ?? null,
+      photos: 0,
+      videos: 0,
+      total: 0,
+      lastUpload: null as string | null,
+      belowMinimum: true,
+      notStarted: true,
+    }));
+
+  const athletes = [...submittedAthletes, ...notStartedAthletes];
   athletes.sort((x, y) => (y.lastUpload ?? "").localeCompare(x.lastUpload ?? ""));
 
   return NextResponse.json({
@@ -122,10 +154,11 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
         }
       : null,
     stats: {
-      submitted: athletes.length,
+      submitted: submittedAthletes.length,
       filesReceived: (subs ?? []).length,
-      belowMinimum: athletes.filter((a) => a.belowMinimum).length,
-      notStarted: null as number | null, // needs a roster; degrade, don't fake
+      belowMinimum: submittedAthletes.filter((a) => a.belowMinimum).length,
+      notStarted: rosterRows.length > 0 ? notStartedAthletes.length : null, // — until roster populates
+      rosterSize: rosterRows.length,
     },
     athletes,
   });
