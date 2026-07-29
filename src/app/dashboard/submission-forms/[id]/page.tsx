@@ -27,6 +27,7 @@ interface Athlete {
   total: number;
   lastUpload: string | null;
   belowMinimum: boolean;
+  notStarted: boolean;
 }
 interface Detail {
   link: {
@@ -49,7 +50,7 @@ interface Detail {
     adminId: string | null;
     driveFolderId: string | null;
   } | null;
-  stats: { submitted: number; filesReceived: number; belowMinimum: number; notStarted: number | null };
+  stats: { submitted: number; filesReceived: number; belowMinimum: number; notStarted: number | null; rosterSize: number };
   athletes: Athlete[];
 }
 
@@ -142,9 +143,10 @@ export default function SubmissionFormDetail() {
 
   const shownAthletes = useMemo(() => {
     if (!d) return [];
-    if (tab === "below") return d.athletes.filter((a) => a.belowMinimum);
-    if (tab === "notstarted") return []; // needs a roster; none derivable today
-    return d.athletes; // all / submitted are identical without a roster
+    if (tab === "below") return d.athletes.filter((a) => a.belowMinimum && !a.notStarted);
+    if (tab === "notstarted") return d.athletes.filter((a) => a.notStarted);
+    if (tab === "submitted") return d.athletes.filter((a) => !a.notStarted);
+    return d.athletes;
   }, [d, tab]);
 
   if (loading) return <DashboardContent><div className="text-white/40 text-sm py-16 text-center">Loading…</div></DashboardContent>;
@@ -284,7 +286,9 @@ export default function SubmissionFormDetail() {
       {shownAthletes.length === 0 ? (
         <div className="py-14 text-center text-sm text-white/40">
           {tab === "notstarted"
-            ? "Not-started athletes need a campaign roster, which isn't synced in yet."
+            ? d.stats.rosterSize === 0
+              ? "No roster imported yet — not-started athletes appear once the tracker syncs."
+              : "Everyone on the roster has submitted."
             : d.athletes.length === 0
               ? "No submissions yet."
               : "Nothing in this tab."}
@@ -320,14 +324,20 @@ export default function SubmissionFormDetail() {
                     <td className="py-2.5 pr-4 text-center text-white/70">{a.total}</td>
                     <td className="py-2.5 pr-4 text-white/50">{fmtDate(a.lastUpload)}</td>
                     <td className="py-2.5 pr-4">
-                      {a.belowMinimum ? (
+                      {a.notStarted ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/15 text-white/45">NOT STARTED</span>
+                      ) : a.belowMinimum ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#D73F09]/30 text-[#D73F09]">BELOW MIN</span>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/25 text-emerald-400">COMPLETE</span>
                       )}
                     </td>
                     <td className="py-2.5 text-right">
-                      {folderUrl ? (
+                      {a.notStarted ? (
+                        <button disabled title="Reminders aren't enabled yet" className="text-xs text-white/30 cursor-not-allowed">
+                          Remind
+                        </button>
+                      ) : folderUrl ? (
                         <a href={folderUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-white/60 hover:text-white">Folder</a>
                       ) : (
                         <span className="text-xs text-white/25">—</span>
