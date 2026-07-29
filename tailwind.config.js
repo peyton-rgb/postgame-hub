@@ -5,6 +5,12 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ["Arial", "Helvetica Neue", "Helvetica", "sans-serif"],
+        // Bebas Neue and JetBrains Mono are loaded by next/font in
+        // src/app/layout.tsx, which exposes them as CSS variables on <html>.
+        // These entries must reference those variables — not the family names —
+        // or the utilities resolve to nothing.
+        display: ["var(--font-bebas)", "Bebas Neue", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
       colors: {
         brand: "#D73F09",
