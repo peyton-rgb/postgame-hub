@@ -6,12 +6,11 @@
 //          joined to campaign_recaps, with submission aggregates.
 //   POST → create a new form (mint a token for a campaign_recap).
 //
-// Roster note: the "42 / 54" fraction needs a roster that lives in the
-// campaign's Performance Tracker (a Google Sheet), which nothing syncs
-// into Postgres. So today we only ever show the plain submitted count.
-// `rosterSize` is returned as null on purpose — a clean seam: if a roster
-// count ever lands, fill it and the row renders the fraction. We do NOT
-// join campaign_rosters (empty, and keyed to brand_campaigns, not recaps).
+// Roster note: campaign_rosters is now repointed at campaign_recaps, so the
+// "42 / 54" fraction is a DIRECT read (rosterSize = count of roster rows for the
+// recap) — not a bridge. It's empty until the tracker-sheet import runs; while
+// empty, rosterSize is null and the row shows the plain submitted count. Once
+// populated, the row renders the fraction automatically.
 // ─────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
@@ -43,6 +42,17 @@ export async function GET() {
       .select("id, name, client_name, client_logo_url, admin_campaign_id, drive_folder_id")
       .in("id", campaignIds);
     for (const r of recaps ?? []) recapsById[r.id] = r;
+  }
+
+  // Roster sizes — DIRECT read of campaign_rosters (keyed to campaign_recaps),
+  // not a bridge. Empty until the tracker import runs; then the row shows 42/54.
+  const rosterCount: Record<string, number> = {};
+  if (campaignIds.length) {
+    const { data: rosterRows } = await svc
+      .from("campaign_rosters")
+      .select("campaign_id")
+      .in("campaign_id", campaignIds);
+    for (const r of rosterRows ?? []) rosterCount[r.campaign_id] = (rosterCount[r.campaign_id] ?? 0) + 1;
   }
 
   // Submission aggregates per campaign. tier3_submissions is one row per file;
@@ -99,7 +109,7 @@ export async function GET() {
       submittedCount: c ? c.athletes.size : 0,
       fileCount: c ? c.files : 0,
       lastUpload: c ? c.last : null,
-      rosterSize: null as number | null, // seam for the future fraction; see header
+      rosterSize: rosterCount[l.campaign_id] || null, // null → plain count; N → "42 / N"
     };
   });
 
