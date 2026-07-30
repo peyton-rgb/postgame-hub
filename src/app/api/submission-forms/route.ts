@@ -39,7 +39,12 @@ export async function GET() {
   if (campaignIds.length) {
     const { data: recaps } = await svc
       .from("campaign_recaps")
-      .select("id, name, client_name, client_logo_url, admin_campaign_id, drive_folder_id")
+      // Logo comes from the linked brand, not campaign_recaps.client_logo_url:
+      // that column is set on 2 of 611 campaigns, while brand_id is set on all
+      // of them. Nested through the campaigns_brand_id_fkey FK, so no 2nd query.
+      .select(
+        "id, name, client_name, admin_campaign_id, drive_folder_id, brand:brands!campaigns_brand_id_fkey(logo_light_url, logo_primary_url)"
+      )
       .in("id", campaignIds);
     for (const r of recaps ?? []) recapsById[r.id] = r;
   }
@@ -101,7 +106,7 @@ export async function GET() {
             id: recap.id,
             name: recap.name,
             brandName: recap.client_name,
-            brandLogoUrl: recap.client_logo_url,
+            brandLogoUrl: recap.brand?.logo_light_url ?? recap.brand?.logo_primary_url ?? null,
             adminId: recap.admin_campaign_id,
             driveFolderId: recap.drive_folder_id,
           }
