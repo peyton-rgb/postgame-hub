@@ -37,6 +37,20 @@
   --bg-2:         rgb(var(--surface-2-rgb));
   --bg-3:         rgb(var(--surface-3-rgb));
 
+  /* ── Alpha scale — bare scalars, NOT colours.
+     These are the three alphas that dominate the repo's white-alpha surfaces
+     (0.1 x70, 0.08 x66, 0.04 x28 measured). They exist so those surfaces can
+     name their alpha instead of repeating a literal. Use inside a colour
+     function — rgb(var(--white-rgb) / var(--alpha-2)) — or as Tailwind's
+     bg-glass-2 / border-glass-2 / text-glass-2.
+     Named --alpha-* and not --glass-* on purpose: --glass-bg and friends below
+     are complete colours, these are scalars, and one prefix spanning both
+     invites `color: var(--glass-2)` — invalid, and it fails silently. The
+     Tailwind keys stay glass-1/2/3 because there they resolve to colours. ── */
+  --alpha-1: 0.04;
+  --alpha-2: 0.08;
+  --alpha-3: 0.1;
+
   /* Glass */
   --glass-bg:     rgb(var(--white-rgb) / 0.055);
   --glass-bg-2:   rgb(var(--white-rgb) / 0.09);
