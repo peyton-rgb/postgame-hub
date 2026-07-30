@@ -16,7 +16,7 @@
   --a-orange-soft: #ff8a5c;
   --a-green: #09d73f;              /* money / positive states only */
   --a-line: rgba(250, 248, 245, 0.09);
-  --a-card: rgba(255, 255, 255, 0.04); /* frosted glass surface */
+  --a-card: rgb(var(--white-rgb) / var(--alpha-1)); /* frosted glass surface */
 
   background: var(--a-black);
   color: var(--a-off);
@@ -79,7 +79,7 @@
 }
 .athlete-app .a-pill-due { background: rgba(215, 63, 9, 0.18); color: var(--a-orange-soft); }
 .athlete-app .a-pill-ok { background: rgba(9, 215, 63, 0.16); color: var(--a-green); }
-.athlete-app .a-pill-neutral { background: rgba(255, 255, 255, 0.12); color: rgba(250, 248, 245, 0.7); }
+.athlete-app .a-pill-neutral { background: rgb(var(--white-rgb) / 0.12); color: rgba(250, 248, 245, 0.7); }
 
 /* Primary + ghost buttons — flat, radius 13–14px. */
 .athlete-app .a-cta {
@@ -93,10 +93,10 @@
   color: #fff;
   display: block;
 }
-.athlete-app .a-cta:disabled { background: rgba(215, 63, 9, 0.45); cursor: not-allowed; color: rgba(255,255,255,0.8); }
+.athlete-app .a-cta:disabled { background: rgba(215, 63, 9, 0.45); cursor: not-allowed; color: rgb(var(--white-rgb) / 0.8); }
 .athlete-app .a-cta:active { transform: scale(0.99); }
 .athlete-app .a-ghost {
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgb(var(--white-rgb) / 0.2);
   background: transparent;
   border-radius: 14px;
   padding: 13px;
@@ -109,8 +109,8 @@
 /* Text inputs */
 .athlete-app .a-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgb(var(--white-rgb) / 0.06);
+  border: 1px solid rgb(var(--white-rgb) / 0.18);
   border-radius: 13px;
   padding: 12px 13px;
   color: var(--a-off);
@@ -146,7 +146,7 @@
 .athlete-app .a-apphead img.a-logo { width: 104px; height: auto; display: block; }
 .athlete-app .a-bell {
   width: 38px; height: 38px; border-radius: 50%; position: relative;
-  border: 1px solid var(--a-line); background: rgba(255,255,255,0.04);
+  border: 1px solid var(--a-line); background: rgb(var(--white-rgb) / var(--alpha-1));
   display: flex; align-items: center; justify-content: center;
   color: var(--a-off);
 }
@@ -197,13 +197,13 @@
   display: flex; align-items: center; justify-content: space-between;
 }
 .athlete-app .a-story-logochip {
-  background: rgba(255, 255, 255, 0.94); border-radius: 8px; padding: 6px 9px; display: flex; align-items: center;
+  background: rgb(var(--white-rgb) / 0.94); border-radius: 8px; padding: 6px 9px; display: flex; align-items: center;
 }
 .athlete-app .a-story-logochip img { height: 17px; max-width: 108px; object-fit: contain; display: block; }
 .athlete-app .a-story-bottom { position: absolute; left: 18px; right: 18px; bottom: 16px; z-index: 2; }
 .athlete-app .a-story-brand {
   font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
-  font-weight: bold; color: rgba(255, 255, 255, 0.72);
+  font-weight: bold; color: rgb(var(--white-rgb) / 0.72);
 }
 .athlete-app .a-story-title {
   font-family: var(--font-bebas), "Bebas Neue", Arial, sans-serif;
@@ -244,7 +244,7 @@
 .athlete-app .a-hero { position: relative; height: 200px; overflow: hidden; }
 .athlete-app .a-heroimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 22%; }
 .athlete-app .a-dim { filter: grayscale(0.55) brightness(0.62); }
-.athlete-app .a-logochip { position: absolute; top: 12px; right: 12px; background: rgba(255, 255, 255, 0.94); border-radius: 8px; padding: 6px 9px; display: flex; align-items: center; }
+.athlete-app .a-logochip { position: absolute; top: 12px; right: 12px; background: rgb(var(--white-rgb) / 0.94); border-radius: 8px; padding: 6px 9px; display: flex; align-items: center; }
 .athlete-app .a-logochip img { height: 15px; display: block; object-fit: contain; }
 .athlete-app .a-overlay { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(7, 7, 10, 0.62); padding: 11px 14px; }
 
@@ -259,10 +259,10 @@
 }
 .athlete-app .a-dhero img.bg { width: 100%; height: 100%; object-fit: cover; display: block; }
 .athlete-app .a-dhero-fade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.92) 100%); }
-.athlete-app .a-dhero-logo { position: absolute; top: 13px; right: 13px; background: rgba(255,255,255,0.94); border-radius: 8px; padding: 6px 9px; display: flex; }
+.athlete-app .a-dhero-logo { position: absolute; top: 13px; right: 13px; background: rgb(var(--white-rgb) / 0.94); border-radius: 8px; padding: 6px 9px; display: flex; }
 .athlete-app .a-dhero-logo img { height: 17px; max-width: 108px; object-fit: contain; display: block; }
 .athlete-app .a-dhero-txt { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; }
-.athlete-app .a-dhero-brand { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: bold; color: rgba(255,255,255,0.72); }
+.athlete-app .a-dhero-brand { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: bold; color: rgb(var(--white-rgb) / 0.72); }
 .athlete-app .a-dhero-title { font-family: var(--font-bebas), "Bebas Neue", Arial, sans-serif; font-size: 32px; line-height: 0.92; text-transform: uppercase; margin-top: 4px; }
 
 .athlete-app .a-compstrip {
@@ -281,7 +281,7 @@
 
 .athlete-app .a-ibox { background: var(--a-card); border: 1px solid var(--a-line); border-radius: 16px; padding: 3px 14px; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 .athlete-app .a-ilabel { font-family: var(--font-bebas), "Bebas Neue", Arial, sans-serif; font-size: 12px; letter-spacing: 0.16em; color: rgba(250,248,245,0.4); padding: 11px 0 4px; text-transform: uppercase; }
-.athlete-app .a-irow { display: flex; gap: 11px; padding: 9px 0; border-top: 1px solid rgba(255,255,255,0.06); align-items: flex-start; }
+.athlete-app .a-irow { display: flex; gap: 11px; padding: 9px 0; border-top: 1px solid rgb(var(--white-rgb) / 0.06); align-items: flex-start; }
 .athlete-app .a-irow:first-of-type { border-top: none; }
 .athlete-app .a-inum { font-family: var(--font-bebas), "Bebas Neue", Arial, sans-serif; font-size: 17px; color: var(--a-orange); flex: 0 0 22px; line-height: 1.2; }
 
@@ -297,36 +297,36 @@
 }
 
 .athlete-app .a-segbar { display: flex; gap: 4px; margin-top: 14px; }
-.athlete-app .a-seg { flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.1); }
+.athlete-app .a-seg { flex: 1; height: 5px; border-radius: 3px; background: rgb(var(--white-rgb) / var(--alpha-3)); }
 .athlete-app .a-seg.done { background: var(--a-orange); }
 .athlete-app .a-seg.cur { background: var(--a-orange); animation: a-segpulse 1.6s ease-in-out infinite; }
 @keyframes a-segpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 .athlete-app .a-seglabels { display: flex; gap: 4px; margin-top: 7px; }
-.athlete-app .a-seglabels span { flex: 1; text-align: center; font-size: 7.5px; letter-spacing: 0.08em; font-weight: bold; text-transform: uppercase; color: rgba(255,255,255,0.28); }
+.athlete-app .a-seglabels span { flex: 1; text-align: center; font-size: 7.5px; letter-spacing: 0.08em; font-weight: bold; text-transform: uppercase; color: rgb(var(--white-rgb) / 0.28); }
 .athlete-app .a-seglabels span.done { color: rgba(215,63,9,0.75); }
 .athlete-app .a-seglabels span.cur { color: var(--a-off); }
 
 .athlete-app .a-alert { margin-top: 14px; border-radius: 14px; padding: 13px 14px; background: var(--a-orange); }
-.athlete-app .a-alert-eyebrow { font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.85); margin-bottom: 6px; }
+.athlete-app .a-alert-eyebrow { font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(var(--white-rgb) / 0.85); margin-bottom: 6px; }
 .athlete-app .a-alert-msg { font-size: 13px; line-height: 1.45; color: #fff; }
 .athlete-app .a-alert-msg b { color: #fff; text-decoration: underline; }
 
 .athlete-app .a-stageline {
   font-size: 11.5px; line-height: 1.5; margin-top: 13px; padding: 9px 12px; border-radius: 10px;
-  background: rgba(255,255,255,0.03); border: 1px solid var(--a-line); color: rgba(250,248,245,0.6);
+  background: rgb(var(--white-rgb) / 0.03); border: 1px solid var(--a-line); color: rgba(250,248,245,0.6);
 }
 
 /* Legacy tracker rail — retained for any consumer that still references it. */
 .athlete-app .a-track { position: relative; margin-top: 6px; }
 .athlete-app .a-step { position: relative; display: flex; gap: 11px; align-items: flex-start; padding-bottom: 15px; text-align: left; }
 .athlete-app .a-step:last-child { padding-bottom: 0; }
-.athlete-app .a-step::before { content: ""; position: absolute; left: 8px; top: 19px; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.12); }
+.athlete-app .a-step::before { content: ""; position: absolute; left: 8px; top: 19px; bottom: 0; width: 2px; background: rgb(var(--white-rgb) / 0.12); }
 .athlete-app .a-step:last-child::before { display: none; }
 .athlete-app .a-step.done::before { background: var(--a-orange); }
 .athlete-app .a-dot { width: 18px; height: 18px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; }
 .athlete-app .a-dot.done { background: var(--a-orange); }
 .athlete-app .a-dot.current { background: var(--a-black); border: 3px solid var(--a-orange); }
-.athlete-app .a-dot.next { background: rgba(255, 255, 255, 0.15); }
+.athlete-app .a-dot.next { background: rgb(var(--white-rgb) / 0.15); }
 
 /* ---------- Floating dock tab bar ---------- */
 .athlete-app .a-dockwrap {
@@ -337,7 +337,7 @@
 .athlete-app .a-dock {
   pointer-events: auto; display: flex; align-items: center; gap: 5px;
   background: rgba(13, 13, 17, 0.92); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 7px;
+  border: 1px solid rgb(var(--white-rgb) / 0.14); border-radius: 999px; padding: 7px;
   box-shadow: 0 14px 44px rgba(0, 0, 0, 0.7);
 }
 .athlete-app .a-dtab {
@@ -372,7 +372,7 @@
   animation: a-sheetup 0.24s ease;
 }
 @keyframes a-sheetup { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } }
-.a-sheet-grab { width: 38px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); margin: 0 auto 16px; }
+.a-sheet-grab { width: 38px; height: 5px; border-radius: 3px; background: rgb(var(--white-rgb) / 0.2); margin: 0 auto 16px; }
 .a-sheet-title { font-family: var(--font-bebas), "Bebas Neue", Arial, sans-serif; font-size: 24px; letter-spacing: 0.02em; text-transform: uppercase; }
 .a-sheet-sub { font-size: 12.5px; color: rgba(250, 248, 245, 0.55); margin-top: 5px; line-height: 1.5; }
 .a-sheet-cancel { text-align: center; font-size: 13.5px; color: rgba(250, 248, 245, 0.55); margin-top: 16px; cursor: pointer; padding: 6px; }
@@ -389,7 +389,7 @@
 .a-bal-sub { font-size: 12px; color: rgba(250, 248, 245, 0.55); margin-top: 12px; line-height: 1.5; }
 
 .a-segtoggle {
-  display: flex; gap: 4px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--a-line);
+  display: flex; gap: 4px; background: rgb(var(--white-rgb) / 0.05); border: 1px solid var(--a-line);
   border-radius: 12px; padding: 4px; margin-top: 22px;
 }
 .a-segtoggle button {
@@ -397,11 +397,11 @@
   font-family: var(--font-bebas), "Bebas Neue", Arial, sans-serif; font-size: 15px; letter-spacing: 0.12em;
   text-transform: uppercase; color: rgba(250, 248, 245, 0.5);
 }
-.a-segtoggle button.on { background: rgba(255, 255, 255, 0.09); color: var(--a-off); }
+.a-segtoggle button.on { background: var(--glass-bg-2); color: var(--a-off); }
 
 .a-erow { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--a-line); }
 .a-erow:last-child { border-bottom: none; }
-.a-erow .ntile { width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto; background: rgba(255,255,255,0.94); display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
+.a-erow .ntile { width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto; background: rgb(var(--white-rgb) / 0.94); display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
 .a-erow .ntile img { max-width: 30px; max-height: 24px; object-fit: contain; }
 .a-erow .ebody { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .a-erow .ebody b { font-size: 13px; font-weight: bold; }
@@ -458,7 +458,7 @@
 .a-railcard { flex: 0 0 158px; scroll-snap-align: start; border-radius: 16px; overflow: hidden; border: 1px solid var(--a-line); background: var(--a-card); text-decoration: none; color: inherit; }
 .a-railcard .rhero { position: relative; height: 92px; background: #0e0e11; }
 .a-railcard .rhero img.bg { width: 100%; height: 100%; object-fit: cover; }
-.a-railcard .rlogo { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.94); border-radius: 6px; padding: 4px 6px; display: flex; }
+.a-railcard .rlogo { position: absolute; top: 8px; left: 8px; background: rgb(var(--white-rgb) / 0.94); border-radius: 6px; padding: 4px 6px; display: flex; }
 .a-railcard .rlogo img { height: 12px; max-width: 60px; object-fit: contain; }
 .a-railcard .rbody { padding: 10px 11px 12px; }
 .a-railcard .rtitle { font-family: var(--font-bebas), "Bebas Neue", Arial, sans-serif; font-size: 17px; line-height: 1; text-transform: uppercase; }
@@ -479,7 +479,7 @@
 .a-crow .cbody { min-width: 0; flex: 1; }
 .a-crow .ctitle { font-size: 13.5px; font-weight: bold; color: var(--a-off); }
 .a-crow .cmeta { font-size: 11px; color: rgba(250, 248, 245, 0.45); margin-top: 3px; }
-.a-viewpdf { flex: 0 0 auto; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--a-off); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--a-line); border-radius: 999px; padding: 8px 13px; cursor: pointer; text-decoration: none; display: inline-flex; }
+.a-viewpdf { flex: 0 0 auto; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--a-off); background: rgb(var(--white-rgb) / 0.06); border: 1px solid var(--a-line); border-radius: 999px; padding: 8px 13px; cursor: pointer; text-decoration: none; display: inline-flex; }
 .a-viewpdf:active { transform: scale(0.96); }
 .a-viewpdf.disabled { color: rgba(250, 248, 245, 0.35); cursor: default; }
 
@@ -491,7 +491,7 @@
 /* Squad invites */
 .a-srow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--a-line); }
 .a-srow:last-child { border-bottom: none; }
-.a-sav { width: 38px; height: 38px; border-radius: 50%; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 13px; letter-spacing: 0.04em; color: rgba(250, 248, 245, 0.75); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--a-line); }
+.a-sav { width: 38px; height: 38px; border-radius: 50%; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-family: var(--font-anton), "Anton", Arial, sans-serif; font-size: 13px; letter-spacing: 0.04em; color: rgba(250, 248, 245, 0.75); background: rgb(var(--white-rgb) / 0.06); border: 1px solid var(--a-line); }
 .a-sav.joined { color: var(--a-green); background: rgba(9, 215, 63, 0.12); border-color: rgba(9, 215, 63, 0.4); }
 .a-srow .sbody { min-width: 0; flex: 1; }
 .a-srow .sname { font-size: 13.5px; font-weight: bold; color: var(--a-off); }

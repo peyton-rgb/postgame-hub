@@ -2,13 +2,13 @@
   --brand: #D73F09;
   --brand-glow: rgba(215, 63, 9, 0.4);
   --brand-tint: rgba(215, 63, 9, 0.12);
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-bg-hover: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-strong: rgba(255, 255, 255, 0.14);
-  --text-primary: rgba(255, 255, 255, 0.95);
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-muted: rgba(255, 255, 255, 0.4);
+  --glass-bg: rgb(var(--white-rgb) / var(--alpha-1));
+  --glass-bg-hover: rgb(var(--white-rgb) / var(--alpha-2));
+  --glass-border: rgb(var(--white-rgb) / var(--alpha-2));
+  --glass-border-strong: rgb(var(--white-rgb) / 0.14);
+  --text-primary: rgb(var(--white-rgb) / 0.95);
+  --text-secondary: rgb(var(--white-rgb) / 0.6);
+  --text-muted: rgb(var(--white-rgb) / 0.4);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   position: relative;
@@ -37,7 +37,7 @@
   line-height: 0.95;
   letter-spacing: -0.04em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.55) 100%);
+  background: linear-gradient(180deg, #ffffff 0%, rgb(var(--white-rgb) / 0.55) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

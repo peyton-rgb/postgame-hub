@@ -8,8 +8,8 @@
    ============================================================ */
 
 .bp-root {
-  --bp-line: rgba(255, 255, 255, 0.09);
-  --bp-line-b: rgba(255, 255, 255, 0.20);
+  --bp-line: rgb(var(--white-rgb) / 0.09);
+  --bp-line-b: rgb(var(--white-rgb) / 0.20);
   --bp-ink: #fff;
   --bp-dim: #9a9a95;
   --bp-orange: #D73F09;
@@ -65,7 +65,7 @@
 .bp-dots span {
   width: 22px;
   height: 3px;
-  background: rgba(255, 255, 255, .28);
+  background: rgb(var(--white-rgb) / .28);
   border-radius: 2px;
   transition: background .3s;
 }
@@ -119,7 +119,7 @@
   object-position: left;
   margin-bottom: 26px;
   filter: drop-shadow(0 4px 30px rgba(0, 0, 0, .6));
-  background: rgba(255, 255, 255, .06);
+  background: rgb(var(--white-rgb) / .06);
   padding: 14px 22px;
   border-radius: 8px;
 }
@@ -376,7 +376,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(80% 60% at 50% 40%, rgba(255, 255, 255, .06), transparent 70%);
+  background: radial-gradient(80% 60% at 50% 40%, rgb(var(--white-rgb) / .06), transparent 70%);
 }
 .bp-tag {
   position: absolute;
@@ -386,8 +386,8 @@
   font-size: 9px;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, .55);
-  border: 1px solid rgba(255, 255, 255, .25);
+  color: rgb(var(--white-rgb) / .55);
+  border: 1px solid rgb(var(--white-rgb) / .25);
   padding: 4px 8px;
   border-radius: 2px;
   z-index: 2;
