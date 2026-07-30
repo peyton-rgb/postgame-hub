@@ -13,8 +13,18 @@ module.exports = {
         mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
       colors: {
-        brand: "#D73F09",
+        // <alpha-value> is Tailwind's placeholder for whatever follows the
+        // slash in a class, so bg-surface/50 -> rgb(7 7 10 / 0.5). The channel
+        // vars live in src/app/globals.css :root.
+        // No `orange` key: that would clobber Tailwind's default orange
+        // palette, which is in use 8x (bg-orange-700, text-orange-300, ...).
+        brand: "rgb(var(--brand-rgb) / <alpha-value>)", // was "#D73F09" — same colour, now alpha-capable
         "brand-dark": "#B33407",
+        surface: "rgb(var(--surface-rgb) / <alpha-value>)",
+        "surface-2": "rgb(var(--surface-2-rgb) / <alpha-value>)",
+        "surface-3": "rgb(var(--surface-3-rgb) / <alpha-value>)",
+        ink: "rgb(var(--ink-rgb) / <alpha-value>)",
+        glass: "rgb(var(--white-rgb) / <alpha-value>)",
       },
       fontSize: {
         "recap-body": ["24px", { lineHeight: "1.4" }],
