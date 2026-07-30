@@ -3,13 +3,13 @@
   --brand-soft: #F56A3D;
   --brand-glow: rgba(215, 63, 9, 0.4);
   --brand-tint: rgba(215, 63, 9, 0.12);
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-bg-hover: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-strong: rgba(255, 255, 255, 0.14);
-  --text-primary: rgba(255, 255, 255, 0.95);
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-muted: rgba(255, 255, 255, 0.4);
+  --glass-bg: rgb(var(--white-rgb) / var(--alpha-1));
+  --glass-bg-hover: rgb(var(--white-rgb) / var(--alpha-2));
+  --glass-border: rgb(var(--white-rgb) / var(--alpha-2));
+  --glass-border-strong: rgb(var(--white-rgb) / 0.14);
+  --text-primary: rgb(var(--white-rgb) / 0.95);
+  --text-secondary: rgb(var(--white-rgb) / 0.6);
+  --text-muted: rgb(var(--white-rgb) / 0.4);
   --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -89,7 +89,7 @@
   letter-spacing: -0.035em;
   margin: 0;
   line-height: 1.05;
-  background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.65) 100%);
+  background: linear-gradient(180deg, #ffffff 0%, rgb(var(--white-rgb) / 0.65) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -123,7 +123,7 @@
   border-radius: 999px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 1px 0 rgb(var(--white-rgb) / 0.06);
 }
 .filterBtn {
   background: transparent;
@@ -135,7 +135,7 @@
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgb(var(--white-rgb) / 0.5);
   border-radius: 999px;
   transition: all 0.35s var(--ease-fluid);
   white-space: nowrap;
@@ -150,7 +150,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border: 1.5px solid rgb(var(--white-rgb) / 0.35);
   background: transparent;
   transition: background 0.25s var(--ease-fluid), border-color 0.25s var(--ease-fluid), box-shadow 0.25s var(--ease-fluid);
   flex-shrink: 0;
@@ -161,8 +161,8 @@
   box-shadow: 0 0 8px rgba(215, 63, 9, 0.65);
 }
 .filterBtn:hover {
-  color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.035);
+  color: rgb(var(--white-rgb) / 0.95);
+  background: rgb(var(--white-rgb) / 0.035);
 }
 .filterBtn.active {
   color: #ffffff;
@@ -175,17 +175,17 @@
   display: inline-block;
   margin-left: 6px;
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgb(var(--white-rgb) / 0.3);
   font-weight: 500;
 }
-.filterBtn.active .count { color: rgba(255, 255, 255, 0.7); }
+.filterBtn.active .count { color: rgb(var(--white-rgb) / 0.7); }
 
 .scrollerFrame { position: relative; z-index: 1; }
 .scroller {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  scrollbar-color: rgb(var(--white-rgb) / var(--alpha-2)) transparent;
   cursor: grab;
   user-select: none;
   -webkit-overflow-scrolling: touch;
@@ -195,11 +195,11 @@
 .scroller::-webkit-scrollbar { height: 8px; }
 .scroller::-webkit-scrollbar-track { background: transparent; }
 .scroller::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(var(--white-rgb) / var(--alpha-2));
   border-radius: 4px;
 }
 .scroller::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgb(var(--white-rgb) / 0.16);
 }
 
 .timeline {
@@ -219,9 +219,9 @@
   background: linear-gradient(
     to right,
     transparent 0%,
-    rgba(255, 255, 255, 0.1) 4%,
+    rgb(var(--white-rgb) / var(--alpha-3)) 4%,
     rgba(215, 63, 9, 0.45) 50%,
-    rgba(255, 255, 255, 0.1) 96%,
+    rgb(var(--white-rgb) / var(--alpha-3)) 96%,
     transparent 100%
   );
   z-index: 0;
@@ -334,7 +334,7 @@
   max-height: 100%;
   display: block;
   filter:
-    drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.85))
+    drop-shadow(0 0 1.5px rgb(var(--white-rgb) / 0.85))
     drop-shadow(0 0 6px rgba(210, 220, 235, 0.55))
     drop-shadow(0 0 14px rgba(200, 210, 225, 0.25))
     drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
@@ -342,7 +342,7 @@
 }
 .event:hover .eventLogoWrap img {
   filter:
-    drop-shadow(0 0 2px rgba(255, 255, 255, 1))
+    drop-shadow(0 0 2px rgb(var(--white-rgb) / 1))
     drop-shadow(0 0 12px rgba(210, 220, 235, 0.8))
     drop-shadow(0 0 28px rgba(200, 210, 225, 0.5))
     drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
@@ -387,13 +387,13 @@
   text-shadow: 0 0 16px rgba(215, 63, 9, 0.35);
 }
 .event.quadrennial .eventName {
-  color: rgba(255, 255, 255, 0.55);
+  color: rgb(var(--white-rgb) / 0.55);
   font-style: italic;
 }
 
 .eventDate {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgb(var(--white-rgb) / 0.55);
   letter-spacing: 0.06em;
   line-height: 1.3;
   padding: 4px 10px;
@@ -417,7 +417,7 @@
   transform: translateX(-50%);
   width: 1px;
   height: 34px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.32));
+  background: linear-gradient(to bottom, rgb(var(--white-rgb) / var(--alpha-2)), rgb(var(--white-rgb) / 0.32));
 }
 .eventStem::after {
   content: '';
@@ -427,8 +427,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+  background: rgb(var(--white-rgb) / 0.55);
+  box-shadow: 0 0 10px rgb(var(--white-rgb) / 0.25);
 }
 .event.tentpole .eventStem {
   background: linear-gradient(to bottom, rgba(215, 63, 9, 0.3), rgba(215, 63, 9, 1));
@@ -449,8 +449,8 @@
 .event.quadrennial .eventStem {
   background: repeating-linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.35) 0,
-    rgba(255, 255, 255, 0.35) 3px,
+    rgb(var(--white-rgb) / 0.35) 0,
+    rgb(var(--white-rgb) / 0.35) 3px,
     transparent 3px,
     transparent 6px
   );
@@ -458,7 +458,7 @@
 .event.below .eventStem {
   bottom: auto;
   top: -50px;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.32));
+  background: linear-gradient(to top, rgb(var(--white-rgb) / var(--alpha-2)), rgb(var(--white-rgb) / 0.32));
 }
 .event.below.tentpole .eventStem {
   background: linear-gradient(to top, rgba(215, 63, 9, 0.3), rgba(215, 63, 9, 1));
@@ -480,7 +480,7 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgb(var(--white-rgb) / 0.95);
   line-height: 1;
   /* Grayscale on a text chip is a no-op; the parent .event.past handles
      the opacity dim. */
@@ -489,14 +489,14 @@
   font-size: 9px;
   font-weight: 500;
   letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgb(var(--white-rgb) / 0.5);
   text-transform: uppercase;
 }
 .holidayChipDay {
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.02em;
-  color: rgba(255, 255, 255, 0.96);
+  color: rgb(var(--white-rgb) / 0.96);
 }
 /* Tentpole holidays (Halloween, Black Friday, Christmas, Back to School)
    get a brand orange cast on the day number. */
@@ -530,7 +530,7 @@
   z-index: 2;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 1px 0 rgb(var(--white-rgb) / 0.06);
 }
 
 .navBtn {
@@ -540,7 +540,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgb(var(--white-rgb) / 0.05);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid var(--glass-border-strong);
@@ -549,17 +549,17 @@
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgb(var(--white-rgb) / 0.9);
   z-index: 10;
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgb(var(--white-rgb) / var(--alpha-3));
   transition: all 0.3s var(--ease-fluid);
 }
 .navBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(var(--white-rgb) / var(--alpha-3));
   transform: translateY(-50%) scale(1.08);
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: rgb(var(--white-rgb) / 0.22);
 }
 .navBtn:disabled {
   opacity: 0.2;
@@ -571,7 +571,7 @@
 .hint {
   text-align: center;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgb(var(--white-rgb) / 0.3);
   padding: 22px 0 0;
   letter-spacing: 0.28em;
   text-transform: uppercase;
@@ -591,7 +591,7 @@
   line-height: 0.95;
   letter-spacing: -0.04em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.55) 100%);
+  background: linear-gradient(180deg, #ffffff 0%, rgb(var(--white-rgb) / 0.55) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

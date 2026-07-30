@@ -240,7 +240,7 @@ img, video { display: block; max-width: 100%; }
 }
 .pg-btn-ghost:hover {
   color: var(--text) !important;
-  border-color: rgba(255,255,255,0.25);
+  border-color: rgb(var(--white-rgb) / 0.25);
   background: var(--glass-bg-2);
 }
 
@@ -347,7 +347,7 @@ img, video { display: block; max-width: 100%; }
 }
 .glass:hover, .glass-hover:hover {
   background: var(--glass-bg-2);
-  border-color: rgba(255,255,255,0.18);
+  border-color: rgb(var(--white-rgb) / 0.18);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -429,7 +429,7 @@ img, video { display: block; max-width: 100%; }
 .btn-secondary:hover {
   color: var(--text) !important;
   background: var(--glass-bg-2);
-  border-color: rgba(255,255,255,0.22);
+  border-color: rgb(var(--white-rgb) / 0.22);
   transform: translateY(-1px);
 }
 
@@ -564,7 +564,7 @@ img, video { display: block; max-width: 100%; }
 .pg-board-col { }
 
 .pg-board-dropzone {
-  background: rgba(255, 255, 255, 0.018);
+  background: rgb(var(--white-rgb) / 0.018);
   border: 1px solid transparent;
 }
 .pg-board-dropzone--over {
@@ -585,7 +585,7 @@ img, video { display: block; max-width: 100%; }
 }
 .pg-board-card:hover {
   background: var(--glass-bg-2);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgb(var(--white-rgb) / 0.2);
 }
 .pg-board-card:active { cursor: grabbing; }
 .pg-board-card--overlay {
@@ -619,7 +619,7 @@ img, video { display: block; max-width: 100%; }
   font-size: 14px;
   line-height: 1.4;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgb(var(--white-rgb) / 0.05);
   border: 1px solid var(--glass-border);
   border-radius: var(--r-sm);
   padding: 9px 11px;
@@ -629,7 +629,7 @@ img, video { display: block; max-width: 100%; }
 .pg-board-input::placeholder { color: var(--text-4); }
 .pg-board-input:focus {
   border-color: var(--orange);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgb(var(--white-rgb) / 0.07);
 }
 .pg-board-input option { background: #111; color: #fff; }
 
@@ -637,7 +637,7 @@ img, video { display: block; max-width: 100%; }
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.12);
+  border: 3px solid rgb(var(--white-rgb) / 0.12);
   border-top-color: var(--orange);
   animation: pgBoardSpin 0.8s linear infinite;
 }
