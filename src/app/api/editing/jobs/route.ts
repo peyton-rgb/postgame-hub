@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     instruction: string;
     reference_image_url?: string;
     parent_job_id?: string;
+    submission_id?: string; // links a job to a tier3_submissions row (athlete content)
   };
 
   try {
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       instruction: body.instruction,
       reference_image_url: body.reference_image_url || null,
       parent_job_id: body.parent_job_id || null,
+      submission_id: body.submission_id || null,
       created_by: user.id,
       status: 'pending',
     })
