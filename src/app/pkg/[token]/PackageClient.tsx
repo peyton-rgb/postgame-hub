@@ -230,6 +230,15 @@ export default function PackageClient({
   const music = useMemo(() => packageMusic(pkg), [pkg]);
   const sfx = useMemo(() => packageSfx(pkg), [pkg]);
 
+  // Optional usage notice (settings.usage). Staff-authored on the package, so
+  // the body ships as HTML — it needs links and emphasis, not just a string.
+  const usage = useMemo(() => {
+    const u = (pkg.settings as Record<string, unknown> | null)?.usage;
+    return u && typeof u === "object"
+      ? (u as { title?: string; body?: string })
+      : null;
+  }, [pkg]);
+
   // Only offer chips for categories the manifest actually has, in pack order.
   const gcats = useMemo(() => {
     const have = new Set(graphics.map((g) => g.category));
@@ -512,6 +521,17 @@ export default function PackageClient({
           </span>
         </h2>
         <div className="pad">
+          {usage ? (
+            <div className="usage">
+              {usage.title ? <b className="ut">{usage.title}</b> : null}
+              {usage.body ? (
+                <div
+                  className="ub"
+                  dangerouslySetInnerHTML={{ __html: usage.body }}
+                />
+              ) : null}
+            </div>
+          ) : null}
           {graphics.length ? (
             <>
               {gcats.length > 1 ? (
@@ -1109,6 +1129,33 @@ export default function PackageClient({
           text-align: center;
           color: #9a8a63;
           font-size: 13px;
+        }
+        /* Usage notice (settings.usage) — sits above the overlay grid */
+        .usage {
+          margin: 0 0 14px;
+          padding: 12px 14px;
+          border: 1px solid rgba(0, 0, 0, 0.14);
+          background: #faf8f5;
+          border-radius: 11px;
+          color: #3b3529;
+          font-size: 12.5px;
+          line-height: 1.5;
+        }
+        .usage .ut {
+          display: block;
+          font-weight: 700;
+          margin-bottom: 4px;
+        }
+        .usage .ub p,
+        .usage .ub ul,
+        .usage .ub ol {
+          margin: 0 0 6px;
+        }
+        .usage .ub > :last-child {
+          margin-bottom: 0;
+        }
+        .usage .ub a {
+          color: var(--pk-red);
         }
         /* Brand rule */
         .rule {
