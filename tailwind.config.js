@@ -18,7 +18,11 @@ module.exports = {
         // vars live in src/app/globals.css :root.
         // No `orange` key: that would clobber Tailwind's default orange
         // palette, which is in use 8x (bg-orange-700, text-orange-300, ...).
-        brand: "rgb(var(--brand-rgb) / <alpha-value>)", // was "#D73F09" — same colour, now alpha-capable
+        // Reads --pg-orange-rgb. The channel var is deliberately not named after
+        // the brand: --brand is a per-campaign client colour set at runtime, so
+        // nothing in :root should carry that prefix. The Tailwind key stays
+        // `brand` — 52 call sites use it.
+        brand: "rgb(var(--pg-orange-rgb) / <alpha-value>)", // #D73F09, alpha-capable
         "brand-dark": "#B33407",
         surface: "rgb(var(--surface-rgb) / <alpha-value>)",
         "surface-2": "rgb(var(--surface-2-rgb) / <alpha-value>)",
