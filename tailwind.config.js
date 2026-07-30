@@ -29,6 +29,16 @@ module.exports = {
         "surface-3": "rgb(var(--surface-3-rgb) / <alpha-value>)",
         ink: "rgb(var(--ink-rgb) / <alpha-value>)",
         glass: "rgb(var(--white-rgb) / <alpha-value>)",
+        // Fixed-alpha steps for the repo's three dominant white alphas. These
+        // deliberately carry no <alpha-value>: the alpha comes from the token,
+        // so bg-glass-2 is complete on its own and bg-glass-2/50 will NOT work.
+        // For a one-off alpha keep using bg-glass/[0.055].
+        // Keys are glass-* (they resolve to colours) but they read the
+        // --alpha-* scalars, which are named apart from the --glass-* colour
+        // tokens in globals.css so the two can't be confused.
+        "glass-1": "rgb(var(--white-rgb) / var(--alpha-1))",
+        "glass-2": "rgb(var(--white-rgb) / var(--alpha-2))",
+        "glass-3": "rgb(var(--white-rgb) / var(--alpha-3))",
       },
       fontSize: {
         "recap-body": ["24px", { lineHeight: "1.4" }],
