@@ -17,21 +17,22 @@
   /* ── Channel primitives — raw RGB so Tailwind can generate alpha variants.
      Every derived token below is numerically identical to the hex/rgba value
      it replaced: this block adds capability, not colour.
-     Deliberately NO global --brand alias. --brand is already a per-campaign
-     CLIENT colour, injected as :root{--brand:<client hex>} by
-     /campaign-instructions/[slug] and /campaign-optin/[slug]. Defining it here
-     would make those pages depend on stylesheet order. Use --orange (the name
-     already in use, 177x) or Tailwind's bg-brand/text-brand instead. ── */
+     The Postgame orange channel is --pg-orange-rgb. Do NOT name it after the
+     brand: --brand is already a per-campaign CLIENT colour, injected at runtime
+     as :root{--brand:<client hex>} by /campaign-instructions/[slug] and
+     /campaign-optin/[slug]. Nothing in this block should carry that prefix, or
+     the two get confused. For Postgame orange use --orange (the name already in
+     use, 177x) or Tailwind's bg-brand/text-brand. ── */
   --surface-rgb:    7 7 10;        /* #07070A */
   --surface-2-rgb:  10 10 10;      /* #0A0A0A */
   --surface-3-rgb:  17 17 17;      /* #111111 */
-  --brand-rgb:      215 63 9;      /* #D73F09 */
+  --pg-orange-rgb:  215 63 9;      /* #D73F09 */
   --white-rgb:      255 255 255;
   --ink-rgb:        250 248 245;   /* #FAF8F5 — brand off-white, not yet in use */
 
-  --orange:       rgb(var(--brand-rgb));
-  --orange-dim:   rgb(var(--brand-rgb) / 0.15);
-  --orange-glow:  rgb(var(--brand-rgb) / 0.25);
+  --orange:       rgb(var(--pg-orange-rgb));
+  --orange-dim:   rgb(var(--pg-orange-rgb) / 0.15);
+  --orange-glow:  rgb(var(--pg-orange-rgb) / 0.25);
   --bg:           rgb(var(--surface-rgb));
   --bg-2:         rgb(var(--surface-2-rgb));
   --bg-3:         rgb(var(--surface-3-rgb));
