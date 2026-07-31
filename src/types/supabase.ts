@@ -703,6 +703,7 @@ export type Database = {
           metrics: Json | null
           name: string
           notes: string | null
+          person_id: string | null
           post_type: string
           post_url: string | null
           reach_level: string | null
@@ -723,6 +724,7 @@ export type Database = {
           metrics?: Json | null
           name: string
           notes?: string | null
+          person_id?: string | null
           post_type?: string
           post_url?: string | null
           reach_level?: string | null
@@ -743,6 +745,7 @@ export type Database = {
           metrics?: Json | null
           name?: string
           notes?: string | null
+          person_id?: string | null
           post_type?: string
           post_url?: string | null
           reach_level?: string | null
@@ -770,6 +773,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -2311,6 +2321,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      colleges: {
+        Row: {
+          city: string | null
+          created_at: string | null
+          id: number
+          is_active: boolean | null
+          name: string
+          state: string | null
+          website: string | null
+          zip: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string | null
+          id: number
+          is_active?: boolean | null
+          name: string
+          state?: string | null
+          website?: string | null
+          zip?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string | null
+          id?: number
+          is_active?: boolean | null
+          name?: string
+          state?: string | null
+          website?: string | null
+          zip?: string | null
+        }
+        Relationships: []
       }
       concepts: {
         Row: {
@@ -4725,6 +4768,128 @@ export type Database = {
           },
         ]
       }
+      people: {
+        Row: {
+          admin_created_at: string | null
+          admin_profile_id: number | null
+          admin_user_id: number
+          college_city: string | null
+          college_id: number | null
+          college_raw: string | null
+          college_state: string | null
+          college_zip: string | null
+          device: string | null
+          email: string | null
+          first_name: string | null
+          gender: string | null
+          hometown_city: string | null
+          hometown_state: string | null
+          id: string
+          imported_at: string | null
+          instagram_followers: number | null
+          instagram_handle: string | null
+          is_active: boolean | null
+          is_archived: boolean | null
+          is_international: boolean | null
+          last_name: string | null
+          nil_value: number | null
+          nil_value_synced_at: string | null
+          person_type: string | null
+          phone: string | null
+          rating: string | null
+          roster_status: string | null
+          shipping_address: string | null
+          shipping_city: string | null
+          shipping_state: string | null
+          shipping_zip: string | null
+          sport: string | null
+          tiktok_followers: number | null
+          tiktok_handle: string | null
+        }
+        Insert: {
+          admin_created_at?: string | null
+          admin_profile_id?: number | null
+          admin_user_id: number
+          college_city?: string | null
+          college_id?: number | null
+          college_raw?: string | null
+          college_state?: string | null
+          college_zip?: string | null
+          device?: string | null
+          email?: string | null
+          first_name?: string | null
+          gender?: string | null
+          hometown_city?: string | null
+          hometown_state?: string | null
+          id?: string
+          imported_at?: string | null
+          instagram_followers?: number | null
+          instagram_handle?: string | null
+          is_active?: boolean | null
+          is_archived?: boolean | null
+          is_international?: boolean | null
+          last_name?: string | null
+          nil_value?: number | null
+          nil_value_synced_at?: string | null
+          person_type?: string | null
+          phone?: string | null
+          rating?: string | null
+          roster_status?: string | null
+          shipping_address?: string | null
+          shipping_city?: string | null
+          shipping_state?: string | null
+          shipping_zip?: string | null
+          sport?: string | null
+          tiktok_followers?: number | null
+          tiktok_handle?: string | null
+        }
+        Update: {
+          admin_created_at?: string | null
+          admin_profile_id?: number | null
+          admin_user_id?: number
+          college_city?: string | null
+          college_id?: number | null
+          college_raw?: string | null
+          college_state?: string | null
+          college_zip?: string | null
+          device?: string | null
+          email?: string | null
+          first_name?: string | null
+          gender?: string | null
+          hometown_city?: string | null
+          hometown_state?: string | null
+          id?: string
+          imported_at?: string | null
+          instagram_followers?: number | null
+          instagram_handle?: string | null
+          is_active?: boolean | null
+          is_archived?: boolean | null
+          is_international?: boolean | null
+          last_name?: string | null
+          nil_value?: number | null
+          nil_value_synced_at?: string | null
+          person_type?: string | null
+          phone?: string | null
+          rating?: string | null
+          roster_status?: string | null
+          shipping_address?: string | null
+          shipping_city?: string | null
+          shipping_state?: string | null
+          shipping_zip?: string | null
+          sport?: string | null
+          tiktok_followers?: number | null
+          tiktok_handle?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pitch_collage_athletes: {
         Row: {
           athlete_name: string
@@ -6277,6 +6442,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      videographer_details: {
+        Row: {
+          agency: string | null
+          cost_max: number | null
+          cost_min: number | null
+          cost_raw: string | null
+          is_editor: boolean | null
+          notes: string | null
+          person_id: string
+          total_paid: number | null
+          will_travel: boolean | null
+        }
+        Insert: {
+          agency?: string | null
+          cost_max?: number | null
+          cost_min?: number | null
+          cost_raw?: string | null
+          is_editor?: boolean | null
+          notes?: string | null
+          person_id: string
+          total_paid?: number | null
+          will_travel?: boolean | null
+        }
+        Update: {
+          agency?: string | null
+          cost_max?: number | null
+          cost_min?: number | null
+          cost_raw?: string | null
+          is_editor?: boolean | null
+          notes?: string | null
+          person_id?: string
+          total_paid?: number | null
+          will_travel?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videographer_details_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       videographer_upload_links: {
         Row: {
