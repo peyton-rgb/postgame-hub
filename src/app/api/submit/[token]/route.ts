@@ -50,13 +50,17 @@ interface SubmissionLink {
   min_videos: number;
   max_files: number;
   expires_at: string | null;
+  deliverables: number | null;
+  brief_url: string | null;
 }
 
 async function resolveLink(token: string): Promise<SubmissionLink | null> {
   const supabase = createServiceSupabase();
   const { data } = await supabase
     .from("submission_links")
-    .select("token, campaign_id, active, min_photos, min_videos, max_files, expires_at")
+    .select(
+      "token, campaign_id, active, min_photos, min_videos, max_files, expires_at, deliverables, brief_url"
+    )
     .eq("token", token)
     .single();
   return (data as SubmissionLink) ?? null;
@@ -265,6 +269,12 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     maxFiles: link!.max_files,
     postgameLogoUrl: branding.postgameLogoUrl,
     clientLogoUrl: branding.clientLogoUrl,
+    // Settings the athlete-facing form needs. Null is meaningful in all three:
+    // no brief link, no stated deliverable count, no expiry — the form omits
+    // each rather than rendering a dead link or an empty line.
+    briefUrl: link!.brief_url,
+    deliverables: link!.deliverables,
+    expiresAt: link!.expires_at,
   });
 }
 
