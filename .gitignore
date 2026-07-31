@@ -29,3 +29,4 @@ scripts/logs/
 
 # Local-only script variants (not for the repo)
 scripts/*.local.js
+.playwright-mcp/
