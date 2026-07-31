@@ -50,13 +50,17 @@ interface SubmissionLink {
   min_videos: number;
   max_files: number;
   expires_at: string | null;
+  deliverables: number | null;
+  brief_url: string | null;
 }
 
 async function resolveLink(token: string): Promise<SubmissionLink | null> {
   const supabase = createServiceSupabase();
   const { data } = await supabase
     .from("submission_links")
-    .select("token, campaign_id, active, min_photos, min_videos, max_files, expires_at")
+    .select(
+      "token, campaign_id, active, min_photos, min_videos, max_files, expires_at, deliverables, brief_url"
+    )
     .eq("token", token)
     .single();
   return (data as SubmissionLink) ?? null;
@@ -207,15 +211,17 @@ async function loadCampaign(campaignId: string) {
   };
 }
 
-// Postgame's own brand row — its logo_primary_url is the white wordmark WITH
-// the orange plus (logo_light_url is all-white, so we don't use it here).
+// Postgame's own brand row. The athlete form sits on an off-white ground
+// (#FAF8F5), so the mark has to be logo_dark_url — the dark-ink wordmark with
+// the orange plus. logo_primary_url is the WHITE wordmark and renders
+// near-invisible here; logo_light_url is all-white and is worse.
 const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
 
 // Athlete-facing branding for the page header + campaign chip. Two steps, no
 // UUID-sniffing of the text column:
 //   brand_id set  → chip name = brands.name, client logo = logo_primary_url
-//                   (rendered bare on black; render nothing if absent — no
-//                    logo_light_url fallback, no placeholder)
+//                   (rendered bare on the off-white ground; render nothing if
+//                    absent — no logo_light_url fallback, no placeholder)
 //   brand_id null → chip name = campaign_recaps.client_name (plain text), no logo
 async function loadBranding(
   campaign: { brand_id: string | null; brand: string | null } | null
@@ -226,19 +232,22 @@ async function loadBranding(
 
   const { data } = await supabase
     .from("brands")
-    .select("id, name, logo_primary_url")
+    .select("id, name, logo_primary_url, logo_dark_url")
     .in("id", ids);
 
   const rows = (data ?? []) as Array<{
     id: string;
     name: string | null;
     logo_primary_url: string | null;
+    logo_dark_url: string | null;
   }>;
   const pg = rows.find((r) => r.id === POSTGAME_BRAND_ID);
   const client = campaign?.brand_id ? rows.find((r) => r.id === campaign.brand_id) : null;
 
   return {
-    postgameLogoUrl: pg?.logo_primary_url ?? null,
+    // Postgame only: dark ink for the off-white ground. The client mark stays
+    // on logo_primary_url — untouched.
+    postgameLogoUrl: pg?.logo_dark_url ?? null,
     clientLogoUrl: client?.logo_primary_url ?? null,
     brandName: client?.name ?? campaign?.brand ?? null,
   };
@@ -265,6 +274,12 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     maxFiles: link!.max_files,
     postgameLogoUrl: branding.postgameLogoUrl,
     clientLogoUrl: branding.clientLogoUrl,
+    // Settings the athlete-facing form needs. Null is meaningful in all three:
+    // no brief link, no stated deliverable count, no expiry — the form omits
+    // each rather than rendering a dead link or an empty line.
+    briefUrl: link!.brief_url,
+    deliverables: link!.deliverables,
+    expiresAt: link!.expires_at,
   });
 }
 
