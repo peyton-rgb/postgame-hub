@@ -26,7 +26,9 @@
 //   PLUS:
 //     13. vibe_words (stored in search_phrases)
 //
-// This function is called by POST /api/intake/tag
+// Called (fire-and-forget) by POST /api/creator-briefs/upload/complete.
+// NOTE: /api/intake/tag and /api/tag do their own Claude call on
+// client-extracted video frames — they do NOT go through this function.
 // ============================================================
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -43,6 +45,13 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Ceiling on a source file we're willing to pull into memory before resizing.
+// Nothing in the library comes close today (the largest taggable image is
+// 6.26 MB), so this is a guard against a future upload, not a fix for a live
+// failure. Set well under the function memory limit to leave room for the
+// ~2x transient spike of arrayBuffer() + Buffer.from().
+const MAX_SOURCE_BYTES = 100 * 1024 * 1024; // 100 MB
 
 // The JSON schema Claude must follow when tagging content.
 // This tells Claude exactly what shape to return.
@@ -240,115 +249,95 @@ export async function tagInspoItem(
     .single();
 
   if (runError) {
+    // Step 2 already flipped the item to 'processing'. With no agent_runs row to
+    // settle, the finally-backstop below can't help — so undo that here rather
+    // than stranding the item mid-flight with no audit trail to explain it.
+    await supabase
+      .from('inspo_items')
+      .update({ tagging_status: 'failed' })
+      .eq('id', inspoItemId);
     throw new Error(`Failed to create agent run record: ${runError.message}`);
   }
 
-  // --- Step 4: Call Claude Vision ---
-  let response;
-  // Declared out here (not inside the try) so the JSON-retry below can reuse them.
-  let base64Image = '';
-  let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/jpeg';
-  // Technical metadata read straight from the file (photos only — a video's specs
-  // come from ffprobe, not from its thumbnail). Stay blank when unavailable.
-  let fileResolution: string | null = null;
-  let fileAspect: '9:16' | '16:9' | '1:1' | '4:5' | 'unknown' = 'unknown';
-  try {
-    // Fetch the image, then SHRINK it before sending to Claude.
-    // Claude's API rejects any single image over 5 MB, and raw phone photos
-    // (especially HEIC) are often 20–30 MB — which is what failed every intake
-    // run before. prepareImageForClaude resizes + compresses it under the limit.
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
-    }
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    const prepared = await prepareImageForClaude(imageBuffer, imageUrl);
-    base64Image = prepared.base64;
-    mediaType = prepared.mediaType;
+  // --- Terminal-status guarantee ---
+  // The agent_runs row above is now 'running'. Every exit from here on MUST
+  // land it on 'complete' or 'failed'. An orphaned 'running' row is invisible
+  // work — indistinguishable from a job still in flight.
+  //
+  // `settled` records that a terminal write already happened, so the backstop
+  // in `finally` can never overwrite a real result.
+  let settled = false;
 
-    // For photos, read true dimensions + aspect ratio from the ORIGINAL bytes.
-    // (Skip videos: the buffer here is a downscaled thumbnail, not the source clip.)
-    if (!isVideo) {
-      const dims = await extractImageDimensions(imageBuffer);
-      fileResolution = dims.resolution;
-      fileAspect = dims.aspectFormat;
-    }
-
-    response = await anthropic.messages.create({
-      model: 'claude-fable-5',
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: base64Image,
-              },
-            },
-            {
-              type: 'text',
-              text: `Analyze this content and return structured tags as JSON.\n\nContext: This is ${item.content_type} content from source "${item.source}"${item.sport ? `, sport: ${item.sport}` : ''}${item.athlete_name ? `, athlete: ${item.athlete_name}` : ''}.\n\nReturn JSON matching the tag schema.`,
-            },
-          ],
-        },
-      ],
-    });
-  } catch (err) {
-    // Log the failure
+  // Land the run (and its item) on 'failed'. Safe to call more than once.
+  const settleFailed = async (
+    message: string,
+    extra?: Record<string, unknown>
+  ): Promise<void> => {
+    if (settled) return;
+    settled = true;
     await supabase
       .from('agent_runs')
       .update({
         status: 'failed',
-        error_message: err instanceof Error ? err.message : 'Claude Vision call failed',
+        error_message: message,
         duration_ms: Date.now() - startTime,
-      })
-      .eq('id', agentRun.id);
-
-    // Mark the item as failed
-    await supabase
-      .from('inspo_items')
-      .update({ tagging_status: 'failed' })
-      .eq('id', inspoItemId);
-
-    throw err;
-  }
-
-  // --- Step 5: Parse the response ---
-  const textBlock = response.content.find((block) => block.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    await supabase
-      .from('agent_runs')
-      .update({
-        status: 'failed',
-        error_message: 'Claude returned no text content',
-        duration_ms: Date.now() - startTime,
+        ...extra,
       })
       .eq('id', agentRun.id);
     await supabase
       .from('inspo_items')
       .update({ tagging_status: 'failed' })
       .eq('id', inspoItemId);
-    throw new Error('Claude returned no text content');
-  }
+  };
 
-  let tagResult: IntakeTagResult;
   try {
-    // Strip markdown code fences if present
-    let jsonText = textBlock.text.trim();
-    if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-    }
-    tagResult = JSON.parse(jsonText) as IntakeTagResult;
-  } catch (parseErr) {
-    // Retry once with a correction prompt
-    console.warn('First JSON parse failed for tagging, retrying...');
+    // --- Step 4: Call Claude Vision ---
+    let response;
+    // Declared out here (not inside the try) so the JSON-retry below can reuse them.
+    let base64Image = '';
+    let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/jpeg';
+    // Technical metadata read straight from the file (photos only — a video's specs
+    // come from ffprobe, not from its thumbnail). Stay blank when unavailable.
+    let fileResolution: string | null = null;
+    let fileAspect: '9:16' | '16:9' | '1:1' | '4:5' | 'unknown' = 'unknown';
     try {
-      const retryResponse = await anthropic.messages.create({
+      // Fetch the image, then SHRINK it before sending to Claude.
+      // Claude's API rejects any single image over 5 MB, and raw phone photos
+      // (especially HEIC) are often 20–30 MB — which is what failed every intake
+      // run before. prepareImageForClaude resizes + compresses it under the limit.
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+      }
+
+      // Refuse absurd source files before pulling them into memory. arrayBuffer()
+      // materialises the whole response and Buffer.from copies it, so peak usage
+      // is roughly 2x the file against a 1024 MB function limit — a big enough
+      // file OOMs as an unhandled kill, which no `finally` can catch.
+      // Read from the GET response we already have rather than paying for a HEAD.
+      // (Chunked responses omit content-length; those fall through unchecked.)
+      const declaredBytes = Number(imageResponse.headers.get('content-length'));
+      if (declaredBytes && declaredBytes > MAX_SOURCE_BYTES) {
+        throw new Error(
+          `Source image is ${(declaredBytes / 1048576).toFixed(1)} MB, over the ` +
+            `${MAX_SOURCE_BYTES / 1048576} MB intake ceiling. Resize or re-upload it before tagging.`
+        );
+      }
+
+      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      const prepared = await prepareImageForClaude(imageBuffer, imageUrl);
+      base64Image = prepared.base64;
+      mediaType = prepared.mediaType;
+
+      // For photos, read true dimensions + aspect ratio from the ORIGINAL bytes.
+      // (Skip videos: the buffer here is a downscaled thumbnail, not the source clip.)
+      if (!isVideo) {
+        const dims = await extractImageDimensions(imageBuffer);
+        fileResolution = dims.resolution;
+        fileAspect = dims.aspectFormat;
+      }
+
+      response = await anthropic.messages.create({
         model: 'claude-fable-5',
         max_tokens: 2048,
         system: SYSTEM_PROMPT,
@@ -361,121 +350,176 @@ export async function tagInspoItem(
                 source: {
                   type: 'base64',
                   media_type: mediaType,
-                  data: base64Image, // re-send the already-shrunk image (valid, under 5 MB)
+                  data: base64Image,
                 },
               },
-              { type: 'text', text: 'Analyze this content and return structured tags as JSON.' },
+              {
+                type: 'text',
+                text: `Analyze this content and return structured tags as JSON.\n\nContext: This is ${item.content_type} content from source "${item.source}"${item.sport ? `, sport: ${item.sport}` : ''}${item.athlete_name ? `, athlete: ${item.athlete_name}` : ''}.\n\nReturn JSON matching the tag schema.`,
+              },
             ],
-          },
-          { role: 'assistant', content: textBlock.text },
-          {
-            role: 'user',
-            content: `Your previous response was not valid JSON. Return ONLY a valid JSON object, no extra text. Schema:\n${JSON.stringify(TAG_OUTPUT_SCHEMA, null, 2)}`,
           },
         ],
       });
+    } catch (err) {
+      await settleFailed(
+        err instanceof Error ? err.message : 'Claude Vision call failed'
+      );
+      throw err;
+    }
 
-      const retryBlock = retryResponse.content.find((b) => b.type === 'text');
-      if (retryBlock && retryBlock.type === 'text') {
-        let retryJson = retryBlock.text.trim();
-        if (retryJson.startsWith('```')) {
-          retryJson = retryJson.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-        }
-        tagResult = JSON.parse(retryJson) as IntakeTagResult;
-        response = retryResponse;
-      } else {
-        throw new Error('Retry returned no text');
+    // --- Step 5: Parse the response ---
+    const textBlock = response.content.find((block) => block.type === 'text');
+    if (!textBlock || textBlock.type !== 'text') {
+      await settleFailed('Claude returned no text content');
+      throw new Error('Claude returned no text content');
+    }
+
+    let tagResult: IntakeTagResult;
+    try {
+      // Strip markdown code fences if present
+      let jsonText = textBlock.text.trim();
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
       }
-    } catch {
-      await supabase
-        .from('agent_runs')
-        .update({
-          status: 'failed',
-          error_message: 'Failed to parse Claude tagging response after 2 attempts',
+      tagResult = JSON.parse(jsonText) as IntakeTagResult;
+    } catch (parseErr) {
+      // Retry once with a correction prompt
+      console.warn('First JSON parse failed for tagging, retrying...');
+      try {
+        const retryResponse = await anthropic.messages.create({
+          model: 'claude-fable-5',
+          max_tokens: 2048,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: mediaType,
+                    data: base64Image, // re-send the already-shrunk image (valid, under 5 MB)
+                  },
+                },
+                { type: 'text', text: 'Analyze this content and return structured tags as JSON.' },
+              ],
+            },
+            { role: 'assistant', content: textBlock.text },
+            {
+              role: 'user',
+              content: `Your previous response was not valid JSON. Return ONLY a valid JSON object, no extra text. Schema:\n${JSON.stringify(TAG_OUTPUT_SCHEMA, null, 2)}`,
+            },
+          ],
+        });
+
+        const retryBlock = retryResponse.content.find((b) => b.type === 'text');
+        if (retryBlock && retryBlock.type === 'text') {
+          let retryJson = retryBlock.text.trim();
+          if (retryJson.startsWith('```')) {
+            retryJson = retryJson.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+          }
+          tagResult = JSON.parse(retryJson) as IntakeTagResult;
+          response = retryResponse;
+        } else {
+          throw new Error('Retry returned no text');
+        }
+      } catch {
+        await settleFailed('Failed to parse Claude tagging response after 2 attempts', {
           output_payload: { raw_response: textBlock.text },
-          duration_ms: Date.now() - startTime,
-        })
-        .eq('id', agentRun.id);
-      await supabase
-        .from('inspo_items')
-        .update({ tagging_status: 'failed' })
-        .eq('id', inspoItemId);
-      throw new Error('Claude returned malformed JSON twice during tagging. Please retry.');
+        });
+        throw new Error('Claude returned malformed JSON twice during tagging. Please retry.');
+      }
     }
-  }
 
-  // --- Step 6: Save tags to inspo_items ---
-  const tagUpdate: Record<string, unknown> = {
-    pro_tags: tagResult.pro_tags,
-    social_tags: tagResult.social_tags,
-    context_tags: tagResult.context_tags,
-    search_phrases: tagResult.vibe_words,
-    brief_fit: tagResult.brief_fit,
-    visual_description: tagResult.visual_description,
-    tagging_status: 'tagged',
-  };
-  // Only photos get dimensions here; videos get their specs from ffprobe later,
-  // so we don't overwrite those fields for video items.
-  if (!isVideo) {
-    tagUpdate.resolution = fileResolution;
-    tagUpdate.format = fileAspect;
-  }
-  const { error: updateError } = await supabase
-    .from('inspo_items')
-    .update(tagUpdate)
-    .eq('id', inspoItemId);
-
-  if (updateError) {
-    throw new Error(`Failed to save tags: ${updateError.message}`);
-  }
-
-  // --- Step 6b: Generate + store the embedding ---
-  // Runs right after the tag write succeeds. An embedding failure here must
-  // NEVER fail the tag job, so the whole block is wrapped: on error we warn
-  // and continue (the backfill script can fill this row in later).
-  try {
-    const embeddingInput = buildEmbeddingInput({
-      visual_description: tagResult.visual_description,
-      context_tags: tagResult.context_tags,
-      social_tags: tagResult.social_tags,
+    // --- Step 6: Save tags to inspo_items ---
+    const tagUpdate: Record<string, unknown> = {
       pro_tags: tagResult.pro_tags,
-      search_phrases: tagResult.vibe_words, // agent calls them vibe_words
+      social_tags: tagResult.social_tags,
+      context_tags: tagResult.context_tags,
+      search_phrases: tagResult.vibe_words,
       brief_fit: tagResult.brief_fit,
-    });
-    const embedding = await generateEmbedding(embeddingInput);
-    const { error: embeddingError } = await supabase
-      .from('inspo_items')
-      .update({ embedding: JSON.stringify(embedding) })
-      .eq('id', inspoItemId);
-    if (embeddingError) {
-      throw new Error(embeddingError.message);
+      visual_description: tagResult.visual_description,
+      tagging_status: 'tagged',
+    };
+    // Only photos get dimensions here; videos get their specs from ffprobe later,
+    // so we don't overwrite those fields for video items.
+    if (!isVideo) {
+      tagUpdate.resolution = fileResolution;
+      tagUpdate.format = fileAspect;
     }
-  } catch (embeddingErr) {
-    console.warn(
-      `[intake-agent] Embedding step failed for ${inspoItemId} (tag job still succeeded):`,
-      embeddingErr instanceof Error ? embeddingErr.message : embeddingErr
-    );
+    const { error: updateError } = await supabase
+      .from('inspo_items')
+      .update(tagUpdate)
+      .eq('id', inspoItemId);
+
+    if (updateError) {
+      // Previously this threw straight past the agent_runs update, stranding the
+      // run on 'running' and the item on 'processing' forever. Settle both first.
+      await settleFailed(`Failed to save tags: ${updateError.message}`);
+      throw new Error(`Failed to save tags: ${updateError.message}`);
+    }
+
+    // --- Step 6b: Generate + store the embedding ---
+    // Runs right after the tag write succeeds. An embedding failure here must
+    // NEVER fail the tag job, so the whole block is wrapped: on error we warn
+    // and continue (the backfill script can fill this row in later).
+    try {
+      const embeddingInput = buildEmbeddingInput({
+        visual_description: tagResult.visual_description,
+        context_tags: tagResult.context_tags,
+        social_tags: tagResult.social_tags,
+        pro_tags: tagResult.pro_tags,
+        search_phrases: tagResult.vibe_words, // agent calls them vibe_words
+        brief_fit: tagResult.brief_fit,
+      });
+      const embedding = await generateEmbedding(embeddingInput);
+      const { error: embeddingError } = await supabase
+        .from('inspo_items')
+        .update({ embedding: JSON.stringify(embedding) })
+        .eq('id', inspoItemId);
+      if (embeddingError) {
+        throw new Error(embeddingError.message);
+      }
+    } catch (embeddingErr) {
+      console.warn(
+        `[intake-agent] Embedding step failed for ${inspoItemId} (tag job still succeeded):`,
+        embeddingErr instanceof Error ? embeddingErr.message : embeddingErr
+      );
+    }
+
+    // --- Step 7: Update agent_runs with success ---
+    const inputTokens = response.usage?.input_tokens || 0;
+    const outputTokens = response.usage?.output_tokens || 0;
+    // Claude Fable 5 pricing: $10 / MTok input, $50 / MTok output.
+    const costUsd = (inputTokens * 10 + outputTokens * 50) / 1_000_000;
+
+    // Mark settled BEFORE the write: if the update itself throws, the backstop
+    // must not then stamp 'failed' over a job whose tags were saved fine.
+    settled = true;
+    await supabase
+      .from('agent_runs')
+      .update({
+        status: 'complete',
+        output_payload: tagResult,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cost_usd: costUsd,
+        duration_ms: Date.now() - startTime,
+      })
+      .eq('id', agentRun.id);
+
+    return tagResult;
+  } finally {
+    // Backstop. Any escape that didn't settle — an unexpected throw, a bug in
+    // a step below — lands the run on 'failed' instead of orphaning it as
+    // 'running'. NOTE: a `finally` cannot survive a hard process kill (OOM,
+    // SIGKILL) or a platform timeout. Those still need a sweeper.
+    if (!settled) {
+      await settleFailed('Run ended without a terminal status (unexpected exit)');
+    }
   }
-
-  // --- Step 7: Update agent_runs with success ---
-  const inputTokens = response.usage?.input_tokens || 0;
-  const outputTokens = response.usage?.output_tokens || 0;
-  // Claude Fable 5 pricing: $10 / MTok input, $50 / MTok output.
-  const costUsd = (inputTokens * 10 + outputTokens * 50) / 1_000_000;
-
-  await supabase
-    .from('agent_runs')
-    .update({
-      status: 'complete',
-      output_payload: tagResult,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      cost_usd: costUsd,
-      duration_ms: Date.now() - startTime,
-    })
-    .eq('id', agentRun.id);
-
-  return tagResult;
 }
 
 /**
