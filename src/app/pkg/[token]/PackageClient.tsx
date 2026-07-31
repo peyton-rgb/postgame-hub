@@ -766,12 +766,13 @@ export default function PackageClient({
           )}
         </div>
 
-        {/* Brand rule — confirmed twice in the Cane's production meeting, so it
-            sits with the assets rather than only in the pack's README.txt. */}
+        {/* Brand rule — the general one, shown on every package, so it sits with
+            the assets rather than only in the pack's README.txt. Event-specific
+            restrictions belong in settings.usage on the package itself. */}
         <div className="rule">
           <span className="rl">Brand rule</span>
-          Only Raising Cane&rsquo;s branding — no other logos (incl. no Fanatics
-          logos).
+          Only Raising Cane&rsquo;s branding — no other logos or third-party
+          marks.
         </div>
 
         <div className="foot">
