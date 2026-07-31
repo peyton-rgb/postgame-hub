@@ -174,20 +174,37 @@ async function mintResumableSession(
   return loc;
 }
 
+// submission_links.campaign_id FKs to campaign_recaps — NOT brand_campaigns.
+// Reading the wrong table returned null for every token, which is what made
+// this endpoint report "Your Campaign" with no brand on a perfectly good link.
 async function loadCampaign(campaignId: string) {
   const supabase = createServiceSupabase();
   const { data } = await supabase
-    .from("brand_campaigns")
-    .select("id, name, drive_folder_id, brand_id, brand")
+    .from("campaign_recaps")
+    .select("id, name, drive_folder_id, brand_id, client_name")
     .eq("id", campaignId)
     .single();
-  return data as {
+  if (!data) return null;
+
+  const row = data as {
     id: string;
     name: string | null;
     drive_folder_id: string | null;
     brand_id: string | null;
-    brand: string | null;
-  } | null;
+    client_name: string | null;
+  };
+  return {
+    id: row.id,
+    name: row.name,
+    drive_folder_id: row.drive_folder_id,
+    brand_id: row.brand_id,
+    // brand_id is nullable at the DB level (0 null across 611 recaps today, but
+    // nothing enforces it), so this fallback is dormant rather than dead.
+    // client_name is populated on all 611 and matches brands.name on 609, which
+    // makes it the best stand-in when brand_id is absent.
+    brand: row.client_name, // display fallback only when brand_id is null.
+                            // Free text — never use as a brand identifier.
+  };
 }
 
 // Postgame's own brand row — its logo_primary_url is the white wordmark WITH
@@ -199,7 +216,7 @@ const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
 //   brand_id set  → chip name = brands.name, client logo = logo_primary_url
 //                   (rendered bare on black; render nothing if absent — no
 //                    logo_light_url fallback, no placeholder)
-//   brand_id null → chip name = brand_campaigns.brand (plain text), no logo
+//   brand_id null → chip name = campaign_recaps.client_name (plain text), no logo
 async function loadBranding(
   campaign: { brand_id: string | null; brand: string | null } | null
 ): Promise<{ brandName: string | null; postgameLogoUrl: string | null; clientLogoUrl: string | null }> {
