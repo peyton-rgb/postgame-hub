@@ -13,6 +13,7 @@ import { google } from "googleapis";
 import { getGoogleAuth } from "@/lib/google-auth";
 import { getStaffUser } from "@/lib/staff-auth";
 import { createServerSupabase } from "@/lib/supabase-server";
+import { formatDateOnlyShort, parseDateOnly, todayDateOnly } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,10 @@ interface DocketRow {
   ts: number; // sort key (ms); stripped from response order only
 }
 
+// For real instants only (timed calendar events), which genuinely belong
+// in the viewer's zone. Date-only values (task due dates, all-day events)
+// must use formatDateOnlyShort — running them through TZ here shifts them
+// back a day whenever the server clock is UTC, as it is on Vercel.
 function dateLabel(d: Date): string {
   const wd = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: TZ }).format(d).toUpperCase();
   const md = new Intl.DateTimeFormat("en-US", { month: "2-digit", day: "2-digit", timeZone: TZ }).format(d);
@@ -62,8 +67,8 @@ export async function GET() {
   // ── Task due-dates in window (RLS → own tasks) ──
   try {
     const supabase = createServerSupabase();
-    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(now); // yyyy-mm-dd
-    const maxStr = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(timeMax);
+    const todayStr = todayDateOnly(TZ, now); // yyyy-mm-dd
+    const maxStr = todayDateOnly(TZ, timeMax);
     const { data } = await supabase
       .from("board_tasks")
       .select("title, due_date, source_url")
@@ -71,11 +76,13 @@ export async function GET() {
       .gte("due_date", todayStr)
       .lte("due_date", maxStr);
     for (const t of data ?? []) {
-      const [y, m, d] = String(t.due_date).split("-").map(Number);
-      const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+      // due_date is a Postgres `date` — a calendar day, not an instant.
+      const label = formatDateOnlyShort(t.due_date);
+      const dt = parseDateOnly(t.due_date);
+      if (!label || !dt) continue; // unparseable date → skip rather than mislabel
       const ts = dt.getTime();
       rows.push({
-        date: dateLabel(dt),
+        date: label,
         body: `${t.title} — due`,
         time: null,
         url: t.source_url || "/board",
@@ -100,13 +107,20 @@ export async function GET() {
       maxResults: 25,
     });
     for (const ev of res.data.items ?? []) {
-      const startRaw = ev.start?.dateTime || ev.start?.date;
-      if (!startRaw) continue;
-      const allDay = !ev.start?.dateTime;
-      const dt = new Date(ev.start?.dateTime ?? `${ev.start?.date}T00:00:00`);
+      // A timed event carries a full offset and is a real instant. An
+      // all-day event carries a bare "YYYY-MM-DD" — the same date-only
+      // trap as due_date, so it takes the same UTC-anchored path.
+      const startDateTime = ev.start?.dateTime;
+      const startDate = ev.start?.date;
+      if (!startDateTime && !startDate) continue;
+      const allDay = !startDateTime;
+      const dt = startDateTime ? new Date(startDateTime) : parseDateOnly(startDate);
+      if (!dt || Number.isNaN(dt.getTime())) continue;
+      const label = startDateTime ? dateLabel(dt) : formatDateOnlyShort(startDate);
+      if (!label) continue;
       const ts = dt.getTime();
       rows.push({
-        date: dateLabel(dt),
+        date: label,
         body: ev.summary || "(no title)",
         time: allDay ? null : timeLabel(dt),
         url: ev.htmlLink || null,
