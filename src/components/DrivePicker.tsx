@@ -292,20 +292,18 @@ export default function DrivePicker({
       const aliases = aliasMap.size ? aliasMap : await fetchSchoolAliases(supabase);
       if (!aliasMap.size && !cancelled) setAliasMap(aliases);
 
-      // folders already claimed by an individual athlete are off the table
-      const claimed = new Set<string>();
-      for (const a of athletes) {
-        const f = matchAthleteToFolder(a.name, driveData.athletes);
-        if (f) claimed.add(f.folderId);
-      }
-
       const roster = athletes.map((a) => ({
         id: a.id, name: a.name, school: a.school || "", sport: a.sport || "",
       }));
 
+      // Team folders take precedence: any folder matching 2+ roster athletes
+      // (by school+sport OR by participant names). Previously a folder was
+      // skipped when an individual athlete fuzzy-matched it, which wrongly
+      // pre-empted combined folders like "Anthony Pack / Carson Tinney" — they
+      // never reached matchTeamFolder, so their collab showed NOT LINKED. The
+      // 2+ requirement in matchTeamFolder keeps single-athlete folders out.
       const teams: DetectedTeam[] = [];
       for (const folder of driveData.athletes) {
-        if (claimed.has(folder.folderId)) continue;
         const m = matchTeamFolder(folder.folderName, aliases, roster);
         if (!m) continue;
         const teamName = folder.folderName.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();

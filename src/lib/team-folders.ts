@@ -131,8 +131,23 @@ export interface TeamFolderMatch extends ParsedTeamFolder {
 }
 
 /**
- * Given a folder name and the recap roster, return a team match IF the
- * folder parses into school+sport AND 2+ roster athletes match both.
+ * Do ALL of this athlete's significant name tokens (first + last, ≥2 chars)
+ * appear in the already-normalized folder name? Used to detect folders named
+ * after their participants ("LJ and Xander Mercurius", "Anthony Pack / Carson
+ * Tinney") rather than by school+sport. Requiring every token — plus the 2+
+ * guard in matchTeamFolder — keeps single-athlete folders and common-name
+ * collisions from being mistaken for a team.
+ */
+function athleteNameInFolder(athleteName: string, normFolder: string): boolean {
+  const tokens = athleteName.split(/\s+/).map(norm).filter((t) => t.length >= 2);
+  if (tokens.length === 0) return false;
+  return tokens.every((t) => normFolder.includes(t));
+}
+
+/**
+ * Given a folder name and the recap roster, return a team match IF EITHER:
+ *   1. the folder parses into school+sport AND 2+ roster athletes match both, OR
+ *   2. the folder is named after 2+ roster athletes (their content combined).
  * Returns null otherwise (caller falls back to "No folder match").
  */
 export function matchTeamFolder(
@@ -140,13 +155,25 @@ export function matchTeamFolder(
   aliasMap: SchoolAliasMap,
   roster: RosterAthlete[],
 ): TeamFolderMatch | null {
+  // (1) school+sport folder, e.g. "Texas Tech Softball (DSG)".
   const parsed = parseTeamFolderName(folderName, aliasMap);
-  if (!parsed) return null;
+  if (parsed) {
+    const athletes = roster.filter(
+      (a) => schoolMatches(a.school, parsed) && sportMatches(a.sport, parsed),
+    );
+    if (athletes.length >= 2) return { ...parsed, athletes };
+  }
 
-  const athletes = roster.filter(
-    (a) => schoolMatches(a.school, parsed) && sportMatches(a.sport, parsed),
-  );
-  if (athletes.length < 2) return null;
+  // (2) athlete-named folder — most collab folders are named by athlete, not
+  //     school+sport. school/sport are derived from the matched athletes so the
+  //     container still carries them.
+  const nf = norm(folderName);
+  const byName = roster.filter((a) => athleteNameInFolder(a.name, nf));
+  if (byName.length >= 2) {
+    const school = byName[0].school || "";
+    const sport = byName[0].sport || "";
+    return { school, schoolToken: school, sport, athletes: byName };
+  }
 
-  return { ...parsed, athletes };
+  return null;
 }
