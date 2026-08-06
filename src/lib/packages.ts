@@ -70,7 +70,14 @@ export type Talent = {
 // manifest survives a Supabase project/bucket move; packageAssetUrl() rebuilds
 // the public URL at render.
 
-export type PkgGraphic = { category: string; file: string; label: string };
+// `dark: true` marks a white/reverse overlay — it previews on a dark tile
+// instead of the light checker, which a white fill would otherwise vanish into.
+export type PkgGraphic = {
+  category: string;
+  file: string;
+  label: string;
+  dark?: boolean;
+};
 export type PkgMusic = { file: string; title: string; len?: string };
 
 export const GRAPHIC_PREFIX = "asset-graphics";
