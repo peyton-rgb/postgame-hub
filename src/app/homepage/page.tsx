@@ -116,7 +116,7 @@ export default async function HomepagePage() {
   @keyframes hpFadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
         .hp-hero-title{font-size:clamp(72px,12vw,140px);line-height:0.9;letter-spacing:0.01em;margin:16px 0 28px;color:#fff;}
         .hp-hero-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.6);max-width:540px;margin:0 auto;}
-        .hp-stats{display:flex;justify-content:center;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);}
+        .hp-stats{display:flex;flex-wrap:wrap;justify-content:center;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);}
         .hp-stat{flex:1;max-width:220px;padding:36px 24px;text-align:center;border-right:1px solid rgba(255,255,255,0.08);}
         .hp-stat:last-child{border-right:none;}
         .hp-stat-num{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:52px;line-height:1;color:var(--orange);letter-spacing:0.02em;}
