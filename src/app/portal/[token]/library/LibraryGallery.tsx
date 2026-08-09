@@ -1,7 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ORANGE, OFFWHITE, BEBAS } from "@/lib/portal";
+import {
+  ORANGE,
+  OFFWHITE,
+  CARD,
+  CARD_B,
+  RADIUS,
+  BLUR,
+  BEBAS,
+  MONO,
+  INK_BODY,
+  INK_LABEL,
+} from "@/lib/portal";
 import AssetModal, { type PortalAthlete } from "./AssetModal";
 
 export type LibraryTile = {
@@ -10,24 +21,36 @@ export type LibraryTile = {
   campaignName: string;
   athleteId: string | null;
   athleteName: string | null;
+  // Display kind. The DB column is media.type ('image' | 'video') — it is
+  // never 'photo'; the mapping to "photo" happens server-side for display.
   kind: "photo" | "video";
   thumb: string | null;
   fileUrl: string;
+  createdAt: string | null;
 };
 
 export type LibraryCampaign = { id: string; name: string };
 
 type MediaFilter = "all" | "photo" | "video";
 
+// "top" is rendered but DISABLED. asset_metrics is empty and quality_score is
+// null on every row, so there is no performance data to rank by. We keep the
+// option visible (it returns when metrics land) and we do NOT quietly alias it
+// to Newest — presenting an arbitrary order as a performance ranking is
+// exactly what hard rule 6 forbids.
+type SortMode = "newest" | "campaign";
+
 type OpenState = { campaignId: string; index: number; postIndex: number };
 
 export default function LibraryGallery({
+  brandName,
   campaigns,
   tiles,
   athletesById,
   campaignAthletes,
   rowToAthlete,
 }: {
+  brandName: string;
   campaigns: LibraryCampaign[];
   tiles: LibraryTile[];
   athletesById: Record<string, PortalAthlete>;
@@ -37,6 +60,7 @@ export default function LibraryGallery({
   const [media, setMedia] = useState<MediaFilter>("all");
   const [athlete, setAthlete] = useState<string>("");
   const [query, setQuery] = useState<string>("");
+  const [sort, setSort] = useState<SortMode>("campaign");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<OpenState | null>(null);
 
@@ -109,42 +133,125 @@ export default function LibraryGallery({
       .filter((s) => s.items.length > 0);
   }, [filtered, campaigns]);
 
-  const filterChip = (label: string, value: MediaFilter) => {
-    const active = media === value;
-    return (
-      <button
-        key={value}
-        onClick={() => setMedia(value)}
-        className="px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[1.5px] transition-colors"
-        style={{
-          background: active ? ORANGE : "rgba(255,255,255,0.06)",
-          color: active ? "#fff" : "rgba(255,255,255,0.6)",
-          border: `1px solid ${active ? ORANGE : "rgba(255,255,255,0.12)"}`,
-        }}
-      >
-        {label}
-      </button>
-    );
-  };
+  // Newest is a real sort — media.created_at is populated. Grouping by
+  // campaign is the other real option.
+  const newestTiles = useMemo(
+    () =>
+      [...filtered].sort((a, b) =>
+        String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
+      ),
+    [filtered],
+  );
+
+  const segButton = (label: string, active: boolean, onClick: () => void) => (
+    <button
+      key={label}
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="rounded-[3px] px-3.5 inline-flex items-center justify-center"
+      style={{
+        ...MONO,
+        fontSize: 10,
+        letterSpacing: ".14em",
+        border: 0,
+        cursor: "pointer",
+        minHeight: 34,
+        background: active ? "rgba(250,248,245,.11)" : "transparent",
+        color: active ? OFFWHITE : INK_LABEL,
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  const segWrap = (children: React.ReactNode) => (
+    <div
+      className="inline-flex p-[3px] rounded-[5px]"
+      style={{ background: "rgba(250,248,245,.05)", border: `1px solid ${CARD_B}` }}
+    >
+      {children}
+    </div>
+  );
 
   return (
     <div>
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-10 pt-2">
-        <div className="flex items-center gap-2">
-          {filterChip("All", "all")}
-          {filterChip("Photo", "photo")}
-          {filterChip("Video", "video")}
+      {/* Page head */}
+      <div className="flex items-end justify-between gap-5 flex-wrap mb-6">
+        <div>
+          <div style={{ ...MONO, fontSize: 11, letterSpacing: ".18em", color: ORANGE }}>Assets</div>
+          <h1
+            className="uppercase mt-2.5"
+            style={{ ...BEBAS, fontSize: "clamp(30px,5vw,40px)", lineHeight: 1, letterSpacing: ".012em" }}
+          >
+            {brandName} asset library
+          </h1>
         </div>
+        <div style={{ ...MONO, fontSize: 10, letterSpacing: ".16em", color: INK_LABEL }}>
+          {filtered.length.toLocaleString()} of {tiles.length.toLocaleString()} files
+        </div>
+      </div>
+
+      {/* Controls. At <=750px these wrap; if a row still overflows it scrolls
+          with a visible fade affordance — never clipped by overflow:hidden. */}
+      <div className="pv2-controls-wrap mb-8">
+      <div className="pv2-controls flex flex-wrap items-center gap-3">
+        {/* Type — real: media.type is 'image' | 'video' */}
+        {segWrap(
+          <>
+            {segButton("Everything", media === "all", () => setMedia("all"))}
+            {segButton("Photos", media === "photo", () => setMedia("photo"))}
+            {segButton("Video", media === "video", () => setMedia("video"))}
+          </>,
+        )}
+
+        {/* Sort — Newest and By campaign are real. Top performing is
+            deliberately disabled, not hidden and not aliased. */}
+        {segWrap(
+          <>
+            {segButton("Newest", sort === "newest", () => setSort("newest"))}
+            {segButton("By campaign", sort === "campaign", () => setSort("campaign"))}
+            <span
+              aria-disabled="true"
+              title="Awaiting verified data"
+              className="rounded-[3px] px-3.5 inline-flex items-center justify-center gap-2 select-none cursor-not-allowed"
+              style={{
+                ...MONO,
+                fontSize: 10,
+                letterSpacing: ".14em",
+                minHeight: 34,
+                color: "rgba(250,248,245,.30)",
+              }}
+            >
+              Top performing
+            </span>
+          </>,
+        )}
+
+        <span
+          className="inline-block rounded-[3px] px-2 py-[5px]"
+          style={{
+            ...MONO,
+            fontSize: 10,
+            background: "rgba(250,248,245,.07)",
+            border: `1px solid ${CARD_B}`,
+            color: "rgba(250,248,245,.60)",
+          }}
+        >
+          Top performing &mdash; awaiting verified data
+        </span>
 
         <select
           value={athlete}
           onChange={(e) => setAthlete(e.target.value)}
-          className="px-3 py-2 rounded-full text-[12px] outline-none"
+          className="rounded-[4px] px-3 outline-none"
           style={{
-            background: "rgba(255,255,255,0.06)",
+            ...MONO,
+            fontSize: 10,
+            minHeight: 34,
+            background: "rgba(250,248,245,.05)",
             color: OFFWHITE,
-            border: "1px solid rgba(255,255,255,0.12)",
+            border: `1px solid ${CARD_B}`,
           }}
         >
           <option value="">All athletes</option>
@@ -159,34 +266,33 @@ export default function LibraryGallery({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search campaign or athlete"
-          className="px-4 py-2 rounded-full text-[12px] outline-none min-w-[220px] flex-1 max-w-[320px]"
+          aria-label="Search campaign or athlete"
+          className="rounded-[4px] px-3 outline-none min-w-[220px] flex-1 max-w-[320px]"
           style={{
-            background: "rgba(255,255,255,0.06)",
+            fontSize: 16,
+            minHeight: 34,
+            background: "rgba(250,248,245,.05)",
             color: OFFWHITE,
-            border: "1px solid rgba(255,255,255,0.12)",
+            border: `1px solid ${CARD_B}`,
           }}
         />
-
-        {/* Placeholder for an upcoming feature. */}
-        <span
-          className="px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[1.5px] cursor-not-allowed select-none"
-          style={{
-            background: "rgba(255,255,255,0.03)",
-            color: "rgba(255,255,255,0.3)",
-            border: "1px dashed rgba(255,255,255,0.14)",
-          }}
-          aria-disabled
-          title="Coming soon"
-        >
-          Style &amp; Vibe Tags — coming soon
-        </span>
+      </div>
       </div>
 
-      {/* Campaign list — each row expands to its full content gallery */}
-      {sections.length === 0 ? (
-        <p style={{ color: "rgba(255,255,255,0.45)" }} className="text-sm">
-          No media matches these filters.
-        </p>
+      {/* Newest = one flat, date-ordered wall. By campaign = expandable
+          campaign sections. */}
+      {filtered.length === 0 ? (
+        <p className="pv2-body" style={{ fontSize: 16, color: INK_BODY }}>No media matches these filters.</p>
+      ) : sort === "newest" ? (
+        <div className="gap-3 [column-fill:_balance] columns-2 sm:columns-3 lg:columns-4">
+          {newestTiles.map((t) => (
+            <Tile
+              key={t.id}
+              tile={t}
+              onOpen={t.athleteId && rowToAthlete[t.athleteId] ? openTile : undefined}
+            />
+          ))}
+        </div>
       ) : (
         <div className="flex flex-col gap-3">
           {sections.map(({ campaign, items }) => {
@@ -194,10 +300,13 @@ export default function LibraryGallery({
             return (
               <div
                 key={campaign.id}
-                className="rounded-[18px] overflow-hidden"
+                className="overflow-hidden"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.11)",
+                  background: CARD,
+                  border: `1px solid ${CARD_B}`,
+                  borderRadius: RADIUS,
+                  backdropFilter: BLUR,
+                  WebkitBackdropFilter: BLUR,
                 }}
               >
                 <button
