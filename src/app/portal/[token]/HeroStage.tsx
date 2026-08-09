@@ -27,8 +27,11 @@ export type HeroSlide = {
 // portrait crops upward so a full-bleed hero does not behead people. If the
 // focal columns are populated later they should override this.
 
-// Desktop bias (unchanged).
-const DESKTOP_PORTRAIT = "50% 35%";
+// Desktop bias. Portrait sources are biased upward here too: at 50% 35% the
+// hero box (~1440x927) cut the top of the subject's head on portrait sources —
+// verified against all six current slides. 28% keeps the full head in frame on
+// every portrait slide whose subject is upright.
+const DESKTOP_PORTRAIT = "50% 28%";
 const DESKTOP_LANDSCAPE = "50% 50%";
 
 // Mobile bias. The hero is capped at 340px there, so the crop is far tighter

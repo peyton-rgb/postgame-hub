@@ -59,7 +59,10 @@
      the photo/lockup region (18px padding + 322px row) rather than to the
      container — capping the container would clip the stats. Stats then begin
      at ~340px, above the fold on a 390x844 viewport. */
-  .pv2-hero .pv2-hero-row { min-height: 0; height: 322px; }
+  /* One source of truth for the hero's photo region, so the row and the text
+     scrim cannot drift apart. */
+  .pv2-hero { --pv2-hero-row-h: 322px; --pv2-hero-pad-t: 18px; }
+  .pv2-hero .pv2-hero-row { min-height: 0; height: var(--pv2-hero-row-h); }
   /* Per-slide crop bias, set inline as a custom property so desktop keeps its
      own inline value and gains no rule. Portrait 22% / landscape 32% /
      unknown 28%. */
@@ -73,7 +76,10 @@
     left: 0;
     right: 0;
     top: 0;
-    height: 340px;
+    /* Exactly the photo region: top padding + row. Hardcoding this drifted
+       from the row height and put the gradient's darkest stop out in open
+       image, which read as a band across the photo. */
+    height: calc(var(--pv2-hero-pad-t) + var(--pv2-hero-row-h));
     z-index: 1;
     pointer-events: none;
     background: linear-gradient(180deg,
@@ -81,7 +87,7 @@
       rgba(7, 7, 10, .34) 78%,
       rgba(7, 7, 10, .72) 100%);
   }
-  .pv2-hero-inner { padding-top: 18px; }
+  .pv2-hero-inner { padding-top: var(--pv2-hero-pad-t); }
   .pv2-hero-stats { padding-top: 16px; padding-bottom: 24px; }
   /* The lead line is the lockup's body copy; it is not shrunk, it is dropped,
      because the 322px row cannot hold it alongside the logo and credit. */

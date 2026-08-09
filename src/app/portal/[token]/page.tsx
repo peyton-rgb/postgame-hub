@@ -108,7 +108,11 @@ export default async function BrandPortalDashboard({ params }: Props) {
   const assetCount = media.length;
 
   // ---- Hero slides (brief 5.1) -------------------------------------------
-  const images = media.filter((m) => m.type === "image" && m.file_url);
+  // Hero pool requires an athlete. The credit line under the hero is part of
+  // the composition, and "Athlete Name" — correct as a placeholder anywhere
+  // else — reads as broken in a client-facing lead image. 5 of 460 CVS rows
+  // have no athlete_id; they stay eligible everywhere except here.
+  const images = media.filter((m) => m.type === "image" && m.file_url && m.athlete_id);
 
   const flagged = images
     .filter((m) => m.is_hero)
