@@ -2,28 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ORANGE, OFFWHITE, RAISED, RAISED_B, HAIR, INK_LABEL, MONO } from "@/lib/portal";
+import { ORANGE, OFFWHITE, RAISED, RAISED_B, INK_LABEL, MONO } from "@/lib/portal";
 
-// Tab nav for the portal's private frame. Five tabs, rendered twice: a
-// horizontal row in the header on desktop, and a bottom tab bar on mobile.
+// Tab nav for the portal's private frame. Five tabs, rendered in two places:
+// a horizontal row in the header (>=751px) and a sticky bottom tab bar
+// (<=750px). Per the design system, Hub app surfaces get a bottom tab bar on
+// mobile — never a hamburger, never a top nav.
 //
-// The design file drops its nav entirely below 1000px with nothing replacing
-// it, which would strand every tab on a phone. Per the design system, Hub
-// surfaces get a BOTTOM TAB BAR on mobile — never a hamburger, never a top
-// nav. Active tab is orange there (orange marks where the eye lands; it is
-// never used as a surface or a large fill — hard rule 5).
+// Visibility is driven by portal-mobile.css at the exact 750/751 boundary
+// rather than by Tailwind's `md:` (768px), which would leave 751–767px with
+// no nav at all.
 
 type Tab = { label: string; href: string; icon: React.ReactNode };
 
-export default function PortalNav({ token }: { token: string }) {
-  const pathname = usePathname();
+function useTabs(token: string): Tab[] {
   const base = `/portal/${token}`;
-
-  // NOTE: the Assets tab points at /library, not /assets. AssetModal lives in
-  // that directory and is imported by src/components/CampaignRecap.tsx, which
-  // is a protected file — renaming the directory would break an import we are
-  // not allowed to touch.
-  const tabs: Tab[] = [
+  // The Assets tab points at /library: AssetModal in that directory is
+  // imported by src/components/CampaignRecap.tsx, a protected file.
+  return [
     {
       label: "Dashboard",
       href: base,
@@ -36,11 +32,7 @@ export default function PortalNav({ token }: { token: string }) {
         </>
       ),
     },
-    {
-      label: "Campaigns",
-      href: `${base}/campaigns`,
-      icon: <path d="M4 6h16M4 12h16M4 18h10" />,
-    },
+    { label: "Campaigns", href: `${base}/campaigns`, icon: <path d="M4 6h16M4 12h16M4 18h10" /> },
     {
       label: "Review",
       href: `${base}/review`,
@@ -62,17 +54,12 @@ export default function PortalNav({ token }: { token: string }) {
         </>
       ),
     },
-    {
-      label: "Reports",
-      href: `${base}/reports`,
-      icon: <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />,
-    },
+    { label: "Reports", href: `${base}/reports`, icon: <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /> },
   ];
+}
 
-  const isActive = (href: string) =>
-    href === base ? pathname === base : pathname.startsWith(href);
-
-  const Icon = ({ children }: { children: React.ReactNode }) => (
+function Icon({ children }: { children: React.ReactNode }) {
+  return (
     <svg
       viewBox="0 0 24 24"
       aria-hidden
@@ -82,70 +69,94 @@ export default function PortalNav({ token }: { token: string }) {
       {children}
     </svg>
   );
+}
+
+function useIsActive(base: string) {
+  const pathname = usePathname();
+  return (href: string) => (href === base ? pathname === base : pathname.startsWith(href));
+}
+
+function Badge({ count }: { count: number }) {
+  // No badge at zero — an empty badge implies work that isn't there.
+  if (!count) return null;
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-[3px]"
+      style={{ minWidth: 16, height: 16, padding: "0 5px", background: ORANGE, color: "#fff", fontSize: 10 }}
+    >
+      {count}
+    </span>
+  );
+}
+
+/** Header nav, >=751px. */
+export default function PortalNav({ token, reviewCount = 0 }: { token: string; reviewCount?: number }) {
+  const tabs = useTabs(token);
+  const isActive = useIsActive(`/portal/${token}`);
 
   return (
-    <>
-      {/* Desktop / tablet: horizontal tabs in the header. */}
-      <nav className="hidden md:flex gap-[2px]" aria-label="Portal sections">
-        {tabs.map((t) => {
-          const active = isActive(t.href);
-          return (
-            <Link
-              key={t.href}
-              href={t.href}
-              aria-current={active ? "page" : undefined}
-              className="inline-flex items-center gap-[7px] rounded-[4px] px-[13px] py-2 transition-colors"
-              style={{
-                ...MONO,
-                fontSize: 10,
-                letterSpacing: ".15em",
-                textDecoration: "none",
-                color: active ? OFFWHITE : INK_LABEL,
-                background: active ? RAISED : "transparent",
-                border: `1px solid ${active ? RAISED_B : "transparent"}`,
-              }}
-            >
-              <Icon>{t.icon}</Icon>
-              {t.label}
-            </Link>
-          );
-        })}
-      </nav>
+    <nav className="pv2-nav-desktop gap-[2px]" aria-label="Portal sections">
+      {tabs.map((t) => {
+        const active = isActive(t.href);
+        return (
+          <Link
+            key={t.href}
+            href={t.href}
+            aria-current={active ? "page" : undefined}
+            className="inline-flex items-center gap-[7px] rounded-[4px] px-[13px] py-2 transition-colors"
+            style={{
+              ...MONO,
+              fontSize: 10,
+              letterSpacing: ".15em",
+              textDecoration: "none",
+              color: active ? OFFWHITE : INK_LABEL,
+              background: active ? RAISED : "transparent",
+              border: `1px solid ${active ? RAISED_B : "transparent"}`,
+            }}
+          >
+            <Icon>{t.icon}</Icon>
+            {t.label}
+            {t.label === "Review" ? <Badge count={reviewCount} /> : null}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
-      {/* Mobile: bottom tab bar. Every target is >= 44px tall. */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5"
-        aria-label="Portal sections"
-        style={{
-          background: "rgba(7,7,10,.94)",
-          backdropFilter: "blur(26px)",
-          WebkitBackdropFilter: "blur(26px)",
-          borderTop: `1px solid ${HAIR}`,
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
-        {tabs.map((t) => {
-          const active = isActive(t.href);
-          return (
-            <Link
-              key={t.href}
-              href={t.href}
-              aria-current={active ? "page" : undefined}
-              className="flex flex-col items-center justify-center gap-[5px] min-h-[56px] px-1"
-              style={{
-                ...MONO,
-                fontSize: 9,
-                letterSpacing: ".10em",
-                textDecoration: "none",
-                color: active ? ORANGE : INK_LABEL,
-              }}
-            >
-              <Icon>{t.icon}</Icon>
+/** Sticky bottom tab bar, <=750px. Rendered at the end of the layout. */
+export function PortalTabBar({ token, reviewCount = 0 }: { token: string; reviewCount?: number }) {
+  const tabs = useTabs(token);
+  const isActive = useIsActive(`/portal/${token}`);
+
+  return (
+    <nav className="pv2-nav-mobile" aria-label="Portal sections">
+      {tabs.map((t) => {
+        const active = isActive(t.href);
+        return (
+          <Link
+            key={t.href}
+            href={t.href}
+            aria-current={active ? "page" : undefined}
+            className="flex flex-col items-center justify-center relative"
+            style={{
+              ...MONO,
+              textDecoration: "none",
+              color: active ? ORANGE : INK_LABEL,
+            }}
+          >
+            <Icon>{t.icon}</Icon>
+            <span className="pv2-tablabel" style={{ color: active ? ORANGE : INK_LABEL }}>
               {t.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </>
+            </span>
+            {t.label === "Review" && reviewCount > 0 ? (
+              <span className="absolute top-[2px] right-[18%]">
+                <Badge count={reviewCount} />
+              </span>
+            ) : null}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

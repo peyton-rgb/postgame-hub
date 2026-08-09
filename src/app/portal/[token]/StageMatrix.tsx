@@ -85,8 +85,48 @@ function Row({ name, note, hot, states }: { name: string; note: string; hot?: bo
   );
 }
 
+// Mobile rail label: "Review" is abbreviated in the rail only. The desktop
+// column header keeps the full word.
+const RAIL_LABEL: Record<string, string> = { Review: "Rev" };
+
+const BAR_CLASS: Record<NodeState, string> = {
+  done: "is-done",
+  now: "is-now",
+  pending: "is-pending",
+  untracked: "is-untracked",
+};
+
+// <=750px presentation of the same rows: one card per campaign carrying a
+// six-segment rail. Same data, same states, same source as the table.
+function RailCard({ name, note, hot, states }: { name: string; note: string; hot?: boolean; states: NodeState[] }) {
+  return (
+    <div className="pv2-rail-card">
+      <div className="pv2-rail-name uppercase" style={{ ...BEBAS, letterSpacing: ".012em" }}>
+        {name}
+      </div>
+      <div className="pv2-rail-date" style={{ ...MONO, color: hot ? ORANGE : undefined }}>
+        {note}
+      </div>
+      <div className="pv2-rail">
+        {STAGES.map((stage, i) => (
+          <div key={stage}>
+            <span className={`pv2-seg-bar ${BAR_CLASS[states[i]]}`} />
+            <span
+              className={`pv2-seg-label ${states[i] === "now" ? "is-now" : ""}`}
+              style={{ ...MONO }}
+            >
+              {RAIL_LABEL[stage] || stage}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function StageMatrix({ campaigns }: { campaigns: MatrixCampaign[] }) {
   const [mode, setMode] = useState<"live" | "demo">("live");
+  const liveStates = STAGES.map(() => "untracked") as NodeState[];
 
   return (
     <div>
@@ -116,8 +156,27 @@ export default function StageMatrix({ campaigns }: { campaigns: MatrixCampaign[]
         </div>
       </div>
 
+      {/* <=750px: stacked step rails. Presentation swap only. */}
+      <div className="pv2-matrix-mobile">
+        {mode === "live" ? (
+          campaigns.length ? (
+            campaigns.map((c) => <RailCard key={c.id} name={c.name} note={c.opened} states={liveStates} />)
+          ) : (
+            <div className="pv2-rail-card pv2-body">No campaigns in flight.</div>
+          )
+        ) : (
+          EXAMPLES.map((e) => <RailCard key={e.name} name={e.name} note={e.note} hot={e.hot} states={e.states} />)
+        )}
+        <span
+          className="inline-block rounded-[3px] px-2 py-[5px] self-start"
+          style={{ ...MONO, fontSize: 10, background: "rgba(250,248,245,.07)", border: `1px solid ${CARD_B}`, color: "rgba(250,248,245,.60)" }}
+        >
+          Stage tracking not yet connected
+        </span>
+      </div>
+
       <div
-        className="overflow-hidden"
+        className="pv2-matrix-desktop overflow-hidden"
         style={{ border: `1px solid ${CARD_B}`, borderRadius: RADIUS, background: CARD, backdropFilter: BLUR, WebkitBackdropFilter: BLUR }}
       >
         {/* header row, desktop only */}

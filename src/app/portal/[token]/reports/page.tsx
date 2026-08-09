@@ -63,7 +63,7 @@ export default async function PortalReportsPage({ params }: Props) {
         arrives as a shared spreadsheet.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-3.5">
+      <div className="pv2-reports-grid grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-3.5">
         {PANELS.map((p) => (
           <div
             key={p.title}

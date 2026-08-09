@@ -52,7 +52,7 @@ export default function HeroStage({
   const active = slides[index] || null;
 
   return (
-    <div className="relative overflow-hidden" style={{ background: BG }}>
+    <div className="pv2-hero relative overflow-hidden" style={{ background: BG }}>
       {/* photo layer */}
       <div className="absolute inset-0 z-0">
         {slides.map((s, i) => (
@@ -81,16 +81,16 @@ export default function HeroStage({
 
       {/* scrim: fades to solid black by the bottom edge (rule 4 edge blend) */}
       <div
-        className="absolute inset-0 z-[1] pointer-events-none"
+        className="pv2-hero-scrim absolute inset-0 z-[1] pointer-events-none"
         style={{
           background: `linear-gradient(180deg,rgba(7,7,10,.66) 0%,rgba(7,7,10,.10) 14%,rgba(7,7,10,.06) 34%,rgba(7,7,10,.48) 56%,rgba(7,7,10,.86) 76%,rgba(7,7,10,.98) 90%,${BG} 100%),
                        linear-gradient(90deg,rgba(7,7,10,.88) 0%,rgba(7,7,10,.42) 30%,rgba(7,7,10,0) 62%,rgba(7,7,10,.28) 100%)`,
         }}
       />
 
-      <div className="relative z-[2] pt-9 md:pt-[72px]">
+      <div className="pv2-hero-inner relative z-[2] pt-9 md:pt-[72px]">
         <div className="mx-auto max-w-[1248px] px-5 md:px-10 lg:px-24">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 md:gap-[30px] min-h-[340px] md:min-h-[400px] lg:min-h-[560px]">
+          <div className="pv2-hero-row flex flex-col md:flex-row md:items-end md:justify-between gap-6 md:gap-[30px] min-h-[340px] md:min-h-[400px] lg:min-h-[560px]">
             {lockup}
 
             {/* Campaign + athlete credit for the visible slide. */}
@@ -118,7 +118,7 @@ export default function HeroStage({
                         aria-label={`Show slide ${i + 1} of ${slides.length}`}
                         aria-current={i === index ? "true" : undefined}
                         onClick={() => setIndex(i)}
-                        className="inline-flex items-center justify-center"
+                        className="pv2-dot inline-flex items-center justify-center"
                         style={{ minHeight: 32, minWidth: 34, padding: "15px 0", background: "none", border: 0, cursor: "pointer" }}
                       >
                         <span
@@ -137,7 +137,7 @@ export default function HeroStage({
             ) : null}
           </div>
 
-          <div className="pt-11 pb-14 md:pb-24">{statbar}</div>
+          <div className="pv2-hero-stats pt-11 pb-14 md:pb-24">{statbar}</div>
         </div>
       </div>
     </div>
@@ -161,7 +161,7 @@ export function HeroFallback({
             {lockup}
             <div style={{ ...MONO, fontSize: 10, color: INK_LABEL }}>No imagery delivered yet</div>
           </div>
-          <div className="pt-11 pb-14 md:pb-24">{statbar}</div>
+          <div className="pv2-hero-stats pt-11 pb-14 md:pb-24">{statbar}</div>
         </div>
       </div>
     </div>

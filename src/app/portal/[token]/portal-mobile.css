@@ -1,0 +1,227 @@
+/* Brand Portal v2 — mobile reflow (<=750px).
+ *
+ * GOVERNING RULE: every layout rule in this file lives inside
+ * `@media (max-width:750px)`. The approved 1440 desktop layout is final and
+ * must render identically after this file loads.
+ *
+ * The only rules outside that media query are the two visibility defaults
+ * below. They target elements that did not exist before this reflow
+ * (`.pv2-mobile-only`) or restate the display value an element already had at
+ * desktop (`.pv2-nav-desktop` was `md:flex`), so the 1440 render is unchanged.
+ * They exist because Tailwind's `md:` breakpoint is 768px while this spec is
+ * 750px — without them, 751–767px would fall between the two and lose its nav.
+ */
+
+.pv2-mobile-only { display: none; }
+.pv2-nav-desktop { display: flex; }
+.pv2-nav-mobile { display: none; }
+.pv2-matrix-mobile { display: none; }
+/* Mobile-only summary affordances. Hidden at desktop, which shows everything
+   and therefore needs neither. */
+.pv2-roster-more { display: none; }
+.pv2-seeall { display: none; }
+.pv2-foot-count-mobile { display: none; }
+
+@media (max-width: 750px) {
+  /* ---- 4. NAV ------------------------------------------------------- */
+  .pv2-nav-desktop { display: none; }
+
+  .pv2-mobile-only { display: block; }
+
+  .pv2-nav-mobile {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: sticky;
+    bottom: 0;
+    z-index: 50;
+    background: rgba(7, 7, 10, .94);
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    border-top: 1px solid rgba(250, 248, 245, .09);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pv2-nav-mobile a {
+    min-height: 44px;
+    gap: 4px;
+    padding: 6px 2px;
+  }
+  .pv2-nav-mobile a svg { width: 16px; height: 16px; flex: 0 0 16px; }
+  .pv2-nav-mobile a .pv2-tablabel { font-size: 7.5px; letter-spacing: .08em; }
+
+  /* header shrinks to 54px */
+  .pv2-header-in { height: 54px; }
+  .pv2-header-in img.pv2-pg { height: 14px; }
+  .pv2-header-in img.pv2-cl { height: 19px; }
+
+  /* ---- 5. HERO ------------------------------------------------------ */
+  /* The stat bar lives INSIDE the hero container, so the 340px cap applies to
+     the photo/lockup region (18px padding + 322px row) rather than to the
+     container — capping the container would clip the stats. Stats then begin
+     at ~340px, above the fold on a 390x844 viewport. */
+  .pv2-hero .pv2-hero-row { min-height: 0; height: 322px; }
+  .pv2-hero img { object-position: 50% 32% !important; }
+  .pv2-hero-inner { padding-top: 18px; }
+  .pv2-hero-stats { padding-top: 16px; padding-bottom: 24px; }
+  /* The lead line is the lockup's body copy; it is not shrunk, it is dropped,
+     because the 322px row cannot hold it alongside the logo and credit. */
+  .pv2-hero-lead { display: none; }
+
+  /* scrim resolves to solid black by the bottom edge — hard rule 4 */
+  .pv2-hero-scrim {
+    background: linear-gradient(180deg, rgba(7,7,10,.70) 0%, rgba(7,7,10,.18) 16%,
+      rgba(7,7,10,.30) 42%, rgba(7,7,10,.80) 68%, rgba(7,7,10,.97) 88%, #07070A 100%) !important;
+  }
+
+  /* slide dots: 16px inactive, 26px active, 2px tall, 44px of tap room */
+  .pv2-dot { min-height: 44px; min-width: 26px; padding: 21px 0; }
+  .pv2-dot span { height: 2px; width: 16px; }
+  .pv2-dot[aria-current="true"] span { width: 26px; }
+
+  /* ---- 6. STATS: 2x2 ------------------------------------------------ */
+  .pv2-statbar { grid-template-columns: 1fr 1fr; gap: 0; }
+  .pv2-stat { padding: 15px 14px; }
+  .pv2-stat .pv2-fig { font-size: 34px; }
+  .pv2-stat .pv2-statlabel { font-size: 9px; }
+
+  /* ---- 1. IN-FLIGHT: stacked step rails ----------------------------- */
+  .pv2-matrix-desktop { display: none; }
+  .pv2-matrix-mobile { display: flex; flex-direction: column; gap: 8px; }
+
+  .pv2-rail-card {
+    border: 1px solid rgba(250, 248, 245, .11);
+    border-radius: 8px;
+    background: rgba(250, 248, 245, .035);
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    padding: 14px 14px 12px;
+  }
+  .pv2-rail-name { font-size: 19px; line-height: 1.1; }
+  .pv2-rail-date { font-size: 9px; color: rgba(250, 248, 245, .50); margin-top: 4px; }
+  .pv2-rail {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 5px;
+    margin-top: 12px;
+  }
+  .pv2-seg-bar { height: 3px; border-radius: 2px; display: block; }
+  .pv2-seg-bar.is-done      { background: rgba(250, 248, 245, .55); }
+  .pv2-seg-bar.is-now       { background: #D73F09; }
+  .pv2-seg-bar.is-pending   { background: rgba(250, 248, 245, .13); }
+  .pv2-seg-bar.is-untracked { background: rgba(250, 248, 245, .07); }
+  .pv2-seg-label {
+    font-size: 7px;
+    letter-spacing: .06em;
+    margin-top: 5px;
+    display: block;
+    color: rgba(250, 248, 245, .50);
+  }
+  .pv2-seg-label.is-now { color: rgba(250, 248, 245, 1); }
+
+  /* ---- 2. GRIDS HOLD 2-UP ------------------------------------------- */
+  .pv2-campaign-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .pv2-campaign-grid .pv2-card-name { font-size: 17px; }
+  /* meta line would wrap to three rows in a half-width tile */
+  .pv2-campaign-grid .pv2-card-meta { display: none; }
+
+  .pv2-roster-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .pv2-roster-tile { aspect-ratio: 4 / 5 !important; }
+  .pv2-roster-tile .pv2-rank { font-size: 9px; }
+  .pv2-roster-tile .pv2-fol-n { font-size: 14px; }
+  .pv2-roster-tile .pv2-fol-l { font-size: 6px; }
+  .pv2-roster-tile .pv2-ath-name { font-size: 15px; }
+  .pv2-roster-tile .pv2-ath-sub {
+    font-size: 7px;
+    color: rgba(250, 248, 245, .56);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- 3. DASHBOARD BECOMES A SUMMARY ------------------------------- */
+  /* Four items each, with a live-counted route to the full set. Nothing is
+     orphaned — the button below each grid reaches everything. */
+  /* Only the DASHBOARD grid truncates. The Campaigns tab carries .pv2-campaign-grid
+     for its 2-up layout but not .pv2-summary, so it stays a full list. */
+  .pv2-summary > *:nth-child(n + 5) { display: none; }
+  .pv2-roster-grid[data-expanded="false"] > *:nth-child(n + 5) { display: none; }
+  .pv2-roster-more[data-expanded="false"] { display: none; }
+  .pv2-roster-more[data-expanded="true"] {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .pv2-seeall {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+    border-radius: 8px;
+    background: rgba(250, 248, 245, .06);
+    border: 1px solid rgba(250, 248, 245, .15);
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .pv2-cards-foot { flex-direction: column; align-items: stretch; }
+  /* The desktop line names the desktop count (9). Mobile shows four, so it
+     swaps to a line stating the number actually on screen — the count is not
+     hidden, it is corrected. */
+  .pv2-cards-foot .pv2-foot-count { display: none; }
+  .pv2-cards-foot .pv2-foot-count-mobile {
+    display: block;
+    order: 2;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* ---- 7. ASSETS BLOCK ---------------------------------------------- */
+  .pv2-twoup { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .pv2-btn { min-height: 44px; }
+
+  /* ---- 8. OTHER TABS ------------------------------------------------- */
+  /* Assets: controls must never clip. Wrap by default; if a row still
+     overflows it scrolls WITH a visible fade affordance. */
+  .pv2-controls {
+    flex-wrap: wrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .pv2-controls-wrap { position: relative; }
+  .pv2-controls-wrap::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 26px;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(7,7,10,0), rgba(7,7,10,.92));
+  }
+  .pv2-controls select,
+  .pv2-controls input { min-height: 44px; }
+  .pv2-controls button,
+  .pv2-controls .pv2-seg-item { min-height: 44px; }
+
+  /* Reports: figures stack 1-up */
+  .pv2-reports-grid { grid-template-columns: 1fr !important; }
+
+  /* Review: centred, generous */
+  .pv2-review-empty { align-items: center; text-align: center; padding: 48px 20px; }
+
+  /* ---- 9. GUARDS ----------------------------------------------------- */
+  /* Body copy floor: 16px at 68%. Never shrunk by the rules above. */
+  .pv2-body { font-size: 16px; color: rgba(250, 248, 245, .68); }
+
+  /* No horizontal scroll anywhere. */
+  .pv2-root { overflow-x: hidden; }
+}

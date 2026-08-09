@@ -1,4 +1,5 @@
-import { getPortalBrand, getPostgameMark } from "@/lib/portal-data";
+import { getPortalBrand, getPostgameMark, getPendingReviewCount } from "@/lib/portal-data";
+import "./portal-mobile.css";
 import {
   BG,
   OFFWHITE,
@@ -8,7 +9,7 @@ import {
   pickBrandLogo,
 } from "@/lib/portal";
 import { anton, arimo } from "./fonts";
-import PortalNav from "./PortalNav";
+import PortalNav, { PortalTabBar } from "./PortalNav";
 
 // Private frame shared by every /portal/[token] route. Renders the utility
 // strip, the Postgame x client lockup, and the tab nav on the portal's dark
@@ -28,16 +29,17 @@ export default async function PortalLayout({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const [brand, postgameMark] = await Promise.all([
-    getPortalBrand(token),
+  const brand = await getPortalBrand(token);
+  const [postgameMark, reviewCount] = await Promise.all([
     getPostgameMark(),
+    getPendingReviewCount(brand.id),
   ]);
 
   const brandLogo = pickBrandLogo(brand);
 
   return (
     <div
-      className={`${anton.variable} ${arimo.variable} w-full`}
+      className={`pv2-root ${anton.variable} ${arimo.variable} w-full`}
       style={{
         background: BG,
         color: OFFWHITE,
@@ -73,7 +75,7 @@ export default async function PortalLayout({
           borderBottom: `1px solid ${HAIR}`,
         }}
       >
-        <div className="mx-auto max-w-[1248px] px-5 md:px-10 lg:px-24 flex items-center justify-between gap-5 h-[66px]">
+        <div className="pv2-header-in mx-auto max-w-[1248px] px-5 md:px-10 lg:px-24 flex items-center justify-between gap-5 h-[66px]">
           <div className="flex items-center gap-4 min-w-0">
             {/* Hard rule 1: the Postgame mark is a FILE. If the file is
                 missing we render nothing here rather than setting the word
@@ -83,7 +85,7 @@ export default async function PortalLayout({
                 src={postgameMark}
                 alt="Postgame"
                 style={{ height: 17, width: "auto", flex: "0 0 auto", objectFit: "contain" }}
-                className="block max-w-full"
+                className="pv2-pg block max-w-full"
               />
             ) : null}
 
@@ -100,7 +102,7 @@ export default async function PortalLayout({
                 src={brandLogo}
                 alt={brand.name}
                 style={{ height: 23, width: "auto", flex: "0 0 auto", objectFit: "contain" }}
-                className="block max-w-full"
+                className="pv2-cl block max-w-full"
               />
             ) : (
               <span
@@ -118,14 +120,15 @@ export default async function PortalLayout({
             )}
           </div>
 
-          <PortalNav token={token} />
+          <PortalNav token={token} reviewCount={reviewCount} />
         </div>
       </header>
 
       {children}
 
-      {/* Bottom padding so the mobile tab bar never covers page content. */}
-      <div aria-hidden className="h-[72px] md:h-0" />
+      {/* Sticky bottom tab bar (<=750px). Sticky rather than fixed, so it
+          never covers page content and needs no spacer. */}
+      <PortalTabBar token={token} reviewCount={reviewCount} />
     </div>
   );
 }

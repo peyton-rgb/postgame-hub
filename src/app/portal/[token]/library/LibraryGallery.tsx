@@ -192,8 +192,10 @@ export default function LibraryGallery({
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3 mb-8">
+      {/* Controls. At <=750px these wrap; if a row still overflows it scrolls
+          with a visible fade affordance — never clipped by overflow:hidden. */}
+      <div className="pv2-controls-wrap mb-8">
+      <div className="pv2-controls flex flex-wrap items-center gap-3">
         {/* Type — real: media.type is 'image' | 'video' */}
         {segWrap(
           <>
@@ -275,11 +277,12 @@ export default function LibraryGallery({
           }}
         />
       </div>
+      </div>
 
       {/* Newest = one flat, date-ordered wall. By campaign = expandable
           campaign sections. */}
       {filtered.length === 0 ? (
-        <p style={{ fontSize: 16, color: INK_BODY }}>No media matches these filters.</p>
+        <p className="pv2-body" style={{ fontSize: 16, color: INK_BODY }}>No media matches these filters.</p>
       ) : sort === "newest" ? (
         <div className="gap-3 [column-fill:_balance] columns-2 sm:columns-3 lg:columns-4">
           {newestTiles.map((t) => (

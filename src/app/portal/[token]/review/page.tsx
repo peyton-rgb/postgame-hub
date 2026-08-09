@@ -35,7 +35,7 @@ export default async function PortalReviewPage({ params }: Props) {
       </div>
 
       <div
-        className="flex flex-col items-start gap-4 px-6 py-14 md:py-20"
+        className="pv2-review-empty flex flex-col items-start gap-4 px-6 py-14 md:py-20"
         style={{ border: `1px solid ${CARD_B}`, borderRadius: RADIUS, background: CARD, backdropFilter: BLUR, WebkitBackdropFilter: BLUR }}
       >
         <span

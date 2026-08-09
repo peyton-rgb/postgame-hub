@@ -33,6 +33,31 @@ export async function getPortalBrand(token: string): Promise<PortalBrand> {
   return brand as PortalBrand;
 }
 
+// Count of assets genuinely awaiting THIS brand's decision, for the Review tab
+// badge. Returns a live count, never a hardcoded number: review_sessions is
+// empty today, so this returns 0 and the badge is suppressed — but it starts
+// reporting the moment the table is populated. An empty badge would imply work
+// that isn't there.
+export async function getPendingReviewCount(brandId: string): Promise<number> {
+  const supabase = createServiceSupabase();
+
+  const { data: recaps } = await supabase
+    .from("campaign_recaps")
+    .select("id")
+    .eq("brand_id", brandId);
+
+  const ids = (recaps || []).map((r: any) => r.id);
+  if (!ids.length) return 0;
+
+  const { count } = await supabase
+    .from("review_sessions")
+    .select("id", { count: "exact", head: true })
+    .in("campaign_id", ids)
+    .is("brand_decision", null);
+
+  return count ?? 0;
+}
+
 // Postgame's wordmark file for the header lockup. Light logo on the dark
 // ground. Returns null rather than substituting anything — rule 2 says a
 // missing logo is a labelled empty slot, never an approximation.

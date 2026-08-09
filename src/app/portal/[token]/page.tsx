@@ -19,6 +19,7 @@ import {
 } from "@/lib/portal";
 import HeroStage, { HeroFallback, type HeroSlide } from "./HeroStage";
 import StageMatrix, { type MatrixCampaign } from "./StageMatrix";
+import RosterGrid from "./RosterGrid";
 import Link from "next/link";
 
 // Brand portal DASHBOARD. The campaign grid now lives on the Campaigns tab;
@@ -196,14 +197,14 @@ export default async function BrandPortalDashboard({ params }: Props) {
     }
   }
 
+  // Full ranked roster. Desktop renders the top 8; <=750px collapses to 4 and
+  // expands the rest in place, so the whole ranking ships to the client.
   const roster = Object.entries(byPerson)
     .filter(([, v]) => v.followers > 0)
     .sort((x, y) => y[1].followers - x[1].followers)
-    .slice(0, 8)
-    .map(([k, v], i) => ({ ...v, key: k, rank: i + 1, image: firstImageFor[k] || null }));
+    .map(([k, v]) => ({ ...v, key: k, image: firstImageFor[k] || null }));
 
-  const fmtFollowers = (n: number) =>
-    n >= 1000 ? `${Math.round(n / 1000)}K` : String(n);
+  const rosterShown = Math.min(8, roster.length);
 
   const brandLogo = pickBrandLogo(brand);
 
@@ -230,7 +231,7 @@ export default async function BrandPortalDashboard({ params }: Props) {
           {brand.name} &middot; no logo on file
         </div>
       )}
-      <p style={{ fontSize: 21, lineHeight: 1.45, color: "rgba(250,248,245,.92)", maxWidth: 430 }}>
+      <p className="pv2-hero-lead" style={{ fontSize: 21, lineHeight: 1.45, color: "rgba(250,248,245,.92)", maxWidth: 430 }}>
         {campaignCount.toLocaleString()} {campaignCount === 1 ? "campaign" : "campaigns"} together.
       </p>
     </div>
@@ -247,10 +248,10 @@ export default async function BrandPortalDashboard({ params }: Props) {
     sub?: string;
     placeholder?: boolean;
   }) => (
-    <div className="px-6 py-[22px]" style={{ borderRight: `1px solid ${HAIR}` }}>
-      <div style={{ ...MONO, fontSize: 10, letterSpacing: ".13em", color: INK_LABEL }}>{label}</div>
+    <div className="pv2-stat px-6 py-[22px]" style={{ borderRight: `1px solid ${HAIR}` }}>
+      <div className="pv2-statlabel" style={{ ...MONO, fontSize: 10, letterSpacing: ".13em", color: INK_LABEL }}>{label}</div>
       <div
-        className="mt-3.5"
+        className="pv2-fig mt-3.5"
         style={{ ...ANTON, fontSize: "clamp(38px,4vw,44px)", lineHeight: .92, color: placeholder ? "rgba(250,248,245,.30)" : OFFWHITE }}
       >
         {figure}
@@ -274,7 +275,7 @@ export default async function BrandPortalDashboard({ params }: Props) {
 
   const statbar = (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 overflow-hidden"
+      className="pv2-statbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 overflow-hidden"
       style={{ border: `1px solid ${CARD_B}`, borderRadius: RADIUS, background: CARD, backdropFilter: BLUR, WebkitBackdropFilter: BLUR }}
     >
       <Stat label="Campaigns" figure={campaignCount.toLocaleString()} sub={`${publishedCount} published · ${archivedCount} archived`} />
@@ -319,7 +320,7 @@ export default async function BrandPortalDashboard({ params }: Props) {
           {cards.length === 0 ? (
             <p style={{ fontSize: 16, color: INK_BODY }}>No published campaigns with media yet.</p>
           ) : (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="pv2-campaign-grid pv2-summary grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {cards.map((c) => (
                 <Link
                   key={c.id}
@@ -352,10 +353,10 @@ export default async function BrandPortalDashboard({ params }: Props) {
                     </span>
                   </div>
                   <div className="absolute left-[18px] right-[18px] bottom-4 z-[2]">
-                    <div className="uppercase" style={{ ...BEBAS, fontSize: 26, lineHeight: 1.02, letterSpacing: ".012em" }}>
+                    <div className="pv2-card-name uppercase" style={{ ...BEBAS, fontSize: 26, lineHeight: 1.02, letterSpacing: ".012em" }}>
                       {c.name}
                     </div>
-                    <div className="flex items-center gap-2.5 mt-[7px] flex-wrap">
+                    <div className="pv2-card-meta flex items-center gap-2.5 mt-[7px] flex-wrap">
                       {[c.when, `${c.athletes} ${c.athletes === 1 ? "athlete" : "athletes"}`, `${c.assets} ${c.assets === 1 ? "asset" : "assets"}`]
                         .filter(Boolean)
                         .map((bit, i, arr) => (
@@ -372,16 +373,21 @@ export default async function BrandPortalDashboard({ params }: Props) {
               ))}
             </div>
           )}
-          <div className="flex items-center justify-between gap-3.5 mt-4 flex-wrap">
-            <span style={{ ...MONO, fontSize: 10, color: INK_LABEL }}>
+          {/* Counts stay live — never hardcoded. At <=750px the grid shows the
+              first four and this becomes the full-width route to the rest. */}
+          <div className="pv2-cards-foot flex items-center justify-between gap-3.5 mt-4 flex-wrap">
+            <span className="pv2-foot-count" style={{ ...MONO, fontSize: 10, color: INK_LABEL }}>
               Showing {cards.length} of {publishedCount} published
+            </span>
+            <span className="pv2-foot-count-mobile" style={{ ...MONO, fontSize: 10, color: INK_LABEL }}>
+              Showing {Math.min(4, cards.length)} of {publishedCount} published
             </span>
             <Link
               href={`/portal/${token}/campaigns`}
-              className="inline-flex items-center rounded-[4px] px-4 py-2.5"
+              className="pv2-btn pv2-seeall-link inline-flex items-center justify-center rounded-[4px] px-4 py-2.5"
               style={{ ...MONO, fontSize: 10, letterSpacing: ".13em", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.15)", color: OFFWHITE, textDecoration: "none", minHeight: 34 }}
             >
-              All campaigns ({campaignCount})
+              All {campaignCount} campaigns &rarr;
             </Link>
           </div>
         </section>
@@ -391,56 +397,21 @@ export default async function BrandPortalDashboard({ params }: Props) {
           <SectionHead
             num="04"
             title="Notable roster"
-            right={`Top ${roster.length} by reach · ${distinctPeople} total`}
+            right={`Top ${rosterShown} by reach · ${distinctPeople} total`}
           />
           {roster.length === 0 ? (
-            <p style={{ fontSize: 16, color: INK_BODY }}>No follower data on file for this roster yet.</p>
+            <p className="pv2-body" style={{ fontSize: 16, color: INK_BODY }}>
+              No follower data on file for this roster yet.
+            </p>
           ) : (
-            <div className="grid gap-4 grid-cols-1 min-[520px]:grid-cols-2 lg:grid-cols-4">
-              {roster.map((a) => (
-                <div
-                  key={a.key}
-                  className="relative overflow-hidden block"
-                  style={{ border: `1px solid ${CARD_B}`, borderRadius: RADIUS, aspectRatio: "3 / 4", background: "#101014" }}
-                >
-                  {a.image ? (
-                    <img src={a.image} alt={a.name} className="w-full h-full object-cover block" style={{ objectPosition: "50% 30%" }} />
-                  ) : null}
-                  {/* edge blend — hard rule 4 */}
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background:
-                        "linear-gradient(0deg,rgba(7,7,10,.95) 0%,rgba(7,7,10,.42) 30%,rgba(7,7,10,0) 62%),linear-gradient(90deg,rgba(7,7,10,.34) 0%,rgba(7,7,10,0) 22%,rgba(7,7,10,0) 78%,rgba(7,7,10,.34) 100%)",
-                    }}
-                  />
-                  <div className="absolute top-3 left-3.5 z-[2]" style={{ ...MONO, fontSize: 10, letterSpacing: ".16em", color: "rgba(250,248,245,.60)" }}>
-                    {String(a.rank).padStart(2, "0")}
-                  </div>
-                  <div className="absolute top-2.5 right-3 z-[2] text-right">
-                    <b className="block" style={{ ...ANTON, fontSize: 20, lineHeight: 1, fontWeight: 400 }}>{fmtFollowers(a.followers)}</b>
-                    <span className="block mt-[3px]" style={{ ...MONO, fontSize: 10, letterSpacing: ".14em", color: "rgba(250,248,245,.55)" }}>
-                      Followers
-                    </span>
-                  </div>
-                  <div className="absolute left-4 right-4 bottom-3.5 z-[2]">
-                    <div className="uppercase" style={{ ...BEBAS, fontSize: 24, lineHeight: 1.02, letterSpacing: ".012em" }}>
-                      {brandSafe(a.name)}
-                    </div>
-                    <div className="mt-1.5" style={{ ...MONO, fontSize: 10, letterSpacing: ".13em", color: "rgba(250,248,245,.68)" }}>
-                      {[a.school, a.sport].filter(Boolean).map((s) => brandSafe(String(s))).join(" · ") || "School · Sport"}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RosterGrid people={roster} />
           )}
         </section>
 
         {/* 05 ASSETS & REPORTING */}
         <section className="pt-14 md:pt-[72px] pb-24">
           <SectionHead num="05" title="Assets & reporting" right="Yours to use" />
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+          <div className="pv2-twoup grid gap-4 grid-cols-1 lg:grid-cols-2">
             <div
               className="p-6 flex flex-col justify-between"
               style={{ border: `1px solid ${CARD_B}`, borderRadius: RADIUS, background: CARD, backdropFilter: BLUR, WebkitBackdropFilter: BLUR, minHeight: 180 }}
@@ -450,14 +421,14 @@ export default async function BrandPortalDashboard({ params }: Props) {
                 <h3 className="uppercase my-2" style={{ ...BEBAS, fontSize: 24, letterSpacing: ".012em" }}>
                   {assetCount.toLocaleString()} files across {campaignCount} campaigns
                 </h3>
-                <p style={{ fontSize: 16, lineHeight: 1.7, color: INK_BODY }}>
+                <p className="pv2-body" style={{ fontSize: 16, lineHeight: 1.7, color: INK_BODY }}>
                   Every delivered photo and video, filtered by campaign or athlete.
                 </p>
               </div>
               <div className="mt-[18px] flex gap-2 flex-wrap">
                 <Link
                   href={`/portal/${token}/library`}
-                  className="inline-flex items-center rounded-[4px] px-4 py-2.5"
+                  className="pv2-btn inline-flex items-center justify-center rounded-[4px] px-4 py-2.5"
                   style={{ ...MONO, fontSize: 10, letterSpacing: ".13em", background: ORANGE, color: "#fff", textDecoration: "none", minHeight: 34 }}
                 >
                   Open library
@@ -474,7 +445,7 @@ export default async function BrandPortalDashboard({ params }: Props) {
                 <h3 className="uppercase my-2" style={{ ...BEBAS, fontSize: 24, letterSpacing: ".012em" }}>
                   Campaign reporting
                 </h3>
-                <p style={{ fontSize: 16, lineHeight: 1.7, color: INK_BODY }}>
+                <p className="pv2-body" style={{ fontSize: 16, lineHeight: 1.7, color: INK_BODY }}>
                   Impressions, engagement and post counts per campaign.
                 </p>
               </div>

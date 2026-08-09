@@ -76,7 +76,7 @@ export default async function PortalCampaignsPage({ params }: Props) {
       {recaps.length === 0 ? (
         <p style={{ fontSize: 16, color: INK_BODY }}>No campaigns to show yet.</p>
       ) : (
-        <div className="grid gap-4 grid-cols-1 min-[520px]:grid-cols-2 lg:grid-cols-3">
+        <div className="pv2-campaign-grid grid gap-4 grid-cols-1 min-[520px]:grid-cols-2 lg:grid-cols-3">
           {recaps.map((r) => {
             const safeName = brandSafe(r.name || "");
 
@@ -149,7 +149,7 @@ export default async function PortalCampaignsPage({ params }: Props) {
                   </span>
                 </div>
                 <div className="absolute left-[18px] right-[18px] bottom-4 z-[2]">
-                  <div className="uppercase" style={{ ...BEBAS, fontSize: 26, lineHeight: 1.02, letterSpacing: ".012em" }}>
+                  <div className="pv2-card-name uppercase" style={{ ...BEBAS, fontSize: 26, lineHeight: 1.02, letterSpacing: ".012em" }}>
                     {safeName}
                   </div>
                   {/* Resting state on touch — never hover-only content. */}
