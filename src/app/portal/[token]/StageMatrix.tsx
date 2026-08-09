@@ -21,7 +21,9 @@ type NodeState = "untracked" | "pending" | "now" | "done";
 const EXAMPLES: { name: string; note: string; hot?: boolean; states: NodeState[] }[] = [
   { name: "Example — just opened", note: "Brief with Postgame", states: ["now", "pending", "pending", "pending", "pending", "pending"] },
   { name: "Example — shoot week", note: "12 athletes confirmed", states: ["done", "done", "now", "pending", "pending", "pending"] },
-  { name: "Example — awaiting your review", note: "3 assets need your approval", hot: true, states: ["done", "done", "done", "now", "pending", "pending"] },
+  // No count here: a number would assert pending work that the Review tab
+  // correctly reports as zero.
+  { name: "Example — awaiting your review", note: "Assets need your approval", hot: true, states: ["done", "done", "done", "now", "pending", "pending"] },
   { name: "Example — live", note: "Recap in build", states: ["done", "done", "done", "done", "done", "now"] },
 ];
 

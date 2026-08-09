@@ -67,7 +67,7 @@ export default async function BrandPortalDashboard({ params }: Props) {
   const { data: mediaRaw } = recapIds.length
     ? await supabase
         .from("media")
-        .select("id, campaign_id, athlete_id, type, file_url, thumbnail_url, is_hero, hero_order, is_video_thumbnail, created_at")
+        .select("id, campaign_id, athlete_id, type, file_url, thumbnail_url, is_hero, hero_order, is_video_thumbnail, created_at, resolution")
         .in("campaign_id", recapIds)
     : { data: [] as any[] };
 
@@ -125,6 +125,15 @@ export default async function BrandPortalDashboard({ params }: Props) {
     return bits.length ? bits.join(" · ") : null;
   };
 
+  // media.resolution is a "WxH" string where it exists at all. There is no
+  // width/height column, and resolution is null on every CVS row, so this
+  // usually yields nulls and the client measures the decoded image instead.
+  const parseResolution = (value: unknown): { width: number | null; height: number | null } => {
+    const match = String(value ?? "").match(/^(\d+)\s*[x×]\s*(\d+)$/i);
+    if (!match) return { width: null, height: null };
+    return { width: Number(match[1]), height: Number(match[2]) };
+  };
+
   const heroSlides: HeroSlide[] = [...flagged, ...newestPublished]
     .slice(0, 6)
     .map((m) => ({
@@ -133,6 +142,7 @@ export default async function BrandPortalDashboard({ params }: Props) {
       alt: campaignName[m.campaign_id] || brand.name,
       campaignName: campaignName[m.campaign_id] || "",
       credit: creditFor(m),
+      ...parseResolution(m.resolution),
     }));
 
   // ---- Per-campaign rollups ---------------------------------------------
