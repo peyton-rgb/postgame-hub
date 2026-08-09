@@ -9,6 +9,12 @@ export type HeroSlide = {
   alt: string;
   campaignName: string;
   credit: string | null;
+  // Parsed from media.resolution ("WxH") when present. It is null on every CVS
+  // row today — media has no width/height columns and resolution is populated
+  // on only 416 of 4,272 rows overall — so orientation usually has to be
+  // measured from the decoded image instead.
+  width: number | null;
+  height: number | null;
 };
 
 // Hero stage for the portal dashboard. The photo bleeds down behind the stat
@@ -21,8 +27,19 @@ export type HeroSlide = {
 // portrait crops upward so a full-bleed hero does not behead people. If the
 // focal columns are populated later they should override this.
 
-const PORTRAIT_POS = "50% 35%";
-const LANDSCAPE_POS = "50% 50%";
+// Desktop bias (unchanged).
+const DESKTOP_PORTRAIT = "50% 35%";
+const DESKTOP_LANDSCAPE = "50% 50%";
+
+// Mobile bias. The hero is capped at 340px there, so the crop is far tighter
+// and a portrait source pushes the subject's head above the frame. Portraits
+// bias harder upward; landscapes keep the looser value. Unknown orientation
+// sits between the two until the image decodes.
+const MOBILE_PORTRAIT = "50% 22%";
+const MOBILE_LANDSCAPE = "50% 32%";
+const MOBILE_UNKNOWN = "50% 28%";
+
+type Orientation = "portrait" | "landscape";
 
 export default function HeroStage({
   slides,
@@ -34,8 +51,16 @@ export default function HeroStage({
   statbar: React.ReactNode;
 }) {
   const [index, setIndex] = useState(0);
-  const [pos, setPos] = useState<Record<string, string>>({});
+  const [measured, setMeasured] = useState<Record<string, Orientation>>({});
   const reduced = useRef(false);
+
+  // Stored dimensions win; otherwise fall back to what the decoded image
+  // reports. focal_x/focal_y stay null and stay unused — this is the interim
+  // rule until they are populated.
+  const orientationOf = (s: HeroSlide): Orientation | null => {
+    if (s.width && s.height) return s.height > s.width ? "portrait" : "landscape";
+    return measured[s.id] ?? null;
+  };
 
   useEffect(() => {
     reduced.current =
@@ -55,28 +80,42 @@ export default function HeroStage({
     <div className="pv2-hero relative overflow-hidden" style={{ background: BG }}>
       {/* photo layer */}
       <div className="absolute inset-0 z-0">
-        {slides.map((s, i) => (
-          <div
-            key={s.id}
-            className="absolute inset-0 transition-opacity duration-[1500ms] ease-in-out"
-            style={{ opacity: i === index ? 1 : 0 }}
-            aria-hidden={i !== index}
-          >
-            <img
-              src={s.src}
-              alt={s.alt}
-              className="w-full h-full object-cover block"
-              style={{ objectPosition: pos[s.id] || PORTRAIT_POS }}
-              onLoad={(e) => {
-                const el = e.currentTarget;
-                const portrait = el.naturalHeight >= el.naturalWidth;
-                setPos((p) =>
-                  p[s.id] ? p : { ...p, [s.id]: portrait ? PORTRAIT_POS : LANDSCAPE_POS },
-                );
-              }}
-            />
-          </div>
-        ))}
+        {slides.map((s, i) => {
+          const o = orientationOf(s);
+          // Desktop keeps its inline value. Mobile reads the custom property,
+          // so the per-slide bias can differ by breakpoint without adding any
+          // desktop rule.
+          const desktopPos = o === "landscape" ? DESKTOP_LANDSCAPE : DESKTOP_PORTRAIT;
+          const mobilePos =
+            o === "portrait" ? MOBILE_PORTRAIT : o === "landscape" ? MOBILE_LANDSCAPE : MOBILE_UNKNOWN;
+
+          return (
+            <div
+              key={s.id}
+              className="absolute inset-0 transition-opacity duration-[1500ms] ease-in-out"
+              style={{ opacity: i === index ? 1 : 0 }}
+              aria-hidden={i !== index}
+            >
+              <img
+                src={s.src}
+                alt={s.alt}
+                className="w-full h-full object-cover block"
+                style={
+                  {
+                    objectPosition: desktopPos,
+                    "--pv2-hero-pos-mobile": mobilePos,
+                  } as React.CSSProperties
+                }
+                onLoad={(e) => {
+                  if (s.width && s.height) return;
+                  const el = e.currentTarget;
+                  const o2: Orientation = el.naturalHeight > el.naturalWidth ? "portrait" : "landscape";
+                  setMeasured((m) => (m[s.id] ? m : { ...m, [s.id]: o2 }));
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* scrim: fades to solid black by the bottom edge (rule 4 edge blend) */}
@@ -87,6 +126,12 @@ export default function HeroStage({
                        linear-gradient(90deg,rgba(7,7,10,.88) 0%,rgba(7,7,10,.42) 30%,rgba(7,7,10,0) 62%,rgba(7,7,10,.28) 100%)`,
         }}
       />
+
+      {/* Dedicated ground for the campaign name + athlete credit at <=750px.
+          The container scrim fades out mid-frame, which left the copy sitting
+          directly on busy imagery. Painted over the container scrim, under the
+          text. Mobile only — hidden at desktop. */}
+      <div className="pv2-hero-textscrim" aria-hidden />
 
       <div className="pv2-hero-inner relative z-[2] pt-9 md:pt-[72px]">
         <div className="mx-auto max-w-[1248px] px-5 md:px-10 lg:px-24">

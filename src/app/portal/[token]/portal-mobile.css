@@ -21,6 +21,7 @@
 .pv2-roster-more { display: none; }
 .pv2-seeall { display: none; }
 .pv2-foot-count-mobile { display: none; }
+.pv2-hero-textscrim { display: none; }
 
 @media (max-width: 750px) {
   /* ---- 4. NAV ------------------------------------------------------- */
@@ -59,7 +60,27 @@
      container — capping the container would clip the stats. Stats then begin
      at ~340px, above the fold on a 390x844 viewport. */
   .pv2-hero .pv2-hero-row { min-height: 0; height: 322px; }
-  .pv2-hero img { object-position: 50% 32% !important; }
+  /* Per-slide crop bias, set inline as a custom property so desktop keeps its
+     own inline value and gains no rule. Portrait 22% / landscape 32% /
+     unknown 28%. */
+  .pv2-hero img { object-position: var(--pv2-hero-pos-mobile, 50% 28%) !important; }
+
+  /* Text ground: transparent through the top ~58%, resolving to .72 under the
+     copy. Sits above the container scrim and below the text. */
+  .pv2-hero-textscrim {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 340px;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(180deg,
+      rgba(7, 7, 10, 0) 58%,
+      rgba(7, 7, 10, .34) 78%,
+      rgba(7, 7, 10, .72) 100%);
+  }
   .pv2-hero-inner { padding-top: 18px; }
   .pv2-hero-stats { padding-top: 16px; padding-bottom: 24px; }
   /* The lead line is the lockup's body copy; it is not shrunk, it is dropped,
