@@ -134,6 +134,13 @@
   .pv2-roster-tile .pv2-rank { font-size: 9px; }
   .pv2-roster-tile .pv2-fol-n { font-size: 14px; }
   .pv2-roster-tile .pv2-fol-l { font-size: 6px; }
+  /* Placeholder chip on unranked tiles — must stay legible in a half-width
+     tile without wrapping across the crop. */
+  .pv2-roster-tile .pv2-fol-chip {
+    font-size: 6px;
+    letter-spacing: .04em;
+    padding: 2px 4px;
+  }
   .pv2-roster-tile .pv2-ath-name { font-size: 15px; }
   .pv2-roster-tile .pv2-ath-sub {
     font-size: 7px;

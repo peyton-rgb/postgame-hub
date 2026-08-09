@@ -197,14 +197,28 @@ export default async function BrandPortalDashboard({ params }: Props) {
     }
   }
 
-  // Full ranked roster. Desktop renders the top 8; <=750px collapses to 4 and
-  // expands the rest in place, so the whole ranking ships to the client.
-  const roster = Object.entries(byPerson)
+  // Roster splits in two.
+  //
+  // RANKED: ig_followers > 0 is a real measurement, so these carry a rank
+  // number and a follower figure, ordered by reach.
+  //
+  // UNRANKED: ig_followers = 0 means the number was never collected, not that
+  // the athlete has no audience. Treating a stored 0 as a measurement would
+  // publish a fact we do not have, so these carry no rank and no figure —
+  // they render an em dash behind an "Awaiting verified data" chip. They sort
+  // alphabetically, which is visibly not a performance order.
+  const rankedPeople = Object.entries(byPerson)
     .filter(([, v]) => v.followers > 0)
     .sort((x, y) => y[1].followers - x[1].followers)
-    .map(([k, v]) => ({ ...v, key: k, image: firstImageFor[k] || null }));
+    .map(([k, v]) => ({ ...v, key: k, image: firstImageFor[k] || null, ranked: true }));
 
-  const rosterShown = Math.min(8, roster.length);
+  const unrankedPeople = Object.entries(byPerson)
+    .filter(([, v]) => v.followers <= 0)
+    .sort((x, y) => String(x[1].name).localeCompare(String(y[1].name)))
+    .map(([k, v]) => ({ ...v, key: k, image: firstImageFor[k] || null, ranked: false }));
+
+  const roster = [...rankedPeople, ...unrankedPeople];
+  const rosterShown = Math.min(8, rankedPeople.length);
 
   const brandLogo = pickBrandLogo(brand);
 
@@ -404,7 +418,7 @@ export default async function BrandPortalDashboard({ params }: Props) {
               No follower data on file for this roster yet.
             </p>
           ) : (
-            <RosterGrid people={roster} />
+            <RosterGrid people={roster} rankedCount={rankedPeople.length} />
           )}
         </section>
 
