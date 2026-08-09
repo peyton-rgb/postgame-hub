@@ -1,15 +1,19 @@
 import { createServiceSupabase } from "@/lib/supabase";
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { brandSafe } from "@/lib/brand-safe";
+import { getPortalBrand } from "@/lib/portal-data";
 import LibraryGallery, { type LibraryTile, type LibraryCampaign } from "./LibraryGallery";
 import type { PortalAthlete, PortalPost } from "./AssetModal";
 
-// Media Library tab for the brand portal. Token-gated exactly like the home
-// page (see page.tsx for the service-client rationale). Server-fetches every
-// media item across this brand's campaigns, joins athlete + campaign names,
-// runs campaign names through brandSafe(), and hands the shaped data to the
-// client gallery for interactive filtering/grouping.
+// Assets tab for the brand portal (the nav labels this "Assets"; the route
+// stays /library because AssetModal in this directory is imported by
+// src/components/CampaignRecap.tsx, a protected file).
+//
+// Token-gated via getPortalBrand (see src/lib/portal-data.ts for the
+// service-client rationale). Server-fetches every media item across this
+// brand's campaigns, joins athlete + campaign names, runs campaign names
+// through brandSafe(), and hands the shaped data to the client gallery for
+// interactive filtering/sorting.
 
 export const dynamic = "force-dynamic";
 
@@ -19,34 +23,18 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
-  const supabase = createServiceSupabase();
-  const { data: brand } = await supabase
-    .from("brands")
-    .select("name")
-    .eq("portal_token", token)
-    .single();
-
-  const robots = { index: false, follow: false } as const;
-  if (!brand) return { title: "Not Found", robots };
+  const brand = await getPortalBrand(token);
   return {
-    title: `${brand.name} — Media Library`,
-    description: `Media library for ${brand.name}`,
-    robots,
+    title: `${brand.name} — Assets`,
+    description: `Asset library for ${brand.name}`,
+    robots: { index: false, follow: false },
   };
 }
 
 export default async function PortalLibraryPage({ params }: Props) {
   const { token } = await params;
+  const brand = await getPortalBrand(token);
   const supabase = createServiceSupabase();
-
-  // Token gate — one brand or 404.
-  const { data: brand } = await supabase
-    .from("brands")
-    .select("id, name")
-    .eq("portal_token", token)
-    .single();
-
-  if (!brand) notFound();
 
   // This brand's campaigns, newest first (drives section order).
   const { data: recapsRaw } = await supabase
@@ -65,7 +53,7 @@ export default async function PortalLibraryPage({ params }: Props) {
     ? await Promise.all([
         supabase
           .from("media")
-          .select("id, campaign_id, athlete_id, type, file_url, thumbnail_url, is_video_thumbnail, sort_order")
+          .select("id, campaign_id, athlete_id, type, file_url, thumbnail_url, is_video_thumbnail, sort_order, created_at")
           .in("campaign_id", recapIds)
           .order("sort_order", { ascending: true }),
         supabase
@@ -96,6 +84,7 @@ export default async function PortalLibraryPage({ params }: Props) {
       kind: isVideo ? "video" : "photo",
       thumb,
       fileUrl: m.file_url,
+      createdAt: m.created_at || null,
     });
   }
 
@@ -234,8 +223,9 @@ export default async function PortalLibraryPage({ params }: Props) {
     .map((r) => ({ id: r.id, name: campaignName[r.id] }));
 
   return (
-    <main className="mx-auto max-w-[1200px] px-6 pt-2 pb-24">
+    <main className="mx-auto max-w-[1248px] px-5 md:px-10 lg:px-24 pt-10 pb-24">
       <LibraryGallery
+        brandName={brand.name}
         campaigns={campaigns}
         tiles={tiles}
         athletesById={athletesById}
