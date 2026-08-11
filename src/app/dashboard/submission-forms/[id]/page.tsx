@@ -261,7 +261,9 @@ export default function SubmissionFormDetail() {
           </div>
           <DriveField
             currentId={c?.driveFolderId ?? null}
+            campaignId={c?.id ?? null}
             onSave={setFolder}
+            onProvisioned={load}
             disabled={!d.link.active}
           />
         </div>
@@ -619,15 +621,52 @@ function EditableId({ label, value, onSave, disabled }: { label: string; value: 
 }
 
 // Drive folder paste field — Drive mark, tooltip, accepts any URL shape.
-function DriveField({ currentId, onSave, disabled }: { currentId: string | null; onSave: (v: string) => void; disabled: boolean }) {
+function DriveField({
+  currentId,
+  campaignId,
+  onSave,
+  onProvisioned,
+  disabled,
+}: {
+  currentId: string | null;
+  campaignId: string | null;
+  onSave: (v: string) => void;
+  onProvisioned: () => void;
+  disabled: boolean;
+}) {
   const [draft, setDraft] = useState("");
   const [tip, setTip] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
+  const [provErr, setProvErr] = useState<string | null>(null);
 
   const paste = async () => {
     try {
       setDraft((await navigator.clipboard.readText()).trim());
     } catch {
       /* clipboard blocked */
+    }
+  };
+
+  // Pasting a link points at a folder someone already made by hand; this makes
+  // the standard tree instead. Idempotent, so it also repairs a campaign whose
+  // subfolders are missing.
+  const provision = async () => {
+    if (!campaignId) return;
+    setProvisioning(true);
+    setProvErr(null);
+    try {
+      const res = await fetch("/api/drive/campaign-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't create the folder.");
+      onProvisioned();
+    } catch (e: any) {
+      setProvErr(e.message);
+    } finally {
+      setProvisioning(false);
     }
   };
 
@@ -661,7 +700,25 @@ function DriveField({ currentId, onSave, disabled }: { currentId: string | null;
           Save
         </button>
       </div>
-      {currentId && <div className="text-[10px] text-white/30 mt-1 font-mono truncate">Current: {currentId}</div>}
+      {currentId ? (
+        <div className="text-[10px] text-white/30 mt-1 font-mono truncate">Current: {currentId}</div>
+      ) : (
+        !disabled && (
+          <div className="mt-1.5">
+            <button
+              onClick={provision}
+              disabled={provisioning || !campaignId}
+              className="text-xs text-[#D73F09] hover:underline disabled:opacity-50 disabled:no-underline"
+            >
+              {provisioning ? "Creating folder…" : "Create the standard folder"}
+            </button>
+            <div className="text-[10px] text-white/30 mt-0.5">
+              Content · Contracts/Drafts · Contracts/Signed
+            </div>
+          </div>
+        )
+      )}
+      {provErr && <div className="text-[10px] text-red-400 mt-1 leading-relaxed">{provErr}</div>}
     </div>
   );
 }

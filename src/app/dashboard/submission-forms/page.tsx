@@ -425,6 +425,11 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   // null = never, matching what the create route wrote before this existed.
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  // Folder provisioning for the selected campaign. Held here rather than
+  // re-fetching the whole brand list, so the step-3 state flips immediately.
+  const [folderId, setFolderId] = useState<string | null>(null);
+  const [provisioning, setProvisioning] = useState(false);
+  const [folderErr, setFolderErr] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -450,7 +455,31 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const pickCampaign = (c: PickCampaign) => {
     setSelected(c);
     setBriefUrl(c.briefUrl ?? ""); // 231 of 611 campaigns carry one
+    setFolderId(c.driveFolderId);
+    setFolderErr(null);
     setErr(null);
+  };
+
+  // Creates <campaign>/Content and <campaign>/Contracts/{Drafts,Signed}.
+  // Idempotent — adopts anything already there rather than duplicating it.
+  const createFolder = async () => {
+    if (!selected) return;
+    setProvisioning(true);
+    setFolderErr(null);
+    try {
+      const res = await fetch("/api/drive/campaign-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: selected.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't create the folder.");
+      setFolderId(body.driveFolderId);
+    } catch (e: any) {
+      setFolderErr(e.message);
+    } finally {
+      setProvisioning(false);
+    }
   };
 
   // Only claim the brief came from the campaign while it's still untouched.
@@ -637,10 +666,26 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               </div>
             </div>
 
-            {!selected.driveFolderId && (
+            {!folderId ? (
               <div className="text-xs text-[#D73F09] bg-[#D73F09]/10 border border-[#D73F09]/25 rounded-lg px-3 py-2 leading-relaxed">
-                No Drive folder yet — uploads won&apos;t work until one is created.
+                <div>No Drive folder yet — uploads won&apos;t work until one is created.</div>
+                <button
+                  onClick={createFolder}
+                  disabled={provisioning}
+                  className="mt-2 px-3 py-1.5 rounded-lg border border-[#D73F09]/40 bg-[#D73F09]/10 text-[#D73F09] font-semibold hover:bg-[#D73F09]/20 disabled:opacity-50 transition-colors"
+                >
+                  {provisioning ? "Creating…" : "Create folder"}
+                </button>
+                {folderErr && <div className="text-red-400 mt-2">{folderErr}</div>}
               </div>
+            ) : (
+              !selected.driveFolderId && (
+                // Only shown when this modal did the creating — a campaign that
+                // arrived with a folder needs no announcement.
+                <div className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-3 py-2 leading-relaxed">
+                  Folder ready — Content and Contracts/Drafts + Signed created.
+                </div>
+              )
             )}
 
             {/* 2×2 at 390px, where three number inputs in one row still read
