@@ -160,6 +160,46 @@ export async function POST(req: NextRequest) {
     return Math.min(max, Math.max(min, n));
   };
 
+  // Deliverables is the commercial ask, not a file count — null means "not
+  // stated", which is different from 0, so it passes through instead of
+  // defaulting like the min/max fields do.
+  let deliverables: number | null = null;
+  if (body?.deliverables != null) {
+    if (!Number.isFinite(body.deliverables)) {
+      return NextResponse.json({ error: "deliverables must be a number or null" }, { status: 400 });
+    }
+    deliverables = clampInt(body.deliverables, 0, 0, 99);
+  }
+
+  // https only. The athlete page renders this as a link they're told to open;
+  // anything else (http, javascript:, a bare domain) is rejected outright.
+  let briefUrl: string | null = null;
+  if (body?.briefUrl != null) {
+    const raw = String(body.briefUrl).trim();
+    if (raw) {
+      if (!raw.startsWith("https://")) {
+        return NextResponse.json({ error: "Brief link must start with https://" }, { status: 400 });
+      }
+      briefUrl = raw;
+    }
+  }
+
+  // A past expiry would create a link that is dead the moment it's minted.
+  let expiresAt: string | null = null;
+  if (body?.expiresAt != null) {
+    const raw = String(body.expiresAt).trim();
+    if (raw) {
+      const t = new Date(raw).getTime();
+      if (Number.isNaN(t)) {
+        return NextResponse.json({ error: "expiresAt must be an ISO date" }, { status: 400 });
+      }
+      if (t <= Date.now()) {
+        return NextResponse.json({ error: "Expiry date must be in the future" }, { status: 400 });
+      }
+      expiresAt = new Date(t).toISOString();
+    }
+  }
+
   const token = randomBytes(12).toString("hex");
   const { data: inserted, error } = await svc
     .from("submission_links")
@@ -170,6 +210,9 @@ export async function POST(req: NextRequest) {
       min_photos: clampInt(body?.minPhotos, 3, 0, 50),
       min_videos: clampInt(body?.minVideos, 1, 0, 50),
       max_files: clampInt(body?.maxFiles, 25, 1, 100),
+      deliverables,
+      brief_url: briefUrl,
+      expires_at: expiresAt,
       created_by: staff.id,
     })
     .select("token")
