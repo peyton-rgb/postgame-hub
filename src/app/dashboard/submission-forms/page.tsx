@@ -343,26 +343,84 @@ function MetricCard({
   );
 }
 
-// ── New form modal: campaign picker over campaign_recaps ──
+// ── New form modal: brand → campaign → settings ──
+//
+// The picker is scoped to ColdFusion-active campaigns, grouped by brand (16
+// brands, 57 campaigns), so there is no slice and no archived campaign on
+// offer. Folder state is shown per campaign but never acted on from here.
 
 interface PickCampaign {
   id: string;
   name: string;
-  brandName: string | null;
-  brandLogoUrl: string | null;
-  hasFolder: boolean;
+  adminId: string | null;
+  driveFolderId: string | null;
+  briefUrl: string | null;
   hasActiveLink: boolean;
-  status: string | null;
+  createdOn: string | null;
+}
+interface PickBrand {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  activeCount: number;
+  hasBrandFolder: boolean;
+  campaigns: PickCampaign[];
+}
+
+const plural = (n: number, word: string) => `${word}${n === 1 ? "" : "s"}`;
+
+// A campaign under a brand with no Drive parent can't be provisioned at all,
+// so its row is dead rather than warned about.
+type FolderState = "ready" | "pending" | "blocked";
+const FOLDER_META: Record<FolderState, { cls: string; tip: string }> = {
+  ready: { cls: "text-emerald-400", tip: "Folder ready" },
+  pending: { cls: "text-[#D73F09]", tip: "Folder will be created" },
+  blocked: { cls: "text-white/20", tip: "This brand has no Drive folder yet" },
+};
+
+function folderStateOf(c: PickCampaign, brand: PickBrand): FolderState {
+  if (c.driveFolderId) return "ready";
+  return brand.hasBrandFolder ? "pending" : "blocked";
+}
+
+function FolderIcon({ state }: { state: FolderState }) {
+  const { cls, tip } = FOLDER_META[state];
+  return (
+    <span title={tip} aria-label={tip} className={`flex-shrink-0 ${cls}`}>
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={state === "ready" ? 2.75 : 2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {state === "ready" ? (
+          <path d="M20 6 9 17l-5-5" />
+        ) : (
+          <path d="M4 20V7a2 2 0 0 1 2-2h3.6l2 2H18a2 2 0 0 1 2 2v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" />
+        )}
+      </svg>
+    </span>
+  );
 }
 
 function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [campaigns, setCampaigns] = useState<PickCampaign[]>([]);
+  const [brands, setBrands] = useState<PickBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [brand, setBrand] = useState<PickBrand | null>(null);
   const [selected, setSelected] = useState<PickCampaign | null>(null);
   const [minPhotos, setMinPhotos] = useState(3);
   const [minVideos, setMinVideos] = useState(1);
   const [maxFiles, setMaxFiles] = useState(25);
+  const [deliverables, setDeliverables] = useState<number | null>(null);
+  const [briefUrl, setBriefUrl] = useState("");
+  // null = never, matching what the create route wrote before this existed.
+  const [expiryDays, setExpiryDays] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -372,7 +430,7 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         const res = await fetch("/api/submission-forms/campaigns");
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-        setCampaigns(body.campaigns);
+        setBrands(body.brands);
       } catch (e: any) {
         setErr(e.message);
       } finally {
@@ -381,13 +439,36 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     })();
   }, []);
 
-  const shown = useMemo(() => {
+  const shownBrands = useMemo(() => {
     const s = q.trim().toLowerCase();
-    const list = s
-      ? campaigns.filter((c) => `${c.name} ${c.brandName ?? ""}`.toLowerCase().includes(s))
-      : campaigns;
-    return list.slice(0, 60);
-  }, [campaigns, q]);
+    return s ? brands.filter((b) => b.name.toLowerCase().includes(s)) : brands;
+  }, [brands, q]);
+
+  const expiresAt = useMemo(() => {
+    if (expiryDays == null) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + expiryDays);
+    return d.toISOString();
+  }, [expiryDays]);
+
+  const pickCampaign = (c: PickCampaign) => {
+    setSelected(c);
+    setBriefUrl(c.briefUrl ?? ""); // 231 of 611 campaigns carry one
+    setErr(null);
+  };
+
+  // Only claim the brief came from the campaign while it's still untouched.
+  const briefPrefilled = !!selected?.briefUrl && briefUrl === selected.briefUrl;
+
+  // Assembled from the same values the athlete page renders, so this is a real
+  // preview of that page's copy rather than decoration.
+  const preview = [
+    `Send ${minPhotos} ${plural(minPhotos, "photo")} and ${minVideos} ${plural(minVideos, "video")}.`,
+    deliverables != null ? `This covers ${deliverables} ${plural(deliverables, "post")}.` : null,
+    expiresAt ? `Link expires ${fmtDate(expiresAt)}.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const create = async () => {
     if (!selected) return;
@@ -397,7 +478,15 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       const res = await fetch("/api/submission-forms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId: selected.id, minPhotos, minVideos, maxFiles }),
+        body: JSON.stringify({
+          campaignId: selected.id,
+          minPhotos,
+          minVideos,
+          maxFiles,
+          deliverables,
+          briefUrl: briefUrl.trim() || null,
+          expiresAt,
+        }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
@@ -408,6 +497,12 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     }
   };
 
+  const subtitle = selected
+    ? selected.name
+    : brand
+      ? `${brand.activeCount} active ${plural(brand.activeCount, "campaign")}`
+      : "Pick the brand, then the campaign.";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
@@ -416,93 +511,200 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       >
         <div className="px-5 py-4 border-b border-white/10">
           <h2 className="text-lg font-bold text-white">New submission form</h2>
-          <p className="text-xs text-white/45 mt-0.5">Pick a campaign to collect athlete content for.</p>
+          <p className="text-xs text-white/45 mt-0.5 truncate">{subtitle}</p>
         </div>
 
-        {!selected ? (
+        {!brand ? (
+          // ── Step 1: brand ──
           <>
             <div className="px-5 pt-4">
               <input
                 autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search campaigns…"
+                placeholder="Search brands…"
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#D73F09]/50"
               />
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-3">
               {loading ? (
-                <div className="text-white/40 text-sm py-8 text-center">Loading campaigns…</div>
+                <div className="text-white/40 text-sm py-8 text-center">Loading brands…</div>
               ) : err ? (
                 <div className="text-red-400 text-sm py-8 text-center">{err}</div>
               ) : (
                 <div className="flex flex-col gap-1">
-                  {shown.map((c) => (
+                  {shownBrands.map((b) => (
                     <button
-                      key={c.id}
-                      onClick={() => setSelected(c)}
+                      key={b.id}
+                      onClick={() => setBrand(b)}
                       className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-left"
                     >
                       <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {c.brandLogoUrl ? (
+                        {b.logoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={c.brandLogoUrl} alt="" className="w-full h-full object-contain" />
+                          <img src={b.logoUrl} alt="" className="w-full h-full object-contain" />
                         ) : (
                           <span className="text-white/25 text-[10px]">—</span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white truncate">{c.name}</div>
-                        <div className="text-[11px] text-white/40 truncate">{c.brandName ?? "—"}</div>
+                        <div className="text-sm text-white truncate">{b.name}</div>
+                        <div className="text-[11px] text-white/40">
+                          {b.activeCount} active {plural(b.activeCount, "campaign")}
+                        </div>
                       </div>
-                      {!c.hasFolder && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-[#D73F09]/40 text-[#D73F09] flex-shrink-0">
-                          NO FOLDER
-                        </span>
-                      )}
+                      <span className="text-white/25 text-sm flex-shrink-0">›</span>
+                    </button>
+                  ))}
+                  {shownBrands.length === 0 && (
+                    <div className="text-white/40 text-sm py-8 text-center">No matches.</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        ) : !selected ? (
+          // ── Step 2: campaign ──
+          <>
+            <div className="px-5 pt-4 flex items-center gap-3">
+              <button
+                onClick={() => setBrand(null)}
+                className="text-xs text-white/45 hover:text-white/70 flex-shrink-0"
+              >
+                ← Back to brands
+              </button>
+              <div className="flex items-center gap-2 min-w-0 ml-auto">
+                <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {brand.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={brand.logoUrl} alt="" className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-white/25 text-[9px]">—</span>
+                  )}
+                </div>
+                <span className="text-xs text-white/70 truncate">{brand.name}</span>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-3">
+              <div className="flex flex-col gap-1">
+                {brand.campaigns.map((c) => {
+                  const state = folderStateOf(c, brand);
+                  const blocked = state === "blocked";
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => pickCampaign(c)}
+                      disabled={blocked}
+                      title={blocked ? FOLDER_META.blocked.tip : undefined}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                        blocked ? "opacity-45 cursor-not-allowed" : "hover:bg-white/5"
+                      }`}
+                    >
+                      <FolderIcon state={state} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white truncate">{c.name}</div>
+                      </div>
                       {c.hasActiveLink && (
                         <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/15 text-white/45 flex-shrink-0">
                           HAS FORM
                         </span>
                       )}
+                      {/* /28 isn't on Tailwind's opacity scale (steps of 5) —
+                          the bracket form is what actually emits 28%. */}
+                      <span className="text-[11px] font-mono text-white/[0.28] flex-shrink-0">
+                        {c.adminId ?? "—"}
+                      </span>
                     </button>
-                  ))}
-                  {shown.length === 0 && <div className="text-white/40 text-sm py-8 text-center">No matches.</div>}
-                </div>
-              )}
+                  );
+                })}
+                {brand.campaigns.length === 0 && (
+                  <div className="text-white/40 text-sm py-8 text-center">No active campaigns.</div>
+                )}
+              </div>
             </div>
           </>
         ) : (
-          <div className="px-5 py-4 flex flex-col gap-4">
-            <button onClick={() => setSelected(null)} className="text-xs text-white/45 hover:text-white/70 text-left">
+          // ── Step 3: settings ──
+          <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto">
+            <button
+              onClick={() => setSelected(null)}
+              className="text-xs text-white/45 hover:text-white/70 text-left"
+            >
               ← Back to campaigns
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center overflow-hidden">
-                {selected.brandLogoUrl ? (
+              <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {brand.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={selected.brandLogoUrl} alt="" className="w-full h-full object-contain" />
+                  <img src={brand.logoUrl} alt="" className="w-full h-full object-contain" />
                 ) : (
                   <span className="text-white/25 text-xs">—</span>
                 )}
               </div>
-              <div>
-                <div className="text-sm font-semibold text-white">{selected.name}</div>
-                <div className="text-xs text-white/45">{selected.brandName ?? "—"}</div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-white truncate">{selected.name}</div>
+                <div className="text-xs text-white/45 truncate">{brand.name}</div>
               </div>
             </div>
 
-            {!selected.hasFolder && (
+            {!selected.driveFolderId && (
               <div className="text-xs text-[#D73F09] bg-[#D73F09]/10 border border-[#D73F09]/25 rounded-lg px-3 py-2 leading-relaxed">
-                This campaign has no Drive Content folder yet. Uploads won&apos;t work until provisioning
-                creates it — the folder is not created from here.
+                No Drive folder yet — uploads won&apos;t work until one is created.
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-3">
-              <NumField label="Min photos" value={minPhotos} onChange={setMinPhotos} />
-              <NumField label="Min videos" value={minVideos} onChange={setMinVideos} />
-              <NumField label="Max files" value={maxFiles} onChange={setMaxFiles} />
+            {/* Four across on desktop; 2×2 at 390px, where four number inputs
+                in one row truncate their labels. */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <NumField label="Min photos" value={minPhotos} onChange={(n) => setMinPhotos(n ?? 0)} />
+              <NumField label="Min videos" value={minVideos} onChange={(n) => setMinVideos(n ?? 0)} />
+              <NumField label="Max files" value={maxFiles} onChange={(n) => setMaxFiles(n ?? 1)} />
+              <NumField
+                label="Deliverables"
+                value={deliverables}
+                onChange={setDeliverables}
+                max={99}
+                placeholder="—"
+                accent
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Brief link</label>
+              <input
+                type="url"
+                value={briefUrl}
+                onChange={(e) => setBriefUrl(e.target.value)}
+                placeholder="https://"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:border-[#D73F09]/50"
+              />
+              {briefPrefilled && <div className="text-[10px] text-white/30 mt-1">From the campaign brief</div>}
+            </div>
+
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1.5">Link expires</label>
+              <div className="flex items-center gap-2">
+                {[30, 60, null].map((v) => (
+                  <button
+                    key={String(v)}
+                    onClick={() => setExpiryDays(v)}
+                    className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                      expiryDays === v
+                        ? "border-[#D73F09]/50 bg-[#D73F09]/10 text-white"
+                        : "border-white/10 bg-white/5 text-white/55 hover:text-white/80"
+                    }`}
+                  >
+                    {v == null ? "Never" : `${v} days`}
+                  </button>
+                ))}
+                <span className="ml-auto text-xs text-white/40 flex-shrink-0">
+                  {expiresAt ? fmtDate(expiresAt) : "No expiry"}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-white/55 leading-relaxed">
+              {preview}
             </div>
 
             {err && <div className="text-red-400 text-xs">{err}</div>}
@@ -521,16 +723,40 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
-function NumField({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+function NumField({
+  label,
+  value,
+  onChange,
+  max,
+  placeholder,
+  accent,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (n: number | null) => void;
+  max?: number;
+  placeholder?: string;
+  // Marks the commercial ask (deliverables) apart from the file counts.
+  accent?: boolean;
+}) {
   return (
     <div>
       <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">{label}</label>
       <input
         type="number"
         min={0}
-        value={value}
-        onChange={(e) => onChange(Math.max(0, parseInt(e.target.value || "0", 10)))}
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#D73F09]/50"
+        max={max}
+        value={value ?? ""}
+        placeholder={placeholder}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === "") return onChange(null);
+          const n = Math.max(0, parseInt(raw, 10) || 0);
+          onChange(max != null ? Math.min(max, n) : n);
+        }}
+        className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:border-[#D73F09]/50 ${
+          accent ? "border-[rgba(215,63,9,0.40)]" : "border-white/10"
+        }`}
       />
     </div>
   );
