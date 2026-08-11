@@ -17,6 +17,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import DashboardContent from "@/components/DashboardContent";
+import DeliverablesField from "@/components/submission-forms/DeliverablesField";
+import ExpiryControl from "@/components/submission-forms/ExpiryControl";
+import { previewLine } from "@/components/submission-forms/previewLine";
 
 interface Athlete {
   name: string;
@@ -26,6 +29,8 @@ interface Athlete {
   videos: number;
   total: number;
   lastUpload: string | null;
+  // The videographer's name when someone filed on this athlete's behalf.
+  shotBy: string | null;
   belowMinimum: boolean;
   notStarted: boolean;
 }
@@ -41,6 +46,8 @@ interface Detail {
     minPhotos: number;
     minVideos: number;
     maxFiles: number;
+    deliverables: number | null;
+    briefUrl: string | null;
   };
   campaign: {
     id: string;
@@ -260,6 +267,9 @@ export default function SubmissionFormDetail() {
         </div>
       </div>
 
+      {/* Form settings panel */}
+      <SettingsPanel link={d.link} submitted={d.stats.submitted} onSaved={load} />
+
       {/* Tabs */}
       <div className="flex gap-1.5 mb-3 border-b border-white/10">
         {(
@@ -304,6 +314,7 @@ export default function SubmissionFormDetail() {
                 <th className="py-2 pr-4 font-medium text-center">Videos</th>
                 <th className="py-2 pr-4 font-medium text-center">Total</th>
                 <th className="py-2 pr-4 font-medium">Last</th>
+                <th className="py-2 pr-4 font-medium">Shot by</th>
                 <th className="py-2 pr-4 font-medium">Status</th>
                 <th className="py-2 font-medium text-right">Action</th>
               </tr>
@@ -323,6 +334,7 @@ export default function SubmissionFormDetail() {
                     <td className={`py-2.5 pr-4 text-center font-semibold ${videoLow ? "text-[#D73F09]" : "text-white/70"}`}>{a.videos}</td>
                     <td className="py-2.5 pr-4 text-center text-white/70">{a.total}</td>
                     <td className="py-2.5 pr-4 text-white/50">{fmtDate(a.lastUpload)}</td>
+                    <td className="py-2.5 pr-4 text-white/55">{a.shotBy || "—"}</td>
                     <td className="py-2.5 pr-4">
                       {a.notStarted ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/15 text-white/45">NOT STARTED</span>
@@ -351,6 +363,192 @@ export default function SubmissionFormDetail() {
         </div>
       )}
     </DashboardContent>
+  );
+}
+
+// ── Form settings ──
+//
+// Everything about a form used to be frozen at creation: changing the ask
+// after the link went out meant revoke-and-recreate, which mints a new URL
+// and orphans the one already texted to the roster. This panel edits the six
+// settings in place, keeping the token.
+//
+// Deliberately ONE Save rather than the per-field Save links above it: these
+// fields interact, and raising the minimums while stating deliverables is one
+// decision, not three.
+function SettingsPanel({
+  link,
+  submitted,
+  onSaved,
+}: {
+  link: Detail["link"];
+  submitted: number;
+  onSaved: () => void;
+}) {
+  const [minPhotos, setMinPhotos] = useState(link.minPhotos);
+  const [minVideos, setMinVideos] = useState(link.minVideos);
+  const [maxFiles, setMaxFiles] = useState(link.maxFiles);
+  const [deliverables, setDeliverables] = useState<number | null>(link.deliverables);
+  const [briefUrl, setBriefUrl] = useState(link.briefUrl ?? "");
+  const [expiresAt, setExpiresAt] = useState<string | null>(link.expiresAt);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const reset = () => {
+    setMinPhotos(link.minPhotos);
+    setMinVideos(link.minVideos);
+    setMaxFiles(link.maxFiles);
+    setDeliverables(link.deliverables);
+    setBriefUrl(link.briefUrl ?? "");
+    setExpiresAt(link.expiresAt);
+    setErr(null);
+  };
+
+  // Re-seed from the server after a save re-fetches the detail.
+  useEffect(reset, [link.minPhotos, link.minVideos, link.maxFiles, link.deliverables, link.briefUrl, link.expiresAt]);
+
+  const readOnly = !link.active;
+
+  const dirty =
+    minPhotos !== link.minPhotos ||
+    minVideos !== link.minVideos ||
+    maxFiles !== link.maxFiles ||
+    deliverables !== link.deliverables ||
+    (briefUrl.trim() || null) !== (link.briefUrl ?? null) ||
+    expiresAt !== link.expiresAt;
+
+  // Nothing is lost by raising a minimum, but every athlete who submitted
+  // between the old figure and the new one flips to BELOW MIN — including
+  // people who did exactly what was asked at the time. Lowering needs no
+  // warning, and neither does a form nobody has submitted to.
+  const raisingMinimum = submitted > 0 && (minPhotos > link.minPhotos || minVideos > link.minVideos);
+
+  const save = async () => {
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/submission-forms/${link.token}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update-settings",
+          minPhotos,
+          minVideos,
+          maxFiles,
+          deliverables,
+          briefUrl: briefUrl.trim() || null,
+          expiresAt,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "That didn't work.");
+      onSaved();
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 mb-6">
+      <div className="text-[11px] uppercase tracking-wider text-white/40 mb-3">Form settings</div>
+
+      {readOnly && (
+        <div className="text-xs text-white/45 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 mb-4 leading-relaxed">
+          This form is revoked, so its settings are read-only.
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4">
+        {/* 2×2 at 390px — three inputs across a phone read tight. */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <SettingNum label="Min photos" value={minPhotos} onChange={setMinPhotos} max={50} disabled={readOnly} />
+          <SettingNum label="Min videos" value={minVideos} onChange={setMinVideos} max={50} disabled={readOnly} />
+          <SettingNum label="Max files" value={maxFiles} onChange={setMaxFiles} max={100} disabled={readOnly} />
+        </div>
+
+        <DeliverablesField value={deliverables} onChange={setDeliverables} disabled={readOnly} />
+
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Brief link</label>
+          <input
+            type="url"
+            value={briefUrl}
+            disabled={readOnly}
+            onChange={(e) => setBriefUrl(e.target.value)}
+            placeholder="https://"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:border-[#D73F09]/50 disabled:opacity-50"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1.5">Link expires</label>
+          <ExpiryControl value={expiresAt} onChange={setExpiresAt} disabled={readOnly} />
+        </div>
+
+        <div className="rounded-lg bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-white/55 leading-relaxed">
+          {previewLine({ minPhotos, minVideos, deliverables, expiresAt })}
+        </div>
+
+        {raisingMinimum && (
+          <div className="text-xs text-[#D73F09] bg-[#D73F09]/10 border border-[#D73F09]/25 rounded-lg px-3 py-2 leading-relaxed">
+            Raising the minimums re-flags athletes who already met the old ones. {submitted}{" "}
+            {submitted === 1 ? "athlete has" : "athletes have"} submitted.
+          </div>
+        )}
+
+        {err && <div className="text-red-400 text-xs">{err}</div>}
+
+        {!readOnly && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="px-4 py-2 rounded-lg bg-[#D73F09] text-white text-sm font-semibold hover:bg-[#ef4a13] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              onClick={reset}
+              disabled={!dirty || saving}
+              className="text-xs text-white/45 hover:text-white/80 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SettingNum({
+  label,
+  value,
+  onChange,
+  max,
+  disabled,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  max: number;
+  disabled?: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">{label}</label>
+      <input
+        type="number"
+        min={0}
+        max={max}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Math.min(max, Math.max(0, parseInt(e.target.value, 10) || 0)))}
+        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#D73F09]/50 disabled:opacity-50"
+      />
+    </div>
   );
 }
 

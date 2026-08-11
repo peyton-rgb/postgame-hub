@@ -207,6 +207,14 @@ export default function SubmitPage() {
   const [school, setSchool] = useState("");
   const [email, setEmail] = useState("");
 
+  // null until the chooser is answered — there is deliberately no default.
+  // Some athletes have a videographer shoot their content, and who actually
+  // shot it is cheap to capture now and impossible to recover later.
+  const [submitterType, setSubmitterType] = useState<"athlete" | "videographer" | null>(null);
+  const [vidName, setVidName] = useState("");
+  const [vidIg, setVidIg] = useState("");
+  const isVideographer = submitterType === "videographer";
+
   // Acknowledgements: the timestamp is captured at the moment of the tick,
   // not at submit time — that is what goes into submissions.ack_*_at.
   const [ackInstructionsAt, setAckInstructionsAt] = useState<string | null>(null);
@@ -302,13 +310,14 @@ export default function SubmitPage() {
     });
   };
 
-  const fieldsFilled =
-    !!firstName.trim() &&
-    !!lastName.trim() &&
-    !!igHandle.trim() &&
-    !!phone.trim() &&
-    !!school.trim() &&
-    !!email.trim();
+  // The athlete's identity is required either way — it's what the files file
+  // under. Phone and email relax only for a videographer, who isn't expected to
+  // hand over the athlete's contact details.
+  const athleteCoreFilled =
+    !!firstName.trim() && !!lastName.trim() && !!igHandle.trim() && !!school.trim();
+  const fieldsFilled = isVideographer
+    ? athleteCoreFilled && !!vidName.trim() && !!vidIg.trim()
+    : athleteCoreFilled && !!phone.trim() && !!email.trim();
   const meetsPhotos = config ? photoCount >= config.minPhotos : false;
   const meetsVideos = config ? videoCount >= config.minVideos : false;
   const acked = !!ackInstructionsAt && !!ackMusicAt;
@@ -343,6 +352,11 @@ export default function SubmitPage() {
             phone: phone.replace(/\D/g, ""),
             school: school.trim(),
             email: email.trim(),
+            submitterType: submitterType ?? "athlete",
+            // Lowercased to match the server: this handle is the de-facto
+            // videographer identity until the directory can be linked by id.
+            videographerName: isVideographer ? vidName.trim() : null,
+            videographerIg: isVideographer ? vidIg.trim().replace(/^@+/, "").toLowerCase() : null,
             ackInstructionsAt,
             ackMusicAt,
             fileRowIds: rows.map((r) => r.rowId).filter(Boolean),
@@ -362,7 +376,21 @@ export default function SubmitPage() {
         setRecording(false);
       }
     },
-    [token, firstName, lastName, igHandle, phone, school, email, ackInstructionsAt, ackMusicAt]
+    [
+      token,
+      firstName,
+      lastName,
+      igHandle,
+      phone,
+      school,
+      email,
+      submitterType,
+      isVideographer,
+      vidName,
+      vidIg,
+      ackInstructionsAt,
+      ackMusicAt,
+    ]
   );
 
   // Conclude the upload pass once nothing is queued/uploading anymore.
@@ -548,6 +576,71 @@ export default function SubmitPage() {
   const submitEnabled = recordFailed ? !recording : canSubmit;
   const submitLabel = recordFailed ? "Try again" : recording ? "Saving…" : "Submit content";
 
+  // Switching mode must not carry identity across: a videographer's name in the
+  // athlete fields, or an athlete's phone on a videographer submission, would
+  // both be wrong records rather than merely untidy ones.
+  const clearIdentity = () => {
+    setFirstName("");
+    setLastName("");
+    setIgHandle("");
+    setPhone("");
+    setSchool("");
+    setEmail("");
+    setVidName("");
+    setVidIg("");
+  };
+
+  const chooseMode = (mode: "athlete" | "videographer") => {
+    clearIdentity();
+    setSubmitterType(mode);
+  };
+
+  // ── The chooser ──
+  if (submitterType === null) {
+    return (
+      <Shell arimoVar={arimo.variable}>
+        <Lockup postgame={config.postgameLogoUrl} client={config.clientLogoUrl} />
+        <div className="sf-intro" style={{ textAlign: "center" }}>
+          <div
+            className="sf-eyebrow"
+            style={{
+              fontFamily: MONO,
+              fontWeight: 500,
+              letterSpacing: ".18em",
+              textTransform: "uppercase",
+              color: ORANGE,
+              marginBottom: 9,
+            }}
+          >
+            {config.campaignName}
+          </div>
+          <h1
+            className="d sf-h1"
+            style={{ color: BLACK, textTransform: "uppercase", letterSpacing: ".015em", lineHeight: 0.96 }}
+          >
+            Who&rsquo;s submitting?
+          </h1>
+          <p className="sf-sub" style={{ color: ink(0.66), margin: "12px auto 0", maxWidth: "42ch" }}>
+            So we file the content under the right athlete.
+          </p>
+        </div>
+
+        <div className="sf-wrap">
+          <ChooserOption
+            title="I’m the athlete"
+            sub="Submitting my own content"
+            onClick={() => chooseMode("athlete")}
+          />
+          <ChooserOption
+            title="I’m a videographer"
+            sub="Submitting on behalf of an athlete"
+            onClick={() => chooseMode("videographer")}
+          />
+        </div>
+      </Shell>
+    );
+  }
+
   return (
     <Shell arimoVar={arimo.variable}>
       <Lockup postgame={config.postgameLogoUrl} client={config.clientLogoUrl} />
@@ -592,8 +685,37 @@ export default function SubmitPage() {
       </div>
 
       <div className="sf-wrap">
-        {/* ── Card 1 · Your details ── */}
-        <Card title="Your details">
+        {/* Which mode this submission is in, and the way back out of it. */}
+        <div className="sf-mode">
+          <span className="sf-mode-t">
+            {isVideographer ? "Submitting as a videographer" : "Submitting as the athlete"}
+          </span>
+          {!locked && (
+            <button type="button" className="sf-mode-b" onClick={() => setSubmitterType(null)}>
+              Change
+            </button>
+          )}
+        </div>
+
+        {/* ── Card A · the videographer's own details (videographer path only) ── */}
+        {isVideographer && (
+          <Card title="Your details">
+            <div className="sf-two-d">
+              <div>
+                <FieldLabel>Your name</FieldLabel>
+                <Input value={vidName} onChange={setVidName} placeholder="Full name" disabled={locked} readOnly={readOnlyFields} />
+              </div>
+              <div>
+                <FieldLabel>Your Instagram</FieldLabel>
+                <Input value={vidIg} onChange={setVidIg} placeholder="@yourhandle" disabled={locked} readOnly={readOnlyFields} />
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* ── Card 1 / Card B · the athlete. These columns describe the athlete
+             on both paths — the videographer is attribution, not the filing key. ── */}
+        <Card title={isVideographer ? "The athlete you shot" : "Your details"}>
           <div className="sf-two">
             <div>
               <FieldLabel>First name</FieldLabel>
@@ -605,35 +727,71 @@ export default function SubmitPage() {
             </div>
           </div>
 
+          {/* Row order differs by path: the athlete path is left exactly as it
+              ships (handle beside phone, school beside email), while the
+              videographer path groups the two optional contact fields together
+              so "(optional)" reads as one idea rather than two stray ones. */}
           <div className="sf-two-d">
             <div>
-              <FieldLabel>Instagram handle</FieldLabel>
-              <Input value={igHandle} onChange={setIgHandle} placeholder="@yourhandle" disabled={locked} readOnly={readOnlyFields} />
-              <div style={{ fontSize: 12, lineHeight: 1.5, color: ink(0.48), marginTop: 6 }}>
-                Use the handle you&rsquo;ll post from.
-              </div>
-            </div>
-            <div>
-              <FieldLabel>Phone number</FieldLabel>
+              <FieldLabel>{isVideographer ? "Athlete Instagram" : "Instagram handle"}</FieldLabel>
               <Input
-                type="tel"
-                inputMode="tel"
-                value={phone}
-                onChange={setPhone}
-                placeholder="(555) 555-5555"
+                value={igHandle}
+                onChange={setIgHandle}
+                placeholder={isVideographer ? "@handle" : "@yourhandle"}
                 disabled={locked}
                 readOnly={readOnlyFields}
               />
+              <div style={{ fontSize: 12, lineHeight: 1.5, color: ink(0.48), marginTop: 6 }}>
+                {isVideographer ? "The handle they’ll post from." : "Use the handle you’ll post from."}
+              </div>
+            </div>
+            <div>
+              {isVideographer ? (
+                <>
+                  <FieldLabel>School</FieldLabel>
+                  <Input value={school} onChange={setSchool} placeholder="School" disabled={locked} readOnly={readOnlyFields} />
+                </>
+              ) : (
+                <>
+                  <FieldLabel>Phone number</FieldLabel>
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={setPhone}
+                    placeholder="(555) 555-5555"
+                    disabled={locked}
+                    readOnly={readOnlyFields}
+                  />
+                </>
+              )}
             </div>
           </div>
 
           <div className="sf-two-d">
             <div>
-              <FieldLabel>School</FieldLabel>
-              <Input value={school} onChange={setSchool} placeholder="School" disabled={locked} readOnly={readOnlyFields} />
+              {isVideographer ? (
+                <>
+                  <FieldLabel optional>Phone number</FieldLabel>
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={setPhone}
+                    placeholder="(555) 555-5555"
+                    disabled={locked}
+                    readOnly={readOnlyFields}
+                  />
+                </>
+              ) : (
+                <>
+                  <FieldLabel>School</FieldLabel>
+                  <Input value={school} onChange={setSchool} placeholder="School" disabled={locked} readOnly={readOnlyFields} />
+                </>
+              )}
             </div>
             <div>
-              <FieldLabel>Email</FieldLabel>
+              <FieldLabel optional={isVideographer}>Email</FieldLabel>
               <Input
                 type="email"
                 inputMode="email"
@@ -646,6 +804,12 @@ export default function SubmitPage() {
             </div>
           </div>
         </Card>
+
+        {isVideographer && (
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: ink(0.5), marginTop: 12 }}>
+            One athlete per submission. Shot more than one? Send them separately.
+          </div>
+        )}
 
         {/* ── Card 2 · Your content ── */}
         <Card title="Your content">
@@ -890,6 +1054,23 @@ function Shell({ children, arimoVar }: { children: React.ReactNode; arimoVar?: s
         .sf-cbody > .sf-two:first-child .sf-fl,
         .sf-cbody > .sf-two-d:first-child .sf-fl { margin-top:0; }
         .sf-req { color:${ORANGE}; font-weight:400; }
+        .sf-opt { color:${ink(0.4)}; font-weight:400; }
+
+        .sf-choice { display:block; width:100%; text-align:left; background:#fff; border:1.5px solid ${ink(0.14)};
+                     border-radius:14px; padding:20px; margin-top:14px; cursor:pointer; font-family:${BODY};
+                     transition:border-color .18s, background .18s; }
+        .sf-choice:hover { border-color:${ORANGE}; background:rgba(215,63,9,.03); }
+        .sf-choice:focus-visible { outline:2px solid ${ORANGE}; outline-offset:3px; }
+        .sf-choice-t { display:block; font-size:19px; font-weight:700; color:${BLACK}; letter-spacing:.005em; }
+        .sf-choice-s { display:block; font-size:14px; line-height:1.5; color:${ink(0.5)}; margin-top:4px; }
+
+        .sf-mode { display:flex; align-items:center; justify-content:space-between; gap:12px;
+                   padding:11px 14px; border:1px solid ${ink(0.12)}; border-radius:10px; background:#fff; }
+        .sf-mode-t { font-family:${MONO}; font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+                     color:${ink(0.55)}; }
+        .sf-mode-b { border:0; background:transparent; padding:0; cursor:pointer; font-family:${MONO};
+                     font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:${ORANGE}; }
+        .sf-mode-b:hover { text-decoration:underline; }
         .sf-line { width:100%; border:0; border-bottom:1.5px solid ${ink(0.18)}; padding:9px 2px; font-size:16px;
                    font-family:${BODY}; color:${BLACK}; background:transparent; margin-top:5px; appearance:none; border-radius:0; }
         .sf-line::placeholder { color:${ink(0.3)}; }
@@ -989,11 +1170,23 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
   return (
     <label className="sf-fl">
-      {children} <span className="sf-req">*</span>
+      {children}{" "}
+      {optional ? <span className="sf-opt">(optional)</span> : <span className="sf-req">*</span>}
     </label>
+  );
+}
+
+// One of the two answers to "Who's submitting?". A button rather than a radio:
+// picking it is the action, and there is no separate confirm step.
+function ChooserOption({ title, sub, onClick }: { title: string; sub: string; onClick: () => void }) {
+  return (
+    <button type="button" className="sf-choice" onClick={onClick}>
+      <span className="sf-choice-t">{title}</span>
+      <span className="sf-choice-s">{sub}</span>
+    </button>
   );
 }
 

@@ -19,6 +19,15 @@
 //
 // `athlete_id` stays null — matching an athlete to a row is a separate job.
 //
+// Submitter type: an athlete filing their own content, or a videographer filing
+// on an athlete's behalf. The athlete identity columns describe the ATHLETE on
+// both paths — the videographer's own name and handle go only in the two
+// videographer columns. Attribution, never the filing key.
+//
+// Two CHECK constraints back this up in the database, but they are the backstop:
+// the shape is validated here so a bad request gets a plain-English 400 rather
+// than a constraint violation surfacing as a 500.
+//
 // "Tier 3" is internal language: it must never appear in anything this endpoint
 // returns to a caller.
 // ─────────────────────────────────────────────────────────────
@@ -93,13 +102,51 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const school = String(body?.school ?? "").trim();
   const email = String(body?.email ?? "").trim();
 
-  if (!first || !last || !ig || !phone || !school || !email) {
+  const submitterType = String(body?.submitterType ?? "athlete").trim();
+  if (submitterType !== "athlete" && submitterType !== "videographer") {
+    return NextResponse.json({ error: "Unknown submitter type." }, { status: 400 });
+  }
+  const isVideographer = submitterType === "videographer";
+
+  // Lowercased, unlike the athlete handle: videographer_ig is the de-facto
+  // identity key until the directory can be linked by id, and @MarcusReedFilms
+  // must not become a second person from @marcusreedfilms.
+  const vidName = String(body?.videographerName ?? "").trim();
+  const vidIg = String(body?.videographerIg ?? "")
+    .trim()
+    .replace(/^@+/, "")
+    .toLowerCase();
+
+  if (isVideographer) {
+    if (!vidName || !vidIg) {
+      return NextResponse.json(
+        { error: "Your name and your Instagram handle are both required." },
+        { status: 400 }
+      );
+    }
+  } else if (vidName || vidIg) {
+    return NextResponse.json(
+      { error: "Videographer details can't be sent on an athlete submission." },
+      { status: 400 }
+    );
+  }
+
+  // The athlete columns are required on both paths — they are what the files
+  // file under. Only phone and email relax for a videographer, who is not
+  // expected to hand over the athlete's contact details.
+  if (!first || !last || !ig || !school) {
+    return NextResponse.json(
+      { error: "The athlete's first name, last name, Instagram handle and school are all required." },
+      { status: 400 }
+    );
+  }
+  if (!isVideographer && (!phone || !email)) {
     return NextResponse.json(
       { error: "First name, last name, Instagram handle, phone, school and email are all required." },
       { status: 400 }
     );
   }
-  if (!EMAIL_RE.test(email)) {
+  if (email && !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "That email address doesn't look right." }, { status: 400 });
   }
 
@@ -126,9 +173,14 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       athlete_first_name: first,
       athlete_last_name: last,
       ig_handle: ig,
-      phone,
+      // Empty strings would satisfy the NOT NULL the contact CHECK replaced;
+      // null is the honest value when a videographer leaves them blank.
+      phone: phone || null,
       school,
-      email,
+      email: email || null,
+      submitter_type: submitterType,
+      videographer_name: isVideographer ? vidName : null,
+      videographer_ig: isVideographer ? vidIg : null,
       athlete_id: null, // matching is a separate job
       ack_instructions_at: tickTime(body.ackInstructionsAt),
       ack_music_at: tickTime(body.ackMusicAt),
