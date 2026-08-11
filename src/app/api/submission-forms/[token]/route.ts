@@ -79,23 +79,50 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
   }
 
   // Per-athlete aggregation of this campaign's submissions.
+  // Attribution rides on the parent submissions row, not the file row, so the
+  // videographer is reached through submission_id. That link is populated on
+  // every file row, so the join is reliable rather than best-effort.
   const { data: subs } = await svc
     .from("tier3_submissions")
-    .select("athlete_name, ig_handle, school, asset_type, created_at")
+    .select(
+      "athlete_name, ig_handle, school, asset_type, created_at, submission:submissions!tier3_submissions_submission_id_fkey(submitter_type, videographer_name)"
+    )
     .eq("campaign_id", link.campaign_id);
 
   const byAthlete = new Map<
     string,
-    { name: string; handle: string | null; school: string | null; photos: number; videos: number; lastUpload: string | null }
+    {
+      name: string;
+      handle: string | null;
+      school: string | null;
+      photos: number;
+      videos: number;
+      lastUpload: string | null;
+      shotBy: string | null;
+    }
   >();
   for (const s of subs ?? []) {
     const key = (s.ig_handle || s.athlete_name || "?").toLowerCase().trim();
     const a =
       byAthlete.get(key) ??
-      { name: s.athlete_name || "Unknown", handle: s.ig_handle ?? null, school: s.school ?? null, photos: 0, videos: 0, lastUpload: null as string | null };
+      {
+        name: s.athlete_name || "Unknown",
+        handle: s.ig_handle ?? null,
+        school: s.school ?? null,
+        photos: 0,
+        videos: 0,
+        lastUpload: null as string | null,
+        shotBy: null as string | null,
+      };
     if (s.asset_type === "video") a.videos++;
     else if (s.asset_type === "photo") a.photos++;
     if (!a.lastUpload || s.created_at > a.lastUpload) a.lastUpload = s.created_at;
+    // First videographer seen for this athlete wins. An athlete could in
+    // principle have both self-filed and videographer-filed rows; naming the
+    // videographer is more informative than an em dash either way.
+    if (!a.shotBy && s.submission?.submitter_type === "videographer") {
+      a.shotBy = s.submission.videographer_name ?? null;
+    }
     byAthlete.set(key, a);
   }
 
@@ -131,6 +158,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
       videos: 0,
       total: 0,
       lastUpload: null as string | null,
+      shotBy: null as string | null,
       belowMinimum: true,
       notStarted: true,
     }));

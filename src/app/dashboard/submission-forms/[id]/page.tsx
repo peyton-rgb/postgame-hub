@@ -29,6 +29,8 @@ interface Athlete {
   videos: number;
   total: number;
   lastUpload: string | null;
+  // The videographer's name when someone filed on this athlete's behalf.
+  shotBy: string | null;
   belowMinimum: boolean;
   notStarted: boolean;
 }
@@ -312,6 +314,7 @@ export default function SubmissionFormDetail() {
                 <th className="py-2 pr-4 font-medium text-center">Videos</th>
                 <th className="py-2 pr-4 font-medium text-center">Total</th>
                 <th className="py-2 pr-4 font-medium">Last</th>
+                <th className="py-2 pr-4 font-medium">Shot by</th>
                 <th className="py-2 pr-4 font-medium">Status</th>
                 <th className="py-2 font-medium text-right">Action</th>
               </tr>
@@ -331,6 +334,7 @@ export default function SubmissionFormDetail() {
                     <td className={`py-2.5 pr-4 text-center font-semibold ${videoLow ? "text-[#D73F09]" : "text-white/70"}`}>{a.videos}</td>
                     <td className="py-2.5 pr-4 text-center text-white/70">{a.total}</td>
                     <td className="py-2.5 pr-4 text-white/50">{fmtDate(a.lastUpload)}</td>
+                    <td className="py-2.5 pr-4 text-white/55">{a.shotBy || "—"}</td>
                     <td className="py-2.5 pr-4">
                       {a.notStarted ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/15 text-white/45">NOT STARTED</span>
