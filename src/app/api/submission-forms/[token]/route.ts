@@ -9,6 +9,7 @@
 //             { action: "regenerate" }          new token, re-activated
 //             { action: "repoint", campaignId } re-point the form to another recap
 //             { action: "set-folder", driveUrl } set the campaign's Drive folder
+//             { action: "update-settings", … }  the six editable form settings
 //
 // Re-pointing (campaign or folder) doesn't move existing files — only new
 // uploads go to the new destination. The warning for that lives client-side
@@ -48,7 +49,9 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 
   const { data: link } = await svc
     .from("submission_links")
-    .select("token, campaign_id, active, min_photos, min_videos, max_files, created_at, created_by, expires_at, sent_at, revoked_at")
+    .select(
+      "token, campaign_id, active, min_photos, min_videos, max_files, deliverables, brief_url, created_at, created_by, expires_at, sent_at, revoked_at"
+    )
     .eq("token", params.token)
     .single();
   if (!link) return NextResponse.json({ error: "Form not found" }, { status: 404 });
@@ -147,6 +150,8 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
       minPhotos: link.min_photos,
       minVideos: link.min_videos,
       maxFiles: link.max_files,
+      deliverables: link.deliverables,
+      briefUrl: link.brief_url,
     },
     campaign: recap
       ? {
@@ -227,6 +232,76 @@ export async function PATCH(req: NextRequest, { params }: { params: { token: str
       .eq("id", link.campaign_id);
     if (error) return NextResponse.json({ error: "Couldn't set the Drive folder." }, { status: 500 });
     return NextResponse.json({ ok: true, driveFolderId: folderId });
+  }
+
+  if (body?.action === "update-settings") {
+    const { data: existing } = await svc
+      .from("submission_links")
+      .select("active")
+      .eq("token", token)
+      .single();
+    if (!existing) return NextResponse.json({ error: "Form not found" }, { status: 404 });
+    // A revoked link that still accepts edits is a confusing state: the
+    // settings would apply to something nobody can open.
+    if (!existing.active) return NextResponse.json({ error: "This form is revoked." }, { status: 400 });
+
+    const clampInt = (v: any, def: number, min: number, max: number) => {
+      const n = Number.isFinite(v) ? Math.round(v) : def;
+      return Math.min(max, Math.max(min, n));
+    };
+
+    // Null is a real value here, not a missing one — it's how the athlete page
+    // is told to omit the deliverables line.
+    let deliverables: number | null = null;
+    if (body?.deliverables != null) {
+      if (!Number.isFinite(body.deliverables)) {
+        return NextResponse.json({ error: "Deliverables must be a number or off." }, { status: 400 });
+      }
+      deliverables = clampInt(body.deliverables, 1, 1, 99);
+    }
+
+    let briefUrl: string | null = null;
+    if (body?.briefUrl != null) {
+      const raw = String(body.briefUrl).trim();
+      if (raw) {
+        if (!raw.startsWith("https://")) {
+          return NextResponse.json({ error: "Brief link must start with https://" }, { status: 400 });
+        }
+        briefUrl = raw;
+      }
+    }
+
+    let expiresAt: string | null = null;
+    if (body?.expiresAt != null) {
+      const raw = String(body.expiresAt).trim();
+      if (raw) {
+        const t = new Date(raw).getTime();
+        if (Number.isNaN(t)) {
+          return NextResponse.json({ error: "That expiry date isn't a real date." }, { status: 400 });
+        }
+        if (t <= Date.now()) {
+          return NextResponse.json({ error: "Expiry date must be in the future." }, { status: 400 });
+        }
+        expiresAt = new Date(t).toISOString();
+      }
+    }
+
+    const { error } = await svc
+      .from("submission_links")
+      .update({
+        min_photos: clampInt(body?.minPhotos, 3, 0, 50),
+        min_videos: clampInt(body?.minVideos, 1, 0, 50),
+        max_files: clampInt(body?.maxFiles, 25, 1, 100),
+        deliverables,
+        brief_url: briefUrl,
+        expires_at: expiresAt,
+      })
+      .eq("token", token);
+    if (error) {
+      console.error("[submission-forms] update-settings failed:", error.message);
+      return NextResponse.json({ error: "Couldn't save those settings." }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
