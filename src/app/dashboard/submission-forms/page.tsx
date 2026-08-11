@@ -17,6 +17,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DashboardContent from "@/components/DashboardContent";
+import DeliverablesField from "@/components/submission-forms/DeliverablesField";
+import ExpiryControl from "@/components/submission-forms/ExpiryControl";
+import { previewLine } from "@/components/submission-forms/previewLine";
 
 interface Campaign {
   id: string;
@@ -420,7 +423,7 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [deliverables, setDeliverables] = useState<number | null>(null);
   const [briefUrl, setBriefUrl] = useState("");
   // null = never, matching what the create route wrote before this existed.
-  const [expiryDays, setExpiryDays] = useState<number | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -444,13 +447,6 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     return s ? brands.filter((b) => b.name.toLowerCase().includes(s)) : brands;
   }, [brands, q]);
 
-  const expiresAt = useMemo(() => {
-    if (expiryDays == null) return null;
-    const d = new Date();
-    d.setDate(d.getDate() + expiryDays);
-    return d.toISOString();
-  }, [expiryDays]);
-
   const pickCampaign = (c: PickCampaign) => {
     setSelected(c);
     setBriefUrl(c.briefUrl ?? ""); // 231 of 611 campaigns carry one
@@ -462,13 +458,7 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   // Assembled from the same values the athlete page renders, so this is a real
   // preview of that page's copy rather than decoration.
-  const preview = [
-    `Send ${minPhotos} ${plural(minPhotos, "photo")} and ${minVideos} ${plural(minVideos, "video")}.`,
-    deliverables != null ? `This covers ${deliverables} ${plural(deliverables, "post")}.` : null,
-    expiresAt ? `Link expires ${fmtDate(expiresAt)}.` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const preview = previewLine({ minPhotos, minVideos, deliverables, expiresAt });
 
   const create = async () => {
     if (!selected) return;
@@ -653,21 +643,15 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               </div>
             )}
 
-            {/* Four across on desktop; 2×2 at 390px, where four number inputs
-                in one row truncate their labels. */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* 2×2 at 390px, where three number inputs in one row still read
+                fine but their labels sit tight. */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <NumField label="Min photos" value={minPhotos} onChange={(n) => setMinPhotos(n ?? 0)} />
               <NumField label="Min videos" value={minVideos} onChange={(n) => setMinVideos(n ?? 0)} />
               <NumField label="Max files" value={maxFiles} onChange={(n) => setMaxFiles(n ?? 1)} />
-              <NumField
-                label="Deliverables"
-                value={deliverables}
-                onChange={setDeliverables}
-                max={99}
-                placeholder="—"
-                accent
-              />
             </div>
+
+            <DeliverablesField value={deliverables} onChange={setDeliverables} />
 
             <div>
               <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Brief link</label>
@@ -683,24 +667,7 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
             <div>
               <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1.5">Link expires</label>
-              <div className="flex items-center gap-2">
-                {[30, 60, null].map((v) => (
-                  <button
-                    key={String(v)}
-                    onClick={() => setExpiryDays(v)}
-                    className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
-                      expiryDays === v
-                        ? "border-[#D73F09]/50 bg-[#D73F09]/10 text-white"
-                        : "border-white/10 bg-white/5 text-white/55 hover:text-white/80"
-                    }`}
-                  >
-                    {v == null ? "Never" : `${v} days`}
-                  </button>
-                ))}
-                <span className="ml-auto text-xs text-white/40 flex-shrink-0">
-                  {expiresAt ? fmtDate(expiresAt) : "No expiry"}
-                </span>
-              </div>
+              <ExpiryControl value={expiresAt} onChange={setExpiresAt} />
             </div>
 
             <div className="rounded-lg bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-white/55 leading-relaxed">
@@ -723,21 +690,18 @@ function NewFormModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
+// Deliverables moved to its own toggle component, so this is back to the
+// plain file-count field the three minimums need.
 function NumField({
   label,
   value,
   onChange,
   max,
-  placeholder,
-  accent,
 }: {
   label: string;
   value: number | null;
   onChange: (n: number | null) => void;
   max?: number;
-  placeholder?: string;
-  // Marks the commercial ask (deliverables) apart from the file counts.
-  accent?: boolean;
 }) {
   return (
     <div>
@@ -747,16 +711,13 @@ function NumField({
         min={0}
         max={max}
         value={value ?? ""}
-        placeholder={placeholder}
         onChange={(e) => {
           const raw = e.target.value;
           if (raw === "") return onChange(null);
           const n = Math.max(0, parseInt(raw, 10) || 0);
           onChange(max != null ? Math.min(max, n) : n);
         }}
-        className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-sm text-white placeholder-white/25 outline-none focus:border-[#D73F09]/50 ${
-          accent ? "border-[rgba(215,63,9,0.40)]" : "border-white/10"
-        }`}
+        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#D73F09]/50"
       />
     </div>
   );
