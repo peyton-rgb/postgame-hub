@@ -696,7 +696,7 @@ export default function SplitView({ initialToken }: { initialToken?: string }) {
                               <button className="ping" onClick={() => setPing(a)}>
                                 {Ico.bell} Ping
                               </button>
-                              <FolderCell a={a} campaignFolder={camp?.driveFolderId ?? null} />
+                              <FolderCell a={a} />
                             </div>
                           ))}
                         </div>
@@ -733,7 +733,7 @@ export default function SplitView({ initialToken }: { initialToken?: string }) {
                           <button className="rev" onClick={() => say(`Review hub isn't wired up yet`)}>
                             Review
                           </button>
-                          <FolderCell a={a} campaignFolder={camp?.driveFolderId ?? null} />
+                          <FolderCell a={a} />
                         </div>
                       ))}
                     </div>
@@ -832,26 +832,41 @@ function Pill({ n, min, unit }: { n: number; min: number; unit: string }) {
   );
 }
 
-function FolderCell({ a, campaignFolder }: { a: Athlete; campaignFolder: string | null }) {
-  // Needs both: a campaign folder to live in, and this athlete's own folder id.
-  const href = campaignFolder && a.folderId ? `https://drive.google.com/drive/folders/${a.folderId}` : null;
-  return (
-    <span className="dvc">
-      {href ? (
-        <a
-          className="dv"
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={`Open ${a.name}'s content folder`}
-        >
-          <DriveMark />
-        </a>
-      ) : (
-        <span className="dv off" title="No folder recorded for this athlete">
+/**
+ * Reads submissions.athlete_folder_id and nothing else.
+ *
+ * Nothing writes that column yet, so today every row renders dimmed — which is
+ * the honest state: we cannot link to a folder whose id we never recorded.
+ * Keying off this one value is deliberate. The moment the upload path starts
+ * storing the id it already creates, every icon lights up on its own, with no
+ * change here and no migration.
+ *
+ * It specifically does NOT also test the campaign's folder id. Gating on that
+ * would mean a campaign with a missing drive_folder_id kept its athletes dimmed
+ * even once their own folders were recorded — turning "wire the write" into
+ * "wire the write and then fix the UI".
+ */
+function FolderCell({ a }: { a: Athlete }) {
+  if (!a.folderId) {
+    return (
+      <span className="dvc">
+        <span className="dv off" title="No folder recorded for this athlete yet">
           <DriveMark />
         </span>
-      )}
+      </span>
+    );
+  }
+  return (
+    <span className="dvc">
+      <a
+        className="dv"
+        href={`https://drive.google.com/drive/folders/${a.folderId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Open ${a.name}'s content folder`}
+      >
+        <DriveMark />
+      </a>
     </span>
   );
 }
