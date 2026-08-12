@@ -24,6 +24,7 @@ body{background:var(--ink);color:var(--off);font-family:'Inter',sans-serif;-webk
  filter:saturate(.92) contrast(1.04) brightness(.94);transform:scale(1.05);
  transition:transform 1.7s cubic-bezier(.2,.8,.2,1)}
 .full.on .bg img{transform:scale(1)}
+.full .bg video{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.92) contrast(1.04) brightness(.94)}
 /* the fade — ink bleeding into the photograph so type has somewhere to sit */
 .full .scrim{position:absolute;inset:0;z-index:1;pointer-events:none}
 .full.left .scrim{background:
@@ -64,6 +65,7 @@ body{background:var(--ink);color:var(--off);font-family:'Inter',sans-serif;-webk
 .band .l{font-size:9.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--or);margin-top:11px}
 .band.b3{grid-template-columns:repeat(2,1fr)}.band.b3>div:nth-child(2n){border-right:0}
 .band.b2{grid-template-columns:repeat(2,1fr)}.band.b2>div:nth-child(2n){border-right:0}
+.band>div:last-child{border-right:0}
 .pull{margin-top:30px;padding:20px 24px;border-left:0;background:rgba(255,255,255,.03);border-radius:0 12px 12px 0;max-width:100%}
 .full.right .pull{margin-left:auto;border-left:0;border-right:3px solid var(--red);border-radius:12px 0 0 12px;text-align:right}
 .pull .k{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--yel)}
@@ -577,6 +579,7 @@ h2{font-family:'Bebas Neue';font-weight:400;font-size:clamp(48px,6.6vw,98px);lin
 .rfframe{position:relative;overflow:hidden;border-radius:6px;background:#0d0d11;
  box-shadow:0 22px 56px rgba(0,0,0,.55)}
 .rfframe video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.rfframe img{width:100%;height:100%;object-fit:cover;display:block}
 /* soft gradient blend so the flat video edges sit in the ink rather than on it */
 .rfframe:after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:6px;
  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);
@@ -910,6 +913,84 @@ h2{font-family:'Bebas Neue';font-weight:400;font-size:clamp(48px,6.6vw,98px);lin
 <div id="lb" onclick="if(event.target.id==='lb')closeLb()"><div id="lbslot"></div><div id="lbi"></div></div>
 
 </div>
+
+<!-- ============ PROOF 01 · CANE'S ============ -->
+<section class="full left" id="pf1">
+ <div class="bg"><video poster="/halfcourt/assets/canes_poster.jpg" autoplay muted loop playsinline><source src="/halfcourt/assets/canes_recap.mp4" type="video/mp4"><source src="/halfcourt/assets/canes_recap.webm" type="video/webm"></video></div><div class="scrim"></div>
+ <div class="fg"><div class="wrap"><div class="col">
+  <span class="brandplate rv"><img src="/halfcourt/assets/logo_canes.png" alt="Raising Cane's"></span>
+  <div class="hd rv"><div class="folio">Proof &middot; 01</div></div>
+  <h2 class="rv d1">Raising Cane's<br>&times; Fanatics Fest</h2>
+  <p class="lede rv d1"><b>The Dunk Tank &mdash; with Tom Brady &amp; Rob Gronkowski</b></p>
+  <p class="lede rv d2">A full activation floor at Fanatics Fest NYC: the celebrity dunk tank, Sauce Dunk, the Chicken-Finger Hail Mary, Cane's Cam, and a VIP lounge &mdash; concepted, produced, shot, and turned into a same-day content engine. <b>Teaser live by noon; the dunk reel posted before the crowd left the building.</b></p>
+  <div class="band b2 rv d3">
+   <div><div class="n">6</div><div class="l">event segments</div></div>
+   <div><div class="n">2</div><div class="l">GOAT-level celebrities</div></div>
+   <div><div class="n">Same-day</div><div class="l">turnaround</div></div>
+  </div>
+ </div></div></div>
+</section>
+
+<!-- ============ PROOF 02 · C4 ============ -->
+<section class="full right" id="pf2">
+ <div class="bg"><img src="/halfcourt/assets/c4_martin.jpg" alt="Alijah Martin &mdash; national champion, C4 band on" style="object-position:center 6%"></div><div class="scrim"></div>
+ <div class="fg"><div class="wrap"><div class="col">
+  <span class="brandplate rv"><img src="/halfcourt/assets/logo_c4.png" alt="C4 Energy"></span>
+  <div class="hd rv"><div class="folio">Proof &middot; 02</div></div>
+  <h2 class="rv d1">C4 Energy<br>&times; The Natty</h2>
+  <p class="lede rv d1"><b>National-championship activation &middot; Florida basketball</b></p>
+  <p class="lede rv d2">An energy-drink brand, a championship moment, and the school's basketball stars &mdash; the exact anatomy of this pitch, already executed. The trophy shot ran with the C4 band front and center, carried by the athlete's own channels. <b>We've run this play in this exact category.</b></p>
+  <div class="rfpanel rv d2" style="margin-top:26px;max-width:260px;margin-left:auto">
+   <div class="rfframe" style="aspect-ratio:9/16"><video poster="/halfcourt/assets/c4_poster.jpg" autoplay muted loop playsinline><source src="/halfcourt/assets/c4_tiktok.mp4" type="video/mp4"><source src="/halfcourt/assets/c4_tiktok.webm" type="video/webm"></video></div>
+  </div>
+  <p class="rfp rv d3"><b>Behind &mdash;</b> Alijah Martin, national champion &nbsp;&middot;&nbsp; <b>Inset &mdash;</b> the clip, as it hit the feed</p>
+ </div></div></div>
+</section>
+
+<!-- ============ PROOF 03 · HOLLISTER ============ -->
+<section class="full left" id="pf3">
+ <div class="bg"><img src="/halfcourt/assets/hollister_lineup.jpg" alt="" style="object-position:center 15%"></div><div class="scrim"></div>
+ <div class="fg"><div class="wrap"><div class="col">
+  <span class="brandplate rv"><img src="/halfcourt/assets/logo_hollister.png" alt="Hollister"></span>
+  <div class="hd rv"><div class="folio">Proof &middot; 03</div></div>
+  <h2 class="rv d1">Design Collab<br>&mdash; Rivalry Week</h2>
+  <p class="lede rv d2">Licensed design collab and photoshoot built around rivalry week &mdash; Texas, Ohio State, Michigan, Florida, FSU and more, athletes fronting the looks and carrying the drop to their own audiences. QBs DJ Lagway and Tommy Castellanos squared up across the state line. <b>Proof we run brand-side creative and athlete draw as one production.</b></p>
+  <div class="rfpanel rv d2" style="margin-top:26px;max-width:300px">
+   <div class="rfframe" style="aspect-ratio:4/5"><img src="/halfcourt/assets/hollister_qbs.jpg" alt="DJ Lagway and Tommy Castellanos &mdash; the rivalry frame" style="object-position:center 10%"></div>
+  </div>
+  <p class="rfp rv d3"><b>The pattern &mdash;</b> rivalry energy + athlete-fronted creative = the drop sells itself</p>
+ </div></div></div>
+</section>
+
+<!-- ============ PROOF 04 · HEYDUDE ============ -->
+<section class="full right" id="pf4">
+ <div class="bg"><video poster="/halfcourt/assets/win_hunter_poster.jpg" autoplay muted loop playsinline><source src="/halfcourt/assets/win_hunter.mp4" type="video/mp4"><source src="/halfcourt/assets/win_hunter.webm" type="video/webm"></video></div><div class="scrim"></div>
+ <div class="fg"><div class="wrap"><div class="col">
+  <span class="brandplate rv"><img src="/halfcourt/assets/tick_heydude.svg" alt="HEYDUDE"></span>
+  <div class="hd rv"><div class="folio">Proof &middot; 04</div></div>
+  <h2 class="rv d1">Travis Hunter<br>&times; HEYDUDE</h2>
+  <p class="lede rv d1"><b>Signed early &mdash; then he won the Heisman</b></p>
+  <p class="lede rv d2">Postgame partnered Travis Hunter with <b>CVS</b> and <b>HEYDUDE</b> &mdash; including the HOLIDUDE campaign &mdash; before the season that made him a household name. When the moment came, the relationship was already built. <b>It converted into a long-term HEYDUDE deal.</b></p>
+  <div class="band b2 rv d3">
+   <div><div class="n">2</div><div class="l">brand partners</div></div>
+   <div><div class="n">Heisman</div><div class="l">won mid-partnership</div></div>
+   <div><div class="n">Long-term</div><div class="l">ambassador deal</div></div>
+  </div>
+ </div></div></div>
+</section>
+
+<!-- ============ PROOF 05 · JAYDEN DANIELS ============ -->
+<section class="full left" id="pf5">
+ <div class="bg"><img src="/halfcourt/assets/win_daniels.jpg" alt="Jayden Daniels &mdash; signed preseason, before the Heisman" style="object-position:center 12%"></div><div class="scrim"></div>
+ <div class="fg"><div class="wrap"><div class="col">
+  <span class="brandplate rv"><img src="/halfcourt/assets/tick_heydude.svg" alt="HEYDUDE"></span>
+  <div class="hd rv"><div class="folio">Proof &middot; 05</div></div>
+  <h2 class="rv d1">Jayden Daniels<br>&mdash; signed preseason</h2>
+  <p class="lede rv d1"><b>Before the season. Before the moment.</b></p>
+  <p class="lede rv d2">Postgame partnered Jayden Daniels with <b>HEYDUDE</b> and <b>Urban Outfitters</b> ahead of the year that ended with the Heisman in his hands. The deal was locked in while the price was still preseason. <b>We partner early. The market catches up later.</b></p>
+  <p class="rfp rv d3"><b>The pattern &mdash;</b> read the athlete before the market does, and the relationship is already yours when it matters</p>
+ </div></div></div>
+</section>
 
 <!-- ============ THE PIPELINE — title ============ -->
 <section class="pltitle">
