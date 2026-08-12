@@ -10,6 +10,8 @@
 //             { action: "repoint", campaignId } re-point the form to another recap
 //             { action: "set-folder", driveUrl } set the campaign's Drive folder
 //             { action: "update-settings", … }  the six editable form settings
+//             { action: "mark-sent" }           stamp sent_at (nothing else does)
+//             { action: "chase", submissionIds } stamp chased_at on those athletes
 //
 // Re-pointing (campaign or folder) doesn't move existing files — only new
 // uploads go to the new destination. The warning for that lives client-side
@@ -62,10 +64,14 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     // that column is set on 2 of 611 campaigns, while brand_id is set on all of
     // them. Nested through the campaigns_brand_id_fkey FK, so no 2nd query.
     .select(
-      "id, name, client_name, admin_campaign_id, drive_folder_id, brand:brands!campaigns_brand_id_fkey(logo_light_url, logo_primary_url)"
+      "id, name, client_name, admin_campaign_id, drive_folder_id, brief_url, tracker_url, brand:brands!campaigns_brand_id_fkey(id, name, logo_light_url, logo_primary_url)"
     )
     .eq("id", link.campaign_id)
     .single();
+
+  // The generated types model this to-one embed as an array while PostgREST
+  // returns a single object. Normalise so the shape is the same either way.
+  const brand = (Array.isArray(recap?.brand) ? recap?.brand[0] : recap?.brand) ?? null;
 
   // Resolve created_by (a profile id) to a display name when possible.
   let createdByName: string | null = link.created_by ?? null;
@@ -78,73 +84,122 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     createdByName = prof?.full_name || prof?.email || link.created_by;
   }
 
-  // Per-athlete aggregation of this campaign's submissions.
-  // Attribution rides on the parent submissions row, not the file row, so the
-  // videographer is reached through submission_id. That link is populated on
-  // every file row, so the join is reliable rather than best-effort.
-  const { data: subs } = await svc
-    .from("tier3_submissions")
+  // Per-athlete rows are driven by `submissions`, the PARENT row — not by the
+  // file rows. Only the parent carries what the Ping sheet needs (phone, email,
+  // handle), the videographer credit, and chased_at / athlete_folder_id.
+  // tier3_submissions supplies the photo and video counts on top.
+  const { data: parents } = await svc
+    .from("submissions")
     .select(
-      "athlete_name, ig_handle, school, asset_type, created_at, submission:submissions!tier3_submissions_submission_id_fkey(submitter_type, videographer_name)"
+      "id, athlete_first_name, athlete_last_name, ig_handle, school, phone, email, submitter_type, videographer_name, chased_at, athlete_folder_id, submitted_at"
     )
     .eq("campaign_id", link.campaign_id);
 
-  const byAthlete = new Map<
-    string,
-    {
-      name: string;
-      handle: string | null;
-      school: string | null;
-      photos: number;
-      videos: number;
-      lastUpload: string | null;
-      shotBy: string | null;
+  const { data: files } = await svc
+    .from("tier3_submissions")
+    .select("submission_id, athlete_name, ig_handle, school, asset_type, created_at, reviewed_at")
+    .eq("campaign_id", link.campaign_id);
+
+  type Counts = { photos: number; videos: number; lastUpload: string | null; reviewedAt: string | null };
+  const blank = (): Counts => ({ photos: 0, videos: 0, lastUpload: null, reviewedAt: null });
+  const tally = (c: Counts, f: { asset_type: string; created_at: string; reviewed_at: string | null }) => {
+    if (f.asset_type === "video") c.videos++;
+    else if (f.asset_type === "photo") c.photos++;
+    if (!c.lastUpload || f.created_at > c.lastUpload) c.lastUpload = f.created_at;
+    if (f.reviewed_at && (!c.reviewedAt || f.reviewed_at > c.reviewedAt)) c.reviewedAt = f.reviewed_at;
+  };
+
+  const byParent = new Map<string, Counts>();
+  // Files predating the submissions table, or whose link-up failed, have no
+  // parent. They're still someone's work, so they're bucketed by handle rather
+  // than dropped — they just can't be pinged, having no contact details.
+  const orphans = new Map<string, Counts & { name: string; handle: string | null; school: string | null }>();
+  for (const f of files ?? []) {
+    if (f.submission_id) {
+      const c = byParent.get(f.submission_id) ?? blank();
+      tally(c, f as any);
+      byParent.set(f.submission_id, c);
+    } else {
+      const key = (f.ig_handle || f.athlete_name || "?").toLowerCase().trim();
+      const c =
+        orphans.get(key) ??
+        { ...blank(), name: f.athlete_name || "Unknown", handle: f.ig_handle ?? null, school: f.school ?? null };
+      tally(c, f as any);
+      orphans.set(key, c);
     }
-  >();
-  for (const s of subs ?? []) {
-    const key = (s.ig_handle || s.athlete_name || "?").toLowerCase().trim();
-    const a =
-      byAthlete.get(key) ??
-      {
-        name: s.athlete_name || "Unknown",
-        handle: s.ig_handle ?? null,
-        school: s.school ?? null,
-        photos: 0,
-        videos: 0,
-        lastUpload: null as string | null,
-        shotBy: null as string | null,
-      };
-    if (s.asset_type === "video") a.videos++;
-    else if (s.asset_type === "photo") a.photos++;
-    if (!a.lastUpload || s.created_at > a.lastUpload) a.lastUpload = s.created_at;
-    // First videographer seen for this athlete wins. An athlete could in
-    // principle have both self-filed and videographer-filed rows; naming the
-    // videographer is more informative than an em dash either way.
-    if (!a.shotBy && s.submission?.submitter_type === "videographer") {
-      a.shotBy = s.submission.videographer_name ?? null;
-    }
-    byAthlete.set(key, a);
   }
 
+  const shape = (a: {
+    name: string;
+    handle: string | null;
+    school: string | null;
+    phone: string | null;
+    counts: Counts;
+    shotBy: string | null;
+    chasedAt: string | null;
+    folderId: string | null;
+    submissionId: string | null;
+  }) => ({
+    name: a.name,
+    handle: a.handle,
+    school: a.school,
+    phone: a.phone,
+    photos: a.counts.photos,
+    videos: a.counts.videos,
+    total: a.counts.photos + a.counts.videos,
+    lastUpload: a.counts.lastUpload,
+    reviewedAt: a.counts.reviewedAt,
+    shotBy: a.shotBy,
+    chasedAt: a.chasedAt,
+    folderId: a.folderId,
+    submissionId: a.submissionId,
+    belowMinimum: a.counts.photos < link.min_photos || a.counts.videos < link.min_videos,
+    notStarted: false,
+  });
+
+  const submittedAthletes = [
+    ...(parents ?? []).map((p) =>
+      shape({
+        name: `${p.athlete_first_name ?? ""} ${p.athlete_last_name ?? ""}`.trim() || (p.ig_handle ?? "Unknown"),
+        handle: p.ig_handle ?? null,
+        school: p.school ?? null,
+        phone: p.phone ?? null,
+        counts: byParent.get(p.id) ?? blank(),
+        shotBy: p.submitter_type === "videographer" ? p.videographer_name ?? null : null,
+        chasedAt: p.chased_at ?? null,
+        folderId: p.athlete_folder_id ?? null,
+        submissionId: p.id,
+      })
+    ),
+    ...Array.from(orphans.values()).map((o) =>
+      shape({
+        name: o.name,
+        handle: o.handle,
+        school: o.school,
+        phone: null,
+        counts: o,
+        shotBy: null,
+        chasedAt: null,
+        folderId: null,
+        submissionId: null,
+      })
+    ),
+  ];
+
   // Roster is a DIRECT read of campaign_rosters keyed to campaign_recaps — not a
-  // bridge. Empty until the tracker-sheet import populates it; wiring the read
-  // now makes "not started" and the list's 42/54 light up automatically then.
+  // bridge. It is empty today, so "not started" degrades to nothing and the UI
+  // shows a plain submitted count instead of a fraction. Wiring the read now
+  // means both light up on their own once the tracker import runs.
   const { data: roster } = await svc
     .from("campaign_rosters")
     .select("first_name, last_name, ig_handle, school")
     .eq("campaign_id", link.campaign_id);
   const rosterRows = roster ?? [];
 
-  const submittedKeys = new Set([...byAthlete.keys()]);
+  const submittedKeys = new Set(
+    submittedAthletes.map((a) => (a.handle || a.name).toLowerCase().trim()).filter(Boolean)
+  );
 
-  const submittedAthletes = [...byAthlete.values()].map((a) => ({
-    ...a,
-    total: a.photos + a.videos,
-    belowMinimum: a.photos < link.min_photos || a.videos < link.min_videos,
-    notStarted: false,
-  }));
-
-  // Roster athletes who haven't submitted, matched on ig_handle (fallback name).
   const notStartedAthletes = rosterRows
     .filter((r) => {
       const key = (r.ig_handle || `${r.first_name ?? ""} ${r.last_name ?? ""}`).toLowerCase().trim();
@@ -154,11 +209,16 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
       name: `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || (r.ig_handle ?? "Unknown"),
       handle: r.ig_handle ?? null,
       school: r.school ?? null,
+      phone: null as string | null,
       photos: 0,
       videos: 0,
       total: 0,
       lastUpload: null as string | null,
+      reviewedAt: null as string | null,
       shotBy: null as string | null,
+      chasedAt: null as string | null,
+      folderId: null as string | null,
+      submissionId: null as string | null,
       belowMinimum: true,
       notStarted: true,
     }));
@@ -185,15 +245,19 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
       ? {
           id: recap.id,
           name: recap.name,
-          brandName: recap.client_name,
-          brandLogoUrl: recap.brand?.logo_light_url ?? recap.brand?.logo_primary_url ?? null,
+          brandId: brand?.id ?? null,
+          brandName: brand?.name ?? recap.client_name,
+          brandLogoUrl: brand?.logo_light_url ?? brand?.logo_primary_url ?? null,
           adminId: recap.admin_campaign_id,
           driveFolderId: recap.drive_folder_id,
+          // The form's own brief overrides the campaign's when set.
+          briefUrl: link.brief_url ?? recap.brief_url ?? null,
+          trackerUrl: recap.tracker_url ?? null,
         }
       : null,
     stats: {
       submitted: submittedAthletes.length,
-      filesReceived: (subs ?? []).length,
+      filesReceived: (files ?? []).length,
       belowMinimum: submittedAthletes.filter((a) => a.belowMinimum).length,
       notStarted: rosterRows.length > 0 ? notStartedAthletes.length : null, // — until roster populates
       rosterSize: rosterRows.length,
@@ -260,6 +324,53 @@ export async function PATCH(req: NextRequest, { params }: { params: { token: str
       .eq("id", link.campaign_id);
     if (error) return NextResponse.json({ error: "Couldn't set the Drive folder." }, { status: 500 });
     return NextResponse.json({ ok: true, driveFolderId: folderId });
+  }
+
+  // Nothing else writes sent_at, so a form reads NOT SENT until someone says
+  // otherwise here. Idempotent: re-marking keeps the original timestamp.
+  if (body?.action === "mark-sent") {
+    const { data: existing } = await svc
+      .from("submission_links")
+      .select("sent_at")
+      .eq("token", token)
+      .single();
+    if (!existing) return NextResponse.json({ error: "Form not found" }, { status: 404 });
+    if (existing.sent_at) return NextResponse.json({ ok: true, sentAt: existing.sent_at });
+
+    const sentAt = new Date().toISOString();
+    const { error } = await svc.from("submission_links").update({ sent_at: sentAt }).eq("token", token);
+    if (error) return NextResponse.json({ error: "Couldn't mark it as sent." }, { status: 500 });
+    return NextResponse.json({ ok: true, sentAt });
+  }
+
+  // Records that someone was chased, which is what lets the "needs attention"
+  // alert switch off. Without it the alert has nothing to settle against and
+  // pulses forever. Scoped to this link's campaign so a forged id can't stamp
+  // someone else's row.
+  if (body?.action === "chase") {
+    const ids: string[] = Array.isArray(body?.submissionIds)
+      ? Array.from(
+          new Set(body.submissionIds.map((v: unknown) => String(v ?? "")).filter((v: string) => UUID_RE.test(v)))
+        )
+      : [];
+    if (!ids.length) return NextResponse.json({ error: "Nobody to mark as chased." }, { status: 400 });
+
+    const { data: linkRow } = await svc
+      .from("submission_links")
+      .select("campaign_id")
+      .eq("token", token)
+      .single();
+    if (!linkRow) return NextResponse.json({ error: "Form not found" }, { status: 404 });
+
+    const chasedAt = new Date().toISOString();
+    const { data: updated, error } = await svc
+      .from("submissions")
+      .update({ chased_at: chasedAt })
+      .in("id", ids)
+      .eq("campaign_id", linkRow.campaign_id)
+      .select("id");
+    if (error) return NextResponse.json({ error: "Couldn't record that." }, { status: 500 });
+    return NextResponse.json({ ok: true, chasedAt, count: updated?.length ?? 0 });
   }
 
   if (body?.action === "update-settings") {
