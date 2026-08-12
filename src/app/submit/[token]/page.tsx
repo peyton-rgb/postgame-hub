@@ -2,14 +2,17 @@
 // ─────────────────────────────────────────────────────────────
 // PUBLIC athlete content upload page. No login.
 //
-// Design: the approved "orange section tabs" direction (submission-form-final.html,
-// approved 30 Jul 2026). Light ground (#FAF8F5), white cards, full-width orange
-// header tab per card. Type: Bebas Neue (display), Arimo (body), JetBrains Mono
-// (labels). Palette is the three Postgame colours only.
+// Design: the approved DARK direction (submit-form-dark.html, signed off
+// 12 Aug 2026). Black ground (#07070A), translucent white surfaces, sticky
+// header carrying the real Postgame mark over a 4px orange rule. Type: Bebas
+// Neue (display), Anton (brand-name fallback only), Arial (body), JetBrains
+// Mono (labels and counts).
 //
-// The upload pipeline (resumable relay through /api/submit/[token]) is UNCHANGED —
-// this file is a re-skin plus six identity fields, two acknowledgements, and the
-// parent `submissions` row write. No internal "Tier 3" language.
+// The upload pipeline (resumable relay through /api/submit/[token]) is
+// UNCHANGED. What is new on top of it:
+//   · two upload zones on the videographer path — edited files and raw files,
+//     stored as tier3_submissions.file_class ('edit' | 'raw')
+//   · the videographer path collects no school, phone or email
 //
 // Four states: FORM → UPLOADING → (PARTIAL) → DONE.
 // ─────────────────────────────────────────────────────────────
@@ -18,12 +21,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { Arimo } from "next/font/google";
+import { Anton } from "next/font/google";
 
-const arimo = Arimo({
+// Anton is used for exactly one thing: the brand-name fallback shown when a
+// client has no usable logo. 38 of 130 brands are in that position, so this is
+// a real path rather than a defensive branch.
+const anton = Anton({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-arimo",
+  weight: ["400"],
+  variable: "--font-anton",
   display: "swap",
 });
 
@@ -47,10 +53,15 @@ interface LinkConfig {
 
 type FileKind = "photo" | "video";
 
+/** Which zone a file came through. 'edit' is the finished cut, 'raw' is
+ *  original camera footage. null on the athlete path, which has one zone. */
+type FileClass = "edit" | "raw" | null;
+
 interface Picked {
   id: string;
   file: File;
   kind: FileKind;
+  fileClass: FileClass;
   previewUrl: string | null;
   progress: number; // 0..1
   status: "queued" | "uploading" | "done" | "error";
@@ -164,18 +175,18 @@ async function resumableUpload(
   throw new Error("Upload did not complete");
 }
 
-// ── Design tokens (approved mockup) ───────────────────────────
+// ── Design tokens (approved dark mockup) ──────────────────────
 const BLACK = "#07070A";
 const ORANGE = "#D73F09";
-const OFF = "#FAF8F5";
-const ink = (a: number) => `rgba(7,7,10,${a})`;
-const MONO = "var(--font-mono), monospace";
-const BODY = "var(--font-arimo), Arial, sans-serif";
+const SUCCESS = "#7ee2a8";
+/** Off-white ink at a given opacity. The page is dark, so every text and
+ *  hairline value is this colour stepped down, never a grey hex. */
+const ink = (a: number) => `rgba(250,248,245,${a})`;
+const MONO = "var(--font-mono), ui-monospace, monospace";
+const BODY = "Arial, Helvetica, sans-serif";
 
 type Phase = "form" | "uploading" | "partial" | "done";
 
-// "one" reads better than "1" in the intro sentence; everything else is numeric.
-const spell = (n: number) => (n === 1 ? "one" : String(n));
 const plural = (n: number, word: string) => `${word}${n === 1 ? "" : "s"}`;
 
 function formatDate(iso: string | null): string {
@@ -211,7 +222,8 @@ export default function SubmitPage() {
   // Some athletes have a videographer shoot their content, and who actually
   // shot it is cheap to capture now and impossible to recover later.
   const [submitterType, setSubmitterType] = useState<"athlete" | "videographer" | null>(null);
-  const [vidName, setVidName] = useState("");
+  const [vidFirst, setVidFirst] = useState("");
+  const [vidLast, setVidLast] = useState("");
   const [vidIg, setVidIg] = useState("");
   const isVideographer = submitterType === "videographer";
 
@@ -226,8 +238,9 @@ export default function SubmitPage() {
   const [recordFailed, setRecordFailed] = useState(false);
   const [recording, setRecording] = useState(false);
   const [submittedAt, setSubmittedAt] = useState<Date | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const rawInputRef = useRef<HTMLInputElement>(null);
+  const [clientLogoDead, setClientLogoDead] = useState(false);
 
   // Resolve the link → campaign name, branding + requirements.
   useEffect(() => {
@@ -271,13 +284,20 @@ export default function SubmitPage() {
     return () => window.removeEventListener("beforeunload", guard);
   }, [phase]);
 
-  const photoCount = files.filter((f) => f.kind === "photo").length;
-  const videoCount = files.filter((f) => f.kind === "video").length;
   const locked = phase !== "form";
   const readOnlyFields = phase === "done";
 
+  // Counts that gate the submission. Raw camera footage is collected but is
+  // NOT deliverable content, so it never counts toward the minimums — without
+  // that split a videographer could satisfy "3 photos and 1 video" with four
+  // raw stills. null (the athlete path) counts, exactly as it always did.
+  const counting = files.filter((f) => f.fileClass !== "raw");
+  const photoCount = counting.filter((f) => f.kind === "photo").length;
+  const videoCount = counting.filter((f) => f.kind === "video").length;
+  const rawFiles = files.filter((f) => f.fileClass === "raw");
+
   const addFiles = useCallback(
-    (incoming: File[]) => {
+    (incoming: File[], fileClass: FileClass) => {
       if (!config) return;
       setSubmitError(null);
       setFiles((prev) => {
@@ -290,6 +310,7 @@ export default function SubmitPage() {
             id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
             file,
             kind,
+            fileClass,
             previewUrl:
               kind === "photo" && file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
             progress: 0,
@@ -310,22 +331,24 @@ export default function SubmitPage() {
     });
   };
 
-  // The athlete's identity is required either way — it's what the files file
-  // under. Phone and email relax only for a videographer, who isn't expected to
-  // hand over the athlete's contact details.
-  const athleteCoreFilled =
-    !!firstName.trim() && !!lastName.trim() && !!igHandle.trim() && !!school.trim();
+  // The athlete's name and handle are required on both paths — they are what
+  // the files file under. School, phone and email are asked for on the athlete
+  // path only; a videographer is not expected to know any of the three.
+  const athleteCoreFilled = !!firstName.trim() && !!lastName.trim() && !!igHandle.trim();
   const fieldsFilled = isVideographer
-    ? athleteCoreFilled && !!vidName.trim() && !!vidIg.trim()
-    : athleteCoreFilled && !!phone.trim() && !!email.trim();
+    ? athleteCoreFilled && !!vidFirst.trim() && !!vidLast.trim() && !!vidIg.trim()
+    : athleteCoreFilled && !!phone.trim() && !!school.trim() && !!email.trim();
+
   const meetsPhotos = config ? photoCount >= config.minPhotos : false;
   const meetsVideos = config ? videoCount >= config.minVideos : false;
+  const meetsEdits = meetsPhotos && meetsVideos;
+  // The raw zone is labelled "required" in the approved design, so it gates the
+  // send on the videographer path.
+  const meetsRaw = !isVideographer || rawFiles.length > 0;
   const acked = !!ackInstructionsAt && !!ackMusicAt;
-  const hasFailed = files.some((f) => f.status === "error");
-  // Both acknowledgements AND both minimums, every time. The old Google Form
-  // did not gate this and let a "NO" through.
+
   const canSubmit =
-    fieldsFilled && acked && files.length > 0 && meetsPhotos && meetsVideos && phase === "form";
+    fieldsFilled && acked && files.length > 0 && meetsEdits && meetsRaw && phase === "form";
 
   const setProgress = (id: string, fraction: number) =>
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, progress: fraction } : f)));
@@ -348,14 +371,17 @@ export default function SubmitPage() {
           body: JSON.stringify({
             firstName: firstName.trim(),
             lastName: lastName.trim(),
+            // The placeholder reads "@ighandle" and the hint line is gone, but
+            // the leading @ must still come off: ig_handle is the match key, and
+            // "@marcus" and "marcus" must not become two different athletes.
             igHandle: igHandle.trim().replace(/^@+/, ""),
-            phone: phone.replace(/\D/g, ""),
-            school: school.trim(),
-            email: email.trim(),
+            phone: isVideographer ? "" : phone.replace(/\D/g, ""),
+            school: isVideographer ? "" : school.trim(),
+            email: isVideographer ? "" : email.trim(),
             submitterType: submitterType ?? "athlete",
+            videographerName: isVideographer ? `${vidFirst.trim()} ${vidLast.trim()}`.trim() : null,
             // Lowercased to match the server: this handle is the de-facto
             // videographer identity until the directory can be linked by id.
-            videographerName: isVideographer ? vidName.trim() : null,
             videographerIg: isVideographer ? vidIg.trim().replace(/^@+/, "").toLowerCase() : null,
             ackInstructionsAt,
             ackMusicAt,
@@ -386,7 +412,8 @@ export default function SubmitPage() {
       email,
       submitterType,
       isVideographer,
-      vidName,
+      vidFirst,
+      vidLast,
       vidIg,
       ackInstructionsAt,
       ackMusicAt,
@@ -419,14 +446,17 @@ export default function SubmitPage() {
       prev.map((f) => (targetIds.has(f.id) ? { ...f, status: "uploading", progress: 0, error: undefined } : f))
     );
 
+    // submitterType travels with every request so the server can relax the
+    // school requirement for a videographer exactly as this form does.
     const who = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       igHandle: igHandle.trim(),
-      school: school.trim(),
+      school: isVideographer ? "" : school.trim(),
+      submitterType: submitterType ?? "athlete",
     };
 
-    let sessionByClient: Record<string, string> = {};
+    const sessionByClient: Record<string, string> = {};
     try {
       const initRes = await fetch(`/api/submit/${encodeURIComponent(token)}`, {
         method: "POST",
@@ -439,6 +469,7 @@ export default function SubmitPage() {
             name: f.file.name,
             mimeType: f.file.type,
             size: f.file.size,
+            fileClass: f.fileClass,
           })),
         }),
       });
@@ -464,7 +495,7 @@ export default function SubmitPage() {
         const finRes = await fetch(`/api/submit/${encodeURIComponent(token)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "finalize", ...who, fileId }),
+          body: JSON.stringify({ action: "finalize", ...who, fileId, fileClass: f.fileClass }),
         });
         const finBody = await finRes.json().catch(() => ({}));
         if (!finRes.ok) throw new Error(finBody.error || "Couldn't save the file.");
@@ -493,18 +524,10 @@ export default function SubmitPage() {
   // ── Load / dead-link states ──
   if (loading) {
     return (
-      <Shell arimoVar={arimo.variable}>
-        <div
-          style={{
-            padding: "60px 20px",
-            textAlign: "center",
-            fontFamily: MONO,
-            fontSize: 11,
-            letterSpacing: "0.14em",
-            color: ink(0.42),
-          }}
-        >
-          LOADING…
+      <Shell antonVar={anton.variable}>
+        <Header postgame={null} onBack={null} />
+        <div className="sf-page">
+          <div className="sf-load">LOADING…</div>
         </div>
       </Shell>
     );
@@ -512,335 +535,233 @@ export default function SubmitPage() {
 
   if (loadError || !config) {
     return (
-      <Shell arimoVar={arimo.variable}>
-        <Lockup postgame={deadLogo} client={null} />
-        <div className="sf-intro" style={{ textAlign: "center" }}>
-          <h1
-            className="d sf-h1"
-            style={{ color: BLACK, textTransform: "uppercase", letterSpacing: ".015em", lineHeight: 0.96 }}
-          >
-            Link unavailable
-          </h1>
-          <p className="sf-sub" style={{ color: ink(0.66), margin: "12px auto 0", maxWidth: "42ch" }}>
-            This upload link isn&rsquo;t active.
-          </p>
+      <Shell antonVar={anton.variable}>
+        <Header postgame={deadLogo} onBack={null} />
+        <div className="sf-page">
+          <div className="sf-top">
+            <h1 className="d sf-h1">Link unavailable</h1>
+            <div className="sf-sub">This upload link isn&rsquo;t active.</div>
+          </div>
         </div>
       </Shell>
     );
   }
 
-  // ── Derived copy ──
-  const introLine = `Upload what you shot for this campaign. You need at least ${config.minPhotos} ${plural(
-    config.minPhotos,
-    "photo"
-  )} and ${spell(config.minVideos)} ${plural(config.minVideos, "video")}.`;
-
-  const photosShort = Math.max(0, config.minPhotos - photoCount);
-  const videosShort = Math.max(0, config.minVideos - videoCount);
-  const shortParts: string[] = [];
-  if (photosShort > 0) shortParts.push(`${photosShort} ${plural(photosShort, "photo")}`);
-  if (videosShort > 0) shortParts.push(`${videosShort} ${plural(videosShort, "video")}`);
-
-  const failedCount = files.filter((f) => f.status === "error").length;
-  const doneFiles = files.filter((f) => f.status === "done");
-  const failedFiles = files.filter((f) => f.status === "error");
-  const donePhotos = doneFiles.filter((f) => f.kind === "photo").length;
-  const doneVideos = doneFiles.filter((f) => f.kind === "video").length;
-
-  let statusText = "";
-  let statusTone: "todo" | "ok" = "ok";
-  if (phase === "form") {
-    if (shortParts.length) {
-      statusText = `${shortParts.join(" and ")} needed`;
-      statusTone = "todo";
-    } else if (files.length > 0) {
-      statusText = "Ready to send";
-    }
-  } else if (phase === "uploading") {
-    statusText = recordFailed
-      ? "Your files are uploaded. We couldn’t save your details."
-      : recording
-        ? "Saving your details…"
-        : `Uploading ${files.filter((f) => f.status === "uploading" || f.status === "queued").length || files.length} ${plural(
-            files.length,
-            "file"
-          )}…`;
-    statusTone = recordFailed ? "todo" : "ok";
-  } else if (phase === "partial") {
-    statusText = `${failedCount} ${plural(failedCount, "file")} didn’t upload — retry or remove ${
-      failedCount === 1 ? "it" : "them"
-    }.`;
-    statusTone = "todo";
-  }
-
-  const submitEnabled = recordFailed ? !recording : canSubmit;
-  const submitLabel = recordFailed ? "Try again" : recording ? "Saving…" : "Submit content";
-
   // Switching mode must not carry identity across: a videographer's name in the
   // athlete fields, or an athlete's phone on a videographer submission, would
-  // both be wrong records rather than merely untidy ones.
-  const clearIdentity = () => {
+  // both be wrong records rather than merely untidy ones. Files go too — a raw
+  // file picked on the videographer path has no zone on the athlete path, and
+  // would otherwise upload invisibly with file_class 'raw'.
+  const resetPath = () => {
     setFirstName("");
     setLastName("");
     setIgHandle("");
     setPhone("");
     setSchool("");
     setEmail("");
-    setVidName("");
+    setVidFirst("");
+    setVidLast("");
     setVidIg("");
+    setFiles((prev) => {
+      prev.forEach((f) => f.previewUrl && URL.revokeObjectURL(f.previewUrl));
+      return [];
+    });
+    setSubmitError(null);
   };
 
   const chooseMode = (mode: "athlete" | "videographer") => {
-    clearIdentity();
+    resetPath();
     setSubmitterType(mode);
   };
+  const backToChooser = () => {
+    resetPath();
+    setSubmitterType(null);
+  };
+
+  const clientMark = (
+    <BrandMark
+      url={clientLogoDead ? null : config.clientLogoUrl}
+      name={config.brandName}
+      onDead={() => setClientLogoDead(true)}
+    />
+  );
 
   // ── The chooser ──
   if (submitterType === null) {
     return (
-      <Shell arimoVar={arimo.variable}>
-        <Lockup postgame={config.postgameLogoUrl} client={config.clientLogoUrl} />
-        <div className="sf-intro" style={{ textAlign: "center" }}>
-          <div
-            className="sf-eyebrow"
-            style={{
-              fontFamily: MONO,
-              fontWeight: 500,
-              letterSpacing: ".18em",
-              textTransform: "uppercase",
-              color: ORANGE,
-              marginBottom: 9,
-            }}
-          >
-            {config.campaignName}
+      <Shell antonVar={anton.variable}>
+        <Header postgame={config.postgameLogoUrl} onBack={null} />
+        <div className="sf-page">
+          <div className="sf-top">
+            {clientMark}
+            <h1 className="d sf-h1">{config.campaignName}</h1>
+            <div className="sf-sub">Before you upload — who&rsquo;s submitting?</div>
           </div>
-          <h1
-            className="d sf-h1"
-            style={{ color: BLACK, textTransform: "uppercase", letterSpacing: ".015em", lineHeight: 0.96 }}
-          >
-            Who&rsquo;s submitting?
-          </h1>
-          <p className="sf-sub" style={{ color: ink(0.66), margin: "12px auto 0", maxWidth: "42ch" }}>
-            So we file the content under the right athlete.
-          </p>
-        </div>
 
-        <div className="sf-wrap">
           <ChooserOption
-            title="I’m the athlete"
+            icon={<UserIcon />}
+            title={<>I&rsquo;m the athlete</>}
             sub="Submitting my own content"
             onClick={() => chooseMode("athlete")}
           />
           <ChooserOption
-            title="I’m a videographer"
-            sub="Submitting on behalf of an athlete"
+            icon={<CamIcon />}
+            title={<>I&rsquo;m a videographer</>}
+            sub="Submitting for an athlete I shot"
             onClick={() => chooseMode("videographer")}
           />
+
+          <Footer postgame={config.postgameLogoUrl} expiresAt={config.expiresAt} />
         </div>
       </Shell>
     );
   }
 
+  // ── Derived status copy ──
+  const failedCount = files.filter((f) => f.status === "error").length;
+  const doneFiles = files.filter((f) => f.status === "done");
+  const failedFiles = files.filter((f) => f.status === "error");
+
+  let statusText = "";
+  if (phase === "uploading") {
+    statusText = recordFailed
+      ? "Your files are uploaded. We couldn’t save your details."
+      : recording
+        ? "Saving your details…"
+        : `Uploading ${files.filter((f) => f.status === "uploading" || f.status === "queued").length || files.length} ${plural(files.length, "file")}…`;
+  } else if (phase === "partial") {
+    statusText = `${failedCount} ${plural(failedCount, "file")} didn’t upload — retry or remove ${failedCount === 1 ? "it" : "them"}.`;
+  }
+
+  const submitEnabled = recordFailed ? !recording : canSubmit;
+  const submitLabel = recordFailed
+    ? "Try again"
+    : recording
+      ? "Saving…"
+      : isVideographer
+        ? "Send this athlete's content"
+        : "Send my content";
+
+  const editPill = `${Math.min(photoCount, config.minPhotos) + Math.min(videoCount, config.minVideos)} of ${config.minPhotos + config.minVideos}`;
+  const requirementLine = `${config.minPhotos} ${plural(config.minPhotos, "photo")} and ${config.minVideos} ${plural(config.minVideos, "video")} required`;
+
   return (
-    <Shell arimoVar={arimo.variable}>
-      <Lockup postgame={config.postgameLogoUrl} client={config.clientLogoUrl} />
+    <Shell antonVar={anton.variable}>
+      <Header postgame={config.postgameLogoUrl} onBack={locked ? null : backToChooser} />
 
-      {/* Intro */}
-      <div className="sf-intro" style={{ textAlign: "center" }}>
-        <div
-          className="sf-eyebrow"
-          style={{
-            fontFamily: MONO,
-            fontWeight: 500,
-            letterSpacing: ".18em",
-            textTransform: "uppercase",
-            color: ORANGE,
-            marginBottom: 9,
-          }}
-        >
-          {config.campaignName}
-        </div>
-        <h1
-          className="d sf-h1"
-          style={{ color: BLACK, textTransform: "uppercase", letterSpacing: ".015em", lineHeight: 0.96 }}
-        >
-          Content submission
-        </h1>
-        <p className="sf-sub" style={{ color: ink(0.66), margin: "12px auto 0", maxWidth: "42ch" }}>
-          {introLine}
-        </p>
-        {config.deliverables != null && (
-          <p
-            style={{
-              fontSize: 14,
-              lineHeight: 1.6,
-              color: ink(0.5),
-              margin: "8px auto 0",
-              maxWidth: "42ch",
-            }}
-          >
-            This covers {config.deliverables} {plural(config.deliverables, "post")}.
-          </p>
-        )}
-      </div>
-
-      <div className="sf-wrap">
-        {/* Which mode this submission is in, and the way back out of it. */}
-        <div className="sf-mode">
-          <span className="sf-mode-t">
-            {isVideographer ? "Submitting as a videographer" : "Submitting as the athlete"}
-          </span>
-          {!locked && (
-            <button type="button" className="sf-mode-b" onClick={() => setSubmitterType(null)}>
-              Change
-            </button>
+      <div className="sf-page">
+        <div className="sf-top">
+          {clientMark}
+          <h1 className="d sf-h1">{config.campaignName}</h1>
+          <div className="sf-sub">
+            <b>{isVideographer ? "Videographers" : "Athletes"}</b> — submit your content below.
+          </div>
+          {config.deliverables != null && (
+            <div className="sf-sub sf-deliv">
+              This covers {config.deliverables} {plural(config.deliverables, "post")}.
+            </div>
           )}
         </div>
 
-        {/* ── Card A · the videographer's own details (videographer path only) ── */}
+        {/* ── Your info ── */}
+        <Card title="Your info">
+          <div className="sf-two sf-fg">
+            <Field label="First name">
+              <Input
+                value={isVideographer ? vidFirst : firstName}
+                onChange={isVideographer ? setVidFirst : setFirstName}
+                placeholder={isVideographer ? "Marcus" : "Jordan"}
+                disabled={locked}
+                readOnly={readOnlyFields}
+              />
+            </Field>
+            <Field label="Last name">
+              <Input
+                value={isVideographer ? vidLast : lastName}
+                onChange={isVideographer ? setVidLast : setLastName}
+                placeholder={isVideographer ? "Reed" : "Blake"}
+                disabled={locked}
+                readOnly={readOnlyFields}
+              />
+            </Field>
+          </div>
+
+          <Field label="Instagram" className="sf-fg">
+            <Input
+              value={isVideographer ? vidIg : igHandle}
+              onChange={isVideographer ? setVidIg : setIgHandle}
+              placeholder="@ighandle"
+              disabled={locked}
+              readOnly={readOnlyFields}
+            />
+          </Field>
+
+          {/* School, phone and email are the athlete's own contact details and
+              are collected on the athlete path only. */}
+          {!isVideographer && (
+            <>
+              <div className="sf-stack sf-fg">
+                <Field label="Phone">
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={setPhone}
+                    placeholder="(941) 555-0143"
+                    disabled={locked}
+                    readOnly={readOnlyFields}
+                  />
+                </Field>
+                <Field label="School">
+                  <Input
+                    value={school}
+                    onChange={setSchool}
+                    placeholder="Texas Tech"
+                    disabled={locked}
+                    readOnly={readOnlyFields}
+                  />
+                </Field>
+              </div>
+              <Field label="Email">
+                <Input
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={setEmail}
+                  placeholder="you@school.edu"
+                  disabled={locked}
+                  readOnly={readOnlyFields}
+                />
+              </Field>
+            </>
+          )}
+        </Card>
+
+        {/* ── Athlete info (videographer path only) ── */}
         {isVideographer && (
-          <Card title="Your details">
-            <div className="sf-two-d">
-              <div>
-                <FieldLabel>Your name</FieldLabel>
-                <Input value={vidName} onChange={setVidName} placeholder="Full name" disabled={locked} readOnly={readOnlyFields} />
-              </div>
-              <div>
-                <FieldLabel>Your Instagram</FieldLabel>
-                <Input value={vidIg} onChange={setVidIg} placeholder="@yourhandle" disabled={locked} readOnly={readOnlyFields} />
-              </div>
+          <Card title="Athlete info">
+            <div className="sf-two sf-fg">
+              <Field label="First name">
+                <Input value={firstName} onChange={setFirstName} placeholder="Jordan" disabled={locked} readOnly={readOnlyFields} />
+              </Field>
+              <Field label="Last name">
+                <Input value={lastName} onChange={setLastName} placeholder="Blake" disabled={locked} readOnly={readOnlyFields} />
+              </Field>
             </div>
+            <Field label="Instagram">
+              <Input value={igHandle} onChange={setIgHandle} placeholder="@ighandle" disabled={locked} readOnly={readOnlyFields} />
+            </Field>
           </Card>
         )}
 
-        {/* ── Card 1 / Card B · the athlete. These columns describe the athlete
-             on both paths — the videographer is attribution, not the filing key. ── */}
-        <Card title={isVideographer ? "The athlete you shot" : "Your details"}>
-          <div className="sf-two">
-            <div>
-              <FieldLabel>First name</FieldLabel>
-              <Input value={firstName} onChange={setFirstName} placeholder="First" disabled={locked} readOnly={readOnlyFields} />
-            </div>
-            <div>
-              <FieldLabel>Last name</FieldLabel>
-              <Input value={lastName} onChange={setLastName} placeholder="Last" disabled={locked} readOnly={readOnlyFields} />
-            </div>
-          </div>
-
-          {/* Row order differs by path: the athlete path is left exactly as it
-              ships (handle beside phone, school beside email), while the
-              videographer path groups the two optional contact fields together
-              so "(optional)" reads as one idea rather than two stray ones. */}
-          <div className="sf-two-d">
-            <div>
-              <FieldLabel>{isVideographer ? "Athlete Instagram" : "Instagram handle"}</FieldLabel>
-              <Input
-                value={igHandle}
-                onChange={setIgHandle}
-                placeholder={isVideographer ? "@handle" : "@yourhandle"}
-                disabled={locked}
-                readOnly={readOnlyFields}
-              />
-              <div style={{ fontSize: 12, lineHeight: 1.5, color: ink(0.48), marginTop: 6 }}>
-                {isVideographer ? "The handle they’ll post from." : "Use the handle you’ll post from."}
-              </div>
-            </div>
-            <div>
-              {isVideographer ? (
-                <>
-                  <FieldLabel>School</FieldLabel>
-                  <Input value={school} onChange={setSchool} placeholder="School" disabled={locked} readOnly={readOnlyFields} />
-                </>
-              ) : (
-                <>
-                  <FieldLabel>Phone number</FieldLabel>
-                  <Input
-                    type="tel"
-                    inputMode="tel"
-                    value={phone}
-                    onChange={setPhone}
-                    placeholder="(555) 555-5555"
-                    disabled={locked}
-                    readOnly={readOnlyFields}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="sf-two-d">
-            <div>
-              {isVideographer ? (
-                <>
-                  <FieldLabel optional>Phone number</FieldLabel>
-                  <Input
-                    type="tel"
-                    inputMode="tel"
-                    value={phone}
-                    onChange={setPhone}
-                    placeholder="(555) 555-5555"
-                    disabled={locked}
-                    readOnly={readOnlyFields}
-                  />
-                </>
-              ) : (
-                <>
-                  <FieldLabel>School</FieldLabel>
-                  <Input value={school} onChange={setSchool} placeholder="School" disabled={locked} readOnly={readOnlyFields} />
-                </>
-              )}
-            </div>
-            <div>
-              <FieldLabel optional={isVideographer}>Email</FieldLabel>
-              <Input
-                type="email"
-                inputMode="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="you@email.com"
-                disabled={locked}
-                readOnly={readOnlyFields}
-              />
-            </div>
-          </div>
-        </Card>
-
-        {isVideographer && (
-          <div style={{ fontSize: 13, lineHeight: 1.6, color: ink(0.5), marginTop: 12 }}>
-            One athlete per submission. Shot more than one? Send them separately.
-          </div>
-        )}
-
-        {/* ── Card 2 · Your content ── */}
-        <Card title="Your content">
+        {/* ── The content ── */}
+        <Card title={isVideographer ? "The content you shot" : "Your content"}>
           {phase === "done" ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 999,
-                  background: ORANGE,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flex: "0 0 auto",
-                }}
-              >
-                <TickIcon />
-              </span>
-              <div>
-                <div style={{ fontSize: 15, lineHeight: 1.5, color: ink(0.85) }}>Content received</div>
-                <div style={{ fontSize: 13, lineHeight: 1.5, color: ink(0.5), marginTop: 2 }}>
-                  {doneFiles.length} {plural(doneFiles.length, "file")} · {donePhotos}{" "}
-                  {plural(donePhotos, "photo")}, {doneVideos} {plural(doneVideos, "video")}
-                </div>
-              </div>
-            </div>
+            <ReceivedSummary files={doneFiles} />
           ) : (
             <>
               <input
-                ref={fileInputRef}
+                ref={editInputRef}
                 type="file"
                 multiple
                 accept="image/*,video/*,.heic,.heif"
@@ -848,60 +769,69 @@ export default function SubmitPage() {
                 onChange={(e) => {
                   const picked = e.target.files ? Array.from(e.target.files) : [];
                   e.target.value = "";
-                  if (picked.length) addFiles(picked);
+                  if (picked.length) addFiles(picked, isVideographer ? "edit" : null);
+                }}
+              />
+              <input
+                ref={rawInputRef}
+                type="file"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const picked = e.target.files ? Array.from(e.target.files) : [];
+                  e.target.value = "";
+                  if (picked.length) addFiles(picked, "raw");
                 }}
               />
 
-              {/* Mobile: solid black button. Desktop: dashed drop zone. */}
-              <button
-                type="button"
-                className="sf-upbtn"
-                disabled={locked}
-                onClick={() => !locked && fileInputRef.current?.click()}
-              >
-                <CloudIcon color="#fff" size={20} />
-                Add files
-              </button>
+              <div className="sf-zones">
+                <Zone
+                  primary
+                  icon={<PencilIcon />}
+                  title={isVideographer ? "Edited files" : "Photos and video"}
+                  sub={requirementLine}
+                  pill={editPill}
+                  pillOk={meetsEdits}
+                  buttonLabel={isVideographer ? "Choose edited files" : "Choose from camera roll"}
+                  onPick={() => !locked && editInputRef.current?.click()}
+                  disabled={locked}
+                  pips={
+                    <div className="sf-pips">
+                      {Array.from({ length: config.minPhotos }).map((_, i) => (
+                        <span key={`p${i}`} className={`sf-pip${i < photoCount ? " on" : ""}`} />
+                      ))}
+                      {Array.from({ length: config.minVideos }).map((_, i) => (
+                        <span key={`v${i}`} className={`sf-pip vid${i < videoCount ? " on" : ""}`} />
+                      ))}
+                    </div>
+                  }
+                />
 
-              <div
-                className={`sf-drop${dragOver ? " over" : ""}${locked ? " off" : ""}`}
-                onClick={() => !locked && fileInputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (!locked) setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOver(false);
-                  const dropped = Array.from(e.dataTransfer.files);
-                  if (!locked && dropped.length) addFiles(dropped);
-                }}
-              >
-                <div className="sf-dicon">
-                  <CloudIcon color={ORANGE} size={24} />
-                </div>
-                <b>Drag files here, or browse</b>
-                <span>JPG, PNG, HEIC, MP4, MOV · up to {config.maxFiles} files</span>
+                {isVideographer && (
+                  <Zone
+                    icon={<FolderIcon />}
+                    title="Raw files"
+                    sub="Everything you shot — required"
+                    pill={rawFiles.length === 0 ? "none yet" : `${rawFiles.length} ${plural(rawFiles.length, "file")}`}
+                    pillOk={rawFiles.length > 0}
+                    buttonLabel="Choose raw files"
+                    onPick={() => !locked && rawInputRef.current?.click()}
+                    disabled={locked}
+                    foot="Original camera footage and stills — .CR3, .ARW, .BRAW, ProRes, whatever you shot on."
+                  />
+                )}
               </div>
 
-              {/* FORM: every file as a thumbnail. PARTIAL: only the ones that landed. */}
-              {(phase === "form" ? files : phase === "partial" ? doneFiles : []).length > 0 && (
+              {phase === "form" && files.length > 0 && (
                 <div className="sf-thumbs">
-                  {(phase === "form" ? files : doneFiles).map((f) => (
-                    <Thumb
-                      key={f.id}
-                      f={f}
-                      removable={phase === "form"}
-                      onRemove={() => removeFile(f.id)}
-                    />
+                  {files.map((f) => (
+                    <Thumb key={f.id} f={f} removable onRemove={() => removeFile(f.id)} />
                   ))}
                 </div>
               )}
 
-              {/* UPLOADING: every file as a progress row. PARTIAL: only the failures. */}
               {(phase === "uploading" || phase === "partial") && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+                <div className="sf-rows">
                   {(phase === "uploading" ? files : failedFiles).map((f) => (
                     <UploadRow
                       key={f.id}
@@ -914,46 +844,32 @@ export default function SubmitPage() {
                 </div>
               )}
 
-              {statusText && (
-                <div
-                  style={{
-                    marginTop: 14,
-                    fontSize: 14,
-                    lineHeight: 1.5,
-                    color: statusTone === "todo" ? ORANGE : ink(0.55),
-                  }}
-                >
-                  {statusText}
-                </div>
-              )}
+              {statusText && <div className="sf-status">{statusText}</div>}
             </>
           )}
         </Card>
 
-        {/* ── Card 3 · Before you send ── */}
+        {/* ── Before you send ── */}
         <Card title="Before you send">
           <Check
             checked={!!ackInstructionsAt}
             disabled={locked}
             onToggle={(on) => setAckInstructionsAt(on ? new Date().toISOString() : null)}
           >
-            <div style={{ fontSize: 15, lineHeight: 1.55, color: ink(0.85) }}>
-              I&rsquo;ve read the{" "}
-              {config.briefUrl ? (
-                <a
-                  href={config.briefUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ color: ORANGE, textDecoration: "underline", textUnderlineOffset: 2 }}
-                >
-                  campaign instructions
-                </a>
-              ) : (
-                "campaign instructions"
-              )}
-              .
-            </div>
+            I&rsquo;ve read the{" "}
+            {config.briefUrl ? (
+              <a
+                href={config.briefUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                campaign instructions
+              </a>
+            ) : (
+              "campaign instructions"
+            )}{" "}
+            and {isVideographer ? "this content follows" : "my content follows"} them.
           </Check>
 
           <Check
@@ -961,232 +877,289 @@ export default function SubmitPage() {
             disabled={locked}
             onToggle={(on) => setAckMusicAt(on ? new Date().toISOString() : null)}
           >
-            <div style={{ fontSize: 15, lineHeight: 1.55, color: ink(0.85) }}>
-              I won&rsquo;t use copyrighted music.
-            </div>
-            <div style={{ fontSize: 13, lineHeight: 1.55, color: ink(0.5), marginTop: 3 }}>
-              Copyright-free or instrumental only.
-            </div>
+            {isVideographer
+              ? "If a Reel is cut from this, the music will be a copyright-free track from Instagram’s commercial library."
+              : "If I add music to a Reel, I’ll use a copyright-free track from Instagram’s commercial library."}
           </Check>
+
+          {submitError && !recordFailed && <div className="sf-err">{submitError}</div>}
+
+          {phase === "done" ? (
+            <div className="sf-done">Submitted {submittedAt ? formatStamp(submittedAt) : ""}</div>
+          ) : (
+            <button type="button" className="sf-send" disabled={!submitEnabled} onClick={handleSubmit}>
+              {submitLabel}
+            </button>
+          )}
         </Card>
 
-        {submitError && !recordFailed && (
-          <div style={{ marginTop: 16, fontSize: 14, lineHeight: 1.5, color: ORANGE }}>{submitError}</div>
-        )}
-
-        {/* ── Submit ── */}
-        {phase === "done" ? (
-          <div
-            style={{
-              marginTop: 22,
-              textAlign: "center",
-              fontFamily: MONO,
-              fontSize: 12,
-              fontWeight: 500,
-              letterSpacing: ".14em",
-              textTransform: "uppercase",
-              color: ink(0.5),
-              padding: "17px 0",
-            }}
-          >
-            Submitted {submittedAt ? formatStamp(submittedAt) : ""}
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="sf-btn"
-            disabled={!submitEnabled}
-            onClick={handleSubmit}
-          >
-            {submitLabel}
-          </button>
-        )}
-
-        {/* ── Footer ── */}
-        <div className="sf-foot">
-          {config.postgameLogoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className="sf-fmark" src={config.postgameLogoUrl} alt="Postgame" />
-          ) : (
-            <span />
-          )}
-          {config.expiresAt && formatDate(config.expiresAt) ? (
-            <span className="sf-ft">Link expires {formatDate(config.expiresAt)}</span>
-          ) : (
-            <span />
-          )}
-        </div>
+        <Footer postgame={config.postgameLogoUrl} expiresAt={config.expiresAt} />
       </div>
     </Shell>
   );
 }
 
-// ── Shell + shared styles ─────────────────────────────────────
+// ── Shell + styles ────────────────────────────────────────────
 
-function Shell({ children, arimoVar }: { children: React.ReactNode; arimoVar?: string }) {
+function Shell({ children, antonVar }: { children: React.ReactNode; antonVar?: string }) {
   return (
-    <div
-      className={`sf ${arimoVar ?? ""}`}
-      style={{ minHeight: "100vh", background: OFF, fontFamily: BODY, paddingBottom: 34 }}
-    >
+    <div className={`sf ${antonVar ?? ""}`}>
       <style>{`
-        .sf *, .sf *::before, .sf *::after { box-sizing: border-box; }
-        .sf-bar { height: 5px; background: ${ORANGE}; }
-        .sf-page { max-width: 720px; margin: 0 auto; }
+        .sf { min-height:100vh; background:${BLACK}; color:${ink(0.82)};
+              font:15px/1.6 ${BODY}; -webkit-font-smoothing:antialiased; }
+        .sf *, .sf *::before, .sf *::after { box-sizing:border-box; }
+        .sf img { display:block; }
+        .sf button { font-family:${BODY}; cursor:pointer; border:none; background:none; color:inherit; }
 
-        .sf-lock { display:flex; align-items:center; justify-content:center; gap:16px; padding:26px 22px 0; }
-        .sf-pgmark { height:20px; max-width:180px; width:auto; object-fit:contain; }
-        .sf-lockdiv { width:1px; height:22px; background:${ink(0.18)}; flex:0 0 auto; }
-        .sf-client { height:13px; max-width:70px; width:auto; object-fit:contain; }
+        /* ── header ── */
+        .sf-hdr { background:rgba(7,7,10,.92); backdrop-filter:blur(18px);
+                  -webkit-backdrop-filter:blur(18px); position:sticky; top:0; z-index:10;
+                  border-bottom:1px solid ${ink(0.14)}; }
+        .sf-hdr-in { max-width:560px; margin:0 auto; padding:15px 20px; display:flex;
+                     align-items:center; justify-content:center; position:relative; }
+        .sf-hdr img { height:24px; width:auto; }
+        .sf-back { position:absolute; left:20px; top:50%; transform:translateY(-50%);
+                   width:32px; height:32px; border-radius:9px; display:flex; align-items:center;
+                   justify-content:center; color:${ink(0.62)}; }
+        .sf-back:hover { background:${ink(0.07)}; color:${ink(1)}; }
+        .sf-back:focus-visible { outline:2px solid ${ORANGE}; outline-offset:2px; }
+        .sf-back svg { width:18px; height:18px; }
+        .sf-rule { height:4px; background:${ORANGE}; }
 
-        .sf-intro { padding:24px 18px 0; }
-        .sf-eyebrow { font-size:10px; }
-        .sf-h1 { font-size:44px; }
-        .sf-sub { font-size:16px; line-height:1.6; }
+        .sf-page { max-width:560px; margin:0 auto; padding:0 20px 60px; }
+        .sf-load { padding:60px 20px; text-align:center; font-family:${MONO}; font-size:11px;
+                   letter-spacing:.14em; color:${ink(0.45)}; }
 
-        .sf-wrap { padding:22px; }
-        .sf-card { background:#fff; border:1px solid ${ink(0.1)}; border-radius:14px; margin-top:14px; overflow:hidden; }
-        .sf-chead { background:${ORANGE}; color:#fff; padding:11px 20px 10px; font-size:20px;
-                    letter-spacing:.04em; text-transform:uppercase; line-height:1.1; }
-        .sf-cbody { padding:20px; }
+        /* ── top ── */
+        .sf-top { padding:26px 0 20px; text-align:center; }
+        .sf-mark { height:54px; width:auto; max-width:70%; margin:0 auto 16px; object-fit:contain; }
+        .sf-markfb { height:54px; display:flex; align-items:center; justify-content:center;
+                     font-family:var(--font-anton), Arial, sans-serif; font-size:21px;
+                     letter-spacing:.02em; color:${ink(0.45)}; margin-bottom:16px;
+                     text-transform:uppercase; }
+        .sf-h1 { font-size:32px; color:${ink(1)}; letter-spacing:.02em; line-height:1.02; margin:0 0 10px; }
+        .sf-sub { font-size:14px; color:${ink(0.82)}; line-height:1.6; }
+        .sf-sub b { color:${ink(1)}; font-weight:normal; }
+        .sf-deliv { color:${ink(0.62)}; margin-top:6px; }
 
-        .sf-fl { font-size:13px; font-weight:700; color:${ink(0.85)}; margin-top:18px; display:block; letter-spacing:.005em; }
-        .sf-cbody > .sf-two:first-child .sf-fl,
-        .sf-cbody > .sf-two-d:first-child .sf-fl { margin-top:0; }
-        .sf-req { color:${ORANGE}; font-weight:400; }
-        .sf-opt { color:${ink(0.4)}; font-weight:400; }
+        /* ── chooser ── */
+        .sf-pick { background:${ink(0.07)}; border:1.5px solid ${ink(0.14)}; border-radius:13px;
+                   padding:16px; display:flex; gap:13px; align-items:center; text-align:left;
+                   width:100%; margin-bottom:11px; }
+        .sf-pick:hover { border-color:${ORANGE}; }
+        .sf-pick:focus-visible { outline:2px solid ${ORANGE}; outline-offset:3px; }
+        .sf-pick-ic { width:42px; height:42px; border-radius:11px; background:rgba(215,63,9,.14);
+                      color:${ORANGE}; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+        .sf-pick-ic svg { width:20px; height:20px; }
+        .sf-pick-tx b { display:block; color:${ink(1)}; font-size:15.5px; font-weight:normal; line-height:1.3; }
+        .sf-pick-tx span { font-size:13px; color:${ink(0.62)}; }
+        .sf-pick-go { margin-left:auto; color:${ink(0.45)}; display:flex; }
+        .sf-pick-go svg { width:16px; height:16px; }
 
-        .sf-choice { display:block; width:100%; text-align:left; background:#fff; border:1.5px solid ${ink(0.14)};
-                     border-radius:14px; padding:20px; margin-top:14px; cursor:pointer; font-family:${BODY};
-                     transition:border-color .18s, background .18s; }
-        .sf-choice:hover { border-color:${ORANGE}; background:rgba(215,63,9,.03); }
-        .sf-choice:focus-visible { outline:2px solid ${ORANGE}; outline-offset:3px; }
-        .sf-choice-t { display:block; font-size:19px; font-weight:700; color:${BLACK}; letter-spacing:.005em; }
-        .sf-choice-s { display:block; font-size:14px; line-height:1.5; color:${ink(0.5)}; margin-top:4px; }
+        /* ── cards ── */
+        .sf-card { background:${ink(0.07)}; border:1px solid ${ink(0.14)}; border-radius:13px;
+                   overflow:hidden; margin-bottom:12px; }
+        .sf-ct { background:${ORANGE}; color:#fff; padding:9px 15px; font-family:${MONO};
+                 font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; }
+        .sf-cb { padding:15px; }
 
-        .sf-mode { display:flex; align-items:center; justify-content:space-between; gap:12px;
-                   padding:11px 14px; border:1px solid ${ink(0.12)}; border-radius:10px; background:#fff; }
-        .sf-mode-t { font-family:${MONO}; font-size:10px; letter-spacing:.14em; text-transform:uppercase;
-                     color:${ink(0.55)}; }
-        .sf-mode-b { border:0; background:transparent; padding:0; cursor:pointer; font-family:${MONO};
-                     font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:${ORANGE}; }
-        .sf-mode-b:hover { text-decoration:underline; }
-        .sf-line { width:100%; border:0; border-bottom:1.5px solid ${ink(0.18)}; padding:9px 2px; font-size:16px;
-                   font-family:${BODY}; color:${BLACK}; background:transparent; margin-top:5px; appearance:none; border-radius:0; }
-        .sf-line::placeholder { color:${ink(0.3)}; }
-        .sf-line:focus { outline:0; border-bottom-color:${ORANGE}; }
-        .sf-line:disabled, .sf-line[readonly] { color:${ink(0.55)}; }
-        .sf-two { display:flex; gap:16px; }
-        .sf-two > div { flex:1; min-width:0; }
-        .sf-two-d > div { min-width:0; }
+        .sf-fl { display:block; font-family:${MONO}; font-size:9px; letter-spacing:.12em;
+                 text-transform:uppercase; color:${ink(0.62)}; margin-bottom:5px; }
+        /* Inputs sit DARKER than the card they're in, not lighter. */
+        .sf-fi { width:100%; border:1px solid ${ink(0.14)}; border-radius:9px; padding:12px 13px;
+                 font-size:16px; color:${ink(1)}; font-family:${BODY}; background:rgba(0,0,0,.32);
+                 appearance:none; }
+        .sf-fi:focus { outline:none; border-color:${ORANGE}; }
+        .sf-fi::placeholder { color:${ink(0.45)}; }
+        .sf-fi:disabled, .sf-fi[readonly] { color:${ink(0.62)}; }
+        .sf-two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .sf-stack { display:grid; grid-template-columns:1fr; gap:10px; }
+        .sf-fg { margin-bottom:12px; }
 
+        /* ── upload zones ── */
+        .sf-zones { border:1px solid ${ink(0.14)}; border-radius:12px; overflow:hidden; background:rgba(0,0,0,.22); }
+        .sf-zn { padding:16px; }
+        .sf-zn + .sf-zn { border-top:1px solid ${ink(0.14)}; }
+        .sf-zn.pri { background:rgba(215,63,9,.07); }
+        .sf-zh { display:flex; gap:11px; align-items:flex-start; margin-bottom:12px; }
+        .sf-zic { width:34px; height:34px; border-radius:10px; display:flex; align-items:center;
+                  justify-content:center; flex:0 0 auto; }
+        .sf-zic svg { width:17px; height:17px; }
+        .sf-zn.pri .sf-zic { background:${ORANGE}; color:#fff; }
+        .sf-zn.sec .sf-zic { background:${ink(0.1)}; color:${ink(0.62)}; }
+        .sf-ztl { flex:1; min-width:0; }
+        .sf-ztl .a { font-size:15.5px; color:${ink(1)}; line-height:1.25; }
+        .sf-ztl .b { font-size:12.5px; color:${ink(0.62)}; margin-top:2px; }
+        .sf-zst { font-family:${MONO}; font-size:11px; color:${ink(0.45)}; white-space:nowrap;
+                  padding:4px 9px; border-radius:20px; background:${ink(0.1)}; }
+        .sf-zst.ok { background:rgba(126,226,168,.14); color:${SUCCESS}; }
+        .sf-pips { display:flex; gap:5px; margin-bottom:12px; flex-wrap:wrap; }
+        .sf-pip { height:5px; flex:1; min-width:26px; border-radius:3px; background:${ink(0.1)}; }
+        .sf-pip.on { background:${ORANGE}; }
+        .sf-pip.vid { background:${ink(0.06)}; border:1px dashed ${ink(0.22)}; }
+        .sf-pip.vid.on { background:${ORANGE}; border-style:solid; border-color:${ORANGE}; }
+        .sf-zbtn { width:100%; border:1px solid ${ink(0.14)}; border-radius:9px; padding:12px;
+                   font-size:14.5px; color:${ink(1)}; background:rgba(0,0,0,.28); display:flex;
+                   gap:8px; align-items:center; justify-content:center; }
+        .sf-zbtn:hover:not(:disabled) { border-color:${ORANGE}; color:${ORANGE}; }
+        .sf-zbtn:focus-visible { outline:2px solid ${ORANGE}; outline-offset:2px; }
+        .sf-zbtn:disabled { opacity:.5; cursor:not-allowed; }
+        .sf-zbtn svg { width:15px; height:15px; }
+        .sf-zfoot { font-size:11.5px; color:${ink(0.45)}; margin-top:9px; line-height:1.5; }
+
+        /* ── thumbs + rows ── */
         .sf-thumbs { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
         .sf-th { width:60px; height:60px; border-radius:10px; position:relative; overflow:hidden;
-                 background:linear-gradient(150deg,#d8d3cc,#efeae3); border:1px solid ${ink(0.08)}; }
-        .sf-th img { width:100%; height:100%; object-fit:cover; display:block; }
-        .sf-th .sf-rm { position:absolute; right:4px; top:4px; width:16px; height:16px; border:0; padding:0;
-                        border-radius:999px; background:${ink(0.6)}; display:flex; align-items:center;
-                        justify-content:center; cursor:pointer; }
+                 background:${ink(0.1)}; border:1px solid ${ink(0.14)}; }
+        .sf-th img { width:100%; height:100%; object-fit:cover; }
+        .sf-th .sf-badge { position:absolute; left:0; bottom:0; right:0; font-family:${MONO};
+                           font-size:7.5px; letter-spacing:.1em; text-transform:uppercase;
+                           text-align:center; padding:2px 0; background:rgba(0,0,0,.62); color:${ink(0.82)}; }
+        .sf-th .sf-rm { position:absolute; right:4px; top:4px; width:16px; height:16px; padding:0;
+                        border-radius:999px; background:rgba(0,0,0,.62); display:flex;
+                        align-items:center; justify-content:center; }
+        .sf-th .sf-ph { position:absolute; inset:0; display:flex; align-items:center;
+                        justify-content:center; color:${ink(0.45)}; font-size:15px; }
+        .sf-rows { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+        .sf-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px;
+                  border:1px solid ${ink(0.14)}; background:rgba(0,0,0,.22); }
+        .sf-row-th { width:40px; height:40px; border-radius:9px; flex:0 0 auto; overflow:hidden;
+                     background:${ink(0.1)}; display:flex; align-items:center; justify-content:center;
+                     color:${ink(0.45)}; font-size:14px; }
+        .sf-row-th img { width:100%; height:100%; object-fit:cover; }
+        .sf-row-n { font-size:14px; color:${ink(1)}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .sf-row-m { font-size:12px; color:${ink(0.62)}; }
+        .sf-bar { height:4px; border-radius:999px; background:${ink(0.1)}; margin:6px 0; overflow:hidden; }
+        .sf-bar > i { display:block; height:100%; background:${ORANGE}; transition:width .2s; }
+        .sf-retry { font-family:${MONO}; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:${ORANGE}; }
+        .sf-status { margin-top:12px; font-size:13px; color:${ink(0.62)}; }
+        .sf-err { margin-top:12px; font-size:13px; color:${ORANGE}; }
 
-        .sf-upbtn { width:100%; margin-top:16px; display:flex; align-items:center; justify-content:center; gap:11px;
-                    background:${BLACK}; border:0; border-radius:12px; padding:18px; font-family:${MONO};
-                    font-size:12px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:#fff; cursor:pointer; }
-        .sf-upbtn:disabled { background:${ink(0.35)}; cursor:not-allowed; }
-        .sf-drop { display:none; margin-top:16px; border:1.5px dashed ${ink(0.22)}; border-radius:12px; padding:38px;
-                   text-align:center; cursor:pointer; transition:border-color .2s, background .2s; }
-        .sf-drop.over { border-color:${ORANGE}; background:rgba(215,63,9,.05); }
-        .sf-drop.off { cursor:default; opacity:.5; }
-        .sf-dicon { width:50px; height:50px; border-radius:999px; background:rgba(215,63,9,.10);
-                    display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
-        .sf-drop b { display:block; font-size:16px; color:${BLACK}; }
-        .sf-drop span { display:block; font-size:14px; color:${ink(0.5)}; margin-top:4px; }
+        /* ── acknowledgements + send ── */
+        .sf-ack { display:flex; gap:11px; align-items:flex-start; padding:12px 0;
+                  border-top:1px solid ${ink(0.08)}; cursor:pointer; }
+        .sf-cb > .sf-ack:first-child { border-top:none; padding-top:0; }
+        .sf-ack.off { cursor:default; }
+        .sf-ack:focus-visible { outline:2px solid ${ORANGE}; outline-offset:3px; border-radius:6px; }
+        .sf-box { width:21px; height:21px; border-radius:6px; border:1.5px solid ${ink(0.22)};
+                  flex:0 0 auto; margin-top:1px; display:flex; align-items:center; justify-content:center; }
+        .sf-box.on { background:${ORANGE}; border-color:${ORANGE}; color:#fff; }
+        .sf-box svg { width:12px; height:12px; }
+        .sf-ack-tx { font-size:13px; line-height:1.55; color:${ink(0.82)}; min-width:0; }
+        .sf-ack-tx a { color:${ORANGE}; }
+        .sf-send { width:100%; background:${ORANGE}; color:#fff; border-radius:11px; padding:15px;
+                   font-size:16px; font-weight:bold; margin-top:16px; }
+        .sf-send:disabled { background:${ink(0.08)}; color:${ink(0.45)}; cursor:not-allowed; }
+        .sf-done { margin-top:16px; text-align:center; font-family:${MONO}; font-size:11px;
+                   letter-spacing:.14em; text-transform:uppercase; color:${ink(0.62)}; padding:15px 0; }
+        .sf-recv { display:flex; align-items:center; gap:12px; }
+        .sf-recv-ic { width:26px; height:26px; border-radius:999px; background:${ORANGE}; flex:0 0 auto;
+                      display:flex; align-items:center; justify-content:center; }
+        .sf-recv-ic svg { width:12px; height:12px; }
 
-        .sf-chk { display:flex; gap:11px; align-items:flex-start; margin-top:16px; cursor:pointer; }
-        .sf-cbody > .sf-chk:first-child { margin-top:0; }
-        .sf-chk.off { cursor:default; }
-        .sf-chk:focus-visible { outline:2px solid ${ORANGE}; outline-offset:4px; border-radius:6px; }
-        .sf-bx { width:20px; height:20px; border-radius:5px; border:1.5px solid ${ink(0.3)}; flex:0 0 auto;
-                 margin-top:1px; display:flex; align-items:center; justify-content:center; background:transparent; }
-        .sf-bx.on { background:${ORANGE}; border-color:${ORANGE}; }
+        /* ── footer ── */
+        .sf-foot { text-align:center; padding:28px 0 0; border-top:1px solid ${ink(0.08)}; margin-top:24px; }
+        .sf-foot img { height:17px; width:auto; margin:0 auto 12px; opacity:.55; }
+        .sf-foot .q { font-size:13px; color:${ink(0.82)}; }
+        .sf-ln { display:flex; flex-direction:column; gap:9px; margin-top:11px; align-items:center; }
+        .sf-ln a { font-size:13px; color:${ORANGE}; text-decoration:none; display:inline-flex;
+                   gap:6px; align-items:center; }
+        .sf-ln a:hover { text-decoration:underline; }
+        .sf-ln svg { width:14px; height:14px; }
+        .sf-exp { display:block; margin-top:14px; font-family:${MONO}; font-size:9px;
+                  letter-spacing:.14em; text-transform:uppercase; color:${ink(0.45)}; }
 
-        .sf-btn { width:100%; margin-top:22px; background:${ORANGE}; color:#fff; border:0; border-radius:10px;
-                  padding:17px; font-family:${MONO}; font-size:12px; font-weight:500; letter-spacing:.16em;
-                  text-transform:uppercase; cursor:pointer; transition:background .2s, color .2s; }
-        .sf-btn:disabled { background:${ink(0.12)}; color:${ink(0.35)}; cursor:not-allowed; }
+        /* first/last stay paired until 380px */
+        @media (max-width:380px) {
+          .sf-two { grid-template-columns:1fr; }
+          .sf-h1 { font-size:29px; }
+          .sf-page { padding:0 16px 56px; }
+        }
 
-        .sf-foot { display:flex; align-items:center; justify-content:space-between; margin-top:20px;
-                   padding-top:16px; border-top:1px solid ${ink(0.1)}; }
-        .sf-fmark { height:14px; opacity:.4; width:auto; max-width:120px; object-fit:contain; }
-        .sf-ft { font-family:${MONO}; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:${ink(0.42)}; }
+        @media (min-width:640px) {
+          .sf-hdr-in { padding:18px 22px; }
+          .sf-hdr img { height:28px; }
+          .sf-page { padding:0 22px 70px; }
+          .sf-top { padding:34px 0 26px; }
+          .sf-mark, .sf-markfb { height:68px; margin-bottom:20px; }
+          .sf-h1 { font-size:42px; margin-bottom:13px; }
+          .sf-sub { font-size:15px; }
+          .sf-cb { padding:19px; }
+          .sf-ct { padding:11px 19px; font-size:10px; }
+          /* 16px on mobile keeps iOS Safari from zooming the page on focus;
+             below that it always zooms, and the athlete has to pinch back out. */
+          .sf-fi { font-size:15px; }
+          .sf-ack-tx { font-size:14px; }
+          .sf-pick { padding:18px; }
+        }
 
-        @media (min-width: 640px) {
-          .sf-lock { padding:32px 40px 0; gap:20px; }
-          .sf-pgmark { height:23px; max-width:210px; }
-          .sf-lockdiv { height:28px; }
-          .sf-client { height:15px; max-width:84px; }
-          .sf-intro { padding:28px 60px 0; }
-          .sf-eyebrow { font-size:12px; }
-          .sf-h1 { font-size:64px; }
-          .sf-sub { font-size:18px; max-width:52ch; }
-          .sf-wrap { padding:26px 40px 30px; }
-          .sf-card { margin-top:18px; }
-          .sf-chead { padding:13px 26px 12px; font-size:23px; }
-          .sf-cbody { padding:26px; }
-          .sf-two-d { display:flex; gap:16px; }
-          .sf-two-d > div { flex:1; }
-          .sf-upbtn { display:none; }
-          .sf-drop { display:block; }
+        @media (prefers-reduced-motion: reduce) {
+          .sf * { transition:none !important; }
         }
       `}</style>
-      <div className="sf-bar" />
-      <div className="sf-page">{children}</div>
+      {children}
     </div>
   );
 }
 
-function Lockup({ postgame, client }: { postgame: string | null; client: string | null }) {
-  if (!postgame && !client) return null;
+function Header({ postgame, onBack }: { postgame: string | null; onBack: (() => void) | null }) {
   return (
-    <div className="sf-lock">
-      {postgame && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="sf-pgmark" src={postgame} alt="Postgame" />
-      )}
-      {postgame && client && <div className="sf-lockdiv" />}
-      {client && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="sf-client" src={client} alt="" />
-      )}
-    </div>
+    <>
+      <header className="sf-hdr">
+        <div className="sf-hdr-in">
+          {onBack && (
+            <button type="button" className="sf-back" onClick={onBack} aria-label="Back">
+              <BackIcon />
+            </button>
+          )}
+          {postgame ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={postgame} alt="Postgame" />
+          ) : (
+            <span style={{ height: 24 }} />
+          )}
+        </div>
+      </header>
+      <div className="sf-rule" />
+    </>
   );
+}
+
+// The client mark identifies the brand, so no brand-name text sits under it.
+// When there is no usable logo — 38 of 130 brands — the name itself is the
+// mark, set in Anton at 45%.
+function BrandMark({ url, name, onDead }: { url: string | null; name: string | null; onDead: () => void }) {
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className="sf-mark" src={url} alt={name ?? ""} onError={onDead} />;
+  }
+  if (!name) return null;
+  return <div className="sf-markfb">{name}</div>;
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="sf-card">
-      <div className="d sf-chead">{title}</div>
-      <div className="sf-cbody">{children}</div>
+      <div className="sf-ct">{title}</div>
+      <div className="sf-cb">{children}</div>
     </div>
   );
 }
 
-function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
+function Field({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <label className="sf-fl">
-      {children}{" "}
-      {optional ? <span className="sf-opt">(optional)</span> : <span className="sf-req">*</span>}
-    </label>
-  );
-}
-
-// One of the two answers to "Who's submitting?". A button rather than a radio:
-// picking it is the action, and there is no separate confirm step.
-function ChooserOption({ title, sub, onClick }: { title: string; sub: string; onClick: () => void }) {
-  return (
-    <button type="button" className="sf-choice" onClick={onClick}>
-      <span className="sf-choice-t">{title}</span>
-      <span className="sf-choice-s">{sub}</span>
-    </button>
+    <div className={className}>
+      <label className="sf-fl">{label}</label>
+      {children}
+    </div>
   );
 }
 
@@ -1209,7 +1182,7 @@ function Input({
 }) {
   return (
     <input
-      className="sf-line"
+      className="sf-fi"
       type={type}
       inputMode={inputMode}
       value={value}
@@ -1218,6 +1191,103 @@ function Input({
       readOnly={readOnly}
       onChange={(e) => onChange(e.target.value)}
     />
+  );
+}
+
+function ChooserOption({
+  icon,
+  title,
+  sub,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  title: React.ReactNode;
+  sub: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="sf-pick" onClick={onClick}>
+      <span className="sf-pick-ic">{icon}</span>
+      <span className="sf-pick-tx">
+        <b>{title}</b>
+        <span>{sub}</span>
+      </span>
+      <span className="sf-pick-go">
+        <ChevronIcon />
+      </span>
+    </button>
+  );
+}
+
+// One upload zone. Each states its own requirement inside it — there is no
+// separate checklist above them, which duplicated this and was rejected.
+function Zone({
+  primary,
+  icon,
+  title,
+  sub,
+  pill,
+  pillOk,
+  pips,
+  buttonLabel,
+  onPick,
+  disabled,
+  foot,
+}: {
+  primary?: boolean;
+  icon: React.ReactNode;
+  title: string;
+  sub: string;
+  pill: string;
+  pillOk: boolean;
+  pips?: React.ReactNode;
+  buttonLabel: string;
+  onPick: () => void;
+  disabled: boolean;
+  foot?: string;
+}) {
+  return (
+    <div className={`sf-zn ${primary ? "pri" : "sec"}`}>
+      <div className="sf-zh">
+        <span className="sf-zic">{icon}</span>
+        <span className="sf-ztl">
+          <span className="a" style={{ display: "block" }}>
+            {title}
+          </span>
+          <span className="b" style={{ display: "block" }}>
+            {sub}
+          </span>
+        </span>
+        <span className={`sf-zst${pillOk ? " ok" : ""}`}>{pill}</span>
+      </div>
+      {pips}
+      <button type="button" className="sf-zbtn" onClick={onPick} disabled={disabled}>
+        <UploadIcon />
+        {buttonLabel}
+      </button>
+      {foot && <div className="sf-zfoot">{foot}</div>}
+    </div>
+  );
+}
+
+function ReceivedSummary({ files }: { files: Picked[] }) {
+  const photos = files.filter((f) => f.kind === "photo" && f.fileClass !== "raw").length;
+  const videos = files.filter((f) => f.kind === "video" && f.fileClass !== "raw").length;
+  const raw = files.filter((f) => f.fileClass === "raw").length;
+  return (
+    <div className="sf-recv">
+      <span className="sf-recv-ic">
+        <TickIcon />
+      </span>
+      <div>
+        <div style={{ fontSize: 15, lineHeight: 1.5, color: ink(1) }}>Content received</div>
+        <div className="sf-row-m" style={{ marginTop: 2 }}>
+          {files.length} {plural(files.length, "file")} · {photos} {plural(photos, "photo")}, {videos}{" "}
+          {plural(videos, "video")}
+          {raw > 0 ? ` · ${raw} raw` : ""}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1240,7 +1310,7 @@ function Check({
   };
   return (
     <div
-      className={`sf-chk${disabled ? " off" : ""}`}
+      className={`sf-ack${disabled ? " off" : ""}`}
       role="checkbox"
       aria-checked={checked}
       aria-disabled={disabled}
@@ -1253,8 +1323,8 @@ function Check({
         }
       }}
     >
-      <span className={`sf-bx${checked ? " on" : ""}`}>{checked && <TickIcon />}</span>
-      <div style={{ minWidth: 0 }}>{children}</div>
+      <span className={`sf-box${checked ? " on" : ""}`}>{checked && <TickIcon />}</span>
+      <div className="sf-ack-tx">{children}</div>
     </div>
   );
 }
@@ -1266,20 +1336,9 @@ function Thumb({ f, removable, onRemove }: { f: Picked; removable: boolean; onRe
         // eslint-disable-next-line @next/next/no-img-element
         <img src={f.previewUrl} alt="" />
       ) : (
-        <span
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: ink(0.45),
-            fontSize: 15,
-          }}
-        >
-          ▶
-        </span>
+        <span className="sf-ph">▶</span>
       )}
+      {f.fileClass === "raw" && <span className="sf-badge">raw</span>}
       {removable && (
         <button type="button" className="sf-rm" aria-label={`Remove ${f.file.name}`} onClick={onRemove}>
           <XIcon />
@@ -1311,86 +1370,31 @@ function UploadRow({
         : "Waiting…";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 12px",
-        borderRadius: 12,
-        border: `1px solid ${failed ? ink(0.28) : ink(0.1)}`,
-        background: "#fff",
-      }}
-    >
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 9,
-          flex: "0 0 auto",
-          overflow: "hidden",
-          background: "linear-gradient(150deg,#d8d3cc,#efeae3)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: ink(0.45),
-          fontSize: 14,
-        }}
-      >
+    <div className="sf-row" style={failed ? { borderColor: ink(0.28) } : undefined}>
+      <div className="sf-row-th">
         {f.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={f.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={f.previewUrl} alt="" />
         ) : (
           "▶"
         )}
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14,
-            color: ink(0.85),
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {f.file.name}
-        </div>
+        <div className="sf-row-n">{f.file.name}</div>
         {f.status === "uploading" && (
-          <div style={{ height: 4, borderRadius: 999, background: ink(0.1), margin: "6px 0", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${pct}%`, background: ORANGE, transition: "width .2s" }} />
+          <div className="sf-bar">
+            <i style={{ width: `${pct}%` }} />
           </div>
         )}
-        <div
-          style={{
-            fontSize: 12,
-            color: failed ? ink(0.7) : ink(0.5),
-            marginTop: f.status === "uploading" ? 0 : 3,
-          }}
-        >
+        <div className="sf-row-m" style={{ marginTop: f.status === "uploading" ? 0 : 3 }}>
           {meta}
         </div>
       </div>
 
       {failed && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" }}>
-          <button
-            type="button"
-            onClick={onRetry}
-            style={{
-              background: "none",
-              border: 0,
-              padding: 0,
-              color: ORANGE,
-              fontFamily: MONO,
-              fontSize: 11,
-              fontWeight: 500,
-              letterSpacing: ".1em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
-          >
+          <button type="button" className="sf-retry" onClick={onRetry}>
             Retry
           </button>
           {removable && (
@@ -1398,7 +1402,7 @@ function UploadRow({
               type="button"
               onClick={onRemove}
               aria-label={`Remove ${f.file.name}`}
-              style={{ background: "none", border: 0, padding: 0, color: ink(0.4), cursor: "pointer", fontSize: 15 }}
+              style={{ color: ink(0.45), fontSize: 15 }}
             >
               ✕
             </button>
@@ -1409,41 +1413,128 @@ function UploadRow({
   );
 }
 
-// ── Icons (from the approved mockup) ──────────────────────────
-
-function CloudIcon({ color, size }: { color: string; size: number }) {
+function Footer({ postgame, expiresAt }: { postgame: string | null; expiresAt: string | null }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ flex: "0 0 auto" }}
-      aria-hidden="true"
-    >
-      <path d="M8.4 17.6H6.7a4.2 4.2 0 0 1-1.8-8 5.6 5.6 0 0 1 10.7-2.1 4.8 4.8 0 0 1 .4 9.5h-1.9" />
-      <path d="M12 21.4V9.6" />
-      <path d="M8.5 13.1 12 9.6l3.5 3.5" />
+    <div className="sf-foot">
+      {postgame && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={postgame} alt="Postgame" />
+      )}
+      <div className="q">Have a question?</div>
+      <div className="sf-ln">
+        <a href="sms:">
+          <MsgIcon /> Text your Postgame contact
+        </a>
+        <a href="https://instagram.com/postgame" target="_blank" rel="noopener noreferrer">
+          <IgIcon /> DM @postgame
+        </a>
+      </div>
+      {expiresAt && formatDate(expiresAt) && (
+        <span className="sf-exp">Link expires {formatDate(expiresAt)}</span>
+      )}
+    </div>
+  );
+}
+
+// ── Icons ─────────────────────────────────────────────────────
+
+const S = {
+  fill: "none" as const,
+  stroke: "currentColor",
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="1.8" {...S} aria-hidden="true">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function CamIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="1.8" {...S} aria-hidden="true">
+      <path d="m22 8-6 4 6 4V8z" />
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="2" {...S} aria-hidden="true">
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="2" {...S} aria-hidden="true">
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="1.9" {...S} aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="1.8" {...S} aria-hidden="true">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="1.8" {...S} aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M17 8l-5-5-5 5M12 3v13" />
+    </svg>
+  );
+}
+
+function MsgIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="1.8" {...S} aria-hidden="true">
+      <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.1A8.4 8.4 0 0 1 4 11.5a8.4 8.4 0 0 1 8.5-8.4h.5a8.4 8.4 0 0 1 8 8z" />
+    </svg>
+  );
+}
+
+function IgIcon() {
+  return (
+    <svg viewBox="0 0 24 24" strokeWidth="1.8" {...S} aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
 function TickIcon() {
   return (
-    <svg width="10" height="8" viewBox="0 0 9 7" fill="none" aria-hidden="true">
-      <path d="M1 3.5L3.3 6 8 1" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" strokeWidth="3" {...S} aria-hidden="true">
+      <path d="m20 6-11 11-5-5" />
     </svg>
   );
 }
 
 function XIcon() {
   return (
-    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" aria-hidden="true">
-      <path d="M1 1l6 6M7 1l-6 6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" strokeWidth="2" {...S} width="9" height="9" aria-hidden="true">
+      <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
 }

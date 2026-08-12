@@ -131,16 +131,19 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     );
   }
 
-  // The athlete columns are required on both paths — they are what the files
-  // file under. Only phone and email relax for a videographer, who is not
-  // expected to hand over the athlete's contact details.
-  if (!first || !last || !ig || !school) {
+  // The athlete's name and handle are required on both paths — they are what
+  // the files file under, and ig_handle is the match key (NOT NULL in the
+  // database). School, phone and email relax for a videographer, who is filing
+  // someone else's content and is not asked for any of the three. This mirrors
+  // submissions_athlete_contact_check, which demands all three only when
+  // submitter_type = 'athlete'.
+  if (!first || !last || !ig) {
     return NextResponse.json(
-      { error: "The athlete's first name, last name, Instagram handle and school are all required." },
+      { error: "The athlete's first name, last name and Instagram handle are all required." },
       { status: 400 }
     );
   }
-  if (!isVideographer && (!phone || !email)) {
+  if (!isVideographer && (!phone || !school || !email)) {
     return NextResponse.json(
       { error: "First name, last name, Instagram handle, phone, school and email are all required." },
       { status: 400 }
@@ -174,9 +177,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       athlete_last_name: last,
       ig_handle: ig,
       // Empty strings would satisfy the NOT NULL the contact CHECK replaced;
-      // null is the honest value when a videographer leaves them blank.
+      // null is the honest value when a videographer is never asked for them.
       phone: phone || null,
-      school,
+      school: school || null,
       email: email || null,
       submitter_type: submitterType,
       videographer_name: isVideographer ? vidName : null,

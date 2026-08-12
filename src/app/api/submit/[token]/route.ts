@@ -211,18 +211,30 @@ async function loadCampaign(campaignId: string) {
   };
 }
 
-// Postgame's own brand row. The athlete form sits on an off-white ground
-// (#FAF8F5), so the mark has to be logo_dark_url — the dark-ink wordmark with
-// the orange plus. logo_primary_url is the WHITE wordmark and renders
-// near-invisible here; logo_light_url is all-white and is worse.
+// Postgame's own brand row.
+//
+// The variant names on this row are counterintuitive and describe the INK, not
+// the background they belong on:
+//   logo_primary_url = white wordmark + orange plus
+//   logo_light_url   = all white
+//   logo_dark_url    = black wordmark + orange plus
+//
+// The form is now a DARK page (#07070A), so the header mark is
+// logo_primary_url — white lettering with the orange plus. logo_dark_url is the
+// black-ink mark and would disappear against the header; it was correct only
+// while this page had an off-white ground.
 const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
 
-// Athlete-facing branding for the page header + campaign chip. Two steps, no
+// Athlete-facing branding for the page header + campaign name. Two steps, no
 // UUID-sniffing of the text column:
-//   brand_id set  → chip name = brands.name, client logo = logo_primary_url
-//                   (rendered bare on the off-white ground; render nothing if
-//                    absent — no logo_light_url fallback, no placeholder)
-//   brand_id null → chip name = campaign_recaps.client_name (plain text), no logo
+//   brand_id set  → name = brands.name, client logo = logo_light_url, falling
+//                   back to logo_primary_url
+//   brand_id null → name = campaign_recaps.client_name (plain text), no logo
+//
+// Light-first for the CLIENT mark specifically because many client logos are
+// dark ink on transparent and vanish on black; 85 of 130 brands have a light
+// variant. The 38 brands with neither variant return null and the page renders
+// the brand name instead — a real path, not an edge case.
 async function loadBranding(
   campaign: { brand_id: string | null; brand: string | null } | null
 ): Promise<{ brandName: string | null; postgameLogoUrl: string | null; clientLogoUrl: string | null }> {
@@ -232,23 +244,22 @@ async function loadBranding(
 
   const { data } = await supabase
     .from("brands")
-    .select("id, name, logo_primary_url, logo_dark_url")
+    .select("id, name, logo_primary_url, logo_light_url, logo_dark_url")
     .in("id", ids);
 
   const rows = (data ?? []) as Array<{
     id: string;
     name: string | null;
     logo_primary_url: string | null;
+    logo_light_url: string | null;
     logo_dark_url: string | null;
   }>;
   const pg = rows.find((r) => r.id === POSTGAME_BRAND_ID);
   const client = campaign?.brand_id ? rows.find((r) => r.id === campaign.brand_id) : null;
 
   return {
-    // Postgame only: dark ink for the off-white ground. The client mark stays
-    // on logo_primary_url — untouched.
-    postgameLogoUrl: pg?.logo_dark_url ?? null,
-    clientLogoUrl: client?.logo_primary_url ?? null,
+    postgameLogoUrl: pg?.logo_primary_url ?? null,
+    clientLogoUrl: client?.logo_light_url ?? client?.logo_primary_url ?? null,
     brandName: client?.name ?? campaign?.brand ?? null,
   };
 }
@@ -363,23 +374,52 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const last = String(body?.lastName ?? "").trim();
   const ig = String(body?.igHandle ?? "").trim().replace(/^@+/, "");
   const school = String(body?.school ?? "").trim();
-  if (!first || !last || !ig || !school) {
+
+  // A videographer is not asked for the athlete's school, phone or email — they
+  // are filing someone else's content and don't reliably know any of it. The
+  // database already models this: submissions.school is nullable and
+  // submissions_athlete_contact_check demands the three contact columns only
+  // when submitter_type = 'athlete'. Requiring school here regardless would
+  // reject every videographer upload at init, before a byte reaches Drive.
+  const isVideographer = String(body?.submitterType ?? "athlete").trim() === "videographer";
+
+  if (!first || !last || !ig || (!isVideographer && !school)) {
     return NextResponse.json(
-      { error: "First name, last name, Instagram handle, and school are all required." },
+      {
+        error: isVideographer
+          ? "The athlete's first name, last name and Instagram handle are all required."
+          : "First name, last name, Instagram handle, and school are all required.",
+      },
       { status: 400 }
     );
   }
 
-  if (body?.action === "init") return handleInit(req, link!, { first, last, ig, school }, body);
-  if (body?.action === "finalize") return handleFinalize(req, link!, { first, last, ig, school }, body);
+  const who: Submitter = { first, last, ig, school };
+  if (body?.action === "init") return handleInit(req, link!, who, body);
+  if (body?.action === "finalize") return handleFinalize(req, link!, who, body);
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
 
 type Submitter = { first: string; last: string; ig: string; school: string };
 
+/** tier3_submissions.file_class — which upload zone a file came through.
+ *  'edit' = the finished cut, 'raw' = original camera footage. NULL for every
+ *  athlete-path file and everything uploaded before this shipped, which is what
+ *  the column's CHECK allows. Anything unrecognised normalises to null rather
+ *  than failing the upload. */
+function normalizeFileClass(v: unknown): "edit" | "raw" | null {
+  const s = String(v ?? "").trim().toLowerCase();
+  return s === "edit" || s === "raw" ? s : null;
+}
+
 async function handleInit(req: NextRequest, link: SubmissionLink, who: Submitter, body: any) {
-  const files: Array<{ clientId?: string; name?: string; mimeType?: string; size?: number }> =
-    Array.isArray(body?.files) ? body.files : [];
+  const files: Array<{
+    clientId?: string;
+    name?: string;
+    mimeType?: string;
+    size?: number;
+    fileClass?: string;
+  }> = Array.isArray(body?.files) ? body.files : [];
 
   if (files.length === 0) {
     return NextResponse.json({ error: "Add at least one file." }, { status: 400 });
@@ -391,8 +431,14 @@ async function handleInit(req: NextRequest, link: SubmissionLink, who: Submitter
     );
   }
 
-  const photos = files.filter((f) => IMAGE_RE.test(f.mimeType ?? "") || HEIC_RE.test(f.name ?? "")).length;
-  const videos = files.filter((f) => VIDEO_RE.test(f.mimeType ?? "")).length;
+  // Only the edited files count toward the minimums. Raw camera footage is
+  // collected alongside them but is not deliverable content — without this
+  // split a videographer could satisfy "3 photos and 1 video" with four raw
+  // stills and nothing usable. NULL still counts, so the athlete path, which
+  // has one zone and sends no fileClass, behaves exactly as it always has.
+  const counted = files.filter((f) => normalizeFileClass(f.fileClass) !== "raw");
+  const photos = counted.filter((f) => IMAGE_RE.test(f.mimeType ?? "") || HEIC_RE.test(f.name ?? "")).length;
+  const videos = counted.filter((f) => VIDEO_RE.test(f.mimeType ?? "")).length;
   if (photos < link.min_photos || videos < link.min_videos) {
     return NextResponse.json(
       {
@@ -523,8 +569,11 @@ async function handleFinalize(req: NextRequest, link: SubmissionLink, who: Submi
     campaign_id: link.campaign_id,
     athlete_name: `${who.first} ${who.last}`,
     athlete_email: null,
-    school: who.school,
+    // Nullable, and null is the honest value on a videographer submission where
+    // the school was never asked for — "" would read as a known-empty school.
+    school: who.school || null,
     ig_handle: who.ig,
+    file_class: normalizeFileClass(body?.fileClass),
     campaign_name: campaign.name ?? null,
     drive_file_id: finalId,
     drive_file_url: `https://drive.google.com/file/d/${finalId}/view`,
