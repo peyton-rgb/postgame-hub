@@ -372,7 +372,11 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const first = String(body?.firstName ?? "").trim();
   const last = String(body?.lastName ?? "").trim();
-  const ig = String(body?.igHandle ?? "").trim().replace(/^@+/, "");
+  // Lowercased to agree with submissions.ig_handle. Both columns hold the same
+  // handle for the same submission, and the match key is only a key if the two
+  // copies cannot disagree on case. Folder and file naming use first/last, so
+  // nothing in Drive changes shape because of this.
+  const ig = String(body?.igHandle ?? "").trim().replace(/^@+/, "").toLowerCase();
   const school = String(body?.school ?? "").trim();
 
   // A videographer is not asked for the athlete's school, phone or email — they
