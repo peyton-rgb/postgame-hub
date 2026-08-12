@@ -14,12 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
-      _admin_campaigns_staging: {
+      _archive_admin_campaigns_staging_20260812: {
         Row: {
           admin_brand: string | null
           admin_created: string | null
-          admin_id: string
-          admin_name: string
+          admin_id: string | null
+          admin_name: string | null
           brand_norm: string | null
           name_norm: string | null
           sheet_id: string | null
@@ -28,8 +28,8 @@ export type Database = {
         Insert: {
           admin_brand?: string | null
           admin_created?: string | null
-          admin_id: string
-          admin_name: string
+          admin_id?: string | null
+          admin_name?: string | null
           brand_norm?: string | null
           name_norm?: string | null
           sheet_id?: string | null
@@ -38,8 +38,8 @@ export type Database = {
         Update: {
           admin_brand?: string | null
           admin_created?: string | null
-          admin_id?: string
-          admin_name?: string
+          admin_id?: string | null
+          admin_name?: string | null
           brand_norm?: string | null
           name_norm?: string | null
           sheet_id?: string | null
@@ -1175,8 +1175,10 @@ export type Database = {
           archived: boolean
           brand_colors: Json | null
           brand_fonts: Json | null
+          brand_guidelines: Json | null
           brand_guidelines_url: string | null
           created_at: string | null
+          drive_campaign_subfolder_id: string | null
           drive_parent_folder_id: string | null
           font_primary: string | null
           font_primary_url: string | null
@@ -1213,8 +1215,10 @@ export type Database = {
           archived?: boolean
           brand_colors?: Json | null
           brand_fonts?: Json | null
+          brand_guidelines?: Json | null
           brand_guidelines_url?: string | null
           created_at?: string | null
+          drive_campaign_subfolder_id?: string | null
           drive_parent_folder_id?: string | null
           font_primary?: string | null
           font_primary_url?: string | null
@@ -1251,8 +1255,10 @@ export type Database = {
           archived?: boolean
           brand_colors?: Json | null
           brand_fonts?: Json | null
+          brand_guidelines?: Json | null
           brand_guidelines_url?: string | null
           created_at?: string | null
+          drive_campaign_subfolder_id?: string | null
           drive_parent_folder_id?: string | null
           font_primary?: string | null
           font_primary_url?: string | null
@@ -2608,6 +2614,8 @@ export type Database = {
       contracts: {
         Row: {
           athlete_id: string
+          brand_id: string
+          campaign_id: string
           contract_type: string | null
           created_at: string
           id: string
@@ -2619,6 +2627,8 @@ export type Database = {
         }
         Insert: {
           athlete_id: string
+          brand_id: string
+          campaign_id: string
           contract_type?: string | null
           created_at?: string
           id?: string
@@ -2630,6 +2640,8 @@ export type Database = {
         }
         Update: {
           athlete_id?: string
+          brand_id?: string
+          campaign_id?: string
           contract_type?: string | null
           created_at?: string
           id?: string
@@ -2644,7 +2656,49 @@ export type Database = {
             foreignKeyName: "contracts_athlete_id_fkey"
             columns: ["athlete_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+          {
+            foreignKeyName: "contracts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
           {
@@ -6050,52 +6104,67 @@ export type Database = {
           ack_instructions_at: string
           ack_music_at: string
           athlete_first_name: string
+          athlete_folder_id: string | null
           athlete_id: string | null
           athlete_last_name: string
           campaign_id: string
+          chased_at: string | null
           created_at: string
-          email: string
+          email: string | null
           id: string
           ig_handle: string
-          phone: string
-          school: string
+          phone: string | null
+          school: string | null
           submission_link_token: string
           submitted_at: string
+          submitter_type: string
           updated_at: string
+          videographer_ig: string | null
+          videographer_name: string | null
         }
         Insert: {
           ack_instructions_at: string
           ack_music_at: string
           athlete_first_name: string
+          athlete_folder_id?: string | null
           athlete_id?: string | null
           athlete_last_name: string
           campaign_id: string
+          chased_at?: string | null
           created_at?: string
-          email: string
+          email?: string | null
           id?: string
           ig_handle: string
-          phone: string
-          school: string
+          phone?: string | null
+          school?: string | null
           submission_link_token: string
           submitted_at?: string
+          submitter_type?: string
           updated_at?: string
+          videographer_ig?: string | null
+          videographer_name?: string | null
         }
         Update: {
           ack_instructions_at?: string
           ack_music_at?: string
           athlete_first_name?: string
+          athlete_folder_id?: string | null
           athlete_id?: string | null
           athlete_last_name?: string
           campaign_id?: string
+          chased_at?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           id?: string
           ig_handle?: string
-          phone?: string
-          school?: string
+          phone?: string | null
+          school?: string | null
           submission_link_token?: string
           submitted_at?: string
+          submitter_type?: string
           updated_at?: string
+          videographer_ig?: string | null
+          videographer_name?: string | null
         }
         Relationships: [
           {
@@ -6234,6 +6303,7 @@ export type Database = {
           drive_file_id: string
           drive_file_url: string
           drive_thumbnail_url: string | null
+          file_class: string | null
           file_name: string | null
           file_size_bytes: number | null
           form_response_id: string | null
@@ -6274,6 +6344,7 @@ export type Database = {
           drive_file_id: string
           drive_file_url: string
           drive_thumbnail_url?: string | null
+          file_class?: string | null
           file_name?: string | null
           file_size_bytes?: number | null
           form_response_id?: string | null
@@ -6314,6 +6385,7 @@ export type Database = {
           drive_file_id?: string
           drive_file_url?: string
           drive_thumbnail_url?: string | null
+          file_class?: string | null
           file_name?: string | null
           file_size_bytes?: number | null
           form_response_id?: string | null

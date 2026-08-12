@@ -36,9 +36,9 @@ export async function GET() {
   const { data: recaps } = await svc
     .from("campaign_recaps")
     // Logo and folder state come from the linked brand, not
-    // campaign_recaps.client_logo_url: that column is set on 2 of 611
-    // campaigns, while brand_id is set on all of them. Nested through the
-    // campaigns_brand_id_fkey FK, so no 2nd query.
+    // campaign_recaps.client_logo_url: that column is set on a negligible
+    // handful of campaigns, while brand_id is set on all of them. Nested
+    // through the campaigns_brand_id_fkey FK, so no 2nd query.
     .select(
       "id, name, admin_campaign_id, drive_folder_id, brief_url, admin_created_on, brand:brands!campaigns_brand_id_fkey(id, name, logo_light_url, logo_primary_url, drive_parent_folder_id)"
     )
