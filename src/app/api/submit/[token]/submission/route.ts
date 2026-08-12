@@ -13,9 +13,12 @@
 //   1. insert the `submissions` row
 //   2. set `submission_id` on each `tier3_submissions` row from this upload
 //
-// This lives in its own file so the upload/chunking/storage/Drive logic in
+// This lives in its own file so the upload/chunking/storage logic in
 // ../route.ts is not touched. `resolveLink` / `linkBlockedReason` are repeated
 // here rather than imported for the same reason.
+//
+// It does make one read-only Drive call, to recover the athlete's folder id for
+// `athlete_folder_id` — see the note at step 0. Nothing here writes to Drive.
 //
 // `athlete_id` stays null — matching an athlete to a row is a separate job.
 //
@@ -34,6 +37,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
+import { getDriveClient } from "@/lib/google-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -95,9 +99,13 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   // trim everything, strip a leading @ from the handle, strip non-digits from the phone.
   const first = String(body?.firstName ?? "").trim();
   const last = String(body?.lastName ?? "").trim();
+  // Lowercased for the same reason videographer_ig is: ig_handle is the match
+  // key, so "@Marcus", "Marcus" and "marcus" have to converge on one value or
+  // the same athlete arrives as three.
   const ig = String(body?.igHandle ?? "")
     .trim()
-    .replace(/^@+/, "");
+    .replace(/^@+/, "")
+    .toLowerCase();
   const phone = String(body?.phone ?? "").replace(/\D/g, "");
   const school = String(body?.school ?? "").trim();
   const email = String(body?.email ?? "").trim();
@@ -167,6 +175,43 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const supabase = createServiceSupabase();
 
+  // ── 0. the athlete's Drive folder ──
+  // athlete_folder_id has existed since #160 and nothing wrote it, so every
+  // per-athlete Drive icon in the Hub renders dimmed. The sibling route already
+  // creates the folder during upload; the id is read back here from a file that
+  // actually landed, rather than being taken from the request body — this
+  // endpoint is public, and a caller-supplied id would put an arbitrary Drive
+  // link in front of staff.
+  //
+  // Reading the file's parent also means no find-or-CREATE call from this
+  // route, so a submission that uploaded nothing cannot leave an empty folder
+  // behind. Best-effort throughout: the files are safely in Drive and a missing
+  // id only dims an icon, which is not worth failing a submission over.
+  let athleteFolderId: string | null = null;
+  if (fileRowIds.length > 0) {
+    try {
+      const { data: sample } = await supabase
+        .from("tier3_submissions")
+        .select("drive_file_id")
+        .in("id", fileRowIds)
+        .eq("campaign_id", link!.campaign_id)
+        .not("drive_file_id", "is", null)
+        .limit(1);
+
+      const driveFileId = (sample as Array<{ drive_file_id: string | null }> | null)?.[0]?.drive_file_id;
+      if (driveFileId) {
+        const meta = await getDriveClient().files.get({
+          fileId: driveFileId,
+          fields: "parents",
+          supportsAllDrives: true,
+        });
+        athleteFolderId = meta.data.parents?.[0] ?? null;
+      }
+    } catch (e) {
+      console.error("[submit] athlete_folder_id lookup failed:", e);
+    }
+  }
+
   // ── 1. the parent row ──
   const { data: submission, error: insertError } = await supabase
     .from("submissions")
@@ -184,6 +229,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       submitter_type: submitterType,
       videographer_name: isVideographer ? vidName : null,
       videographer_ig: isVideographer ? vidIg : null,
+      athlete_folder_id: athleteFolderId,
       athlete_id: null, // matching is a separate job
       ack_instructions_at: tickTime(body.ackInstructionsAt),
       ack_music_at: tickTime(body.ackMusicAt),
