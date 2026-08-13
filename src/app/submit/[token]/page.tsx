@@ -904,7 +904,18 @@ export default function SubmitPage() {
 function Shell({ children, antonVar }: { children: React.ReactNode; antonVar?: string }) {
   return (
     <div className={`sf ${antonVar ?? ""}`}>
-      <style>{`
+      {/* dangerouslySetInnerHTML rather than a text child, and not a style choice.
+          Browsers parse <style> content as RAW TEXT and never decode entities,
+          but React's SSR escapes text children — so `they're` shipped as
+          `they&#x27;re` and `> i` as `&gt; i`. The DOM then held escaped text the
+          client render did not reproduce: a hydration mismatch that cascaded into
+          a full client re-render, which left the file-input handlers bound to a
+          discarded tree, so picking a file staged a thumbnail and moved the
+          counter but never began the upload. It also broke both child-combinator
+          rules server-side, since `&gt;` is not a CSS selector.
+          Escaping is safe to bypass here: the literal below interpolates only
+          module-level design constants, never anything from a request. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         .sf { min-height:100vh; background:${BLACK}; color:${ink(0.82)};
               font:15px/1.6 ${BODY}; -webkit-font-smoothing:antialiased; }
         .sf *, .sf *::before, .sf *::after { box-sizing:border-box; }
@@ -1096,7 +1107,7 @@ function Shell({ children, antonVar }: { children: React.ReactNode; antonVar?: s
         @media (prefers-reduced-motion: reduce) {
           .sf * { transition:none !important; }
         }
-      `}</style>
+      ` }} />
       {children}
     </div>
   );

@@ -181,14 +181,43 @@ async function mintResumableSession(
 // submission_links.campaign_id FKs to campaign_recaps — NOT brand_campaigns.
 // Reading the wrong table returned null for every token, which is what made
 // this endpoint report "Your Campaign" with no brand on a perfectly good link.
-async function loadCampaign(campaignId: string) {
+type Campaign = {
+  id: string;
+  name: string | null;
+  drive_folder_id: string | null;
+  brand_id: string | null;
+  brand: string | null;
+};
+
+/** What reading the campaign behind a link produced. Three outcomes, not two.
+ *
+ *  `ok: false` means the READ ITSELF failed — Supabase unreachable, a timeout, a
+ *  malformed response. That is a different fact from "this campaign has no Drive
+ *  folder yet", and collapsing the two is what made a transient outage indistin-
+ *  guishable from an unconfigured campaign: the athlete was told to check back
+ *  later for a form that would have worked a second afterwards, and nothing was
+ *  logged to tell the two apart after the fact.
+ *
+ *  `ok: true, campaign: null` is the third case — the link points at a recap row
+ *  that isn't there, which is a broken link rather than an unfinished one. */
+type CampaignLoad = { ok: true; campaign: Campaign | null } | { ok: false };
+
+async function loadCampaign(campaignId: string): Promise<CampaignLoad> {
   const supabase = createServiceSupabase();
-  const { data } = await supabase
+  // maybeSingle(), not single(): single() reports "no rows" as a query error, so
+  // a missing recap row and an unreachable database arrive here identically —
+  // the very distinction this function exists to draw.
+  const { data, error } = await supabase
     .from("campaign_recaps")
     .select("id, name, drive_folder_id, brand_id, client_name")
     .eq("id", campaignId)
-    .single();
-  if (!data) return null;
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[submit] campaign_recaps read failed for ${campaignId}:`, error.message);
+    return { ok: false };
+  }
+  if (!data) return { ok: true, campaign: null };
 
   const row = data as {
     id: string;
@@ -198,16 +227,19 @@ async function loadCampaign(campaignId: string) {
     client_name: string | null;
   };
   return {
-    id: row.id,
-    name: row.name,
-    drive_folder_id: row.drive_folder_id,
-    brand_id: row.brand_id,
-    // brand_id is nullable at the DB level (0 null across 611 recaps today, but
-    // nothing enforces it), so this fallback is dormant rather than dead.
-    // client_name is populated on all 611 and matches brands.name on 609, which
-    // makes it the best stand-in when brand_id is absent.
-    brand: row.client_name, // display fallback only when brand_id is null.
-                            // Free text — never use as a brand identifier.
+    ok: true,
+    campaign: {
+      id: row.id,
+      name: row.name,
+      drive_folder_id: row.drive_folder_id,
+      brand_id: row.brand_id,
+      // brand_id is nullable at the DB level (0 null across 611 recaps today, but
+      // nothing enforces it), so this fallback is dormant rather than dead.
+      // client_name is populated on all 611 and matches brands.name on 609, which
+      // makes it the best stand-in when brand_id is absent.
+      brand: row.client_name, // display fallback only when brand_id is null.
+                              // Free text — never use as a brand identifier.
+    },
   };
 }
 
@@ -275,7 +307,12 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: blocked.error, postgameLogoUrl }, { status: blocked.status });
   }
 
-  const campaign = await loadCampaign(link!.campaign_id);
+  // A failed read degrades to the same neutral header a missing campaign gets.
+  // This is the display path: the athlete can still fill the form, and init will
+  // say so plainly if the campaign really can't take uploads. Turning a branding
+  // lookup into a dead-link screen would be the worse trade.
+  const loaded = await loadCampaign(link!.campaign_id);
+  const campaign = loaded.ok ? loaded.campaign : null;
   const branding = await loadBranding(campaign);
   return NextResponse.json({
     campaignName: campaign?.name ?? "Your Campaign",
@@ -452,7 +489,16 @@ async function handleInit(req: NextRequest, link: SubmissionLink, who: Submitter
     );
   }
 
-  const campaign = await loadCampaign(link.campaign_id);
+  const loaded = await loadCampaign(link.campaign_id);
+  if (!loaded.ok) {
+    // Our outage, not a campaign that isn't set up. Same 503, different sentence:
+    // this one is worth retrying in a moment, and it is already in the logs.
+    return NextResponse.json(
+      { error: "We couldn't start your upload just now. Please try again in a moment." },
+      { status: 503 }
+    );
+  }
+  const campaign = loaded.campaign;
   if (!campaign?.drive_folder_id) {
     return NextResponse.json(
       { error: "This campaign isn't ready to receive uploads yet. Please check back soon." },
@@ -496,7 +542,16 @@ async function handleFinalize(req: NextRequest, link: SubmissionLink, who: Submi
   const fileId = String(body?.fileId ?? "").trim();
   if (!fileId) return NextResponse.json({ error: "Missing fileId" }, { status: 400 });
 
-  const campaign = await loadCampaign(link.campaign_id);
+  const loaded = await loadCampaign(link.campaign_id);
+  if (!loaded.ok) {
+    // The bytes are already in Drive at this point — only the row is missing, so
+    // this must read as retryable rather than as a campaign that can't take files.
+    return NextResponse.json(
+      { error: "We couldn't save that file just now. Please try again in a moment." },
+      { status: 503 }
+    );
+  }
+  const campaign = loaded.campaign;
   if (!campaign?.drive_folder_id) {
     return NextResponse.json({ error: "Campaign folder unavailable." }, { status: 503 });
   }
