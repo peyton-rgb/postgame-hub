@@ -269,7 +269,12 @@ const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
 // the brand name instead — a real path, not an edge case.
 async function loadBranding(
   campaign: { brand_id: string | null; brand: string | null } | null
-): Promise<{ brandName: string | null; postgameLogoUrl: string | null; clientLogoUrl: string | null }> {
+): Promise<{
+  brandName: string | null;
+  postgameLogoUrl: string | null;
+  postgameLogoDarkUrl: string | null;
+  clientLogoUrl: string | null;
+}> {
   const supabase = createServiceSupabase();
   const ids = [POSTGAME_BRAND_ID];
   if (campaign?.brand_id) ids.push(campaign.brand_id);
@@ -291,6 +296,12 @@ async function loadBranding(
 
   return {
     postgameLogoUrl: pg?.logo_primary_url ?? null,
+    // The done screen is the one LIGHT surface in the product, so its footer mark
+    // has to be the black-ink variant — logo_primary_url is white lettering and
+    // would vanish on #FAF8F5. The header on that screen stays dark and keeps
+    // logo_primary_url. These names describe the MARK's colour, not the ground it
+    // sits on, which is the trap every time.
+    postgameLogoDarkUrl: pg?.logo_dark_url ?? null,
     clientLogoUrl: client?.logo_light_url ?? client?.logo_primary_url ?? null,
     brandName: client?.name ?? campaign?.brand ?? null,
   };
@@ -321,6 +332,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     minVideos: link!.min_videos,
     maxFiles: link!.max_files,
     postgameLogoUrl: branding.postgameLogoUrl,
+    postgameLogoDarkUrl: branding.postgameLogoDarkUrl,
     clientLogoUrl: branding.clientLogoUrl,
     // Settings the athlete-facing form needs. Null is meaningful in all three:
     // no brief link, no stated deliverable count, no expiry — the form omits

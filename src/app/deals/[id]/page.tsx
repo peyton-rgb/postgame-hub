@@ -47,7 +47,14 @@ export default function DealDetailPage() {
 
   return (
     <div style={{ minHeight:"100vh", background:"#000", color:"#fff", fontFamily:"Arial,Helvetica,sans-serif" }}>
-      <style>{`
+      {/* dangerouslySetInnerHTML, not a text child: browsers parse <style> as raw
+          text and never decode entities, but React's SSR escapes text children,
+          so an apostrophe ships as &#x27; and the client render can't reproduce
+          it. That mismatch re-renders the tree on the client and can leave
+          handlers on the discarded copy — it is what silently broke uploads on
+          the submit form (#167). This block interpolates nothing, so there is no
+          value to escape. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         .deal-hero{position:relative;width:100%;background:#0a0a0a;overflow:hidden;}
         .deal-hero-media{width:100%;max-height:70vh;object-fit:cover;display:block;}
         .deal-hero-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0.2) 40%,transparent 100%);}
@@ -71,7 +78,7 @@ export default function DealDetailPage() {
           .deal-desc{font-size:14px;}
           .deal-meta{font-size:14px;}
         }
-      `}</style>
+      ` }} />
 
       {/* Back bar */}
       <div style={{ paddingTop:64, borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
