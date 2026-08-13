@@ -1205,7 +1205,16 @@ function NumCell({
 
 function Styles() {
   return (
-    <style>{`
+    // dangerouslySetInnerHTML, not a text child: browsers parse <style> as raw
+    // text and never decode entities, but React's SSR escapes text children, so
+    // a quote ships as &quot; and the client render cannot reproduce it. React
+    // recovers from that mismatch by re-rendering on the client, and handlers can
+    // end up bound to the discarded tree — which is precisely how the submit
+    // form's uploads failed silently (#167). On this surface the same failure
+    // would mean Ping, Review, Copy link and Create folder appearing to work and
+    // doing nothing. This block interpolates no values, so nothing needs
+    // escaping.
+    <style dangerouslySetInnerHTML={{ __html: `
 .sfx{--or:#D73F09;--s1:rgba(250,248,245,.035);--s2:rgba(250,248,245,.06);
  --ln:rgba(250,248,245,.08);--ln2:rgba(250,248,245,.045);
  --t1:rgba(250,248,245,.96);--t2:rgba(250,248,245,.62);
@@ -1483,6 +1492,6 @@ function Styles() {
  .sfx .sheet{overflow-x:auto}
  .sfx .colh,.sfx .ar{min-width:560px}
 }
-`}</style>
+` }} />
   );
 }

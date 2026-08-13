@@ -45,6 +45,8 @@ interface LinkConfig {
   minVideos: number;
   maxFiles: number;
   postgameLogoUrl: string | null;
+  /** Black-ink mark, for the light done screen only. See the note in the API. */
+  postgameLogoDarkUrl: string | null;
   clientLogoUrl: string | null;
   briefUrl: string | null;
   deliverables: number | null;
@@ -285,7 +287,6 @@ export default function SubmitPage() {
   }, [phase]);
 
   const locked = phase !== "form";
-  const readOnlyFields = phase === "done";
 
   // Counts that gate the submission. Raw camera footage is collected but is
   // NOT deliverable content, so it never counts toward the minimums — without
@@ -509,8 +510,18 @@ export default function SubmitPage() {
   };
 
   const handleSubmit = () => {
+    // Finalise only. Every file is already in Drive, so re-uploading would
+    // duplicate them — all that is missing is the parent row.
     if (recordFailed) {
       void recordSubmission(files);
+      return;
+    }
+    // A file failed mid-run. Re-send just the failures; the ones that landed keep
+    // their "done" status, so their progress is preserved rather than restarted,
+    // and the completion effect finalises once the set is whole again.
+    if (phase === "partial") {
+      const retryTargets = files.filter((f) => f.status === "error");
+      if (retryTargets.length) runUpload(retryTargets);
       return;
     }
     if (!canSubmit) return;
@@ -622,28 +633,146 @@ export default function SubmitPage() {
   const doneFiles = files.filter((f) => f.status === "done");
   const failedFiles = files.filter((f) => f.status === "error");
 
+  // ── The send button IS the progress indicator ─────────────────
+  //
+  // One click uploads AND finalises. The button reports where that has got to,
+  // because the build before this greyed it out the moment uploading began and
+  // said nothing more: a grey button reads as "done", so an athlete could send
+  // their content, watch the button go inert, and leave believing they had
+  // submitted when no `submissions` row existed. Nobody would find out until
+  // they asked why they were never paid.
+  //
+  // "finishing" is the gap between the last file landing and that row being
+  // written. It is a real state, not decoration — a run has already died in
+  // exactly that gap, leaving the files in Drive and three orphaned
+  // tier3_submissions rows behind it. If it fails there, it has to say so.
+  const sendState: "ready" | "uploading" | "finishing" | "failed" | "retry" = recordFailed
+    ? "failed"
+    : recording
+      ? "finishing"
+      : phase === "uploading"
+        ? "uploading"
+        : phase === "partial"
+          ? "retry"
+          : "ready";
+  const busy = sendState === "uploading" || sendState === "finishing";
+
+  // Every file counts equally and contributes its own fraction, so the fill keeps
+  // moving inside a large video instead of stalling until the whole file lands.
+  const overallFraction = files.length
+    ? files.reduce((sum, f) => sum + (f.status === "done" ? 1 : f.progress), 0) / files.length
+    : 0;
+  const fillPct = Math.round((sendState === "finishing" ? 1 : overallFraction) * 100);
+  // 1-based index of the file in flight, pinned at the total once the last one
+  // lands so the label can never read "6 of 5".
+  const currentIndex = Math.min(doneFiles.length + 1, files.length);
+
+  const submitLabel =
+    sendState === "uploading"
+      ? `Sending ${currentIndex} of ${files.length} · ${fillPct}%`
+      : sendState === "finishing"
+        ? "Finishing up…"
+        : sendState === "failed"
+          ? "Try again"
+          : sendState === "retry"
+            ? `Retry ${failedCount} ${plural(failedCount, "file")}`
+            : isVideographer
+              ? "Send this athlete's content"
+              : "Send my content";
+
+  // Clickable in every state that has somewhere to go. "retry" and "failed" are
+  // both recoverable, so neither may present as a dead grey button.
+  const submitEnabled =
+    sendState === "ready" ? canSubmit : sendState === "retry" || sendState === "failed";
+
+  const sendHelper =
+    sendState === "uploading"
+      ? "Keep this page open until it finishes."
+      : sendState === "finishing"
+        ? "Almost there — don’t close this page."
+        : "";
+
   let statusText = "";
-  if (phase === "uploading") {
-    statusText = recordFailed
-      ? "Your files are uploaded. We couldn’t save your details."
-      : recording
-        ? "Saving your details…"
-        : `Uploading ${files.filter((f) => f.status === "uploading" || f.status === "queued").length || files.length} ${plural(files.length, "file")}…`;
-  } else if (phase === "partial") {
+  if (sendState === "failed") {
+    // The bytes are already in Drive and only the row is missing, so this must
+    // never read as the campaign being unable to accept files. #167 drew the
+    // same line server-side; this is the UI half of it.
+    statusText = "Your files are uploaded — we couldn’t save your details.";
+  } else if (sendState === "retry") {
     statusText = `${failedCount} ${plural(failedCount, "file")} didn’t upload — retry or remove ${failedCount === 1 ? "it" : "them"}.`;
   }
 
-  const submitEnabled = recordFailed ? !recording : canSubmit;
-  const submitLabel = recordFailed
-    ? "Try again"
-    : recording
-      ? "Saving…"
-      : isVideographer
-        ? "Send this athlete's content"
-        : "Send my content";
-
   const editPill = `${Math.min(photoCount, config.minPhotos) + Math.min(videoCount, config.minVideos)} of ${config.minPhotos + config.minVideos}`;
   const requirementLine = `${config.minPhotos} ${plural(config.minPhotos, "photo")} and ${config.minVideos} ${plural(config.minVideos, "video")} required`;
+
+  // ── Done ──────────────────────────────────────────────────────
+  //
+  // Replaces the form outright rather than annotating it, on a LIGHT ground —
+  // the only light surface in the product, and deliberately so: it marks a hard
+  // end to the task instead of looking like another step. The header bar stays
+  // black with its orange rule; only the page under it flips, which is why the
+  // header keeps logo_primary_url while the footer takes the black-ink mark.
+  if (phase === "done") {
+    // Raw footage is collected but is not deliverable content, so it is counted
+    // apart from the photo/video chips exactly as the minimums count it.
+    const donePhotos = doneFiles.filter((f) => f.kind === "photo" && f.fileClass !== "raw").length;
+    const doneVideos = doneFiles.filter((f) => f.kind === "video" && f.fileClass !== "raw").length;
+    const doneRaw = doneFiles.filter((f) => f.fileClass === "raw").length;
+    // The athlete's handle, not the videographer's: this screen describes whose
+    // content landed. Lowercased to match what the server stored.
+    const shownHandle = igHandle.trim().replace(/^@+/, "").toLowerCase();
+
+    return (
+      <Shell antonVar={anton.variable} light>
+        <Header postgame={config.postgameLogoUrl} onBack={null} />
+
+        <div className="sf-page">
+          <div className="sf-fin">
+            <span className="sf-fin-ring" aria-hidden="true">
+              <TickIcon />
+            </span>
+            <h1 className="d sf-fin-h">Content received</h1>
+            <div className="sf-fin-sub">Your content is in for {config.campaignName}.</div>
+
+            <div className="sf-fin-chips">
+              {donePhotos > 0 && (
+                <span className="sf-chip">
+                  {donePhotos} {plural(donePhotos, "photo")}
+                </span>
+              )}
+              {doneVideos > 0 && (
+                <span className="sf-chip">
+                  {doneVideos} {plural(doneVideos, "video")}
+                </span>
+              )}
+              {doneRaw > 0 && <span className="sf-chip">{doneRaw} raw</span>}
+            </div>
+
+            {shownHandle && (
+              <div className="sf-fin-meta">
+                @{shownHandle}
+                {submittedAt ? ` · ${formatStamp(submittedAt)}` : ""}
+              </div>
+            )}
+
+            {/* The line that stops athletes texting to ask whether it worked. */}
+            <div className="sf-fin-note">
+              Nothing else to do. We&rsquo;ll come back to you before you post if anything needs
+              another look.
+            </div>
+          </div>
+
+          {/* Black-ink mark: logo_primary_url is white lettering and would be
+              invisible on this ground. Falls back only if the row has no dark
+              variant, which would at least render something. */}
+          <Footer
+            postgame={config.postgameLogoDarkUrl ?? config.postgameLogoUrl}
+            expiresAt={null}
+          />
+        </div>
+      </Shell>
+    );
+  }
 
   return (
     <Shell antonVar={anton.variable}>
@@ -672,7 +801,6 @@ export default function SubmitPage() {
                 onChange={isVideographer ? setVidFirst : setFirstName}
                 placeholder={isVideographer ? "Marcus" : "Jordan"}
                 disabled={locked}
-                readOnly={readOnlyFields}
               />
             </Field>
             <Field label="Last name">
@@ -681,7 +809,6 @@ export default function SubmitPage() {
                 onChange={isVideographer ? setVidLast : setLastName}
                 placeholder={isVideographer ? "Reed" : "Blake"}
                 disabled={locked}
-                readOnly={readOnlyFields}
               />
             </Field>
           </div>
@@ -692,7 +819,6 @@ export default function SubmitPage() {
               onChange={isVideographer ? setVidIg : setIgHandle}
               placeholder="@ighandle"
               disabled={locked}
-              readOnly={readOnlyFields}
             />
           </Field>
 
@@ -709,7 +835,6 @@ export default function SubmitPage() {
                     onChange={setPhone}
                     placeholder="(941) 555-0143"
                     disabled={locked}
-                    readOnly={readOnlyFields}
                   />
                 </Field>
                 <Field label="School">
@@ -718,7 +843,6 @@ export default function SubmitPage() {
                     onChange={setSchool}
                     placeholder="Texas Tech"
                     disabled={locked}
-                    readOnly={readOnlyFields}
                   />
                 </Field>
               </div>
@@ -730,7 +854,6 @@ export default function SubmitPage() {
                   onChange={setEmail}
                   placeholder="you@school.edu"
                   disabled={locked}
-                  readOnly={readOnlyFields}
                 />
               </Field>
             </>
@@ -742,111 +865,105 @@ export default function SubmitPage() {
           <Card title="Athlete info">
             <div className="sf-two sf-fg">
               <Field label="First name">
-                <Input value={firstName} onChange={setFirstName} placeholder="Jordan" disabled={locked} readOnly={readOnlyFields} />
+                <Input value={firstName} onChange={setFirstName} placeholder="Jordan" disabled={locked} />
               </Field>
               <Field label="Last name">
-                <Input value={lastName} onChange={setLastName} placeholder="Blake" disabled={locked} readOnly={readOnlyFields} />
+                <Input value={lastName} onChange={setLastName} placeholder="Blake" disabled={locked} />
               </Field>
             </div>
             <Field label="Instagram">
-              <Input value={igHandle} onChange={setIgHandle} placeholder="@ighandle" disabled={locked} readOnly={readOnlyFields} />
+              <Input value={igHandle} onChange={setIgHandle} placeholder="@ighandle" disabled={locked} />
             </Field>
           </Card>
         )}
 
         {/* ── The content ── */}
         <Card title={isVideographer ? "The content you shot" : "Your content"}>
-          {phase === "done" ? (
-            <ReceivedSummary files={doneFiles} />
-          ) : (
-            <>
-              <input
-                ref={editInputRef}
-                type="file"
-                multiple
-                accept="image/*,video/*,.heic,.heif"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const picked = e.target.files ? Array.from(e.target.files) : [];
-                  e.target.value = "";
-                  if (picked.length) addFiles(picked, isVideographer ? "edit" : null);
-                }}
-              />
-              <input
-                ref={rawInputRef}
-                type="file"
-                multiple
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const picked = e.target.files ? Array.from(e.target.files) : [];
-                  e.target.value = "";
-                  if (picked.length) addFiles(picked, "raw");
-                }}
-              />
+          <input
+            ref={editInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*,.heic,.heif"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const picked = e.target.files ? Array.from(e.target.files) : [];
+              e.target.value = "";
+              if (picked.length) addFiles(picked, isVideographer ? "edit" : null);
+            }}
+          />
+          <input
+            ref={rawInputRef}
+            type="file"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const picked = e.target.files ? Array.from(e.target.files) : [];
+              e.target.value = "";
+              if (picked.length) addFiles(picked, "raw");
+            }}
+          />
 
-              <div className="sf-zones">
-                <Zone
-                  primary
-                  icon={<PencilIcon />}
-                  title={isVideographer ? "Edited files" : "Photos and video"}
-                  sub={requirementLine}
-                  pill={editPill}
-                  pillOk={meetsEdits}
-                  buttonLabel={isVideographer ? "Choose edited files" : "Choose from camera roll"}
-                  onPick={() => !locked && editInputRef.current?.click()}
-                  disabled={locked}
-                  pips={
-                    <div className="sf-pips">
-                      {Array.from({ length: config.minPhotos }).map((_, i) => (
-                        <span key={`p${i}`} className={`sf-pip${i < photoCount ? " on" : ""}`} />
-                      ))}
-                      {Array.from({ length: config.minVideos }).map((_, i) => (
-                        <span key={`v${i}`} className={`sf-pip vid${i < videoCount ? " on" : ""}`} />
-                      ))}
-                    </div>
-                  }
-                />
-
-                {isVideographer && (
-                  <Zone
-                    icon={<FolderIcon />}
-                    title="Raw files"
-                    sub="Everything you shot — required"
-                    pill={rawFiles.length === 0 ? "none yet" : `${rawFiles.length} ${plural(rawFiles.length, "file")}`}
-                    pillOk={rawFiles.length > 0}
-                    buttonLabel="Choose raw files"
-                    onPick={() => !locked && rawInputRef.current?.click()}
-                    disabled={locked}
-                    foot="Original camera footage and stills — .CR3, .ARW, .BRAW, ProRes, whatever you shot on."
-                  />
-                )}
-              </div>
-
-              {phase === "form" && files.length > 0 && (
-                <div className="sf-thumbs">
-                  {files.map((f) => (
-                    <Thumb key={f.id} f={f} removable onRemove={() => removeFile(f.id)} />
+          <div className="sf-zones">
+            <Zone
+              primary
+              icon={<PencilIcon />}
+              title={isVideographer ? "Edited files" : "Photos and video"}
+              sub={requirementLine}
+              pill={editPill}
+              pillOk={meetsEdits}
+              buttonLabel={isVideographer ? "Choose edited files" : "Choose from camera roll"}
+              onPick={() => !locked && editInputRef.current?.click()}
+              disabled={locked}
+              pips={
+                <div className="sf-pips">
+                  {Array.from({ length: config.minPhotos }).map((_, i) => (
+                    <span key={`p${i}`} className={`sf-pip${i < photoCount ? " on" : ""}`} />
+                  ))}
+                  {Array.from({ length: config.minVideos }).map((_, i) => (
+                    <span key={`v${i}`} className={`sf-pip vid${i < videoCount ? " on" : ""}`} />
                   ))}
                 </div>
-              )}
+              }
+            />
 
-              {(phase === "uploading" || phase === "partial") && (
-                <div className="sf-rows">
-                  {(phase === "uploading" ? files : failedFiles).map((f) => (
-                    <UploadRow
-                      key={f.id}
-                      f={f}
-                      onRetry={() => retryFile(f.id)}
-                      onRemove={() => removeFile(f.id)}
-                      removable={phase === "partial"}
-                    />
-                  ))}
-                </div>
-              )}
+            {isVideographer && (
+              <Zone
+                icon={<FolderIcon />}
+                title="Raw files"
+                sub="Everything you shot — required"
+                pill={rawFiles.length === 0 ? "none yet" : `${rawFiles.length} ${plural(rawFiles.length, "file")}`}
+                pillOk={rawFiles.length > 0}
+                buttonLabel="Choose raw files"
+                onPick={() => !locked && rawInputRef.current?.click()}
+                disabled={locked}
+                foot="Original camera footage and stills — .CR3, .ARW, .BRAW, ProRes, whatever you shot on."
+              />
+            )}
+          </div>
 
-              {statusText && <div className="sf-status">{statusText}</div>}
-            </>
+          {phase === "form" && files.length > 0 && (
+            <div className="sf-thumbs">
+              {files.map((f) => (
+                <Thumb key={f.id} f={f} removable onRemove={() => removeFile(f.id)} />
+              ))}
+            </div>
           )}
+
+          {(phase === "uploading" || phase === "partial") && (
+            <div className="sf-rows">
+              {(phase === "uploading" ? files : failedFiles).map((f) => (
+                <UploadRow
+                  key={f.id}
+                  f={f}
+                  onRetry={() => retryFile(f.id)}
+                  onRemove={() => removeFile(f.id)}
+                  removable={phase === "partial"}
+                />
+              ))}
+            </div>
+          )}
+
+          {statusText && <div className="sf-status">{statusText}</div>}
         </Card>
 
         {/* ── Before you send ── */}
@@ -884,13 +1001,22 @@ export default function SubmitPage() {
 
           {submitError && !recordFailed && <div className="sf-err">{submitError}</div>}
 
-          {phase === "done" ? (
-            <div className="sf-done">Submitted {submittedAt ? formatStamp(submittedAt) : ""}</div>
-          ) : (
-            <button type="button" className="sf-send" disabled={!submitEnabled} onClick={handleSubmit}>
+          <button
+            type="button"
+            className={`sf-send${busy ? " busy" : ""}`}
+            disabled={!submitEnabled}
+            onClick={handleSubmit}
+            aria-busy={busy}
+          >
+            {/* A positioned child behind the label, so the button itself is the
+                bar. Width transitions rather than stepping between files. */}
+            {busy && <span className="sf-send-fill" style={{ width: `${fillPct}%` }} aria-hidden="true" />}
+            <span className="sf-send-lb">
+              {busy && <Spinner />}
               {submitLabel}
-            </button>
-          )}
+            </span>
+          </button>
+          {sendHelper && <div className="sf-send-help">{sendHelper}</div>}
         </Card>
 
         <Footer postgame={config.postgameLogoUrl} expiresAt={config.expiresAt} />
@@ -901,9 +1027,18 @@ export default function SubmitPage() {
 
 // ── Shell + styles ────────────────────────────────────────────
 
-function Shell({ children, antonVar }: { children: React.ReactNode; antonVar?: string }) {
+function Shell({
+  children,
+  antonVar,
+  light,
+}: {
+  children: React.ReactNode;
+  antonVar?: string;
+  /** The done screen only. Flips the page ground, never the header bar. */
+  light?: boolean;
+}) {
   return (
-    <div className={`sf ${antonVar ?? ""}`}>
+    <div className={`sf${light ? " sf-light" : ""} ${antonVar ?? ""}`}>
       {/* dangerouslySetInnerHTML rather than a text child, and not a style choice.
           Browsers parse <style> content as RAW TEXT and never decode entities,
           but React's SSR escapes text children — so `they're` shipped as
@@ -1058,15 +1193,46 @@ function Shell({ children, antonVar }: { children: React.ReactNode; antonVar?: s
         .sf-box svg { width:12px; height:12px; }
         .sf-ack-tx { font-size:13px; line-height:1.55; color:${ink(0.82)}; min-width:0; }
         .sf-ack-tx a { color:${ORANGE}; }
-        .sf-send { width:100%; background:${ORANGE}; color:#fff; border-radius:11px; padding:15px;
-                   font-size:16px; font-weight:bold; margin-top:16px; }
+        .sf-send { position:relative; overflow:hidden; width:100%; background:${ORANGE}; color:#fff;
+                   border-radius:11px; padding:15px; font-size:16px; font-weight:bold; margin-top:16px; }
         .sf-send:disabled { background:${ink(0.08)}; color:${ink(0.45)}; cursor:not-allowed; }
-        .sf-done { margin-top:16px; text-align:center; font-family:${MONO}; font-size:11px;
-                   letter-spacing:.14em; text-transform:uppercase; color:${ink(0.62)}; padding:15px 0; }
-        .sf-recv { display:flex; align-items:center; gap:12px; }
-        .sf-recv-ic { width:26px; height:26px; border-radius:999px; background:${ORANGE}; flex:0 0 auto;
-                      display:flex; align-items:center; justify-content:center; }
-        .sf-recv-ic svg { width:12px; height:12px; }
+        /* While sending, the button is the progress bar: a dim track with the
+           orange fill riding over it. It must NOT go flat grey — a grey button
+           is exactly what read as "finished" while the upload was still running. */
+        .sf-send.busy:disabled { background:${ink(0.12)}; color:#fff; cursor:progress; }
+        .sf-send-fill { position:absolute; left:0; top:0; bottom:0; width:0; background:${ORANGE};
+                        transition:width .28s ease; }
+        .sf-send-lb { position:relative; display:inline-flex; align-items:center;
+                      justify-content:center; gap:9px; }
+        .sf-send-help { margin-top:10px; text-align:center; font-size:12.5px; color:${ink(0.55)}; }
+        .sf-spin { width:14px; height:14px; border-radius:999px; flex:0 0 auto;
+                   border:2px solid rgba(255,255,255,.35); border-top-color:#fff;
+                   animation:sf-spin .7s linear infinite; }
+        @keyframes sf-spin { to { transform:rotate(360deg); } }
+
+        /* ── done screen — the one light surface in the product ── */
+        .sf-light { background:#FAF8F5; color:rgba(18,18,26,0.82); }
+        .sf-light .sf-foot { border-top-color:rgba(18,18,26,0.10); }
+        .sf-light .sf-foot img { opacity:.8; }
+        .sf-light .sf-foot .q { color:rgba(18,18,26,0.72); }
+        .sf-fin { text-align:center; padding:56px 0 8px; }
+        .sf-fin-ring { width:76px; height:76px; border-radius:999px;
+                       border:2px solid rgba(31,163,92,.3); color:#1FA35C; margin:0 auto 22px;
+                       display:flex; align-items:center; justify-content:center; }
+        .sf-fin-ring svg { width:30px; height:30px; }
+        .sf-fin-h { font-size:44px; line-height:1.02; letter-spacing:.02em; margin:0 0 10px;
+                    color:#12121A; }
+        .sf-fin-sub { font-size:15px; line-height:1.6; color:rgba(18,18,26,0.68); }
+        .sf-fin-chips { display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
+                        margin-top:20px; }
+        .sf-chip { background:#fff; border:1px solid rgba(18,18,26,0.12); border-radius:999px;
+                   padding:7px 13px; font-family:${MONO}; font-size:11px; letter-spacing:.08em;
+                   text-transform:uppercase; color:rgba(18,18,26,0.72); }
+        .sf-fin-meta { margin-top:18px; font-family:${MONO}; font-size:11px; letter-spacing:.12em;
+                       text-transform:uppercase; color:rgba(18,18,26,0.45); }
+        .sf-fin-note { max-width:420px; margin:28px auto 0; padding-top:22px;
+                       border-top:1px solid rgba(18,18,26,0.10); font-size:14px; line-height:1.65;
+                       color:rgba(18,18,26,0.68); }
 
         /* ── footer ── */
         .sf-foot { text-align:center; padding:28px 0 0; border-top:1px solid ${ink(0.08)}; margin-top:24px; }
@@ -1085,6 +1251,10 @@ function Shell({ children, antonVar }: { children: React.ReactNode; antonVar?: s
           .sf-two { grid-template-columns:1fr; }
           .sf-h1 { font-size:29px; }
           .sf-page { padding:0 16px 56px; }
+          .sf-fin { padding:44px 0 8px; }
+          .sf-fin-h { font-size:37px; }
+          .sf-fin-ring { width:66px; height:66px; margin-bottom:18px; }
+          .sf-fin-ring svg { width:26px; height:26px; }
         }
 
         @media (min-width:640px) {
@@ -1106,6 +1276,9 @@ function Shell({ children, antonVar }: { children: React.ReactNode; antonVar?: s
 
         @media (prefers-reduced-motion: reduce) {
           .sf * { transition:none !important; }
+          /* The fill still tracks progress, it just stops easing; the spinner
+             stops turning, so the label carries the "still working" signal. */
+          .sf-spin { animation:none !important; }
         }
       ` }} />
       {children}
@@ -1281,25 +1454,9 @@ function Zone({
   );
 }
 
-function ReceivedSummary({ files }: { files: Picked[] }) {
-  const photos = files.filter((f) => f.kind === "photo" && f.fileClass !== "raw").length;
-  const videos = files.filter((f) => f.kind === "video" && f.fileClass !== "raw").length;
-  const raw = files.filter((f) => f.fileClass === "raw").length;
-  return (
-    <div className="sf-recv">
-      <span className="sf-recv-ic">
-        <TickIcon />
-      </span>
-      <div>
-        <div style={{ fontSize: 15, lineHeight: 1.5, color: ink(1) }}>Content received</div>
-        <div className="sf-row-m" style={{ marginTop: 2 }}>
-          {files.length} {plural(files.length, "file")} · {photos} {plural(photos, "photo")}, {videos}{" "}
-          {plural(videos, "video")}
-          {raw > 0 ? ` · ${raw} raw` : ""}
-        </div>
-      </div>
-    </div>
-  );
+/** Sits inside the send button while it is uploading or finishing. */
+function Spinner() {
+  return <span className="sf-spin" aria-hidden="true" />;
 }
 
 // A div rather than a <button>/<label> on purpose: acknowledgement 1 contains a
