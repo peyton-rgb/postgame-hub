@@ -225,7 +225,7 @@ export default function NewBriefPage() {
     try {
       if (briefId) {
         // Update existing draft
-        const res = await fetch(`/api/briefs/${briefId}`, {
+        const res = await fetch(`/api/campaign-briefs/${briefId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -233,7 +233,7 @@ export default function NewBriefPage() {
         if (!res.ok) throw new Error((await res.json()).error);
       } else {
         // Create new draft
-        const res = await fetch('/api/briefs', {
+        const res = await fetch('/api/campaign-briefs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -266,7 +266,7 @@ export default function NewBriefPage() {
     }
 
     try {
-      const res = await fetch(`/api/briefs/${briefId}/publish`, {
+      const res = await fetch(`/api/campaign-briefs/${briefId}/publish`, {
         method: 'POST',
       });
 

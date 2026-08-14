@@ -34,7 +34,7 @@ export default function BriefDetailPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     async function fetchBrief() {
-      const res = await fetch(`/api/briefs/${params.id}`);
+      const res = await fetch(`/api/campaign-briefs/${params.id}`);
       if (res.ok) {
         setBrief(await res.json());
       }
@@ -47,7 +47,7 @@ export default function BriefDetailPage({ params }: { params: { id: string } }) 
   async function handleRequestChanges() {
     setActionLoading('changes');
     try {
-      const res = await fetch(`/api/briefs/${params.id}/request-changes`, {
+      const res = await fetch(`/api/campaign-briefs/${params.id}/request-changes`, {
         method: 'POST',
       });
       if (res.ok) {
