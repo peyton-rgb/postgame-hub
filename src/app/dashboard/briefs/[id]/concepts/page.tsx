@@ -69,7 +69,7 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     async function fetchData() {
       const [briefRes, conceptsRes] = await Promise.all([
-        fetch(`/api/briefs/${briefId}`),
+        fetch(`/api/campaign-briefs/${briefId}`),
         fetch(`/api/concepts?brief_id=${briefId}`),
       ]);
 

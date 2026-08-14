@@ -387,13 +387,22 @@ const PAGES_SECTION: NavSection = {
   links: [
     { name: 'Recaps', href: '/dashboard/recaps', icon: PresentationIcon },
     { name: 'Submission Forms', href: '/dashboard/submission-forms', icon: InboxIcon },
-    { name: 'Performance Trackers', href: '/dashboard/performance-trackers', icon: TrendingUpIcon },
-    { name: 'Run of Shows', href: '/dashboard/run-of-shows', icon: ListCheckIcon },
-    { name: 'Legacy Briefs', href: '/dashboard/legacy-briefs', icon: NotebookIcon },
+    // These four are TABS on /dashboard, not routes of their own — the
+    // surfaces are <TrackerList>, <RunOfShowList>, <BriefList> and
+    // <OptInList>, switched by the ?tab= param in src/app/dashboard/page.tsx.
+    // They previously pointed at invented route paths and all four 404'd,
+    // which made the surfaces unreachable: DashboardShell CSS-hides each
+    // page's own <aside>, so this sidebar is the only nav.
+    { name: 'Performance Trackers', href: '/dashboard?tab=trackers', icon: TrendingUpIcon },
+    { name: 'Run of Shows', href: '/dashboard?tab=ros', icon: ListCheckIcon },
+    { name: 'Legacy Briefs', href: '/dashboard?tab=briefs', icon: NotebookIcon },
     { name: 'Pitches', href: '/dashboard/pitches', icon: StarIcon },
     { name: 'Newsletter', href: '/dashboard/newsletter', icon: MailIcon },
     { name: 'Campaign Instructions', href: '/dashboard/campaign-instructions', icon: ClipboardIcon },
-    { name: 'Campaign Opt-In', href: '/dashboard/campaign-opt-in', icon: UserCheckIcon },
+    // ?tab=optin renders <OptInList> (live `optin_campaigns`). Deliberately
+    // NOT /dashboard/campaign-optin — that index page is the legacy
+    // `campaign_optins` product. See claude_REPO-REUSE-MAP.md.
+    { name: 'Campaign Opt-In', href: '/dashboard?tab=optin', icon: UserCheckIcon },
   ],
 };
 
@@ -471,8 +480,15 @@ export default function DashboardSidebar() {
     router.push('/login');
   };
 
-  // Highlight a nav link when the current path matches
+  // Highlight a nav link when the current path matches.
+  //
+  // Tab links (/dashboard?tab=…) are never highlighted: telling them apart
+  // needs the ?tab= value, and useSearchParams() here would need a Suspense
+  // boundary this shell doesn't have. Matching on the path alone would
+  // highlight all four tab links at once, which is worse than none. They
+  // navigate correctly either way.
   const isActive = (href: string) => {
+    if (href.includes('?')) return false;
     if (href === '/dashboard') {
       return pathname === '/dashboard';
     }

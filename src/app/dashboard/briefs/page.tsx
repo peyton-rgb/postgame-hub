@@ -41,7 +41,7 @@ export default function BriefListPage() {
   useEffect(() => {
     async function fetchBriefs() {
       setLoading(true);
-      let url = '/api/briefs';
+      let url = '/api/campaign-briefs';
       if (statusFilter !== 'all') {
         url += `?status=${statusFilter}`;
       }
