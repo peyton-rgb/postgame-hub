@@ -13,6 +13,7 @@ import {
   INK_LABEL,
   pickBrandLogo,
 } from "@/lib/portal";
+import { loadPostgameTeam, PostgameTeamBlock } from "@/components/PostgameTeam";
 
 // Campaigns tab. Every campaign for this brand — published and draft alike.
 // Campaigns with media get the normal card; campaigns with none get an
@@ -165,6 +166,12 @@ export default async function PortalCampaignsPage({ params }: Props) {
           })}
         </div>
       )}
+
+      {/* Who to actually contact. Same component the internal campaign
+          page renders, so the client and the team see one answer. */}
+      <div className="mt-10 max-w-md">
+        <PostgameTeamBlock tone="dark" members={await loadPostgameTeam({ brandId: brand.id })} />
+      </div>
     </main>
   );
 }
