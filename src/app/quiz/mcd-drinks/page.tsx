@@ -120,13 +120,22 @@ const DRINK_ORDER: DrinkKey[] = [
 
 type Question = { q: string; options: { label: string; drink: DrinkKey }[] };
 
+/**
+ * Two answers per question. The deck is balanced so no drink can run away with
+ * it: every drink appears in 3 questions except Dirty Dr. Pepper, which appears
+ * in 2 — 20 slots over 10 questions. A ceiling of 3 points means ties are
+ * normal, and the cutline is settled by earliest-scored (see topThree).
+ *
+ * No three drinks cover all 10 questions (3 appearances each, max 9), so a run
+ * always scores at least 4 distinct drinks — the padding in topThree is pure
+ * defence, never load-bearing.
+ */
 const QUESTIONS: Question[] = [
   {
     q: "Sweet or refreshing?",
     options: [
       { label: "Sweet", drink: "orangeDream" },
       { label: "Refreshing", drink: "strawberryWatermelon" },
-      { label: "Both", drink: "spriteBerryBlast" },
     ],
   },
   {
@@ -134,7 +143,6 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Classic", drink: "dirtyDrPepper" },
       { label: "Adventurous", drink: "blackberryPassionFruit" },
-      { label: "A little of both", drink: "dragonberry" },
     ],
   },
   {
@@ -142,7 +150,6 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Morning", drink: "dragonberry" },
       { label: "Night", drink: "spriteBerryBlast" },
-      { label: "Depends", drink: "dirtyDrPepper" },
     ],
   },
   {
@@ -150,7 +157,6 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Leader", drink: "dirtyDrPepper" },
       { label: "Hype man", drink: "dragonberry" },
-      { label: "The chill one", drink: "orangeDream" },
     ],
   },
   {
@@ -158,7 +164,6 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Fruit", drink: "strawberryWatermelon" },
       { label: "Soda", drink: "spriteBerryBlast" },
-      { label: "Tropical", drink: "mangoPineapple" },
     ],
   },
   {
@@ -166,7 +171,6 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Safe", drink: "orangeDream" },
       { label: "Something new", drink: "blackberryPassionFruit" },
-      { label: "New and bold", drink: "dragonberry" },
     ],
   },
   {
@@ -174,7 +178,6 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Beach", drink: "strawberryWatermelon" },
       { label: "Tropical island", drink: "mangoPineapple" },
-      { label: "City adventure", drink: "dirtyDrPepper" },
     ],
   },
   {
@@ -182,15 +185,15 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Locked in", drink: "dragonberry" },
       { label: "Chillin’", drink: "orangeDream" },
-      { label: "Bring the energy", drink: "mangoPineapple" },
     ],
   },
   {
     q: "Sweet tooth or flavor explorer?",
     options: [
-      { label: "Sweet tooth", drink: "orangeDream" },
+      // Sweet tooth lands on Mango Pineapple, not Orange Dream — deliberate
+      // rebalance so Orange Dream and Mango Pineapple both sit at 3 slots.
+      { label: "Sweet tooth", drink: "mangoPineapple" },
       { label: "Flavor explorer", drink: "blackberryPassionFruit" },
-      { label: "Refreshing", drink: "strawberryWatermelon" },
     ],
   },
   {
@@ -198,7 +201,6 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "Smoothie vibes", drink: "mangoPineapple" },
       { label: "Something fizzy", drink: "spriteBerryBlast" },
-      { label: "Something bold", drink: "blackberryPassionFruit" },
     ],
   },
 ];
@@ -242,6 +244,40 @@ const DISPLAY = "font-display uppercase leading-[0.95]";
 /** Glass surface — answer cards and the reveal callout. */
 const GLASS =
   "rounded-2xl border border-[#FAF8F5]/10 bg-[#FAF8F5]/[0.04]";
+
+/**
+ * Back control. Lives in a fixed-height slot at the top-left of every screen so
+ * the content below doesn't jump between Q1 (no back) and Q2 (back).
+ */
+function BackSlot({ onBack }: { onBack?: () => void }) {
+  return (
+    <div className="flex w-full min-h-[48px] items-center">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back"
+          className="-ml-2 inline-flex min-h-[48px] items-center gap-2 px-2 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-[#FAF8F5]/50 transition-colors duration-150 hover:text-[#FAF8F5]/80"
+        >
+          <svg
+            viewBox="0 0 12 12"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M7.5 2.25 3.75 6l3.75 3.75" />
+          </svg>
+          Back
+        </button>
+      )}
+    </div>
+  );
+}
 
 /* ───────────────────────────── page ───────────────────────────── */
 
@@ -297,6 +333,44 @@ export default function McdDrinksQuizPage() {
     return () => clearTimeout(t);
   }, [stage, ranking.length]);
 
+  /**
+   * Undo is exact by construction: `answers` is the only record of scoring, and
+   * both the points and the first-hit index that breaks cutline ties are derived
+   * from it in topThree on every read. Dropping the last answer therefore leaves
+   * the run in precisely the state it was in before that tap — going back and
+   * re-answering the same way cannot drift from never having gone back. Nothing
+   * subtracts from a running tally, so there is no first-hit bookkeeping to
+   * repair. (This is the reason the tally is not kept incrementally in state.)
+   */
+  const goBack = () => {
+    if (stage === "reveal") {
+      // Back to the ranking screen with the 1-2-3 picks cleared. Finalists and
+      // their loaded photos stay put, so the cards are ready immediately.
+      setStage("ranking");
+      setRanking([]);
+      setHeroLoaded(false);
+      return;
+    }
+
+    if (stage === "ranking") {
+      // Back to Q10, undoing the answer that ended the run. The top 3 is
+      // recomputed from scratch when they finish again.
+      setStage("quiz");
+      setAnswers((current) => current.slice(0, -1));
+      setFinalists([]);
+      setImagesLoaded(0);
+      setRanking([]);
+      setHeroLoaded(false);
+      return;
+    }
+
+    if (answers.length === 0) return; // Q1 has nowhere to go back to
+    setAnswers((current) => current.slice(0, -1));
+  };
+
+  /** Q1 is the only screen without a back control. */
+  const canGoBack = stage !== "quiz" || answers.length > 0;
+
   const reset = () => {
     setStage("quiz");
     setAnswers([]);
@@ -347,6 +421,7 @@ export default function McdDrinksQuizPage() {
       <div className="flex w-full flex-1 flex-col justify-center">
         {stage === "quiz" && question && (
           <section className="mx-auto w-full max-w-md px-5 py-10 sm:max-w-lg">
+            <BackSlot onBack={canGoBack ? goBack : undefined} />
             <div key={questionIndex} className="mcdq-enter">
               <p className={EYEBROW} style={{ color: GOLD }}>
                 Question {questionIndex + 1} of {QUESTIONS.length}
@@ -373,6 +448,7 @@ export default function McdDrinksQuizPage() {
 
         {stage === "ranking" && (
           <section className="mx-auto w-full max-w-md px-5 py-10 sm:max-w-lg">
+            <BackSlot onBack={goBack} />
             <h2 className={EYEBROW} style={{ color: GOLD }}>
               Your top 3 is in
             </h2>
@@ -449,6 +525,7 @@ export default function McdDrinksQuizPage() {
 
         {stage === "reveal" && winner && (
           <section className="mx-auto flex w-full max-w-md flex-col items-center px-5 py-8 sm:max-w-lg">
+            <BackSlot onBack={goBack} />
             {/* w-full matters: as a shrink-to-fit flex item this box would
                 collapse to the image's own width, and globals'
                 img{max-width:100%} would then size the hero off that collapsed
