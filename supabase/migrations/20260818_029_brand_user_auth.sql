@@ -15,7 +15,8 @@
 --
 -- Rollback:
 --   ALTER TABLE brands DROP COLUMN account_owner_id;
---   ALTER TABLE brand_contacts DROP COLUMN invite_token, DROP COLUMN invite_expires_at;
+--   ALTER TABLE brand_contacts DROP COLUMN invite_token, DROP COLUMN invite_expires_at,
+--     DROP COLUMN invite_send_error, DROP COLUMN invite_last_attempt_at;
 --   ALTER TABLE postgame_contacts DROP COLUMN profile_id;
 --   ALTER TABLE profiles DROP CONSTRAINT profiles_access_level_check;
 --   ALTER TABLE profiles ADD CONSTRAINT profiles_access_level_check
@@ -46,9 +47,15 @@ CREATE INDEX IF NOT EXISTS idx_brands_account_owner ON brands (account_owner_id)
 -- DEFAULT gen_random_uuid() means the single pre-existing invited row
 -- (7-Eleven / peytonjula@gmail.com) gets a token when this runs, so the
 -- pilot invite can be resent without hand-patching it.
+-- invite_send_error records WHY the last send failed, so the attachment
+-- row can show "send failed — resend" instead of sitting at Invited as
+-- though a mail nobody received were on its way. 028 has no
+-- bounce_reason, so there was nowhere else to put it.
 ALTER TABLE brand_contacts
   ADD COLUMN IF NOT EXISTS invite_token uuid DEFAULT gen_random_uuid(),
-  ADD COLUMN IF NOT EXISTS invite_expires_at timestamptz;
+  ADD COLUMN IF NOT EXISTS invite_expires_at timestamptz,
+  ADD COLUMN IF NOT EXISTS invite_send_error text,
+  ADD COLUMN IF NOT EXISTS invite_last_attempt_at timestamptz;
 
 -- Lookup path for /portal/signup?token=… — unique so a token can never
 -- resolve to two attachments.

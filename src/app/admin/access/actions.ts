@@ -31,6 +31,7 @@ import { logAdminAction } from "@/lib/admin/audit";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { getAccessSchemaState } from "@/lib/admin/access-schema";
 import { isAttachmentRole, isContactType } from "@/lib/admin/access";
+import { INVITE_TTL_DAYS, resolveBrandLogo, sendInviteEmail } from "@/lib/admin/invite-email";
 
 const BASE = "/admin/access";
 
@@ -43,6 +44,105 @@ function clean(raw: FormDataEntryValue | null): string | null {
 function backTo(result: string, extra?: Record<string, string>): never {
   const q = new URLSearchParams({ result, ...(extra ?? {}) });
   redirect(`${BASE}?${q.toString()}`);
+}
+
+/**
+ * Send the invite email for one attachment and settle its status.
+ *
+ * The status ladder is honest about delivery: an attachment only reaches
+ * `invited` if a mail actually went out. If the send fails it is left at
+ * whatever it was before (`on_file` for a brand-new attachment) with
+ * invite_send_error set, so the row shows "send failed — resend" rather
+ * than implying a mail is on its way that nobody will ever receive.
+ *
+ * Pre-029 the token columns do not exist. Rather than fail the whole
+ * invite, we record the attachment as `invited` with no email and report
+ * emailSent:false / reason 'pending029' — the pre-029 behaviour, plus an
+ * honest label. Never throws.
+ */
+async function deliverInvite(opts: {
+  supabase: ReturnType<typeof createServiceSupabase>;
+  attachmentId: string;
+  brandId: string;
+  contactName: string;
+  toEmail: string;
+  role: "approver" | "viewer";
+  /** status to fall back to if the send fails */
+  priorStatus: string;
+  invitesSchemaReady: boolean;
+}): Promise<{ emailSent: boolean; reason: string | null; status: string }> {
+  const { supabase, attachmentId, brandId, contactName, toEmail, role, priorStatus } = opts;
+  const now = new Date();
+
+  if (!opts.invitesSchemaReady) {
+    await supabase
+      .from("brand_contacts")
+      .update({ status: "invited", invited_at: now.toISOString() })
+      .eq("id", attachmentId);
+    return { emailSent: false, reason: "pending029", status: "invited" };
+  }
+
+  const expiresAt = new Date(now.getTime() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+  const [{ data: brand }, { data: attachment }] = await Promise.all([
+    supabase
+      .from("brands")
+      .select("name, logo_primary_url, logo_light_url, logo_white_url, logo_mark_url, logo_url")
+      .eq("id", brandId)
+      .maybeSingle(),
+    supabase.from("brand_contacts").select("invite_token").eq("id", attachmentId).maybeSingle(),
+  ]);
+
+  const token = (attachment as { invite_token?: string } | null)?.invite_token ?? null;
+  if (!token) {
+    await supabase
+      .from("brand_contacts")
+      .update({
+        status: priorStatus,
+        invite_send_error: "no invite token on this attachment",
+        invite_last_attempt_at: now.toISOString(),
+      })
+      .eq("id", attachmentId);
+    return { emailSent: false, reason: "no-token", status: priorStatus };
+  }
+
+  const result = await sendInviteEmail({
+    toEmail,
+    contactName,
+    brandName: brand?.name ?? "your brand",
+    brandLogoUrl: brand ? resolveBrandLogo(brand) : null,
+    roleLabel: role === "approver" ? "Approver" : "Viewer",
+    signupUrl: `${siteUrl()}/portal/signup?token=${token}`,
+    expiresAt,
+  });
+
+  if (result.sent) {
+    await supabase
+      .from("brand_contacts")
+      .update({
+        status: "invited",
+        invited_at: now.toISOString(),
+        invite_expires_at: expiresAt.toISOString(),
+        invite_send_error: null,
+        invite_last_attempt_at: now.toISOString(),
+      })
+      .eq("id", attachmentId);
+    return { emailSent: true, reason: null, status: "invited" };
+  }
+
+  await supabase
+    .from("brand_contacts")
+    .update({
+      status: priorStatus,
+      invite_send_error: result.error ?? "send failed",
+      invite_last_attempt_at: now.toISOString(),
+    })
+    .eq("id", attachmentId);
+  return { emailSent: false, reason: result.error ?? "send failed", status: priorStatus };
+}
+
+function siteUrl(): string {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://postgame-hub.vercel.app").replace(/\/$/, "");
 }
 
 /**
@@ -123,18 +223,24 @@ export async function inviteContact(formData: FormData): Promise<void> {
   if (prior?.error) backTo("error");
 
   if (prior?.data) {
+    // Clear the revoke and set the role, but leave the STATUS to
+    // deliverInvite — it only becomes `invited` if a mail goes out.
     const { error } = await supabase
       .from("brand_contacts")
-      .update({
-        status: "invited",
-        role,
-        invited_email: email,
-        invited_at: now,
-        revoked_at: null,
-        revoked_by: null,
-      })
+      .update({ role, invited_email: email, revoked_at: null, revoked_by: null })
       .eq("id", prior.data.id);
     if (error) backTo("error");
+
+    const delivery = await deliverInvite({
+      supabase,
+      attachmentId: prior.data.id,
+      brandId,
+      contactName: existing.data?.name ?? name,
+      toEmail: email,
+      role,
+      priorStatus: prior.data.status === "revoked" ? "on_file" : prior.data.status,
+      invitesSchemaReady: schema.invites,
+    });
 
     await logAdminAction({
       actorId: actor.id,
@@ -149,27 +255,29 @@ export async function inviteContact(formData: FormData): Promise<void> {
           id: prior.data.id,
           brand_id: brandId,
           role,
-          status: "invited",
+          status: delivery.status,
           invited_email: email,
-          invited_at: now,
         },
         reattached: true,
+        email_sent: delivery.emailSent,
+        email_error: delivery.reason,
       },
     });
 
     revalidatePath(BASE);
-    backTo("invited", { dedupe: "reattached" });
+    backTo(delivery.emailSent ? "invited" : "invite-not-emailed", { dedupe: "reattached" });
   }
 
+  // Inserted at on_file, NOT invited: the row must not claim an invite is
+  // in flight until deliverInvite() has actually put one there.
   const inserted = await supabase
     .from("brand_contacts")
     .insert({
       contact_id: contactId,
       brand_id: brandId,
       role,
-      status: "invited",
+      status: "on_file",
       invited_email: email,
-      invited_at: now,
     })
     .select("id")
     .single();
@@ -183,6 +291,17 @@ export async function inviteContact(formData: FormData): Promise<void> {
     }
     backTo("error");
   }
+
+  const delivery = await deliverInvite({
+    supabase,
+    attachmentId: inserted.data.id,
+    brandId,
+    contactName: name,
+    toEmail: email,
+    role,
+    priorStatus: "on_file",
+    invitesSchemaReady: schema.invites,
+  });
 
   await logAdminAction({
     actorId: actor.id,
@@ -203,15 +322,18 @@ export async function inviteContact(formData: FormData): Promise<void> {
         id: inserted.data.id,
         brand_id: brandId,
         role,
-        status: "invited",
+        status: delivery.status,
         invited_email: email,
-        invited_at: now,
       },
+      email_sent: delivery.emailSent,
+      email_error: delivery.reason,
     },
   });
 
   revalidatePath(BASE);
-  backTo("invited", { dedupe: identityWasCreated ? "new-identity" : "existing-identity" });
+  backTo(delivery.emailSent ? "invited" : "invite-not-emailed", {
+    dedupe: identityWasCreated ? "new-identity" : "existing-identity",
+  });
 }
 
 /** Resend (or first-send, for an on-file contact) an invite for one attachment. */
@@ -230,33 +352,36 @@ export async function resendInvite(formData: FormData): Promise<void> {
   const supabase = createServiceSupabase();
   const before = await supabase
     .from("brand_contacts")
-    .select("id, status, invited_email, contact_id")
+    .select("id, status, role, brand_id, invited_email, contact_id")
     .eq("id", attachmentId)
     .maybeSingle();
   if (before.error || !before.data) backTo("error");
 
-  let target = overrideEmail ?? before.data.invited_email;
-  if (!target) {
-    const identity = await supabase
-      .from("postgame_contacts")
-      .select("email")
-      .eq("id", before.data.contact_id)
-      .maybeSingle();
-    target = identity.data?.email ?? null;
-  }
+  const identity = await supabase
+    .from("postgame_contacts")
+    .select("name, email")
+    .eq("id", before.data.contact_id)
+    .maybeSingle();
+
+  const target = overrideEmail ?? before.data.invited_email ?? identity.data?.email ?? null;
   if (!target) backTo("resend-no-email");
 
   const { error } = await supabase
     .from("brand_contacts")
-    .update({
-      status: "invited",
-      invited_email: target,
-      invited_at: new Date().toISOString(),
-      revoked_at: null,
-      revoked_by: null,
-    })
+    .update({ invited_email: target, revoked_at: null, revoked_by: null })
     .eq("id", attachmentId);
   if (error) backTo("error");
+
+  const delivery = await deliverInvite({
+    supabase,
+    attachmentId,
+    brandId: before.data.brand_id,
+    contactName: identity.data?.name ?? "there",
+    toEmail: target,
+    role: isAttachmentRole(before.data.role) ? before.data.role : "viewer",
+    priorStatus: before.data.status === "revoked" ? "on_file" : before.data.status,
+    invitesSchemaReady: schema.invites,
+  });
 
   await logAdminAction({
     actorId: actor.id,
@@ -265,11 +390,17 @@ export async function resendInvite(formData: FormData): Promise<void> {
     entity: "brand_contacts",
     entityId: attachmentId,
     before: { status: before.data.status, invited_email: before.data.invited_email },
-    after: { status: "invited", invited_email: target, resend: true },
+    after: {
+      status: delivery.status,
+      invited_email: target,
+      resend: true,
+      email_sent: delivery.emailSent,
+      email_error: delivery.reason,
+    },
   });
 
   revalidatePath(BASE);
-  backTo("invited");
+  backTo(delivery.emailSent ? "invited" : "invite-not-emailed");
 }
 
 /** Change a contact's role FOR ONE BRAND. Other attachments are untouched. */

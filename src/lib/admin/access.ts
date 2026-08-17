@@ -113,6 +113,8 @@ export interface AttachmentRow {
   invited_at: string | null;
   activated_at: string | null;
   revoked_at: string | null;
+  /** 029: why the last invite email failed to send, if it did. */
+  invite_send_error: string | null;
 }
 
 /** One human, with every brand they can reach. */
