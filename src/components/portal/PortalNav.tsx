@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ORANGE, OFFWHITE, RAISED, RAISED_B, INK_LABEL, MONO } from "@/lib/portal";
 
+// Tab nav for the portal's private frame. Keyed on a BASE PATH, not a
+// token, so the same nav serves both doors into the portal:
+//   /portal/{token}   token visitor
+//   /portal           signed-in brand user
+//
 // Tab nav for the portal's private frame. Five tabs, rendered in two places:
 // a horizontal row in the header (>=751px) and a sticky bottom tab bar
 // (<=750px). Per the design system, Hub app surfaces get a bottom tab bar on
@@ -15,8 +20,8 @@ import { ORANGE, OFFWHITE, RAISED, RAISED_B, INK_LABEL, MONO } from "@/lib/porta
 
 type Tab = { label: string; href: string; icon: React.ReactNode };
 
-function useTabs(token: string): Tab[] {
-  const base = `/portal/${token}`;
+function useTabs(basePath: string): Tab[] {
+  const base = basePath;
   // The Assets tab points at /library: AssetModal in that directory is
   // imported by src/components/CampaignRecap.tsx, a protected file.
   return [
@@ -90,9 +95,9 @@ function Badge({ count }: { count: number }) {
 }
 
 /** Header nav, >=751px. */
-export default function PortalNav({ token, reviewCount = 0 }: { token: string; reviewCount?: number }) {
-  const tabs = useTabs(token);
-  const isActive = useIsActive(`/portal/${token}`);
+export default function PortalNav({ basePath, reviewCount = 0 }: { basePath: string; reviewCount?: number }) {
+  const tabs = useTabs(basePath);
+  const isActive = useIsActive(basePath);
 
   return (
     <nav className="pv2-nav-desktop gap-[2px]" aria-label="Portal sections">
@@ -125,9 +130,9 @@ export default function PortalNav({ token, reviewCount = 0 }: { token: string; r
 }
 
 /** Sticky bottom tab bar, <=750px. Rendered at the end of the layout. */
-export function PortalTabBar({ token, reviewCount = 0 }: { token: string; reviewCount?: number }) {
-  const tabs = useTabs(token);
-  const isActive = useIsActive(`/portal/${token}`);
+export function PortalTabBar({ basePath, reviewCount = 0 }: { basePath: string; reviewCount?: number }) {
+  const tabs = useTabs(basePath);
+  const isActive = useIsActive(basePath);
 
   return (
     <nav className="pv2-nav-mobile" aria-label="Portal sections">
