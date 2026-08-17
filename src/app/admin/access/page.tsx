@@ -10,11 +10,16 @@
 // Absorbs the CF Admins view. Staff accounts are NOT managed here —
 // the Staff tab routes to /admin/users, no duplicate user management.
 //
-// SCHEMA: postgame_contacts.contact_type / .agency_name and the whole
-// brand_contacts table arrive with migration 028 (UNAPPLIED). Reads go
-// through safeQuery: pre-migration the 15 real contacts still render as
-// identities with zero attachments, and the screen says why. No
-// invented attachments, no placeholder brands.
+// SCHEMA: everything 028 delivers (brand_contacts, plus
+// postgame_contacts.contact_type / .agency_name) is checked by a LIVE
+// PROBE at request time — never a hardcoded flag. getAccessSchemaState()
+// is the one source of truth shared with every write guard in
+// ./actions.ts, so the banner and the actions cannot disagree: if the
+// screen says "not applied", the writes really do refuse, and the moment
+// 028 is reachable both flip together with no redeploy.
+//
+// While it is missing, the real contacts still render as identities with
+// zero attachments. No invented attachments, no placeholder brands.
 // ============================================================
 
 import Link from "next/link";
@@ -24,6 +29,7 @@ import { PAGE_SIZE, formatDate, pageRange, safeQuery, sanitizeFilterValue } from
 import { PageHeader, Paginator, ErrorNote, PendingMigration, EmptyRows } from "@/components/admin/ui";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
 import FilterPopover from "@/components/admin/FilterPopover";
+import { getAccessSchemaState } from "@/lib/admin/access-schema";
 import AccessAttachmentMenu from "@/components/admin/AccessAttachmentMenu";
 import AccessInviteForm from "@/components/admin/AccessInviteForm";
 import {
@@ -70,18 +76,29 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
     .filter((b): b is { id: string; name: string } => Boolean(b.name))
     .map((b) => ({ id: b.id, name: b.name }));
 
+  // ---------- live schema probe ----------
+  // The single source of truth for "is 028 there?" — shared with every
+  // write guard, so the banner and the actions can never disagree.
+  const schema = await getAccessSchemaState();
+  const schemaPending = !schema.attachments;
+
   // ---------- attachments ----------
   // Pulled first: brand/status filters narrow the set of HUMANS we page over.
   const attachRes = await safeQuery<AttachmentRaw[]>(() =>
     supabase
       .from("brand_contacts")
       .select(
-        "id, contact_id, brand_id, role, status, invited_email, invited_at, activated_at, bounced_at, revoked_at, last_active_at, brands(name)"
+        "id, contact_id, brand_id, role, status, invited_email, signup_email, invited_at, activated_at, revoked_at, brands(name)"
       )
       .limit(5000)
   );
-  const schemaPending = attachRes.pending;
   const allAttachments: AttachmentRow[] = (attachRes.data ?? []).map(normalizeAttachment);
+
+  // If the probe says the table is reachable but this query still failed,
+  // that is a REAL error (a column we asked for is missing), not a pending
+  // migration. Surfacing it beats silently rendering everyone as unattached
+  // — which is exactly how a schema mismatch hid here once already.
+  const attachmentReadBroken = !schemaPending && (attachRes.pending || Boolean(attachRes.error));
 
   // Which humans survive the attachment-level filters?
   let contactIdFilter: string[] | null = null;
@@ -108,21 +125,15 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
   const fullSelect = "id, name, email, phone, is_active, created_at, contact_type, agency_name";
   const baseSelect = "id, name, email, phone, is_active, created_at";
 
-  let identityPending = false;
-  let contactsRes = await safeQuery<ContactRaw[]>(() =>
-    applyContactFilter(supabase.from("postgame_contacts").select(fullSelect))
+  // The probe decides which shape to ask for; no speculative failing query.
+  const identityPending = !schema.identityFields;
+  const contactsRes = await safeQuery<ContactRaw[]>(() =>
+    applyContactFilter(
+      supabase.from("postgame_contacts").select(identityPending ? baseSelect : fullSelect)
+    )
       .order("name", { ascending: true })
       .range(from, to)
   );
-  if (contactsRes.pending) {
-    // contact_type / agency_name not migrated — still show the real humans.
-    identityPending = true;
-    contactsRes = await safeQuery<ContactRaw[]>(() =>
-      applyContactFilter(supabase.from("postgame_contacts").select(baseSelect))
-        .order("name", { ascending: true })
-        .range(from, to)
-    );
-  }
 
   if (contactsRes.error) {
     return (
@@ -149,6 +160,16 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
   );
   const identities = groupByIdentity(contacts, visibleAttachments);
 
+  // How many revoked attachments the filter is currently hiding, per human —
+  // so an empty cell can say which kind of empty it is.
+  const hiddenRevoked = new Map<string, number>();
+  if (!showRevoked) {
+    for (const a of allAttachments) {
+      if (a.status !== "revoked" || !pageIds.has(a.contact_id)) continue;
+      hiddenRevoked.set(a.contact_id, (hiddenRevoked.get(a.contact_id) ?? 0) + 1);
+    }
+  }
+
   // ---------- seat line (only meaningful for one brand at a time) ----------
   const seatBrand = brandFilter ? brands.find((b) => b.id === brandFilter) ?? null : null;
   const seatUsage = seatBrand
@@ -174,14 +195,24 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
 
       {result && <ResultNote result={result} />}
 
-      {schemaPending && (
+      {/* Driven entirely by the live probe: once 028 is reachable this
+          disappears on its own, and the write guards flip in the same breath. */}
+      {!schema.ready && (
         <div className="mb-4">
-          <PendingMigration migration={MIGRATION} feature="Per-brand attachments (role, status, invites)" />
+          <PendingMigration migration={MIGRATION} feature={capitalise(schema.missing.join(" and "))} />
         </div>
       )}
-      {!schemaPending && identityPending && (
+
+      {attachmentReadBroken && (
         <div className="mb-4">
-          <PendingMigration migration={MIGRATION} feature="Contact type (Brand / Agency) and agency name" />
+          <ErrorNote
+            message={
+              "brand_contacts exists but could not be read with the columns this screen asks for — " +
+              "every contact below will look unattached, which may not be true. This is a schema " +
+              "mismatch, not a pending migration. " +
+              (attachRes.error ?? "")
+            }
+          />
         </div>
       )}
 
@@ -255,21 +286,21 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
             key: "attachments",
             header: "Brand attachments — role & status per brand",
             render: (r) => (
-              <Attachments identity={r} pending={schemaPending} showRevoked={showRevoked} />
+              <Attachments identity={r} pending={schemaPending} hiddenRevoked={hiddenRevoked.get(r.contact.id) ?? 0} />
             ),
           },
           {
             key: "last",
-            header: "Last active",
+            header: "Activated",
             align: "right",
             secondary: true,
-            render: (r) => <LastActive identity={r} />,
+            render: (r) => <Activated identity={r} />,
           },
         ]}
         mobile={{
           title: (r) => r.contact.name,
           subtitle: (r) => displayEmail(r)?.value ?? "no email on file",
-          strip: (r) => <Attachments identity={r} pending={schemaPending} showRevoked={showRevoked} />,
+          strip: (r) => <Attachments identity={r} pending={schemaPending} hiddenRevoked={hiddenRevoked.get(r.contact.id) ?? 0} />,
         }}
       />
 
@@ -372,11 +403,12 @@ function TypeChip({ identity, pending }: { identity: IdentityRow; pending: boole
 function Attachments({
   identity,
   pending,
-  showRevoked,
+  hiddenRevoked = 0,
 }: {
   identity: IdentityRow;
   pending: boolean;
-  showRevoked: boolean;
+  /** revoked attachments the current filter is hiding for this human */
+  hiddenRevoked?: number;
 }) {
   if (pending) {
     return (
@@ -388,8 +420,9 @@ function Attachments({
   if (identity.attachments.length === 0) {
     return (
       <span className="text-[12px] text-stone-400">
-        On file, not attached to any brand yet
-        {!showRevoked && " (revoked hidden)"}
+        {hiddenRevoked > 0
+          ? `No live attachments — ${hiddenRevoked} revoked, hidden by the filter`
+          : "On file, not attached to any brand yet"}
       </span>
     );
   }
@@ -437,9 +470,16 @@ function Attachments({
   );
 }
 
-function LastActive({ identity }: { identity: IdentityRow }) {
+/**
+ * The mockup's column is "Last active", but the applied 028 has no
+ * last_active_at to source it from — only activated_at, which is when they
+ * first signed in. Labelling that "last active" would be a quiet lie, so
+ * the column reports what actually exists: when the person activated.
+ * Revisit if a real last-seen signal ever lands.
+ */
+function Activated({ identity }: { identity: IdentityRow }) {
   const stamps = identity.attachments
-    .map((a) => a.last_active_at)
+    .map((a) => a.activated_at)
     .filter((v): v is string => Boolean(v))
     .sort()
     .reverse();
@@ -524,6 +564,10 @@ function ResultNote({ result }: { result: string }) {
 
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 
+function capitalise(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 interface ContactRaw {
   id: string;
   name: string | null;
@@ -542,11 +586,10 @@ interface AttachmentRaw {
   role: string | null;
   status: string | null;
   invited_email: string | null;
+  signup_email: string | null;
   invited_at: string | null;
   activated_at: string | null;
-  bounced_at: string | null;
   revoked_at: string | null;
-  last_active_at: string | null;
   brands: { name: string | null } | { name: string | null }[] | null;
 }
 
@@ -573,10 +616,9 @@ function normalizeAttachment(raw: AttachmentRaw): AttachmentRow {
     role: isAttachmentRole(raw.role) ? raw.role : "viewer",
     status: isAttachmentStatus(raw.status) ? raw.status : "on_file",
     invited_email: raw.invited_email,
+    signup_email: raw.signup_email,
     invited_at: raw.invited_at,
     activated_at: raw.activated_at,
-    bounced_at: raw.bounced_at,
     revoked_at: raw.revoked_at,
-    last_active_at: raw.last_active_at,
   };
 }

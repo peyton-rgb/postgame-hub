@@ -94,6 +94,13 @@ export interface ContactRow {
   created_at: string | null;
 }
 
+/**
+ * Mirrors the APPLIED brand_contacts schema (migration 028). Note what is
+ * deliberately absent: there is no bounced_at, no bounce_reason, no
+ * last_active_at and no created_by column in the database, so this type
+ * does not pretend to carry them. status='bounced' is still a valid state
+ * — it just has no timestamp of its own.
+ */
 export interface AttachmentRow {
   id: string;
   contact_id: string;
@@ -102,11 +109,10 @@ export interface AttachmentRow {
   role: AttachmentRole;
   status: AttachmentStatus;
   invited_email: string | null;
+  signup_email: string | null;
   invited_at: string | null;
   activated_at: string | null;
-  bounced_at: string | null;
   revoked_at: string | null;
-  last_active_at: string | null;
 }
 
 /** One human, with every brand they can reach. */
@@ -122,6 +128,9 @@ export interface IdentityRow {
  */
 export function displayEmail(identity: IdentityRow): { value: string; fromInvite: boolean } | null {
   if (identity.contact.email) return { value: identity.contact.email, fromInvite: false };
+  // An address they actually signed up with beats one we merely sent to.
+  const signed = identity.attachments.find((a) => a.signup_email);
+  if (signed?.signup_email) return { value: signed.signup_email, fromInvite: false };
   const invited = identity.attachments
     .filter((a) => a.invited_email)
     .sort((a, b) => (b.invited_at ?? "").localeCompare(a.invited_at ?? ""))[0];

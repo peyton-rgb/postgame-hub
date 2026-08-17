@@ -6,11 +6,20 @@
 // ConfirmSubmit — the dialog states exactly which brand is affected,
 // because "revoke" on a multi-brand agency contact is otherwise the
 // most dangerous ambiguous verb on the screen.
+//
+// The panel is position:FIXED, anchored to the button's rect. It cannot
+// be a plain absolute child: AdminTable's desktop wrapper sets
+// overflow-x-auto (so wide tables scroll), and that clipping context
+// sliced the menu down to its header row — every action unreachable on
+// desktop. A fixed box is laid out against the viewport, so ancestor
+// overflow does not clip it, and no portal (or @types/react-dom, which
+// this repo does not carry) is needed. Fixed positioning would be
+// contained by a transformed ancestor; the admin shell has none.
 // ============================================================
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 import { changeRole, resendInvite, revokeAccess } from "@/app/admin/access/actions";
 import {
@@ -36,19 +45,53 @@ export default function AccessAttachmentMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<"menu" | "role" | "resend">("menu");
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  const PANEL_W = 268;
+
+  /** Anchor the portalled panel under the ⋯, kept inside the viewport. */
+  const place = useCallback(() => {
+    const btn = boxRef.current?.getBoundingClientRect();
+    if (!btn) return;
+    const left = Math.max(8, Math.min(btn.right - PANEL_W, window.innerWidth - PANEL_W - 8));
+    setPos({ top: btn.bottom + 4, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, panel, place]);
 
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+      const t = e.target as Node;
+      if (boxRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      setOpen(false);
+      setPanel("menu");
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
         setOpen(false);
         setPanel("menu");
       }
     }
+    // The panel is fixed-positioned, so it must follow scroll/resize.
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, place]);
 
   const otherRole: AttachmentRole = role === "approver" ? "viewer" : "approver";
   const isRevoked = status === "revoked";
@@ -68,8 +111,12 @@ export default function AccessAttachmentMenu({
         ⋯
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-40 mt-1 w-[268px] rounded-lg border border-stone-200 bg-white p-2 text-left shadow-lg">
+      {open && mounted && pos && (
+        <div
+          ref={panelRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: PANEL_W }}
+          className="z-50 rounded-lg border border-stone-200 bg-white p-2 text-left shadow-lg"
+        >
           <div className="px-2 pb-2 pt-1 text-[11px] uppercase tracking-wide text-stone-400">
             {brandName}
           </div>

@@ -1,16 +1,18 @@
 -- Migration 028 · contact identities + per-brand attachment junction
 --
--- ⚠️ AUTHORED IN THE BUILD THREAD, NOT BY THE PLANNER.
--- The /admin/access brief expected this file to already be in the repo
--- ("Peyton adds it, or copy from planner"). It was not present anywhere
--- on disk when the screen was built, so it is reconstructed here from the
--- locked data-model ruling in the brief. If the planner's own 028 differs,
--- RECONCILE COLUMN NAMES BEFORE APPLYING — src/lib/admin/access.ts,
--- src/app/admin/access/page.tsx and .../actions.ts read these exact names.
+-- APPLIED to xqaybwhpgxillpbbqtks by the planner thread on 17 Aug.
+--
+-- This file was rewritten to match the schema that is ACTUALLY APPLIED,
+-- read back from information_schema / pg_constraint. An earlier version
+-- of this file was reconstructed in the build thread from the brief and
+-- differed from what the planner applied (it carried bounced_at,
+-- bounce_reason, last_active_at and created_by, which do not exist, and
+-- lacked signup_email, which does). The code was aligned to the real
+-- schema at the same time. Repo now reproduces the database.
 --
 -- Purpose: one login per human, no duplicate humans.
---   postgame_contacts = IDENTITY   (one row per person; already exists,
---                                   15 rows, gains contact_type/agency_name)
+--   postgame_contacts = IDENTITY   (one row per person; pre-existing,
+--                                   gains contact_type / agency_name)
 --   brand_contacts    = ATTACHMENT (one row per person-per-brand, carrying
 --                                   that brand's role and status)
 --
@@ -22,11 +24,8 @@
 --   revoked  — access withdrawn; registry truth only (see note below)
 --
 -- SCOPE NOTE: portal entry today is the BRAND-level brands.portal_token.
--- Revoking here sets status='revoked' as registry truth; it does NOT
--- rotate or invalidate any token. Per-contact tokens are a future build.
---
--- Verified 17 Aug against xqaybwhpgxillpbbqtks: brand_contacts does not
--- exist; postgame_contacts has neither contact_type nor agency_name.
+-- Revoking sets status='revoked' as registry truth; it does NOT rotate
+-- or invalidate any token. Per-contact tokens are a future build.
 --
 -- Rollback:
 --   DROP TABLE brand_contacts;
@@ -40,37 +39,38 @@ ALTER TABLE postgame_contacts
     CHECK (contact_type IN ('brand', 'agency')),
   ADD COLUMN IF NOT EXISTS agency_name text;
 
--- Dedupe is by email, so it must be unique where present. Partial index:
--- the 15 seed rows are allowed to carry a null email.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_postgame_contacts_email_unique
-  ON postgame_contacts (lower(email)) WHERE email IS NOT NULL;
+-- NOTE: there is deliberately NO unique index on lower(email) here — the
+-- applied schema does not have one. Invite dedupe is therefore enforced in
+-- the application only (src/app/admin/access/actions.ts looks the address
+-- up before inserting). Two concurrent invites for the same new email could
+-- still race into twin identities. Add the index when the 15 seed rows are
+-- confirmed to have no duplicate/blank-email collisions.
 
 -- ------------------------------------------------------------
 -- 2 · per-brand attachments
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS brand_contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  contact_id uuid NOT NULL REFERENCES postgame_contacts(id) ON DELETE CASCADE,
-  brand_id uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  contact_id uuid NOT NULL REFERENCES postgame_contacts(id),
+  brand_id uuid NOT NULL REFERENCES brands(id),
 
-  role text NOT NULL DEFAULT 'viewer'
-    CHECK (role IN ('approver', 'viewer')),
+  -- Nullable with no CHECK in the applied schema; the app writes
+  -- 'approver' | 'viewer' and treats anything else as 'viewer'.
+  role text,
   status text NOT NULL DEFAULT 'on_file'
     CHECK (status IN ('on_file', 'invited', 'active', 'bounced', 'revoked')),
 
-  -- The address the invite actually went to. May differ from the identity's
-  -- signup email (bounced invites get corrected without touching identity).
+  -- Address the invite was sent to (may be corrected after a bounce).
   invited_email text,
+  -- Address the person actually signed up with, once they do.
+  signup_email text,
+
   invited_at timestamptz,
   activated_at timestamptz,
-  bounced_at timestamptz,
-  bounce_reason text,
   revoked_at timestamptz,
   revoked_by uuid REFERENCES profiles(id),
-  last_active_at timestamptz,
 
   created_at timestamptz NOT NULL DEFAULT now(),
-  created_by uuid REFERENCES profiles(id),
 
   -- One attachment per human per brand. This is what makes inviting an
   -- existing email ATTACH rather than create a twin.
@@ -78,5 +78,14 @@ CREATE TABLE IF NOT EXISTS brand_contacts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_brand_contacts_brand ON brand_contacts (brand_id, status);
-CREATE INDEX IF NOT EXISTS idx_brand_contacts_contact ON brand_contacts (contact_id);
-CREATE INDEX IF NOT EXISTS idx_brand_contacts_status ON brand_contacts (status);
+
+-- NOT PRESENT in the applied schema, recorded so the gap is deliberate:
+--   bounced_at / bounce_reason — status='bounced' is allowed by the CHECK,
+--     but there is nowhere to record WHEN it bounced or why. The UI shows
+--     the bounced state without a timestamp.
+--   last_active_at — the approved mockup has a "Last active" column with no
+--     column to source it from. The screen shows "Activated" (activated_at)
+--     instead rather than mislabel a different fact.
+--   created_by — no attribution column on the attachment. Who invited whom
+--     is still recoverable from admin_audit_log (contact.invite carries
+--     actor_id), so accountability is not lost, only denormalised.
