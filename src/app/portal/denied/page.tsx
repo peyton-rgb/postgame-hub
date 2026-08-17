@@ -13,6 +13,10 @@ import { getBrandSession } from "@/lib/portal/brand-session";
 import { BG, CARD, CARD_B, INK_BODY, INK_LABEL, OFFWHITE, ORANGE, RADIUS } from "@/lib/portal";
 
 export const dynamic = "force-dynamic";
+// Belt and braces alongside createLiveServiceSupabase(): force-dynamic
+// alone did NOT stop Next's Data Cache from serving a stale invite here.
+export const fetchCache = "force-no-store";
+
 
 export default async function PortalDeniedPage() {
   const session = await getBrandSession();

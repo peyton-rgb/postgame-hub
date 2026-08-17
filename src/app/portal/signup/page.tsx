@@ -16,6 +16,10 @@ import { completeSignup, acceptWithExistingLogin } from "./actions";
 import { BG, CARD, CARD_B, HAIR, INK_BODY, INK_LABEL, OFFWHITE, ORANGE, RADIUS } from "@/lib/portal";
 
 export const dynamic = "force-dynamic";
+// Belt and braces alongside createLiveServiceSupabase(): force-dynamic
+// alone did NOT stop Next's Data Cache from serving a stale invite here.
+export const fetchCache = "force-no-store";
+
 
 const ERROR_COPY: Record<string, string> = {
   "password-too-short": "Use at least 10 characters.",

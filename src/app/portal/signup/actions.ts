@@ -19,7 +19,7 @@
 // ============================================================
 
 import { redirect } from "next/navigation";
-import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { createActionSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { logAdminAction } from "@/lib/admin/audit";
 import { validateInviteToken } from "@/lib/portal/invite-token";
 
@@ -126,7 +126,10 @@ export async function completeSignup(formData: FormData): Promise<void> {
   });
 
   // 7 · sign in
-  const supabase = createServerSupabase();
+  // createActionSupabase, NOT createServerSupabase: the latter no-ops its
+  // cookie writer, so the session would never reach the browser and the
+  // new client would keep whatever session was already there.
+  const supabase = createActionSupabase();
   const signIn = await supabase.auth.signInWithPassword({
     email: invite.email,
     password,
@@ -149,7 +152,7 @@ export async function acceptWithExistingLogin(formData: FormData): Promise<void>
   const invite = await validateInviteToken(token);
   if (!invite.ok) back(token, invite.reason);
 
-  const supabase = createServerSupabase();
+  const supabase = createActionSupabase();
   const signIn = await supabase.auth.signInWithPassword({
     email: invite.email,
     password,

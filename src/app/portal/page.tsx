@@ -15,7 +15,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getBrandSession, type BrandScopeEntry } from "@/lib/portal/brand-session";
 import { getPendingReviewCount } from "@/lib/portal-data";
-import { createServiceSupabase } from "@/lib/supabase-server";
+import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import {
   BG,
   CARD,
@@ -29,6 +29,10 @@ import {
 } from "@/lib/portal";
 
 export const dynamic = "force-dynamic";
+// Belt and braces alongside createLiveServiceSupabase(): force-dynamic
+// alone did NOT stop Next's Data Cache from serving a stale invite here.
+export const fetchCache = "force-no-store";
+
 
 export default async function PortalHome({
   searchParams,
@@ -46,7 +50,7 @@ export default async function PortalHome({
   const active: BrandScopeEntry =
     session.brands.find((b) => b.brandId === requested) ?? session.brands[0];
 
-  const svc = createServiceSupabase();
+  const svc = createLiveServiceSupabase();
   const [campaignCount, approvalCount, assetCount] = await Promise.all([
     countCampaigns(svc, active.brandId),
     getPendingReviewCount(active.brandId),
@@ -152,7 +156,7 @@ export default async function PortalHome({
 }
 
 async function countCampaigns(
-  svc: ReturnType<typeof createServiceSupabase>,
+  svc: ReturnType<typeof createLiveServiceSupabase>,
   brandId: string
 ): Promise<number> {
   const { count } = await svc
@@ -163,7 +167,7 @@ async function countCampaigns(
 }
 
 async function countAssets(
-  svc: ReturnType<typeof createServiceSupabase>,
+  svc: ReturnType<typeof createLiveServiceSupabase>,
   brandId: string
 ): Promise<number> {
   const { data: recaps } = await svc

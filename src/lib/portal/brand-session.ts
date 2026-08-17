@@ -19,7 +19,7 @@
 // ============================================================
 
 import { cache } from "react";
-import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createLiveServiceSupabase } from "@/lib/supabase-server";
 import { isMissingSchemaError, type AccessLevel } from "@/lib/admin/auth";
 
 /**
@@ -72,7 +72,7 @@ export const getBrandSession = cache(async (): Promise<BrandSession | null> => {
 
   // Service client from here: a brand user has no RLS grant to read the
   // junction, and the scope query is the thing deciding their access.
-  const svc = createServiceSupabase();
+  const svc = createLiveServiceSupabase();
 
   const contact = await svc
     .from("postgame_contacts")

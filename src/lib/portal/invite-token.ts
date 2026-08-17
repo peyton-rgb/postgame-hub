@@ -8,7 +8,7 @@
 // extra steps.
 // ============================================================
 
-import { createServiceSupabase } from "@/lib/supabase-server";
+import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import { isMissingSchemaError } from "@/lib/admin/auth";
 import { isAllowlisted } from "@/lib/portal/brand-session";
 
@@ -38,7 +38,10 @@ export type InviteCheck =
 export async function validateInviteToken(token: string): Promise<InviteCheck> {
   if (!token || !/^[0-9a-f-]{36}$/i.test(token)) return { ok: false, reason: "not-found" };
 
-  const svc = createServiceSupabase();
+  // Uncached on purpose: this read decides whether a signup page is
+  // handed out at all, so a revoked or expired invite must never be
+  // answered from Next's Data Cache.
+  const svc = createLiveServiceSupabase();
   const res = await svc
     .from("brand_contacts")
     .select(
@@ -84,7 +87,12 @@ export async function validateInviteToken(token: string): Promise<InviteCheck> {
   // brand outside the allowlist must not be redeemable at all.
   if (!brandName || !isAllowlisted(brandName)) return { ok: false, reason: "not-in-pilot" };
 
-  const email = (row.invited_email ?? contact?.email ?? "").toLowerCase();
+  // The invited address is the source of truth — that is the address the
+  // link was actually mailed to, and the one a bounce-recovery resend
+  // corrects. The contact's own email is only a fallback, and `||` rather
+  // than `??` so a blank invited_email falls through instead of resolving
+  // to an empty address.
+  const email = (row.invited_email?.trim() || contact?.email?.trim() || "").toLowerCase();
   if (!email) return { ok: false, reason: "not-found" };
 
   return {
