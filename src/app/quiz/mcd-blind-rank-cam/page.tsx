@@ -21,7 +21,7 @@
  * reason.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Arimo } from "next/font/google";
 
@@ -118,15 +118,103 @@ function shuffle(keys: DrinkKey[]): DrinkKey[] {
    Fractions of the canvas, so the same numbers drive both the drawing and the
    percentage-positioned HTML tap targets laid over the rail. */
 
-const CANVAS_W = 1080;
-const CANVAS_H = 1920;
+/** 9:16. The canvas keeps this shape; its pixel size comes from the real feed. */
+const TARGET_ASPECT = 9 / 16;
+/** Only used if the browser never reports usable video dimensions. */
+const FALLBACK_W = 1080;
+const FALLBACK_H = 1920;
 
-/** Card sits top-centre at 55% of canvas width; the art is square. */
-const CARD = { wFrac: 0.55, topFrac: 0.045 };
-/** Slot rail down the left. Seven tiles, ending clear of the bottom edge. */
-const RAIL = { xFrac: 0.045, wFrac: 0.2, topFrac: 0.38, tileHFrac: 0.074, gapFrac: 0.01 };
+/**
+ * The largest centred region of a native frame matching `aspect` (w/h). When the
+ * frame already matches, this is the whole frame — zero crop.
+ */
+function centreCropTo(nw: number, nh: number, aspect: number) {
+  if (!nw || !nh) return { sx: 0, sy: 0, sw: FALLBACK_W, sh: FALLBACK_H };
+  let sw: number;
+  let sh: number;
+  if (nw / nh > aspect) {
+    sh = nh; // too wide — trim the sides
+    sw = Math.round(nh * aspect);
+  } else {
+    sw = nw; // too tall — trim top and bottom
+    sh = Math.round(nw / aspect);
+  }
+  return { sx: Math.round((nw - sw) / 2), sy: Math.round((nh - sh) / 2), sw, sh };
+}
 
-const tileTopFrac = (i: number) => RAIL.topFrac + i * (RAIL.tileHFrac + RAIL.gapFrac);
+/**
+ * Canvas size from the *rendered* frame, and only from the rendered frame.
+ *
+ * A portrait frame is used whole — no crop at all, whatever its aspect. Forcing
+ * 9:16 on an already-portrait feed was itself a source of zoom: a 3:4 portrait
+ * frame lost a quarter of its width to satisfy an aspect nobody asked for.
+ * Cropping now happens only when the feed arrives landscape, which is the one
+ * case where something has to give.
+ */
+function deriveCanvasSize(nw: number, nh: number) {
+  if (!nw || !nh) return { w: FALLBACK_W, h: FALLBACK_H, cropped: false };
+  if (nh >= nw) return { w: nw, h: nh, cropped: false };
+  const { sw, sh } = centreCropTo(nw, nh, TARGET_ASPECT);
+  return { w: sw, h: sh, cropped: true };
+}
+
+/**
+ * Reels/TikTok safe zone. Their UI covers the bottom band (caption, handle) and
+ * the right band (like/comment/share rail), and the top under the status area —
+ * so every overlay we bake into the export has to live inside this rectangle.
+ * The camera feed still fills the whole frame; only graphics are constrained.
+ */
+const SAFE = { topFrac: 0.08, bottomFrac: 0.73, leftFrac: 0.04, rightFrac: 0.86 };
+
+/**
+ * Everything positional, derived from the canvas size so it holds for any aspect
+ * the camera hands us (9:16, 3:4, whatever). Shared by the canvas renderer and
+ * the DOM tap targets, so they cannot drift apart.
+ *
+ * The rail is what absorbs the squeeze: seven tiles have to fit between the card
+ * and the 73% line, so tile height falls out of the arithmetic rather than being
+ * a fixed fraction.
+ */
+/** All seven slots in a single line down the left edge. */
+const RAIL_ROWS = 7;
+
+function computeLayout(W: number, H: number) {
+  const safe = {
+    top: SAFE.topFrac * H,
+    bottom: SAFE.bottomFrac * H,
+    left: SAFE.leftFrac * W,
+    right: SAFE.rightFrac * W,
+  };
+
+  const cardW = 0.47 * W;
+  const cardX = (W - cardW) / 2;
+  const cardY = safe.top;
+  const cardBottom = cardY + cardW; // the art is square
+  const promptY = cardBottom + 0.03 * H;
+
+  // The rail runs the FULL height of the safe box rather than starting below the
+  // card. It can, because the two never overlap horizontally: the rail hugs the
+  // left edge (4.5%–24.5% of width) while the card is centred (26.5%–73.5%). That
+  // is what keeps seven tiles in one column readable — starting the rail under
+  // the card would squeeze the same seven slots into a third of the height.
+  const railTop = safe.top;
+  const railX = Math.max(0.045 * W, safe.left);
+  const colW = 0.2 * W;
+  const rowGap = 0.006 * H;
+  const tileH = Math.max((safe.bottom - railTop - rowGap * (RAIL_ROWS - 1)) / RAIL_ROWS, 1);
+
+  return { safe, cardX, cardY, cardW, promptY, railTop, railX, railW: colW, colW, rowGap, tileH };
+}
+
+/** One column, top to bottom. */
+function tileRect(l: ReturnType<typeof computeLayout>, i: number) {
+  return {
+    x: l.railX,
+    y: l.railTop + i * (l.tileH + l.rowGap),
+    w: l.colW,
+    h: l.tileH,
+  };
+}
 
 /* ──────────────────────────── recording ──────────────────────────── */
 
@@ -197,10 +285,29 @@ function drawCover(
   ctx.drawImage(src, dx + (dw - w) / 2, dy + (dh - h) / 2, w, h);
 }
 
+/** Resolves once the element reports real dimensions, or gives up after ~2.5s. */
+function whenVideoSized(video: HTMLVideoElement): Promise<void> {
+  if (video.videoWidth > 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener("loadedmetadata", finish);
+      video.removeEventListener("resize", finish);
+      resolve();
+    };
+    video.addEventListener("loadedmetadata", finish);
+    video.addEventListener("resize", finish);
+    setTimeout(finish, 2500);
+  });
+}
+
 /* ───────────────────────────── page ───────────────────────────── */
 
 type Stage = "intro" | "denied" | "live" | "review";
-type Phase = "playing" | "board";
+/** spinning: the randomizer is cycling. placing: it has landed, rail is live. */
+type Phase = "spinning" | "placing" | "board";
 type Facing = "user" | "environment";
 
 type GameState = {
@@ -214,8 +321,14 @@ const emptyGame = (): GameState => ({
   order: [],
   index: 0,
   slots: Array(SLOT_COUNT).fill(null),
-  phase: "playing",
+  phase: "spinning",
 });
+
+/** Cycle speed while spinning, then the slowing steps after the tap (~600ms). */
+const SPIN_MS = 80;
+const DECEL_MS = [90, 120, 160, 230];
+/** Scale-pop when the reel lands. */
+const POP_MS = 260;
 
 export default function BlindRankCamPage() {
   const [stage, setStage] = useState<Stage>("intro");
@@ -252,6 +365,55 @@ export default function BlindRankCamPage() {
    * rAF loop reads the ref per frame, but recording silently never started.)
    */
   const pendingRunRef = useRef(false);
+  /**
+   * The card currently on screen. Lives only in a ref: the reel swaps it every
+   * 80ms and the draw loop reads it per frame, so putting it in state would mean
+   * ~12 React renders a second for something no DOM node depends on.
+   */
+  const showingRef = useRef<DrinkKey | null>(null);
+  /** Timestamp the reel landed, for the scale-pop. */
+  const popAtRef = useRef<number | null>(null);
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Rendered feed size and the canvas derived from it, shown live on screen so a
+   * device test can be settled with a screenshot instead of guesswork. Feed dims
+   * track the <video> element and update on FLIP; canvas dims are fixed per run.
+   */
+  const [feedDims, setFeedDims] = useState<{ w: number; h: number } | null>(null);
+  const [canvasDims, setCanvasDims] = useState<{ w: number; h: number } | null>(null);
+  /** Secondary diagnostic only — never used for sizing. */
+  const [trackDims, setTrackDims] = useState<string>("—");
+  /** Safe-zone guide, viewfinder only. Off by default. */
+  const [guides, setGuides] = useState(false);
+  const [showInstallHint, setShowInstallHint] = useState(true);
+
+  /**
+   * Overlay geometry in percentages of the canvas box, from the same
+   * computeLayout the renderer uses — so a tap target can never drift off the
+   * tile it is sitting on, whatever aspect the camera gave us.
+   */
+  const overlay = useMemo(() => {
+    const W = canvasDims?.w ?? FALLBACK_W;
+    const H = canvasDims?.h ?? FALLBACK_H;
+    const L = computeLayout(W, H);
+    return {
+      tiles: Array.from({ length: SLOT_COUNT }, (_, i) => {
+        const r = tileRect(L, i);
+        return {
+          leftPct: (r.x / W) * 100,
+          topPct: (r.y / H) * 100,
+          widthPct: (r.w / W) * 100,
+          heightPct: (r.h / H) * 100,
+        };
+      }),
+      safe: {
+        leftPct: SAFE.leftFrac * 100,
+        topPct: SAFE.topFrac * 100,
+        rightPct: (1 - SAFE.rightFrac) * 100,
+        bottomPct: (1 - SAFE.bottomFrac) * 100,
+      },
+    };
+  }, [canvasDims]);
 
   const writeGame = useCallback((next: GameState) => {
     gameRef.current = next; // ref first, so the very next frame draws it
@@ -278,6 +440,26 @@ export default function BlindRankCamPage() {
     };
   }, []);
 
+  /**
+   * Keep the readout honest across a FLIP: the <video> fires resize whenever the
+   * rendered frame size changes, which is exactly what we size and crop from.
+   */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const sync = () => {
+      if (video.videoWidth) setFeedDims({ w: video.videoWidth, h: video.videoHeight });
+      const s = videoStreamRef.current?.getVideoTracks()[0]?.getSettings?.();
+      setTrackDims(s?.width && s?.height ? `${s.width}×${s.height}` : "—");
+    };
+    video.addEventListener("loadedmetadata", sync);
+    video.addEventListener("resize", sync);
+    return () => {
+      video.removeEventListener("loadedmetadata", sync);
+      video.removeEventListener("resize", sync);
+    };
+  }, []);
+
   /* ── portrait lock ── */
   useEffect(() => {
     const check = () => setLandscape(window.innerWidth > window.innerHeight);
@@ -299,84 +481,122 @@ export default function BlindRankCamPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const W = CANVAS_W;
-    const H = CANVAS_H;
+    const W = canvas.width;
+    const H = canvas.height;
 
     ctx.fillStyle = "#07070A";
     ctx.fillRect(0, 0, W, H);
 
-    if (video && video.readyState >= 2) {
-      drawCover(ctx, video, video.videoWidth, video.videoHeight, 0, 0, W, H);
+    // Fit the feed to whatever the canvas already is — which, for a portrait
+    // feed, means the whole frame with no crop. Recomputed per frame because a
+    // FLIP can hand back a different resolution mid-run, and the canvas must not
+    // be resized once the recorder is attached.
+    if (video && video.readyState >= 2 && video.videoWidth) {
+      const { sx, sy, sw, sh } = centreCropTo(video.videoWidth, video.videoHeight, W / H);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H);
     }
 
-    const { order, index, slots, phase } = gameRef.current;
+    const { slots, phase } = gameRef.current;
+    const L = computeLayout(W, H);
 
-    // Current card, top-centre.
-    if (phase === "playing") {
-      const key = order[index];
+    // Current card, top-centre — the reel while spinning, the landed pick after.
+    if (phase !== "board") {
+      const key = showingRef.current;
       const img = key ? imagesRef.current[key] : undefined;
       if (img?.complete && img.naturalWidth) {
-        const cw = CARD.wFrac * W;
+        const base = L.cardW;
+
+        // Scale-pop on landing. Grows from the card's centre so the top edge
+        // never rises above the safe line mid-animation.
+        let scale = 1;
+        if (popAtRef.current != null) {
+          const t = (performance.now() - popAtRef.current) / POP_MS;
+          if (t >= 1) popAtRef.current = null;
+          else scale = 0.82 + 0.18 * (1 - Math.pow(1 - Math.max(t, 0), 3));
+        }
+
+        const cw = base * scale;
         const cx = (W - cw) / 2;
-        const cy = CARD.topFrac * H;
+        const cy = L.cardY + (base - cw) / 2;
         ctx.save();
         roundRectPath(ctx, cx, cy, cw, cw, cw * 0.06);
         ctx.clip();
         drawCover(ctx, img, img.naturalWidth, img.naturalHeight, cx, cy, cw, cw);
         ctx.restore();
       }
+
+      // Prompt is game content, so it belongs on the canvas (unlike the REC
+      // badge, which is DOM and must stay out of the export).
+      if (phase === "spinning") {
+        ctx.save();
+        ctx.fillStyle = GOLD;
+        ctx.font = `700 ${Math.round(W * 0.038)}px ui-monospace, Menlo, Consolas, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        type Spaced = CanvasRenderingContext2D & { letterSpacing?: string };
+        const spaced = ctx as Spaced;
+        if ("letterSpacing" in spaced) spaced.letterSpacing = `${Math.round(W * 0.008)}px`;
+        ctx.fillText("TAP TO STOP", W / 2, L.promptY);
+        if ("letterSpacing" in spaced) spaced.letterSpacing = "0px";
+        ctx.restore();
+      }
     } else {
       // Final board: a gold label where the card was.
       ctx.save();
       ctx.fillStyle = GOLD;
-      ctx.font = "700 62px Arial, Helvetica, sans-serif";
+      ctx.font = `700 ${Math.round(W * 0.058)}px Arial, Helvetica, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("FINAL BOARD", W / 2, CARD.topFrac * H + CARD.wFrac * W * 0.5);
+      ctx.fillText("FINAL BOARD", W / 2, L.cardY + L.cardW * 0.5);
       ctx.restore();
     }
 
-    // Slot rail.
-    const rx = RAIL.xFrac * W;
-    const rw = RAIL.wFrac * W;
-    const th = RAIL.tileHFrac * H;
-    const radius = th * 0.28;
+    // Slot rail — two columns, 1-4 down the left and 5-7 down the right, so the
+    // tiles get roughly double the height a single column of seven allowed.
+    const th = L.tileH;
+    const radius = th * 0.2;
 
     for (let i = 0; i < SLOT_COUNT; i++) {
-      const ty = tileTopFrac(i) * H;
+      const { x: tx0, y: ty, w: tw } = tileRect(L, i);
       const filled = slots[i];
       const winner = phase === "board" && i === 0;
 
       ctx.save();
-      roundRectPath(ctx, rx, ty, rw, th, radius);
+      roundRectPath(ctx, tx0, ty, tw, th, radius);
       ctx.fillStyle = filled ? "rgba(7,7,10,0.72)" : "rgba(7,7,10,0.45)";
       ctx.fill();
-      ctx.lineWidth = winner ? 7 : 3;
+      ctx.lineWidth = winner ? Math.max(th * 0.055, 3) : Math.max(th * 0.028, 2);
       ctx.strokeStyle = winner ? GOLD : filled ? GOLD : "rgba(255,199,44,0.5)";
-      if (!filled) ctx.setLineDash([14, 12]);
+      if (!filled) ctx.setLineDash([th * 0.16, th * 0.12]);
       ctx.stroke();
       ctx.restore();
 
-      // Rank number.
+      // Rank number — large enough to read at a glance from arm's length.
       ctx.save();
       ctx.fillStyle = GOLD;
-      ctx.font = `700 ${Math.round(th * 0.42)}px Arial, Helvetica, sans-serif`;
+      ctx.font = `700 ${Math.round(th * 0.5)}px ui-monospace, Menlo, Consolas, monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(String(i + 1), rx + rw * 0.19, ty + th / 2);
+      ctx.fillText(String(i + 1), tx0 + tw * 0.19, ty + th / 2);
       ctx.restore();
 
-      // Locked: mini card thumb.
+      // Locked: mini thumb of the drink itself. Cropped to the glass rather than
+      // using the whole card — the card's name band is unreadable at this size
+      // and would only cost the glass room.
       if (filled) {
         const img = imagesRef.current[filled];
         if (img?.complete && img.naturalWidth) {
-          const pad = th * 0.13;
-          const size = th - pad * 2;
-          const tx = rx + rw * 0.36;
+          const size = Math.min(th * 0.78, tw * 0.58);
+          const tx = tx0 + tw * 0.36;
+          const tyy = ty + (th - size) / 2;
+          const sw = img.naturalWidth * 0.74;
+          const sh = img.naturalHeight * 0.74;
+          const sx = img.naturalWidth * 0.13;
+          const sy = img.naturalHeight * 0.01;
           ctx.save();
-          roundRectPath(ctx, tx, ty + pad, size, size, size * 0.18);
+          roundRectPath(ctx, tx, tyy, size, size, size * 0.16);
           ctx.clip();
-          drawCover(ctx, img, img.naturalWidth, img.naturalHeight, tx, ty + pad, size, size);
+          ctx.drawImage(img, sx, sy, sw, sh, tx, tyy, size, size);
           ctx.restore();
         }
       }
@@ -464,12 +684,97 @@ export default function BlindRankCamPage() {
     recorderRef.current = null;
   }, []);
 
-  /** New shuffle, empty board, recorder rolling — the first drink is on screen. */
-  const startRun = useCallback(() => {
+  /* ── the randomizer reel ── */
+
+  const clearSpin = useCallback(() => {
+    if (spinTimerRef.current) {
+      clearTimeout(spinTimerRef.current);
+      spinTimerRef.current = null;
+    }
+  }, []);
+
+  /** Cycle the unplaced drinks until tapped. Cosmetic only — see stopSpin. */
+  const beginSpin = useCallback(() => {
+    clearSpin();
+    const g = gameRef.current;
+    const remaining = g.order.slice(g.index);
+    if (!remaining.length) return;
+
+    popAtRef.current = null;
+    showingRef.current = remaining[0];
+    writeGame({ ...g, phase: "spinning" });
+
+    let i = 1;
+    const tick = () => {
+      const rem = gameRef.current.order.slice(gameRef.current.index);
+      if (!rem.length) return;
+      showingRef.current = rem[i % rem.length]; // ref only — no re-render per tick
+      i += 1;
+      spinTimerRef.current = setTimeout(tick, SPIN_MS);
+    };
+    spinTimerRef.current = setTimeout(tick, SPIN_MS);
+  }, [clearSpin, writeGame]);
+
+  /**
+   * Tap to stop: slow over ~600ms, then land.
+   *
+   * The landing card is order[index] — fixed by the shuffle before the reel ever
+   * started, so it cannot be timed by tapping on a particular frame. What flickers
+   * past on the way down is decoration drawn from the remaining drinks.
+   */
+  const stopSpin = useCallback(() => {
+    const g = gameRef.current;
+    if (g.phase !== "spinning") return;
+    clearSpin();
+
+    const landing = g.order[g.index];
+    const remaining = g.order.slice(g.index);
+    let step = 0;
+
+    const run = () => {
+      if (step < DECEL_MS.length) {
+        showingRef.current = remaining[Math.floor(Math.random() * remaining.length)];
+        const wait = DECEL_MS[step];
+        step += 1;
+        spinTimerRef.current = setTimeout(run, wait);
+        return;
+      }
+      spinTimerRef.current = null;
+      showingRef.current = landing;
+      popAtRef.current = performance.now();
+      writeGame({ ...gameRef.current, phase: "placing" });
+    };
+    run();
+  }, [clearSpin, writeGame]);
+
+  /** New shuffle, empty board, recorder rolling, first reel spinning. */
+  const startRun = useCallback(async () => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+
+    // Size the canvas from the real feed before the recorder attaches — a
+    // resolution change mid-recording is not something encoders take kindly to,
+    // so this is the one chance to get it right.
+    if (canvas) {
+      // Wait for loadedmetadata, then read the RENDERED dimensions. Never
+      // track.getSettings(): iOS Safari routinely reports the sensor's landscape
+      // dims there while handing the <video> a portrait frame, and sizing off
+      // that mismatch is how you end up cropping a frame that needed no crop.
+      if (video) await whenVideoSized(video);
+      const nw = video?.videoWidth ?? 0;
+      const nh = video?.videoHeight ?? 0;
+      const { w, h } = deriveCanvasSize(nw, nh);
+      canvas.width = w;
+      canvas.height = h;
+      setCanvasDims({ w, h });
+      setFeedDims(nw && nh ? { w: nw, h: nh } : null);
+    }
+
     writeGame({ ...emptyGame(), order: shuffle(ALL_DRINKS) });
     startLoop();
     startRecording();
-  }, [writeGame, startLoop, startRecording]);
+    beginSpin();
+  }, [writeGame, startLoop, startRecording, beginSpin]);
 
   /* ── camera ── */
   const attachVideo = useCallback((stream: MediaStream) => {
@@ -488,12 +793,13 @@ export default function BlindRankCamPage() {
     setErrorNote(null);
     try {
       // One prompt for camera + mic. The audio track outlives camera flips.
+      //
+      // facingMode ONLY — deliberately no width/height. iOS treats size and
+      // aspect constraints as licence to crop the sensor to satisfy them, which
+      // arrives looking like zoom. Take whatever native frame the camera offers
+      // and do every bit of fitting ourselves, on the canvas.
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-        },
+        video: { facingMode: "user" },
         audio: true,
       });
       audioStreamRef.current = stream;
@@ -517,14 +823,15 @@ export default function BlindRankCamPage() {
     pendingRunRef.current = false;
     const stream = videoStreamRef.current;
     if (stream) attachVideo(stream);
-    startRun();
+    void startRun();
   }, [stage, attachVideo, startRun]);
 
   const flipCamera = useCallback(async () => {
     const next: Facing = facing === "user" ? "environment" : "user";
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: next, width: { ideal: 1080 }, height: { ideal: 1920 } },
+        // facingMode only, for the same reason as the initial request.
+        video: { facingMode: next },
         audio: false,
       });
       // Release only the old camera; the mic track belongs to audioStreamRef.
@@ -541,7 +848,7 @@ export default function BlindRankCamPage() {
   const place = useCallback(
     (slot: number) => {
       const g = gameRef.current;
-      if (g.phase !== "playing") return;
+      if (g.phase !== "placing") return; // rail is inert until the reel lands
       if (g.slots[slot] !== null) return; // locked is locked
       const key = g.order[g.index];
       if (!key) return;
@@ -550,14 +857,19 @@ export default function BlindRankCamPage() {
       slots[slot] = key;
 
       if (g.index + 1 >= SLOT_COUNT) {
+        popAtRef.current = null;
+        showingRef.current = null;
         writeGame({ ...g, slots, phase: "board" });
         // Let the finished board sit on camera before cutting.
         stopTimerRef.current = setTimeout(() => stopRecording(), 3000);
       } else {
         writeGame({ ...g, slots, index: g.index + 1 });
+        // Next round spins immediately — including the final one-card round,
+        // which still gets a short reel so the rhythm never breaks.
+        beginSpin();
       }
     },
-    [writeGame, stopRecording],
+    [writeGame, stopRecording, beginSpin],
   );
 
   /* ── teardown ── */
@@ -566,6 +878,8 @@ export default function BlindRankCamPage() {
     rafRef.current = null;
     if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
     if (tickRef.current) clearInterval(tickRef.current);
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    spinTimerRef.current = null;
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") rec.stop();
     recorderRef.current = null;
@@ -599,12 +913,25 @@ export default function BlindRankCamPage() {
     elapsed % 60,
   ).padStart(2, "0")}`;
 
-  const currentName = game.order[game.index] ? CARDS[game.order[game.index]].name : "";
+  // Only name the drink once the reel has landed — while spinning there is no
+  // "current" pick to announce.
+  const currentName =
+    game.phase === "placing" && game.order[game.index]
+      ? CARDS[game.order[game.index]].name
+      : "the drink on screen";
 
   return (
     <main
-      className={`${arimo.variable} flex min-h-[100dvh] flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
-      style={{ fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif" }}
+      className={`${arimo.variable} mcdq-app flex min-h-[100dvh] flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
+      style={{
+        fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif",
+        // viewport-fit=cover lets the page paint under the notch and home
+        // indicator; these keep actual content clear of both.
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
+      }}
     >
       {/* The camera feed. Hidden — the canvas is what anyone sees or records. */}
       <video ref={videoRef} playsInline muted autoPlay className="hidden" />
@@ -649,6 +976,24 @@ export default function BlindRankCamPage() {
           {errorNote && (
             <p className="mt-4 text-[14px] text-[#FAF8F5]/60">{errorNote}</p>
           )}
+
+          {showInstallHint && (
+            <div className="mt-8 flex items-start gap-3 rounded-xl border border-[#FAF8F5]/10 px-4 py-3">
+              <p className="flex-1 text-[13px] leading-[1.5] text-[#FAF8F5]/55">
+                Best experience: Share → Add to Home Screen, then open from
+                there.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowInstallHint(false)}
+                aria-label="Dismiss"
+                className="-mr-2 -mt-2 flex items-center justify-center px-2 font-mono text-[14px] text-[#FAF8F5]/40"
+                style={{ minHeight: 44, minWidth: 44 }}
+              >
+                ×
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -680,15 +1025,36 @@ export default function BlindRankCamPage() {
       {stage === "live" && (
         <section className="flex flex-1 items-center justify-center">
           <div
-            className="relative"
-            style={{ width: "min(100vw, calc(100dvh * 9 / 16))", aspectRatio: "9 / 16" }}
+            className="mcdq-stage relative"
+            style={{
+              width: canvasDims
+                ? `min(100vw, calc(100dvh * ${canvasDims.w} / ${canvasDims.h}))`
+                : "min(100vw, calc(100dvh * 9 / 16))",
+              aspectRatio: canvasDims ? `${canvasDims.w} / ${canvasDims.h}` : "9 / 16",
+            }}
           >
+            {/* width/height are placeholders — startRun resizes the canvas to the
+                real feed's largest 9:16 crop before the recorder attaches. */}
             <canvas
               ref={canvasRef}
-              width={CANVAS_W}
-              height={CANVAS_H}
+              width={FALLBACK_W}
+              height={FALLBACK_H}
               className="block h-full w-full"
             />
+
+            {/* Tap anywhere on the camera to stop the reel. Sits *under* the rail
+                targets, which stay mounted-but-disabled while spinning — a
+                disabled button swallows the tap rather than letting it bubble
+                here, which is what keeps the rail genuinely inert. */}
+            {game.phase === "spinning" && (
+              <button
+                type="button"
+                onClick={stopSpin}
+                aria-label="Stop the randomizer"
+                className="absolute inset-0 z-10"
+                style={{ background: "transparent" }}
+              />
+            )}
 
             {/* Tap targets over the rail. HTML, not canvas — the canvas has no
                 hit testing of its own. Percentages come from the same geometry
@@ -698,45 +1064,107 @@ export default function BlindRankCamPage() {
                 key={i}
                 type="button"
                 onClick={() => place(i)}
-                disabled={game.phase !== "playing" || game.slots[i] !== null}
+                disabled={game.phase !== "placing" || game.slots[i] !== null}
                 aria-label={
                   game.slots[i]
                     ? `Slot ${i + 1}, locked: ${CARDS[game.slots[i] as DrinkKey].name}`
                     : `Put ${currentName} in slot ${i + 1}`
                 }
-                className="absolute"
+                className="absolute z-20"
                 style={{
-                  left: `${RAIL.xFrac * 100}%`,
-                  top: `${tileTopFrac(i) * 100}%`,
-                  width: `${RAIL.wFrac * 100}%`,
-                  height: `${RAIL.tileHFrac * 100}%`,
-                  minHeight: 48,
-                  minWidth: 48,
+                  // Exactly the drawn tile's bounds — with two columns the
+                  // targets are large enough that stretching them would only
+                  // risk overlapping the neighbouring column.
+                  left: `${overlay.tiles[i].leftPct}%`,
+                  top: `${overlay.tiles[i].topPct}%`,
+                  width: `${overlay.tiles[i].widthPct}%`,
+                  height: `${overlay.tiles[i].heightPct}%`,
+                  // A floor, not padding: the tiles already compute above this
+                  // on a 390-wide phone, so it never actually stretches them
+                  // into each other.
+                  minHeight: 52,
                   background: "transparent",
                 }}
               />
             ))}
 
+            {/* Safe-zone guide — viewfinder only, never drawn to the canvas, so
+                it cannot reach the export. Helps keep a face out of the bands
+                Reels and TikTok cover with their own UI. */}
+            {guides && (
+              <div
+                className="pointer-events-none absolute z-20"
+                style={{
+                  left: `${overlay.safe.leftPct}%`,
+                  top: `${overlay.safe.topPct}%`,
+                  right: `${overlay.safe.rightPct}%`,
+                  bottom: `${overlay.safe.bottomPct}%`,
+                  border: `1px dashed ${GOLD}`,
+                  borderRadius: 6,
+                }}
+              >
+                <span
+                  className="absolute right-1 top-1 font-mono text-[8px] uppercase tracking-[0.12em]"
+                  style={{ color: GOLD }}
+                >
+                  safe
+                </span>
+                <span
+                  className="absolute -bottom-4 left-0 font-mono text-[8px] uppercase tracking-[0.12em]"
+                  style={{ color: GOLD }}
+                >
+                  caption zone ↓
+                </span>
+                <span
+                  className="absolute -right-1 top-1/2 origin-bottom-right rotate-90 font-mono text-[8px] uppercase tracking-[0.12em]"
+                  style={{ color: GOLD }}
+                >
+                  icons →
+                </span>
+              </div>
+            )}
+
             {/* REC badge and timer are DOM overlays — deliberately NOT drawn to
                 the canvas, so they never appear in the exported video. */}
-            <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5">
-              <span className="mcdq-rec h-2.5 w-2.5 rounded-full bg-[#DA291C]" />
-              <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#FAF8F5]">
-                REC {mmss}
+            <div className="pointer-events-none absolute right-3 top-3 z-30 flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5">
+                <span className="mcdq-rec h-2.5 w-2.5 rounded-full bg-[#DA291C]" />
+                <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#FAF8F5]">
+                  REC {mmss}
+                </span>
+              </div>
+              {/* Framing readout. DOM overlay, so it never reaches the export —
+                  screenshot this if the framing still looks wrong on device. */}
+              <span className="rounded-full bg-black/55 px-2.5 py-1 font-mono text-[9px] tracking-[0.08em] text-[#FAF8F5]/70">
+                feed {feedDims ? `${feedDims.w}×${feedDims.h}` : "…"} → canvas{" "}
+                {canvasDims ? `${canvasDims.w}×${canvasDims.h}` : "…"}
               </span>
             </div>
 
             {errorNote && (
-              <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/75 px-4 py-3 text-center text-[13px] text-[#FAF8F5]">
+              <div className="absolute inset-x-3 bottom-3 z-30 rounded-xl bg-black/75 px-4 py-3 text-center text-[13px] text-[#FAF8F5]">
                 {errorNote}
               </div>
             )}
+
+            {/* Viewfinder controls live bottom-right, clear of the rail that now
+                runs the full height of the left edge. DOM only — never exported. */}
+            <button
+              type="button"
+              onClick={() => setGuides((g) => !g)}
+              aria-pressed={guides}
+              aria-label="Toggle safe-zone guides"
+              className="absolute bottom-3 right-[76px] z-30 flex items-center justify-center rounded-full bg-black/55 px-3 font-mono text-[10px] font-bold tracking-[0.1em]"
+              style={{ minHeight: 48, color: guides ? GOLD : "#FAF8F5" }}
+            >
+              GUIDES
+            </button>
 
             <button
               type="button"
               onClick={flipCamera}
               aria-label="Switch camera"
-              className="absolute left-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 font-mono text-[10px] font-bold text-[#FAF8F5]"
+              className="absolute bottom-3 right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 font-mono text-[10px] font-bold text-[#FAF8F5]"
               style={{ minHeight: 48, minWidth: 48 }}
             >
               FLIP
@@ -795,6 +1223,16 @@ export default function BlindRankCamPage() {
               </p>
             </div>
           )}
+
+          {/* Device QA readout: what the camera actually handed us versus the
+              canvas we derived from it. Tells us what iPhones deliver without
+              needing devtools on the phone. */}
+          {(feedDims || canvasDims) && (
+            <p className="mt-4 text-center font-mono text-[10px] tracking-[0.1em] text-[#FAF8F5]/30">
+              feed {feedDims ? `${feedDims.w}×${feedDims.h}` : "—"} → canvas{" "}
+              {canvasDims ? `${canvasDims.w}×${canvasDims.h}` : "—"} · track {trackDims}
+            </p>
+          )}
         </section>
       )}
 
@@ -831,6 +1269,24 @@ export default function BlindRankCamPage() {
         @keyframes mcdq-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
         .mcdq-rec { animation: mcdq-rec 1.2s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) { .mcdq-rec { animation: none; } }
+
+        /* App feel. Scoped by living in this component's own <style>: it mounts
+           and unmounts with the page, so the rest of the Hub keeps normal
+           scrolling and selection behaviour. */
+        html, body {
+          overscroll-behavior: none;   /* no rubber-band or pull-to-refresh mid-take */
+          background: #07070A;         /* matches theme-color so Safari's chrome blends */
+        }
+        .mcdq-app {
+          -webkit-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none; /* no long-press callout on the viewfinder */
+          -webkit-tap-highlight-color: transparent;
+          overscroll-behavior: none;
+          touch-action: manipulation;  /* kills double-tap zoom, keeps taps instant */
+        }
+        /* Nothing on the live screen should pan or zoom — it is a viewfinder. */
+        .mcdq-stage { touch-action: none; }
       `}</style>
     </main>
   );
