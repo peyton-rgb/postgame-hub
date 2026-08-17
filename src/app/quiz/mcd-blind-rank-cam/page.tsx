@@ -118,8 +118,32 @@ function shuffle(keys: DrinkKey[]): DrinkKey[] {
    Fractions of the canvas, so the same numbers drive both the drawing and the
    percentage-positioned HTML tap targets laid over the rail. */
 
-const CANVAS_W = 1080;
-const CANVAS_H = 1920;
+/** 9:16. The canvas keeps this shape; its pixel size comes from the real feed. */
+const TARGET_ASPECT = 9 / 16;
+/** Only used if the browser never reports usable video dimensions. */
+const FALLBACK_W = 1080;
+const FALLBACK_H = 1920;
+
+/**
+ * The largest 9:16 region of a native frame — the minimum crop needed to reach
+ * portrait, centred. Never upscales: a 1080x1920 feed is used whole, and a
+ * landscape 1920x1080 feed yields 608x1080 rather than a punched-in blow-up.
+ */
+function largestPortraitCrop(nw: number, nh: number) {
+  if (!nw || !nh) return { sx: 0, sy: 0, sw: FALLBACK_W, sh: FALLBACK_H };
+  let sw: number;
+  let sh: number;
+  if (nw / nh > TARGET_ASPECT) {
+    // Wider than 9:16 — keep full height, trim the sides.
+    sh = nh;
+    sw = Math.round(nh * TARGET_ASPECT);
+  } else {
+    // Taller than 9:16 — keep full width, trim top and bottom.
+    sw = nw;
+    sh = Math.round(nw / TARGET_ASPECT);
+  }
+  return { sx: Math.round((nw - sw) / 2), sy: Math.round((nh - sh) / 2), sw, sh };
+}
 
 /** Card sits top-centre at 55% of canvas width; the art is square. */
 const CARD = { wFrac: 0.55, topFrac: 0.045 };
@@ -197,10 +221,29 @@ function drawCover(
   ctx.drawImage(src, dx + (dw - w) / 2, dy + (dh - h) / 2, w, h);
 }
 
+/** Resolves once the element reports real dimensions, or gives up after ~2.5s. */
+function whenVideoSized(video: HTMLVideoElement): Promise<void> {
+  if (video.videoWidth > 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener("loadedmetadata", finish);
+      video.removeEventListener("resize", finish);
+      resolve();
+    };
+    video.addEventListener("loadedmetadata", finish);
+    video.addEventListener("resize", finish);
+    setTimeout(finish, 2500);
+  });
+}
+
 /* ───────────────────────────── page ───────────────────────────── */
 
 type Stage = "intro" | "denied" | "live" | "review";
-type Phase = "playing" | "board";
+/** spinning: the randomizer is cycling. placing: it has landed, rail is live. */
+type Phase = "spinning" | "placing" | "board";
 type Facing = "user" | "environment";
 
 type GameState = {
@@ -214,8 +257,14 @@ const emptyGame = (): GameState => ({
   order: [],
   index: 0,
   slots: Array(SLOT_COUNT).fill(null),
-  phase: "playing",
+  phase: "spinning",
 });
+
+/** Cycle speed while spinning, then the slowing steps after the tap (~600ms). */
+const SPIN_MS = 80;
+const DECEL_MS = [90, 120, 160, 230];
+/** Scale-pop when the reel lands. */
+const POP_MS = 260;
 
 export default function BlindRankCamPage() {
   const [stage, setStage] = useState<Stage>("intro");
@@ -252,6 +301,17 @@ export default function BlindRankCamPage() {
    * rAF loop reads the ref per frame, but recording silently never started.)
    */
   const pendingRunRef = useRef(false);
+  /**
+   * The card currently on screen. Lives only in a ref: the reel swaps it every
+   * 80ms and the draw loop reads it per frame, so putting it in state would mean
+   * ~12 React renders a second for something no DOM node depends on.
+   */
+  const showingRef = useRef<DrinkKey | null>(null);
+  /** Timestamp the reel landed, for the scale-pop. */
+  const popAtRef = useRef<number | null>(null);
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Native feed and canvas sizes, surfaced on the review screen for device QA. */
+  const [dims, setDims] = useState<{ native: string; canvas: string } | null>(null);
 
   const writeGame = useCallback((next: GameState) => {
     gameRef.current = next; // ref first, so the very next frame draws it
@@ -299,30 +359,60 @@ export default function BlindRankCamPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const W = CANVAS_W;
-    const H = CANVAS_H;
+    const W = canvas.width;
+    const H = canvas.height;
 
     ctx.fillStyle = "#07070A";
     ctx.fillRect(0, 0, W, H);
 
-    if (video && video.readyState >= 2) {
-      drawCover(ctx, video, video.videoWidth, video.videoHeight, 0, 0, W, H);
+    // Minimum centre crop to reach 9:16 — no cover-fit blow-up, so the framing
+    // matches what the native camera app shows. Recomputed per frame because a
+    // FLIP can hand back a different resolution mid-run.
+    if (video && video.readyState >= 2 && video.videoWidth) {
+      const { sx, sy, sw, sh } = largestPortraitCrop(video.videoWidth, video.videoHeight);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H);
     }
 
-    const { order, index, slots, phase } = gameRef.current;
+    const { slots, phase } = gameRef.current;
 
-    // Current card, top-centre.
-    if (phase === "playing") {
-      const key = order[index];
+    // Current card, top-centre — the reel while spinning, the landed pick after.
+    if (phase !== "board") {
+      const key = showingRef.current;
       const img = key ? imagesRef.current[key] : undefined;
       if (img?.complete && img.naturalWidth) {
-        const cw = CARD.wFrac * W;
+        const base = CARD.wFrac * W;
+
+        // Scale-pop on landing.
+        let scale = 1;
+        if (popAtRef.current != null) {
+          const t = (performance.now() - popAtRef.current) / POP_MS;
+          if (t >= 1) popAtRef.current = null;
+          else scale = 0.82 + 0.18 * (1 - Math.pow(1 - Math.max(t, 0), 3));
+        }
+
+        const cw = base * scale;
         const cx = (W - cw) / 2;
-        const cy = CARD.topFrac * H;
+        const cy = CARD.topFrac * H + (base - cw) / 2;
         ctx.save();
         roundRectPath(ctx, cx, cy, cw, cw, cw * 0.06);
         ctx.clip();
         drawCover(ctx, img, img.naturalWidth, img.naturalHeight, cx, cy, cw, cw);
+        ctx.restore();
+      }
+
+      // Prompt is game content, so it belongs on the canvas (unlike the REC
+      // badge, which is DOM and must stay out of the export).
+      if (phase === "spinning") {
+        ctx.save();
+        ctx.fillStyle = GOLD;
+        ctx.font = `700 ${Math.round(W * 0.038)}px ui-monospace, Menlo, Consolas, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        type Spaced = CanvasRenderingContext2D & { letterSpacing?: string };
+        const spaced = ctx as Spaced;
+        if ("letterSpacing" in spaced) spaced.letterSpacing = `${Math.round(W * 0.008)}px`;
+        ctx.fillText("TAP TO STOP", W / 2, CARD.topFrac * H + CARD.wFrac * W + W * 0.055);
+        if ("letterSpacing" in spaced) spaced.letterSpacing = "0px";
         ctx.restore();
       }
     } else {
@@ -464,12 +554,98 @@ export default function BlindRankCamPage() {
     recorderRef.current = null;
   }, []);
 
-  /** New shuffle, empty board, recorder rolling — the first drink is on screen. */
-  const startRun = useCallback(() => {
+  /* ── the randomizer reel ── */
+
+  const clearSpin = useCallback(() => {
+    if (spinTimerRef.current) {
+      clearTimeout(spinTimerRef.current);
+      spinTimerRef.current = null;
+    }
+  }, []);
+
+  /** Cycle the unplaced drinks until tapped. Cosmetic only — see stopSpin. */
+  const beginSpin = useCallback(() => {
+    clearSpin();
+    const g = gameRef.current;
+    const remaining = g.order.slice(g.index);
+    if (!remaining.length) return;
+
+    popAtRef.current = null;
+    showingRef.current = remaining[0];
+    writeGame({ ...g, phase: "spinning" });
+
+    let i = 1;
+    const tick = () => {
+      const rem = gameRef.current.order.slice(gameRef.current.index);
+      if (!rem.length) return;
+      showingRef.current = rem[i % rem.length]; // ref only — no re-render per tick
+      i += 1;
+      spinTimerRef.current = setTimeout(tick, SPIN_MS);
+    };
+    spinTimerRef.current = setTimeout(tick, SPIN_MS);
+  }, [clearSpin, writeGame]);
+
+  /**
+   * Tap to stop: slow over ~600ms, then land.
+   *
+   * The landing card is order[index] — fixed by the shuffle before the reel ever
+   * started, so it cannot be timed by tapping on a particular frame. What flickers
+   * past on the way down is decoration drawn from the remaining drinks.
+   */
+  const stopSpin = useCallback(() => {
+    const g = gameRef.current;
+    if (g.phase !== "spinning") return;
+    clearSpin();
+
+    const landing = g.order[g.index];
+    const remaining = g.order.slice(g.index);
+    let step = 0;
+
+    const run = () => {
+      if (step < DECEL_MS.length) {
+        showingRef.current = remaining[Math.floor(Math.random() * remaining.length)];
+        const wait = DECEL_MS[step];
+        step += 1;
+        spinTimerRef.current = setTimeout(run, wait);
+        return;
+      }
+      spinTimerRef.current = null;
+      showingRef.current = landing;
+      popAtRef.current = performance.now();
+      writeGame({ ...gameRef.current, phase: "placing" });
+    };
+    run();
+  }, [clearSpin, writeGame]);
+
+  /** New shuffle, empty board, recorder rolling, first reel spinning. */
+  const startRun = useCallback(async () => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+
+    // Size the canvas from the real feed before the recorder attaches — a
+    // resolution change mid-recording is not something encoders take kindly to,
+    // so this is the one chance to get it right.
+    if (canvas) {
+      if (video) await whenVideoSized(video);
+      const nw = video?.videoWidth ?? 0;
+      const nh = video?.videoHeight ?? 0;
+      const { sw, sh } = largestPortraitCrop(nw, nh);
+      canvas.width = sw;
+      canvas.height = sh;
+      const settings = videoStreamRef.current?.getVideoTracks()[0]?.getSettings?.();
+      const reported =
+        settings?.width && settings?.height ? `${settings.width}×${settings.height}` : "—";
+      setDims({
+        native: nw && nh ? `${nw}×${nh} (track ${reported})` : `unknown (track ${reported})`,
+        canvas: `${sw}×${sh}`,
+      });
+    }
+
     writeGame({ ...emptyGame(), order: shuffle(ALL_DRINKS) });
     startLoop();
     startRecording();
-  }, [writeGame, startLoop, startRecording]);
+    beginSpin();
+  }, [writeGame, startLoop, startRecording, beginSpin]);
 
   /* ── camera ── */
   const attachVideo = useCallback((stream: MediaStream) => {
@@ -517,7 +693,7 @@ export default function BlindRankCamPage() {
     pendingRunRef.current = false;
     const stream = videoStreamRef.current;
     if (stream) attachVideo(stream);
-    startRun();
+    void startRun();
   }, [stage, attachVideo, startRun]);
 
   const flipCamera = useCallback(async () => {
@@ -541,7 +717,7 @@ export default function BlindRankCamPage() {
   const place = useCallback(
     (slot: number) => {
       const g = gameRef.current;
-      if (g.phase !== "playing") return;
+      if (g.phase !== "placing") return; // rail is inert until the reel lands
       if (g.slots[slot] !== null) return; // locked is locked
       const key = g.order[g.index];
       if (!key) return;
@@ -550,14 +726,19 @@ export default function BlindRankCamPage() {
       slots[slot] = key;
 
       if (g.index + 1 >= SLOT_COUNT) {
+        popAtRef.current = null;
+        showingRef.current = null;
         writeGame({ ...g, slots, phase: "board" });
         // Let the finished board sit on camera before cutting.
         stopTimerRef.current = setTimeout(() => stopRecording(), 3000);
       } else {
         writeGame({ ...g, slots, index: g.index + 1 });
+        // Next round spins immediately — including the final one-card round,
+        // which still gets a short reel so the rhythm never breaks.
+        beginSpin();
       }
     },
-    [writeGame, stopRecording],
+    [writeGame, stopRecording, beginSpin],
   );
 
   /* ── teardown ── */
@@ -566,6 +747,8 @@ export default function BlindRankCamPage() {
     rafRef.current = null;
     if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
     if (tickRef.current) clearInterval(tickRef.current);
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    spinTimerRef.current = null;
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") rec.stop();
     recorderRef.current = null;
@@ -599,7 +782,12 @@ export default function BlindRankCamPage() {
     elapsed % 60,
   ).padStart(2, "0")}`;
 
-  const currentName = game.order[game.index] ? CARDS[game.order[game.index]].name : "";
+  // Only name the drink once the reel has landed — while spinning there is no
+  // "current" pick to announce.
+  const currentName =
+    game.phase === "placing" && game.order[game.index]
+      ? CARDS[game.order[game.index]].name
+      : "the drink on screen";
 
   return (
     <main
@@ -683,12 +871,28 @@ export default function BlindRankCamPage() {
             className="relative"
             style={{ width: "min(100vw, calc(100dvh * 9 / 16))", aspectRatio: "9 / 16" }}
           >
+            {/* width/height are placeholders — startRun resizes the canvas to the
+                real feed's largest 9:16 crop before the recorder attaches. */}
             <canvas
               ref={canvasRef}
-              width={CANVAS_W}
-              height={CANVAS_H}
+              width={FALLBACK_W}
+              height={FALLBACK_H}
               className="block h-full w-full"
             />
+
+            {/* Tap anywhere on the camera to stop the reel. Sits *under* the rail
+                targets, which stay mounted-but-disabled while spinning — a
+                disabled button swallows the tap rather than letting it bubble
+                here, which is what keeps the rail genuinely inert. */}
+            {game.phase === "spinning" && (
+              <button
+                type="button"
+                onClick={stopSpin}
+                aria-label="Stop the randomizer"
+                className="absolute inset-0 z-10"
+                style={{ background: "transparent" }}
+              />
+            )}
 
             {/* Tap targets over the rail. HTML, not canvas — the canvas has no
                 hit testing of its own. Percentages come from the same geometry
@@ -698,13 +902,13 @@ export default function BlindRankCamPage() {
                 key={i}
                 type="button"
                 onClick={() => place(i)}
-                disabled={game.phase !== "playing" || game.slots[i] !== null}
+                disabled={game.phase !== "placing" || game.slots[i] !== null}
                 aria-label={
                   game.slots[i]
                     ? `Slot ${i + 1}, locked: ${CARDS[game.slots[i] as DrinkKey].name}`
                     : `Put ${currentName} in slot ${i + 1}`
                 }
-                className="absolute"
+                className="absolute z-20"
                 style={{
                   left: `${RAIL.xFrac * 100}%`,
                   top: `${tileTopFrac(i) * 100}%`,
@@ -719,7 +923,7 @@ export default function BlindRankCamPage() {
 
             {/* REC badge and timer are DOM overlays — deliberately NOT drawn to
                 the canvas, so they never appear in the exported video. */}
-            <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5">
+            <div className="pointer-events-none absolute right-3 top-3 z-30 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5">
               <span className="mcdq-rec h-2.5 w-2.5 rounded-full bg-[#DA291C]" />
               <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#FAF8F5]">
                 REC {mmss}
@@ -727,7 +931,7 @@ export default function BlindRankCamPage() {
             </div>
 
             {errorNote && (
-              <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/75 px-4 py-3 text-center text-[13px] text-[#FAF8F5]">
+              <div className="absolute inset-x-3 bottom-3 z-30 rounded-xl bg-black/75 px-4 py-3 text-center text-[13px] text-[#FAF8F5]">
                 {errorNote}
               </div>
             )}
@@ -736,7 +940,7 @@ export default function BlindRankCamPage() {
               type="button"
               onClick={flipCamera}
               aria-label="Switch camera"
-              className="absolute left-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 font-mono text-[10px] font-bold text-[#FAF8F5]"
+              className="absolute left-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 font-mono text-[10px] font-bold text-[#FAF8F5]"
               style={{ minHeight: 48, minWidth: 48 }}
             >
               FLIP
@@ -794,6 +998,15 @@ export default function BlindRankCamPage() {
                 in-store digital kiosk.
               </p>
             </div>
+          )}
+
+          {/* Device QA readout: what the camera actually handed us versus the
+              canvas we derived from it. Tells us what iPhones deliver without
+              needing devtools on the phone. */}
+          {dims && (
+            <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-[#FAF8F5]/30">
+              cam {dims.native} → canvas {dims.canvas}
+            </p>
           )}
         </section>
       )}
