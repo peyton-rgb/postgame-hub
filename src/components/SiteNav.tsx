@@ -3,7 +3,12 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const HIDDEN_ROUTES = ["/admin", "/dashboard", "/board", "/login", "/authorize", "/reset-password", "/media-library", "/brief/", "/run-of-show/", "/recap/", "/optin/", "/bts", "/pitch/", "/portal/", "/pkg/", "/packages", "/athlete", "/v/", "/submit/", "/quiz/"];
+// NOTE: entries are startsWith() prefixes, so a trailing slash makes the
+// BARE route miss. "/portal/" hid /portal/[token] and /portal/signup but
+// left the marketing header rendering over /portal itself — the brand
+// home a client lands on after signing in. Prefixes here should not end
+// in "/" unless the bare path is genuinely meant to stay public.
+const HIDDEN_ROUTES = ["/admin", "/dashboard", "/board", "/login", "/authorize", "/reset-password", "/media-library", "/brief/", "/run-of-show/", "/recap/", "/optin/", "/bts", "/pitch/", "/portal", "/pkg/", "/packages", "/athlete", "/v/", "/submit/", "/quiz/"];
 
 export default function SiteNav() {
   const pathname = usePathname();

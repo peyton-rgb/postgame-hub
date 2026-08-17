@@ -21,6 +21,7 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { formatDate, formatMoney, safeQuery } from "@/lib/admin/db";
 import { PageHeader, PendingMigration, ErrorNote, FlagCell, EmptyRows } from "@/components/admin/ui";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import { loadPostgameTeam, PostgameTeamBlock } from "@/components/PostgameTeam";
 
 export const dynamic = "force-dynamic";
 
@@ -374,6 +375,13 @@ export default async function CampaignDashboard({
           />
         </div>
       )}
+
+      {/* Same component the client sees on their campaign page, so
+          internal ownership and the client-facing answer can never
+          drift apart. */}
+      <div className="mt-6 max-w-md">
+        <PostgameTeamBlock tone="light" members={await loadPostgameTeam({ campaignId: campaign.id, brandId: campaign.brand_id })} />
+      </div>
     </div>
   );
 }

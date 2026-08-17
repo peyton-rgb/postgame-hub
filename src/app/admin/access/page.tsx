@@ -88,7 +88,8 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
     supabase
       .from("brand_contacts")
       .select(
-        "id, contact_id, brand_id, role, status, invited_email, signup_email, invited_at, activated_at, revoked_at, brands(name)"
+        "id, contact_id, brand_id, role, status, invited_email, signup_email, invited_at, activated_at, revoked_at, brands(name)" +
+        (schema.invites ? ", invite_send_error, invite_expires_at" : "")
       )
       .limit(5000)
   );
@@ -453,6 +454,14 @@ function Attachments({
                   ? `Invited ${formatDate(a.invited_at)}`
                   : meta.hint}
             </span>
+            {a.invite_send_error && (
+              <span
+                title={a.invite_send_error}
+                className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700"
+              >
+                send failed — resend
+              </span>
+            )}
             <span className="ml-auto">
               <AccessAttachmentMenu
                 attachmentId={a.id}
@@ -532,7 +541,13 @@ function StaffTab() {
 
 function ResultNote({ result }: { result: string }) {
   const map: Record<string, { tone: "ok" | "warn" | "bad"; text: string }> = {
-    invited: { tone: "ok", text: "Invite recorded." },
+    invited: { tone: "ok", text: "Invite sent." },
+    "invite-not-emailed": {
+      tone: "warn",
+      text:
+        "Attachment saved, but the invite email did NOT go out — the row shows the reason. " +
+        "Nobody has been emailed; use Resend once it is fixed.",
+    },
     saved: { tone: "ok", text: "Change saved." },
     revoked: {
       tone: "ok",
@@ -590,6 +605,7 @@ interface AttachmentRaw {
   invited_at: string | null;
   activated_at: string | null;
   revoked_at: string | null;
+  invite_send_error?: string | null;
   brands: { name: string | null } | { name: string | null }[] | null;
 }
 
@@ -620,5 +636,6 @@ function normalizeAttachment(raw: AttachmentRaw): AttachmentRow {
     invited_at: raw.invited_at,
     activated_at: raw.activated_at,
     revoked_at: raw.revoked_at,
+    invite_send_error: raw.invite_send_error ?? null,
   };
 }

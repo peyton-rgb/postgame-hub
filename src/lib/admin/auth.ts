@@ -16,14 +16,23 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase-server";
 
-export type AccessLevel = "exec" | "admin" | "staff" | "athlete";
+export type AccessLevel = "exec" | "admin" | "staff" | "athlete" | "brand";
 
 const RANK: Record<AccessLevel, number> = {
   exec: 3,
   admin: 2,
   staff: 1,
   athlete: 0,
+  // External client logins (migration 029). Ranked at the floor on
+  // purpose: they outrank nothing, so requireAdmin() bounces them out of
+  // every staff surface without needing a special case per screen.
+  brand: 0,
 };
+
+/** True for logins that belong to clients, not to Postgame. */
+export function isExternalLevel(level: AccessLevel): boolean {
+  return level === "brand";
+}
 
 export interface AdminUser {
   id: string;
@@ -37,6 +46,11 @@ export interface AdminUser {
 function roleFallback(role: string): AccessLevel {
   if (role === "admin") return "admin";
   if (role === "athlete") return "athlete";
+  // 'brand' must be recognised here, not swept into the staff bucket.
+  // This fallback runs whenever access_level is missing or unrecognised,
+  // so without this line an external client login would read as STAFF
+  // and be let into /admin. Fail closed, never open.
+  if (role === "brand") return "brand";
   return "staff";
 }
 
@@ -70,7 +84,11 @@ export async function getAdminUser(): Promise<AdminUser | null> {
     const level = (withLevel.data as { access_level?: string }).access_level;
     const role = withLevel.data.role ?? "staff";
     const accessLevel: AccessLevel =
-      level === "exec" || level === "admin" || level === "staff" || level === "athlete"
+      level === "exec" ||
+      level === "admin" ||
+      level === "staff" ||
+      level === "athlete" ||
+      level === "brand"
         ? level
         : roleFallback(role);
     return {
@@ -110,6 +128,9 @@ export async function requireAdmin(min: AccessLevel = "staff"): Promise<AdminUse
   const user = await getAdminUser();
   if (!user) redirect("/login");
   if (user.accessLevel === "athlete") redirect("/athlete");
+  // External client logins never reach a staff surface. Sent to the
+  // denied page rather than /admin, which would bounce forever.
+  if (isExternalLevel(user.accessLevel)) redirect("/portal/denied");
   if (RANK[user.accessLevel] < RANK[min]) redirect("/admin");
   return user;
 }
@@ -119,6 +140,7 @@ export async function getAdminActor(min: AccessLevel = "staff"): Promise<AdminUs
   const user = await getAdminUser();
   if (!user) return null;
   if (user.accessLevel === "athlete") return null;
+  if (isExternalLevel(user.accessLevel)) return null;
   if (RANK[user.accessLevel] < RANK[min]) return null;
   return user;
 }

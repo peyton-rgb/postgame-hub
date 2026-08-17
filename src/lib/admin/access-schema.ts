@@ -33,6 +33,8 @@ export interface AccessSchemaState {
   attachments: boolean;
   /** postgame_contacts.contact_type / .agency_name are readable. */
   identityFields: boolean;
+  /** 029: invite_token / expiry / send-error columns are readable. */
+  invites: boolean;
   /** Everything 028 delivers is live — the screen runs at full fidelity. */
   ready: boolean;
   /** Human-readable list of what is still missing, for the banner. */
@@ -58,14 +60,18 @@ async function probeRelation(table: string, columns: string): Promise<boolean> {
 }
 
 export const getAccessSchemaState = cache(async (): Promise<AccessSchemaState> => {
-  const [attachments, identityFields] = await Promise.all([
+  const [attachments, identityFields, invites] = await Promise.all([
     probeRelation(ATTACHMENT_TABLE, "id"),
     probeRelation("postgame_contacts", "id, contact_type, agency_name"),
+    probeRelation(ATTACHMENT_TABLE, "id, invite_token, invite_expires_at, invite_send_error"),
   ]);
 
   const missing: string[] = [];
   if (!attachments) missing.push("per-brand attachments (role, status, invites)");
   if (!identityFields) missing.push("contact type (Brand / Agency) and agency name");
 
-  return { attachments, identityFields, ready: attachments && identityFields, missing };
+  // `invites` is NOT part of `ready`: 028 is what the access screen needs
+  // to function. Without 029 the screen still works, invites just record
+  // without emailing — so the banner must not claim the screen is broken.
+  return { attachments, identityFields, invites, ready: attachments && identityFields, missing };
 });

@@ -11,7 +11,8 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { safeQuery } from "@/lib/admin/db";
 import { PageHeader, PendingMigration, ErrorNote } from "@/components/admin/ui";
 import AdminForm, { FieldCard, Field } from "@/components/admin/StickySaveBar";
-import { saveBrand } from "../../actions";
+import { saveBrand, setAccountOwner } from "../../actions";
+import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,27 @@ export default async function BrandEditPage({
         .single() as any
   );
 
+  // Account Lead (029). Assignable targets are Postgame people only —
+  // athlete and brand logins are never offered as an owner.
+  const ownerProbe = await safeQuery<{ account_owner_id: string | null }>(() =>
+    supabase.from("brands").select("account_owner_id").eq("id", brand.id).single()
+  );
+  const accountOwnerId = ownerProbe.data?.account_owner_id ?? null;
+
+  const staffRes = await safeQuery<
+    { id: string; full_name: string | null; display_name: string | null; email: string | null; access_level: string | null }[]
+  >(() =>
+    supabase
+      .from("profiles")
+      .select("id, full_name, display_name, email, access_level")
+      .in("access_level", ["staff", "admin", "exec"])
+      .order("full_name", { ascending: true, nullsFirst: false })
+  );
+  const staffProfiles = (staffRes.data ?? []).map((p) => ({
+    id: p.id,
+    label: (p.full_name || p.display_name || p.email || p.id).trim(),
+  }));
+
   const result = searchParams.result;
 
   return (
@@ -84,7 +106,45 @@ export default async function BrandEditPage({
           migration 024.
         </div>
       )}
+      {result === "pending029" && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+          Account Lead was not saved — <code className="rounded bg-amber-100 px-1">brands.account_owner_id</code>{" "}
+          arrives with migration 029. Nothing else was changed.
+        </div>
+      )}
       {result === "error" && <ErrorNote message="Save failed — nothing was changed." />}
+
+      {/* Account Lead — its own confirmed POST and its own audit action
+          (brand.account_owner_change). Ownership of a client relationship
+          is a different decision from editing brand copy. */}
+      <form action={setAccountOwner} className="mb-5 rounded-lg border border-stone-200 bg-white p-4">
+        <input type="hidden" name="id" value={brand.id} />
+        <div className="text-[13px] font-semibold text-stone-900">Account Lead</div>
+        <p className="mt-0.5 text-[12px] text-stone-500">
+          The named Postgame owner of this relationship. Shown to the client in &ldquo;Your Postgame
+          Team&rdquo; — leave unset and that seat honestly reads &ldquo;Being assigned&rdquo;.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            name="account_owner_id"
+            defaultValue={accountOwnerId ?? ""}
+            className="min-w-[240px] rounded-md border border-stone-300 bg-white px-2 py-1.5 text-[13px] text-stone-900"
+          >
+            <option value="">Being assigned (unset)</option>
+            {staffProfiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <ConfirmSubmit
+            confirmLabel="Save Account Lead"
+            summary={`Set the Account Lead for ${brand.name}? This is who the client is told to contact, and the change is recorded against your name.`}
+          >
+            Save Account Lead
+          </ConfirmSubmit>
+        </div>
+      </form>
 
       <AdminForm
         action={saveBrand}

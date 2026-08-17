@@ -106,3 +106,57 @@ export async function saveBrand(formData: FormData): Promise<void> {
     `/admin/brands/${id}/edit?result=${failed ? "error" : lifecyclePending ? "saved-pending024" : "saved"}`
   );
 }
+
+/**
+ * Account Lead (migration 029) — its own confirmed POST and its own audit
+ * action, deliberately not folded into saveBrand. Who owns a client
+ * relationship is a distinct decision from editing brand copy, and it
+ * should read that way in the audit log.
+ *
+ * staff+ only as an assignable target: an Account Lead is a Postgame
+ * person, so athlete and brand logins are never offered.
+ */
+export async function setAccountOwner(formData: FormData): Promise<void> {
+  const actor = await getAdminActor("staff");
+  if (!actor) redirect("/login");
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/admin/brands");
+
+  const raw = String(formData.get("account_owner_id") ?? "").trim();
+  const nextOwner = raw === "" ? null : raw;
+
+  const supabase = createServiceSupabase();
+  const before = await supabase
+    .from("brands")
+    .select("account_owner_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (before.error && isMissingSchemaError(before.error)) {
+    redirect(`/admin/brands/${id}/edit?result=pending029`);
+  }
+
+  const { error } = await supabase
+    .from("brands")
+    .update({ account_owner_id: nextOwner })
+    .eq("id", id);
+
+  if (error && isMissingSchemaError(error)) {
+    redirect(`/admin/brands/${id}/edit?result=pending029`);
+  }
+  if (error) redirect(`/admin/brands/${id}/edit?result=error`);
+
+  await logAdminAction({
+    actorId: actor.id,
+    actorEmail: actor.email,
+    action: "brand.account_owner_change",
+    entity: "brands",
+    entityId: id,
+    before: { account_owner_id: before.data?.account_owner_id ?? null },
+    after: { account_owner_id: nextOwner },
+  });
+
+  revalidatePath(`/admin/brands/${id}/edit`);
+  redirect(`/admin/brands/${id}/edit?result=saved`);
+}
