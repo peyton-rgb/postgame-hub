@@ -46,6 +46,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ------------------------------------------------------------
+  // Brand (client) logins are scoped to /portal and nothing else.
+  //
+  // Presence of a session is NOT enough for the staff surfaces: a brand
+  // user is authenticated, so without this they would sail through the
+  // !user check above and into the staff dashboard. /admin is gated
+  // separately by requireAdmin() in its layout; this covers the routes
+  // in the matcher below.
+  //
+  // One profiles read, and only for signed-in users on a staff path —
+  // anonymous traffic and /portal never pay for it.
+  // ------------------------------------------------------------
+  const isStaffSurface =
+    path.startsWith("/dashboard") ||
+    path.startsWith("/packages") ||
+    path.startsWith("/board");
+
+  if (user && (isStaffSurface || path === "/login")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("access_level")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.access_level === "brand") {
+      const url = request.nextUrl.clone();
+      // On /login send them home; on a staff surface say why.
+      url.pathname = path === "/login" ? "/portal" : "/portal/denied";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // If logged in and hitting /login, redirect to dashboard
   if (user && path === "/login") {
     const url = request.nextUrl.clone();
