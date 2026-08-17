@@ -1,6 +1,9 @@
 -- Migration 028 · contact identities + per-brand attachment junction
 --
 -- APPLIED to xqaybwhpgxillpbbqtks by the planner thread on 17 Aug.
+-- Includes the unique email index the planner applied separately as
+-- 028b — folded in here so this file remains the single description of
+-- the schema, and verified against pg_indexes rather than assumed.
 --
 -- This file was rewritten to match the schema that is ACTUALLY APPLIED,
 -- read back from information_schema / pg_constraint. An earlier version
@@ -39,12 +42,19 @@ ALTER TABLE postgame_contacts
     CHECK (contact_type IN ('brand', 'agency')),
   ADD COLUMN IF NOT EXISTS agency_name text;
 
--- NOTE: there is deliberately NO unique index on lower(email) here — the
--- applied schema does not have one. Invite dedupe is therefore enforced in
--- the application only (src/app/admin/access/actions.ts looks the address
--- up before inserting). Two concurrent invites for the same new email could
--- still race into twin identities. Add the index when the 15 seed rows are
--- confirmed to have no duplicate/blank-email collisions.
+-- Dedupe is by email, so it must be unique where present — this is what
+-- makes "one login, no duplicate humans" a guarantee rather than a
+-- convention. The application already looks the address up before
+-- inserting (src/app/admin/access/actions.ts); the index closes the race
+-- where two concurrent invites for the same new address would both miss
+-- that lookup and create twins.
+--
+-- Partial (WHERE email IS NOT NULL) so the seed rows may keep a null
+-- email, and on lower(email) so casing cannot smuggle a twin past it.
+-- Applied by the planner as 028b; folded in here to keep 028 the single
+-- description of this schema.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_email_unique
+  ON postgame_contacts (lower(email)) WHERE email IS NOT NULL;
 
 -- ------------------------------------------------------------
 -- 2 · per-brand attachments
