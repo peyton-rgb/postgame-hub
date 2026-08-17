@@ -125,24 +125,37 @@ const FALLBACK_W = 1080;
 const FALLBACK_H = 1920;
 
 /**
- * The largest 9:16 region of a native frame — the minimum crop needed to reach
- * portrait, centred. Never upscales: a 1080x1920 feed is used whole, and a
- * landscape 1920x1080 feed yields 608x1080 rather than a punched-in blow-up.
+ * The largest centred region of a native frame matching `aspect` (w/h). When the
+ * frame already matches, this is the whole frame — zero crop.
  */
-function largestPortraitCrop(nw: number, nh: number) {
+function centreCropTo(nw: number, nh: number, aspect: number) {
   if (!nw || !nh) return { sx: 0, sy: 0, sw: FALLBACK_W, sh: FALLBACK_H };
   let sw: number;
   let sh: number;
-  if (nw / nh > TARGET_ASPECT) {
-    // Wider than 9:16 — keep full height, trim the sides.
-    sh = nh;
-    sw = Math.round(nh * TARGET_ASPECT);
+  if (nw / nh > aspect) {
+    sh = nh; // too wide — trim the sides
+    sw = Math.round(nh * aspect);
   } else {
-    // Taller than 9:16 — keep full width, trim top and bottom.
-    sw = nw;
-    sh = Math.round(nw / TARGET_ASPECT);
+    sw = nw; // too tall — trim top and bottom
+    sh = Math.round(nw / aspect);
   }
   return { sx: Math.round((nw - sw) / 2), sy: Math.round((nh - sh) / 2), sw, sh };
+}
+
+/**
+ * Canvas size from the *rendered* frame, and only from the rendered frame.
+ *
+ * A portrait frame is used whole — no crop at all, whatever its aspect. Forcing
+ * 9:16 on an already-portrait feed was itself a source of zoom: a 3:4 portrait
+ * frame lost a quarter of its width to satisfy an aspect nobody asked for.
+ * Cropping now happens only when the feed arrives landscape, which is the one
+ * case where something has to give.
+ */
+function deriveCanvasSize(nw: number, nh: number) {
+  if (!nw || !nh) return { w: FALLBACK_W, h: FALLBACK_H, cropped: false };
+  if (nh >= nw) return { w: nw, h: nh, cropped: false };
+  const { sw, sh } = centreCropTo(nw, nh, TARGET_ASPECT);
+  return { w: sw, h: sh, cropped: true };
 }
 
 /** Card sits top-centre at 55% of canvas width; the art is square. */
@@ -310,8 +323,15 @@ export default function BlindRankCamPage() {
   /** Timestamp the reel landed, for the scale-pop. */
   const popAtRef = useRef<number | null>(null);
   const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Native feed and canvas sizes, surfaced on the review screen for device QA. */
-  const [dims, setDims] = useState<{ native: string; canvas: string } | null>(null);
+  /**
+   * Rendered feed size and the canvas derived from it, shown live on screen so a
+   * device test can be settled with a screenshot instead of guesswork. Feed dims
+   * track the <video> element and update on FLIP; canvas dims are fixed per run.
+   */
+  const [feedDims, setFeedDims] = useState<{ w: number; h: number } | null>(null);
+  const [canvasDims, setCanvasDims] = useState<{ w: number; h: number } | null>(null);
+  /** Secondary diagnostic only — never used for sizing. */
+  const [trackDims, setTrackDims] = useState<string>("—");
 
   const writeGame = useCallback((next: GameState) => {
     gameRef.current = next; // ref first, so the very next frame draws it
@@ -335,6 +355,26 @@ export default function BlindRankCamPage() {
     });
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  /**
+   * Keep the readout honest across a FLIP: the <video> fires resize whenever the
+   * rendered frame size changes, which is exactly what we size and crop from.
+   */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const sync = () => {
+      if (video.videoWidth) setFeedDims({ w: video.videoWidth, h: video.videoHeight });
+      const s = videoStreamRef.current?.getVideoTracks()[0]?.getSettings?.();
+      setTrackDims(s?.width && s?.height ? `${s.width}×${s.height}` : "—");
+    };
+    video.addEventListener("loadedmetadata", sync);
+    video.addEventListener("resize", sync);
+    return () => {
+      video.removeEventListener("loadedmetadata", sync);
+      video.removeEventListener("resize", sync);
     };
   }, []);
 
@@ -365,11 +405,12 @@ export default function BlindRankCamPage() {
     ctx.fillStyle = "#07070A";
     ctx.fillRect(0, 0, W, H);
 
-    // Minimum centre crop to reach 9:16 — no cover-fit blow-up, so the framing
-    // matches what the native camera app shows. Recomputed per frame because a
-    // FLIP can hand back a different resolution mid-run.
+    // Fit the feed to whatever the canvas already is — which, for a portrait
+    // feed, means the whole frame with no crop. Recomputed per frame because a
+    // FLIP can hand back a different resolution mid-run, and the canvas must not
+    // be resized once the recorder is attached.
     if (video && video.readyState >= 2 && video.videoWidth) {
-      const { sx, sy, sw, sh } = largestPortraitCrop(video.videoWidth, video.videoHeight);
+      const { sx, sy, sw, sh } = centreCropTo(video.videoWidth, video.videoHeight, W / H);
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H);
     }
 
@@ -626,19 +667,18 @@ export default function BlindRankCamPage() {
     // resolution change mid-recording is not something encoders take kindly to,
     // so this is the one chance to get it right.
     if (canvas) {
+      // Wait for loadedmetadata, then read the RENDERED dimensions. Never
+      // track.getSettings(): iOS Safari routinely reports the sensor's landscape
+      // dims there while handing the <video> a portrait frame, and sizing off
+      // that mismatch is how you end up cropping a frame that needed no crop.
       if (video) await whenVideoSized(video);
       const nw = video?.videoWidth ?? 0;
       const nh = video?.videoHeight ?? 0;
-      const { sw, sh } = largestPortraitCrop(nw, nh);
-      canvas.width = sw;
-      canvas.height = sh;
-      const settings = videoStreamRef.current?.getVideoTracks()[0]?.getSettings?.();
-      const reported =
-        settings?.width && settings?.height ? `${settings.width}×${settings.height}` : "—";
-      setDims({
-        native: nw && nh ? `${nw}×${nh} (track ${reported})` : `unknown (track ${reported})`,
-        canvas: `${sw}×${sh}`,
-      });
+      const { w, h } = deriveCanvasSize(nw, nh);
+      canvas.width = w;
+      canvas.height = h;
+      setCanvasDims({ w, h });
+      setFeedDims(nw && nh ? { w: nw, h: nh } : null);
     }
 
     writeGame({ ...emptyGame(), order: shuffle(ALL_DRINKS) });
@@ -664,12 +704,13 @@ export default function BlindRankCamPage() {
     setErrorNote(null);
     try {
       // One prompt for camera + mic. The audio track outlives camera flips.
+      //
+      // facingMode ONLY — deliberately no width/height. iOS treats size and
+      // aspect constraints as licence to crop the sensor to satisfy them, which
+      // arrives looking like zoom. Take whatever native frame the camera offers
+      // and do every bit of fitting ourselves, on the canvas.
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-        },
+        video: { facingMode: "user" },
         audio: true,
       });
       audioStreamRef.current = stream;
@@ -700,7 +741,8 @@ export default function BlindRankCamPage() {
     const next: Facing = facing === "user" ? "environment" : "user";
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: next, width: { ideal: 1080 }, height: { ideal: 1920 } },
+        // facingMode only, for the same reason as the initial request.
+        video: { facingMode: next },
         audio: false,
       });
       // Release only the old camera; the mic track belongs to audioStreamRef.
@@ -923,10 +965,18 @@ export default function BlindRankCamPage() {
 
             {/* REC badge and timer are DOM overlays — deliberately NOT drawn to
                 the canvas, so they never appear in the exported video. */}
-            <div className="pointer-events-none absolute right-3 top-3 z-30 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5">
-              <span className="mcdq-rec h-2.5 w-2.5 rounded-full bg-[#DA291C]" />
-              <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#FAF8F5]">
-                REC {mmss}
+            <div className="pointer-events-none absolute right-3 top-3 z-30 flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5">
+                <span className="mcdq-rec h-2.5 w-2.5 rounded-full bg-[#DA291C]" />
+                <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-[#FAF8F5]">
+                  REC {mmss}
+                </span>
+              </div>
+              {/* Framing readout. DOM overlay, so it never reaches the export —
+                  screenshot this if the framing still looks wrong on device. */}
+              <span className="rounded-full bg-black/55 px-2.5 py-1 font-mono text-[9px] tracking-[0.08em] text-[#FAF8F5]/70">
+                feed {feedDims ? `${feedDims.w}×${feedDims.h}` : "…"} → canvas{" "}
+                {canvasDims ? `${canvasDims.w}×${canvasDims.h}` : "…"}
               </span>
             </div>
 
@@ -1003,9 +1053,10 @@ export default function BlindRankCamPage() {
           {/* Device QA readout: what the camera actually handed us versus the
               canvas we derived from it. Tells us what iPhones deliver without
               needing devtools on the phone. */}
-          {dims && (
-            <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-[#FAF8F5]/30">
-              cam {dims.native} → canvas {dims.canvas}
+          {(feedDims || canvasDims) && (
+            <p className="mt-4 text-center font-mono text-[10px] tracking-[0.1em] text-[#FAF8F5]/30">
+              feed {feedDims ? `${feedDims.w}×${feedDims.h}` : "—"} → canvas{" "}
+              {canvasDims ? `${canvasDims.w}×${canvasDims.h}` : "—"} · track {trackDims}
             </p>
           )}
         </section>
