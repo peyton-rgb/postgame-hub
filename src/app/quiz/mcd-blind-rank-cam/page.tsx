@@ -175,9 +175,8 @@ const SAFE = { topFrac: 0.08, bottomFrac: 0.73, leftFrac: 0.04, rightFrac: 0.86 
  * and the 73% line, so tile height falls out of the arithmetic rather than being
  * a fixed fraction.
  */
-/** Slots 1-4 down the left column, 5-7 down the right. */
-const LEFT_COL_ROWS = 4;
-const RAIL_ROWS = LEFT_COL_ROWS;
+/** All seven slots in a single line down the left edge. */
+const RAIL_ROWS = 7;
 
 function computeLayout(W: number, H: number) {
   const safe = {
@@ -187,49 +186,31 @@ function computeLayout(W: number, H: number) {
     right: SAFE.rightFrac * W,
   };
 
-  // 47% of width. Two columns mean the rail only needs four rows instead of
-  // seven, which buys back enough height for the card to grow a little without
-  // squeezing the tiles below their target.
   const cardW = 0.47 * W;
   const cardX = (W - cardW) / 2;
   const cardY = safe.top;
   const cardBottom = cardY + cardW; // the art is square
-
   const promptY = cardBottom + 0.03 * H;
-  const railTop = promptY + 0.025 * H;
-  const railX = Math.max(0.045 * W, safe.left);
 
-  // Two columns, ~29.8% of width all in — wider than before but still nowhere
-  // near the right-hand icon band at 86%.
-  const colW = 0.145 * W;
-  const colGap = 0.008 * W;
+  // The rail runs the FULL height of the safe box rather than starting below the
+  // card. It can, because the two never overlap horizontally: the rail hugs the
+  // left edge (4.5%–24.5% of width) while the card is centred (26.5%–73.5%). That
+  // is what keeps seven tiles in one column readable — starting the rail under
+  // the card would squeeze the same seven slots into a third of the height.
+  const railTop = safe.top;
+  const railX = Math.max(0.045 * W, safe.left);
+  const colW = 0.2 * W;
   const rowGap = 0.006 * H;
   const tileH = Math.max((safe.bottom - railTop - rowGap * (RAIL_ROWS - 1)) / RAIL_ROWS, 1);
-  const railW = colW * 2 + colGap;
 
-  return {
-    safe,
-    cardX,
-    cardY,
-    cardW,
-    promptY,
-    railTop,
-    railX,
-    railW,
-    colW,
-    colGap,
-    rowGap,
-    tileH,
-  };
+  return { safe, cardX, cardY, cardW, promptY, railTop, railX, railW: colW, colW, rowGap, tileH };
 }
 
-/** Top-to-bottom, left column then right. */
+/** One column, top to bottom. */
 function tileRect(l: ReturnType<typeof computeLayout>, i: number) {
-  const col = i < LEFT_COL_ROWS ? 0 : 1;
-  const row = i < LEFT_COL_ROWS ? i : i - LEFT_COL_ROWS;
   return {
-    x: l.railX + col * (l.colW + l.colGap),
-    y: l.railTop + row * (l.tileH + l.rowGap),
+    x: l.railX,
+    y: l.railTop + i * (l.tileH + l.rowGap),
     w: l.colW,
     h: l.tileH,
   };
@@ -1166,12 +1147,14 @@ export default function BlindRankCamPage() {
               </div>
             )}
 
+            {/* Viewfinder controls live bottom-right, clear of the rail that now
+                runs the full height of the left edge. DOM only — never exported. */}
             <button
               type="button"
               onClick={() => setGuides((g) => !g)}
               aria-pressed={guides}
               aria-label="Toggle safe-zone guides"
-              className="absolute left-3 top-[68px] z-30 flex items-center justify-center rounded-full bg-black/55 px-3 font-mono text-[10px] font-bold tracking-[0.1em]"
+              className="absolute bottom-3 right-[76px] z-30 flex items-center justify-center rounded-full bg-black/55 px-3 font-mono text-[10px] font-bold tracking-[0.1em]"
               style={{ minHeight: 48, color: guides ? GOLD : "#FAF8F5" }}
             >
               GUIDES
@@ -1181,7 +1164,7 @@ export default function BlindRankCamPage() {
               type="button"
               onClick={flipCamera}
               aria-label="Switch camera"
-              className="absolute left-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 font-mono text-[10px] font-bold text-[#FAF8F5]"
+              className="absolute bottom-3 right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 font-mono text-[10px] font-bold text-[#FAF8F5]"
               style={{ minHeight: 48, minWidth: 48 }}
             >
               FLIP
