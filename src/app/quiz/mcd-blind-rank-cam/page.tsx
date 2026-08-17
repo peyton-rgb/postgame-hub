@@ -175,6 +175,10 @@ const SAFE = { topFrac: 0.08, bottomFrac: 0.73, leftFrac: 0.04, rightFrac: 0.86 
  * and the 73% line, so tile height falls out of the arithmetic rather than being
  * a fixed fraction.
  */
+/** Slots 1-4 down the left column, 5-7 down the right. */
+const LEFT_COL_ROWS = 4;
+const RAIL_ROWS = LEFT_COL_ROWS;
+
 function computeLayout(W: number, H: number) {
   const safe = {
     top: SAFE.topFrac * H,
@@ -183,9 +187,10 @@ function computeLayout(W: number, H: number) {
     right: SAFE.rightFrac * W,
   };
 
-  // 46% rather than the old 55%: the card has to share the safe box with seven
-  // slots now, and every point of card width costs the rail height.
-  const cardW = 0.46 * W;
+  // 47% of width. Two columns mean the rail only needs four rows instead of
+  // seven, which buys back enough height for the card to grow a little without
+  // squeezing the tiles below their target.
+  const cardW = 0.47 * W;
   const cardX = (W - cardW) / 2;
   const cardY = safe.top;
   const cardBottom = cardY + cardW; // the art is square
@@ -193,15 +198,42 @@ function computeLayout(W: number, H: number) {
   const promptY = cardBottom + 0.03 * H;
   const railTop = promptY + 0.025 * H;
   const railX = Math.max(0.045 * W, safe.left);
-  const railW = 0.2 * W;
-  const gap = 0.006 * H;
-  const tileH = Math.max((safe.bottom - railTop - gap * 6) / 7, 1);
 
-  return { safe, cardX, cardY, cardW, promptY, railTop, railX, railW, gap, tileH };
+  // Two columns, ~29.8% of width all in — wider than before but still nowhere
+  // near the right-hand icon band at 86%.
+  const colW = 0.145 * W;
+  const colGap = 0.008 * W;
+  const rowGap = 0.006 * H;
+  const tileH = Math.max((safe.bottom - railTop - rowGap * (RAIL_ROWS - 1)) / RAIL_ROWS, 1);
+  const railW = colW * 2 + colGap;
+
+  return {
+    safe,
+    cardX,
+    cardY,
+    cardW,
+    promptY,
+    railTop,
+    railX,
+    railW,
+    colW,
+    colGap,
+    rowGap,
+    tileH,
+  };
 }
 
-const tileTop = (l: ReturnType<typeof computeLayout>, i: number) =>
-  l.railTop + i * (l.tileH + l.gap);
+/** Top-to-bottom, left column then right. */
+function tileRect(l: ReturnType<typeof computeLayout>, i: number) {
+  const col = i < LEFT_COL_ROWS ? 0 : 1;
+  const row = i < LEFT_COL_ROWS ? i : i - LEFT_COL_ROWS;
+  return {
+    x: l.railX + col * (l.colW + l.colGap),
+    y: l.railTop + row * (l.tileH + l.rowGap),
+    w: l.colW,
+    h: l.tileH,
+  };
+}
 
 /* ──────────────────────────── recording ──────────────────────────── */
 
@@ -384,12 +416,15 @@ export default function BlindRankCamPage() {
     const H = canvasDims?.h ?? FALLBACK_H;
     const L = computeLayout(W, H);
     return {
-      tiles: Array.from({ length: SLOT_COUNT }, (_, i) => ({
-        leftPct: (L.railX / W) * 100,
-        topPct: (tileTop(L, i) / H) * 100,
-        heightPct: (L.tileH / H) * 100,
-      })),
-      tapWidthPct: 42,
+      tiles: Array.from({ length: SLOT_COUNT }, (_, i) => {
+        const r = tileRect(L, i);
+        return {
+          leftPct: (r.x / W) * 100,
+          topPct: (r.y / H) * 100,
+          widthPct: (r.w / W) * 100,
+          heightPct: (r.h / H) * 100,
+        };
+      }),
       safe: {
         leftPct: SAFE.leftFrac * 100,
         topPct: SAFE.topFrac * 100,
@@ -535,48 +570,52 @@ export default function BlindRankCamPage() {
       ctx.restore();
     }
 
-    // Slot rail — height comes from computeLayout, which fits seven tiles
-    // between the card and the safe zone's 73% line.
-    const rx = L.railX;
-    const rw = L.railW;
+    // Slot rail — two columns, 1-4 down the left and 5-7 down the right, so the
+    // tiles get roughly double the height a single column of seven allowed.
     const th = L.tileH;
-    const radius = th * 0.28;
+    const radius = th * 0.2;
 
     for (let i = 0; i < SLOT_COUNT; i++) {
-      const ty = tileTop(L, i);
+      const { x: tx0, y: ty, w: tw } = tileRect(L, i);
       const filled = slots[i];
       const winner = phase === "board" && i === 0;
 
       ctx.save();
-      roundRectPath(ctx, rx, ty, rw, th, radius);
+      roundRectPath(ctx, tx0, ty, tw, th, radius);
       ctx.fillStyle = filled ? "rgba(7,7,10,0.72)" : "rgba(7,7,10,0.45)";
       ctx.fill();
-      ctx.lineWidth = winner ? Math.max(th * 0.08, 3) : Math.max(th * 0.04, 2);
+      ctx.lineWidth = winner ? Math.max(th * 0.055, 3) : Math.max(th * 0.028, 2);
       ctx.strokeStyle = winner ? GOLD : filled ? GOLD : "rgba(255,199,44,0.5)";
-      if (!filled) ctx.setLineDash([th * 0.22, th * 0.18]);
+      if (!filled) ctx.setLineDash([th * 0.16, th * 0.12]);
       ctx.stroke();
       ctx.restore();
 
-      // Rank number.
+      // Rank number — large enough to read at a glance from arm's length.
       ctx.save();
       ctx.fillStyle = GOLD;
-      ctx.font = `700 ${Math.round(th * 0.42)}px Arial, Helvetica, sans-serif`;
+      ctx.font = `700 ${Math.round(th * 0.5)}px ui-monospace, Menlo, Consolas, monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(String(i + 1), rx + rw * 0.19, ty + th / 2);
+      ctx.fillText(String(i + 1), tx0 + tw * 0.19, ty + th / 2);
       ctx.restore();
 
-      // Locked: mini card thumb.
+      // Locked: mini thumb of the drink itself. Cropped to the glass rather than
+      // using the whole card — the card's name band is unreadable at this size
+      // and would only cost the glass room.
       if (filled) {
         const img = imagesRef.current[filled];
         if (img?.complete && img.naturalWidth) {
-          const pad = th * 0.13;
-          const size = th - pad * 2;
-          const tx = rx + rw * 0.36;
+          const size = Math.min(th * 0.78, tw * 0.58);
+          const tx = tx0 + tw * 0.36;
+          const tyy = ty + (th - size) / 2;
+          const sw = img.naturalWidth * 0.74;
+          const sh = img.naturalHeight * 0.74;
+          const sx = img.naturalWidth * 0.13;
+          const sy = img.naturalHeight * 0.01;
           ctx.save();
-          roundRectPath(ctx, tx, ty + pad, size, size, size * 0.18);
+          roundRectPath(ctx, tx, tyy, size, size, size * 0.16);
           ctx.clip();
-          drawCover(ctx, img, img.naturalWidth, img.naturalHeight, tx, ty + pad, size, size);
+          ctx.drawImage(img, sx, sy, sw, sh, tx, tyy, size, size);
           ctx.restore();
         }
       }
@@ -1052,16 +1091,17 @@ export default function BlindRankCamPage() {
                 }
                 className="absolute z-20"
                 style={{
+                  // Exactly the drawn tile's bounds — with two columns the
+                  // targets are large enough that stretching them would only
+                  // risk overlapping the neighbouring column.
                   left: `${overlay.tiles[i].leftPct}%`,
                   top: `${overlay.tiles[i].topPct}%`,
-                  // Vertical bounds match the drawn tile exactly — no minHeight,
-                  // because seven tiles inside the safe zone are shorter than
-                  // 48px and padded targets would overlap each other, sending
-                  // taps to the wrong slot. Width is stretched well past the
-                  // drawn tile instead: it costs nothing (the hit area is DOM,
-                  // never exported) and gives the thumb somewhere to land.
-                  width: `${overlay.tapWidthPct}%`,
+                  width: `${overlay.tiles[i].widthPct}%`,
                   height: `${overlay.tiles[i].heightPct}%`,
+                  // A floor, not padding: the tiles already compute above this
+                  // on a 390-wide phone, so it never actually stretches them
+                  // into each other.
+                  minHeight: 52,
                   background: "transparent",
                 }}
               />
