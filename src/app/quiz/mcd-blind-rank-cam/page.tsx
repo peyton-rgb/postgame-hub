@@ -21,7 +21,7 @@
  * reason.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Arimo } from "next/font/google";
 
@@ -158,12 +158,50 @@ function deriveCanvasSize(nw: number, nh: number) {
   return { w: sw, h: sh, cropped: true };
 }
 
-/** Card sits top-centre at 55% of canvas width; the art is square. */
-const CARD = { wFrac: 0.55, topFrac: 0.045 };
-/** Slot rail down the left. Seven tiles, ending clear of the bottom edge. */
-const RAIL = { xFrac: 0.045, wFrac: 0.2, topFrac: 0.38, tileHFrac: 0.074, gapFrac: 0.01 };
+/**
+ * Reels/TikTok safe zone. Their UI covers the bottom band (caption, handle) and
+ * the right band (like/comment/share rail), and the top under the status area —
+ * so every overlay we bake into the export has to live inside this rectangle.
+ * The camera feed still fills the whole frame; only graphics are constrained.
+ */
+const SAFE = { topFrac: 0.08, bottomFrac: 0.73, leftFrac: 0.04, rightFrac: 0.86 };
 
-const tileTopFrac = (i: number) => RAIL.topFrac + i * (RAIL.tileHFrac + RAIL.gapFrac);
+/**
+ * Everything positional, derived from the canvas size so it holds for any aspect
+ * the camera hands us (9:16, 3:4, whatever). Shared by the canvas renderer and
+ * the DOM tap targets, so they cannot drift apart.
+ *
+ * The rail is what absorbs the squeeze: seven tiles have to fit between the card
+ * and the 73% line, so tile height falls out of the arithmetic rather than being
+ * a fixed fraction.
+ */
+function computeLayout(W: number, H: number) {
+  const safe = {
+    top: SAFE.topFrac * H,
+    bottom: SAFE.bottomFrac * H,
+    left: SAFE.leftFrac * W,
+    right: SAFE.rightFrac * W,
+  };
+
+  // 46% rather than the old 55%: the card has to share the safe box with seven
+  // slots now, and every point of card width costs the rail height.
+  const cardW = 0.46 * W;
+  const cardX = (W - cardW) / 2;
+  const cardY = safe.top;
+  const cardBottom = cardY + cardW; // the art is square
+
+  const promptY = cardBottom + 0.03 * H;
+  const railTop = promptY + 0.025 * H;
+  const railX = Math.max(0.045 * W, safe.left);
+  const railW = 0.2 * W;
+  const gap = 0.006 * H;
+  const tileH = Math.max((safe.bottom - railTop - gap * 6) / 7, 1);
+
+  return { safe, cardX, cardY, cardW, promptY, railTop, railX, railW, gap, tileH };
+}
+
+const tileTop = (l: ReturnType<typeof computeLayout>, i: number) =>
+  l.railTop + i * (l.tileH + l.gap);
 
 /* ──────────────────────────── recording ──────────────────────────── */
 
@@ -332,6 +370,34 @@ export default function BlindRankCamPage() {
   const [canvasDims, setCanvasDims] = useState<{ w: number; h: number } | null>(null);
   /** Secondary diagnostic only — never used for sizing. */
   const [trackDims, setTrackDims] = useState<string>("—");
+  /** Safe-zone guide, viewfinder only. Off by default. */
+  const [guides, setGuides] = useState(false);
+  const [showInstallHint, setShowInstallHint] = useState(true);
+
+  /**
+   * Overlay geometry in percentages of the canvas box, from the same
+   * computeLayout the renderer uses — so a tap target can never drift off the
+   * tile it is sitting on, whatever aspect the camera gave us.
+   */
+  const overlay = useMemo(() => {
+    const W = canvasDims?.w ?? FALLBACK_W;
+    const H = canvasDims?.h ?? FALLBACK_H;
+    const L = computeLayout(W, H);
+    return {
+      tiles: Array.from({ length: SLOT_COUNT }, (_, i) => ({
+        leftPct: (L.railX / W) * 100,
+        topPct: (tileTop(L, i) / H) * 100,
+        heightPct: (L.tileH / H) * 100,
+      })),
+      tapWidthPct: 42,
+      safe: {
+        leftPct: SAFE.leftFrac * 100,
+        topPct: SAFE.topFrac * 100,
+        rightPct: (1 - SAFE.rightFrac) * 100,
+        bottomPct: (1 - SAFE.bottomFrac) * 100,
+      },
+    };
+  }, [canvasDims]);
 
   const writeGame = useCallback((next: GameState) => {
     gameRef.current = next; // ref first, so the very next frame draws it
@@ -415,15 +481,17 @@ export default function BlindRankCamPage() {
     }
 
     const { slots, phase } = gameRef.current;
+    const L = computeLayout(W, H);
 
     // Current card, top-centre — the reel while spinning, the landed pick after.
     if (phase !== "board") {
       const key = showingRef.current;
       const img = key ? imagesRef.current[key] : undefined;
       if (img?.complete && img.naturalWidth) {
-        const base = CARD.wFrac * W;
+        const base = L.cardW;
 
-        // Scale-pop on landing.
+        // Scale-pop on landing. Grows from the card's centre so the top edge
+        // never rises above the safe line mid-animation.
         let scale = 1;
         if (popAtRef.current != null) {
           const t = (performance.now() - popAtRef.current) / POP_MS;
@@ -433,7 +501,7 @@ export default function BlindRankCamPage() {
 
         const cw = base * scale;
         const cx = (W - cw) / 2;
-        const cy = CARD.topFrac * H + (base - cw) / 2;
+        const cy = L.cardY + (base - cw) / 2;
         ctx.save();
         roundRectPath(ctx, cx, cy, cw, cw, cw * 0.06);
         ctx.clip();
@@ -452,7 +520,7 @@ export default function BlindRankCamPage() {
         type Spaced = CanvasRenderingContext2D & { letterSpacing?: string };
         const spaced = ctx as Spaced;
         if ("letterSpacing" in spaced) spaced.letterSpacing = `${Math.round(W * 0.008)}px`;
-        ctx.fillText("TAP TO STOP", W / 2, CARD.topFrac * H + CARD.wFrac * W + W * 0.055);
+        ctx.fillText("TAP TO STOP", W / 2, L.promptY);
         if ("letterSpacing" in spaced) spaced.letterSpacing = "0px";
         ctx.restore();
       }
@@ -460,21 +528,22 @@ export default function BlindRankCamPage() {
       // Final board: a gold label where the card was.
       ctx.save();
       ctx.fillStyle = GOLD;
-      ctx.font = "700 62px Arial, Helvetica, sans-serif";
+      ctx.font = `700 ${Math.round(W * 0.058)}px Arial, Helvetica, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("FINAL BOARD", W / 2, CARD.topFrac * H + CARD.wFrac * W * 0.5);
+      ctx.fillText("FINAL BOARD", W / 2, L.cardY + L.cardW * 0.5);
       ctx.restore();
     }
 
-    // Slot rail.
-    const rx = RAIL.xFrac * W;
-    const rw = RAIL.wFrac * W;
-    const th = RAIL.tileHFrac * H;
+    // Slot rail — height comes from computeLayout, which fits seven tiles
+    // between the card and the safe zone's 73% line.
+    const rx = L.railX;
+    const rw = L.railW;
+    const th = L.tileH;
     const radius = th * 0.28;
 
     for (let i = 0; i < SLOT_COUNT; i++) {
-      const ty = tileTopFrac(i) * H;
+      const ty = tileTop(L, i);
       const filled = slots[i];
       const winner = phase === "board" && i === 0;
 
@@ -482,9 +551,9 @@ export default function BlindRankCamPage() {
       roundRectPath(ctx, rx, ty, rw, th, radius);
       ctx.fillStyle = filled ? "rgba(7,7,10,0.72)" : "rgba(7,7,10,0.45)";
       ctx.fill();
-      ctx.lineWidth = winner ? 7 : 3;
+      ctx.lineWidth = winner ? Math.max(th * 0.08, 3) : Math.max(th * 0.04, 2);
       ctx.strokeStyle = winner ? GOLD : filled ? GOLD : "rgba(255,199,44,0.5)";
-      if (!filled) ctx.setLineDash([14, 12]);
+      if (!filled) ctx.setLineDash([th * 0.22, th * 0.18]);
       ctx.stroke();
       ctx.restore();
 
@@ -833,8 +902,16 @@ export default function BlindRankCamPage() {
 
   return (
     <main
-      className={`${arimo.variable} flex min-h-[100dvh] flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
-      style={{ fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif" }}
+      className={`${arimo.variable} mcdq-app flex min-h-[100dvh] flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
+      style={{
+        fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif",
+        // viewport-fit=cover lets the page paint under the notch and home
+        // indicator; these keep actual content clear of both.
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
+      }}
     >
       {/* The camera feed. Hidden — the canvas is what anyone sees or records. */}
       <video ref={videoRef} playsInline muted autoPlay className="hidden" />
@@ -879,6 +956,24 @@ export default function BlindRankCamPage() {
           {errorNote && (
             <p className="mt-4 text-[14px] text-[#FAF8F5]/60">{errorNote}</p>
           )}
+
+          {showInstallHint && (
+            <div className="mt-8 flex items-start gap-3 rounded-xl border border-[#FAF8F5]/10 px-4 py-3">
+              <p className="flex-1 text-[13px] leading-[1.5] text-[#FAF8F5]/55">
+                Best experience: Share → Add to Home Screen, then open from
+                there.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowInstallHint(false)}
+                aria-label="Dismiss"
+                className="-mr-2 -mt-2 flex items-center justify-center px-2 font-mono text-[14px] text-[#FAF8F5]/40"
+                style={{ minHeight: 44, minWidth: 44 }}
+              >
+                ×
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -910,8 +1005,13 @@ export default function BlindRankCamPage() {
       {stage === "live" && (
         <section className="flex flex-1 items-center justify-center">
           <div
-            className="relative"
-            style={{ width: "min(100vw, calc(100dvh * 9 / 16))", aspectRatio: "9 / 16" }}
+            className="mcdq-stage relative"
+            style={{
+              width: canvasDims
+                ? `min(100vw, calc(100dvh * ${canvasDims.w} / ${canvasDims.h}))`
+                : "min(100vw, calc(100dvh * 9 / 16))",
+              aspectRatio: canvasDims ? `${canvasDims.w} / ${canvasDims.h}` : "9 / 16",
+            }}
           >
             {/* width/height are placeholders — startRun resizes the canvas to the
                 real feed's largest 9:16 crop before the recorder attaches. */}
@@ -952,16 +1052,56 @@ export default function BlindRankCamPage() {
                 }
                 className="absolute z-20"
                 style={{
-                  left: `${RAIL.xFrac * 100}%`,
-                  top: `${tileTopFrac(i) * 100}%`,
-                  width: `${RAIL.wFrac * 100}%`,
-                  height: `${RAIL.tileHFrac * 100}%`,
-                  minHeight: 48,
-                  minWidth: 48,
+                  left: `${overlay.tiles[i].leftPct}%`,
+                  top: `${overlay.tiles[i].topPct}%`,
+                  // Vertical bounds match the drawn tile exactly — no minHeight,
+                  // because seven tiles inside the safe zone are shorter than
+                  // 48px and padded targets would overlap each other, sending
+                  // taps to the wrong slot. Width is stretched well past the
+                  // drawn tile instead: it costs nothing (the hit area is DOM,
+                  // never exported) and gives the thumb somewhere to land.
+                  width: `${overlay.tapWidthPct}%`,
+                  height: `${overlay.tiles[i].heightPct}%`,
                   background: "transparent",
                 }}
               />
             ))}
+
+            {/* Safe-zone guide — viewfinder only, never drawn to the canvas, so
+                it cannot reach the export. Helps keep a face out of the bands
+                Reels and TikTok cover with their own UI. */}
+            {guides && (
+              <div
+                className="pointer-events-none absolute z-20"
+                style={{
+                  left: `${overlay.safe.leftPct}%`,
+                  top: `${overlay.safe.topPct}%`,
+                  right: `${overlay.safe.rightPct}%`,
+                  bottom: `${overlay.safe.bottomPct}%`,
+                  border: `1px dashed ${GOLD}`,
+                  borderRadius: 6,
+                }}
+              >
+                <span
+                  className="absolute right-1 top-1 font-mono text-[8px] uppercase tracking-[0.12em]"
+                  style={{ color: GOLD }}
+                >
+                  safe
+                </span>
+                <span
+                  className="absolute -bottom-4 left-0 font-mono text-[8px] uppercase tracking-[0.12em]"
+                  style={{ color: GOLD }}
+                >
+                  caption zone ↓
+                </span>
+                <span
+                  className="absolute -right-1 top-1/2 origin-bottom-right rotate-90 font-mono text-[8px] uppercase tracking-[0.12em]"
+                  style={{ color: GOLD }}
+                >
+                  icons →
+                </span>
+              </div>
+            )}
 
             {/* REC badge and timer are DOM overlays — deliberately NOT drawn to
                 the canvas, so they never appear in the exported video. */}
@@ -985,6 +1125,17 @@ export default function BlindRankCamPage() {
                 {errorNote}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setGuides((g) => !g)}
+              aria-pressed={guides}
+              aria-label="Toggle safe-zone guides"
+              className="absolute left-3 top-[68px] z-30 flex items-center justify-center rounded-full bg-black/55 px-3 font-mono text-[10px] font-bold tracking-[0.1em]"
+              style={{ minHeight: 48, color: guides ? GOLD : "#FAF8F5" }}
+            >
+              GUIDES
+            </button>
 
             <button
               type="button"
@@ -1095,6 +1246,24 @@ export default function BlindRankCamPage() {
         @keyframes mcdq-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
         .mcdq-rec { animation: mcdq-rec 1.2s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) { .mcdq-rec { animation: none; } }
+
+        /* App feel. Scoped by living in this component's own <style>: it mounts
+           and unmounts with the page, so the rest of the Hub keeps normal
+           scrolling and selection behaviour. */
+        html, body {
+          overscroll-behavior: none;   /* no rubber-band or pull-to-refresh mid-take */
+          background: #07070A;         /* matches theme-color so Safari's chrome blends */
+        }
+        .mcdq-app {
+          -webkit-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none; /* no long-press callout on the viewfinder */
+          -webkit-tap-highlight-color: transparent;
+          overscroll-behavior: none;
+          touch-action: manipulation;  /* kills double-tap zoom, keeps taps instant */
+        }
+        /* Nothing on the live screen should pan or zoom — it is a viewfinder. */
+        .mcdq-stage { touch-action: none; }
       `}</style>
     </main>
   );

@@ -1,0 +1,25 @@
+{
+  "name": "Blind Rank",
+  "short_name": "Blind Rank",
+  "description": "Film yourself ranking all 7 McDonald's drinks.",
+  "start_url": "/quiz/mcd-blind-rank-cam",
+  "scope": "/quiz/mcd-blind-rank-cam",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07070A",
+  "theme_color": "#07070A",
+  "icons": [
+    {
+      "src": "/quiz/mcd-blind-rank-cam/effect_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/quiz/mcd-blind-rank-cam/effect_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
