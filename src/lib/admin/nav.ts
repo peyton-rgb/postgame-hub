@@ -48,7 +48,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   },
   {
     label: "Non-Athletes",
-    items: [{ label: "Agents", href: "/admin/agents" }],
+    items: [
+      { label: "Agents", href: "/admin/agents" },
+      // Absorbs the CF Admins view: external brand/agency access lives here,
+      // staff accounts stay in /admin/users. admin+ only — this screen grants
+      // and revokes access.
+      { label: "Access Management", href: "/admin/access", min: "admin" },
+    ],
   },
   {
     label: "Pay",
