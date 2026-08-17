@@ -87,7 +87,7 @@ async function deliverInvite(opts: {
   const [{ data: brand }, { data: attachment }] = await Promise.all([
     supabase
       .from("brands")
-      .select("name, logo_primary_url, logo_light_url, logo_white_url, logo_mark_url, logo_url")
+      .select("name, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, logo_mark_url, logo_url")
       .eq("id", brandId)
       .maybeSingle(),
     supabase.from("brand_contacts").select("invite_token").eq("id", attachmentId).maybeSingle(),

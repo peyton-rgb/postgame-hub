@@ -20,6 +20,7 @@
 // ============================================================
 
 import nodemailer from "nodemailer";
+import { pickBrandLogo } from "@/lib/portal";
 
 /** The mailbox invites are sent FROM. Flagged for Peyton. */
 export const INVITE_SENDER_NAME = "Postgame";
@@ -45,24 +46,21 @@ export interface SendResult {
 }
 
 /**
- * Brand logos live across several columns and most brands only populate
- * some. Ordered widest-use first; returns null rather than a broken img.
+ * Brand logo for the email. Delegates to the portal's existing
+ * pickBrandLogo rather than keeping a second fallback chain that could
+ * drift from it — the portal and the invite must show the same mark.
+ * Adds logo_mark_url / logo_url as last resorts for brands the portal
+ * chain misses.
  */
 export function resolveBrandLogo(brand: {
   logo_light_url?: string | null;
   logo_white_url?: string | null;
   logo_primary_url?: string | null;
+  logo_dark_url?: string | null;
   logo_mark_url?: string | null;
   logo_url?: string | null;
 }): string | null {
-  return (
-    brand.logo_primary_url ||
-    brand.logo_light_url ||
-    brand.logo_white_url ||
-    brand.logo_mark_url ||
-    brand.logo_url ||
-    null
-  );
+  return pickBrandLogo(brand) || brand.logo_mark_url || brand.logo_url || null;
 }
 
 function escapeHtml(s: string): string {
