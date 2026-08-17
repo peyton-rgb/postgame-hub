@@ -90,6 +90,28 @@ export default async function PayAthletesPage({
       <PageHeader
         title="Pay Athletes"
         subtitle={`${(count ?? 0).toLocaleString()} payout rows in the Hub ledger · CF's historical payments live in the CF database and are not shown here`}
+        actions={
+          <span className="flex flex-wrap gap-1.5">
+            <a
+              href="/admin/pay/export?scope=paypal-venmo"
+              className="rounded-md border border-stone-300 px-2.5 py-1.5 text-[12px] font-medium text-stone-700 hover:border-stone-400"
+            >
+              CSV: PP/Venmo
+            </a>
+            <a
+              href="/admin/pay/export?scope=all"
+              className="rounded-md border border-stone-300 px-2.5 py-1.5 text-[12px] font-medium text-stone-700 hover:border-stone-400"
+            >
+              CSV: All payments
+            </a>
+            <a
+              href="/admin/pay/export?scope=balances"
+              className="rounded-md border border-stone-300 px-2.5 py-1.5 text-[12px] font-medium text-stone-700 hover:border-stone-400"
+            >
+              CSV: Balances
+            </a>
+          </span>
+        }
       />
 
       {result === "saved" && (
