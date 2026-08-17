@@ -599,10 +599,10 @@ export default function McdDrinksQuizPage() {
 
             <div className={`${GLASS} mcdq-fade-in-late mt-9 w-full px-5 py-5 text-center`}>
               <p className="text-[15px] leading-[1.5] text-[#FAF8F5]/[0.68]">
-                Order it on the{" "}
-                <span style={{ color: GOLD }}>McDonald&rsquo;s App</span> or the
-                in-store kiosk — download the app for deals, rewards, and local
-                offers.
+                Order using the{" "}
+                <span style={{ color: GOLD }}>McDonald&rsquo;s App</span> or
+                in-store digital kiosk. Download the McDonald&rsquo;s App for
+                deals, rewards, and local offers.
               </p>
             </div>
 
