@@ -1,19 +1,43 @@
 "use client";
 
 /**
- * McDonald's drink quiz — /quiz/mcd-drinks
+ * McDonald's × Postgame drink quiz — /quiz/mcd-drinks
  *
- * A deliberately self-contained client-campaign page: no Supabase, no auth, no
- * shared Postgame components, no animation libraries. Everything the page needs
- * (data, scoring, keyframes) lives in this file so the campaign can be handed
- * over, forked, or deleted without touching the rest of the Hub.
+ * Branding per the approved mockup: dark base, McDonald's leads (gold Arches in
+ * the header on every screen), Postgame signs (white wordmark in the footer).
+ * Arches Gold #FFC72C carries every accent; McDonald's Red #DA291C appears
+ * exactly once, as the radial glow behind the winner's photo.
  *
- * Note: /quiz is excluded from SiteNav's HIDDEN_ROUTES check and from
- * PageWrapper's Postgame loader — this surface carries no Postgame branding.
+ * Still deliberately self-contained: no Supabase, no auth, no shared
+ * components, no animation libraries. Data, scoring and keyframes all live
+ * here. /quiz is excluded from SiteNav's HIDDEN_ROUTES and from PageWrapper's
+ * Postgame loader — the Postgame mark on this page is the footer signature.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { Arimo } from "next/font/google";
+
+// Bebas Neue (--font-bebas) and JetBrains Mono (--font-mono) already come from
+// the root layout. Arimo does not, so it loads here — scoped to this page
+// rather than added to a layout that feeds every other surface.
+const arimo = Arimo({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-arimo",
+  display: "swap",
+});
+
+/* ─────────────────────────── brand tokens ─────────────────────────── */
+
+const GOLD = "#FFC72C"; // Arches Gold — every accent
+const RED = "#DA291C"; // McDonald's Red — the winner's glow, nothing else
+const GOLD_INK = "#27251F"; // type on gold
+
+const ARCHES_LOGO =
+  "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/9ecac2a1-1449-4daf-bc62-78fe4feb9091/primary-logo.png";
+const POSTGAME_WORDMARK =
+  "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png";
 
 /* ────────────────────────────── data ────────────────────────────── */
 
@@ -209,6 +233,16 @@ function topThree(answers: DrinkKey[]): DrinkKey[] {
   return ranked.slice(0, 3);
 }
 
+/* ───────────────────────── shared styles ───────────────────────── */
+
+/** Mono eyebrow: uppercase, letterspaced. Gold unless told otherwise. */
+const EYEBROW = "font-mono text-[11px] font-bold uppercase tracking-[0.22em]";
+/** Bebas display: uppercase, tight. */
+const DISPLAY = "font-display uppercase leading-[0.95]";
+/** Glass surface — answer cards and the reveal callout. */
+const GLASS =
+  "rounded-2xl border border-[#FAF8F5]/10 bg-[#FAF8F5]/[0.04]";
+
 /* ───────────────────────────── page ───────────────────────────── */
 
 type Stage = "quiz" | "ranking" | "reveal";
@@ -224,7 +258,9 @@ export default function McdDrinksQuizPage() {
 
   const questionIndex = answers.length;
   const question = QUESTIONS[questionIndex];
-  const progress = (answers.length / QUESTIONS.length) * 100;
+  // Counts the question on screen, not the ones behind it — otherwise Q1 shows
+  // an empty track and the gold rule reads as missing.
+  const progress = ((answers.length + 1) / QUESTIONS.length) * 100;
   const cardsReady = imagesLoaded >= finalists.length && finalists.length > 0;
 
   const answer = (drink: DrinkKey) => {
@@ -276,190 +312,249 @@ export default function McdDrinksQuizPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#07070A] text-[#FAF8F5] font-sans antialiased">
+    <main
+      className={`${arimo.variable} flex min-h-screen flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
+      style={{ fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif" }}
+    >
       <style>{KEYFRAMES}</style>
 
-      {/* Progress — the only always-on chrome. Sits above the notch-safe padding. */}
-      <div className="fixed inset-x-0 top-0 z-20 h-[3px] bg-white/10">
+      {/* McDonald's leads: gold Arches centred at the top of every screen. The
+          source PNG carries ~9% transparent padding, so a 38px box lands the
+          visible mark at the ~34px the mockup calls for. */}
+      <header className="flex w-full shrink-0 justify-center px-5 pb-4 pt-7">
+        <Image
+          src={ARCHES_LOGO}
+          alt="McDonald's"
+          width={3840}
+          height={2160}
+          sizes="72px"
+          priority
+          className="h-[38px] w-auto"
+        />
+      </header>
+
+      {/* Thin gold progress rule, directly under the Arches per the mockup. */}
+      <div className="h-[3px] w-full shrink-0 bg-[#FAF8F5]/10">
         <div
-          className="h-full bg-[#D73F09] transition-[width] duration-300 ease-out"
-          style={{ width: `${stage === "quiz" ? progress : 100}%` }}
+          className="h-full transition-[width] duration-300 ease-out"
+          style={{
+            width: `${stage === "quiz" ? progress : 100}%`,
+            backgroundColor: GOLD,
+          }}
         />
       </div>
 
-      {stage === "quiz" && question && (
-        <section className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 pb-12 pt-16 sm:max-w-lg">
-          <div key={questionIndex} className="mcdq-enter">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/40">
-              Question {questionIndex + 1} of {QUESTIONS.length}
-            </p>
-            <h1 className="mt-3 text-[30px] font-bold leading-[1.15] sm:text-[36px]">
-              {question.q}
-            </h1>
+      <div className="flex w-full flex-1 flex-col justify-center">
+        {stage === "quiz" && question && (
+          <section className="mx-auto w-full max-w-md px-5 py-10 sm:max-w-lg">
+            <div key={questionIndex} className="mcdq-enter">
+              <p className={EYEBROW} style={{ color: GOLD }}>
+                Question {questionIndex + 1} of {QUESTIONS.length}
+              </p>
+              <h1 className={`${DISPLAY} mt-4 text-[42px] sm:text-[54px]`}>
+                {question.q}
+              </h1>
 
-            <div className="mt-8 flex flex-col gap-3">
-              {question.options.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  onClick={() => answer(option.drink)}
-                  className="min-h-[56px] w-full rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 text-left text-[17px] font-medium transition-[transform,background-color,border-color] duration-150 active:scale-[0.98] active:bg-white/[0.08] hover:border-white/20 hover:bg-white/[0.07]"
-                >
-                  {option.label}
-                </button>
-              ))}
+              <div className="mt-8 flex flex-col gap-3">
+                {question.options.map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => answer(option.drink)}
+                    className={`${GLASS} min-h-[56px] w-full px-5 py-4 text-left text-[17px] transition-[transform,background-color,border-color] duration-150 hover:border-[#FAF8F5]/25 hover:bg-[#FAF8F5]/[0.07] active:scale-[0.98] active:bg-[#FAF8F5]/[0.09]`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
 
-      {stage === "ranking" && (
-        <section className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 pb-12 pt-16 sm:max-w-2xl">
-          <h2 className="text-center text-[26px] font-bold leading-tight sm:text-[32px]">
-            Your top three
-          </h2>
-          <p className="mt-2 text-center text-[15px] text-white/55">
-            Tap them in order — favorite first.
-          </p>
+        {stage === "ranking" && (
+          <section className="mx-auto w-full max-w-md px-5 py-10 sm:max-w-lg">
+            <h2 className={EYEBROW} style={{ color: GOLD }}>
+              Your top 3 is in
+            </h2>
+            <p className="mt-3 text-[16px] text-[#FAF8F5]/60">
+              Tap them in order — favorite first.
+            </p>
 
-          {/* Cards mount immediately so the photos fetch, but stay hidden until
-              every one has decoded — that is the preload. */}
-          <div
-            className={`mt-8 grid grid-cols-3 gap-2 sm:gap-4 ${
-              cardsReady ? "" : "invisible"
-            }`}
-          >
-            {finalists.map((key, i) => {
-              const drink = DRINKS[key];
-              const place = ranking.indexOf(key);
-              const picked = place !== -1;
+            {/* Cards mount immediately so the photos fetch, but stay hidden
+                until every one has decoded — that is the preload. */}
+            <div
+              className={`mt-7 flex flex-col gap-3 ${cardsReady ? "" : "invisible"}`}
+            >
+              {finalists.map((key, i) => {
+                const drink = DRINKS[key];
+                const place = ranking.indexOf(key);
+                const picked = place !== -1;
 
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => rank(key)}
-                  aria-pressed={picked}
-                  className={`group relative flex min-h-[190px] flex-col items-center justify-end gap-3 rounded-2xl border px-2 pb-4 pt-5 transition-[border-color,background-color] duration-200 ${
-                    // The animation classes land only once the photos are in, or the
-                    // staggered entrance would burn off behind the preload gate.
-                    cardsReady ? "mcdq-card" : ""
-                  } ${
-                    picked
-                      ? "border-[#D73F09] bg-white/[0.06] ring-1 ring-[#D73F09]"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/25"
-                  }`}
-                  style={
-                    {
-                      "--mcdq-delay": `${i * 150}ms`,
-                      "--mcdq-float-delay": `${520 + i * 150 + i * 220}ms`,
-                    } as React.CSSProperties
-                  }
-                >
-                  {picked && (
-                    <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#D73F09] text-[13px] font-bold leading-none text-[#FAF8F5]">
-                      {place + 1}
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => rank(key)}
+                    aria-pressed={picked}
+                    className={`${GLASS} flex min-h-[128px] w-full items-center gap-4 px-4 py-3 text-left transition-[border-color,background-color] duration-200 ${
+                      // The animation classes land only once the photos are in,
+                      // or the staggered entrance burns off behind the gate.
+                      cardsReady ? "mcdq-card" : ""
+                    } ${picked ? "bg-[#FAF8F5]/[0.06]" : "hover:border-[#FAF8F5]/25"}`}
+                    style={
+                      {
+                        "--mcdq-delay": `${i * 150}ms`,
+                        "--mcdq-float-delay": `${520 + i * 150 + i * 220}ms`,
+                        ...(picked
+                          ? { borderColor: GOLD, boxShadow: `inset 0 0 0 1px ${GOLD}` }
+                          : null),
+                      } as React.CSSProperties
+                    }
+                  >
+                    <span
+                      className={`flex h-[104px] w-[64px] shrink-0 items-end justify-center ${
+                        cardsReady ? "mcdq-float" : ""
+                      }`}
+                    >
+                      <Image
+                        src={drink.src}
+                        alt={drink.name}
+                        width={drink.width}
+                        height={drink.height}
+                        sizes="128px"
+                        onLoad={noteLoaded}
+                        onError={noteLoaded}
+                        className="h-[104px] w-auto max-w-full object-contain"
+                      />
                     </span>
-                  )}
 
-                  <span
-                    className={`flex h-[120px] items-end justify-center ${
-                      cardsReady ? "mcdq-float" : ""
-                    }`}
+                    <span className={`${DISPLAY} flex-1 text-[26px] sm:text-[30px]`}>
+                      {drink.name}
+                    </span>
+
+                    {picked && (
+                      <span
+                        className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-[14px] font-bold leading-none"
+                        style={{ backgroundColor: GOLD, color: GOLD_INK }}
+                      >
+                        {place + 1}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {stage === "reveal" && winner && (
+          <section className="mx-auto flex w-full max-w-md flex-col items-center px-5 py-8 sm:max-w-lg">
+            {/* w-full matters: as a shrink-to-fit flex item this box would
+                collapse to the image's own width, and globals'
+                img{max-width:100%} would then size the hero off that collapsed
+                width instead of off 55vh. */}
+            <div
+              className={`relative flex h-[55vh] w-full items-center justify-center ${
+                heroLoaded ? "mcdq-pop" : "opacity-0"
+              }`}
+            >
+              {/* The one and only use of McDonald's Red — a glow, never a surface. */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute left-1/2 top-1/2 h-[62vh] w-[62vh] max-w-[120vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{
+                  // 4D / 24 / 00 are hex alpha for 30% / 14% / 0%.
+                  background: `radial-gradient(circle, ${RED}4D 0%, ${RED}24 42%, ${RED}00 70%)`,
+                }}
+              />
+              <Image
+                src={winner.src}
+                alt={winner.name}
+                width={winner.width}
+                height={winner.height}
+                sizes="(max-width: 640px) 70vw, 360px"
+                priority
+                onLoad={() => setHeroLoaded(true)}
+                onError={() => setHeroLoaded(true)}
+                className="relative z-[1] h-full w-auto max-w-full object-contain"
+              />
+            </div>
+
+            <div className="mcdq-fade-in mt-7 text-center">
+              {/* Deliberately not text-transform: uppercase — the lowercase "c"
+                  in McDONALD'S is how the mark is set. */}
+              <p
+                className="font-mono text-[11px] font-bold tracking-[0.22em]"
+                style={{ color: GOLD }}
+              >
+                YOUR McDONALD&rsquo;S DRINK IS&hellip;
+              </p>
+              <h2 className={`${DISPLAY} mt-3 text-[40px] sm:text-[50px]`}>
+                {winner.revealName ?? winner.name}
+              </h2>
+            </div>
+
+            <div className="mcdq-fade-in-late mt-9 flex w-full items-start justify-center gap-9">
+              {[second, third].map((drink, i) =>
+                drink ? (
+                  <div
+                    key={drink.src}
+                    className="flex w-[108px] flex-col items-center gap-2"
                   >
                     <Image
                       src={drink.src}
                       alt={drink.name}
                       width={drink.width}
                       height={drink.height}
-                      sizes="160px"
-                      onLoad={noteLoaded}
-                      onError={noteLoaded}
-                      className="h-[120px] w-auto object-contain"
+                      sizes="120px"
+                      className="h-[84px] w-auto max-w-full object-contain opacity-80"
                     />
-                  </span>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#FAF8F5]/40">
+                      #{i + 2}
+                    </span>
+                    <span className={`${DISPLAY} text-center text-[16px] text-[#FAF8F5]/75`}>
+                      {drink.name}
+                    </span>
+                  </div>
+                ) : null,
+              )}
+            </div>
 
-                  <span className="text-[12px] font-semibold leading-tight text-white/85 sm:text-[14px]">
-                    {drink.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
+            <div className={`${GLASS} mcdq-fade-in-late mt-9 w-full px-5 py-5 text-center`}>
+              <p className="text-[15px] leading-[1.5] text-[#FAF8F5]/[0.68]">
+                Order it on the{" "}
+                <span style={{ color: GOLD }}>McDonald&rsquo;s App</span> or the
+                in-store kiosk — download the app for deals, rewards, and local
+                offers.
+              </p>
+            </div>
 
-      {stage === "reveal" && winner && (
-        <section className="mx-auto flex w-full max-w-md flex-col items-center px-5 pb-16 pt-14 sm:max-w-lg">
-          {/* w-full matters: as a shrink-to-fit flex item this box would collapse to
-              the image's own width, and globals' img{max-width:100%} would then
-              size the hero off that collapsed width instead of off 55vh. */}
-          <div
-            className={`flex h-[55vh] w-full items-center justify-center ${
-              heroLoaded ? "mcdq-pop" : "opacity-0"
-            }`}
-          >
-            <Image
-              src={winner.src}
-              alt={winner.name}
-              width={winner.width}
-              height={winner.height}
-              sizes="(max-width: 640px) 70vw, 360px"
-              priority
-              onLoad={() => setHeroLoaded(true)}
-              onError={() => setHeroLoaded(true)}
-              className="h-full w-auto max-w-full object-contain"
-            />
-          </div>
+            <button
+              type="button"
+              onClick={reset}
+              className="mcdq-fade-in-late mt-8 min-h-[48px] rounded-full px-9 font-mono text-[13px] font-bold uppercase tracking-[0.18em] transition-[transform,filter] duration-150 hover:brightness-105 active:scale-[0.98]"
+              style={{ backgroundColor: GOLD, color: GOLD_INK }}
+            >
+              Run it again
+            </button>
+          </section>
+        )}
+      </div>
 
-          <div className="mcdq-fade-in mt-7 text-center">
-            <p className="text-[13px] font-bold uppercase tracking-[0.18em] text-white/45">
-              Your McDonald&rsquo;s drink is&hellip;
-            </p>
-            <h2 className="mt-2 text-[32px] font-bold leading-[1.1] sm:text-[40px]">
-              {winner.revealName ?? winner.name}
-            </h2>
-          </div>
-
-          <div className="mcdq-fade-in-late mt-10 flex w-full items-start justify-center gap-8">
-            {[second, third].map((drink, i) =>
-              drink ? (
-                <div key={drink.src} className="flex w-[104px] flex-col items-center gap-2">
-                  <Image
-                    src={drink.src}
-                    alt={drink.name}
-                    width={drink.width}
-                    height={drink.height}
-                    sizes="120px"
-                    className="h-[84px] w-auto object-contain opacity-80"
-                  />
-                  <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/35">
-                    #{i + 2}
-                  </span>
-                  <span className="text-center text-[12px] font-medium leading-tight text-white/70">
-                    {drink.name}
-                  </span>
-                </div>
-              ) : null,
-            )}
-          </div>
-
-          <div className="mcdq-fade-in-late mt-10 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-5 text-center">
-            <p className="text-[15px] leading-[1.5] text-white/80">
-              Order it on the McDonald&rsquo;s App or the in-store kiosk — download the
-              app for deals, rewards, and local offers.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={reset}
-            className="mcdq-fade-in-late mt-8 min-h-[48px] rounded-full border border-white/20 px-8 text-[15px] font-semibold transition-colors duration-150 hover:border-white/40 hover:bg-white/[0.06] active:bg-white/[0.1]"
-          >
-            Run it again
-          </button>
-        </section>
-      )}
+      {/* Postgame signs. */}
+      <footer className="flex w-full shrink-0 flex-col items-center gap-2 px-5 pb-8 pt-10 opacity-55">
+        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em]">
+          Powered by
+        </span>
+        <Image
+          src={POSTGAME_WORDMARK}
+          alt="Postgame"
+          width={8790}
+          height={1799}
+          sizes="96px"
+          className="h-[12px] w-auto"
+        />
+      </footer>
     </main>
   );
 }
