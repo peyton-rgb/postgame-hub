@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const HIDDEN_ROUTES = ["/dashboard", "/board", "/login", "/authorize", "/reset-password", "/media-library", "/brief/", "/run-of-show/", "/recap/", "/optin/", "/bts", "/pitch/", "/portal/", "/pkg/", "/packages", "/athlete", "/v/", "/submit/", "/quiz/"];
+const HIDDEN_ROUTES = ["/admin", "/dashboard", "/board", "/login", "/authorize", "/reset-password", "/media-library", "/brief/", "/run-of-show/", "/recap/", "/optin/", "/bts", "/pitch/", "/portal/", "/pkg/", "/packages", "/athlete", "/v/", "/submit/", "/quiz/"];
 
 export default function SiteNav() {
   const pathname = usePathname();
