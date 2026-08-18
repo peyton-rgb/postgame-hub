@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shoot Brief 03 — Blind Ranking · Postgame × McDonald's</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Arimo:wght@400;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAF8F5;--ink:#07070A;--org:#D73F09;--gold:#FFC72C;--red:#DA291C;--ln:rgba(7,7,10,.12);--mut:rgba(7,7,10,.62)}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:Arimo,Arial,sans-serif;font-size:16px;line-height:1.7;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.wrap{max-width:780px;margin:0 auto;padding:0 20px 72px}
+@media(min-width:751px){.wrap{padding:0 40px 96px}}
+a{color:var(--org)}
+.bar{position:sticky;top:0;z-index:10;background:rgba(250,248,245,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--ln)}
+.bar .in{max-width:780px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px}
+.bar img.pg{height:18px;width:auto}
+.bar img.mcd{height:30px;width:auto;margin-left:auto}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--mut)}
+.bar .eyebrow{border-left:1px solid var(--ln);padding-left:14px}
+@media(max-width:560px){.bar .eyebrow{display:none}}
+header.hero{padding:36px 0 4px}
+.lockup{display:flex;align-items:center;gap:14px;margin:0 0 18px;padding-bottom:16px;border-bottom:2px solid var(--gold)}
+.lockup img{height:46px;width:auto;flex:none}
+@media(min-width:751px){.lockup img{height:60px}}
+h1{font-family:Anton,Impact,sans-serif;font-size:36px;line-height:.96;text-transform:uppercase;margin:8px 0 0}
+@media(min-width:751px){h1{font-size:60px}header.hero{padding:64px 0 4px}}
+.rule{width:52px;height:3px;background:var(--org);margin:20px 0 20px}
+.lead{font-size:18px;line-height:1.5;max-width:58ch}
+@media(min-width:751px){.lead{font-size:20px}}
+h2{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;text-transform:uppercase;letter-spacing:.02em;margin:46px 0 14px;padding-top:24px;border-top:1px solid var(--ln)}
+@media(min-width:751px){h2{font-size:40px}}
+h3{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.03em;text-transform:uppercase;margin:22px 0 6px}
+p,li{color:var(--mut)}
+p{margin:0 0 12px;max-width:66ch}
+ul,ol{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:6px;max-width:64ch}
+strong{color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:22px 0 0}
+.chip{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:6px 11px;border-radius:999px;background:rgba(7,7,10,.05);border:1px solid var(--ln);color:var(--mut)}
+.chip.hot{border-color:var(--org);color:var(--org)}
+.card{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:18px;margin:16px 0}
+@media(min-width:751px){.card{padding:24px}}
+.beat{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 18px}
+.beat .n{font-family:Anton,sans-serif;font-size:24px;line-height:1;color:var(--org)}
+.beat .t{font-family:'Bebas Neue',sans-serif;font-size:21px;letter-spacing:.03em;text-transform:uppercase}
+.beat .tc{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.09em;color:var(--mut);display:block}
+.beat .b{grid-column:2}
+.callout{border-left:3px solid var(--org);padding:12px 0 12px 16px;margin:20px 0}
+.callout p:last-child{margin-bottom:0}
+.say{font-family:'Bebas Neue',sans-serif;font-size:24px;line-height:1.15;background:#fff;border:1px solid var(--ln);border-radius:10px;padding:15px 18px;margin:0 0 10px;color:var(--ink)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:15px}
+th,td{text-align:left;padding:10px 12px 10px 0;border-bottom:1px solid var(--ln);vertical-align:top;color:var(--mut)}
+th{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--mut)}
+td strong{color:var(--ink)}
+.two{display:grid;gap:14px}
+@media(min-width:751px){.two{grid-template-columns:1fr 1fr;gap:28px}}
+video{width:100%;max-width:300px;border-radius:12px;display:block;background:#000}
+video.wide{max-width:100%}
+.refgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;align-items:start}
+.refgrid figure{margin:0}
+.refgrid img{width:100%;height:auto;border-radius:12px;display:block}
+.refgrid video{width:100%;max-width:none;aspect-ratio:9/16;height:auto;border-radius:12px;display:block;background:#000}
+.refgrid figcaption{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);margin-top:7px}
+.frame{position:relative;width:260px;aspect-ratio:16/9;background:#E4E0DA;border:1px solid rgba(7,7,10,.25);border-radius:6px;flex:none;overflow:hidden}
+.vcol{position:absolute;left:34.2%;top:0;width:31.6%;height:100%;border-left:2px solid var(--org);border-right:2px solid var(--org);background:rgba(215,63,9,.10)}
+.vcol span{position:absolute;left:50%;top:8px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.05em;color:var(--org);white-space:nowrap}
+.uz{position:absolute;background:rgba(218,41,28,.28)}
+.uz.b{left:34.2%;width:31.6%;bottom:0;height:27%}
+.fwrap{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.fwrap ul{flex:1;min-width:210px;padding-left:18px}
+.mono{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--org)}
+.todo td:last-child{color:rgba(7,7,10,.38)}
+.math{font-family:'JetBrains Mono',monospace;font-size:13px;background:#fff;border:1px solid var(--ln);border-radius:10px;padding:14px 16px;margin:14px 0;line-height:1.9;color:var(--ink);overflow-x:auto}
+.ok{color:#1d7a4d}.no{color:var(--red)}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--ln)}
+footer p{font-size:13px;color:var(--mut);max-width:none}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.nav a{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;text-decoration:none;padding:7px 12px;border-radius:999px;background:rgba(7,7,10,.05);border:1px solid var(--ln);color:var(--mut)}
+.nav a[aria-current]{border-color:var(--org);color:var(--org)}
+.banner{border:1px solid var(--ln);border-radius:14px;padding:20px;margin:26px 0 24px;background:#fff}
+.blab{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+.bhead{font-family:Anton,sans-serif;font-size:26px;line-height:1.34;text-transform:uppercase;margin:0 0 12px}
+@media(min-width:751px){.bhead{font-size:34px}}
+.blab mark,.bhead mark{background:var(--gold);color:#27251F;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.blab mark{padding:4px 9px}
+.bhead mark{padding:3px 10px}
+.bhead strong{color:#27251F}
+.bsub{margin:0;color:var(--mut)}
+@media print{.bar{position:static}.nav{display:none}video{display:none}}
+</style>
+</head>
+<body>
+<div class="bar"><div class="in">
+  <img class="pg" alt="Postgame" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1774632069292-1goz1yhd.png">
+  <span class="eyebrow">Shoot Brief</span>
+  <img class="mcd" alt="McDonald's" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/9ecac2a1-1449-4daf-bc62-78fe4feb9091/primary-logo.png">
+</div></div>
+<div class="wrap">
+<header class="hero">
+  <div class="lockup"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/9ecac2a1-1449-4daf-bc62-78fe4feb9091/primary-logo.png" alt="McDonald's"><span class="eyebrow">Postgame × McDonald's<br>7-drink beverage line</span></div>
+  <h1>Blind Rank All 7</h1>
+  <div class="rule"></div>
+  <p class="lead">Seven drinks revealed one at a time in random order. After each taste the athlete locks it into a slot from 1 to 7 — before seeing the next. No takebacks.</p>
+</header>
+
+<div class="banner">
+<p class="blab"><mark>** Very important **</mark></p>
+<p class="bhead"><mark>Shoot <strong>horizontal</strong> frame for vertical</mark></p>
+<p class="bsub">i.e. shoot horizontal and edit for vertical. Every take is filmed 16:9. The vertical 9:16 cut is cropped from the centre of that frame in post. Do not shoot vertical.</p>
+</div>
+
+<h3>This forces 4K</h3>
+<p>A 9:16 crop keeps the full height of the horizontal frame and only about a third of its width. The vertical video's resolution comes entirely from how tall your horizontal frame is.</p>
+<div class="math">
+Shot 4K &nbsp;3840×2160 &nbsp;→ &nbsp;crop 1215×2160 &nbsp;→ &nbsp;<span class="ok">clears 1080×1920 ✓</span><br>
+Shot 1080 &nbsp;1920×1080 &nbsp;→ &nbsp;crop 608×1080 &nbsp;→ &nbsp;<span class="no">fails 1080×1920 ✗</span>
+</div>
+<p><strong>4K 16:9 is the minimum, not a preference.</strong> Shooting 1080p horizontal gives a vertical cut we'd have to upscale.</p>
+
+<h3>Framing</h3>
+<div class="fwrap">
+  <div class="frame">
+    <div class="vcol"><span>9:16 CROP</span></div>
+    <div class="uz b"></div>
+  </div>
+  <ul>
+    <li><strong>The orange column is all that survives.</strong> Centre 32% of your frame. Athlete, product, and every reaction live inside it.</li>
+    <li>Outside the column is horizontal-only material — a second person, the table, the room. Never the main action.</li>
+    <li><strong>Don't crowd top or bottom.</strong> The crop keeps full frame height, so vertical headroom is locked at capture.</li>
+    <li>Red band = bottom 27% of the finished vertical, where TikTok and Reels put captions.</li>
+    <li>Turn on your camera's 9:16 guide overlay if it has one.</li>
+  </ul>
+</div>
+
+<table>
+<tr><th>Capture</th><td><strong>Horizontal 16:9, 4K minimum</strong> (3840×2160+)</td></tr>
+<tr><th>Frame rate</th><td>24 or 30fps — pick one, stay on it</td></tr>
+<tr><th>Vertical out</th><td>1080×1920, centre crop in post</td></tr>
+<tr><th>Horizontal out</th><td>1920×1080 or better</td></tr>
+<tr><th>Delivery</th><td><strong>Original files off the card.</strong> No AirDrop, no texting — that compression is why the first demos came in at 720p.</td></tr>
+<tr><th>Audio</th><td>Lav mic or a quiet corner. Room tone under every line makes lines unusable.</td></tr>
+</table>
+
+
+<h2>Required Deliverables</h2>
+<h3>Primary video</h3>
+<table>
+<tr><th>Priority</th><th>Deliverable</th><th>Length</th></tr>
+<tr><td><strong>1</strong></td><td><strong>Final vertical video</strong> — 9:16 social. Most important; this is what the brand needs.</td><td>:30 / :60 / flexible</td></tr>
+<tr><td>2</td><td>Final horizontal video — 16:9 YouTube / long-form. Typically needed by Postgame.</td><td>Flexible</td></tr>
+</table>
+<p>Both come from the same horizontal footage. That's the point of shooting wide.</p>
+<h3>Photography</h3>
+<table>
+<tr><th>30–50</th><td>Total edited photos</td></tr>
+<tr><th>10–20</th><td>Individual portraits, per athlete</td></tr>
+<tr><th>10–20</th><td>Group / duo shots</td></tr>
+</table>
+<p>Balanced mix of posed and candid energy. Stills are a separate pass — not video frame grabs.</p>
+<h2>Objective</h2>
+<p>Force real commitment on camera. The athlete ranks blind, one drink at a time, with no takebacks — the shrinking board creates the tension and the regret creates the content.</p>
+
+<div class="callout"><p><strong>No Postgame demo exists for this concept yet.</strong> The format reference below shows the mechanic, but briefs 01 and 02 have cuts we shot ourselves and this one does not. Either shoot a Postgame demo first, or expect the first athlete cut to need more direction on set.</p></div>
+
+<h2>References</h2>
+<p>What good looks like — the format, the finish, and the photography. Real location, real product in hand, natural light, athlete relaxed rather than posed stiff.</p>
+<div class="refgrid">
+<figure>
+    <video controls preload="none" playsinline src="./assets/blind-rank-reference.mp4"></video>
+    <figcaption>Format reference · the ranking mechanic</figcaption>
+  </figure>
+  <figure>
+    <video controls preload="none" playsinline src="./assets/Paris_Clark_McDonalds_Reel.mp4"></video>
+    <figcaption>Finish reference · pacing, grade, product handling</figcaption>
+  </figure>
+  <figure>
+    <img src="./assets/chauncy_wiggins_mcdonalds.jpg" alt="Athlete portrait outside a McDonald's, drink in hand" loading="lazy">
+    <figcaption>Posed portrait · exterior · product in hand</figcaption>
+  </figure>
+  <figure>
+    <img src="./assets/IMG_7164.JPG" alt="Athlete candid inside a McDonald's booth" loading="lazy">
+    <figcaption>Candid · interior booth · wide lens, low angle</figcaption>
+  </figure>
+</div>
+
+<h2>Film It With The Filter</h2>
+<p>The blind ranking runs as an in-browser camera filter we built for this campaign. The drink card floats over the athlete and the 1–7 rail fills as they lock each pick, live in frame. No TikTok account, no app install, any phone.</p>
+<div class="card">
+<h3>The filter</h3>
+<p><a href="https://postgame-hub.vercel.app/quiz/mcd-blind-rank-cam">postgame-hub.vercel.app/quiz/mcd-blind-rank-cam</a></p>
+<p>Overlays are live in the frame, so the finished look is baked in as you shoot. The page shuffles the reveal order itself and shows it on screen — nothing to write down.</p>
+<p><strong>Capture at the highest quality the phone offers.</strong> What you record here is the ceiling for every deliverable off this shoot.</p>
+</div>
+<div class="callout">
+<p><strong>This concept is the one exception to the horizontal rule at the top of this brief.</strong> The filter is the phone’s own camera, so it films vertical. That is expected here — the 16:9 deliverable is built in post using the treatment below, not captured wide.</p>
+</div>
+
+<h3>How the 16:9 gets made</h3>
+<p>Centre the vertical frame on a 16:9 canvas and fill the side pillars with a blurred, scaled-up copy of the same footage, so the edit reads as intentional rather than as a phone clip dropped into a wide box.</p>
+<table>
+<tr><th>Side fill</th><td>Duplicate the vertical, scale to cover the full 16:9 canvas, heavy Gaussian blur. Same footage — never a still, never a mirrored copy.</td></tr>
+<tr><th>Blur amount</th><td>Enough that no edge or detail is legible. If a viewer can tell what is happening in the pillars, it is not blurred enough.</td></tr>
+<tr><th>Pillars</th><td>Darken 15–25% so the eye stays centre. No visible seam or border between pillar and main frame.</td></tr>
+<tr><th>Graphics</th><td>Stay inside the centre vertical column. Nothing lands in the blurred pillars.</td></tr>
+</table>
+<p>The blur adds width, not resolution — which is why the capture quality above matters.</p>
+
+<h2>The Concept</h2>
+<p><strong>The 7 drinks:</strong> Orange Dream (Hi-C) · Strawberry Watermelon · Sprite Berry Blast · Dirty Dr. Pepper · Blackberry Passion Fruit · Red Bull Dragonberry Energizer · Mango Pineapple</p>
+<p>Rank the first drink #1 and you've spent your best slot on a coin flip. Play it safe in the middle and you'll have nowhere to put the one you love.</p>
+
+<h3>Not the same as Brief 02</h3>
+<table>
+<tr><th></th><th>02 · Blind tasting</th><th>03 · Blind ranking</th></tr>
+<tr><td><strong>The question</strong></td><td>"What drink is this?"</td><td>"Where does this rank?"</td></tr>
+<tr><td><strong>Eyes</strong></td><td>Blindfolded</td><td><strong>Open</strong> — they see each drink</td></tr>
+<tr><td><strong>Payoff</strong></td><td>Score out of 7</td><td>The finished 1–7 board</td></tr>
+</table>
+<p><strong>No blindfold here.</strong> They need to see what they're ranking. The blindness is about what's coming next.</p>
+
+<div class="card">
+<h3>Before you roll</h3>
+<ul>
+<li><strong>Two people minimum.</strong> One filming, one revealing drinks in shuffled order.</li>
+<li>The filter shuffles the reveal order and shows it on screen, so there is nothing to write down.</li>
+<li>Remaining cups stay behind camera, in a bag, or below the table line.</li>
+<li><strong>Say the no-takebacks rule out loud, on camera.</strong> If the audience doesn't get the constraint, it's just someone drinking.</li>
+</ul>
+</div>
+
+<h2>Shot List</h2>
+<div class="beat"><span class="n">1</span><span class="t">Cold open<span class="tc">0:00–0:05</span></span>
+<p class="b">Athlete explains it: seven drinks, one at a time, lock each into a slot before the next, no changing your mind.</p></div>
+<div class="beat"><span class="n">2</span><span class="t">Seven cycles<span class="tc">0:05–0:48</span></span>
+<div class="b"><table>
+<tr><th>Beat</th><th>What happens</th><th>Note</th></tr>
+<tr><td><strong>Reveal</strong></td><td>Next drink placed in frame</td><td>Hold a beat — post adds a name card</td></tr>
+<tr><td><strong>Taste</strong></td><td>Athlete sips</td><td></td></tr>
+<tr><td><strong>Deliberate</strong></td><td>Thinks out loud</td><td>This is the content. Push for it.</td></tr>
+<tr><td><strong>Lock</strong></td><td>Calls a slot number out loud</td><td>"That's my number four."</td></tr>
+</table>
+<ul>
+<li>"Do I burn my number one on this?" is the line we want. A silent taster gives us nothing.</li>
+<li>Athlete references the board as it fills — "I've still got two and five open."</li>
+<li>Nobody talks them out of a placement. Bad calls are good content.</li>
+</ul></div></div>
+<div class="beat"><span class="n">3</span><span class="t">Final board<span class="tc">0:48–0:55</span></span>
+<p class="b">All seven cups arranged 1–7 in frame. Athlete walks the board, defends or regrets it, then the required lines. <strong>Don't skip this</strong> — it's the edit's payoff.</p></div>
+
+<h2>Do &amp; Don't</h2>
+<div class="two">
+<div><h3>Do</h3><ul>
+<li>Make the athlete say the number out loud every time.</li>
+<li>Keep labels facing camera.</li>
+<li>Let regret play. "I ranked that too high" is the best line in the video.</li>
+</ul></div>
+<div><h3>Don't</h3><ul>
+<li><strong>Don't let them change a placement.</strong> Keep rolling if they try — the first call stands.</li>
+<li>Don't reveal the next drink before the current one is locked.</li>
+<li>Don't let upcoming cups drift into the crop column.</li>
+</ul></div>
+</div>
+
+<h2>Required Lines</h2>
+<p>Exact wording. Both <strong>spoken on camera</strong>, and both appear as on-screen text in post. Get a clean take of each.</p>
+<p class="say">"Order using the McDonald's App or in-store digital kiosk"</p>
+<p class="say">"Download the McDonald's App for deals, rewards, and local offers."</p>
+<div class="callout"><p><strong>FTC.</strong> <span class="mono">#ad</span> and <span class="mono">#McDonaldsPartner</span> stay on screen for the full cut. Athlete also discloses the partnership verbally near the top.</p></div>
+
+<h2>Brand Rules</h2>
+<ul>
+<li>Post handles the colours: Arches Gold <span class="mono">#FFC72C</span>, Red <span class="mono">#DA291C</span>, ink <span class="mono">#27251F</span>.</li>
+<li><strong>The arches are never drawn, traced, or generated.</strong> Real logo files only.</li>
+<li>Real product only. No competitor brands in frame — cups, bags, signage, wrappers. No other logos on wardrobe.</li>
+<li>No music on set. It contaminates audio and isn't cleared.</li>
+<li>Music for the edit is not sourced. Do not use unlicensed audio.</li>
+</ul>
+
+<footer>
+<p>Postgame × McDonald's · Shoot Brief 03 of 03 · Internal. Nothing publishes until McDonald's signs off.</p>
+</footer>
+</div>
+</body>
+</html>
