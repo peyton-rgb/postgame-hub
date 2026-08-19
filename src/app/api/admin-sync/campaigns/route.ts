@@ -23,7 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStaffUser } from "@/lib/staff-auth";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
-import { getCampaigns, PostgameAdminError, type AdminCampaign } from "@/lib/postgame-admin";
+import { getAccounts, getCampaigns, PostgameAdminError, type AdminCampaign } from "@/lib/postgame-admin";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -124,8 +124,18 @@ export async function POST(request: NextRequest) {
   const supabase = createLiveServiceSupabase();
 
   try {
-    // 1 ── Every campaign the admin knows about (active and archived).
-    const adminCampaigns = await getCampaigns();
+    // 1 ── Every campaign and every account the admin knows about. Fetched
+    // together: `account` is the brand name that becomes `client_name` on new
+    // rows, and one /accounts call covers the whole run (never per-campaign).
+    const [adminCampaigns, adminAccounts] = await Promise.all([getCampaigns(), getAccounts()]);
+
+    // account_id → account name. Both sides are STRINGS ("45", not 45).
+    const accountMap = new Map<string, string>();
+    for (const a of adminAccounts) {
+      const id = (a.account_id ?? "").trim();
+      const label = (a.account ?? "").trim();
+      if (id && label) accountMap.set(id, label);
+    }
 
     // 2 ── Every Hub row already carrying an admin id.
     const { data: hubData, error: hubError } = await supabase
@@ -219,9 +229,11 @@ export async function POST(request: NextRequest) {
       return {
         name: c.campaign_name ?? `Admin campaign ${adminId}`,
         slug: uniqueSlug(c.campaign_name ?? `campaign-${adminId}`, adminId, takenSlugs),
-        // NOT NULL with no default and no brand mapping in this scope — empty
-        // means "unresolved", to be filled by the account→brand job.
-        client_name: "",
+        // NOT NULL with no default. Resolved from the admin's account list;
+        // 'Unknown' when the account_id has no match. Never "" and never null —
+        // the column rejects null, and empty renders as a blank gap in the UI
+        // where a brand name belongs.
+        client_name: accountMap.get((c.account_id ?? "").trim()) || "Unknown",
         published: false,
         lifecycle_status: "draft",
         admin_campaign_id: adminId,
@@ -248,12 +260,22 @@ export async function POST(request: NextRequest) {
         unparseable: unparseable.length,
         needsRefresh: toRefresh.length,
         skippedDuplicateMatches,
+        unknownClientNames: insertRows.filter((r) => r.client_name === "Unknown").length,
       },
       toInsert: insertRows.map((r) => ({
         admin_campaign_id: r.admin_campaign_id,
         name: r.name,
         slug: r.slug,
+        client_name: r.client_name,
         admin_is_active: r.admin_is_active,
+      })),
+      // Resolved brand names, broken out so they can be eyeballed before an
+      // apply run. Anything reading 'Unknown' is an unmatched account_id.
+      clientNames: toInsertRaw.map((c, i) => ({
+        admin_campaign_id: (c.campaign_id ?? "").trim(),
+        account_id: c.account_id,
+        client_name: insertRows[i].client_name,
+        resolved: insertRows[i].client_name !== "Unknown",
       })),
       nameDrift,
       duplicates,
