@@ -285,7 +285,6 @@ export default function W9Form({
         <Header logo={logoPrimaryUrl} />
         <div className="sf-page">
           <div className="sf-top">
-            <div className="sf-eyebrow">Videographers</div>
             <h1 className="d sf-h1">Send us your W-9</h1>
             <div className="sf-sub">We need a signed W-9 on file before we can pay you.</div>
             <div className="sf-sub sf-deliv">Takes about two minutes.</div>
@@ -301,12 +300,6 @@ export default function W9Form({
               disabled={busy}
               className="sf-fg"
             />
-            {/* Full white, not muted: this is the line that stops a personal
-                W-9 being filed under a business that doesn't exist. */}
-            <div className="sf-hint hi" style={{ marginTop: -6, marginBottom: 12 }}>
-              Only fill this in if the W-9 you’re uploading is for your business. If your W-9 is in
-              your own name, leave it blank.
-            </div>
             <div className="sf-two sf-fg">
               <Field
                 label="First name"
@@ -508,14 +501,6 @@ export default function W9Form({
               </span>
             </button>
             {busy && <div className="sf-send-help">Keep this page open until it finishes.</div>}
-
-            <div className="sf-secure">
-              <LockIcon />
-              <span>
-                Your W-9 goes straight into Postgame’s private files. It is never posted publicly
-                and only the people who run payments can open it.
-              </span>
-            </div>
           </Card>
 
           <Footer logo={logoPrimaryUrl} />
@@ -694,13 +679,6 @@ const TickIcon = () => (
   </svg>
 );
 
-const LockIcon = () => (
-  <svg viewBox="0 0 24 24" {...S} strokeWidth={1.8}>
-    <rect x="3" y="11" width="18" height="11" rx="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
-
 const MsgIcon = () => (
   <svg viewBox="0 0 24 24" {...S} strokeWidth={1.8}>
     <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.1A8.4 8.4 0 0 1 4 11.5a8.4 8.4 0 0 1 8.5-8.4h.5a8.4 8.4 0 0 1 8 8z" />
@@ -748,8 +726,6 @@ function Styles() {
   .sf-page { max-width:560px; margin:0 auto; padding:0 20px 60px; }
 
   .sf-top { padding:26px 0 20px; text-align:center; }
-  .sf-eyebrow { font-family:${MONO}; font-size:10px; letter-spacing:.18em;
-                text-transform:uppercase; color:#D73F09; margin-bottom:12px; }
   .sf-h1 { font-size:32px; color:rgba(250,248,245,1); letter-spacing:.02em; line-height:1.02;
            margin:0 0 10px; }
   .sf-sub { font-size:14px; color:rgba(250,248,245,0.82); line-height:1.6; }
@@ -776,7 +752,6 @@ function Styles() {
   .sf-city { display:grid; grid-template-columns:1fr 76px 96px; gap:10px; }
   .sf-fg { margin-bottom:12px; }
   .sf-hint { font-size:12px; color:rgba(250,248,245,0.45); margin-top:6px; line-height:1.5; }
-  .sf-hint.hi { color:rgba(250,248,245,1); }
 
   .sf-zones { border:1px solid rgba(250,248,245,0.14); border-radius:12px; overflow:hidden;
               background:rgba(0,0,0,.22); }
@@ -860,11 +835,6 @@ function Styles() {
              border:2px solid rgba(255,255,255,.35); border-top-color:#fff;
              animation:sf-spin .7s linear infinite; }
   @keyframes sf-spin { to { transform:rotate(360deg); } }
-
-  .sf-secure { display:flex; gap:9px; align-items:flex-start; margin-top:16px; padding-top:14px;
-               border-top:1px solid rgba(250,248,245,0.08); font-size:12px; line-height:1.55;
-               color:rgba(250,248,245,0.45); }
-  .sf-secure svg { width:14px; height:14px; flex:0 0 auto; margin-top:2px; }
 
   .sf-light { background:#FAF8F5; color:rgba(18,18,26,0.82); }
   .sf-light .sf-foot { border-top-color:rgba(18,18,26,0.10); }
