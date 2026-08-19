@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 // left the marketing header rendering over /portal itself — the brand
 // home a client lands on after signing in. Prefixes here should not end
 // in "/" unless the bare path is genuinely meant to stay public.
-const HIDDEN_ROUTES = ["/admin", "/dashboard", "/board", "/login", "/authorize", "/reset-password", "/media-library", "/brief/", "/run-of-show/", "/recap/", "/optin/", "/bts", "/pitch/", "/portal", "/pkg/", "/packages", "/athlete", "/v/", "/submit/", "/quiz/"];
+const HIDDEN_ROUTES = ["/admin", "/dashboard", "/board", "/login", "/authorize", "/reset-password", "/media-library", "/brief/", "/run-of-show/", "/recap/", "/optin/", "/bts", "/pitch/", "/portal", "/pkg/", "/packages", "/athlete", "/v/", "/submit/", "/quiz/", "/w9"];
 
 export default function SiteNav() {
   const pathname = usePathname();
