@@ -20,7 +20,7 @@ const STAFF_DOMAIN = "@pstgm.com";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = searchParams.get("next") ?? "/dashboard/readiness";
 
   // ─── TEMPORARY DIAGNOSTIC — REMOVE after root-causing the missing PKCE
   // verifier (tracked in the follow-up revert PR). Logs NO cookie values and
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   // Only allow same-origin relative redirects for `next` — never an
   // attacker-supplied absolute URL.
-  const safeNext = next.startsWith("/") ? next : "/dashboard";
+  const safeNext = next.startsWith("/") ? next : "/dashboard/readiness";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/authorize?error=auth`);

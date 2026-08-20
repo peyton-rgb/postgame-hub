@@ -329,6 +329,14 @@ type NavSection = {
   links: NavLink[];
 };
 
+// Campaign Readiness — the Hub's landing page, so it sits above everything else.
+const READINESS_SECTION: NavSection = {
+  label: 'Overview',
+  links: [
+    { name: 'Campaign Readiness', href: '/dashboard/readiness', icon: ListCheckIcon, staffOnly: true },
+  ],
+};
+
 // Pipeline sections (Blueprint v2)
 const PIPELINE_SECTIONS: NavSection[] = [
   {
@@ -550,8 +558,14 @@ export default function DashboardSidebar() {
 
       {/* Scrollable navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
+        {/* Campaign Readiness — landing page, first item */}
+        {renderSection(READINESS_SECTION, 0)}
+
+        {/* Divider */}
+        <div className="h-px bg-white/[0.08] mx-2 my-3" />
+
         {/* Pipeline sections */}
-        {PIPELINE_SECTIONS.map((section, idx) => renderSection(section, idx))}
+        {PIPELINE_SECTIONS.map((section) => renderSection(section, 1))}
 
         {/* Divider */}
         <div className="h-px bg-white/[0.08] mx-2 my-3" />

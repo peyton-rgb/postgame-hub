@@ -47,7 +47,7 @@ export async function requireAthlete(): Promise<AthleteProfile> {
   // If the profile row is missing or the read failed, treat as unauthenticated.
   if (error || !profile) redirect("/athlete/login");
 
-  if (profile.role !== "athlete") redirect("/dashboard");
+  if (profile.role !== "athlete") redirect("/dashboard/readiness");
 
   return profile as AthleteProfile;
 }
