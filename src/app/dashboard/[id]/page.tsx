@@ -1135,8 +1135,12 @@ export default function CampaignEditor() {
     [athletes, description, keyTakeaways, tags, budget, totalImpressions, selected, media],
   );
 
-  // Grey wins over orange on an untouched step: a brand-new recap must read as
-  // untouched everywhere, including the step you happen to be standing on.
+  // Keyed on "has anything been entered", NOT on "has no issues". A step with
+  // zero issues mapping to it is not finished — an empty recap emits no cover
+  // issues precisely because it has no athletes, and Content must still read
+  // Not started rather than a green tick. Grey also wins over orange on the
+  // step you happen to be standing on, so a brand-new recap reads as untouched
+  // everywhere.
   const stepState = useCallback(
     (n: number): "untouched" | "current" | "incomplete" | "complete" => {
       if (!stepStarted(n)) return "untouched";
@@ -1145,14 +1149,6 @@ export default function CampaignEditor() {
     },
     [stepStarted, step, issues],
   );
-
-  // Proportional fill: every required thing, not every step, so uploading the
-  // ninth of ten covers actually moves the rail.
-  const readiness = useMemo(() => {
-    const required = 2 + coverPhotoAthletes.length + blockingVideoCards.length;
-    const done = Math.max(0, required - issues.length);
-    return { required, done, pct: required ? Math.round((done / required) * 100) : 0 };
-  }, [issues, coverPhotoAthletes, blockingVideoCards]);
 
   // Tooltip text for anything blocked by outstanding issues. Capped so a recap
   // with forty missing covers does not render a forty-line tooltip.
@@ -2569,19 +2565,22 @@ export default function CampaignEditor() {
         </div>
       </div>
 
-      {/* Progress rail — proportional to every outstanding thing rather than to
-          whole steps, so the ninth of ten covers actually moves it. */}
+      {/* Progress rail — position in the flow, not work outstanding. A fill keyed
+          to outstanding things runs BACKWARDS when you import a roster: thirty
+          athletes arrive, thirty covers are suddenly missing, and the bar
+          retreats just as the user did the right thing. Position only ever moves
+          forward. The count lives in the header pill, which is phrased as one. */}
       <div
         className="h-1 bg-gray-900"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={readiness.pct}
-        aria-label="Recap readiness"
+        aria-valuenow={Math.round((step / steps.length) * 100)}
+        aria-label="Progress through the recap steps"
       >
         <div
           className={`h-full transition-all duration-300 ${issues.length === 0 ? "bg-green-500" : "bg-[#D73F09]"}`}
-          style={{ width: `${readiness.pct}%` }}
+          style={{ width: `${Math.round((step / steps.length) * 100)}%` }}
         />
       </div>
 
@@ -4026,9 +4025,23 @@ export default function CampaignEditor() {
           {/* Rendered on drafts too, disabled and explained. Hiding it left the
               footer silently rearranging itself between drafts and published
               recaps with no way to learn why the control was missing. */}
+          {/* Republish warns, it never blocks. The recap is already live: holding
+              the button hostage to an open issue does not protect the client from
+              a broken state they can already see, it only strands unrelated
+              fixes. Someone correcting a typo must not have to resolve a missing
+              cover first while the typo stays live. Publish (draft → live) is
+              still gated, on the preview screen. */}
+          {campaign.published && issues.length > 0 && (
+            <span
+              title={issuesTooltip}
+              className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-[#D73F09] whitespace-nowrap"
+            >
+              ⚠ {issues.length} left
+            </span>
+          )}
           <button
             onClick={handleRepublish}
-            disabled={!campaign.published || republishing || savingInfo || issues.length > 0}
+            disabled={!campaign.published || republishing || savingInfo}
             title={
               !campaign.published
                 ? "Available once the recap has been published"
@@ -4037,11 +4050,7 @@ export default function CampaignEditor() {
                   : undefined
             }
             className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
-            {republishing
-              ? "Publishing…"
-              : campaign.published && issues.length > 0
-                ? `Republish · ${issues.length} left`
-                : "Republish"}
+            {republishing ? "Publishing…" : "Republish"}
           </button>
           {step < 4 ? (
             <button
