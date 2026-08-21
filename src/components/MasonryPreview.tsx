@@ -15,6 +15,8 @@ export function MasonryPreview({
   onBack,
   onPublish,
   publishing,
+  blockingCount = 0,
+  blockingTooltip,
 }: {
   campaign: Campaign;
   athletes: Athlete[];
@@ -25,6 +27,12 @@ export function MasonryPreview({
   onBack: () => void;
   onPublish: () => void;
   publishing: boolean;
+  // Outstanding readiness issues, counted by the editor. Optional so this stays
+  // a drop-in for any caller that does not track them; 0 keeps the old
+  // behaviour exactly. Publish is gated on it — Unpublish never is, since
+  // backing out of a live recap must not require fixing it first.
+  blockingCount?: number;
+  blockingTooltip?: string;
 }) {
   return (
     <div>
@@ -63,10 +71,15 @@ export function MasonryPreview({
           ) : (
             <button
               onClick={onPublish}
-              disabled={publishing}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-500 disabled:opacity-50"
+              disabled={publishing || blockingCount > 0}
+              title={blockingCount > 0 ? blockingTooltip : undefined}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {publishing ? "Publishing..." : "Publish Recap"}
+              {publishing
+                ? "Publishing..."
+                : blockingCount > 0
+                  ? `Publish · ${blockingCount} left`
+                  : "Publish Recap"}
             </button>
           )}
         </div>

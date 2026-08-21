@@ -795,6 +795,13 @@ type PickerSlotDest = {
   slot: "feed" | "reel";
 };
 
+// One readiness issue: something that must be true before this recap can go to a
+// client, and the step where it gets fixed. Everything the editor shows about
+// readiness — the header pill, the tab badges, the progress rail, the Publish
+// label and its tooltip — is derived from a single list of these, so the counts
+// can never disagree with each other. See the `issues` memo.
+export type ReadinessIssue = { step: number; title: string; detail: string };
+
 // Videos that would render black in the recap and need a poster/frame. A video
 // blocks the preview gate ONLY when its card has no image — a photo cover means
 // the video isn't the cover, and ensureVideoPosters() gives it the cover photo
@@ -1057,6 +1064,108 @@ export default function CampaignEditor() {
   const previewStats = useMemo(() => computeStats(athletes), [athletes]);
   const [budget, setBudget] = useState<number | "">("");
   const [totalImpressions, setTotalImpressions] = useState<number | "">("");
+
+  // ── Readiness ─────────────────────────────────────────────────────────
+  // Moved up from the render body so the preview screen can read them too.
+  const selectedAthletes = useMemo(
+    () => athletes.filter((a) => selected.includes(a.id)),
+    [athletes, selected],
+  );
+  // Cover Photos shows individual athletes only — collab-only participants live
+  // in their team collab card (see hasSoloPost above).
+  const coverPhotoAthletes = useMemo(
+    () => selectedAthletes.filter((a) => !collabAthleteIds.has(a.id) || hasSoloPost(a)),
+    [selectedAthletes, collabAthleteIds, hasSoloPost],
+  );
+
+  // THE single completeness check. Nothing else in this file may count what is
+  // outstanding — read this list instead. computeBlockingCards is reused via
+  // blockingVideoCards rather than reimplemented here.
+  const issues = useMemo<ReadinessIssue[]>(() => {
+    const out: ReadinessIssue[] = [];
+    if (athletes.length === 0) {
+      out.push({
+        step: 1,
+        title: "No athletes yet",
+        detail: "Import a tracker or a CSV, or add rows by hand.",
+      });
+    }
+    if (!description.trim()) {
+      out.push({
+        step: 2,
+        title: "No campaign description",
+        detail: "The recap opens with it. Clients read this before anything else.",
+      });
+    }
+    for (const a of coverPhotoAthletes) {
+      if ((media[a.id]?.length ?? 0) > 0) continue;
+      out.push({
+        step: 4,
+        title: `${a.name?.trim() || "Unnamed athlete"} has no cover`,
+        detail: "Every athlete card needs at least one photo or video.",
+      });
+    }
+    for (const c of blockingVideoCards) {
+      out.push({
+        step: 4,
+        title: `${c.label} — video has no cover frame`,
+        detail: `This ${c.cardType.toLowerCase()} would render black. Pick a frame or upload an image.`,
+      });
+    }
+    return out;
+  }, [athletes, description, coverPhotoAthletes, media, blockingVideoCards]);
+
+  // Has anything been entered on this step yet? Distinguishes "nothing here
+  // yet" (grey, Not started) from "started and still wrong" (dark orange).
+  const stepStarted = useCallback(
+    (n: number) => {
+      if (n === 1) return athletes.length > 0;
+      if (n === 2) {
+        return !!(
+          description.trim() ||
+          keyTakeaways.trim() ||
+          tags.length ||
+          budget !== "" ||
+          totalImpressions !== ""
+        );
+      }
+      if (n === 3) return selected.length > 0;
+      return Object.values(media).some((m) => (m?.length ?? 0) > 0);
+    },
+    [athletes, description, keyTakeaways, tags, budget, totalImpressions, selected, media],
+  );
+
+  // Grey wins over orange on an untouched step: a brand-new recap must read as
+  // untouched everywhere, including the step you happen to be standing on.
+  const stepState = useCallback(
+    (n: number): "untouched" | "current" | "incomplete" | "complete" => {
+      if (!stepStarted(n)) return "untouched";
+      if (step === n) return "current";
+      return issues.some((i) => i.step === n) ? "incomplete" : "complete";
+    },
+    [stepStarted, step, issues],
+  );
+
+  // Proportional fill: every required thing, not every step, so uploading the
+  // ninth of ten covers actually moves the rail.
+  const readiness = useMemo(() => {
+    const required = 2 + coverPhotoAthletes.length + blockingVideoCards.length;
+    const done = Math.max(0, required - issues.length);
+    return { required, done, pct: required ? Math.round((done / required) * 100) : 0 };
+  }, [issues, coverPhotoAthletes, blockingVideoCards]);
+
+  // Tooltip text for anything blocked by outstanding issues. Capped so a recap
+  // with forty missing covers does not render a forty-line tooltip.
+  const issuesTooltip = useMemo(() => {
+    if (issues.length === 0) return undefined;
+    const shown = issues.slice(0, 6).map((i) => `• ${i.title}`);
+    const rest = issues.length - shown.length;
+    if (rest > 0) shown.push(`• and ${rest} more`);
+    return ["Before this can go live:", ...shown].join("\n");
+  }, [issues]);
+
+  const thingsLeftLabel =
+    issues.length === 1 ? "1 thing left before publish" : `${issues.length} things left before publish`;
 
   // Editable campaign name / client name
   const [editingName, setEditingName] = useState(false);
@@ -2278,17 +2387,14 @@ export default function CampaignEditor() {
         onBack={() => setShowPreview(false)}
         onPublish={togglePublish}
         publishing={publishing}
+        blockingCount={issues.length}
+        blockingTooltip={issuesTooltip}
       />
     );
   }
 
-  const selectedAthletes = athletes.filter((a) => selected.includes(a.id));
-  // Cover Photos shows individual athletes only — collab-only participants live
-  // in their team collab card (see hasSoloPost above).
-  const coverPhotoAthletes = selectedAthletes.filter(
-    (a) => !collabAthleteIds.has(a.id) || hasSoloPost(a),
-  );
-  const uploadedCount = Object.keys(media).filter((k) => media[k]?.length > 0).length;
+  // selectedAthletes / coverPhotoAthletes are memos now — see the Readiness
+  // block above, which needs them before the preview screen returns early.
 
   // Top Performers for the Content Upload strip — ranked by engagement rate or
   // impressions (toggle), top 8, matching the recap's own ranking. An athlete
@@ -2382,28 +2488,52 @@ export default function CampaignEditor() {
                 {campaign.client_name}
               </div>
             )}
-            {editingName ? (
-              <input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={() => { saveCampaignName("name", nameDraft); setEditingName(false); }}
-                onKeyDown={(e) => { if (e.key === "Enter") { saveCampaignName("name", nameDraft); setEditingName(false); } if (e.key === "Escape") setEditingName(false); }}
-                className="text-xl font-black bg-transparent border-b border-white outline-none w-72 text-white"
-              />
-            ) : (
-              <h1
-                className="text-xl font-black cursor-pointer hover:opacity-70"
-                onClick={() => { setNameDraft(campaign.name); setEditingName(true); }}
-                title="Click to edit"
+            <div className="flex items-center gap-3 flex-wrap">
+              {editingName ? (
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onBlur={() => { saveCampaignName("name", nameDraft); setEditingName(false); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { saveCampaignName("name", nameDraft); setEditingName(false); } if (e.key === "Escape") setEditingName(false); }}
+                  className="text-xl font-black bg-transparent border-b border-white outline-none w-72 text-white"
+                />
+              ) : (
+                <h1
+                  className="text-xl font-black cursor-pointer hover:opacity-70"
+                  onClick={() => { setNameDraft(campaign.name); setEditingName(true); }}
+                  title="Click to edit"
+                >
+                  {campaign.name}
+                </h1>
+              )}
+              {/* Whether this is live is a fact about the recap, not something
+                  to infer from which buttons happen to be showing. */}
+              <span
+                className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${
+                  campaign.published
+                    ? "border-green-500/40 bg-green-500/10 text-green-400"
+                    : "border-gray-700 bg-gray-900 text-gray-400"
+                }`}
               >
-                {campaign.name}
-              </h1>
-            )}
+                {campaign.published ? "Published" : "Draft"}
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-xs text-gray-500">{selected.length} posts · {uploadedCount} with media</span>
+          {/* Readiness pill. Reads the same `issues` list as the tab badges, the
+              rail and the Publish button — one counter, so they cannot disagree. */}
+          <span
+            title={issuesTooltip}
+            className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap ${
+              issues.length === 0
+                ? "border-green-500/40 bg-green-500/10 text-green-400"
+                : "border-[#D73F09]/50 bg-[#D73F09]/10 text-[#D73F09]"
+            }`}
+          >
+            {issues.length === 0 ? "Ready to publish" : thingsLeftLabel}
+          </span>
           {campaign.published && (
             <a href={`/recap/${campaign.slug}`} target="_blank" className="text-[#D73F09] text-sm font-bold hover:underline">View Live →</a>
           )}
@@ -2439,15 +2569,61 @@ export default function CampaignEditor() {
         </div>
       </div>
 
+      {/* Progress rail — proportional to every outstanding thing rather than to
+          whole steps, so the ninth of ten covers actually moves it. */}
+      <div
+        className="h-1 bg-gray-900"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={readiness.pct}
+        aria-label="Recap readiness"
+      >
+        <div
+          className={`h-full transition-all duration-300 ${issues.length === 0 ? "bg-green-500" : "bg-[#D73F09]"}`}
+          style={{ width: `${readiness.pct}%` }}
+        />
+      </div>
+
       {/* Steps */}
-      <div className="border-b border-gray-800 px-8 flex">
-        {steps.map((s) => (
-          <div key={s.n} onClick={() => setStep(s.n)}
-            className={`flex-1 py-4 px-5 cursor-pointer border-b-2 ${step === s.n ? "border-[#D73F09] opacity-100" : "border-transparent opacity-40"}`}>
-            <div className="text-sm font-bold">{s.title}</div>
-            <div className="text-xs text-gray-600 mt-1">{s.desc}</div>
-          </div>
-        ))}
+      <div className="border-b border-gray-800 px-4 sm:px-8 flex">
+        {steps.map((s) => {
+          const state = stepState(s.n);
+          const stepIssues = issues.filter((i) => i.step === s.n);
+          const badge =
+            state === "complete"
+              ? "bg-green-600 text-white"
+              : state === "current"
+                ? "bg-[#D73F09] text-white"
+                : state === "incomplete"
+                  ? "bg-[#7c2405] text-orange-200"
+                  : "bg-gray-800 text-gray-500";
+          const status =
+            state === "untouched" ? "Not started" : stepIssues.length > 0 ? `${stepIssues.length} left` : "Done";
+          const statusTone =
+            state === "untouched" ? "text-gray-600" : stepIssues.length > 0 ? "text-[#D73F09]" : "text-green-500";
+          return (
+            <div
+              key={s.n}
+              onClick={() => setStep(s.n)}
+              title={stepIssues.length > 0 ? stepIssues.map((i) => `• ${i.title}`).join("\n") : undefined}
+              className={`flex-1 min-w-0 py-4 px-2 sm:px-5 cursor-pointer border-b-2 ${
+                step === s.n ? "border-[#D73F09] opacity-100" : "border-transparent opacity-60 hover:opacity-90"
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0 ${badge}`}
+                >
+                  {s.n}
+                </span>
+                <div className="text-sm font-bold truncate">{s.title}</div>
+              </div>
+              <div className="text-xs text-gray-600 mt-1 truncate">{s.desc}</div>
+              <div className={`text-[10px] font-bold uppercase tracking-wider mt-1 truncate ${statusTone}`}>{status}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Content */}
@@ -3852,10 +4028,20 @@ export default function CampaignEditor() {
               recaps with no way to learn why the control was missing. */}
           <button
             onClick={handleRepublish}
-            disabled={!campaign.published || republishing || savingInfo}
-            title={!campaign.published ? "Available once the recap has been published" : undefined}
+            disabled={!campaign.published || republishing || savingInfo || issues.length > 0}
+            title={
+              !campaign.published
+                ? "Available once the recap has been published"
+                : issues.length > 0
+                  ? issuesTooltip
+                  : undefined
+            }
             className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
-            {republishing ? "Publishing…" : "Republish"}
+            {republishing
+              ? "Publishing…"
+              : campaign.published && issues.length > 0
+                ? `Republish · ${issues.length} left`
+                : "Republish"}
           </button>
           {step < 4 ? (
             <button
