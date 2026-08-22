@@ -4034,9 +4034,10 @@ export default function CampaignEditor() {
           {campaign.published && issues.length > 0 && (
             <span
               title={issuesTooltip}
-              className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-[#D73F09] whitespace-nowrap"
+              className="text-[10px] font-bold uppercase tracking-wider text-[#D73F09] whitespace-nowrap"
             >
-              ⚠ {issues.length} left
+              ⚠ {issues.length}
+              <span className="hidden sm:inline"> left</span>
             </span>
           )}
           <button
