@@ -896,6 +896,32 @@ export default function CampaignEditor() {
   // by URL; the chosen frame updates thumbnail_url, feeding cover + preview gate.
   const [frameTarget, setFrameTarget] = useState<{ bucketKey: string; kind: "solo" | "collab"; media: Media } | null>(null);
 
+  // `selected` gates the in-editor preview, the cover-photo strip and the
+  // thumbnail gate. It is editor-only state: it is never persisted, and the
+  // public recap renders every athlete row for the campaign, so the only
+  // correct default is every athlete. loadData and importFromTracker already
+  // select everything they load; this keeps the paths that mutate `athletes`
+  // in place in step with them (Top 50 CSV import, + Add athlete, row delete),
+  // which is otherwise how a freshly imported athlete goes missing from the
+  // preview until the next reload. New ids default to selected, removed ids are
+  // pruned, and an athlete deselected on Select Posts is never resurrected:
+  // only ids not seen before are added, tracked here rather than diffed against
+  // `selected` itself.
+  const seenAthleteIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = athletes.map((a) => a.id);
+    const present = new Set(ids);
+    const fresh = ids.filter((aid) => !seenAthleteIds.current.has(aid));
+    seenAthleteIds.current = present;
+    setSelected((prev) => {
+      const kept = prev.filter((pid) => present.has(pid));
+      const keptSet = new Set(kept);
+      const added = fresh.filter((aid) => !keptSet.has(aid));
+      if (!added.length && kept.length === prev.length) return prev;
+      return [...kept, ...added];
+    });
+  }, [athletes]);
+
   const collabGroups = useMemo<CollabGroup[]>(
     () => detectCollabGroups(athletes, (a) => a.id).collabGroups,
     [athletes],
