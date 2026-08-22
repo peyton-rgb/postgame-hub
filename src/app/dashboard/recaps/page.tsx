@@ -420,6 +420,7 @@ function DeleteRecapDialog({
             <button
               onClick={doDelete}
               disabled={!canDelete}
+              title={!canDelete && !deleting ? "Type DELETE in the box above to confirm" : undefined}
               className="text-[12px] font-semibold px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-500/85 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {deleting ? 'Deleting…' : 'Delete recap'}

@@ -2340,10 +2340,10 @@ export default function CampaignEditor() {
   });
 
   const steps = [
-    { n: 1, title: "Athletes & Metrics", desc: "Enter data or import CSV" },
-    { n: 2, title: "Campaign Info", desc: "Brief, tags & section visibility" },
+    { n: 1, title: "Athletes", desc: "Roster and their numbers" },
+    { n: 2, title: "Campaign Info", desc: "What the campaign did" },
     { n: 3, title: "Select Posts", desc: "Choose athletes to feature" },
-    { n: 4, title: "Upload Content", desc: "Add images & videos" },
+    { n: 4, title: "Content", desc: "Photos & video" },
   ];
 
   return (
@@ -3408,6 +3408,23 @@ export default function CampaignEditor() {
               )}
             </div>
 
+            {/* Collab Posts, empty. Rendered rather than hidden so step 4 never
+                reads 1 then 3 — the gap in the numbering is what made the step
+                look broken. Grey badge, not orange: nothing here is outstanding.
+                The populated block below is untouched. */}
+            {collabCardData.length === 0 && (
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="w-6 h-6 rounded-full bg-gray-700 text-gray-300 text-[11px] font-black flex items-center justify-center flex-shrink-0">2</span>
+                  <h3 className="text-lg font-black uppercase tracking-wide text-gray-500">Collab Posts</h3>
+                  <span className="text-[11px] text-gray-500 font-mono">None on this campaign</span>
+                </div>
+                <p className="text-xs text-gray-600 ml-9">
+                  Posts shared by several athletes at once are auto-detected from the tracker. This campaign has none.
+                </p>
+              </div>
+            )}
+
             {/* ── SECTION 2: COLLAB POSTS — one card per TEAM (athlete set). The
                 per-platform collab groups are consolidated (consolidateCollabGroups)
                 into a single card whose `items` union every platform's media and
@@ -3830,6 +3847,7 @@ export default function CampaignEditor() {
         <button
           onClick={async () => { if (isDirty) await handleSave(); setStep(Math.max(1, step - 1)); }}
           disabled={step === 1 || savingInfo}
+          title={step === 1 ? "You are on the first step" : undefined}
           className="px-3 sm:px-5 py-2 border border-gray-700 rounded-lg text-sm font-bold disabled:opacity-30 shrink-0 whitespace-nowrap">← Back</button>
 
         {/* Centre status — hidden on the narrowest screens so three buttons never overflow */}
@@ -3851,22 +3869,26 @@ export default function CampaignEditor() {
           <button
             onClick={handleSave}
             disabled={!isDirty || savingInfo}
+            title={!isDirty && !savingInfo ? "Nothing to save — all changes are already stored" : undefined}
             className="px-3 sm:px-5 py-2 border border-gray-600 rounded-lg text-sm font-bold disabled:opacity-30 hover:border-gray-400 transition-colors whitespace-nowrap">
             {savingInfo ? "Saving…" : justSaved ? "Saved" : "Save"}
           </button>
-          {campaign.published && (
-            <button
-              onClick={handleRepublish}
-              disabled={republishing || savingInfo}
-              className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-40 whitespace-nowrap">
-              {republishing ? "Publishing…" : "Republish"}
-            </button>
-          )}
+          {/* Rendered on drafts too, disabled and explained. Hiding it left the
+              footer silently rearranging itself between drafts and published
+              recaps with no way to learn why the control was missing. */}
+          <button
+            onClick={handleRepublish}
+            disabled={!campaign.published || republishing || savingInfo}
+            title={!campaign.published ? "Available once the recap has been published" : undefined}
+            className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+            {republishing ? "Publishing…" : "Republish"}
+          </button>
           {step < 4 ? (
             <button
               onClick={async () => { if (isDirty) await handleSave(); setStep(step + 1); }}
               disabled={(step === 3 && selected.length === 0) || savingInfo}
-              className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-30 whitespace-nowrap">Next →</button>
+              title={step === 3 && selected.length === 0 ? "Tick at least one athlete first" : undefined}
+              className="px-3 sm:px-5 py-2 bg-[#D73F09] rounded-lg text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap">Next →</button>
           ) : (
             <button
               onClick={async () => { if (isDirty) await handleSave(); await handlePreviewClick(); }}
