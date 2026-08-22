@@ -800,7 +800,14 @@ type PickerSlotDest = {
 // readiness — the header pill, the tab badges, the progress rail, the Publish
 // label and its tooltip — is derived from a single list of these, so the counts
 // can never disagree with each other. See the `issues` memo.
-export type ReadinessIssue = { step: number; title: string; detail: string };
+export type ReadinessIssue = {
+  step: number;
+  title: string;
+  detail: string;
+  // Element to scroll to when someone acts on this issue. Absent for issues
+  // whose step has no single offending element to point at.
+  anchorId?: string;
+};
 
 // Videos that would render black in the recap and need a poster/frame. A video
 // blocks the preview gate ONLY when its card has no image — a photo cover means
@@ -888,6 +895,32 @@ export default function CampaignEditor() {
   // A video-only cover awaiting a scrubbed frame (Phase 4). Reuses ThumbnailModal
   // by URL; the chosen frame updates thumbnail_url, feeding cover + preview gate.
   const [frameTarget, setFrameTarget] = useState<{ bucketKey: string; kind: "solo" | "collab"; media: Media } | null>(null);
+
+  // `selected` gates the in-editor preview, the cover-photo strip and the
+  // thumbnail gate. It is editor-only state: it is never persisted, and the
+  // public recap renders every athlete row for the campaign, so the only
+  // correct default is every athlete. loadData and importFromTracker already
+  // select everything they load; this keeps the paths that mutate `athletes`
+  // in place in step with them (Top 50 CSV import, + Add athlete, row delete),
+  // which is otherwise how a freshly imported athlete goes missing from the
+  // preview until the next reload. New ids default to selected, removed ids are
+  // pruned, and an athlete deselected on Select Posts is never resurrected:
+  // only ids not seen before are added, tracked here rather than diffed against
+  // `selected` itself.
+  const seenAthleteIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = athletes.map((a) => a.id);
+    const present = new Set(ids);
+    const fresh = ids.filter((aid) => !seenAthleteIds.current.has(aid));
+    seenAthleteIds.current = present;
+    setSelected((prev) => {
+      const kept = prev.filter((pid) => present.has(pid));
+      const keptSet = new Set(kept);
+      const added = fresh.filter((aid) => !keptSet.has(aid));
+      if (!added.length && kept.length === prev.length) return prev;
+      return [...kept, ...added];
+    });
+  }, [athletes]);
 
   const collabGroups = useMemo<CollabGroup[]>(
     () => detectCollabGroups(athletes, (a) => a.id).collabGroups,
@@ -1088,6 +1121,7 @@ export default function CampaignEditor() {
         step: 1,
         title: "No athletes yet",
         detail: "Import a tracker or a CSV, or add rows by hand.",
+        anchorId: "step-athletes",
       });
     }
     if (!description.trim()) {
@@ -1095,6 +1129,7 @@ export default function CampaignEditor() {
         step: 2,
         title: "No campaign description",
         detail: "The recap opens with it. Clients read this before anything else.",
+        anchorId: "step-description",
       });
     }
     for (const a of coverPhotoAthletes) {
@@ -1103,6 +1138,7 @@ export default function CampaignEditor() {
         step: 4,
         title: `${a.name?.trim() || "Unnamed athlete"} has no cover`,
         detail: "Every athlete card needs at least one photo or video.",
+        anchorId: `upload-athlete-${a.id}`,
       });
     }
     for (const c of blockingVideoCards) {
@@ -1110,6 +1146,7 @@ export default function CampaignEditor() {
         step: 4,
         title: `${c.label} — video has no cover frame`,
         detail: `This ${c.cardType.toLowerCase()} would render black. Pick a frame or upload an image.`,
+        anchorId: c.kind === "collab" ? `upload-collab-${c.bucketKey}` : `upload-athlete-${c.bucketKey}`,
       });
     }
     return out;
@@ -1162,6 +1199,20 @@ export default function CampaignEditor() {
 
   const thingsLeftLabel =
     issues.length === 1 ? "1 thing left before publish" : `${issues.length} things left before publish`;
+
+  // Switch to the step that owns an issue, then scroll to the thing itself.
+  // Two frames: the first lets React render the new step, the second lets the
+  // browser lay it out, so getElementById finds a node with a real position.
+  const goToIssue = useCallback((issue: ReadinessIssue) => {
+    setStep(issue.step);
+    const anchorId = issue.anchorId;
+    if (!anchorId) return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }),
+    );
+  }, []);
 
   // Editable campaign name / client name
   const [editingName, setEditingName] = useState(false);
@@ -2628,9 +2679,59 @@ export default function CampaignEditor() {
       {/* Content */}
       <div className="p-8 pb-24">
 
+        {/* Blockers. Rendered once above the step content, so it is present on
+            every step rather than only on the one that owns the issue, and only
+            on the Preview path (ThumbnailGate) as it was before. Orange
+            throughout on purpose — there is no quieter variant for "these live
+            on another step". This box is the last thing between a draft and a
+            client. */}
+        {issues.length > 0 && (
+          <div className="mb-6 rounded-xl border border-[#D73F09]/60 border-l-4 border-l-[#D73F09] bg-[#D73F09]/10 p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <h4 className="text-[11px] font-black uppercase tracking-[2px] text-[#D73F09] mb-3">
+                  Before this can go live
+                </h4>
+                <ul className="space-y-2">
+                  {issues.slice(0, 6).map((i, idx) => (
+                    <li key={`${i.step}-${i.title}-${idx}`}>
+                      <button
+                        type="button"
+                        onClick={() => goToIssue(i)}
+                        className="w-full text-left group"
+                      >
+                        <div className="text-sm font-bold text-white group-hover:text-[#D73F09] transition-colors truncate">
+                          {i.title}
+                        </div>
+                        <div className="text-xs text-gray-400 truncate">
+                          <span className="text-[#D73F09] font-bold">
+                            Step {i.step} · {steps.find((s) => s.n === i.step)?.title}
+                          </span>
+                          {" — "}
+                          {i.detail}
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {issues.length > 6 && (
+                  <p className="text-xs text-gray-400 mt-2">and {issues.length - 6} more</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => goToIssue(issues.find((i) => i.step === step) || issues[0])}
+                className="shrink-0 px-4 py-2 rounded-lg bg-[#D73F09] text-white text-sm font-bold hover:bg-[#c43808] transition-colors whitespace-nowrap self-start"
+              >
+                {issues.some((i) => i.step === step) ? "Fix these →" : "Go there →"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── STEP 1: Athletes & Metrics ─────────────────────── */}
         {step === 1 && (
-          <div>
+          <div id="step-athletes" className="scroll-mt-24">
             {/* Tracker link dropdown */}
             {trackers.length > 0 && (
               <div className="mb-6 p-4 bg-[#111] border border-gray-800 rounded-xl">
@@ -2762,7 +2863,7 @@ export default function CampaignEditor() {
             {/* Divider */}
             <div className="h-px bg-gray-800" />
 
-            <div>
+            <div id="step-description" className="scroll-mt-24">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Campaign Description</label>
               <RichTextEditor
                 value={description}
