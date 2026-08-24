@@ -53,16 +53,29 @@ export async function POST(request: NextRequest) {
 
   if (deliverableId) {
     // Preferred shape: the client already knows the row.
-    const { data } = await service.from("athlete_deliverables").select(COLS).eq("id", deliverableId).maybeSingle();
+    const { data } = await service
+      .from("athlete_deliverables")
+      .select(COLS)
+      .eq("id", deliverableId)
+      .eq("athlete_id", user.id)
+      .maybeSingle();
     deliverable = data;
   } else {
-    let finder = service.from("athlete_deliverables").select(COLS).eq("optin_id", optinId).eq("slot", slot);
+    // Scoped to the caller: a non-owner matches nothing and falls through to
+    // the same 404 as before, so the ambiguity check below can never become an
+    // existence oracle for someone else's deal.
+    let finder = service
+      .from("athlete_deliverables")
+      .select(COLS)
+      .eq("optin_id", optinId)
+      .eq("slot", slot)
+      .eq("athlete_id", user.id);
     if (slotIndex !== null) finder = finder.eq("slot_index", slotIndex);
     const { data: matches } = await finder.order("slot_index", { ascending: true });
     if (matches && matches.length > 1) {
       // Ambiguous without an instance: refuse rather than overwrite the wrong one.
       return NextResponse.json(
-        { error: "This deal has more than one slot of this type. Refresh and try again." },
+        { error: "This deal has more than one slot of this type. Contact Postgame — your upload page needs updating." },
         { status: 409 }
       );
     }
