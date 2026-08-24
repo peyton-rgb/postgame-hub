@@ -55,6 +55,11 @@ export async function POST(request: NextRequest) {
   if (!deliverable || deliverable.athlete_id !== user.id) {
     return NextResponse.json({ error: "Deliverable not found" }, { status: 404 });
   }
+  // The rule, stated so the list stops being incidental: a live link is only
+  // accepted at or after approval. Every pre-approval status — to_upload,
+  // uploaded, in_review, changes_requested, in_edit, brand_review — is rejected
+  // by design, because there is nothing approved to have posted yet. A new
+  // status belongs in this list only if content has been greenlit in it.
   if (!["approved", "to_post", "pending_verification"].includes(deliverable.status)) {
     return NextResponse.json({ error: "This content isn't ready to post yet." }, { status: 409 });
   }
