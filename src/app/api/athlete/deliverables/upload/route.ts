@@ -6,7 +6,8 @@
 // to the athlete's deliverable, flipping it to "uploaded". Ownership is
 // verified from the session — an athlete can only touch their own rows.
 //
-// Body: { optinId, slot, storagePath, fileName, fileSize, contentType }
+// Body: { storagePath, fileName, fileSize, contentType,
+//         and either deliverableId, or optinId + slot (+ optional slotIndex) }
 // ============================================================
 
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
@@ -31,20 +32,42 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
-  const { optinId, slot, storagePath, fileName, fileSize, contentType } = body || {};
-  if (!optinId || !slot || !storagePath) {
-    return NextResponse.json({ error: "Missing optinId, slot, or storagePath" }, { status: 400 });
+  const { optinId, slot, deliverableId, storagePath, fileName, fileSize, contentType } = body || {};
+  // Optional instance discriminator, for campaigns with more than one of a slot.
+  const slotIndex =
+    Number.isInteger(body?.slotIndex) && body.slotIndex > 0 ? (body.slotIndex as number) : null;
+  if (!storagePath || (!deliverableId && (!optinId || !slot))) {
+    return NextResponse.json(
+      { error: "Missing storagePath, and either deliverableId or optinId + slot" },
+      { status: 400 }
+    );
   }
 
   const service = createServiceSupabase();
 
-  // Verify this deliverable belongs to the logged-in athlete.
-  const { data: deliverable } = await service
-    .from("athlete_deliverables")
-    .select("id,athlete_id,optin_campaign_id")
-    .eq("optin_id", optinId)
-    .eq("slot", slot)
-    .maybeSingle();
+  // Resolve exactly one deliverable. Uniqueness is (optin_id, slot, slot_index),
+  // so slot alone can match several rows — which used to make .maybeSingle()
+  // error out and 404 a valid upload.
+  const COLS = "id,athlete_id,optin_id,optin_campaign_id,slot_index";
+  let deliverable: any = null;
+
+  if (deliverableId) {
+    // Preferred shape: the client already knows the row.
+    const { data } = await service.from("athlete_deliverables").select(COLS).eq("id", deliverableId).maybeSingle();
+    deliverable = data;
+  } else {
+    let finder = service.from("athlete_deliverables").select(COLS).eq("optin_id", optinId).eq("slot", slot);
+    if (slotIndex !== null) finder = finder.eq("slot_index", slotIndex);
+    const { data: matches } = await finder.order("slot_index", { ascending: true });
+    if (matches && matches.length > 1) {
+      // Ambiguous without an instance: refuse rather than overwrite the wrong one.
+      return NextResponse.json(
+        { error: "This deal has more than one slot of this type. Refresh and try again." },
+        { status: 409 }
+      );
+    }
+    deliverable = matches?.[0] ?? null;
+  }
 
   if (!deliverable || deliverable.athlete_id !== user.id) {
     return NextResponse.json({ error: "Deliverable not found" }, { status: 404 });
@@ -87,7 +110,7 @@ export async function POST(request: NextRequest) {
   // Best-effort: ensure the deal's Drive folder exists (stubbed if Drive isn't
   // configured). Never blocks the upload.
   try {
-    await ensureAthleteDealFolder(optinId);
+    await ensureAthleteDealFolder(deliverable.optin_id ?? optinId);
   } catch (e) {
     console.error("[drive] ensure folder (upload) failed:", e);
   }

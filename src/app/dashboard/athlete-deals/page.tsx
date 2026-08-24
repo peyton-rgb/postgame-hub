@@ -46,7 +46,7 @@ async function fetchGroups(campaignId?: string): Promise<Group[]> {
   let query = service
     .from("athlete_deliverables")
     .select(SELECT)
-    .in("status", ["in_review", "pending_verification"]);
+    .in("status", ["in_review", "in_edit", "brand_review", "pending_verification"]);
   if (campaignId) query = query.eq("optin_campaign_id", campaignId);
   const { data, error } = await query.order("updated_at", { ascending: true });
 

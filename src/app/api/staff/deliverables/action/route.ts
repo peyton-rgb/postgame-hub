@@ -2,8 +2,8 @@
 // POST /api/staff/deliverables/action  (staff only)
 //
 // The two approval gates, manager side:
-//   approve → content approval: in_review → approved
-//   reject  → content approval: in_review → changes_requested (+ note)
+//   approve → content approval: in_review | brand_review → approved
+//   reject  → content approval: in_review | brand_review → changes_requested (+ note)
 //   verify  → post verification: pending_verification → verified
 //
 // When every deliverable on a deal is verified, the opt-in is marked
@@ -19,6 +19,14 @@ import { createPendingPayout } from "@/lib/payouts";
 import { notifyAthlete } from "@/lib/notify";
 import { slotLabel } from "@/lib/deliverable-status";
 import { NextRequest, NextResponse } from "next/server";
+
+// Statuses a staff approve/reject decision can legitimately act on.
+//   in_review    — the athlete has submitted; the original decision point.
+//   brand_review — the deal is sitting with the brand; this is exactly where a
+//                  brand decision lands, so staff must be able to record it.
+// in_edit is deliberately excluded: content is mid-edit, so the artifact being
+// judged is still changing. See the PR description for the argument.
+const DECIDABLE_STATUSES = ["in_review", "brand_review"];
 
 export async function POST(request: NextRequest) {
   const staff = await getStaffUser();
@@ -57,12 +65,12 @@ export async function POST(request: NextRequest) {
   let update: Record<string, any> = { updated_at: now };
 
   if (action === "approve") {
-    if (deliverable.status !== "in_review") {
+    if (!DECIDABLE_STATUSES.includes(deliverable.status)) {
       return NextResponse.json({ error: "Only in-review content can be approved." }, { status: 409 });
     }
     update = { ...update, status: "approved", approved_at: now, review_note: null };
   } else if (action === "reject") {
-    if (deliverable.status !== "in_review") {
+    if (!DECIDABLE_STATUSES.includes(deliverable.status)) {
       return NextResponse.json({ error: "Only in-review content can be rejected." }, { status: 409 });
     }
     update = { ...update, status: "changes_requested", review_note: note || "Please revise and re-upload." };
