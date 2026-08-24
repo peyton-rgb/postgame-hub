@@ -7,18 +7,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slotLabel, type DeliverableStatus } from "@/lib/deliverable-status";
+import { slotDisplayLabel, countBySlot, type DeliverableStatus } from "@/lib/deliverable-status";
 
 type Deliv = {
   id: string;
   slot: string;
+  slot_index: number;
   status: DeliverableStatus;
   live_url: string | null;
   file_url?: string | null;
   media_type?: string | null;
 };
 
-function PostCard({ d, brandName, onPosted }: { d: Deliv; brandName: string; onPosted: () => void }) {
+function PostCard({ d, label, brandName, onPosted }: { d: Deliv; label: string; brandName: string; onPosted: () => void }) {
   const [url, setUrl] = useState(d.live_url || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -50,7 +51,7 @@ function PostCard({ d, brandName, onPosted }: { d: Deliv; brandName: string; onP
   return (
     <div className="a-card" style={{ textAlign: "left", padding: 13, borderColor: verified ? "rgba(52,199,89,0.3)" : canPost ? "rgba(215,63,9,0.4)" : "rgba(255,255,255,0.09)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
-        <div className="a-d" style={{ fontSize: 16, flex: 1 }}>{slotLabel(d.slot).toUpperCase()}</div>
+        <div className="a-d" style={{ fontSize: 16, flex: 1 }}>{label.toUpperCase()}</div>
         <span className={`a-pill ${verified ? "a-pill-ok" : posted ? "a-pill-neutral" : "a-pill-due"}`}>
           {verified ? "Verified" : posted ? "Pending verification" : "To post"}
         </span>
@@ -124,6 +125,7 @@ export default function PostDeliverables({
   deliverables: Deliv[];
 }) {
   const router = useRouter();
+  const perSlot = countBySlot(deliverables);
   const doneCount = deliverables.filter((d) => d.status === "pending_verification" || d.status === "verified" || d.status === "paid").length;
   const total = deliverables.length;
 
@@ -142,7 +144,7 @@ export default function PostDeliverables({
       )}
 
       {deliverables.map((d) => (
-        <PostCard key={d.id} d={d} brandName={brandName} onPosted={() => router.refresh()} />
+        <PostCard key={d.id} d={d} label={slotDisplayLabel(d.slot, d.slot_index, perSlot[d.slot] ?? 1)} brandName={brandName} onPosted={() => router.refresh()} />
       ))}
 
       <div style={{ fontSize: 11, color: "rgba(250,248,245,0.4)", textAlign: "center" }}>

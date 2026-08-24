@@ -9,21 +9,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { slotDisplayLabel, countBySlot } from "@/lib/deliverable-status";
 
 type Deliv = {
   id: string;
   slot: string;
+  slot_index: number;
   status: string;
   file_url?: string | null;
   media_type?: string | null;
 };
 
-function slotLabel(slot: string) {
-  if (slot === "feed") return "Feed post";
-  if (slot === "reel") return "Reel";
-  if (slot === "story") return "Story";
-  return slot.charAt(0).toUpperCase() + slot.slice(1);
-}
 function acceptFor(slot: string) {
   if (slot === "reel") return "video/*";
   if (slot === "feed") return "image/*";
@@ -33,13 +29,19 @@ function acceptFor(slot: string) {
 export default function VideographerUpload({ token, deliverables }: { token: string; deliverables: Deliv[] }) {
   const router = useRouter();
   const supabase = createBrowserSupabase();
-  const [busySlot, setBusySlot] = useState<string | null>(null);
+  // Both keyed by deliverable id, not slot. Two reels share a slot, so keying
+  // by slot made one upload mark both cards busy and then both "Uploaded".
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [doneSlots, setDoneSlots] = useState<Set<string>>(new Set());
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
 
-  async function handleFile(slot: string, file: File) {
+  const perSlot = countBySlot(deliverables);
+  const label = (d: Deliv) => slotDisplayLabel(d.slot, d.slot_index, perSlot[d.slot] ?? 1);
+
+  async function handleFile(d: Deliv, file: File) {
+    const slot = d.slot;
     setError("");
-    setBusySlot(slot);
+    setBusyId(d.id);
     try {
       // 1) signed upload URL
       const r1 = await fetch("/api/v/upload-url", {
@@ -60,30 +62,34 @@ export default function VideographerUpload({ token, deliverables }: { token: str
       const r2 = await fetch("/api/v/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, slot, path: j1.path, contentType: file.type, fileSize: file.size }),
+        // slotIndex names which instance of the slot this file is for. The
+        // route resolves (optin_id, slot, slot_index) — the unique constraint —
+        // with optin_id derived from the token, so it is unambiguous without
+        // accepting a client-supplied row id on a public endpoint.
+        body: JSON.stringify({ token, slot, slotIndex: d.slot_index, path: j1.path, contentType: file.type, fileSize: file.size }),
       });
       const j2 = await r2.json();
       if (!r2.ok) throw new Error(j2.error || "Couldn't save your upload.");
 
-      setDoneSlots((s) => new Set(s).add(slot));
+      setDoneIds((s) => new Set(s).add(d.id));
       router.refresh();
     } catch (err: any) {
       setError(err?.message || "Upload failed. Please try again.");
     } finally {
-      setBusySlot(null);
+      setBusyId(null);
     }
   }
 
   return (
     <div style={{ padding: "0 18px 16px", display: "flex", flexDirection: "column", gap: 13 }}>
       {deliverables.map((d) => {
-        const busy = busySlot === d.slot;
-        const hasFile = !!d.file_url || doneSlots.has(d.slot);
+        const busy = busyId === d.id;
+        const hasFile = !!d.file_url || doneIds.has(d.id);
         const isVideo = d.media_type === "video" || d.slot === "reel";
         return (
           <div key={d.id} style={{ textAlign: "left" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div className="a-d" style={{ fontSize: 15, flex: 1, color: "var(--a-off)" }}>{slotLabel(d.slot).toUpperCase()}</div>
+              <div className="a-d" style={{ fontSize: 15, flex: 1, color: "var(--a-off)" }}>{label(d).toUpperCase()}</div>
               {hasFile && <span className="a-pill a-pill-ok">Uploaded</span>}
             </div>
 
@@ -98,13 +104,13 @@ export default function VideographerUpload({ token, deliverables }: { token: str
                   )}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: "var(--a-off)" }}>{slotLabel(d.slot)} {isVideo ? "video" : "image"} received</div>
+                  <div style={{ fontSize: 12, color: "var(--a-off)" }}>{label(d)} {isVideo ? "video" : "image"} received</div>
                   <div style={{ fontSize: 11, color: "rgba(250,248,245,0.5)" }}>Postgame will review it</div>
                 </div>
                 <label style={{ fontSize: 11, color: "var(--a-orange)", cursor: "pointer" }}>
                   Replace
                   <input type="file" accept={acceptFor(d.slot)} style={{ display: "none" }}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(d.slot, f); }} />
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(d, f); }} />
                 </label>
               </div>
             ) : (
@@ -112,10 +118,10 @@ export default function VideographerUpload({ token, deliverables }: { token: str
                 <svg viewBox="0 0 24 24" style={{ width: 26, height: 26, stroke: "rgba(250,248,245,0.7)", strokeWidth: 2, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" }}>
                   <path d="M12 16V6M8 10l4-4 4 4" /><path d="M5 18h14" />
                 </svg>
-                <div style={{ fontSize: 13, color: "var(--a-off)", marginTop: 8 }}>{busy ? "Uploading…" : `Tap to upload the ${slotLabel(d.slot).toLowerCase()}`}</div>
+                <div style={{ fontSize: 13, color: "var(--a-off)", marginTop: 8 }}>{busy ? "Uploading…" : `Tap to upload the ${label(d).toLowerCase()}`}</div>
                 <div style={{ fontSize: 11, color: "rgba(250,248,245,0.45)", marginTop: 3 }}>{d.slot === "reel" ? "MP4 or MOV · up to 500 MB" : "JPG or PNG · up to 50 MB"}</div>
                 <input type="file" accept={acceptFor(d.slot)} style={{ display: "none" }} disabled={busy}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(d.slot, f); }} />
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(d, f); }} />
               </label>
             )}
           </div>
