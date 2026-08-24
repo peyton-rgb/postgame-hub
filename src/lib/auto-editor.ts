@@ -189,7 +189,10 @@ export async function runAutoEditor(athleteId: string, campaignId: string): Prom
       .select("id,slot,media_type,file_url,status")
       .eq("optin_campaign_id", campaignId)
       .eq("athlete_id", athleteId)
-      .in("status", ["uploaded", "in_review", "changes_requested", "approved", "to_post", "pending_verification", "verified"])
+      // Every status in which a file exists and the deal is still running.
+      // in_edit and brand_review both hold content, so omitting them would
+      // silently skip deliverables mid-edit or sitting with the brand.
+      .in("status", ["uploaded", "in_review", "changes_requested", "in_edit", "brand_review", "approved", "to_post", "pending_verification", "verified"])
       .not("file_url", "is", null),
   ]);
 

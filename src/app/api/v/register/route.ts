@@ -86,19 +86,31 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: pub } = service.storage.from(VIDEOGRAPHER_BUCKET).getPublicUrl(path);
-  const now = new Date().toISOString();
 
+  // Append a version rather than overwriting. Same atomic lock-and-increment as
+  // the athlete route; source distinguishes who supplied the file.
+  const { error: verErr } = await service.rpc("add_deliverable_version", {
+    p_deliverable_id: matches[0].id,
+    p_file_url: pub.publicUrl,
+    p_media_type: kind === "video" ? "video" : "image",
+    p_source: "import",
+    p_created_by: null, // no staff actor: the videographer authenticates by link token
+  });
+  if (verErr) {
+    console.error("add_deliverable_version error (videographer):", verErr.message);
+    return NextResponse.json({ error: "Couldn't save your upload. Please try again." }, { status: 500 });
+  }
+
+  // Status, and the storage fields the function does not manage.
+  const now = new Date().toISOString();
   const { error: updErr } = await service
     .from("athlete_deliverables")
     .update({
-      file_url: pub.publicUrl,
       storage_path: path,
       storage_bucket: VIDEOGRAPHER_BUCKET,
       content_type: typeof contentType === "string" ? contentType : null,
       file_size_bytes: typeof fileSize === "number" ? fileSize : null,
-      media_type: kind === "video" ? "video" : "image",
       status: "uploaded",
-      uploaded_at: now,
       review_note: null,
       updated_at: now,
     })

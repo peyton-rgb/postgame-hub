@@ -96,20 +96,34 @@ export async function POST(request: NextRequest) {
   const fileUrl = pub.publicUrl;
   const isVideo = typeof contentType === "string" && contentType.startsWith("video/");
 
-  // Store the uploaded file directly on the deliverable (slotted feed/reel
-  // content). The shared media table can't hold it — see migration 007.
+  // Append a version rather than overwriting the file. The function locks the
+  // parent row, computes the next version_number, inserts the version and
+  // repoints file_url / thumbnail_url / media_type / uploaded_at in one atomic
+  // step — so two concurrent uploads cannot both claim the same version.
+  // Called first: if the status write below fails, the athlete's file is still
+  // saved and pointed at, which is the safer half to have landed.
+  const { error: verErr } = await service.rpc("add_deliverable_version", {
+    p_deliverable_id: deliverable.id,
+    p_file_url: fileUrl,
+    p_media_type: isVideo ? "video" : "image",
+    p_source: "athlete",
+    p_created_by: null, // created_by records staff actors; an athlete upload has none
+  });
+  if (verErr) {
+    console.error("add_deliverable_version error:", verErr.message);
+    return NextResponse.json({ error: "Couldn't save your file. Please try again." }, { status: 500 });
+  }
+
+  // Status, and the storage fields the function does not manage.
   const now = new Date().toISOString();
   const { error: updErr } = await service
     .from("athlete_deliverables")
     .update({
-      file_url: fileUrl,
       storage_path: storagePath,
       storage_bucket: BUCKET,
       content_type: contentType ?? null,
       file_size_bytes: typeof fileSize === "number" ? fileSize : null,
-      media_type: isVideo ? "video" : "image",
       status: "uploaded",
-      uploaded_at: now,
       review_note: null,
       updated_at: now,
     })
