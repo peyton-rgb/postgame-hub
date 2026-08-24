@@ -9,11 +9,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
-import { slotLabel, type DeliverableStatus } from "@/lib/deliverable-status";
+import { slotDisplayLabel, countBySlot, type DeliverableStatus } from "@/lib/deliverable-status";
 
 type Deliv = {
   id: string;
   slot: string;
+  slot_index: number;
   status: DeliverableStatus;
   review_note?: string | null;
   file_url?: string | null;
@@ -41,9 +42,14 @@ export default function UploadDeliverables({
 }) {
   const router = useRouter();
   const supabase = createBrowserSupabase();
-  const [busySlot, setBusySlot] = useState<string | null>(null);
+  // Keyed by deliverable id, not slot — two reels share a slot and would
+  // otherwise both show "Uploading…" when only one is.
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const perSlot = countBySlot(deliverables);
+  const label = (d: Deliv) => slotDisplayLabel(d.slot, d.slot_index, perSlot[d.slot] ?? 1);
 
   const uploadedCount = deliverables.filter((d) => d.file_url || d.status !== "to_upload").length;
   const total = deliverables.length;
@@ -51,7 +57,7 @@ export default function UploadDeliverables({
 
   async function handleFile(deliverable: Deliv, file: File) {
     setError("");
-    setBusySlot(deliverable.slot);
+    setBusyId(deliverable.id);
     try {
       const ext = file.name.split(".").pop() || "bin";
       const path = `athlete/${athleteId}/${campaignId}/${deliverable.slot}-${Date.now()}.${ext}`;
@@ -66,6 +72,9 @@ export default function UploadDeliverables({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // The exact row this drop-zone belongs to. Not a slot lookup — that
+          // is the ambiguity this removes.
+          deliverableId: deliverable.id,
           optinId,
           slot: deliverable.slot,
           storagePath: path,
@@ -80,7 +89,7 @@ export default function UploadDeliverables({
     } catch (err: any) {
       setError(err?.message || "Upload failed. Please try again.");
     } finally {
-      setBusySlot(null);
+      setBusyId(null);
     }
   }
 
@@ -117,12 +126,12 @@ export default function UploadDeliverables({
 
       {deliverables.map((d) => {
         const hasFile = !!d.file_url;
-        const busy = busySlot === d.slot;
+        const busy = busyId === d.id;
         const isVideo = d.media_type === "video";
         return (
           <div key={d.id} style={{ textAlign: "left" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div className="a-d" style={{ fontSize: 15, flex: 1, color: "var(--a-off)" }}>{slotLabel(d.slot).toUpperCase()}</div>
+              <div className="a-d" style={{ fontSize: 15, flex: 1, color: "var(--a-off)" }}>{label(d).toUpperCase()}</div>
               {hasFile && (
                 <span className={`a-pill ${d.status === "changes_requested" ? "a-pill-due" : "a-pill-ok"}`}>{d.status === "changes_requested" ? "Re-upload" : "Uploaded"}</span>
               )}
@@ -150,7 +159,7 @@ export default function UploadDeliverables({
                   )}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: "var(--a-off)" }}>{slotLabel(d.slot)} {isVideo ? "video" : "image"}</div>
+                  <div style={{ fontSize: 12, color: "var(--a-off)" }}>{label(d)} {isVideo ? "video" : "image"}</div>
                   <div style={{ fontSize: 11, color: "rgba(250,248,245,0.5)" }}>{busy ? "Uploading…" : "Ready"}</div>
                 </div>
                 <label style={{ fontSize: 11, color: "var(--a-orange)", cursor: "pointer" }}>
@@ -164,7 +173,7 @@ export default function UploadDeliverables({
                 <svg viewBox="0 0 24 24" style={{ width: 26, height: 26, stroke: "rgba(250,248,245,0.7)", strokeWidth: 2, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" }}>
                   <path d="M12 16V6M8 10l4-4 4 4" /><path d="M5 18h14" />
                 </svg>
-                <div style={{ fontSize: 13, color: "var(--a-off)", marginTop: 8 }}>{busy ? "Uploading…" : `Tap to upload your ${slotLabel(d.slot).toLowerCase()}`}</div>
+                <div style={{ fontSize: 13, color: "var(--a-off)", marginTop: 8 }}>{busy ? "Uploading…" : `Tap to upload your ${label(d).toLowerCase()}`}</div>
                 <div style={{ fontSize: 11, color: "rgba(250,248,245,0.45)", marginTop: 3 }}>{d.slot === "reel" ? "MP4 or MOV · up to 500 MB" : "JPG or PNG"}</div>
                 <input type="file" accept={acceptFor(d.slot)} style={{ display: "none" }} disabled={busy}
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(d, f); }} />

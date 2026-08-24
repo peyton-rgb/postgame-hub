@@ -43,7 +43,7 @@ export default async function VideographerPage({ params }: { params: { token: st
       .maybeSingle(),
     service
       .from("athlete_deliverables")
-      .select("id,slot,status,file_url,media_type")
+      .select("id,slot,slot_index,status,file_url,media_type")
       .eq("optin_id", optinId)
       .order("slot", { ascending: true }),
   ]);
@@ -101,6 +101,7 @@ export default async function VideographerPage({ params }: { params: { token: st
         deliverables={(deliverables ?? []).map((d: any) => ({
           id: d.id,
           slot: d.slot,
+          slot_index: d.slot_index,
           status: d.status,
           file_url: d.file_url,
           media_type: d.media_type,

@@ -16,7 +16,7 @@ import { getDealParticipation } from "@/lib/athlete-deliverables";
 import UploadDeliverables from "@/components/athlete/UploadDeliverables";
 import PostDeliverables from "@/components/athlete/PostDeliverables";
 import VideographerLinkButton from "@/components/videographer/VideographerLinkButton";
-import { slotLabel } from "@/lib/deliverable-status";
+import { slotDisplayLabel, countBySlot } from "@/lib/deliverable-status";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +45,7 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
   const deal = await getDealParticipation(profile.id, params.optinId);
   if (!deal) notFound();
 
+  const reviewPerSlot = countBySlot(deal.deliverables);
   const stageKey = deal.stage.key;
 
   return (
@@ -71,7 +72,7 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
           optinId={deal.optinId}
           campaignId={deal.campaignId}
           athleteId={profile.id}
-          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, review_note: d.review_note, file_url: d.file_url, media_type: d.media_type }))}
+          deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, slot_index: d.slot_index, status: d.status, review_note: d.review_note, file_url: d.file_url, media_type: d.media_type }))}
         />
       )}
 
@@ -93,7 +94,7 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
                   </div>
                 )}
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: "var(--a-off)" }}>{slotLabel(d.slot)}</div>
+                  <div style={{ fontSize: 13, color: "var(--a-off)" }}>{slotDisplayLabel(d.slot, d.slot_index, reviewPerSlot[d.slot] ?? 1)}</div>
                   <div style={{ fontSize: 11, color: "rgba(250,248,245,0.5)" }}>In review</div>
                 </div>
                 <span className="a-pill a-pill-neutral">In review</span>
@@ -111,7 +112,7 @@ export default async function DealDetailPage({ params }: { params: { optinId: st
           <div style={{ height: stageKey === "verified" ? 12 : 0 }} />
           <PostDeliverables
             brandName={deal.brandName || "the brand"}
-            deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, status: d.status, live_url: d.live_url, file_url: d.file_url, media_type: d.media_type }))}
+            deliverables={deal.deliverables.map((d) => ({ id: d.id, slot: d.slot, slot_index: d.slot_index, status: d.status, live_url: d.live_url, file_url: d.file_url, media_type: d.media_type }))}
           />
         </>
       )}

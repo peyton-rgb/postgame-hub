@@ -30,6 +30,22 @@ export function slotLabel(slot: string): string {
   return SLOT_LABELS[slot] || slot.charAt(0).toUpperCase() + slot.slice(1);
 }
 
+// Display label for one deliverable within its deal. A slot with a single
+// instance reads exactly as before ("Reel"); only when a deal carries more than
+// one of a slot do they disambiguate ("Reel 1", "Reel 2"). Display only — it
+// changes no `slot` or `slot_index` value, and no filename.
+export function slotDisplayLabel(slot: string, slotIndex: number, instancesOfSlot: number): string {
+  const base = slotLabel(slot);
+  return instancesOfSlot > 1 ? `${base} ${slotIndex}` : base;
+}
+
+// How many deliverables share each slot, for slotDisplayLabel above.
+export function countBySlot(deliverables: { slot: string }[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const d of deliverables) counts[d.slot] = (counts[d.slot] ?? 0) + 1;
+  return counts;
+}
+
 // Per-deliverable pill text + tone.
 export function deliverablePill(status: DeliverableStatus): { text: string; kind: "due" | "ok" | "neutral" } {
   switch (status) {
