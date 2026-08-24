@@ -44,7 +44,12 @@ export type DealParticipation = {
 };
 
 // Insert any missing deliverable rows for an opt-in based on the deal's
-// required slots. Idempotent.
+// required slots. Idempotent — this runs on every deals page load.
+//
+// Multiple instances of a slot are expressed as duplicate entries in
+// required_deliverables: ["reel","reel","feed"] means two reels and one feed,
+// created as reel-1, reel-2, feed-1. (The previous implementation collapsed
+// those duplicates through a Set, so a two-reel campaign got a single reel.)
 export async function ensureDeliverables(
   optinId: string,
   athleteId: string,
@@ -53,23 +58,44 @@ export async function ensureDeliverables(
 ): Promise<void> {
   const service = createServiceSupabase();
   const slots = getRequiredSlots(requiredSlots);
+
+  // How many of each slot the campaign asks for.
+  const wanted: Record<string, number> = {};
+  for (const slot of slots) wanted[slot] = (wanted[slot] ?? 0) + 1;
+
+  // Which instances already exist, per slot.
   const { data: existing } = await service
     .from("athlete_deliverables")
-    .select("slot")
+    .select("slot,slot_index")
     .eq("optin_id", optinId);
-  const have = new Set((existing ?? []).map((r: any) => r.slot));
-  const toCreate = slots
-    .filter((s) => !have.has(s))
-    .map((slot) => ({
-      optin_id: optinId,
-      athlete_id: athleteId,
-      optin_campaign_id: campaignId,
-      slot,
-      slot_index: 1,
-      status: "to_upload",
-    }));
+  const taken: Record<string, Set<number>> = {};
+  for (const r of (existing ?? []) as { slot: string; slot_index: number }[]) {
+    (taken[r.slot] ??= new Set<number>()).add(r.slot_index);
+  }
+
+  // Create only the instances that are missing. Nothing is ever deleted or
+  // renumbered: if a campaign shrinks from two reels to one, reel-2 stays put
+  // — it may already hold an uploaded file. Removing it is a separate decision.
+  const toCreate: Record<string, any>[] = [];
+  for (const [slot, want] of Object.entries(wanted)) {
+    const have = taken[slot] ?? new Set<number>();
+    for (let index = 1; index <= want; index++) {
+      if (have.has(index)) continue;
+      toCreate.push({
+        optin_id: optinId,
+        athlete_id: athleteId,
+        optin_campaign_id: campaignId,
+        slot,
+        slot_index: index,
+        status: "to_upload",
+      });
+    }
+  }
+
   if (toCreate.length) {
     const { error } = await service.from("athlete_deliverables").insert(toCreate);
+    // 23505 is the (optin_id, slot, slot_index) unique constraint doing its job
+    // when two concurrent page loads race here. Expected, not worth logging.
     if (error && (error as any).code !== "23505") {
       console.error("ensureDeliverables insert error:", error.message);
     }
@@ -112,7 +138,8 @@ export async function getMyDeals(athleteId: string): Promise<DealParticipation[]
       .from("athlete_deliverables")
       .select(DELIV_SELECT)
       .eq("optin_id", o.id)
-      .order("slot", { ascending: true });
+      .order("slot", { ascending: true })
+      .order("slot_index", { ascending: true });
 
     const deliverables = (delivRows ?? []).map(normalizeDeliverable);
     const stage = computeDealStage(deliverables.map((d) => d.status));
@@ -161,7 +188,8 @@ export async function getDealParticipation(
     .from("athlete_deliverables")
     .select(DELIV_SELECT)
     .eq("optin_id", o.id)
-    .order("slot", { ascending: true });
+    .order("slot", { ascending: true })
+    .order("slot_index", { ascending: true });
 
   const deliverables = (delivRows ?? []).map(normalizeDeliverable);
   const stage = computeDealStage(deliverables.map((d) => d.status));
