@@ -45,7 +45,8 @@ export default async function VideographerPage({ params }: { params: { token: st
       .from("athlete_deliverables")
       .select("id,slot,slot_index,status,file_url,media_type")
       .eq("optin_id", optinId)
-      .order("slot", { ascending: true }),
+      .order("slot", { ascending: true })
+      .order("slot_index", { ascending: true }),
   ]);
 
   if (!campaign) return <InactiveLink />;
