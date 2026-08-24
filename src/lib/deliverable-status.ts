@@ -12,6 +12,8 @@ export type DeliverableStatus =
   | "uploaded"
   | "in_review"
   | "changes_requested"
+  | "in_edit"
+  | "brand_review"
   | "approved"
   | "to_post"
   | "pending_verification"
@@ -35,6 +37,8 @@ export function deliverablePill(status: DeliverableStatus): { text: string; kind
     case "uploaded": return { text: "Uploaded", kind: "ok" };
     case "in_review": return { text: "In review", kind: "neutral" };
     case "changes_requested": return { text: "Changes requested", kind: "due" };
+    case "in_edit": return { text: "Being edited", kind: "neutral" };
+    case "brand_review": return { text: "With the brand", kind: "neutral" };
     case "approved":
     case "to_post": return { text: "To post", kind: "due" };
     case "pending_verification": return { text: "Pending verification", kind: "neutral" };
@@ -54,6 +58,10 @@ const RANK: Record<DeliverableStatus, number> = {
   changes_requested: 1,
   uploaded: 2,
   in_review: 3,
+  // Internal stages: staff see the real stage, the athlete-facing tracker
+  // stays on "In review" — hence the same rank as in_review.
+  in_edit: 3,
+  brand_review: 3,
   approved: 4,
   to_post: 4,
   pending_verification: 5,
