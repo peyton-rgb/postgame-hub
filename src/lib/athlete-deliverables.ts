@@ -19,6 +19,7 @@ export type Deliverable = {
   id: string;
   optin_id: string;
   slot: string;
+  slot_index: number;
   status: DeliverableStatus;
   live_url: string | null;
   review_note: string | null;
@@ -64,6 +65,7 @@ export async function ensureDeliverables(
       athlete_id: athleteId,
       optin_campaign_id: campaignId,
       slot,
+      slot_index: 1,
       status: "to_upload",
     }));
   if (toCreate.length) {
@@ -75,7 +77,7 @@ export async function ensureDeliverables(
 }
 
 const DELIV_SELECT =
-  "id,optin_id,slot,status,live_url,review_note,file_url,thumbnail_url,media_type";
+  "id,optin_id,slot,slot_index,status,live_url,review_note,file_url,thumbnail_url,media_type";
 
 function normalizeDeliverable(row: any): Deliverable {
   return row as Deliverable;
