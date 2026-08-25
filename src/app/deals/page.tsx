@@ -6,6 +6,12 @@ import type { Deal } from "@/lib/types";
 import Link from "next/link";
 import { PostgameLogo } from "@/components/PostgameLogo";
 import "@/styles/motion.css";
+import {
+  BRAND_LOGO_COLUMNS,
+  groupLogosByBrand,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 /* ── Extended deal with joined fields ─────────────────────────── */
 type DealRow = Deal & {
@@ -80,6 +86,10 @@ export default function DealsPage() {
 
   const isCompact = isMobile || isTablet;
 
+  // Resolved dark-surface logo per brand. The deal hero is #000 with a black
+  // gradient over the art, so these ask for on_black.
+  const [resolvedLogos, setResolvedLogos] = useState<Map<string, string>>(new Map());
+
   /* ── Load deals ───────────────────────────────────────────── */
   useEffect(() => {
     (async () => {
@@ -91,6 +101,24 @@ export default function DealsPage() {
         .order("sort_order", { ascending: true });
       const rows = (data || []) as DealRow[];
       setDeals(rows);
+
+      // One bulk read for every brand in the set — not per card.
+      const brandIds = Array.from(
+        new Set(rows.map((r: any) => r.brand_id).filter(Boolean))
+      );
+      if (brandIds.length) {
+        const { data: logoRows } = await supabase
+          .from("brand_logos")
+          .select(BRAND_LOGO_COLUMNS)
+          .in("brand_id", brandIds);
+        const byBrand = groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]);
+        const m = new Map<string, string>();
+        for (const id of brandIds) {
+          const r = resolveBrandLogo(byBrand.get(String(id)), { surface: "dark", prefer: "lockup" });
+          if (r) m.set(String(id), r.url);
+        }
+        setResolvedLogos(m);
+      }
       const fm: Record<string, string> = {};
       const tfm: Record<string, string> = {};
       const mfm: Record<string, string> = {};
@@ -309,11 +337,20 @@ export default function DealsPage() {
               {/* Mobile nameplate — logo tab + glass card */}
               <div className="animate-hero-np" style={{ position: "absolute", bottom: 14, left: 14, zIndex: 10 }}>
                 {/* Floating logo */}
-                {(curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url) && (
-                  <div style={{ marginLeft: 12, marginBottom: 6, height: 32, display: "flex", alignItems: "flex-end" }}>
-                    <img src={curDeal.brands.logo_white_url || curDeal.brands.logo_primary_url!} alt="" style={{ maxHeight: 32, maxWidth: 80, objectFit: "contain", ...(!curDeal.brands.logo_white_url ? { filter: "brightness(0) invert(1)" } : {}) }} />
-                  </div>
-                )}
+                {(() => {
+                  // A resolved on_black file is already light-ink, so the
+                  // whitening filter must NOT be applied to it — inverting a
+                  // white logo would turn it black and lose it on this ground.
+                  const resolved = resolvedLogos.get(String((curDeal as any).brand_id));
+                  const src = resolved || curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url;
+                  if (!src) return null;
+                  const whiten = !resolved && !curDeal.brands?.logo_white_url;
+                  return (
+                    <div style={{ marginLeft: 12, marginBottom: 6, height: 32, display: "flex", alignItems: "flex-end" }}>
+                      <img src={src} alt="" style={{ maxHeight: 32, maxWidth: 80, objectFit: "contain", ...(whiten ? { filter: "brightness(0) invert(1)" } : {}) }} />
+                    </div>
+                  );
+                })()}
                 {/* Glass card */}
                 <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 12px 10px", minWidth: 140 }}>
                   <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
@@ -359,11 +396,17 @@ export default function DealsPage() {
               </div>
               {/* Right — logo tab + glass nameplate */}
               <div className="animate-hero-np" style={{ flexShrink: 0 }}>
-                {(curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url) && (
-                  <div style={{ marginLeft: 12, marginBottom: 6, height: 36, display: "flex", alignItems: "flex-end" }}>
-                    <img src={curDeal.brands.logo_white_url || curDeal.brands.logo_primary_url!} alt="" style={{ maxHeight: 36, maxWidth: 90, objectFit: "contain", ...(!curDeal.brands.logo_white_url ? { filter: "brightness(0) invert(1)" } : {}) }} />
-                  </div>
-                )}
+                {(() => {
+                  const resolved = resolvedLogos.get(String((curDeal as any).brand_id));
+                  const src = resolved || curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url;
+                  if (!src) return null;
+                  const whiten = !resolved && !curDeal.brands?.logo_white_url;
+                  return (
+                    <div style={{ marginLeft: 12, marginBottom: 6, height: 36, display: "flex", alignItems: "flex-end" }}>
+                      <img src={src} alt="" style={{ maxHeight: 36, maxWidth: 90, objectFit: "contain", ...(whiten ? { filter: "brightness(0) invert(1)" } : {}) }} />
+                    </div>
+                  );
+                })()}
                 <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px 12px", minWidth: 190 }}>
                   <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
                   <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>

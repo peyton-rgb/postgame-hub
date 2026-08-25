@@ -2,6 +2,11 @@ import { PostgameLogo } from "@/components/PostgameLogo";
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import {
+  BRAND_LOGO_COLUMNS,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 export const revalidate = 120;
 
@@ -164,6 +169,17 @@ export default async function CampaignShowcasePage({ params }: Props) {
     .eq("id", campaign.brand_id)
     .single();
 
+  // The hero sits on the dark public ground (.c-hero is a translucent orange
+  // wash over it), so this asks for a dark-surface file.
+  const { data: brandLogoRows } = await supabase
+    .from("brand_logos")
+    .select(BRAND_LOGO_COLUMNS)
+    .eq("brand_id", campaign.brand_id);
+  const resolvedBrandLogo = resolveBrandLogo((brandLogoRows ?? []) as BrandLogoRow[], {
+    surface: "dark",
+    prefer: "lockup",
+  });
+
   // Fetch athletes ÃÂ¢ÃÂÃÂ only name, school, sport (NO metrics, NO follower counts)
   const { data: allAthletes } = await supabase
     .from("athletes")
@@ -186,7 +202,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
     .sort((a: any, b: any) => (a.featured_order || 99) - (b.featured_order || 99));
 
   const brandName = brand?.name || campaign.client_name || "";
-  const brandLogo = brand?.logo_light_url || brand?.logo_url || "";
+  const brandLogo = resolvedBrandLogo?.url || brand?.logo_light_url || brand?.logo_url || "";
   const description = campaign.description || "";
   const tags: string[] = campaign.settings?.tags || campaign.tags || [];
   const athleteCount = athletes.length;

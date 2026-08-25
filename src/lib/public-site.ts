@@ -1,4 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  BRAND_LOGO_COLUMNS,
+  groupLogosByBrand,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,12 +103,23 @@ export async function getDealTracker() {
   return data || [];
 }
 
+// Name-keyed logo map for the homepage carousel, which sits on the dark
+// public ground — hence surface "dark". `id` is now selected so each brand can
+// be matched to its brand_logos rows; the legacy columns stay as the fallback.
 export async function getBrandLogos() {
-  const { data } = await supabase.from('brands').select('name, logo_url, logo_light_url').eq('archived', false);
+  const [{ data }, { data: logoRows }] = await Promise.all([
+    supabase.from('brands').select('id, name, logo_url, logo_light_url').eq('archived', false),
+    supabase.from('brand_logos').select(BRAND_LOGO_COLUMNS),
+  ]);
+  const logosByBrand = groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]);
   const map = new Map<string, string>();
   data?.forEach((b: any) => {
-    if (b.logo_light_url) map.set(b.name.toLowerCase(), b.logo_light_url);
-    else if (b.logo_url) map.set(b.name.toLowerCase(), b.logo_url);
+    const resolved = resolveBrandLogo(logosByBrand.get(String(b.id)), {
+      surface: 'dark',
+      prefer: 'lockup',
+    });
+    const url = resolved?.url || b.logo_light_url || b.logo_url || null;
+    if (url) map.set(b.name.toLowerCase(), url);
   });
   return map;
 }

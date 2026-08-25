@@ -18,6 +18,12 @@ import { createPlainSupabase } from "@/lib/supabase";
 import { computeStatsWithOverrides } from "@/lib/recap-helpers";
 import type { Athlete, MetricOverrides } from "@/lib/types";
 import type { CampaignCard } from "@/components/CampaignCoverFlow";
+import {
+  BRAND_LOGO_COLUMNS,
+  groupLogosByBrand,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 // One rotator slide = a cover-flow card + description + the three hero stats.
 // A stat of 0 means "unavailable" — the UI omits it rather than showing "0".
@@ -61,6 +67,16 @@ export async function getHomepageRotatorCampaigns(): Promise<RotatorSlide[]> {
     .eq("homepage_featured", true)
     .order("homepage_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
+
+  // One bulk read for every brand on the page — these are public pages that
+  // render many cards, so a per-row lookup would be an N+1.
+  const brandIds = Array.from(
+    new Set(((data ?? []) as any[]).map((r) => r.brand_id).filter(Boolean))
+  );
+  const { data: logoRows } = brandIds.length
+    ? await supabase.from("brand_logos").select(BRAND_LOGO_COLUMNS).in("brand_id", brandIds)
+    : { data: [] as BrandLogoRow[] };
+  const logosByBrand = groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]);
 
   if (error || !data) {
     console.error("getHomepageRotatorCampaigns:", error?.message);

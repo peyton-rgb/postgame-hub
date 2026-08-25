@@ -6,11 +6,19 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import type { Deal } from "@/lib/types";
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
+import {
+  BRAND_LOGO_COLUMNS,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [deal, setDeal] = useState<Deal | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Resolved on_black logo, when the brand has one.
+  const [resolvedLogo, setResolvedLogo] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -22,6 +30,18 @@ export default function DealDetailPage() {
         .eq("published", true)
         .single();
       setDeal(data as Deal | null);
+
+      // The whole page is background:#000, so a dark-surface file.
+      const brandId = (data as any)?.brand_id;
+      if (brandId) {
+        const { data: logoRows } = await supabase
+          .from("brand_logos")
+          .select(BRAND_LOGO_COLUMNS)
+          .eq("brand_id", brandId);
+        setResolvedLogo(
+          resolveBrandLogo((logoRows ?? []) as BrandLogoRow[], { surface: "dark", prefer: "lockup" })?.url ?? null
+        );
+      }
       setLoading(false);
     }
     load();
@@ -41,7 +61,11 @@ export default function DealDetailPage() {
   );
 
   const brand = (deal as any).brands;
-  const brandLogo = brand?.logo_light_url || brand?.logo_url || "";
+  const brandLogo = resolvedLogo || brand?.logo_light_url || brand?.logo_url || "";
+  // .deal-brand-logo carries filter:brightness(0) invert(1) to whiten a dark
+  // legacy file. A resolved on_black file is already light-ink, so inverting it
+  // would turn it black and lose it against this #000 page.
+  const heroLogoStyle = resolvedLogo ? { filter: "none", opacity: 1 } : undefined;
   const brandColor = brand?.primary_color || "#D73F09";
   const isVideo = deal.media_type === "video" || (deal.image_url && deal.image_url.includes(".mp4"));
 
@@ -112,7 +136,7 @@ export default function DealDetailPage() {
             {/* Brand logo or name */}
             <div className="deal-brand-row">
               {brandLogo
-                ? <img src={brandLogo} alt={deal.brand_name} className="deal-brand-logo" />
+                ? <img src={brandLogo} alt={deal.brand_name} className="deal-brand-logo" style={heroLogoStyle} />
                 : <span className="deal-brand-name">{deal.brand_name}</span>
               }
             </div>
