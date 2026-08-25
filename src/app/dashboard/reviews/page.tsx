@@ -27,8 +27,14 @@ interface ReviewSession {
   updated_at: string;
   campaign_id: string | null;
   inspo_item_id: string | null;
+  // Phase 1 columns. Deliverable-backed sessions set these and leave
+  // video_url/inspo_item_id null; inspo sessions do the reverse.
+  deliverable_id: string | null;
+  deliverable_version_id: string | null;
+  // Snapshot of the version's file_url at creation, not a live pointer.
+  asset_url: string | null;
   version_number: number;
-  video_url: string;
+  video_url: string | null;
   video_duration_seconds: number | null;
   brand_token: string;
   agency_token: string;
@@ -188,6 +194,15 @@ export default function ReviewsDashboardPage() {
       fetchDetail(selectedReviewId);
     }
   }, [selectedReviewId, fetchDetail]);
+
+  // ?session=<id> from the staff queue's "Open review" — preselect that
+  // session so the click lands on it. Read off window.location rather than
+  // useSearchParams(), which would need a Suspense boundary this page does not
+  // have (the same constraint noted in DashboardSidebar).
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('session');
+    if (id) setSelectedReviewId(id);
+  }, []);
 
   // --- Add comment ---
   const handleAddComment = async () => {
