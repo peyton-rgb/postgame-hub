@@ -16,7 +16,7 @@
 // token version genuinely cannot know, rather than decoration.
 // ============================================================
 
-import { BG, OFFWHITE, HAIR, INK_LABEL, MONO } from "@/lib/portal";
+import { BG, OFFWHITE, HAIR, MONO, BEBAS } from "@/lib/portal";
 import { anton, arimo } from "@/components/portal/fonts";
 import PortalNav, { PortalTabBar } from "@/components/portal/PortalNav";
 import type { PortalBrand } from "@/lib/portal-data";
@@ -133,17 +133,15 @@ export default function PortalFrame({
                 className="pv2-cl block max-w-full"
               />
             ) : (
+              // No logo on file. The brand name set in the portal's own display
+              // type, at the height the logo would occupy — not a dashed
+              // placeholder box reading "<Brand> · no logo on file", which told
+              // the client about a gap in our own data on every tab.
               <span
-                className="inline-flex items-center rounded-[3px] px-2 py-1 min-w-0"
-                style={{
-                  border: "1px dashed rgba(250,248,245,.22)",
-                  ...MONO,
-                  fontSize: 10,
-                  color: INK_LABEL,
-                }}
-                title="No logo on file for this brand"
+                className="pv2-cl inline-flex items-center min-w-0"
+                style={{ ...BEBAS, fontSize: 19, lineHeight: "23px", letterSpacing: ".01em", color: OFFWHITE }}
               >
-                <span className="truncate">{brand.name} &middot; no logo on file</span>
+                <span className="truncate">{brand.name}</span>
               </span>
             )}
 

@@ -47,6 +47,18 @@ export default async function LibraryBody({ brand, basePath }: { brand: PortalBr
       ])
     : [{ data: [] }, { data: [] }];
 
+  // True library size, independent of the fetch above — which PostgREST caps at
+  // 1,000 rows, so the tab read "1,000 of 1,000 files" for Adidas while the
+  // brand actually has 1,082. The cap stays (it is fine for what renders); the
+  // total is counted server-side so "of N" is the real number.
+  const { count: totalFilesExact } = recapIds.length
+    ? await supabase
+        .from("media")
+        .select("id", { count: "exact", head: true })
+        .in("campaign_id", recapIds)
+        .not("is_video_thumbnail", "is", true)
+    : { count: 0 };
+
   const athleteName: Record<string, string> = {};
   for (const a of (athletesRaw || []) as any[]) athleteName[a.id] = a.name;
 
@@ -209,6 +221,7 @@ export default async function LibraryBody({ brand, basePath }: { brand: PortalBr
     <main className="mx-auto max-w-[1248px] px-5 md:px-10 lg:px-24 pt-10 pb-24">
       <LibraryGallery
         brandName={brand.name}
+        totalFiles={totalFilesExact ?? tiles.length}
         campaigns={campaigns}
         tiles={tiles}
         athletesById={athletesById}

@@ -14,6 +14,7 @@ import {
   MONO,
   INK_BODY,
   INK_LABEL,
+  INK_DISPLAY,
   pickBrandLogo,
 } from "@/lib/portal";
 import HeroStage, { HeroFallback, type HeroSlide } from "@/components/portal/HeroStage";
@@ -48,7 +49,7 @@ export default async function PortalDashboardBody({
   // Every campaign for this brand, newest first. Drafts included.
   const { data: recapsRaw } = await supabase
     .from("campaign_recaps")
-    .select("id, name, slug, published, created_at, hero_image_url, thumbnail_url")
+    .select("id, name, slug, published, admin_is_active, created_at, hero_image_url, thumbnail_url")
     .eq("brand_id", brand.id)
     .order("created_at", { ascending: false });
 
@@ -66,6 +67,18 @@ export default async function PortalDashboardBody({
     : { data: [] as any[] };
 
   const media = ((mediaRaw || []) as any[]).filter((m) => !m.is_video_thumbnail);
+
+  // The fetch above is capped at PostgREST's default 1,000 rows, so media.length
+  // stopped counting at exactly 1,000 and Adidas (1,082 rows) was undersold by
+  // 82 while reading like a placeholder. Count on the server instead; the capped
+  // fetch is still fine for what this page renders.
+  const { count: assetCountExact } = recapIds.length
+    ? await supabase
+        .from("media")
+        .select("id", { count: "exact", head: true })
+        .in("campaign_id", recapIds)
+        .not("is_video_thumbnail", "is", true)
+    : { count: 0 };
 
   // Athlete rows referenced by this brand's media, for credits + roster.
   const athleteIds = Array.from(
@@ -90,16 +103,14 @@ export default async function PortalDashboardBody({
   // ---- Stats -------------------------------------------------------------
   const campaignCount = recaps.length;
   const publishedCount = recaps.filter((r) => r.published).length;
-  const archivedCount = campaignCount - publishedCount;
+  // Three states, not two. "total - published" called every unpublished campaign
+  // archived — including ones this same page shows as "content uploading soon",
+  // so a brand whose only campaign was running was told it had nothing running.
+  // Archived means the campaign is actually over: not active AND not published.
+  const inFlightCount = recaps.filter((r) => !r.published && r.admin_is_active).length;
+  const archivedCount = recaps.filter((r) => !r.published && !r.admin_is_active).length;
 
-  // Athlete rows are per-campaign (and can repeat per post), so the same
-  // person appears more than once. Count DISTINCT PEOPLE by name — a row count
-  // would overstate a client-facing headcount.
-  const distinctPeople = new Set(
-    athletes.map((a) => String(a.name || "").trim().toLowerCase()).filter(Boolean),
-  ).size;
-
-  const assetCount = media.length;
+  const assetCount = assetCountExact ?? media.length;
 
   // ---- Hero slides (brief 5.1) -------------------------------------------
   const images = media.filter((m) => m.type === "image" && m.file_url);
@@ -242,11 +253,14 @@ export default async function PortalDashboardBody({
           style={{ height: "clamp(42px,6vw,80px)", width: "auto", flex: "0 0 auto", objectFit: "contain", maxWidth: "100%" }}
         />
       ) : (
+        // No logo on file: the brand name set in the portal's own display type.
+        // The previous dashed box read "<Brand> · no logo on file" — an internal
+        // data-quality note shown to the client about their own brand.
         <div
-          className="my-4 inline-flex items-center rounded-[3px] px-3 py-2"
-          style={{ border: "1px dashed rgba(250,248,245,.22)", ...MONO, fontSize: 10, color: INK_LABEL }}
+          className="my-4"
+          style={{ ...ANTON, fontSize: "clamp(30px,4.4vw,54px)", lineHeight: 1.02, color: INK_DISPLAY }}
         >
-          {brand.name} &middot; no logo on file
+          {brand.name}
         </div>
       )}
       <p className="pv2-hero-lead" style={{ fontSize: 21, lineHeight: 1.45, color: "rgba(250,248,245,.92)", maxWidth: 430 }}>
@@ -254,6 +268,13 @@ export default async function PortalDashboardBody({
       </p>
     </div>
   );
+
+  // One phrasing for both places this is shown. In flight only appears when
+  // there is something in flight, so a settled brand reads exactly as before.
+  const campaignSub =
+    `${publishedCount} published` +
+    (inFlightCount ? ` · ${inFlightCount} in flight` : "") +
+    ` · ${archivedCount} archived`;
 
   const Stat = ({
     label,
@@ -293,11 +314,14 @@ export default async function PortalDashboardBody({
 
   const statbar = (
     <div
-      className="pv2-statbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 overflow-hidden"
+      className="pv2-statbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 overflow-hidden"
       style={{ border: `1px solid ${CARD_B}`, borderRadius: RADIUS, background: CARD, backdropFilter: BLUR, WebkitBackdropFilter: BLUR }}
     >
-      <Stat label="Campaigns" figure={campaignCount.toLocaleString()} sub={`${publishedCount} published · ${archivedCount} archived`} />
-      <Stat label="Athletes worked with" figure={distinctPeople.toLocaleString()} sub="Across all campaigns" />
+      <Stat label="Campaigns" figure={campaignCount.toLocaleString()} sub={campaignSub} />
+      {/* "Athletes worked with" removed: it showed 254 for Adidas, which matched
+          no query anyone could reproduce — not the 874 rows, 441 distinct names
+          on published campaigns, 536 distinct ids, or 271 with media. A number
+          nobody can explain is worse than no number. */}
       <Stat label="Assets delivered" figure={assetCount.toLocaleString()} sub="Photo and video" />
       {/* asset_metrics is empty — no invented number, not even greyed. */}
       <Stat label="Total impressions" figure="—" placeholder />
@@ -334,7 +358,7 @@ export default async function PortalDashboardBody({
 
         {/* 03 CAMPAIGNS */}
         <section className="pt-14 md:pt-[72px]">
-          <SectionHead num="03" title="Campaigns" right={`${publishedCount} published · ${archivedCount} archived`} />
+          <SectionHead num="03" title="Campaigns" right={campaignSub} />
           {cards.length === 0 ? (
             <p style={{ fontSize: 16, color: INK_BODY }}>No published campaigns with media yet.</p>
           ) : (
@@ -415,7 +439,11 @@ export default async function PortalDashboardBody({
           <SectionHead
             num="04"
             title="Notable roster"
-            right={`Top ${rosterShown} by reach · ${distinctPeople} total`}
+            // "· N total" dropped with the stat above: same figure, same
+            // defect — it counted distinct athletes across the media fetch,
+            // which PostgREST caps at 1,000 rows, so it undercounted and
+            // drifted with row order. Top-N by reach needs no total.
+            right={`Top ${rosterShown} by reach`}
           />
           {roster.length === 0 ? (
             <p className="pv2-body" style={{ fontSize: 16, color: INK_BODY }}>
