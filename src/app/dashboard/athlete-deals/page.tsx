@@ -13,17 +13,19 @@
 // the athlete's profile + optin_campaigns + brand.
 // ============================================================
 
+import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { slotLabel } from "@/lib/deliverable-status";
 import StaffDeliverableActions from "@/components/dashboard/StaffDeliverableActions";
 import VideographerLinkButton from "@/components/videographer/VideographerLinkButton";
 import AutoEditorPanel, { type Evl } from "@/components/dashboard/AutoEditorPanel";
+import { findOrCreateDeliverableSession } from "@/lib/review-sessions";
 
 export const dynamic = "force-dynamic";
 
 const SELECT =
-  "id,slot,status,live_url,review_note,updated_at,file_url,media_type,optin_campaign_id,athlete_id,athlete:profiles!athlete_id(full_name,email,ig_handle),campaign:optin_campaigns(title,brand:brands(name,logo_url))";
+  "id,slot,status,live_url,review_note,updated_at,file_url,media_type,optin_campaign_id,athlete_id,versions:deliverable_versions(id),athlete:profiles!athlete_id(full_name,email,ig_handle),campaign:optin_campaigns(title,brand:brands(name,logo_url))";
 
 function one(v: any) {
   return Array.isArray(v) ? v[0] ?? null : v ?? null;
@@ -81,6 +83,28 @@ async function fetchGroups(campaignId?: string): Promise<Group[]> {
   return Array.from(groups.values());
 }
 
+// Open the review workspace on this deliverable's CURRENT version,
+// find-or-create. A plain form post keeps the row a server component; the
+// find-or-create itself is the shared helper the API route uses, so there is
+// only one implementation.
+//
+// No status write here. Every row in this queue is already in_review or
+// beyond — the uploaded -> in_review transition belongs to
+// /api/athlete/deliverables/submit, and duplicating it would be the drift the
+// brief warns about. See the PR description.
+async function openReview(formData: FormData) {
+  "use server";
+  await requireStaff();
+  const deliverableId = String(formData.get("deliverableId") || "");
+  if (!deliverableId) return;
+  const result = await findOrCreateDeliverableSession(deliverableId);
+  if (!result.ok) {
+    console.error("openReview:", result.error);
+    redirect("/dashboard/reviews");
+  }
+  redirect(`/dashboard/reviews?session=${result.review.id}`);
+}
+
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { t: string; bg: string; c: string }> = {
     in_review: { t: "In review", bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" },
@@ -93,6 +117,10 @@ function StatusPill({ status }: { status: string }) {
 function DeliverableRow({ d }: { d: any }) {
   const isVideo = d.media_type === "video";
   const mode: "review" | "verify" = d.status === "pending_verification" ? "verify" : "review";
+  // Absent, not disabled-and-erroring, when there is nothing to review. Note a
+  // deliverable can carry a file_url with no version row if it predates
+  // Phase 2B, so this checks versions rather than file_url.
+  const hasVersion = Array.isArray(d.versions) && d.versions.length > 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap" }}>
       <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", flex: "none", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -117,6 +145,17 @@ function DeliverableRow({ d }: { d: any }) {
         </div>
       </div>
       <StatusPill status={d.status} />
+      {hasVersion && (
+        <form action={openReview}>
+          <input type="hidden" name="deliverableId" value={d.id} />
+          <button
+            type="submit"
+            style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "rgba(255,255,255,0.85)", background: "transparent", cursor: "pointer" }}
+          >
+            Open review
+          </button>
+        </form>
+      )}
       <StaffDeliverableActions deliverableId={d.id} mode={mode} />
     </div>
   );

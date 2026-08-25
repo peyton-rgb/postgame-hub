@@ -12,6 +12,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import { getStaffUser } from '@/lib/staff-auth';
+import { findOrCreateDeliverableSession } from '@/lib/review-sessions';
 import crypto from 'crypto';
 
 // --- GET: List review sessions ---
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
   // Parse the request body
   let body: {
     inspo_item_id?: string;
+    deliverable_id?: string;
+    deliverable_version_id?: string;
     video_url: string;
     asset_name: string;
     campaign_id?: string;
@@ -91,6 +95,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  // Deliverable path: find-or-create, everything derived server-side. Staff
+  // only — it reads athlete rows through the service client, so it must not be
+  // reachable by any authenticated user the way the inspo path is.
+  if (body.deliverable_id) {
+    const staff = await getStaffUser();
+    if (!staff) {
+      return NextResponse.json({ error: 'Staff access required' }, { status: 403 });
+    }
+    const result = await findOrCreateDeliverableSession(
+      body.deliverable_id,
+      body.deliverable_version_id ?? null
+    );
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    return NextResponse.json(
+      { review: result.review, created: result.created },
+      { status: result.created ? 201 : 200 }
+    );
+  }
+
+  // Inspo path — unchanged.
   // Validate required fields
   if (!body.video_url || !body.asset_name) {
     return NextResponse.json(
