@@ -9,6 +9,12 @@
  */
 import { createServerSupabase } from "@/lib/supabase-server";
 import { COLUMNS, SCORE, kitScore, pickLogo, txt } from "@/lib/campaign-readiness";
+import {
+  BRAND_LOGO_COLUMNS,
+  groupLogosByBrand,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 import type { ColumnKey, ReadinessRow, State } from "@/lib/campaign-readiness";
 
 export interface ReadinessData {
@@ -20,12 +26,15 @@ export interface ReadinessData {
 export async function getReadiness(): Promise<ReadinessData> {
   const supabase = createServerSupabase();
 
-  const [recapsRes, brandsRes, csRes, pressRes, subRes, mediaRes, athletesRes] = await Promise.all([
+  const [recapsRes, brandsRes, logosRes, csRes, pressRes, subRes, mediaRes, athletesRes] = await Promise.all([
     supabase
       .from("campaign_recaps")
       .select("id,name,slug,admin_campaign_id,admin_is_active,brand_id,drive_folder_id,frameio_url,brief_url,published,visibility")
       .limit(5000),
     supabase.from("brands").select("*").limit(5000),
+    // The real logo library. One bulk read, grouped by brand below — no
+    // per-row lookups, matching how everything else on this page is loaded.
+    supabase.from("brand_logos").select(BRAND_LOGO_COLUMNS).limit(5000),
     supabase.from("case_study_campaigns").select("campaign_recap_id").limit(20000),
     supabase.from("press_campaigns").select("campaign_recap_id").limit(20000),
     supabase.from("submission_links").select("campaign_id").eq("active", true).limit(20000),
@@ -35,7 +44,7 @@ export async function getReadiness(): Promise<ReadinessData> {
 
   // Surface failures rather than silently rendering an empty landing page.
   for (const [label, res] of [
-    ["campaign_recaps", recapsRes], ["brands", brandsRes], ["case_study_campaigns", csRes],
+    ["campaign_recaps", recapsRes], ["brands", brandsRes], ["brand_logos", logosRes], ["case_study_campaigns", csRes],
     ["press_campaigns", pressRes], ["submission_links", subRes], ["media", mediaRes],
     ["athletes", athletesRes],
   ] as const) {
@@ -62,6 +71,8 @@ export async function getReadiness(): Promise<ReadinessData> {
   const hasMedia = idSet(mediaRes.data, "campaign_id");
   const hasRoster = idSet(athletesRes.data, "campaign_id");
 
+  const logosByBrand = groupLogosByBrand((logosRes.data ?? []) as BrandLogoRow[]);
+
   const rows: ReadinessRow[] = [];
   let liveCount = 0;
 
@@ -69,7 +80,21 @@ export async function getReadiness(): Promise<ReadinessData> {
     const id = String(c.id);
     const brandRaw = typeof c.brand_id === "string" ? brandsById.get(c.brand_id) : undefined;
     const kitCount = kitScore(brandRaw);
-    const { url: logoUrl, chip } = pickLogo(brandRaw);
+
+    // brand_logos first, asked for a compact mark on this dark rail. The
+    // resolver only ever returns a file built for a dark surface, so nothing it
+    // hands back needs a white chip behind it to be legible.
+    //
+    // Falling back to pickLogo rather than to a single legacy column: pickLogo
+    // already walks every legacy column and decides whether a chip is needed,
+    // so brands not yet in brand_logos render exactly as they do today instead
+    // of losing their logo.
+    const resolved = brandRaw
+      ? resolveBrandLogo(logosByBrand.get(String(brandRaw.id)), { surface: "dark", prefer: "mark" })
+      : null;
+    const legacy = resolved ? null : pickLogo(brandRaw);
+    const logoUrl = resolved?.url ?? legacy?.url ?? null;
+    const chip = resolved ? false : legacy?.chip ?? false;
 
     const live = c.admin_is_active === true;
     if (live) liveCount++;
