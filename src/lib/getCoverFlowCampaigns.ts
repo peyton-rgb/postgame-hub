@@ -9,6 +9,12 @@
 
 import { createServerSupabase } from "@/lib/supabase-server";        // ADJUST 1: point at your Supabase server client
 import type { CampaignCard } from "@/components/CampaignCoverFlow"; // ADJUST 2: point at the component file
+import {
+  BRAND_LOGO_COLUMNS,
+  groupLogosByBrand,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 // What one campaign row looks like coming back from the query.
 type Row = {
@@ -56,6 +62,16 @@ export async function getCoverFlowCampaigns(
   const { data, error } = await query
     .order("carousel_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
+
+  // One bulk read for every brand on the page — these are public pages that
+  // render many cards, so a per-row lookup would be an N+1.
+  const brandIds = Array.from(
+    new Set(((data ?? []) as any[]).map((r) => r.brand_id).filter(Boolean))
+  );
+  const { data: logoRows } = brandIds.length
+    ? await supabase.from("brand_logos").select(BRAND_LOGO_COLUMNS).in("brand_id", brandIds)
+    : { data: [] as BrandLogoRow[] };
+  const logosByBrand = groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]);
 
   if (error || !data) {
     console.error("getCoverFlowCampaigns:", error?.message);
@@ -111,10 +127,20 @@ export async function getCoverFlowCampaigns(
       // hero_recap_video_url (may be null); poster is the still to show until it loads.
       heroVideo: r.hero_recap_video_url ?? null,
       poster: hero,
-      // Prefer the brand's light/white logo on the dark card; the component
-      // falls back to the colored logo on a light chip when there's no light one.
-      logoLight: brand?.logo_light_url ?? null,
-      logoChip: brand?.logo_primary_url ?? r.client_logo_url ?? null,
+      // Two surfaces on one card: the logo sits directly on the DARK card
+      // when a light-ink file exists, and on a WHITE CHIP when it falls back.
+      // So both are resolved, each for its own ground — a single url would be
+      // wrong for whichever half it wasn't chosen for. Legacy columns stay
+      // beneath so brands with no brand_logos rows keep rendering.
+      logoLight:
+        resolveBrandLogo(logosByBrand.get(String(r.brand_id)), { surface: "dark", prefer: "lockup" })?.url ??
+        brand?.logo_light_url ??
+        null,
+      logoChip:
+        resolveBrandLogo(logosByBrand.get(String(r.brand_id)), { surface: "light", prefer: "lockup" })?.url ??
+        brand?.logo_primary_url ??
+        r.client_logo_url ??
+        null,
     });
   }
 

@@ -26,6 +26,11 @@ import { createPlainSupabase } from '@/lib/supabase';
 import HeroSlideshow from './HeroSlideshow';
 import { resolveHeroPlaybackUrl } from '@/lib/hero-render';
 import './brand-page.css';
+import {
+  BRAND_LOGO_COLUMNS,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -274,8 +279,18 @@ async function loadBrandPageData(brand: Brand) {
     if (!partnerSince || d < partnerSince) partnerSince = d;
   }
 
+  // Resolved once here, where the brand row and the client both live.
+  const { data: brandLogoRows } = brandDb?.id
+    ? await supabase.from('brand_logos').select(BRAND_LOGO_COLUMNS).eq('brand_id', brandDb.id)
+    : { data: [] as BrandLogoRow[] };
+  const resolvedHeroLogo = resolveBrandLogo((brandLogoRows ?? []) as BrandLogoRow[], {
+    surface: 'dark',
+    prefer: 'lockup',
+  });
+
   return {
     brandDb,
+    resolvedHeroLogo,
     campaigns: orderedCampaigns,
     pullQuote,
     athleteTiles,
@@ -299,11 +314,14 @@ export default async function BrandPage({ params }: Props) {
   const brand = getBrandBySlug(slug);
   if (!brand) notFound();
 
-  const { brandDb, campaigns, pullQuote, athleteTiles, heroPool, stats } = await loadBrandPageData(brand);
+  const { brandDb, resolvedHeroLogo, campaigns, pullQuote, athleteTiles, heroPool, stats } =
+    await loadBrandPageData(brand);
 
   // Color + logo resolution — DB value wins, brands.ts is the fallback.
   const primaryColor = brandDb?.primary_color || brand.primaryColor || '#1A1A1A';
+  // The hero logo sits on the dark brand-page ground, so a dark-surface file.
   const heroLogo =
+    resolvedHeroLogo?.url ||
     brandDb?.logo_white_url ||
     brandDb?.logo_light_url ||
     brandDb?.logo_url ||

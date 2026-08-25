@@ -2,6 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
 import CampaignCoverFlow from "@/components/CampaignCoverFlow";
 import { getCoverFlowCampaigns } from "@/lib/getCoverFlowCampaigns";
+import {
+  BRAND_LOGO_COLUMNS,
+  groupLogosByBrand,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 export const revalidate = 60;
 
@@ -120,7 +126,22 @@ async function getCampaigns() {
       .order("grid_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(60);
-    return data || [];
+    if (!data) return [];
+
+    // One bulk read for every brand in the grid — no per-card lookup.
+    const brandIds = Array.from(new Set(data.map((r: any) => r.brand_id).filter(Boolean)));
+    const { data: logoRows } = brandIds.length
+      ? await supabase.from("brand_logos").select(BRAND_LOGO_COLUMNS).in("brand_id", brandIds)
+      : { data: [] as BrandLogoRow[] };
+    const logosByBrand = groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]);
+
+    // Two grounds on this card: .camp-logo sits straight on the dark artwork,
+    // .camp-logo-chip sits on a white pill. Each is resolved for its own.
+    return data.map((r: any) => ({
+      ...r,
+      resolvedLight: resolveBrandLogo(logosByBrand.get(String(r.brand_id)), { surface: "dark", prefer: "lockup" })?.url ?? null,
+      resolvedChip: resolveBrandLogo(logosByBrand.get(String(r.brand_id)), { surface: "light", prefer: "lockup" })?.url ?? null,
+    }));
   } catch {
     return [];
   }
@@ -196,8 +217,8 @@ export default async function CampaignsPage() {
           <div className="campaigns-masonry">
             {campaigns.map((c: any, i: number) => {
               const brand = c.brands?.name || "";
-              const logoLight = c.brands?.logo_light_url || "";
-              const logoChip = c.brands?.logo_url || "";
+              const logoLight = c.resolvedLight || c.brands?.logo_light_url || "";
+              const logoChip = c.resolvedChip || c.brands?.logo_url || "";
               const hasMedia = !!c.thumbnail_url;
               const isVideo = c.media_type === "video";
               const gradient = GRADIENTS[i % 5];
