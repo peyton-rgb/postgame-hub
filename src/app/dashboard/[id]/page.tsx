@@ -1613,6 +1613,13 @@ export default function CampaignEditor() {
     };
   }
 
+  // The latest payload builder. buildSettingsPayload closes over editor state,
+  // so any deferred callback that captures it — the baseline seed below, the
+  // debounced save — would otherwise build from the render that scheduled it,
+  // before loadData's setters had landed.
+  const buildPayloadRef = useRef(buildSettingsPayload);
+  useEffect(() => { buildPayloadRef.current = buildSettingsPayload; });
+
   async function saveCampaignName(field: "name" | "client_name", value: string) {
     if (!campaign || !value.trim()) return;
     const { data } = await supabase
@@ -1662,7 +1669,19 @@ export default function CampaignEditor() {
     autoSaveTimer.current = setTimeout(async () => {
       // Build from the freshest settings (via ref), not the captured snapshot, so
       // hidden-column / hidden-hero toggles written elsewhere are never clobbered.
-      const newSettings = buildSettingsPayload(campaignRef.current?.settings ?? {});
+      const newSettings = buildPayloadRef.current(campaignRef.current?.settings ?? {});
+
+      // Dirty means the user changed something. This effect is keyed on the
+      // IDENTITY of its dependencies — several are arrays and objects — so it
+      // re-runs whenever one is re-created, which happens during load with no
+      // edit behind it. Without this comparison, merely opening a campaign
+      // persisted the payload and moved updated_at.
+      //
+      // Skipping here also means a campaign whose stored settings predate a
+      // field is left alone rather than silently normalised on view. Bringing
+      // those rows forward is a migration, run deliberately once.
+      if (JSON.stringify(newSettings) === savedSnapshot.current) return;
+
       const { data } = await supabase
         .from("campaign_recaps")
         .update({ settings: newSettings, updated_at: new Date().toISOString() })
@@ -1671,7 +1690,7 @@ export default function CampaignEditor() {
         .single();
       if (data) {
         setCampaign(data);
-        savedSnapshot.current = JSON.stringify(buildSettingsPayload(data.settings));
+        savedSnapshot.current = JSON.stringify(buildPayloadRef.current(data.settings));
         // Autosaved edits reach the DB but the public recap serves a cached copy;
         // revalidate so the live page reflects them (matches saveCampaignInfo).
         if (data?.slug) await fetch(`/api/revalidate?path=/recap/${data.slug}`);
@@ -1702,7 +1721,13 @@ export default function CampaignEditor() {
       const t = setTimeout(() => {
         // Seed the saved-settings snapshot now that editor state is populated, so
         // a freshly loaded recap reads as clean (not dirty).
-        savedSnapshot.current = JSON.stringify(buildSettingsPayload(campaign.settings));
+        // Via the ref: this callback was created on the render where `campaign`
+        // first arrived, when the editor-state setters from loadData may not
+        // have run. Capturing that render's builder would seed a baseline for
+        // an empty editor and make a freshly loaded recap read as dirty.
+        savedSnapshot.current = JSON.stringify(
+          buildPayloadRef.current(campaignRef.current?.settings ?? campaign.settings)
+        );
         initialLoadDone.current = true;
       }, 500);
       return () => clearTimeout(t);
