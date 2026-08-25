@@ -230,8 +230,13 @@ export default function ReviewsDashboardPage() {
     setSubmittingComment(false);
   };
 
-  // --- Approve internally ---
-  const handleApproveInternal = async () => {
+  // --- Send to brand (gate 1) ---
+  //
+  // One action: advance the session to pending_brand, carry the deliverable to
+  // brand_review, and put the brand link on the clipboard ready to paste. The
+  // separate Copy buttons below stay for re-sending to a second contact
+  // without touching state.
+  const handleSendToBrand = async () => {
     if (!selectedReviewId) return;
     setActionLoading(true);
 
@@ -240,6 +245,9 @@ export default function ReviewsDashboardPage() {
     });
 
     if (res.ok) {
+      const { review } = await res.json().catch(() => ({ review: null }));
+      const brandToken = review?.brand_token || selectedReview?.brand_token;
+      if (brandToken) copyReviewLink(brandToken, 'brand');
       await fetchDetail(selectedReviewId);
       await fetchReviews();
     }
@@ -483,11 +491,15 @@ export default function ReviewsDashboardPage() {
                       {selectedReview.status === 'pending_internal' && (
                         <div className="flex gap-2">
                           <button
-                            onClick={handleApproveInternal}
+                            onClick={handleSendToBrand}
                             disabled={actionLoading}
                             className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                           >
-                            {actionLoading ? 'Approving...' : 'Approve Internally'}
+                            {actionLoading
+                              ? 'Sending...'
+                              : copiedToken === 'brand'
+                                ? 'Link copied — paste it to the brand'
+                                : 'Send to brand & copy link'}
                           </button>
                           <button
                             onClick={() => setShowRejectForm(true)}

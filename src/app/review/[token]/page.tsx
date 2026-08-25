@@ -260,45 +260,19 @@ export default function PublicReviewPage() {
     setActionLoading(true);
 
     try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
-      const now = new Date().toISOString();
-
-      await supabase
-        .from('review_sessions')
-        .update({
-          status: 'approved',
-          brand_decision: 'approved',
-          brand_decided_at: now,
-          updated_at: now,
-        })
-        .eq('id', review.id);
-
-      // Add approval comment
-      await supabase.from('review_comments').insert({
-        session_id: review.id,
-        author_type: 'brand',
-        comment_type: 'approval',
-        body: 'Brand approved this asset.',
-        is_resolved: false,
+      // Through the API, not a direct anon write. The route owns the session
+      // update, the audit comment, the final_assets row AND the deliverable
+      // transition — the anon client cannot write athlete_deliverables, so a
+      // direct write here is exactly how the two halves stayed disconnected.
+      const res = await fetch(`/api/reviews/${review.id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
       });
-
-      // Create final asset
-      await supabase.from('final_assets').insert({
-        campaign_id: review.campaign_id || null,
-        review_session_id: review.id,
-        title: review.asset_name || 'Untitled Asset',
-        asset_type: isImageAsset(review.media_type) ? 'image' : 'video',
-        // asset_url for deliverable sessions, video_url for inspo ones —
-        // video_url is null on the former, which wrote an unusable row.
-        file_url: review.asset_url || review.video_url,
-        athlete_name: review.athlete_name || null,
-        status: 'ready',
-      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Could not record your approval.');
+      }
 
       setActionSuccess('approved');
       await fetchReview();
@@ -316,34 +290,15 @@ export default function PublicReviewPage() {
     setActionLoading(true);
 
     try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
-      const now = new Date().toISOString();
-      const newRevisionRound = (review.revision_round || 1) + 1;
-
-      await supabase
-        .from('review_sessions')
-        .update({
-          status: 'revision_requested',
-          brand_decision: 'changes_requested',
-          brand_decided_at: now,
-          revision_round: newRevisionRound,
-          updated_at: now,
-        })
-        .eq('id', review.id);
-
-      // Add rejection comment
-      await supabase.from('review_comments').insert({
-        session_id: review.id,
-        author_type: 'brand',
-        comment_type: 'revision',
-        body: rejectFeedback.trim(),
-        is_resolved: false,
+      const res = await fetch(`/api/reviews/${review.id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, body: rejectFeedback.trim(), author_type: 'brand' }),
       });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Could not submit your feedback.');
+      }
 
       setShowRejectForm(false);
       setRejectFeedback('');

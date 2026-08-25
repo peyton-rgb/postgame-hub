@@ -12,6 +12,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { applyDeliverableTransition, compileBrandFeedback } from '@/lib/deliverable-transitions';
 import { createServerSupabase } from '@/lib/supabase-server';
 
 export async function POST(
@@ -20,17 +21,15 @@ export async function POST(
 ) {
   const supabase = createServerSupabase();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
   const reviewId = params.id;
 
   // Parse the rejection body
   let body: {
     body: string;
     author_type?: 'postgame' | 'brand' | 'agency' | 'editor';
+    // The brand has no account — it authenticates with this session's token.
+    token?: string;
   };
 
   try {
@@ -55,6 +54,12 @@ export async function POST(
 
   if (reviewError || !review) {
     return NextResponse.json({ error: 'Review session not found' }, { status: 404 });
+  }
+
+  // Signed-in staff, or the brand holding this session's own token.
+  const isBrandCaller = !!body.token && body.token === review.brand_token;
+  if (!user && !isBrandCaller) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   // Can only reject from pending_internal or pending_brand
@@ -105,6 +110,18 @@ export async function POST(
 
   if (commentError) {
     console.error('[reject-review] Failed to save rejection comment:', commentError);
+  }
+
+  // Send the deliverable back — to in_edit, not changes_requested. A brand
+  // send-back usually means Postgame acts first; an employee reads the compiled
+  // feedback, edits it, and only then sends it on to the athlete.
+  //
+  // Compiled AFTER the comment insert above so this rejection's own words are
+  // included. Conditional on deliverable_id: inspo sessions have none.
+  if (review.deliverable_id) {
+    const note = await compileBrandFeedback(reviewId);
+    const t = await applyDeliverableTransition(review.deliverable_id, 'brand_reject', { note });
+    if (!t.ok) console.error('[reject-review] brand_reject:', t.error);
   }
 
   return NextResponse.json({
