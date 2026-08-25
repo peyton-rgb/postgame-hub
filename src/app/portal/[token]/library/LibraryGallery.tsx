@@ -44,6 +44,7 @@ type OpenState = { campaignId: string; index: number; postIndex: number };
 
 export default function LibraryGallery({
   brandName,
+  totalFiles,
   campaigns,
   tiles,
   athletesById,
@@ -51,6 +52,9 @@ export default function LibraryGallery({
   rowToAthlete,
 }: {
   brandName: string;
+  /** True media count for this brand, counted server-side. The tile fetch is
+   *  capped at 1,000 rows, so tiles.length understated it. */
+  totalFiles: number;
   campaigns: LibraryCampaign[];
   tiles: LibraryTile[];
   athletesById: Record<string, PortalAthlete>;
@@ -101,20 +105,58 @@ export default function LibraryGallery({
   const filtersActive = media !== "all" || athlete !== "" || query.trim() !== "";
 
   // Athletes who appear in this brand's media, for the dropdown.
+  //
+  // DISPLAY-LAYER DEDUPE ONLY — no athlete row is modified. The same person
+  // arrives under several spellings, and the dropdown listed each separately:
+  //   · case      — "Brianna Nunley" and "BRIANNA NUNLEY"
+  //   · whitespace — "Dillon Mitchell" and "Dillon Mitchell "
+  //   · a trailing "(<brand>)", an internal name-collision marker that means
+  //     nothing to a client and is redundant on that brand's own portal
+  //
+  // Only the brand's OWN name is stripped, never any trailing parenthetical —
+  // "(Jr.)" or a genuine qualifier has to survive.
+  const stripBrandSuffix = useMemo(() => {
+    const escaped = brandName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`\\s*\\(\\s*${escaped}\\s*\\)\\s*$`, "i");
+    return (n: string) => n.replace(re, "").trim();
+  }, [brandName]);
+
+  const athleteKeyOf = (n: string | null) =>
+    n ? stripBrandSuffix(n).trim().toLowerCase() : "";
+
   const athleteOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const t of tiles) if (t.athleteName) set.add(t.athleteName);
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [tiles]);
+    // Prefer the best-cased spelling rather than whichever sorts first:
+    // "Brianna Nunley" over "BRIANNA NUNLEY". More lowercase letters wins,
+    // ties broken deterministically.
+    const lowerCount = (v: string) => (v.match(/[a-z]/g) || []).length;
+    const best = new Map<string, string>();
+    for (const t of tiles) {
+      if (!t.athleteName) continue;
+      const display = stripBrandSuffix(t.athleteName);
+      if (!display) continue;
+      const key = display.toLowerCase();
+      const prev = best.get(key);
+      if (
+        !prev ||
+        lowerCount(display) > lowerCount(prev) ||
+        (lowerCount(display) === lowerCount(prev) && display.localeCompare(prev) < 0)
+      ) {
+        best.set(key, display);
+      }
+    }
+    return Array.from(best, ([key, label]) => ({ key, label })).sort((a, b) =>
+      a.label.localeCompare(b.label),
+    );
+  }, [tiles, stripBrandSuffix]);
 
   // Apply filters to the flat tile list.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return tiles.filter((t) => {
       if (media !== "all" && t.kind !== media) return false;
-      if (athlete && t.athleteName !== athlete) return false;
+      if (athlete && athleteKeyOf(t.athleteName) !== athlete) return false;
       if (q) {
-        const hay = `${t.campaignName} ${t.athleteName || ""}`.toLowerCase();
+        const hay = `${t.campaignName} ${t.athleteName || ""} ${stripBrandSuffix(t.athleteName || "")}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -188,7 +230,7 @@ export default function LibraryGallery({
           </h1>
         </div>
         <div style={{ ...MONO, fontSize: 10, letterSpacing: ".16em", color: INK_LABEL }}>
-          {filtered.length.toLocaleString()} of {tiles.length.toLocaleString()} files
+          {filtered.length.toLocaleString()} of {totalFiles.toLocaleString()} files
         </div>
       </div>
 
@@ -255,9 +297,9 @@ export default function LibraryGallery({
           }}
         >
           <option value="">All athletes</option>
-          {athleteOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
+          {athleteOptions.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
             </option>
           ))}
         </select>

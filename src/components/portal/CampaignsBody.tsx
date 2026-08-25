@@ -26,7 +26,7 @@ export default async function CampaignsBody({ brand, basePath }: { brand: Portal
 
   const { data: recapsRaw } = await supabase
     .from("campaign_recaps")
-    .select("id, name, slug, published, created_at, hero_image_url, thumbnail_url")
+    .select("id, name, slug, published, admin_is_active, created_at, hero_image_url, thumbnail_url")
     .eq("brand_id", brand.id)
     .order("created_at", { ascending: false });
 
@@ -42,7 +42,10 @@ export default async function CampaignsBody({ brand, basePath }: { brand: Portal
   for (const m of (mediaRaw || []) as any[]) populated.add(m.campaign_id);
 
   const publishedCount = recaps.filter((r) => r.published).length;
-  const archivedCount = recaps.length - publishedCount;
+  // Archived means archived. "total - published" also counted every campaign
+  // that simply has not been published yet — including live, in-flight work.
+  const inFlightCount = recaps.filter((r: any) => !r.published && r.admin_is_active).length;
+  const archivedCount = recaps.filter((r: any) => !r.published && !r.admin_is_active).length;
   const brandLogo = pickBrandLogo(brand);
 
   return (
@@ -55,7 +58,8 @@ export default async function CampaignsBody({ brand, basePath }: { brand: Portal
           </h1>
         </div>
         <div style={{ ...MONO, fontSize: 10, letterSpacing: ".16em", color: INK_LABEL }}>
-          {publishedCount} published &middot; {archivedCount} archived
+          {publishedCount} published
+          {inFlightCount ? <> &middot; {inFlightCount} in flight</> : null} &middot; {archivedCount} archived
         </div>
       </div>
 
@@ -131,7 +135,7 @@ export default async function CampaignsBody({ brand, basePath }: { brand: Portal
                     className="inline-block rounded-[3px] px-2 py-[5px]"
                     style={{ ...MONO, fontSize: 10, background: "rgba(250,248,245,.07)", border: `1px solid ${CARD_B}`, color: "rgba(250,248,245,.60)" }}
                   >
-                    {r.published ? "Published" : "Archived"}
+                    {r.published ? "Published" : (r as any).admin_is_active ? "In flight" : "Archived"}
                   </span>
                 </div>
                 <div className="absolute left-[18px] right-[18px] bottom-4 z-[2]">
