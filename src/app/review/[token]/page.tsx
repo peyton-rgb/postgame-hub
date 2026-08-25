@@ -22,6 +22,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import PublicNav from '@/components/PublicNav';
 import { PostgameLogo } from '@/components/PostgameLogo';
+import ReviewAssetViewer, { isImageAsset } from '@/components/review/ReviewAssetViewer';
 
 // --- Types ---
 
@@ -31,7 +32,11 @@ interface ReviewSession {
   updated_at: string;
   campaign_id: string | null;
   version_number: number;
-  video_url: string;
+  video_url: string | null;
+  // Deliverable-backed sessions carry the asset here; inspo sessions use
+  // video_url. media_type null means video.
+  asset_url: string | null;
+  media_type: string | null;
   video_duration_seconds: number | null;
   brand_token: string;
   agency_token: string;
@@ -287,8 +292,10 @@ export default function PublicReviewPage() {
         campaign_id: review.campaign_id || null,
         review_session_id: review.id,
         title: review.asset_name || 'Untitled Asset',
-        asset_type: 'video',
-        file_url: review.video_url,
+        asset_type: isImageAsset(review.media_type) ? 'image' : 'video',
+        // asset_url for deliverable sessions, video_url for inspo ones —
+        // video_url is null on the former, which wrote an unusable row.
+        file_url: review.asset_url || review.video_url,
         athlete_name: review.athlete_name || null,
         status: 'ready',
       });
@@ -437,16 +444,13 @@ export default function PublicReviewPage() {
 
         {/* Asset info card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-          {/* Video player */}
-          {review.video_url && (
-            <div className="bg-black">
-              <video
-                src={review.video_url}
-                controls
-                className="w-full aspect-video"
-              />
-            </div>
-          )}
+          {/* Asset — the same component the staff workspace renders, so the
+              brand sees exactly what staff approved. */}
+          <ReviewAssetViewer
+            assetUrl={review.asset_url || review.video_url}
+            mediaType={review.media_type}
+            assetName={review.asset_name}
+          />
 
           {/* Asset details */}
           <div className="p-6">
@@ -570,7 +574,9 @@ export default function PublicReviewPage() {
                           {comment.comment_type}
                         </span>
                       )}
-                      {comment.timestamp_seconds !== null && (
+                      {/* No timeline on a photo, so no timecode. */}
+                      {comment.timestamp_seconds !== null &&
+                        !isImageAsset(review.media_type) && (
                         <span className="text-[10px] text-gray-400 font-mono">
                           @ {formatTimestamp(comment.timestamp_seconds)}
                         </span>

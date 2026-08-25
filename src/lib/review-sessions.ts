@@ -115,6 +115,9 @@ export async function findOrCreateDeliverableSession(
       deliverable_version_id: version.id,
       // Snapshot, not a pointer.
       asset_url: version.file_url,
+      // Snapshotted for the same reason: the session records what was
+      // reviewed. Null means video, which is what inspo sessions leave it as.
+      media_type: version.media_type,
       // Deliverable sessions carry asset_url; video_url stays null and is the
       // inspo flow's field.
       video_url: null,

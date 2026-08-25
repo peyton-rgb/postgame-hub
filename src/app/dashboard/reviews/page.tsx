@@ -18,6 +18,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createBrowserSupabase } from '@/lib/supabase';
+import ReviewAssetViewer, { isImageAsset } from '@/components/review/ReviewAssetViewer';
 
 // --- Types ---
 
@@ -33,6 +34,9 @@ interface ReviewSession {
   deliverable_version_id: string | null;
   // Snapshot of the version's file_url at creation, not a live pointer.
   asset_url: string | null;
+  // Snapshotted at creation. Null means video — every session predating the
+  // column was one.
+  media_type: string | null;
   version_number: number;
   video_url: string | null;
   video_duration_seconds: number | null;
@@ -437,14 +441,18 @@ export default function ReviewsDashboardPage() {
 
                   {/* Scrollable content */}
                   <div className="flex-1 overflow-y-auto">
-                    {/* Video player */}
-                    {selectedReview.video_url && (
+                    {/* Asset — shared with the brand-facing token page so the
+                        two surfaces cannot drift. asset_url is the deliverable
+                        session's snapshot; video_url is the inspo flow's field. */}
+                    {(selectedReview.asset_url || selectedReview.video_url) && (
                       <div className="p-4 border-b border-white/10">
-                        <video
-                          src={selectedReview.video_url}
-                          controls
-                          className="w-full rounded-lg bg-black aspect-video"
-                        />
+                        <div className="rounded-lg overflow-hidden">
+                          <ReviewAssetViewer
+                            assetUrl={selectedReview.asset_url || selectedReview.video_url}
+                            mediaType={selectedReview.media_type}
+                            assetName={selectedReview.asset_name}
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -611,7 +619,10 @@ export default function ReviewsDashboardPage() {
                                       {comment.comment_type}
                                     </span>
                                   )}
-                                  {comment.timestamp_seconds !== null && (
+                                  {/* A photo has no timeline, so a timecode is
+                                      meaningless on one. */}
+                                  {comment.timestamp_seconds !== null &&
+                                    !isImageAsset(selectedReview.media_type) && (
                                     <span className="text-[10px] text-white/30 font-mono">
                                       @ {formatTimestamp(comment.timestamp_seconds)}
                                     </span>
