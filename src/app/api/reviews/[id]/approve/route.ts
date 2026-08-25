@@ -100,8 +100,11 @@ export async function POST(
       review_session_id: reviewId,
       creator_brief_id: review.creator_brief_id || null,
       title: review.asset_name || 'Untitled Asset',
-      asset_type: 'video',
-      file_url: review.video_url,
+      // From the session's snapshot; null means video.
+      asset_type: review.media_type === 'image' ? 'image' : 'video',
+      // asset_url for deliverable sessions, video_url for inspo ones —
+      // video_url is null on the former, which wrote an unusable row.
+      file_url: review.asset_url || review.video_url,
       athlete_name: review.athlete_name || null,
       status: 'ready',
       notes: review.notes || null,
