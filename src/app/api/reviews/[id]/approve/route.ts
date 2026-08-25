@@ -11,6 +11,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { applyDeliverableTransition } from '@/lib/deliverable-transitions';
 import { createServerSupabase } from '@/lib/supabase-server';
 
 export async function POST(
@@ -19,12 +20,20 @@ export async function POST(
 ) {
   const supabase = createServerSupabase();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
   const reviewId = params.id;
+
+  // The brand has no account, so it authenticates with its own review token.
+  // Routing the token page through this route rather than letting it write the
+  // session itself is what lets a brand decision reach the deliverable at all —
+  // the anon client cannot write athlete_deliverables.
+  let brandToken: string | null = null;
+  try {
+    const body = await request.json();
+    brandToken = typeof body?.token === 'string' ? body.token : null;
+  } catch {
+    // No body is fine for the staff path.
+  }
 
   // Fetch the current review session
   const { data: review, error: reviewError } = await supabase
@@ -35,6 +44,13 @@ export async function POST(
 
   if (reviewError || !review) {
     return NextResponse.json({ error: 'Review session not found' }, { status: 404 });
+  }
+
+  // Authorised as a signed-in staff user, or as the brand holding this
+  // session's own token. A token for a different session grants nothing.
+  const isBrandCaller = !!brandToken && brandToken === review.brand_token;
+  if (!user && !isBrandCaller) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   // --- Gate 1: Internal approval → pending brand ---
@@ -64,6 +80,13 @@ export async function POST(
       body: 'Approved internally — sent to brand for review.',
       is_resolved: false,
     });
+
+    // Carry the deliverable across with it. Conditional on deliverable_id:
+    // inspo sessions have none and must behave exactly as before.
+    if (review.deliverable_id) {
+      const t = await applyDeliverableTransition(review.deliverable_id, 'send_to_brand');
+      if (!t.ok) console.error('[approve] send_to_brand:', t.error);
+    }
 
     return NextResponse.json({
       message: 'Approved internally — now pending brand review',
@@ -108,8 +131,15 @@ export async function POST(
       athlete_name: review.athlete_name || null,
       status: 'ready',
       notes: review.notes || null,
-      created_by: user.id,
+      created_by: user?.id ?? 'brand',
     });
+
+    // The brand cleared it — approve the deliverable too. Idempotent, since
+    // this gate can be reached more than once.
+    if (review.deliverable_id) {
+      const t = await applyDeliverableTransition(review.deliverable_id, 'brand_approve');
+      if (!t.ok) console.error('[approve] brand_approve:', t.error);
+    }
 
     if (assetError) {
       // Don't fail the approval — just log the error

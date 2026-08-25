@@ -14,6 +14,7 @@
 // ============================================================
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { slotLabel } from "@/lib/deliverable-status";
@@ -21,6 +22,7 @@ import StaffDeliverableActions from "@/components/dashboard/StaffDeliverableActi
 import VideographerLinkButton from "@/components/videographer/VideographerLinkButton";
 import AutoEditorPanel, { type Evl } from "@/components/dashboard/AutoEditorPanel";
 import { findOrCreateDeliverableSession } from "@/lib/review-sessions";
+import { applyDeliverableTransition } from "@/lib/deliverable-transitions";
 
 export const dynamic = "force-dynamic";
 
@@ -105,9 +107,27 @@ async function openReview(formData: FormData) {
   redirect(`/dashboard/reviews?session=${result.review.id}`);
 }
 
+// The human gate on a brand send-back. A brand rejection parks the deliverable
+// at in_edit with the brand's words compiled into review_note; nothing has
+// reached the athlete yet. Here an employee edits that text and sends it on,
+// which is the moment it becomes changes_requested and the athlete's card
+// re-opens for upload.
+async function sendBackToAthlete(formData: FormData) {
+  "use server";
+  await requireStaff();
+  const deliverableId = String(formData.get("deliverableId") || "");
+  const note = String(formData.get("note") || "").trim();
+  if (!deliverableId) return;
+  const result = await applyDeliverableTransition(deliverableId, "send_back_to_athlete", { note });
+  if (!result.ok) console.error("sendBackToAthlete:", result.error);
+  revalidatePath("/dashboard/athlete-deals");
+}
+
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { t: string; bg: string; c: string }> = {
     in_review: { t: "In review", bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" },
+    in_edit: { t: "Being edited", bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" },
+    brand_review: { t: "With the brand", bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" },
     pending_verification: { t: "Awaiting verify", bg: "rgba(215,63,9,0.18)", c: "#ff8a5c" },
   };
   const s = map[status] || { t: status, bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" };
@@ -145,6 +165,26 @@ function DeliverableRow({ d }: { d: any }) {
         </div>
       </div>
       <StatusPill status={d.status} />
+      {d.status === "in_edit" && (
+        <form action={sendBackToAthlete} style={{ flexBasis: "100%", marginTop: 10 }}>
+          <input type="hidden" name="deliverableId" value={d.id} />
+          <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginBottom: 6 }}>
+            Brand feedback — edit before the athlete sees it
+          </div>
+          <textarea
+            name="note"
+            defaultValue={d.review_note || ""}
+            rows={4}
+            style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: 10, fontSize: 13, color: "#fff", resize: "vertical" }}
+          />
+          <button
+            type="submit"
+            style={{ marginTop: 8, background: "#D73F09", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#fff", fontWeight: 700, border: "none", cursor: "pointer" }}
+          >
+            Send to athlete
+          </button>
+        </form>
+      )}
       {hasVersion && (
         <form action={openReview}>
           <input type="hidden" name="deliverableId" value={d.id} />
