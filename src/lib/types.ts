@@ -88,6 +88,11 @@ export interface Campaign {
   slug: string;
   /** Google Drive parent folder for campaign media imports (recap rows). */
   drive_folder_id?: string | null;
+  /** Which system holds this campaign's content. NOT NULL with a check
+   *  constraint in the database, so it is always 'drive' or 'frameio'. */
+  content_host?: "drive" | "frameio" | null;
+  /** Complete Frame.io project URL — already a full link, never constructed. */
+  frameio_url?: string | null;
   client_name: string;
   client_logo_url: string | null;
   admin_campaign_id: string | null;
