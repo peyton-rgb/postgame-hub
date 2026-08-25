@@ -1,9 +1,10 @@
 // ============================================================
 // Unified Dashboard Sidebar — single nav for ALL /dashboard/* pages
 //
-// Combines the Blueprint v2 pipeline sections (Creative Brain,
-// Production, Review, Distribution, Analytics) with the
-// pre-existing Pages and Tools sections + Sign Out.
+// Five sections ordered by how often things are opened, with two
+// collapsible groups (Reviews, Website editor). The structure lives in
+// src/lib/dashboard-nav.ts — this file owns rendering, icons, auth and
+// sign-out.
 //
 // This is the ONLY sidebar in the app — pre-existing pages
 // no longer render their own.
@@ -15,6 +16,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
+import {
+  DASHBOARD_NAV,
+  resolveActiveHref,
+  groupsContaining,
+  type NavIcon,
+  type NavLink,
+  type NavSection,
+} from '@/lib/dashboard-nav';
 
 // ------------------------------------------------------------
 // Icon components — small inline SVGs so we don't need an
@@ -154,14 +163,6 @@ const DollarIcon = () => (
   </Icon>
 );
 
-// Case Studies (briefcase-style icon)
-const BriefcaseIcon = () => (
-  <Icon>
-    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-  </Icon>
-);
-
 // Pages
 const PresentationIcon = () => (
   <Icon>
@@ -241,15 +242,6 @@ const UsersIcon = () => (
   </Icon>
 );
 
-// Tools
-const FilesIcon = () => (
-  <Icon>
-    <path d="M15.5 2H8.6c-.4 0-.8.2-1.1.5-.3.3-.5.7-.5 1.1v12.8c0 .4.2.8.5 1.1.3.3.7.5 1.1.5h9.8c.4 0 .8-.2 1.1-.5.3-.3.5-.7.5-1.1V6.5L15.5 2z" />
-    <polyline points="14 2 14 8 20 8" />
-    <path d="M3 7.6v12.8c0 .4.2.8.5 1.1.3.3.7.5 1.1.5h9.8" />
-  </Icon>
-);
-
 const BuildingIcon = () => (
   <Icon>
     <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
@@ -306,129 +298,53 @@ const LogOutIcon = () => (
   </Icon>
 );
 
-// Collapse chevron
-const ChevronLeftIcon = () => (
+// Collapse toggle — rotates 90 degrees when its group is open.
+const ChevronRightIcon = () => (
   <Icon>
-    <polyline points="15 18 9 12 15 6" />
+    <polyline points="9 18 15 12 9 6" />
   </Icon>
 );
 
-// ------------------------------------------------------------
-// Navigation structure
-// ------------------------------------------------------------
-
-type NavLink = {
-  name: string;
-  href: string;
-  icon: React.FC;
-  staffOnly?: boolean; // hidden unless the viewer is staff (role !== 'athlete')
+// Nav data names icons by key; this is where keys become components.
+const ICONS: Record<NavIcon, React.FC> = {
+  readiness: ListCheckIcon,
+  campaigns: BarChartIcon,
+  brands: BuildingIcon,
+  reviews: EyeIcon,
+  inbound: UserCheckIcon,
+  edit: ScissorsIcon,
+  approval: CheckCircleIcon,
+  media: PhotoIcon,
+  intake: UploadIcon,
+  forms: InboxIcon,
+  camera: CameraIcon,
+  brief: FileTextIcon,
+  optin: UsersIcon,
+  runofshow: ListCheckIcon,
+  instructions: ClipboardIcon,
+  captions: MessageIcon,
+  wand: WandIcon,
+  inspo: SparklesIcon,
+  recaps: PresentationIcon,
+  portal: ExternalLinkIcon,
+  package: PackageIcon,
+  trending: TrendingUpIcon,
+  photo: PhotoIcon,
+  browser: BrowserIcon,
+  grid: GridIcon,
+  team: UsersIcon,
+  mail: MailIcon,
+  notebook: NotebookIcon,
+  star: StarIcon,
+  chart: BarChartIcon,
+  dollar: DollarIcon,
+  calendar: CalendarIcon,
 };
 
-type NavSection = {
-  label: string;
-  links: NavLink[];
-};
-
-// Campaign Readiness — the Hub's landing page, so it sits above everything else.
-const READINESS_SECTION: NavSection = {
-  label: 'Overview',
-  links: [
-    { name: 'Campaign Readiness', href: '/dashboard/readiness', icon: ListCheckIcon, staffOnly: true },
-  ],
-};
-
-// Pipeline sections (Blueprint v2)
-const PIPELINE_SECTIONS: NavSection[] = [
-  {
-    label: 'Creative Brain',
-    links: [
-      { name: 'Brand Briefs', href: '/dashboard/briefs', icon: FileTextIcon },
-      { name: 'Inspo Library', href: '/dashboard/inspo', icon: SparklesIcon },
-      { name: 'Intake', href: '/dashboard/intake', icon: UploadIcon },
-    ],
-  },
-  {
-    label: 'Production',
-    links: [
-      { name: 'AI Editing', href: '/dashboard/ai-editing', icon: WandIcon },
-      { name: 'Manual Editing', href: '/dashboard/editing', icon: ScissorsIcon },
-      { name: 'Composer', href: '/dashboard/composer', icon: GridIcon },
-    ],
-  },
-  {
-    label: 'Review',
-    links: [
-      { name: 'Brand Approval', href: '/dashboard/brand-approval', icon: CheckCircleIcon },
-      { name: 'Campaigns', href: '/dashboard/campaigns', icon: BarChartIcon, staffOnly: true },
-      { name: 'Athlete Deals', href: '/dashboard/athlete-deals', icon: UserCheckIcon, staffOnly: true },
-      { name: 'Reviews', href: '/dashboard/reviews', icon: EyeIcon },
-      { name: 'Final Assets', href: '/dashboard/assets', icon: PackageIcon },
-    ],
-  },
-  {
-    label: 'Graphic Creation',
-    links: [
-      { name: 'Draft Graphics', href: '/dashboard/graphic-creation/draft', icon: PhotoIcon },
-      { name: 'Throwback Thursday Graphics', href: '/dashboard/graphic-creation/throwback', icon: PhotoIcon },
-      { name: 'Campaign Opt-In Graphics', href: '/dashboard/graphic-creation/optin', icon: PhotoIcon },
-    ],
-  },
-  {
-    label: 'Distribution',
-    links: [
-      { name: 'Captions', href: '/dashboard/captions', icon: MessageIcon },
-      { name: 'Publishing', href: '/dashboard/publishing', icon: CalendarIcon },
-    ],
-  },
-  {
-    label: 'Analytics',
-    links: [
-      { name: 'Performance', href: '/dashboard/performance', icon: BarChartIcon },
-      { name: 'ROI', href: '/dashboard/roi', icon: DollarIcon },
-    ],
-  },
-];
-
-// Pages section (pre-existing pages)
-const PAGES_SECTION: NavSection = {
-  label: 'Pages',
-  links: [
-    { name: 'Recaps', href: '/dashboard/recaps', icon: PresentationIcon },
-    { name: 'Submission Forms', href: '/dashboard/submission-forms', icon: InboxIcon },
-    // These four are TABS on /dashboard, not routes of their own — the
-    // surfaces are <TrackerList>, <RunOfShowList>, <BriefList> and
-    // <OptInList>, switched by the ?tab= param in src/app/dashboard/page.tsx.
-    // They previously pointed at invented route paths and all four 404'd,
-    // which made the surfaces unreachable: DashboardShell CSS-hides each
-    // page's own <aside>, so this sidebar is the only nav.
-    { name: 'Performance Trackers', href: '/dashboard?tab=trackers', icon: TrendingUpIcon },
-    { name: 'Run of Shows', href: '/dashboard?tab=ros', icon: ListCheckIcon },
-    { name: 'Legacy Briefs', href: '/dashboard?tab=briefs', icon: NotebookIcon },
-    { name: 'Pitches', href: '/dashboard/pitches', icon: StarIcon },
-    { name: 'Newsletter', href: '/dashboard/newsletter', icon: MailIcon },
-    { name: 'Campaign Instructions', href: '/dashboard/campaign-instructions', icon: ClipboardIcon },
-    // ?tab=optin renders <OptInList> (live `optin_campaigns`). Deliberately
-    // NOT /dashboard/campaign-optin — that index page is the legacy
-    // `campaign_optins` product. See claude_REPO-REUSE-MAP.md.
-    { name: 'Campaign Opt-In', href: '/dashboard?tab=optin', icon: UserCheckIcon },
-  ],
-};
-
-// Tools section (pre-existing tools)
-const TOOLS_SECTION: NavSection = {
-  label: 'Tools',
-  links: [
-    { name: 'Athletes', href: '/dashboard/athletes', icon: UsersIcon, staffOnly: true },
-    { name: 'Campaign Briefs', href: '/dashboard/campaign-briefs', icon: FilesIcon },
-    { name: 'Brands', href: '/dashboard/brands', icon: BuildingIcon },
-    { name: 'Brand Portals', href: '/dashboard/brand-portals', icon: ExternalLinkIcon },
-    { name: 'Asset Packages', href: '/packages', icon: PackageIcon },
-    { name: 'Media Library', href: '/media-library', icon: PhotoIcon },
-    { name: 'BTS Submissions', href: '/dashboard/bts', icon: CameraIcon },
-    { name: 'Website Editor', href: '/dashboard/website', icon: BrowserIcon },
-    { name: 'Campaign Pages', href: '/dashboard/website/campaigns', icon: PhotoIcon },
-  ],
-};
+// Which groups the viewer has collapsed. Storing the collapsed set (rather
+// than the open set) makes "open by default" the natural state for anyone who
+// has never touched a chevron, including on first render before hydration.
+const COLLAPSED_KEY = 'pg.dashboard-nav.collapsed';
 
 // ------------------------------------------------------------
 // Sidebar component
@@ -440,14 +356,16 @@ export default function DashboardSidebar() {
   const supabase = createBrowserSupabase();
 
   // Holds the Postgame logo URL once fetched from Supabase.
-  // Starts as null (nothing loaded yet) so we can fall back to the
-  // text wordmark during loading or if the fetch fails.
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   // Whether the current viewer is staff (role !== 'athlete'), mirroring the
   // is_staff() DB helper. staffOnly nav links stay hidden until this is
   // confirmed true, so they never flash for a non-staff user.
   const [isStaff, setIsStaff] = useState(false);
+
+  // Starts empty on both server and client render — everything open, no
+  // hydration mismatch — then picks up the stored preference on mount.
+  const [collapsed, setCollapsed] = useState<string[]>([]);
 
   useEffect(() => {
     async function checkStaff() {
@@ -481,6 +399,18 @@ export default function DashboardSidebar() {
     fetchLogo();
   }, []);
 
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(COLLAPSED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setCollapsed(parsed.filter((h) => typeof h === 'string'));
+      }
+    } catch {
+      // Private browsing, blocked site data — fall back to everything open.
+    }
+  }, []);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     // Clear the auth cookie so middleware redirects to login
@@ -488,52 +418,106 @@ export default function DashboardSidebar() {
     router.push('/login');
   };
 
-  // Highlight a nav link when the current path matches.
-  //
-  // Tab links (/dashboard?tab=…) are never highlighted: telling them apart
-  // needs the ?tab= value, and useSearchParams() here would need a Suspense
-  // boundary this shell doesn't have. Matching on the path alone would
-  // highlight all four tab links at once, which is worse than none. They
-  // navigate correctly either way.
-  const isActive = (href: string) => {
-    if (href.includes('?')) return false;
-    if (href === '/dashboard') {
-      return pathname === '/dashboard';
-    }
-    return pathname?.startsWith(href) ?? false;
+  const toggleGroup = (href: string) => {
+    setCollapsed((prev) => {
+      const next = prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href];
+      try {
+        window.localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        // Preference is a convenience; failing to persist must not break the rail.
+      }
+      return next;
+    });
   };
 
-  const renderSection = (section: NavSection, idx: number) => (
-    <div key={section.label}>
-      <div
-        className={`text-[10px] uppercase tracking-widest text-white/30 px-3 mb-1 ${
-          idx === 0 ? 'mt-0' : 'mt-4'
+  // Exactly one link is active — the most specific match. See resolveActiveHref.
+  const activeHref = resolveActiveHref(pathname);
+
+  // A group holding the current path is forced open regardless of preference:
+  // someone on a review page has to see where they are.
+  const forcedOpen = groupsContaining(pathname);
+  const isOpen = (href: string) => forcedOpen.includes(href) || !collapsed.includes(href);
+
+  const visible = (link: NavLink) => !link.hidden && (!link.staffOnly || isStaff);
+
+  const renderRow = (link: NavLink) => {
+    const LinkIcon = ICONS[link.icon];
+    const active = link.href === activeHref;
+    return (
+      <Link
+        href={link.href}
+        className={`flex flex-1 items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors min-w-0 ${
+          active
+            ? 'bg-white/10 text-white font-medium ring-1 ring-inset ring-white/15'
+            : 'text-white/50 hover:text-white/80 hover:bg-white/5'
         }`}
       >
-        {section.label}
-      </div>
-      {section.links
-        .filter((link) => !link.staffOnly || isStaff)
-        .map((link) => {
-        const active = isActive(link.href);
-        const LinkIcon = link.icon;
-        return (
-          <Link
-            key={link.href + link.name}
-            href={link.href}
-            className={`flex items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors ${
-              active
-                ? 'bg-[#D73F09]/15 text-[#D73F09] font-medium'
-                : 'text-white/50 hover:text-white/80 hover:bg-white/5'
-            }`}
+        <LinkIcon />
+        <span className="truncate">{link.name}</span>
+      </Link>
+    );
+  };
+
+  const renderLink = (link: NavLink) => {
+    const kids = (link.children ?? []).filter(visible);
+
+    // Plain link.
+    if (!kids.length) {
+      return <div key={link.href + link.name} className="flex">{renderRow(link)}</div>;
+    }
+
+    // Collapsible group. The chevron and the label are separate targets — if
+    // the whole row toggled, the parent page would be unreachable.
+    const open = isOpen(link.href);
+    return (
+      <div key={link.href + link.name}>
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={() => toggleGroup(link.href)}
+            aria-expanded={open}
+            aria-label={`${open ? 'Collapse' : 'Expand'} ${link.name}`}
+            className="flex items-center justify-center w-6 h-8 -ml-1 text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
           >
-            <LinkIcon />
-            {link.name}
-          </Link>
-        );
-      })}
-    </div>
-  );
+            <span
+              className={`inline-flex transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+            >
+              <ChevronRightIcon />
+            </span>
+          </button>
+          {renderRow(link)}
+        </div>
+
+        {open && (
+          <div className="ml-[18px] pl-3 border-l border-white/[0.08] flex flex-col">
+            {kids.map((child) => (
+              <div key={child.href + child.name} className="flex">
+                {renderRow(child)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSection = (section: NavSection, idx: number) => {
+    const links = section.links.filter(visible);
+    if (!links.length) return null;
+    return (
+      <div key={section.label} className={idx === 0 ? 'mt-0' : 'mt-5'}>
+        {/* Section band — the orange lives here, which is why the active state
+            below is glass rather than orange: two orange cues compete. */}
+        <div className="flex items-center gap-2 px-3 mb-1.5">
+          <span className="block w-[3px] h-3 rounded-full bg-[#D73F09]" aria-hidden="true" />
+          <span className="text-[10px] uppercase tracking-widest text-white/40">
+            {section.label}
+          </span>
+        </div>
+        <div className="flex flex-col gap-0.5">{links.map(renderLink)}</div>
+      </div>
+    );
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-black border-r border-white/10 flex flex-col z-50">
@@ -554,30 +538,10 @@ export default function DashboardSidebar() {
           )}
         </Link>
       </div>
-    
 
       {/* Scrollable navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {/* Campaign Readiness — landing page, first item */}
-        {renderSection(READINESS_SECTION, 0)}
-
-        {/* Divider */}
-        <div className="h-px bg-white/[0.08] mx-2 my-3" />
-
-        {/* Pipeline sections */}
-        {PIPELINE_SECTIONS.map((section) => renderSection(section, 1))}
-
-        {/* Divider */}
-        <div className="h-px bg-white/[0.08] mx-2 my-3" />
-
-        {/* Pages */}
-        {renderSection(PAGES_SECTION, 0)}
-
-        {/* Divider */}
-        <div className="h-px bg-white/[0.08] mx-2 my-3" />
-
-        {/* Tools */}
-        {renderSection(TOOLS_SECTION, 0)}
+        {DASHBOARD_NAV.map((section, idx) => renderSection(section, idx))}
       </nav>
 
       {/* Sign Out — fixed at bottom */}
