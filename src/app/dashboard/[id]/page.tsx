@@ -849,6 +849,71 @@ function computeBlockingCards(
   return out;
 }
 
+// ------------------------------------------------------------
+// Where this campaign's content actually lives.
+//
+// content_host is NOT NULL with a check constraint, so it is always 'drive' or
+// 'frameio'. The label names the system rather than saying "Content", because
+// which system a campaign lives in is the thing being communicated — a generic
+// label just makes someone click to find out.
+//
+// Missing is the common case, not the exception: most Drive campaigns have no
+// folder id yet. Those render as a muted, non-clickable state rather than being
+// hidden, so the gap is visible instead of silently absent.
+// ------------------------------------------------------------
+function driveFolderUrl(folderId: string) {
+  return `https://drive.google.com/drive/folders/${folderId}`;
+}
+
+function ContentHostLink({ campaign }: { campaign: Campaign }) {
+  const isFrame = campaign.content_host === "frameio";
+  const driveUrl = campaign.drive_folder_id ? driveFolderUrl(campaign.drive_folder_id) : null;
+
+  // frameio_url is already a complete URL — never build one.
+  const primaryUrl = isFrame ? campaign.frameio_url || null : driveUrl;
+  const primaryName = isFrame ? "Frame.io" : "Drive";
+  const missingLabel = isFrame ? "No Frame.io project linked" : "No Drive folder linked";
+
+  // A Frame campaign legitimately also has a Drive folder — raw footage in
+  // Frame, contracts and deliverables in Drive. Showing the secondary costs one
+  // muted link; omitting it means opening Frame, not finding the contract, and
+  // going hunting anyway.
+  const secondaryUrl = isFrame ? driveUrl : null;
+
+  return (
+    <div className="flex items-center gap-2">
+      {primaryUrl ? (
+        <a
+          href={primaryUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[#D73F09] text-sm font-bold hover:underline whitespace-nowrap"
+        >
+          Open in {primaryName} →
+        </a>
+      ) : (
+        <span
+          title="Set on the campaign record — provisioning is a separate job"
+          className="text-sm font-bold text-gray-600 whitespace-nowrap cursor-default"
+        >
+          {missingLabel}
+        </span>
+      )}
+      {secondaryUrl && (
+        <a
+          href={secondaryUrl}
+          target="_blank"
+          rel="noreferrer"
+          title="This campaign also has a Drive folder"
+          className="text-xs font-bold text-gray-500 hover:text-gray-300 whitespace-nowrap"
+        >
+          + Drive
+        </a>
+      )}
+    </div>
+  );
+}
+
 export default function CampaignEditor() {
   const params = useParams();
   const id = params.id as string;
@@ -2568,7 +2633,11 @@ export default function CampaignEditor() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        {/* flex-wrap: this row was already overflowing its container on a phone
+            before the content-host link joined it (219px at 390px wide, measured).
+            Wrapping lets it fold onto a second line instead of clipping actions
+            off the right edge. */}
+        <div className="flex flex-wrap items-center justify-end gap-4">
           {/* Readiness pill. Reads the same `issues` list as the tab badges, the
               rail and the Publish button — one counter, so they cannot disagree. */}
           <span
@@ -2584,6 +2653,7 @@ export default function CampaignEditor() {
           {campaign.published && (
             <a href={`/recap/${campaign.slug}`} target="_blank" className="text-[#D73F09] text-sm font-bold hover:underline">View Live →</a>
           )}
+          <ContentHostLink campaign={campaign} />
           {/* Event Recap toggle — binds the same campaignType as the Step 2 block,
               so header and Step 2 stay in sync; autosave persists it. */}
           <div className="flex items-center gap-2">
