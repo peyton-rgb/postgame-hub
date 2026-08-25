@@ -47,8 +47,20 @@ export const MONO = {
 } as const;
 
 // The brand's preferred logo, in fallback order.
+//
+// `portalLogo` is attached by attachPortalLogo() in portal-data.ts, resolved
+// from the brand_logos library for THIS surface (dark). When it is present the
+// file is already variant-correct, so it needs no white chip behind it.
+//
+// The legacy chain stays underneath for brands with no brand_logos rows —
+// narrowing it to one column would take a brand whose only asset is
+// logo_primary_url from "renders" to "nothing".
+//
+// Callers outside the portal (invite-email.ts) pass a plain brands row with no
+// portalLogo and fall straight through to the legacy chain, unchanged.
 export function pickBrandLogo(brand: any): string | null {
   return (
+    brand?.portalLogo?.url ||
     brand?.logo_primary_url ||
     brand?.logo_dark_url ||
     brand?.logo_light_url ||

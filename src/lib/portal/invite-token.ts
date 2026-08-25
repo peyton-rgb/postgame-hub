@@ -11,6 +11,11 @@
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import { isMissingSchemaError } from "@/lib/admin/auth";
 import { isAllowlisted } from "@/lib/portal/brand-session";
+import {
+  BRAND_LOGO_COLUMNS,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 export type InviteFailure =
   | "not-found"
@@ -95,6 +100,19 @@ export async function validateInviteToken(token: string): Promise<InviteCheck> {
   const email = (row.invited_email?.trim() || contact?.email?.trim() || "").toLowerCase();
   if (!email) return { ok: false, reason: "not-found" };
 
+  // The signup page renders this logo inside an explicit white chip
+  // (background: "#fff" in app/portal/signup/page.tsx), so unlike the rest of
+  // the portal this one really is a LIGHT surface and wants on_white. Asking
+  // for dark here would put a light-ink file on white and lose it.
+  const { data: logoRows } = await svc
+    .from("brand_logos")
+    .select(BRAND_LOGO_COLUMNS)
+    .eq("brand_id", row.brand_id);
+  const resolvedLogo = resolveBrandLogo((logoRows ?? []) as BrandLogoRow[], {
+    surface: "light",
+    prefer: "lockup",
+  });
+
   return {
     ok: true,
     attachmentId: row.id,
@@ -103,6 +121,7 @@ export async function validateInviteToken(token: string): Promise<InviteCheck> {
     brandId: row.brand_id,
     brandName,
     brandLogoUrl:
+      resolvedLogo?.url ||
       brand?.logo_primary_url ||
       brand?.logo_dark_url ||
       brand?.logo_light_url ||

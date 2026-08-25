@@ -13,7 +13,7 @@
 import { redirect } from "next/navigation";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import { getBrandSession, type BrandScopeEntry } from "@/lib/portal/brand-session";
-import type { PortalBrand } from "@/lib/portal-data";
+import { attachPortalLogo, type PortalBrand } from "@/lib/portal-data";
 import type { PortalSessionChrome } from "@/components/portal/PortalFrame";
 
 export interface SessionPortal {
@@ -57,7 +57,9 @@ export async function resolveSessionPortal(
   if (!brand) redirect("/portal/denied");
 
   return {
-    brand: brand as PortalBrand,
+    // Same resolution as the token door — this door fetches its own brands row,
+    // so without this the signed-in portal would still be on legacy columns.
+    brand: await attachPortalLogo(brand as PortalBrand),
     active,
     chrome: {
       personLabel: session.contactName || session.email || "Signed in",

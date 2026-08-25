@@ -1,5 +1,10 @@
 import { createServiceSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
+import {
+  BRAND_LOGO_COLUMNS,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 // SERVER ONLY. Uses the service-role client — never import this from a
 // "use client" module. Client-safe design tokens live in src/lib/portal.ts.
@@ -20,6 +25,35 @@ export type PortalBrand = {
   [key: string]: any;
 };
 
+/**
+ * Resolve this brand's portal logo and hang it on the brand row.
+ *
+ * The portal chrome is a DARK ground — BG is #07070a in lib/portal.ts, and
+ * PortalFrame paints the logo straight onto it with no chip. So this asks for
+ * `dark`, which means on_black. Asking for on_white here would hand back a
+ * dark-ink file and produce an invisible logo on a client-facing screen, which
+ * is the exact failure src/lib/brand-logo.ts exists to prevent.
+ *
+ * Preferring `lockup`: the nav slot is a horizontal strip (height 23, width
+ * auto), which is the shape a lockup is drawn for. A mark still wins if the
+ * brand has no dark lockup.
+ *
+ * Attached to the brand rather than resolved at each render site so both doors
+ * — token and session — go through one place.
+ */
+export async function attachPortalLogo(brand: PortalBrand): Promise<PortalBrand> {
+  const supabase = createServiceSupabase();
+  const { data } = await supabase
+    .from("brand_logos")
+    .select(BRAND_LOGO_COLUMNS)
+    .eq("brand_id", brand.id);
+  const resolved = resolveBrandLogo((data ?? []) as BrandLogoRow[], {
+    surface: "dark",
+    prefer: "lockup",
+  });
+  return resolved ? { ...brand, portalLogo: resolved } : brand;
+}
+
 // The token is the ONLY gate. One brand or 404 — never a fallback brand.
 export async function getPortalBrand(token: string): Promise<PortalBrand> {
   const supabase = createServiceSupabase();
@@ -30,7 +64,7 @@ export async function getPortalBrand(token: string): Promise<PortalBrand> {
     .single();
 
   if (!brand) notFound();
-  return brand as PortalBrand;
+  return attachPortalLogo(brand as PortalBrand);
 }
 
 // Count of assets genuinely awaiting THIS brand's decision, for the Review tab

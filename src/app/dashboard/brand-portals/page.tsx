@@ -9,6 +9,12 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardContent from "@/components/DashboardContent";
 import { createBrowserSupabase } from "@/lib/supabase";
+import {
+  BRAND_LOGO_COLUMNS,
+  groupLogosByBrand,
+  resolveBrandLogo,
+  type BrandLogoRow,
+} from "@/lib/brand-logo";
 
 type Brand = {
   id: string;
@@ -21,12 +27,24 @@ type Brand = {
   archived: boolean | null;
 };
 
-function brandLogo(b: Brand): string | null {
-  return b.logo_primary_url || b.logo_dark_url || b.logo_light_url || b.logo_white_url || null;
+// The cell is a 40x40 square on a #111 card — a dark surface, and square, so
+// this asks for a mark on_black and falls back through the chain from there.
+// The legacy columns stay underneath for brands with no brand_logos rows.
+function brandLogo(b: Brand, logos?: BrandLogoRow[]): string | null {
+  const resolved = resolveBrandLogo(logos, { surface: "dark", prefer: "mark" });
+  return (
+    resolved?.url ||
+    b.logo_primary_url ||
+    b.logo_dark_url ||
+    b.logo_light_url ||
+    b.logo_white_url ||
+    null
+  );
 }
 
 export default function BrandPortalsPage() {
   const [brands, setBrands] = useState<Brand[] | null>(null);
+  const [logosByBrand, setLogosByBrand] = useState<Map<string, BrandLogoRow[]>>(new Map());
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -34,12 +52,17 @@ export default function BrandPortalsPage() {
     const supabase = createBrowserSupabase();
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("brands")
-        .select("id, name, portal_token, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, archived")
-        .order("name");
+      // One bulk read alongside the brands query rather than a lookup per row.
+      const [{ data }, { data: logoRows }] = await Promise.all([
+        supabase
+          .from("brands")
+          .select("id, name, portal_token, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, archived")
+          .order("name"),
+        supabase.from("brand_logos").select(BRAND_LOGO_COLUMNS).limit(5000),
+      ]);
       if (cancelled) return;
       setBrands((data as Brand[]) || []);
+      setLogosByBrand(groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]));
     })();
     return () => {
       cancelled = true;
@@ -89,7 +112,7 @@ export default function BrandPortalsPage() {
           </p>
           <div className="flex flex-col gap-2">
             {filtered.map((b) => {
-              const logo = brandLogo(b);
+              const logo = brandLogo(b, logosByBrand.get(b.id));
               return (
                 <div
                   key={b.id}
