@@ -25,7 +25,7 @@ import { RecapFooter } from "./sections/RecapFooter";
 import { RecapNav } from "./sections/RecapNav";
 import { RosterSection } from "./sections/RosterSection";
 import { TakeawaysSection } from "./sections/TakeawaysSection";
-import { getTotalEngagements } from "@/lib/recap-helpers";
+import { computeRecapV2Stats } from "@/lib/recap-v2/stats";
 
 export function RecapV2(data: RecapV2Data) {
   const { campaign, allAthletes, media, collabGroups } = data;
@@ -33,11 +33,19 @@ export function RecapV2(data: RecapV2Data) {
   const { has, sections, counts } = presence;
 
   const gallery = galleryItems(media);
+  // Every rate figure below comes from here, and only from here — one
+  // definition (engagements / impressions) for the whole page.
+  const stats = computeRecapV2Stats(allAthletes, campaign, collabGroups);
   // Ranking by engagements is the default the toggle starts on. Photos are NOT
-  // required to place — see PerformersSection for why.
+  // required to place — see PerformersSection for why. Ranked on the same
+  // engagement totals the cards display, so order and figures agree.
   const performers = athletesWithMetrics(allAthletes)
     .slice()
-    .sort((a, b) => getTotalEngagements(b) - getTotalEngagements(a));
+    .sort(
+      (a, b) =>
+        (stats.byAthlete.get(b.id)?.engagements ?? 0) -
+        (stats.byAthlete.get(a.id)?.engagements ?? 0),
+    );
 
   return (
     <main
@@ -58,16 +66,11 @@ export function RecapV2(data: RecapV2Data) {
 
       {has.overview ? <OverviewSection campaign={campaign} /> : null}
       {has.take ? <TakeawaysSection campaign={campaign} /> : null}
-      {has.numbers ? (
-        <NumbersSection
-          platformsPresent={counts.platformsPresent}
-          platformCounts={counts.platforms}
-        />
-      ) : null}
-      {has.perf ? <PerformersSection candidates={performers} /> : null}
+      {has.numbers ? <NumbersSection stats={stats} /> : null}
+      {has.perf ? <PerformersSection candidates={performers} stats={stats} /> : null}
       {has.bic ? <ContentSection items={gallery} /> : null}
       {has.roster ? (
-        <RosterSection athletes={allAthletes} collabGroups={collabGroups} />
+        <RosterSection athletes={allAthletes} collabGroups={collabGroups} stats={stats} />
       ) : null}
 
       <RecapFooter campaign={campaign} />

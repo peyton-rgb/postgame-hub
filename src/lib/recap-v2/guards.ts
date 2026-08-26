@@ -49,10 +49,11 @@ export function hasRichText(html: string | null | undefined): boolean {
 export const PLATFORMS = ["ig_reel", "ig_feed", "tiktok"] as const;
 export type PlatformId = (typeof PLATFORMS)[number];
 
-export const PLATFORM_LABEL: Record<PlatformId, string> = {
+export const PLATFORM_LABEL: Record<PlatformId | "ig_story", string> = {
   ig_reel: "IG Reels",
   ig_feed: "IG Feed",
   tiktok: "TikTok",
+  ig_story: "IG Stories",
 };
 
 /**
