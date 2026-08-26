@@ -13,6 +13,10 @@
 //
 // This way the pre-existing pages render their content only,
 // and our unified sidebar handles all the navigation.
+//
+// The 240px offset is now conditional: below the `nav` breakpoint (900px) the
+// rail is an overlay drawer, so the page takes the full width and the top bar
+// DashboardSidebar renders in normal flow accounts for its own height.
 // ============================================================
 
 'use client';
@@ -42,7 +46,7 @@ export default function DashboardShell({
         }
       `}</style>
 
-      <main className="ml-[240px] dashboard-content">{children}</main>
+      <main className="nav:ml-[240px] dashboard-content">{children}</main>
     </>
   );
 }

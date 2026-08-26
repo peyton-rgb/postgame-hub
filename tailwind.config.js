@@ -3,6 +3,13 @@ module.exports = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
+      screens: {
+        // The dashboard rail becomes a drawer below this width. Named rather
+        // than reusing `lg` (1024px) because the number is about the 240px rail
+        // plus a usable page beside it, not a device class — see
+        // DashboardShell/DashboardSidebar.
+        nav: "900px",
+      },
       fontFamily: {
         sans: ["Arial", "Helvetica Neue", "Helvetica", "sans-serif"],
         // Bebas Neue and JetBrains Mono are loaded by next/font in
