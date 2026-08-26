@@ -2,6 +2,7 @@ import { createPlainSupabase, createServiceSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
+import { RecapV2 } from "@/components/recap-v2/RecapV2";
 import { detectCollabGroups } from "@/lib/csv-parser";
 import { deriveContainerCollab } from "@/lib/collab-reconcile";
 import { consolidateCollabGroups } from "@/lib/collab-consolidate";
@@ -14,12 +15,12 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ preview?: string }>;
+  searchParams?: Promise<{ preview?: string; v2?: string }>;
 };
 
 // `?preview=1` lets the recap render even when published=false. Gated to
 // non-production so a stray query string on the live site can't expose drafts.
-function allowPreviewBypass(sp: { preview?: string } | undefined) {
+function allowPreviewBypass(sp: { preview?: string; v2?: string } | undefined) {
   return sp?.preview === "1" && process.env.NODE_ENV !== "production";
 }
 
@@ -182,6 +183,24 @@ export default async function RecapPage({ params, searchParams }: Props) {
   // gallery-first Event Content section. Only for event campaigns — every
   // other campaign passes nothing, so existing recaps are untouched.
   const isEvent = campaign.settings?.campaign_type === "event";
+
+  // ── Recap v2 (scaffold) ───────────────────────────────────────────────────
+  // Opt-in via ?v2=1 so the preview deployment serves old and new side by side
+  // across all 82 published campaigns without a second deploy. Reached only on
+  // the default path: `isTop50` has already returned above, and `isEvent` is
+  // excluded here, so those two render exactly as they do today.
+  if (!isEvent && sp?.v2 === "1") {
+    return (
+      <RecapV2
+        campaign={campaign}
+        allAthletes={allAthletes}
+        galleryAthletes={galleryAthletes}
+        media={mediaByAthlete}
+        collabGroups={collabGroups}
+      />
+    );
+  }
+
   const eventMedia = isEvent
     ? (media || []).filter(
         (m: any) =>
