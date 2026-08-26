@@ -8,6 +8,12 @@
 //
 // This is the ONLY sidebar in the app — pre-existing pages
 // no longer render their own.
+//
+// Below the `nav` breakpoint (900px) the rail becomes an overlay drawer:
+// hidden by default, opened from a sticky top bar, closing on link / scrim /
+// Escape. It slides OVER the page rather than pushing it, because pushing is
+// what left the content a 146px sliver in the first place. At or above 900px
+// none of that applies and the rail renders exactly as it always has.
 // ============================================================
 
 'use client';
@@ -20,6 +26,7 @@ import {
   DASHBOARD_NAV,
   resolveActiveHref,
   groupsContaining,
+  visibleLinks,
   type NavIcon,
   type NavLink,
   type NavSection,
@@ -305,6 +312,22 @@ const ChevronRightIcon = () => (
   </Icon>
 );
 
+// Drawer trigger, below the nav breakpoint only.
+const MenuIcon = () => (
+  <Icon>
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
+  </Icon>
+);
+
+const CloseIcon = () => (
+  <Icon>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </Icon>
+);
+
 // Nav data names icons by key; this is where keys become components.
 const ICONS: Record<NavIcon, React.FC> = {
   readiness: ListCheckIcon,
@@ -367,6 +390,11 @@ export default function DashboardSidebar() {
   // hydration mismatch — then picks up the stored preference on mount.
   const [collapsed, setCollapsed] = useState<string[]>([]);
 
+  // Drawer state. Only reachable below the nav breakpoint — the trigger is
+  // display:none above it — and deliberately NOT persisted: a drawer that
+  // remembers being open would cover the page on arrival.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   useEffect(() => {
     async function checkStaff() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -411,6 +439,48 @@ export default function DashboardSidebar() {
     }
   }, []);
 
+  // --- Drawer behaviour (below the nav breakpoint only) -------------------
+
+  // Crossing to desktop closes the drawer. Without this, opening it on a phone
+  // and then rotating to a wide landscape would leave the body scroll-locked
+  // under a rail that is now permanently visible anyway.
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 900px)');
+    const sync = () => {
+      if (mq.matches) setDrawerOpen(false);
+    };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  // Navigating closes the drawer. Covers every link at once, including the
+  // sign-out redirect; the per-link handler below covers re-clicking the route
+  // you are already on, where pathname never changes.
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
+
+  // Lock the page behind the drawer. Restores the previous value rather than
+  // clearing it, so this cannot stomp a lock some page has set for a modal.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [drawerOpen]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     // Clear the auth cookie so middleware redirects to login
@@ -446,6 +516,7 @@ export default function DashboardSidebar() {
     return (
       <Link
         href={link.href}
+        onClick={() => setDrawerOpen(false)}
         className={`flex flex-1 items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors min-w-0 ${
           active
             ? 'bg-white/10 text-white font-medium ring-1 ring-inset ring-white/15'
@@ -519,14 +590,66 @@ export default function DashboardSidebar() {
     );
   };
 
+  // Title for the mobile top bar. Pages assume a rail is always on screen and
+  // so mostly do not name themselves; the nav already knows what this route is
+  // called, so reuse that rather than asking pages to declare a title.
+  const activeTitle =
+    visibleLinks().find((link) => link.href === activeHref)?.name ?? 'Dashboard';
+
   return (
-    <aside className="fixed left-0 top-0 h-full w-[240px] bg-black border-r border-white/10 flex flex-col z-50">
+    <>
+      {/* Top bar — below the nav breakpoint only. In normal flow (not fixed)
+          so the page lands underneath it without every page needing a matching
+          offset; sticky keeps it in reach once the page scrolls. */}
+      <div
+        className="nav:hidden sticky top-0 z-30 flex items-center gap-2 bg-black border-b border-white/10"
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(12px, env(safe-area-inset-right, 0px))',
+          height: 'calc(56px + env(safe-area-inset-top, 0px))',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={drawerOpen}
+          aria-controls="dashboard-drawer"
+          className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors flex-shrink-0"
+        >
+          <MenuIcon />
+        </button>
+        <span className="text-sm font-medium text-white truncate">{activeTitle}</span>
+      </div>
+
+      {/* Scrim. Sits under the rail's z-50 and over page content, which carries
+          no z-index of its own. */}
+      {drawerOpen && (
+        <div
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden="true"
+          className="nav:hidden fixed inset-0 z-40 bg-black/60"
+        />
+      )}
+
+    <aside
+      id="dashboard-drawer"
+      className={`fixed left-0 top-0 h-full w-[240px] bg-black border-r border-white/10 flex flex-col z-50 transition-transform duration-200 ease-out nav:transition-none ${
+        drawerOpen ? 'translate-x-0' : '-translate-x-full'
+      } nav:translate-x-0`}
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+      }}
+    >
      {/* Logo — pulls from Supabase. The mark is a file, never typography, so
          when the fetch fails we hold the row height with an empty box rather
          than falling back to a typed wordmark. A missing mark is acceptable;
          a typed one is not. */}
       <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-white/[0.08]">
-        <Link href="/dashboard" className="flex items-center">
+        <Link href="/dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center">
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -537,6 +660,14 @@ export default function DashboardSidebar() {
             <span className="block h-7" aria-hidden="true" />
           )}
         </Link>
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(false)}
+          aria-label="Close navigation"
+          className="nav:hidden flex items-center justify-center w-8 h-8 -mr-1 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors flex-shrink-0"
+        >
+          <CloseIcon />
+        </button>
       </div>
 
       {/* Scrollable navigation */}
@@ -555,5 +686,6 @@ export default function DashboardSidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

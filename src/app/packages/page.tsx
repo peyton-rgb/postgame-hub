@@ -175,7 +175,7 @@ export default function PackagesIndexPage() {
   return (
     <div style={{ background: "#07070a", minHeight: "100vh", color: "#FAF8F5" }}>
       <DashboardSidebar />
-      <main className="ml-[240px]">
+      <main className="nav:ml-[240px]">
         <div
           style={{
             minHeight: "100vh",
