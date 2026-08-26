@@ -89,6 +89,10 @@ export const DASHBOARD_NAV: NavSection[] = [
       { name: "Media library", href: "/media-library", icon: "media" },
       { name: "Intake", href: "/dashboard/intake", icon: "intake" },
       { name: "Submission forms", href: "/dashboard/submission-forms", icon: "forms" },
+      // The receiving end of the review hub's "send to edit queue". Sits here
+      // rather than under Reviews because that group's child labels mirror
+      // athlete_deliverables.status values, and this lane is tier3_submissions.
+      { name: "Edit queue", href: "/dashboard/edit-queue", icon: "edit", staffOnly: true },
       { name: "BTS submissions", href: "/dashboard/bts", icon: "camera" },
     ],
   },
