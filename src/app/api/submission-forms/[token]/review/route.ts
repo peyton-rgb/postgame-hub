@@ -32,6 +32,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStaffUser } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
+import { createEditJobsForSubmissions, JOB_STATUS, OPEN_JOB_STATUSES } from "@/lib/edit-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -198,6 +199,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const stamp = { reviewed_by: staff.id, reviewed_at: new Date().toISOString() };
   let patch: Record<string, unknown>;
+  // Held outside the branch so the edit-queue write below sees the same
+  // cleaned instructions that were stored on the submission.
+  let queuedInstructions: Instruction[] = [];
 
   if (action === "approve") {
     // Approving clears any queued edit: the reviewer looked again and decided
@@ -209,6 +213,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     if (!instructions) {
       return NextResponse.json({ error: "Nothing to queue — tick a flag or add a note." }, { status: 400 });
     }
+    queuedInstructions = instructions;
     const stage = typeof body?.stage === "string" && body.stage.trim() ? body.stage.trim().slice(0, 40) : null;
     patch = { ...stamp, status: "needs_edit", review_instructions: instructions, reviewed_at_stage: stage };
   } else if (action === "reshoot") {
@@ -221,6 +226,38 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const { error } = await svc.from("tier3_submissions").update(patch).in("id", ownedIds);
   if (error) return NextResponse.json({ error: "Couldn't save the review." }, { status: 500 });
+
+  // The edit queue is written in the same operation as the status, because a
+  // file sitting at needs_edit with no edit_jobs row is work that has silently
+  // vanished — the exact state this endpoint used to leave behind.
+  if (action === "queue-edit") {
+    const { created, error: jobErr } = await createEditJobsForSubmissions(svc, {
+      submissionIds: ownedIds,
+      instructions: queuedInstructions,
+      createdBy: staff.id,
+    });
+    if (jobErr || created !== ownedIds.length) {
+      // Roll the status back rather than leave an orphan. The reviewer sees a
+      // failure and can retry; what they must never get is a file marked
+      // "queued for edit" that no queue knows about.
+      await svc
+        .from("tier3_submissions")
+        .update({ status: "scored", review_instructions: null, reviewed_at_stage: null })
+        .in("id", ownedIds);
+      return NextResponse.json({ error: "Couldn't open the edit job — nothing was queued." }, { status: 500 });
+    }
+  }
+
+  // Approving calls the edit off, so any job still open against the file is
+  // withdrawn for the same reason the instructions are cleared above: the
+  // queue must not hold work the reviewer has explicitly cancelled.
+  if (action === "approve" || action === "reshoot") {
+    await svc
+      .from("edit_jobs")
+      .update({ status: JOB_STATUS.rejected, updated_at: new Date().toISOString() })
+      .in("submission_id", ownedIds)
+      .in("status", OPEN_JOB_STATUSES);
+  }
 
   return NextResponse.json({ ok: true, status: patch.status, count: ownedIds.length });
 }
