@@ -730,7 +730,10 @@ export default function SplitView({ initialToken }: { initialToken?: string }) {
                           <AthleteCell a={a} showLast />
                           <Pill n={a.photos} min={link.minPhotos} unit="photos" />
                           <Pill n={a.videos} min={link.minVideos} unit={plural(link.minVideos, "video")} />
-                          <button className="rev" onClick={() => say(`Review hub isn't wired up yet`)}>
+                          <button
+                            className="rev"
+                            onClick={() => router.push(`/dashboard/submission-forms/${token}/review`)}
+                          >
                             Review
                           </button>
                           <FolderCell a={a} />
