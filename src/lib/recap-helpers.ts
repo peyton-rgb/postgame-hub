@@ -35,7 +35,7 @@ export function dollar(n: number | undefined): string {
 
 // ─── Engagement-rate helpers (per the agreed source-of-truth rules) ──────────
 
-type Platform = "ig_feed" | "ig_reel" | "tiktok";
+export type Platform = "ig_feed" | "ig_reel" | "tiktok";
 
 /**
  * For a single athlete + platform, return the higher of the two engagement rates
@@ -72,7 +72,7 @@ export function bestRateForPlatform(metrics: AthleteMetrics | undefined, platfor
  * platform's engagement rate is included in the Hero average. Per the rule:
  * platforms with no posts are excluded (not counted as 0%).
  */
-function athletePostedOn(metrics: AthleteMetrics | undefined, platform: Platform): boolean {
+export function athletePostedOn(metrics: AthleteMetrics | undefined, platform: Platform): boolean {
   if (!metrics) return false;
   if (platform === "ig_feed") {
     const b = metrics.ig_feed;
