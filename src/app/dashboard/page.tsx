@@ -436,8 +436,14 @@ function DashboardContent() {
 
       {/* ───── Main content ───── */}
       <main className={`flex-1 transition-all duration-200 ${collapsed ? "ml-16" : "ml-60"}`}>
-        {/* Minimal top bar */}
-        <div className="border-b border-gray-800 px-8 py-4 flex items-center justify-between">
+        {/* Minimal top bar. Below the `nav` breakpoint the shell renders its own
+            top bar, so this one drops its bar chrome — border and bar padding —
+            and reads as the page's heading instead of a second stacked header.
+            It is not hidden outright: the label is the active ?tab= value, and
+            the shell's title cannot show that (resolveActiveHref skips hrefs
+            with a query string by design — see dashboard-nav.ts), so hiding it
+            would cost the only on-screen cue for which tab you are on. */}
+        <div className="nav:border-b nav:border-gray-800 px-5 pt-5 pb-1 nav:px-8 nav:py-4 flex items-center justify-between">
           <h1 className="text-lg font-bold text-white">
             {/* Show the active page name */}
             {NAV_GROUPS.flatMap((g) => g.items).find((i) => isActive(i))?.label || "Postgame Hub"}
