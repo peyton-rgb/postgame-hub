@@ -68,6 +68,54 @@ export function bestRateForPlatform(metrics: AthleteMetrics | undefined, platfor
 }
 
 /**
+ * Engagements ÷ impressions, as a percentage, for one metrics block.
+ *
+ * This is the recap-v2 definition of engagement rate, and it is deliberately
+ * NOT `bestRateForPlatform`. That one returns
+ * Math.max(engagement_rate_followers, engagement_rate_impressions), which is
+ * not a tie-break in practice: of 1,356 athlete-platform rows carrying both,
+ * the impressions-based figure is higher on 1,166 — average gap 3.67 points,
+ * maximum 45. Taking the max therefore biases systematically toward whichever
+ * number flatters, and the two are not the same measurement.
+ *
+ * The denominator is per-platform and matches athletePostedOn: ig_feed counts
+ * `impressions`, ig_reel and tiktok count `views`. Post-2 slots (`ig_feed_2`
+ * and friends) use the same rule, which is why this takes a raw block rather
+ * than a Platform key.
+ *
+ * Computed from the raw numerator and denominator when both are present,
+ * because that IS the definition; the stored `engagement_rate_impressions` is
+ * a cache of it written at import time and is used only as a fallback when the
+ * raw figures are missing. Returns 0 when neither path is available — callers
+ * exclude 0 rather than averaging it in.
+ *
+ * bestRateForPlatform is left alone. It feeds computeStats, and so the public
+ * homepage rotator, dashboard trackers, PPTX exports and the Slack intake
+ * cron; migrating those is tracked separately in issue #221.
+ */
+export function engagementRateByImpressions(
+  block: EngagementBlock | undefined,
+  denominator: "impressions" | "views",
+): number {
+  if (!block) return 0;
+  const denom = denominator === "impressions" ? block.impressions : block.views;
+  const engagements = block.total_engagements;
+  if (denom != null && denom > 0 && engagements != null && engagements >= 0) {
+    return (engagements / denom) * 100;
+  }
+  const stored = block.engagement_rate_impressions;
+  return stored != null && stored > 0 ? stored : 0;
+}
+
+/** The subset of a metrics block this rate needs. Every slot satisfies it. */
+export interface EngagementBlock {
+  impressions?: number;
+  views?: number;
+  total_engagements?: number;
+  engagement_rate_impressions?: number;
+}
+
+/**
  * Did this athlete post anything on this platform? Used to decide whether the
  * platform's engagement rate is included in the Hero average. Per the rule:
  * platforms with no posts are excluded (not counted as 0%).
