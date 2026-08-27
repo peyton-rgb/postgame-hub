@@ -14,9 +14,8 @@
 // so it gets the numbered-card treatment from the reference rather than
 // browser bullets.
 import { SECTION_HEADING } from "@/lib/recap-v2/guards";
-import { normaliseTakeaways } from "@/lib/recap-v2/takeaways";
+import type { ResolvedTakeaways } from "@/lib/recap-v2/resolve";
 import { Section, SectionHead } from "../ui";
-import type { Campaign } from "@/lib/types";
 
 const POINTS = [
   // Discrete points, laid out as cards. counter-* turns the list index into
@@ -79,25 +78,74 @@ const PROSE = [
   "[&>p+p]:mt-[var(--s2)]",
 ].join(" ");
 
-export function TakeawaysSection({ campaign }: { campaign: Campaign }) {
+export function TakeawaysSection({ takeaways }: { takeaways: ResolvedTakeaways }) {
   const h = SECTION_HEADING.take;
-  const { shape, html } = normaliseTakeaways(campaign.settings?.key_takeaways);
-  if (!html) return null;
-
-  const shapeClass = shape === "lede" ? LEDE : shape === "points" ? POINTS_FIRST : PROSE;
-  // Prose has no lists or headings to style — it is escaped plain text.
-  const rich = shape === "prose" ? "" : `${POINTS} ${EMPHASIS} ${HEADINGS}`;
+  if (takeaways.kind === "none") return null;
 
   return (
     <Section id="take">
       {/* tight, like #perf and #bic: this section now often opens straight
           into cards, and the wider head margin read as a hole above them. */}
       <SectionHead kicker={h.kicker} tight />
-      <div
-        data-shape={shape}
-        className={`${shapeClass} ${rich}`}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      {takeaways.kind === "structured" ? (
+        <Structured headline={takeaways.headline} points={takeaways.points} />
+      ) : (
+        <Legacy html={takeaways.html} shape={takeaways.shape} />
+      )}
     </Section>
+  );
+}
+
+/**
+ * What the builder writes: a headline and discrete points, each its own field.
+ * No parsing, no shape detection, no inline styles to strip — which is the
+ * whole reason the builder exists.
+ */
+function Structured({ headline, points }: { headline: string; points: string[] }) {
+  return (
+    <div data-shape="structured">
+      {headline ? (
+        <p className="max-w-[36ch] font-display text-[clamp(38px,4.4vw,68px)] leading-[1.04] text-[color:var(--rv-white)]">
+          {headline}
+        </p>
+      ) : null}
+      {points.length > 0 ? (
+        <ol
+          className={`m-0 grid list-none gap-[var(--s2)] [counter-reset:pt] min-[701px]:grid-cols-2 min-[1001px]:grid-cols-3 ${
+            headline ? "mt-[var(--s5)]" : ""
+          }`}
+        >
+          {points.map((p, i) => (
+            <li
+              key={i}
+              className="border-t border-[color:var(--rv-line)] pt-[var(--s2)] text-[15px] leading-[1.62] text-[color:var(--rv-dim)]"
+            >
+              <span className="mb-3 block font-mono text-[10.5px] tracking-[0.2em] text-[color:var(--rv-orange)]">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              {p}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The 32 campaigns that already have takeaways, in the three shapes they were
+ * typed in. Unchanged behaviour — a legacy blob stays legacy until someone
+ * restructures it in the builder.
+ */
+function Legacy({ html, shape }: { html: string; shape: "lede" | "points" | "prose" }) {
+  const shapeClass = shape === "lede" ? LEDE : shape === "points" ? POINTS_FIRST : PROSE;
+  // Prose has no lists or headings to style — it is escaped plain text.
+  const rich = shape === "prose" ? "" : `${POINTS} ${EMPHASIS} ${HEADINGS}`;
+  return (
+    <div
+      data-shape={shape}
+      className={`${shapeClass} ${rich}`}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }

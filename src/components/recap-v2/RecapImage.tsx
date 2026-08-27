@@ -27,6 +27,7 @@ export function RecapImage({
   alt,
   width,
   className = "",
+  style,
   onRatio,
   onUnavailable,
 }: {
@@ -34,6 +35,7 @@ export function RecapImage({
   alt: string;
   width: number;
   className?: string;
+  style?: React.CSSProperties;
   onRatio?: (ratio: number) => void;
   onUnavailable?: () => void;
 }) {
@@ -48,6 +50,7 @@ export function RecapImage({
       loading="lazy"
       decoding="async"
       className={className}
+      style={style}
       onLoad={(e) => {
         const el = e.currentTarget;
         if (onRatio && el.naturalWidth > 0 && el.naturalHeight > 0) {

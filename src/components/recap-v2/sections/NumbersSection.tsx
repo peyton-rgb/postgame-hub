@@ -9,6 +9,7 @@
 // Every rate here is engagements ÷ impressions and says so. Nothing on this
 // page reads computeStats' avgEngRate, which is still max-based.
 import { PLATFORM_LABEL, SECTION_HEADING } from "@/lib/recap-v2/guards";
+import type { NumberLayout, NumberMetric, NumbersConfig } from "@/lib/recap-v2/config";
 import { RATE_LABEL, formatRate, type PlatformRate, type RecapV2Stats } from "@/lib/recap-v2/stats";
 import { fmt } from "@/lib/recap-helpers";
 import { Foot, Section, SectionHead, Stat } from "../ui";
@@ -33,9 +34,75 @@ const SLICE_NOTE: Record<PlatformRate["platform"], string> = {
 const R = 88;
 const CIRCUMFERENCE = 2 * Math.PI * R;
 
-export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
+/**
+ * How tightly the section is grouped.
+ *
+ * `standard` holds the exact strings this section shipped with, so an
+ * unconfigured recap renders byte-identically. `compact` and `spacious` are
+ * the two directions the builder can move it, and nothing else varies — the
+ * type scale and the donut geometry are the design, not a preference.
+ */
+//
+// Every class here is a COMPLETE LITERAL, never assembled from a variable.
+// Tailwind generates CSS by scanning source text, so a class built at runtime
+// — `grid-cols-[${size}px_1fr]` — appears in the HTML with no rule behind it.
+// That exact mistake silently removed the donut band's desktop grid here, and
+// only a before/after diff caught it. Keep these strings whole.
+const LAYOUT: Record<
+  NumberLayout,
+  {
+    headGap: string;
+    headPad: string;
+    rowPad: string;
+    band: string;
+    donutPx: number;
+    donutBox: string;
+    legendPad: string;
+  }
+> = {
+  compact: {
+    headGap: "gap-6 min-[1001px]:gap-[var(--s3)]",
+    headPad: "pb-[var(--s2)]",
+    rowPad: "py-[9px]",
+    band: "mt-[var(--s2)] gap-6 pt-[var(--s2)] min-[1001px]:grid-cols-[220px_1fr] min-[1001px]:gap-[var(--s3)]",
+    donutPx: 200,
+    donutBox: "h-[200px] w-[200px]",
+    legendPad: "py-[10px]",
+  },
+  standard: {
+    headGap: "gap-8 min-[1001px]:gap-[var(--s4)]",
+    headPad: "pb-[var(--s3)]",
+    rowPad: "py-[13px]",
+    band: "mt-[var(--s3)] gap-8 pt-[var(--s3)] min-[1001px]:grid-cols-[260px_1fr] min-[1001px]:gap-[var(--s4)]",
+    donutPx: 240,
+    donutBox: "h-[240px] w-[240px]",
+    legendPad: "py-[14px]",
+  },
+  spacious: {
+    headGap: "gap-11 min-[1001px]:gap-[var(--s5)]",
+    headPad: "pb-[var(--s4)]",
+    rowPad: "py-[17px]",
+    band: "mt-[var(--s4)] gap-11 pt-[var(--s4)] min-[1001px]:grid-cols-[340px_1fr] min-[1001px]:gap-[var(--s5)]",
+    donutPx: 300,
+    donutBox: "h-[300px] w-[300px]",
+    legendPad: "py-5",
+  },
+};
+
+export function NumbersSection({
+  stats,
+  metrics,
+  layout,
+  targets = {},
+}: {
+  stats: RecapV2Stats;
+  metrics: NumberMetric[];
+  layout: NumberLayout;
+  targets?: NumbersConfig["targets"];
+}) {
   const h = SECTION_HEADING.numbers;
   const { volume, platforms } = stats;
+  const L = LAYOUT[layout];
 
   // Reel views are the headline on most campaigns, but 32 have no reels at
   // all — fall back to whichever surface actually carried the campaign.
@@ -44,34 +111,71 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
       ? { value: volume.igReel.views, label: "Reel views" }
       : { value: stats.ratedImpressions, label: "Impressions" };
 
-  const rows = [
-    {
+  // One definition per metric the config can ask for. `available` is the data
+  // guard and is NOT a config concern: a rate with nothing to divide by is
+  // omitted whether or not someone selected it, because printing 0% would
+  // state something false.
+  const DEFS: Record<
+    Exclude<NumberMetric, "headline">,
+    { key: string; label: string; note: string; value: string; highlight?: boolean; available: boolean }
+  > = {
+    engagements: {
       key: "eng",
       label: "Total engagements",
       note: "Likes, comments, shares and reposts",
       value: fmt(stats.totalEngagements),
-      highlight: false,
+      available: true,
     },
-    // A rate with nothing to divide by is omitted, not printed as 0%.
-    ...(stats.ratedImpressions > 0
-      ? [
-          {
-            key: "rate",
-            label: "Avg engagement rate",
-            note: RATE_LABEL,
-            value: formatRate(stats.engagementRate),
-            highlight: true,
-          },
-        ]
-      : []),
-    {
+    engagement_rate: {
+      key: "rate",
+      label: "Avg engagement rate",
+      note: RATE_LABEL,
+      value: formatRate(stats.engagementRate),
+      highlight: true,
+      available: stats.ratedImpressions > 0,
+    },
+    posts: {
       key: "posts",
       label: "Posts published",
       note: "Feed, reels and stories",
       value: fmt(volume.totalPosts),
-      highlight: false,
+      available: true,
     },
-  ];
+    impressions: {
+      key: "impressions",
+      label: "Total impressions",
+      note: "Every surface, stories included",
+      value: fmt(volume.totalImpressions),
+      available: volume.totalImpressions > 0,
+    },
+    athletes: {
+      key: "athletes",
+      label: "Athletes",
+      note: "On the campaign roster",
+      value: fmt(volume.athleteCount),
+      available: volume.athleteCount > 0,
+    },
+    schools: {
+      key: "schools",
+      label: "Schools",
+      note: "Programs represented",
+      value: fmt(volume.schoolCount),
+      available: volume.schoolCount > 0,
+    },
+    followers: {
+      key: "followers",
+      label: "Combined following",
+      note: "Across the roster",
+      value: fmt(volume.combinedFollowers),
+      available: volume.combinedFollowers > 0,
+    },
+  };
+
+  const showHeadline = metrics.includes("headline");
+  const rows = metrics
+    .filter((m): m is Exclude<NumberMetric, "headline"> => m !== "headline")
+    .map((m) => ({ metric: m, ...DEFS[m] }))
+    .filter((r) => r.available);
 
   // Arc offsets accumulate so the ring reads clockwise from twelve o'clock.
   let consumed = 0;
@@ -86,7 +190,12 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
     <Section id="numbers">
       <SectionHead kicker={h.kicker} title={h.title} tight />
 
-      <div className="grid grid-cols-1 items-center gap-8 border-b border-[color:var(--rv-line)] pb-[var(--s3)] min-[1001px]:grid-cols-[0.85fr_1fr] min-[1001px]:gap-[var(--s4)]">
+      <div
+        className={`grid grid-cols-1 items-center border-b border-[color:var(--rv-line)] ${L.headGap} ${L.headPad} ${
+          showHeadline ? "min-[1001px]:grid-cols-[0.85fr_1fr]" : ""
+        }`}
+      >
+        {showHeadline ? (
         <div data-slot="nbig" data-value={headline.value}>
           <Stat className="block text-[clamp(80px,9vw,140px)] leading-[0.9]">
             {fmt(headline.value)}
@@ -95,13 +204,14 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
             {headline.label}
           </p>
         </div>
+        ) : null}
 
         <dl className="m-0">
           {rows.map((r, i) => (
             <div
               key={r.key}
               data-row={r.key}
-              className={`flex items-baseline justify-between gap-[26px] py-[13px] ${
+              className={`flex items-baseline justify-between gap-[26px] ${L.rowPad} ${
                 i === rows.length - 1 ? "" : "border-b border-[color:var(--rv-soft)]"
               }`}
             >
@@ -111,6 +221,10 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
                 </span>
                 <span className="mt-[5px] block text-[13.5px] text-[color:var(--rv-dim)]">
                   {r.note}
+                  {/* A target is only shown when someone set one. */}
+                  {targets[r.metric] != null ? (
+                    <> · target {fmt(targets[r.metric])}</>
+                  ) : null}
                 </span>
               </dt>
               <dd>
@@ -128,15 +242,15 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
       </div>
 
       {platforms.length > 0 ? (
-        <div className="mt-[var(--s3)] grid grid-cols-1 items-center gap-8 border-t border-[color:var(--rv-line)] pt-[var(--s3)] min-[1001px]:grid-cols-[260px_1fr] min-[1001px]:gap-[var(--s4)]">
+        <div className={`grid grid-cols-1 items-center border-t border-[color:var(--rv-line)] ${L.band}`}>
           {/* A single-platform campaign draws one full ring. Correct, not a bug. */}
           <div
-            className="relative mx-auto h-[240px] w-[240px]"
+            className={`relative mx-auto ${L.donutBox}`}
             data-slot="donut"
             data-arcs={platforms.length}
             data-total={Math.round(volume.totalImpressions)}
           >
-            <svg viewBox="0 0 200 200" width="240" height="240" className="-rotate-90" aria-hidden="true">
+            <svg viewBox="0 0 200 200" width={L.donutPx} height={L.donutPx} className="-rotate-90" aria-hidden="true">
               <circle cx="100" cy="100" r={R} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="22" />
               {arcs.map(({ p, length, offset }) => (
                 <circle
@@ -165,7 +279,7 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
               <li
                 key={p.platform}
                 data-platform={p.platform}
-                className={`flex items-center gap-5 py-[14px] ${
+                className={`flex items-center gap-5 ${L.legendPad} ${
                   i === platforms.length - 1 ? "" : "border-b border-[color:var(--rv-soft)]"
                 }`}
               >

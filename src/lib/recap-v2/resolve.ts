@@ -123,8 +123,23 @@ export function resolveRecapConfig(data: RecapV2Data): ResolvedRecapConfig {
   // campaigns have no metrics at all. Config chooses order and can hide;
   // presence decides what is possible.
   const presence = computePresence(data);
+
+  // Presence answers "is there anything to put in this section?" and it reads
+  // the LEGACY fields. That is right for sections whose content the config
+  // cannot invent — no metrics means no numbers section, whatever anyone
+  // selects. It is wrong for takeaways: the builder writes the copy itself, so
+  // a campaign with an empty settings.key_takeaways (Ghost Amp, and 50 of 82
+  // published campaigns) could never show a takeaways section no matter what
+  // was typed into the builder. Config-supplied content counts as presence.
+  const configuredTakeaways =
+    !!config.takeaways && (!!config.takeaways.headline || config.takeaways.points.length > 0);
+  const has: Record<SectionId, boolean> = {
+    ...presence.has,
+    take: presence.has.take || configuredTakeaways,
+  };
+
   const derivedSections: SectionConfig[] = DERIVED_SECTION_ORDER.filter(
-    (id) => presence.has[id],
+    (id) => has[id],
   ).map((key, order) => ({ key, visible: true, order }));
 
   let sections: Resolved<SectionConfig[]>;
@@ -133,9 +148,9 @@ export function resolveRecapConfig(data: RecapV2Data): ResolvedRecapConfig {
     // append any section the config never mentioned so a config written before
     // a section existed does not silently lose it.
     const mentioned = new Set(config.sections.map((s) => s.key));
-    const kept = config.sections.filter((s) => presence.has[s.key]);
+    const kept = config.sections.filter((s) => has[s.key]);
     const missing = DERIVED_SECTION_ORDER.filter(
-      (id) => presence.has[id] && !mentioned.has(id),
+      (id) => has[id] && !mentioned.has(id),
     ).map((key) => ({ key, visible: true, order: 0 }));
     sections = {
       value: [...kept, ...missing].map((s, order) => ({ ...s, order })),

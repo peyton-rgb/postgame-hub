@@ -5,14 +5,23 @@
 // title is the only thing guaranteed to exist, and it is what makes a
 // zero-metric, zero-photo campaign still a page.
 import type { Campaign } from "@/lib/types";
-import { HeroCarousel } from "./HeroCarousel";
+import { HeroCarousel, type HeroSlide } from "./HeroCarousel";
 
 export function HeroSection({
   campaign,
-  images,
+  title,
+  slides,
 }: {
   campaign: Campaign;
-  images: string[];
+  /**
+   * What the hero prints at up to 150px. `campaign.name` is the ADMIN name and
+   * is not always safe to show a client — "Dunks March Madness" carries an NCAA
+   * trademark, and a headline this size is as brand-facing as it gets. The
+   * resolver supplies recap_config.display_name where one is set and the admin
+   * name where it is not.
+   */
+  title: string;
+  slides: HeroSlide[];
 }) {
   const s = campaign.settings || {};
   // Each part drops independently rather than leaving stray separators.
@@ -33,7 +42,7 @@ export function HeroSection({
       data-recap-v2="hero"
       className="relative flex min-h-screen items-end overflow-hidden"
     >
-      <HeroCarousel images={images} />
+      <HeroCarousel slides={slides} />
       <div className="rv-shade pointer-events-none absolute inset-0" aria-hidden="true" />
 
       {/* Top padding clears the fixed nav — without it the brand mark sits
@@ -61,7 +70,7 @@ export function HeroSection({
               three-word display title, and campaign names in the catalogue run
               to seven. Lower bound kept so short names still land big. */}
           <h1 className="my-[22px] font-display text-[clamp(64px,9vw,150px)] leading-[0.86]">
-            {campaign.name}
+            {title}
           </h1>
 
           {/* No description here, deliberately.
