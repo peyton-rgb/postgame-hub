@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
 import { RecapV2 } from "@/components/recap-v2/RecapV2";
+import { RecapIntroLockup } from "@/components/recap-v2/RecapIntroLockup";
 import { detectCollabGroups } from "@/lib/csv-parser";
 import { deriveContainerCollab } from "@/lib/collab-reconcile";
 import { consolidateCollabGroups } from "@/lib/collab-consolidate";
@@ -221,7 +222,37 @@ export default async function RecapPage({ params, searchParams }: Props) {
   // and `isEvent` is excluded here, so those two render exactly as they do
   // today on every surface.
   if (!isEvent && sp?.v2 === "1" && isNonProductionSurface()) {
+    // The intro lockup's brand mark. Light-first, because the panel is black:
+    // logo_white_url, then logo_light_url, then logo_url, then
+    // logo_primary_url. logo_mark_url is deliberately NOT in the chain — it is
+    // an icon-only variant (CVS's is the bare heart), which is the wrong
+    // pairing beside a wordmark. 565 of 626 recaps resolve a mark this way; the
+    // 61 that do not fall back to the Postgame mark alone.
+    let lockupMark: string | null = null;
+    let lockupScale: number | null = null;
+    let lockupBrand: string | null = null;
+    if (campaign.brand_id) {
+      const { data: brand } = await supabase
+        .from("brands")
+        .select("name, lockup_scale, logo_white_url, logo_light_url, logo_url, logo_primary_url")
+        .eq("id", campaign.brand_id)
+        .single();
+      if (brand) {
+        lockupMark =
+          brand.logo_white_url || brand.logo_light_url || brand.logo_url || brand.logo_primary_url || null;
+        lockupScale = brand.lockup_scale == null ? null : Number(brand.lockup_scale);
+        lockupBrand = brand.name ?? null;
+      }
+    }
+
     return (
+      <>
+        <RecapIntroLockup
+          slug={campaign.slug}
+          brandMarkUrl={lockupMark}
+          brandName={lockupBrand}
+          lockupScale={lockupScale}
+        />
       <RecapV2
         campaign={campaign}
         allAthletes={allAthletes}
@@ -229,6 +260,7 @@ export default async function RecapPage({ params, searchParams }: Props) {
         media={mediaByAthlete}
         collabGroups={collabGroups}
       />
+      </>
     );
   }
 
