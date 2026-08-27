@@ -158,12 +158,11 @@ export function computePresence(data: RecapV2Data): SectionPresence {
   const platformsPresent = PLATFORMS.filter((p) => platforms[p] > 0);
   const gallery = galleryItems(media);
 
-  // The spec table drops any row whose value is missing, so the section needs
-  // at least one row OR the prose to be worth rendering at all.
-  const hasSpecRows = specRows(campaign).length > 0;
 
   const has: Record<SectionId, boolean> = {
-    overview: on("overview") && (hasRichText(settings.description) || hasSpecRows),
+    // Prose only. The spec table is gone — name, client and type are already
+    // in the hero — so an overview with no description has nothing to show.
+    overview: on("overview") && hasRichText(settings.description),
     take: on("take") && hasRichText(settings.key_takeaways),
     // 30 of 82 campaigns land here with nothing. No metrics, no section —
     // which also removes the donut, the legend and the (omitted) map with it.

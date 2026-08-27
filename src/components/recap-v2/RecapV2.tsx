@@ -24,7 +24,8 @@ import { resolveRecapConfig, visibleSections } from "@/lib/recap-v2/resolve";
 import { computeRecapV2Stats } from "@/lib/recap-v2/stats";
 import { selectHeroStills, stillFor } from "@/lib/recap-v2/hero";
 
-import { ContentSection, type GalleryTile } from "./sections/ContentSection";
+import { ContentSection, type GalleryCard } from "./sections/ContentSection";
+import { buildPortalAthlete } from "./portalAthlete";
 import { HeroSection } from "./sections/HeroSection";
 import type { HeroSlide } from "./sections/HeroCarousel";
 import { NumbersSection } from "./sections/NumbersSection";
@@ -123,37 +124,58 @@ export function RecapV2(data: RecapV2Data) {
   }
 
   // ── Gallery ─────────────────────────────────────────────────────────────
-  // Attribute each tile to its athlete where we can. media is keyed by athlete
-  // (and by collab group), so walk the keys rather than trusting athlete_id,
-  // which is null on team and shared-folder imports.
-  const ownerOf = new Map<string, string>();
+  // One card per ATHLETE, not per asset. media is keyed by athlete (and by
+  // collab group), so walk the keys rather than trusting athlete_id, which is
+  // null on team and shared-folder imports.
+  // Which athlete each media row belongs to, by the key it was filed under.
+  const ownerOfMedia = new Map<string, string>();
   for (const [key, items] of Object.entries(media || {})) {
-    for (const m of items || []) if (!ownerOf.has(m.id)) ownerOf.set(m.id, key);
+    for (const m of items || []) if (!ownerOfMedia.has(m.id)) ownerOfMedia.set(m.id, key);
   }
-  // A configured gallery is an explicit list in an explicit order; otherwise
-  // every usable asset, in the order the media map yields them, as before.
-  const galleryOrdered =
-    resolved.content.source === "configured"
-      ? resolved.content.value.mediaIds
-          .map((id) => gallery.find((m) => m.id === id))
-          .filter((m): m is Media => !!m)
-      : gallery;
 
-  const tiles: GalleryTile[] = galleryOrdered.flatMap((m) => {
-    // Same rule as the hero: a video shows its thumbnail, and one without a
-    // thumbnail has no still to show, so it is not a tile.
-    const url = stillFor(m);
-    if (!url) return [];
-    const owner = athleteById.get(ownerOf.get(m.id) || "");
-    return [{
-      id: m.id,
-      url,
-      athleteName: owner?.name ?? null,
-      school: owner?.school ?? null,
-      handle: owner?.ig_handle ?? null,
-      postUrl: owner?.metrics?.ig_reel?.post_url || owner?.metrics?.ig_feed?.post_url || owner?.post_url || null,
-    }];
-  });
+  const itemsByAthlete = new Map<string, Media[]>();
+  for (const [key, items] of Object.entries(media || {})) {
+    if (!athleteById.has(key)) continue; // collab-group keys are not athletes
+    const usable = (items || []).filter((m) => !m.is_video_thumbnail);
+    if (usable.length > 0) itemsByAthlete.set(key, usable);
+  }
+
+  // A configured gallery is an explicit list; it selects which ATHLETES appear,
+  // by way of the assets chosen for them.
+  const configuredAthletes =
+    resolved.content.source === "configured"
+      ? new Set(
+          resolved.content.value.mediaIds
+            .map((id) => gallery.find((m) => m.id === id))
+            .filter((m): m is Media => !!m)
+            .map((m) => ownerOfMedia.get(m.id))
+            .filter((a): a is string => !!a),
+        )
+      : null;
+
+  const galleryCards: GalleryCard[] = [];
+  for (const [athleteId, items] of Array.from(itemsByAthlete.entries())) {
+    if (configuredAthletes && !configuredAthletes.has(athleteId)) continue;
+    const athlete = athleteById.get(athleteId);
+    if (!athlete) continue;
+    // The cover is chosen the same way the hero picks its stills, so an
+    // explicit editor choice leads here too and a video contributes its
+    // thumbnail rather than a file an <img> cannot show.
+    const cover = selectHeroStills(items, 1)[0];
+    if (!cover) continue;
+    const { portalAthlete, reelPostIndex } = buildPortalAthlete(athlete, items, campaign.name);
+    if (portalAthlete.posts.length === 0) continue;
+    galleryCards.push({
+      athleteId,
+      name: athlete.name,
+      school: athlete.school || null,
+      handle: athlete.ig_handle || null,
+      coverUrl: cover.url,
+      assetCount: items.length,
+      portalAthlete,
+      startPostIndex: reelPostIndex,
+    });
+  }
 
   // ── Roster ──────────────────────────────────────────────────────────────
   const rows: RosterRow[] = allAthletes.map((a) => {
@@ -167,7 +189,10 @@ export function RecapV2(data: RecapV2Data) {
       impressions: r?.impressions ?? 0,
       engagements: r?.engagements ?? 0,
       rate: r && r.impressions > 0 ? r.rate : null,
-      postUrl: a.metrics?.ig_reel?.post_url || a.metrics?.ig_feed?.post_url || a.post_url || null,
+      // Both, separately. Post 2 is the fallback for each so a second-round
+      // post is still reachable when the first slot is empty.
+      feedUrl: a.metrics?.ig_feed?.post_url || a.metrics?.ig_feed_2?.post_url || null,
+      reelUrl: a.metrics?.ig_reel?.post_url || a.metrics?.ig_reel_2?.post_url || null,
     };
   });
 
@@ -236,7 +261,7 @@ export function RecapV2(data: RecapV2Data) {
           case "perf":
             return <PerformersSection key={key} byEngagements={byEngagements} byViews={byViews} />;
           case "bic":
-            return <ContentSection key={key} tiles={tiles} />;
+            return <ContentSection key={key} cards={galleryCards} />;
           case "roster":
             return <RosterSection key={key} rows={rows} collabs={collabs} />;
           default:

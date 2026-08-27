@@ -24,12 +24,19 @@ export interface RosterRow {
   id: string;
   name: string;
   school: string | null;
+  /** Instagram handle, without the @. */
   handle: string | null;
   followers: number;
   impressions: number;
   engagements: number;
   rate: number | null;
-  postUrl: string | null;
+  /**
+   * Feed and reel are separate columns, not one "Post" link. An athlete
+   * commonly has both, and collapsing them meant whichever the fallback chain
+   * happened to reach first was the only one a reader could open.
+   */
+  feedUrl: string | null;
+  reelUrl: string | null;
 }
 
 export interface CollabBlock {
@@ -43,7 +50,7 @@ export interface CollabBlock {
   url: string | null;
 }
 
-type SortKey = "name" | "school" | "followers" | "impressions" | "engagements" | "rate";
+type SortKey = "name" | "school" | "handle" | "followers" | "impressions" | "engagements" | "rate";
 
 export function RosterSection({
   rows,
@@ -59,16 +66,19 @@ export function RosterSection({
   });
 
   const hasSchools = rows.some((r) => !!r.school);
+  const hasHandles = rows.some((r) => !!r.handle);
   const hasFollowers = rows.some((r) => r.followers > 0);
   const hasMetrics = rows.some((r) => r.impressions > 0 || r.engagements > 0);
   const hasRates = rows.some((r) => r.rate != null);
-  const hasLinks = rows.some((r) => !!r.postUrl);
+  const hasFeed = rows.some((r) => !!r.feedUrl);
+  const hasReel = rows.some((r) => !!r.reelUrl);
 
   const sorted = useMemo(() => {
     const dir = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       if (sort.key === "name") return a.name.localeCompare(b.name) * dir;
       if (sort.key === "school") return (a.school || "").localeCompare(b.school || "") * dir;
+      if (sort.key === "handle") return (a.handle || "").localeCompare(b.handle || "") * dir;
       // Null rates sort to the bottom in both directions — "no basis to state
       // one" is not the same as zero and should not lead an ascending sort.
       if (sort.key === "rate") {
@@ -160,15 +170,13 @@ export function RosterSection({
             <tr>
               <Th k="name" numeric={false}>Athlete</Th>
               {hasSchools ? <Th k="school" numeric={false}>School</Th> : null}
+              {hasHandles ? <Th k="handle" numeric={false}>Handle</Th> : null}
               {hasFollowers ? <Th k="followers">Followers</Th> : null}
               {hasMetrics ? <Th k="impressions">Impressions</Th> : null}
               {hasMetrics ? <Th k="engagements">Engagements</Th> : null}
               {hasRates ? <Th k="rate">Eng. rate</Th> : null}
-              {hasLinks ? (
-                <th scope="col" className="pb-5 pl-[18px] text-right font-mono text-[11.5px] font-bold tracking-[0.22em] text-[color:var(--rv-white)]">
-                  Post
-                </th>
-              ) : null}
+              {hasFeed ? <PlainTh>Feed</PlainTh> : null}
+              {hasReel ? <PlainTh>Reel</PlainTh> : null}
             </tr>
           </thead>
           <tbody>
@@ -182,6 +190,22 @@ export function RosterSection({
                     {r.school || <span className="text-[color:var(--rv-dim2)]">—</span>}
                   </td>
                 ) : null}
+                {hasHandles ? (
+                  <td className="border-t border-[color:var(--rv-line)] py-[15px] pl-[18px] text-left text-[15px] text-[color:var(--rv-dim)]">
+                    {r.handle ? (
+                      <a
+                        href={`https://instagram.com/${r.handle.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="no-underline transition-colors hover:text-[color:var(--rv-orange)]"
+                      >
+                        @{r.handle.replace(/^@/, "")}
+                      </a>
+                    ) : (
+                      <span className="text-[color:var(--rv-dim2)]">—</span>
+                    )}
+                  </td>
+                ) : null}
                 {hasFollowers ? <Td>{fmt(r.followers)}</Td> : null}
                 {hasMetrics ? <Td>{fmt(r.impressions)}</Td> : null}
                 {hasMetrics ? <Td>{fmt(r.engagements)}</Td> : null}
@@ -190,22 +214,8 @@ export function RosterSection({
                     {r.rate == null ? <span className="font-normal text-[color:var(--rv-dim2)]">—</span> : formatRate(r.rate)}
                   </td>
                 ) : null}
-                {hasLinks ? (
-                  <td className="border-t border-[color:var(--rv-line)] py-[15px] pl-[18px] text-right">
-                    {r.postUrl ? (
-                      <a
-                        href={r.postUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block rounded-full border border-[color:var(--rv-line)] px-[13px] py-[7px] font-mono text-[11px] tracking-[0.14em] text-[color:var(--rv-dim)] no-underline transition-colors hover:border-white/35 hover:text-[color:var(--rv-white)]"
-                      >
-                        View
-                      </a>
-                    ) : (
-                      <span className="text-[color:var(--rv-dim2)]">—</span>
-                    )}
-                  </td>
-                ) : null}
+                {hasFeed ? <LinkTd url={r.feedUrl} /> : null}
+                {hasReel ? <LinkTd url={r.reelUrl} /> : null}
               </tr>
             ))}
           </tbody>
@@ -225,6 +235,36 @@ function Td({ children }: { children: React.ReactNode }) {
   return (
     <td className="whitespace-nowrap border-t border-[color:var(--rv-line)] py-[15px] pl-[18px] text-right text-[15px] tabular-nums">
       {children}
+    </td>
+  );
+}
+
+function PlainTh({ children }: { children: React.ReactNode }) {
+  return (
+    <th
+      scope="col"
+      className="whitespace-nowrap pb-5 pl-[18px] text-right font-mono text-[11.5px] font-bold tracking-[0.22em] text-[color:var(--rv-white)]"
+    >
+      {children}
+    </th>
+  );
+}
+
+function LinkTd({ url }: { url: string | null }) {
+  return (
+    <td className="border-t border-[color:var(--rv-line)] py-[15px] pl-[18px] text-right">
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block rounded-full border border-[color:var(--rv-line)] px-[13px] py-[7px] font-mono text-[11px] tracking-[0.14em] text-[color:var(--rv-dim)] no-underline transition-colors hover:border-white/35 hover:text-[color:var(--rv-white)]"
+        >
+          Open
+        </a>
+      ) : (
+        <span className="text-[color:var(--rv-dim2)]">—</span>
+      )}
     </td>
   );
 }

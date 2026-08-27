@@ -22,8 +22,17 @@ import {
 import { PLATFORMS, type PlatformId } from "./guards";
 import type { Athlete, Campaign, CollabGroup } from "@/lib/types";
 
-/** Human-readable, and the same everywhere the number is shown. */
-export const RATE_LABEL = "engagements ÷ impressions";
+/**
+ * Human-readable, and the same everywhere the number is shown.
+ *
+ * "excluding stories" is load-bearing, not a caveat. The impressions figure on
+ * the page INCLUDES story impressions; the rate's denominator does not, because
+ * the schema records no engagements against stories and leaving them in would
+ * depress every campaign's rate in proportion to its story inventory. Without
+ * the qualifier the two numbers on screen do not divide into the third — a
+ * brand contact doing 35.9K ÷ 348.8K gets 10.3% where the page says 15.7%.
+ */
+export const RATE_LABEL = "engagements ÷ impressions, excluding stories";
 
 export type DonutSlice = PlatformId | "ig_story";
 

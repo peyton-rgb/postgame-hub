@@ -64,7 +64,7 @@ const LAYOUT: Record<
     headGap: "gap-6 min-[1001px]:gap-[var(--s3)]",
     headPad: "pb-[var(--s2)]",
     rowPad: "py-[9px]",
-    band: "mt-[var(--s2)] gap-6 pt-[var(--s2)] min-[1001px]:grid-cols-[220px_1fr] min-[1001px]:gap-[var(--s3)]",
+    band: "gap-6 pt-[var(--s2)] min-[1001px]:grid-cols-[220px_1fr] min-[1001px]:gap-[var(--s3)]",
     donutPx: 200,
     donutBox: "h-[200px] w-[200px]",
     legendPad: "py-[10px]",
@@ -73,7 +73,7 @@ const LAYOUT: Record<
     headGap: "gap-8 min-[1001px]:gap-[var(--s4)]",
     headPad: "pb-[var(--s3)]",
     rowPad: "py-[13px]",
-    band: "mt-[var(--s3)] gap-8 pt-[var(--s3)] min-[1001px]:grid-cols-[260px_1fr] min-[1001px]:gap-[var(--s4)]",
+    band: "gap-8 pt-[var(--s3)] min-[1001px]:grid-cols-[260px_1fr] min-[1001px]:gap-[var(--s4)]",
     donutPx: 240,
     donutBox: "h-[240px] w-[240px]",
     legendPad: "py-[14px]",
@@ -82,7 +82,7 @@ const LAYOUT: Record<
     headGap: "gap-11 min-[1001px]:gap-[var(--s5)]",
     headPad: "pb-[var(--s4)]",
     rowPad: "py-[17px]",
-    band: "mt-[var(--s4)] gap-11 pt-[var(--s4)] min-[1001px]:grid-cols-[340px_1fr] min-[1001px]:gap-[var(--s5)]",
+    band: "gap-11 pt-[var(--s4)] min-[1001px]:grid-cols-[340px_1fr] min-[1001px]:gap-[var(--s5)]",
     donutPx: 300,
     donutBox: "h-[300px] w-[300px]",
     legendPad: "py-5",
@@ -187,11 +187,11 @@ export function NumbersSection({
   });
 
   return (
-    <Section id="numbers">
+    <Section id="numbers" flush>
       <SectionHead kicker={h.kicker} title={h.title} tight />
 
       <div
-        className={`grid grid-cols-1 items-center border-b border-[color:var(--rv-line)] ${L.headGap} ${L.headPad} ${
+        className={`grid grid-cols-1 items-center ${L.headGap} ${L.headPad} ${
           showHeadline ? "min-[1001px]:grid-cols-[0.85fr_1fr]" : ""
         }`}
       >

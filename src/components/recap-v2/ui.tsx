@@ -75,15 +75,28 @@ export function Stat({
 export function Section({
   id,
   children,
+  flush = false,
 }: {
   id: string;
   children: ReactNode;
+  /**
+   * Sit directly under whatever is above, with no top rule and no top padding.
+   *
+   * For the section that follows the hero block: that block already ends on
+   * solid black after its own bottom padding, so the usual rule plus a second
+   * full pad read as a double break — 132px, a line, then another 132px.
+   */
+  flush?: boolean;
 }) {
   return (
     <section
       id={id}
       data-recap-v2={id}
-      className="scroll-mt-[var(--nav-h)] border-t border-[color:var(--rv-line)] px-[var(--gutter)] py-[var(--s5)] min-[1001px]:py-[var(--s6)]"
+      className={`scroll-mt-[var(--nav-h)] px-[var(--gutter)] pb-[var(--s5)] min-[1001px]:pb-[var(--s6)] ${
+        flush
+          ? ""
+          : "border-t border-[color:var(--rv-line)] pt-[var(--s5)] min-[1001px]:pt-[var(--s6)]"
+      }`}
     >
       {children}
     </section>

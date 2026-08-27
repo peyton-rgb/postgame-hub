@@ -8,7 +8,7 @@
 // The block always renders. A campaign always has a name, and the vertical
 // half of the wash is what carries it into the page, so a campaign with no
 // media and no prose is still a proper opening rather than a bare header.
-import { SECTION_HEADING, hasRichText, specRows } from "@/lib/recap-v2/guards";
+import { SECTION_HEADING, hasRichText } from "@/lib/recap-v2/guards";
 import type { Campaign } from "@/lib/types";
 import { HeroCarousel, type HeroSlide } from "./HeroCarousel";
 
@@ -31,9 +31,9 @@ export function HeroSection({
   showOverview: boolean;
 }) {
   const s = campaign.settings || {};
-  const rows = specRows(campaign);
-  const hasProse = hasRichText(s.description);
-  const overview = showOverview && (hasProse || rows.length > 0);
+  // No spec table. Campaign name, client and type are all already in the hero
+  // immediately above — printing them again as rows read as filler.
+  const overview = showOverview && hasRichText(s.description);
 
   return (
     <section id="hero" data-recap-v2="hero" className="rv-hblock">
@@ -72,31 +72,10 @@ export function HeroSection({
           <h2 className="mb-[10px] font-mono text-[11px] uppercase tracking-[0.15em] text-[rgba(250,248,245,0.5)]">
             {SECTION_HEADING.overview.title}
           </h2>
-          {hasProse ? (
-            <div
+          <div
               className="max-w-[58ch] text-[14.5px] leading-[1.65] text-[#d3d3d9] min-[1001px]:text-[17.5px] min-[1001px]:leading-[1.72] [&_b]:font-bold [&_b]:text-[color:var(--rv-white)] [&_p+p]:mt-[var(--s2)] [&_strong]:font-bold [&_strong]:text-[color:var(--rv-white)]"
-              dangerouslySetInnerHTML={{ __html: s.description as string }}
-            />
-          ) : null}
-
-          {/* Spec rows sit last, where the vertical wash is already near black. */}
-          {rows.length > 0 ? (
-            <dl className="mt-[var(--s4)] max-w-[520px]">
-              {rows.map((r, i) => (
-                <div
-                  key={r.key}
-                  className={`flex items-baseline justify-between gap-6 border-b border-[color:var(--rv-soft)] py-[15px] ${
-                    i === 0 ? "border-t border-t-[color:var(--rv-line)]" : ""
-                  }`}
-                >
-                  <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--rv-dim2)]">
-                    {r.label}
-                  </dt>
-                  <dd className="text-right text-[15px]">{r.value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
+            dangerouslySetInnerHTML={{ __html: s.description as string }}
+          />
         </div>
       ) : null}
     </section>
