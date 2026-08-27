@@ -1,13 +1,25 @@
-// The recap builder. New route, alongside /dashboard/[id] — the old editor and
+// The recap builder. New route alongside /dashboard/[id] — the old editor and
 // its `settings` writes are untouched, and the two coexist.
 import { createPlainSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
-import { HeroBuilder } from "@/components/recap-builder/HeroBuilder";
+import { RecapBuilder, type BuilderAthlete } from "@/components/recap-builder/RecapBuilder";
 import type { PickableMedia } from "@/components/recap-builder/MediaPicker";
 import { validateRecapConfig } from "@/lib/recap-v2/config";
-import type { Media } from "@/lib/types";
+import { hasRichText, type SectionId } from "@/lib/recap-v2/guards";
+import { stillFor } from "@/lib/recap-v2/hero";
+import { engagementRateByImpressions } from "@/lib/recap-helpers";
+import type { Athlete, Media } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+/** Total engagements across an athlete's slots — the default performer order. */
+function engagementsOf(a: Athlete): number {
+  const m = (a.metrics || {}) as Record<string, { total_engagements?: number } | undefined>;
+  return ["ig_feed", "ig_feed_2", "ig_reel", "ig_reel_2", "tiktok", "tiktok_2"].reduce(
+    (sum, k) => sum + (m[k]?.total_engagements ?? 0),
+    0,
+  );
+}
 
 export default async function RecapBuilderPage({
   params,
@@ -24,57 +36,75 @@ export default async function RecapBuilderPage({
     .single();
   if (!campaign) notFound();
 
-  const { data: media } = await supabase
-    .from("media")
-    .select("*")
-    .eq("campaign_id", id)
-    .order("sort_order");
+  const [{ data: media }, { data: athleteRows }] = await Promise.all([
+    supabase.from("media").select("*").eq("campaign_id", id).order("sort_order"),
+    supabase.from("athletes").select("*").eq("campaign_id", id).order("sort_order"),
+  ]);
 
-  const { data: athletes } = await supabase
-    .from("athletes")
-    .select("id, name")
-    .eq("campaign_id", id);
-  const athleteName = new Map((athletes || []).map((a: { id: string; name: string }) => [a.id, a.name]));
+  const athleteName = new Map((athleteRows || []).map((a: Athlete) => [a.id, a.name]));
+  const nameFor = (m: Media) => (m.athlete_id ? athleteName.get(m.athlete_id) ?? null : null);
 
-  // Photos only. A video's thumbnail is a real still and could serve, but the
-  // hero is a still frame and offering 29 video rows among 73 photos is how the
-  // old selection got noisy.
-  const items: PickableMedia[] = (media || [])
+  // Hero: photos only — the hero is a still frame, and offering the videos
+  // among them is how the old selection got noisy.
+  const heroItems: PickableMedia[] = (media || [])
     .filter((m: Media) => !m.is_video_thumbnail && m.type === "image" && !!m.file_url)
-    .map((m: Media) => ({
-      id: m.id,
-      url: m.file_url,
-      athleteName: m.athlete_id ? athleteName.get(m.athlete_id) ?? null : null,
-      isVideo: false,
-    }));
+    .map((m: Media) => ({ id: m.id, url: m.file_url, athleteName: nameFor(m), isVideo: false }));
+
+  // Gallery: everything with a usable still, videos included via their thumbnail.
+  const galleryItems: PickableMedia[] = (media || []).flatMap((m: Media) => {
+    if (m.is_video_thumbnail) return [];
+    const url = stillFor(m);
+    if (!url) return [];
+    return [{ id: m.id, url, athleteName: nameFor(m), isVideo: m.type === "video" }];
+  });
+
+  const athletes: BuilderAthlete[] = (athleteRows || [])
+    .map((a: Athlete) => ({
+      id: a.id,
+      name: a.name,
+      school: a.school || null,
+      engagements: engagementsOf(a),
+    }))
+    .sort((x: BuilderAthlete, y: BuilderAthlete) => y.engagements - x.engagements);
+
+  // What the data can support, so the Sections list can mark the rest. This
+  // mirrors the guards rather than restating them: a section with nothing in it
+  // stays out whatever the config says.
+  const anyMetrics = (athleteRows || []).some(
+    (a: Athlete) =>
+      engagementRateByImpressions(a.metrics?.ig_feed, "impressions") > 0 ||
+      engagementRateByImpressions(a.metrics?.ig_reel, "views") > 0 ||
+      engagementRateByImpressions(a.metrics?.tiktok, "views") > 0 ||
+      engagementsOf(a) > 0,
+  );
+  const availableSections: SectionId[] = [
+    ...(hasRichText(campaign.settings?.description) ? (["overview"] as SectionId[]) : []),
+    ...(hasRichText(campaign.settings?.key_takeaways) ? (["take"] as SectionId[]) : []),
+    ...(anyMetrics ? (["numbers", "perf"] as SectionId[]) : []),
+    ...(galleryItems.length > 0 ? (["bic"] as SectionId[]) : []),
+    ...((athleteRows || []).length > 0 ? (["roster"] as SectionId[]) : []),
+  ];
 
   const { config } = validateRecapConfig(campaign.recap_config);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10 text-neutral-100">
-      <header className="mb-8 border-b border-neutral-800 pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-orange-500">
-          Recap builder
-        </p>
-        <h1 className="mt-1 text-3xl font-bold">{campaign.name}</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          {campaign.client_name} · {items.length} photos ·{" "}
-          <a
-            className="underline"
-            href={`/recap/${campaign.slug}?v2=1`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            open the recap
-          </a>
+    <main className="mx-auto max-w-6xl px-4 py-8 text-gray-100 sm:px-8">
+      <header className="mb-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-[#D73F09]">Recap builder</p>
+        <h1 className="mt-1 text-3xl font-black uppercase tracking-wide">{campaign.name}</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          {campaign.client_name} · {athletes.length} athletes · {galleryItems.length} assets
         </p>
       </header>
-      <HeroBuilder
+
+      <RecapBuilder
         campaignId={id}
-        items={items}
-        initialSelected={config.hero?.media_ids ?? []}
-        initialFocal={config.hero?.focal ?? {}}
+        slug={campaign.slug}
         initialConfig={config}
+        heroItems={heroItems}
+        galleryItems={galleryItems}
+        athletes={athletes}
+        availableSections={availableSections}
         derived={{
           title: campaign.name,
           brand: campaign.client_name ?? "",
@@ -82,6 +112,7 @@ export default async function RecapBuilderPage({
             .filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
             .join(" — "),
         }}
+        hasLegacyTakeaways={hasRichText(campaign.settings?.key_takeaways)}
       />
     </main>
   );

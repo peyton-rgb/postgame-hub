@@ -67,6 +67,34 @@ export type PerformerOrder = (typeof PERFORMER_ORDERS)[number];
 export const CONTENT_ORDERS = ["manual", "sort_order", "newest"] as const;
 export type ContentOrder = (typeof CONTENT_ORDERS)[number];
 
+/**
+ * The live editor's labels, verbatim.
+ *
+ * A manager moving between /dashboard/[id] and the builder should not have to
+ * learn that "bic" is "Best In Class Content" or that "numbers" is "Campaign
+ * Metrics". These are the strings from SECTION_LABELS in that file.
+ */
+export const SECTION_LABEL_EDITOR = {
+  section: {
+    overview: "Campaign Overview",
+    take: "Key Takeaways",
+    numbers: "Campaign Metrics",
+    perf: "Top Performers",
+    bic: "Best In Class Content",
+    roster: "Campaign Roster",
+  } as Record<SectionId, string>,
+  metric: {
+    headline: "Headline figure",
+    engagements: "Total Engagements",
+    engagement_rate: "Engagement Rate",
+    posts: "Total Posts",
+    impressions: "Total Impressions",
+    athletes: "Athletes",
+    schools: "Colleges",
+    followers: "Total Followers",
+  } as Record<NumberMetric, string>,
+};
+
 export interface SectionConfig {
   key: SectionId;
   visible: boolean;
