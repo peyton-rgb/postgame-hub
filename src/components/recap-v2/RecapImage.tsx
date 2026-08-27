@@ -10,9 +10,10 @@
 //     load and applied to the tile, which is what stops the column reflowing
 //     as images arrive.
 //
-//  2. Supabase's transformer refuses anything over ~25MB, answering
+//  2. Supabase's transformer refuses large SOURCE files, answering
 //     400 InvalidRequest "The source image file is too large to process".
-//     54 rows in the library are over that line, the largest 357MB.
+//     The ceiling is between 22.0MB and 24.2MB, measured — lower than the
+//     25MB usually quoted. Ghost Amp alone has two such photos.
 //
 // On failure this reports up rather than silently retrying the original. That
 // is deliberate: the untransformed file IS the 35MB one, and quietly pulling

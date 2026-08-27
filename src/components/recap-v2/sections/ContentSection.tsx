@@ -29,7 +29,8 @@ const INITIAL = 18;
 
 export function ContentSection({ tiles }: { tiles: GalleryTile[] }) {
   const [expanded, setExpanded] = useState(false);
-  // Assets Supabase refuses to transform (over ~25MB). Counted so the footer
+  // Assets Supabase refuses to transform (source-file ceiling, measured
+  // between 22.0MB and 24.2MB). Counted so the footer
   // can say so instead of the gallery quietly rendering fewer than delivered.
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const h = SECTION_HEADING.bic;
@@ -70,8 +71,7 @@ export function ContentSection({ tiles }: { tiles: GalleryTile[] }) {
         {skipped.size > 0 ? (
           <>
             {" "}
-            {skipped.size} too large to render a preview for — over the ~25MB
-            ceiling Supabase&rsquo;s image transformer will process.
+            {skipped.size} too large for the image transformer to render.
           </>
         ) : null}
       </Foot>
