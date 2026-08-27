@@ -71,15 +71,15 @@
 /* Slow parallax drift on the hero stills. Disabled outright for anyone who
    asks for reduced motion — this runs for the life of the page. */
 [data-recap-v2="root"] .rv-slide {
-  transform: scale(var(--slide-scale, 1.08));
+  transform: scale(var(--slide-scale, 1.02));
   animation: rv-drift 14s linear infinite alternate;
 }
 @keyframes rv-drift {
   from {
-    transform: scale(var(--slide-scale, 1.08)) translate3d(0, 0, 0);
+    transform: scale(var(--slide-scale, 1.02)) translate3d(0, 0, 0);
   }
   to {
-    transform: scale(calc(var(--slide-scale, 1.08) * 1.06)) translate3d(-1.2%, -0.8%, 0);
+    transform: scale(calc(var(--slide-scale, 1.02) * 1.03)) translate3d(-0.8%, -0.5%, 0);
   }
 }
 

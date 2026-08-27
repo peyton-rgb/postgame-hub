@@ -42,9 +42,12 @@ export function HeroCarousel({ images }: { images: string[] }) {
         {live.map((src, i) => (
           <div
             key={src}
-            // Scales alternate slightly so consecutive stills do not drift in
-            // lockstep, which reads as the whole plate sliding.
-            style={{ "--slide-scale": 1.08 + (i % 3) * 0.04 } as React.CSSProperties}
+            // Barely over 1 — just enough to hide the drift's edges. The
+            // reference hand-tunes 1.12-1.20 per image against four stills it
+            // chose; applied generically that crops into faces. Scales still
+            // vary a shade so consecutive stills do not drift in lockstep,
+            // which reads as the whole plate sliding.
+            style={{ "--slide-scale": 1.02 + (i % 3) * 0.01 } as React.CSSProperties}
             className={`rv-slide absolute inset-0 transition-opacity duration-[1400ms] ease-out ${
               i === index ? "opacity-100" : "opacity-0"
             }`}
@@ -53,7 +56,9 @@ export function HeroCarousel({ images }: { images: string[] }) {
               src={src}
               alt=""
               width={1600}
-              className="h-full w-full object-cover"
+              // Upper-centre rather than dead centre: subjects' faces sit
+              // above the midline in almost all of this library.
+              className="h-full w-full object-cover object-[50%_32%]"
               onUnavailable={() => setDead((d) => new Set(d).add(src))}
             />
           </div>

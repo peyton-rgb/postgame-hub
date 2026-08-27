@@ -21,7 +21,7 @@ import {
   type RecapV2Data,
 } from "@/lib/recap-v2/guards";
 import { computeRecapV2Stats } from "@/lib/recap-v2/stats";
-import { transformed } from "./media";
+import { selectHeroStills, stillFor } from "@/lib/recap-v2/hero";
 
 import { ContentSection, type GalleryTile } from "./sections/ContentSection";
 import { HeroSection } from "./sections/HeroSection";
@@ -35,10 +35,13 @@ import { TakeawaysSection } from "./sections/TakeawaysSection";
 
 import type { Athlete, Media } from "@/lib/types";
 
-/** First non-thumbnail image linked to an athlete, for their performer card. */
+/**
+ * The still for an athlete's performer card. Ordered the same way the hero is,
+ * so an explicit editor choice leads here too, and resolved through stillFor
+ * so a video contributes its thumbnail rather than a .MOV an <img> cannot show.
+ */
 function firstImage(items: Media[] | undefined): string | null {
-  const hit = (items || []).find((m) => !m.is_video_thumbnail && !!m.file_url);
-  return hit?.file_url || null;
+  return selectHeroStills(items || [], 1)[0]?.url ?? null;
 }
 
 export function RecapV2(data: RecapV2Data) {
@@ -52,12 +55,12 @@ export function RecapV2(data: RecapV2Data) {
   const athleteById = new Map(allAthletes.map((a) => [a.id, a] as const));
 
   // ── Hero ────────────────────────────────────────────────────────────────
-  // Four stills at most; the carousel cross-fades between them. Transformed
-  // at 1600 because these are full-bleed and the originals run to 357MB.
-  const heroImages = gallery
-    .slice(0, 4)
-    .map((m) => transformed(m.file_url, 1600))
-    .filter(Boolean);
+  // Ordered, not "the first four rows we happened to read". See
+  // lib/recap-v2/hero.ts: an explicit editor selection wins outright, and
+  // absent one it is is_hero, then sort_order, then created_at. Videos
+  // contribute their thumbnail or are skipped — 21.8% of media rows are
+  // videos, and feeding those to an <img> is why stills were disappearing.
+  const heroImages = selectHeroStills(gallery, 4).map((h) => h.url);
 
   // ── Performers ──────────────────────────────────────────────────────────
   const withMetrics = athletesWithMetrics(allAthletes);
@@ -91,16 +94,20 @@ export function RecapV2(data: RecapV2Data) {
   for (const [key, items] of Object.entries(media || {})) {
     for (const m of items || []) if (!ownerOf.has(m.id)) ownerOf.set(m.id, key);
   }
-  const tiles: GalleryTile[] = gallery.map((m) => {
+  const tiles: GalleryTile[] = gallery.flatMap((m) => {
+    // Same rule as the hero: a video shows its thumbnail, and one without a
+    // thumbnail has no still to show, so it is not a tile.
+    const url = stillFor(m);
+    if (!url) return [];
     const owner = athleteById.get(ownerOf.get(m.id) || "");
-    return {
+    return [{
       id: m.id,
-      url: m.file_url,
+      url,
       athleteName: owner?.name ?? null,
       school: owner?.school ?? null,
       handle: owner?.ig_handle ?? null,
       postUrl: owner?.metrics?.ig_reel?.post_url || owner?.metrics?.ig_feed?.post_url || owner?.post_url || null,
-    };
+    }];
   });
 
   // ── Roster ──────────────────────────────────────────────────────────────
