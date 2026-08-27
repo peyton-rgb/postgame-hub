@@ -84,9 +84,9 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
 
   return (
     <Section id="numbers">
-      <SectionHead kicker={h.kicker} title={h.title} />
+      <SectionHead kicker={h.kicker} title={h.title} tight />
 
-      <div className="grid grid-cols-1 items-center gap-11 border-b border-[color:var(--rv-line)] pb-[var(--s4)] min-[1001px]:grid-cols-[0.85fr_1fr] min-[1001px]:gap-[var(--s5)]">
+      <div className="grid grid-cols-1 items-center gap-8 border-b border-[color:var(--rv-line)] pb-[var(--s3)] min-[1001px]:grid-cols-[0.85fr_1fr] min-[1001px]:gap-[var(--s4)]">
         <div data-slot="nbig" data-value={headline.value}>
           <Stat className="block text-[clamp(80px,9vw,140px)] leading-[0.9]">
             {fmt(headline.value)}
@@ -101,7 +101,7 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
             <div
               key={r.key}
               data-row={r.key}
-              className={`flex items-baseline justify-between gap-[26px] py-[17px] ${
+              className={`flex items-baseline justify-between gap-[26px] py-[13px] ${
                 i === rows.length - 1 ? "" : "border-b border-[color:var(--rv-soft)]"
               }`}
             >
@@ -128,15 +128,15 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
       </div>
 
       {platforms.length > 0 ? (
-        <div className="mt-[var(--s4)] grid grid-cols-1 items-center gap-11 border-t border-[color:var(--rv-line)] pt-[var(--s4)] min-[1001px]:grid-cols-[340px_1fr] min-[1001px]:gap-[var(--s5)]">
+        <div className="mt-[var(--s3)] grid grid-cols-1 items-center gap-8 border-t border-[color:var(--rv-line)] pt-[var(--s3)] min-[1001px]:grid-cols-[260px_1fr] min-[1001px]:gap-[var(--s4)]">
           {/* A single-platform campaign draws one full ring. Correct, not a bug. */}
           <div
-            className="relative mx-auto h-[300px] w-[300px]"
+            className="relative mx-auto h-[240px] w-[240px]"
             data-slot="donut"
             data-arcs={platforms.length}
             data-total={Math.round(volume.totalImpressions)}
           >
-            <svg viewBox="0 0 200 200" width="300" height="300" className="-rotate-90" aria-hidden="true">
+            <svg viewBox="0 0 200 200" width="240" height="240" className="-rotate-90" aria-hidden="true">
               <circle cx="100" cy="100" r={R} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="22" />
               {arcs.map(({ p, length, offset }) => (
                 <circle
@@ -153,7 +153,7 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
               ))}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <Stat className="text-[44px] leading-none">{fmt(volume.totalImpressions)}</Stat>
+              <Stat className="text-[36px] leading-none">{fmt(volume.totalImpressions)}</Stat>
               <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.18em] text-[color:var(--rv-dim2)]">
                 Total impressions
               </p>
@@ -165,12 +165,12 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
               <li
                 key={p.platform}
                 data-platform={p.platform}
-                className={`flex items-center gap-5 py-5 ${
+                className={`flex items-center gap-5 py-[14px] ${
                   i === platforms.length - 1 ? "" : "border-b border-[color:var(--rv-soft)]"
                 }`}
               >
                 <span
-                  className="h-11 w-3 flex-none rounded-[3px]"
+                  className="h-9 w-3 flex-none rounded-[3px]"
                   style={{ background: SLICE_COLOR[p.platform] }}
                   aria-hidden="true"
                 />
@@ -183,7 +183,7 @@ export function NumbersSection({ stats }: { stats: RecapV2Stats }) {
                   </p>
                 </div>
                 <div className="ml-auto text-right">
-                  <Stat className="block text-[38px] leading-none">{fmt(p.impressions)}</Stat>
+                  <Stat className="block text-[30px] leading-none">{fmt(p.impressions)}</Stat>
                   <p className="mt-[6px] font-mono text-[12px] tracking-[0.1em] text-[color:var(--rv-dim)]">
                     {p.share.toFixed(1)}% of impressions
                     {/* Stories have no rate — never a misleading 0%. */}
