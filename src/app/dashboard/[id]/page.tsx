@@ -1176,6 +1176,21 @@ export default function CampaignEditor() {
     [selectedAthletes, collabAthleteIds, hasSoloPost],
   );
 
+  // Top Performers for the Content Upload strip — ranked by engagement rate or
+  // impressions (toggle), top 8, matching the recap's own ranking. An athlete
+  // whose top post is a collab is folded into that collab entry. Declared here,
+  // above the readiness check, because that check reads it — and memoised so
+  // the issues useMemo has a stable dependency.
+  const topPerformers = useMemo(
+    () =>
+      (topPerfRank === "engagement" ? getTopPerformers : getTopPerformersByImpressions)(
+        selectedAthletes,
+        collabGroups,
+        8,
+      ),
+    [topPerfRank, selectedAthletes, collabGroups],
+  );
+
   // THE single completeness check. Nothing else in this file may count what is
   // outstanding — read this list instead. computeBlockingCards is reused via
   // blockingVideoCards rather than reimplemented here.
@@ -1197,13 +1212,20 @@ export default function CampaignEditor() {
         anchorId: "step-description",
       });
     }
-    for (const a of coverPhotoAthletes) {
-      if ((media[a.id]?.length ?? 0) > 0) continue;
+    // Only Top Performers get a hero card on the public recap, so only they
+    // need a cover. Everyone else renders fine without one.
+    for (const e of topPerformers) {
+      if ((media[e.id]?.length ?? 0) > 0) continue;
+      const label = e.kind === "collab"
+        ? (e.athleteNames?.slice(0, 2).join(" + ") || "Collab")
+        : (e.name?.trim() || "Unnamed athlete");
       out.push({
         step: 4,
-        title: `${a.name?.trim() || "Unnamed athlete"} has no cover`,
-        detail: "Every athlete card needs at least one photo or video.",
-        anchorId: `upload-athlete-${a.id}`,
+        title: `${label} — no cover photo selected`,
+        detail: "Top performers show a hero card on the recap. Pick a cover.",
+        anchorId: e.kind === "collab"
+          ? `upload-collab-${e.id}`
+          : `upload-athlete-${e.id}`,
       });
     }
     for (const c of blockingVideoCards) {
@@ -1215,7 +1237,7 @@ export default function CampaignEditor() {
       });
     }
     return out;
-  }, [athletes, description, coverPhotoAthletes, media, blockingVideoCards]);
+  }, [athletes, description, topPerformers, media, blockingVideoCards]);
 
   // Has anything been entered on this step yet? Distinguishes "nothing here
   // yet" (grey, Not started) from "started and still wrong" (dark orange).
@@ -2532,15 +2554,8 @@ export default function CampaignEditor() {
 
   // selectedAthletes / coverPhotoAthletes are memos now — see the Readiness
   // block above, which needs them before the preview screen returns early.
+  // topPerformers moved up there too — the readiness check reads it.
 
-  // Top Performers for the Content Upload strip — ranked by engagement rate or
-  // impressions (toggle), top 8, matching the recap's own ranking. An athlete
-  // whose top post is a collab is folded into that collab entry.
-  const topPerformers = (topPerfRank === "engagement" ? getTopPerformers : getTopPerformersByImpressions)(
-    selectedAthletes,
-    collabGroups,
-    8,
-  );
   const topPerformerCards = topPerformers.map((e, i) => {
     const items = media[e.id] || [];
     const firstImage = items.find((m) => m.type === "image" || m.type !== "video");
