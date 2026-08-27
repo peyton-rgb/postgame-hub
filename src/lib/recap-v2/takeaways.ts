@@ -66,6 +66,38 @@ function escapeHtml(s: string): string {
 }
 
 /**
+ * Drop a bullet character the author typed by hand.
+ *
+ * Several plain-text campaigns write their takeaways one point per line, using
+ * a marker they typed themselves — "- Postgame utilised ...", and three
+ * campaigns using a space-less "*Successfully contracted 16 athletes ...". The
+ * marker is intent, not content: the line becomes its own paragraph either
+ * way, and leaving a literal "-" or "*" at the head of a client-facing
+ * sentence is worse than removing it.
+ *
+ * Two forms, and the guards on each matter:
+ *
+ *   marker + whitespace   The space is what keeps "-5% change" and
+ *                         "*terms apply" intact.
+ *   bare * or bullet      Only when it is the ONLY one on the line, because a
+ *                         matched pair is emphasis ("*terms apply*") whereas a
+ *                         single leading one cannot be. Hyphen is excluded
+ *                         here — a space-less leading "-" is far more likely a
+ *                         negative number than a bullet.
+ *
+ * A line that is nothing but a marker is left alone; stripping it would leave
+ * an empty paragraph.
+ */
+function stripLeadingBullet(line: string): string {
+  let out = line.replace(/^[-*\u2022\u2013\u2014]\s+/, "");
+  if (out === line && /^[*\u2022]/.test(line)) {
+    const markers = (line.match(/[*\u2022]/g) || []).length;
+    if (markers === 1) out = line.slice(1).trimStart();
+  }
+  return out.trim().length > 0 ? out : line;
+}
+
+/**
  * Plain text to paragraphs. Split on blank lines, and on single newlines only
  * when the text uses them as its paragraph break (i.e. there are no blank
  * lines at all). Never on sentence boundaries.
@@ -77,7 +109,7 @@ function proseToParagraphs(text: string): string {
     ? trimmed.split(/\n\s*\n/)
     : trimmed.split(/\n/);
   return parts
-    .map((p) => p.trim())
+    .map((p) => stripLeadingBullet(p.trim()))
     .filter(Boolean)
     .map((p) => `<p>${escapeHtml(p)}</p>`)
     .join("");
