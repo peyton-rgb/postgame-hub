@@ -7,7 +7,9 @@
 // is how the current recap ended up with hero photos nobody checked.
 import { useEffect, useRef, useState } from "react";
 import { MediaPicker, type PickableMedia } from "./MediaPicker";
-import { HERO_PREVIEW_WIDTH, heroPreview } from "@/components/recap-v2/media";
+import { heroPreview } from "@/components/recap-v2/media";
+import { CropControls, paneShift } from "./CropControls";
+import { FOCAL_DEFAULTS, type FocalPoint } from "@/lib/recap-v2/config";
 
 /** The reference design shows at most four stills before it repeats. */
 const HERO_MAX = 4;
@@ -16,12 +18,22 @@ export function HeroBuilder({
   campaignId,
   items,
   initialSelected,
+  initialFocal,
+  campaignTitle,
+  clientName,
 }: {
   campaignId: string;
   items: PickableMedia[];
   initialSelected: string[];
+  initialFocal: Record<string, FocalPoint>;
+  campaignTitle: string;
+  clientName: string | null;
 }) {
   const [selected, setSelected] = useState<string[]>(initialSelected);
+  const [focal, setFocal] = useState<Record<string, FocalPoint>>(initialFocal);
+  // Which selected still the crop controls are pointed at. Framing is
+  // per-photo, so there has to be a current one.
+  const [activeId, setActiveId] = useState<string | null>(initialSelected[0] ?? null);
 
   // Warm the picker's thumbnails once per open. Supabase generates each
   // derivative from the original on first request, so without this the first
@@ -43,6 +55,17 @@ export function HeroBuilder({
   const byId = new Map(items.map((m) => [m.id, m] as const));
   const chosen = selected.map((id) => byId.get(id)).filter((m): m is PickableMedia => !!m);
 
+  // Keep the active still valid as the selection changes, and drop framing for
+  // anything deselected so a stale crop cannot resurface if it is re-added.
+  const handleSelection = (next: string[]) => {
+    setSelected(next);
+    setFocal((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => next.includes(id))));
+    setActiveId((cur) => (cur && next.includes(cur) ? cur : next[next.length - 1] ?? null));
+  };
+
+  const active = activeId ? byId.get(activeId) ?? null : null;
+  const activeFocal = (activeId ? focal[activeId] : undefined) ?? FOCAL_DEFAULTS;
+
   return (
     <div className="space-y-8">
       <section>
@@ -53,46 +76,63 @@ export function HeroBuilder({
           Click to select. The number is the order they appear in. Videos are not
           offered here — the hero is a still frame.
         </p>
-        <MediaPicker items={items} selected={selected} onChange={setSelected} max={HERO_MAX} />
+        <MediaPicker items={items} selected={selected} onChange={handleSelection} max={HERO_MAX} />
       </section>
 
-      <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-neutral-300">
-          Preview
-        </h2>
-        <p className="mb-4 text-xs text-neutral-500">
-          Rendered at {HERO_PREVIEW_WIDTH}px, the width the recap requests.
+      {chosen.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-neutral-700 p-8 text-center text-sm text-neutral-500">
+          Nothing selected. The recap will fall back to its derived order —
+          is_hero first, then sort_order, then upload date.
         </p>
-        {chosen.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-neutral-700 p-8 text-center text-sm text-neutral-500">
-            Nothing selected. The recap will fall back to its derived order —
-            is_hero first, then sort_order, then upload date.
-          </p>
-        ) : (
-          <ol className="grid list-none grid-cols-1 gap-4 sm:grid-cols-2">
-            {chosen.map((m, i) => (
-              <li key={m.id} className="relative overflow-hidden rounded-lg border border-neutral-700">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={heroPreview(m.url)}
-                  alt=""
-                  className="block aspect-[16/9] w-full bg-neutral-900 object-cover"
-                />
-                <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
-                  {i + 1}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+      ) : (
+        <>
+          <section>
+            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-neutral-300">
+              Framing
+            </h2>
+            <p className="mb-4 text-xs text-neutral-500">
+              Each still is framed separately. Pick one below to adjust it.
+            </p>
+            {/* Which still the controls act on. */}
+            <ol className="mb-4 flex list-none flex-wrap gap-2">
+              {chosen.map((m, i) => (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(m.id)}
+                    aria-pressed={m.id === activeId}
+                    className={`relative h-14 w-14 overflow-hidden rounded border-2 ${
+                      m.id === activeId ? "border-white" : "border-neutral-700 hover:border-neutral-500"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={heroPreview(m.url)} alt="" className="h-full w-full object-cover" />
+                    <span className="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded bg-orange-500 text-[9px] font-bold text-white">
+                      {i + 1}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+            {active ? (
+              <CropControls
+                url={active.url}
+                focal={activeFocal}
+                onChange={(next) => setFocal((prev) => ({ ...prev, [active.id]: next }))}
+                title={campaignTitle}
+                kicker={clientName}
+              />
+            ) : null}
+          </section>
+        </>
+      )}
 
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-neutral-300">
           recap_config.hero
         </h2>
         <pre className="overflow-x-auto rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-xs text-neutral-300">
-{JSON.stringify({ media_ids: selected, focal: {} }, null, 2)}
+{JSON.stringify({ media_ids: selected, focal }, null, 2)}
         </pre>
         <p className="mt-2 text-xs text-amber-400">
           Not saved yet — writing needs the cache-invalidation decision settled

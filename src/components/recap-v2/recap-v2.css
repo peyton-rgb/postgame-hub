@@ -44,28 +44,53 @@
 }
 
 /* ── Hero ────────────────────────────────────────────────────────────────
-   A solid black column behind the copy easing out across the middle third,
-   plus a top-and-bottom vignette. Seven stops on one axis and four on the
-   other; expressing this as utilities would be strictly worse to read. */
-[data-recap-v2="root"] .rv-shade {
+   The photo sits in a right-hand PANE and the copy sits in solid black to its
+   left, with a horizontal gradient running between them. Not a full-bleed
+   photo under an overlay — that forces every still into the frame's aspect
+   ratio, which is why the earlier hero could not use a portrait photo at all.
+   A portrait shot fills the pane's width and is panned vertically instead.
+
+   --fade is where the gradient reaches zero, as a percentage of frame width.
+   It is per-photo: a busy left edge needs the black to run further across than
+   a clean one does. 45-92 is the usable range. */
+[data-recap-v2="root"] .rv-hero-pane {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 62%;
+  overflow: hidden;
+}
+[data-recap-v2="root"] .rv-hero-grad {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
   background:
     linear-gradient(
       90deg,
-      rgba(7, 7, 10, 1) 0%,
-      rgba(7, 7, 10, 0.99) 26%,
-      rgba(7, 7, 10, 0.9) 38%,
-      rgba(7, 7, 10, 0.62) 48%,
-      rgba(7, 7, 10, 0.28) 60%,
-      rgba(7, 7, 10, 0.06) 72%,
-      rgba(7, 7, 10, 0) 82%
+      #07070a 0%,
+      rgba(7, 7, 10, 0.98) 20%,
+      rgba(7, 7, 10, 0.72) 40%,
+      rgba(7, 7, 10, 0.3) calc(var(--fade, 76%) * 0.82),
+      rgba(7, 7, 10, 0) var(--fade, 76%)
     ),
-    linear-gradient(
+    linear-gradient(180deg, rgba(7, 7, 10, 0.5) 0%, rgba(7, 7, 10, 0) 30%);
+}
+
+/* Below the break there is no room for two columns: the photo fills the frame
+   and the gradient turns vertical so the copy still has ground under it. */
+@media (max-width: 1000px) {
+  [data-recap-v2="root"] .rv-hero-pane {
+    width: 100%;
+  }
+  [data-recap-v2="root"] .rv-hero-grad {
+    background: linear-gradient(
       180deg,
-      rgba(7, 7, 10, 0.5) 0%,
-      rgba(7, 7, 10, 0) 20%,
-      rgba(7, 7, 10, 0) 62%,
-      rgba(7, 7, 10, 0.95) 100%
+      rgba(7, 7, 10, 0.55) 0%,
+      rgba(7, 7, 10, 0) 34%,
+      rgba(7, 7, 10, 0.9) 100%
     );
+  }
 }
 
 /* Slow parallax drift on the hero stills. Disabled outright for anyone who

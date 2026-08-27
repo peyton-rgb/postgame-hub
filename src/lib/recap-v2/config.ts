@@ -79,12 +79,32 @@ export interface SectionConfig {
   order: number;
 }
 
-/** Per-still crop. x/y are percentages (object-position); scale is a factor. */
+/**
+ * Per-still framing. Four values, because the hero puts the photo in a
+ * right-hand pane against a horizontal fade rather than full-bleed behind an
+ * overlay — which is what lets a portrait photo work inside a 16:9 frame.
+ *
+ *   x     0-100   ACROSS. Slides the photo PANE within the frame, as
+ *                 translateX((x - 100) * 0.42)%. It does NOT pan the image:
+ *                 a portrait photo fills the pane's width, so there is no
+ *                 horizontal overflow to pan and object-position X stays at
+ *                 50%. Moving the pane is the only thing that has an effect.
+ *   y     0-100   UP/DOWN. Pans the image inside the pane, as the Y of
+ *                 object-position. This is where the overflow actually is.
+ *   scale 1-2     ZOOM, a transform on the image.
+ *   fade  45-92   Where the horizontal gradient reaches zero, as a percentage
+ *                 of frame width. Below 45 the copy loses its ground; above 92
+ *                 the photo is swallowed.
+ */
 export interface FocalPoint {
   x: number;
   y: number;
   scale: number;
+  fade: number;
 }
+
+/** What an unset control means — the mockup's slider defaults. */
+export const FOCAL_DEFAULTS: FocalPoint = { x: 50, y: 34, scale: 1, fade: 76 };
 
 export interface HeroConfig {
   media_ids: string[];
@@ -236,10 +256,13 @@ function validateHero(v: unknown, issues: string[]): HeroConfig | undefined {
           issues.push(`hero.focal[${id}]: not in media_ids — dropped`);
           continue;
         }
-        const x = isFiniteNum(raw.x) ? clamp(raw.x, 0, 100) : 50;
-        const y = isFiniteNum(raw.y) ? clamp(raw.y, 0, 100) : 50;
-        const scale = isFiniteNum(raw.scale) ? clamp(raw.scale, 1, 3) : 1;
-        focal[id] = { x, y, scale };
+        const x = isFiniteNum(raw.x) ? clamp(raw.x, 0, 100) : FOCAL_DEFAULTS.x;
+        const y = isFiniteNum(raw.y) ? clamp(raw.y, 0, 100) : FOCAL_DEFAULTS.y;
+        const scale = isFiniteNum(raw.scale) ? clamp(raw.scale, 1, 2) : FOCAL_DEFAULTS.scale;
+        // 45-92 is the usable range of the gradient, not a UI preference: the
+        // copy needs ground on the left and the photo needs air on the right.
+        const fade = isFiniteNum(raw.fade) ? clamp(raw.fade, 45, 92) : FOCAL_DEFAULTS.fade;
+        focal[id] = { x, y, scale, fade };
       }
     }
   }

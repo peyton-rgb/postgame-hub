@@ -73,6 +73,9 @@ export default async function RecapBuilderPage({
         campaignId={id}
         items={items}
         initialSelected={config.hero?.media_ids ?? []}
+        initialFocal={config.hero?.focal ?? {}}
+        campaignTitle={config.display_name ?? campaign.name}
+        clientName={campaign.client_name ?? null}
       />
     </main>
   );

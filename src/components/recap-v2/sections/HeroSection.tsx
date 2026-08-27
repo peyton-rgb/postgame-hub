@@ -42,13 +42,18 @@ export function HeroSection({
       data-recap-v2="hero"
       className="relative flex min-h-screen items-end overflow-hidden"
     >
+      {/* Pane, photo and gradient all live in the carousel — the pane's
+          transform and the gradient's --fade follow the current still. */}
       <HeroCarousel slides={slides} />
-      <div className="rv-shade pointer-events-none absolute inset-0" aria-hidden="true" />
 
       {/* Top padding clears the fixed nav — without it the brand mark sits
           underneath it on short viewports. */}
       <div className="relative z-[3] w-full px-[var(--gutter)] pb-[56px] pt-[calc(var(--nav-h)+var(--s4))] min-[1001px]:pb-[96px]">
-        <div className="max-w-[1120px]">
+        {/* The copy sits in the black to the left of the pane. 56% mirrors the
+            pane's 62% with a little overlap, so a descender never lands on the
+            photo's edge. Full width below the break, where the gradient turns
+            vertical and the photo fills the frame. */}
+        <div className="max-w-[1120px] min-[1001px]:max-w-[56%]">
           {s.brand_logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
