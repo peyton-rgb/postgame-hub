@@ -7,7 +7,7 @@
 // is how the current recap ended up with hero photos nobody checked.
 import { useEffect, useRef, useState } from "react";
 import { MediaPicker, type PickableMedia } from "./MediaPicker";
-import { heroPreview } from "@/components/recap-v2/media";
+import { pickerThumb } from "@/components/recap-v2/media";
 import { CropControls } from "./CropControls";
 import {
   FOCAL_DEFAULTS,
@@ -181,7 +181,7 @@ export function HeroBuilder({
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={heroPreview(m.url)} alt="" className="h-full w-full object-cover" />
+                    <img src={pickerThumb(m.url)} alt="" className="h-full w-full object-cover" />
                     <span className="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded bg-orange-500 text-[9px] font-bold text-white">
                       {i + 1}
                     </span>

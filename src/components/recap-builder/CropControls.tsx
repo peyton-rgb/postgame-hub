@@ -16,7 +16,7 @@
 //   Fade     where the horizontal gradient reaches zero. A busy left edge
 //            needs the black to run further across than a clean one.
 import { FOCAL_DEFAULTS, type FocalPoint } from "@/lib/recap-v2/config";
-import { heroPreview } from "@/components/recap-v2/media";
+import { displayImage } from "@/components/recap-v2/media";
 // The backdrop sizing and its edge mask live in one unscoped class shared with
 // the page, so the preview cannot show a framing the published page will not.
 import "@/components/recap-v2/recap-v2.css";
@@ -96,7 +96,7 @@ export function CropControls({
         <div className="absolute inset-0 z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={heroPreview(url)}
+            src={displayImage(url)}
             alt=""
             className="rv-backdrop-img transition-transform duration-100"
             style={{ transform: backdropTransform(focal) }}

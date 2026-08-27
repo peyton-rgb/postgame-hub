@@ -64,7 +64,6 @@ export function ContentSection({ cards }: { cards: GalleryCard[] }) {
               <RecapImage
                 src={c.coverUrl}
                 alt={`${c.name} — campaign content`}
-                width={900}
                 className="h-full w-full object-cover"
                 onUnavailable={() =>
                   setSkipped((s) => (s.has(c.athleteId) ? s : new Set(s).add(c.athleteId)))

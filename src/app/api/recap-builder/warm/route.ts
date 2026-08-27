@@ -10,15 +10,18 @@
 // response, so nothing blocks on it; every subsequent view is served from
 // Supabase's cache.
 //
-// It warms the PICKER set only. The hero-preview set is needed for at most four
-// images and warms itself the moment one is selected, so paying for 73 of them
-// here would be waste.
+// It warms BOTH sets, and the second one is the point. There are only two now
+// — PICKER 320 for the builder's grid, DISPLAY 1600 for everything the recap
+// renders — and DISPLAY is what a client's first view of a finished recap
+// asks for. Warming only the builder's own grid left the page cold, which is
+// the whole reason the five sets were collapsed to two.
 //
-// URLs come from pickerThumb() rather than being assembled here, because a
-// warmer that builds its own URL warms a cache entry nothing reads.
+// URLs come from pickerThumb() and displayImage() rather than being assembled
+// here, because a warmer that builds its own URL warms a cache entry nothing
+// reads.
 import { NextResponse } from "next/server";
 import { createPlainSupabase } from "@/lib/supabase";
-import { pickerThumb } from "@/components/recap-v2/media";
+import { displayImage, pickerThumb } from "@/components/recap-v2/media";
 import type { Media } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -46,17 +49,23 @@ export async function POST(req: Request) {
     .select("id, type, file_url, is_video_thumbnail")
     .eq("campaign_id", campaignId);
 
-  const urls = (media || [])
-    .filter((m: Partial<Media>) => !m.is_video_thumbnail && m.type === "image" && !!m.file_url)
-    .map((m: Partial<Media>) => pickerThumb(m.file_url))
-    .filter(Boolean);
+  const photos = (media || []).filter(
+    (m: Partial<Media>) => !m.is_video_thumbnail && m.type === "image" && !!m.file_url,
+  );
+  // Display first: the grid the person who triggered this is already looking at
+  // will fill in on its own, but nothing else pre-warms what a client sees.
+  const urls = [
+    ...photos.map((m: Partial<Media>) => displayImage(m.file_url)),
+    ...photos.map((m: Partial<Media>) => pickerThumb(m.file_url)),
+  ].filter(Boolean);
 
   const started = Date.now();
   let warmed = 0;
   let failed = 0;
   let skipped = 0;
 
-  const queue = [...urls];
+  // pop() takes from the end, so reverse to keep display-first ordering.
+  const queue = [...urls].reverse();
   async function worker() {
     for (;;) {
       const url = queue.pop();
@@ -87,6 +96,7 @@ export async function POST(req: Request) {
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker));
 
   return NextResponse.json({
+    photos: photos.length,
     total: urls.length,
     warmed,
     failed,

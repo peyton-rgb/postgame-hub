@@ -23,23 +23,42 @@
 // previewed at all, which is why the picker says so at selection time rather
 // than letting the slide vanish at render.
 
-// ── The parameter sets ──────────────────────────────────────────────────────
+// ── The parameter sets: there are TWO, and that is the point ────────────────
 //
-// Supabase caches a transform per EXACT parameter set. width=320&quality=70 and
-// width=320&quality=72 are two different cache entries, each regenerated from
-// the original the first time it is asked for — which is why a campaign's first
-// view is slow enough to look broken. So there are exactly two sets here and
-// every caller goes through the helpers below; nothing builds a transform URL
-// by hand. Changing a number invalidates every cached derivative for the whole
-// library, so treat these as settled, not as tuning knobs.
+// Supabase caches a transform per EXACT parameter set and generates each one
+// from the original — 5-31MB on Ghost Amp — the first time it is asked for.
+// Cold is ~750ms per image against ~130ms warm, so a set nobody has warmed
+// makes a whole campaign look broken on first view.
+//
+// There used to be five sets: builder 320 and 1280, page 720, 900 and 1600.
+// Five separate cache entries per photo, and warming the builder warmed none
+// of what a client actually sees. Now there are two, shared by the builder and
+// the page, so warming a campaign once covers both:
+//
+//   PICKER   320  the builder's selection grid, and nothing else. ~24KB.
+//   DISPLAY  1600 every image the recap renders — hero backdrop, gallery
+//                 tiles, performer cards — and the builder's hero preview,
+//                 which is showing the page's own hero back to you.
+//
+// DISPLAY is 1600 rather than the builder's old 1280 deliberately. The hero
+// backdrop is sized by height and overspills: on a 1440 viewport it renders
+// past 2100px wide, so it is already being upscaled from 1600. Dropping to
+// 1280 would have taken that from 1.3x to 1.7x on the largest, most prominent
+// image on the page. Sharing the set was the requirement; the value only had
+// to be one both surfaces could live with. One constant to change if the
+// weight matters more than the sharpness.
+//
+// Some elements are now over-served — a gallery tile renders around 330px and
+// gets a 1600 source. That is the trade: a bigger download for an image that
+// is already warm, instead of a smaller one that is not.
 
-/** Grid thumbnails in the builder's picker. 24KB average across Ghost Amp. */
+/** The builder's selection grid. Small and cheap; the page never uses it. */
 export const PICKER_WIDTH = 320;
 export const PICKER_QUALITY = 70;
 
-/** Hero preview in the builder. 1280x854 at 127KB on a 22MB original. */
-export const HERO_PREVIEW_WIDTH = 1280;
-export const HERO_PREVIEW_QUALITY = 78;
+/** Everything the recap renders, and the builder's preview of it. */
+export const DISPLAY_WIDTH = 1600;
+export const DISPLAY_QUALITY = 78;
 
 // resize=contain is kept deliberately. It is what the recap page has always
 // sent, and dropping it would silently switch the transformer to its `cover`
@@ -55,12 +74,17 @@ export function transformed(
   return `${url.replace("/object/public/", "/render/image/public/")}?width=${width}&quality=${quality}&resize=contain`;
 }
 
-/** The picker's grid URL: small and cheap. */
+/** The builder's grid URL. */
 export function pickerThumb(url: string | null | undefined): string {
   return transformed(url, PICKER_WIDTH, PICKER_QUALITY);
 }
 
-/** The builder's hero preview URL. */
-export function heroPreview(url: string | null | undefined): string {
-  return transformed(url, HERO_PREVIEW_WIDTH, HERO_PREVIEW_QUALITY);
+/**
+ * Every rendered image, on the page and in the builder's preview.
+ *
+ * There is no width argument on purpose. A caller that could pass its own
+ * would quietly mint a sixth cache entry, which is how there came to be five.
+ */
+export function displayImage(url: string | null | undefined): string {
+  return transformed(url, DISPLAY_WIDTH, DISPLAY_QUALITY);
 }

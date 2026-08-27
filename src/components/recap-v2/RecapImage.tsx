@@ -21,12 +21,11 @@
 // tile — especially on a phone. The caller decides what to do with the gap;
 // both current callers drop the image and say how many were skipped.
 import { useState } from "react";
-import { transformed } from "./media";
+import { displayImage } from "./media";
 
 export function RecapImage({
   src,
   alt,
-  width,
   className = "",
   style,
   onRatio,
@@ -34,7 +33,6 @@ export function RecapImage({
 }: {
   src: string;
   alt: string;
-  width: number;
   className?: string;
   style?: React.CSSProperties;
   onRatio?: (ratio: number) => void;
@@ -46,7 +44,7 @@ export function RecapImage({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={transformed(src, width)}
+      src={displayImage(src)}
       alt={alt}
       loading="lazy"
       decoding="async"

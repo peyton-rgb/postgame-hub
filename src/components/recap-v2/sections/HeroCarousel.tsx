@@ -55,7 +55,6 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               key={sl.id}
               src={sl.url}
               alt=""
-              width={1600}
               className={`rv-backdrop-img transition-[opacity,transform] duration-[900ms] ease-out ${
                 i === index ? "opacity-100" : "opacity-0"
               }`}

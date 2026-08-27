@@ -18,7 +18,7 @@ import { SECTION_HEADING } from "@/lib/recap-v2/guards";
 import { RATE_LABEL, formatRate } from "@/lib/recap-v2/stats";
 import { fmt } from "@/lib/recap-helpers";
 import { Foot, Section, SectionHead, Stat } from "../ui";
-import { transformed } from "../media";
+import { displayImage } from "../media";
 
 export interface PerformerCard {
   id: string;
@@ -94,7 +94,7 @@ export function PerformersSection({ byEngagements, byViews }: {
                 className="rv-vignette group relative flex aspect-[9/16] flex-col justify-end overflow-hidden rounded-[22px] bg-white/[0.04] bg-cover bg-[center_12%] text-inherit no-underline transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)] hover:-translate-y-1"
                 style={
                   c.imageUrl
-                    ? { backgroundImage: `url(${transformed(c.imageUrl, 720)})` }
+                    ? { backgroundImage: `url(${displayImage(c.imageUrl)})` }
                     : undefined
                 }
               >
