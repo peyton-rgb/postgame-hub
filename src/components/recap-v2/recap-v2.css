@@ -1,0 +1,130 @@
+/* ============================================================
+   Recap v2 — design tokens and the few rules Tailwind is clumsy at.
+
+   Everything here is scoped under [data-recap-v2="root"] so none of it leaks
+   into the 30-odd other surfaces this app renders. Layout, spacing and colour
+   are done with Tailwind utilities that read these variables via arbitrary
+   values; what lives in this file is limited to the multi-stop gradients, the
+   keyframes, and the hover states that would be unreadable inline.
+   ============================================================ */
+
+[data-recap-v2="root"] {
+  /* Spacing scale, straight from the design reference. */
+  --s1: 16px;
+  --s2: 24px;
+  --s3: 36px;
+  --s4: 56px;
+  --s5: 80px;
+  --s6: 132px;
+  --nav-h: 61px;
+
+  --rv-black: #07070a;
+  --rv-orange: #d73f09;
+  --rv-white: #faf8f5;
+  --rv-dim: #8c8a87;
+  --rv-dim2: #55534f;
+  --rv-line: rgba(255, 255, 255, 0.1);
+  --rv-soft: rgba(255, 255, 255, 0.055);
+
+  /* The page gutter: 72px minimum, but centring a 1400px column once the
+     viewport is wider than that. */
+  --gutter: max(72px, calc((100vw - 1400px) / 2));
+
+  background: var(--rv-black);
+  color: var(--rv-white);
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 1000px) {
+  [data-recap-v2="root"] {
+    --gutter: 22px;
+    --s6: var(--s5);
+  }
+}
+
+/* ── Hero ────────────────────────────────────────────────────────────────
+   A solid black column behind the copy easing out across the middle third,
+   plus a top-and-bottom vignette. Seven stops on one axis and four on the
+   other; expressing this as utilities would be strictly worse to read. */
+[data-recap-v2="root"] .rv-shade {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(7, 7, 10, 1) 0%,
+      rgba(7, 7, 10, 0.99) 26%,
+      rgba(7, 7, 10, 0.9) 38%,
+      rgba(7, 7, 10, 0.62) 48%,
+      rgba(7, 7, 10, 0.28) 60%,
+      rgba(7, 7, 10, 0.06) 72%,
+      rgba(7, 7, 10, 0) 82%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(7, 7, 10, 0.5) 0%,
+      rgba(7, 7, 10, 0) 20%,
+      rgba(7, 7, 10, 0) 62%,
+      rgba(7, 7, 10, 0.95) 100%
+    );
+}
+
+/* Slow parallax drift on the hero stills. Disabled outright for anyone who
+   asks for reduced motion — this runs for the life of the page. */
+[data-recap-v2="root"] .rv-slide {
+  transform: scale(var(--slide-scale, 1.08));
+  animation: rv-drift 14s linear infinite alternate;
+}
+@keyframes rv-drift {
+  from {
+    transform: scale(var(--slide-scale, 1.08)) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(calc(var(--slide-scale, 1.08) * 1.06)) translate3d(-1.2%, -0.8%, 0);
+  }
+}
+
+/* ── Gallery hover ───────────────────────────────────────────────────────
+   The tile fogs over and its copy rises. backdrop-filter has to animate from
+   an explicit 0px or Safari jumps straight to the blurred state. */
+[data-recap-v2="root"] .rv-tile .rv-fog {
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  transition: opacity 0.3s ease, backdrop-filter 0.35s ease;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.02) 38%,
+      rgba(7, 7, 10, 0.35)
+    ),
+    rgba(7, 7, 10, 0.5);
+}
+[data-recap-v2="root"] .rv-tile:hover .rv-fog,
+[data-recap-v2="root"] .rv-tile:focus-within .rv-fog {
+  opacity: 1;
+  backdrop-filter: blur(20px) saturate(1.25) brightness(1.08);
+}
+[data-recap-v2="root"] .rv-fog > * {
+  transform: translateY(8px);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-recap-v2="root"] .rv-tile:hover .rv-fog > *,
+[data-recap-v2="root"] .rv-tile:focus-within .rv-fog > * {
+  transform: translateY(0);
+}
+
+/* An inset vignette on media so light photography still holds white text. */
+[data-recap-v2="root"] .rv-vignette {
+  box-shadow: inset 0 0 38px 12px rgba(7, 7, 10, 0.42);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-recap-v2="root"] .rv-slide {
+    animation: none;
+  }
+  [data-recap-v2="root"] *,
+  [data-recap-v2="root"] *::before,
+  [data-recap-v2="root"] *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
