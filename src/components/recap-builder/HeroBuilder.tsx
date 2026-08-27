@@ -5,21 +5,41 @@
 //
 // "Preview as you edit" is the point — a builder you cannot see the result of
 // is how the current recap ended up with hero photos nobody checked.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MediaPicker, type PickableMedia } from "./MediaPicker";
-import { HERO_PREVIEW_WIDTH, transformed } from "@/components/recap-v2/media";
+import { HERO_PREVIEW_WIDTH, heroPreview } from "@/components/recap-v2/media";
 
 /** The reference design shows at most four stills before it repeats. */
 const HERO_MAX = 4;
 
 export function HeroBuilder({
+  campaignId,
   items,
   initialSelected,
 }: {
+  campaignId: string;
   items: PickableMedia[];
   initialSelected: string[];
 }) {
   const [selected, setSelected] = useState<string[]>(initialSelected);
+
+  // Warm the picker's thumbnails once per open. Supabase generates each
+  // derivative from the original on first request, so without this the first
+  // person to open a campaign watches 73 full-size photos being resized one at
+  // a time. Fire and forget: the grid is already loading what it can see, and
+  // this is about everything below the fold being ready by the time they
+  // scroll. Deliberately not awaited and deliberately not surfaced — a failed
+  // warm costs nothing but the slow first view we already had.
+  const warmed = useRef(false);
+  useEffect(() => {
+    if (warmed.current) return;
+    warmed.current = true;
+    void fetch("/api/recap-builder/warm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId }),
+    }).catch(() => {});
+  }, [campaignId]);
   const byId = new Map(items.map((m) => [m.id, m] as const));
   const chosen = selected.map((id) => byId.get(id)).filter((m): m is PickableMedia => !!m);
 
@@ -54,7 +74,7 @@ export function HeroBuilder({
               <li key={m.id} className="relative overflow-hidden rounded-lg border border-neutral-700">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={transformed(m.url, HERO_PREVIEW_WIDTH, 70)}
+                  src={heroPreview(m.url)}
                   alt=""
                   className="block aspect-[16/9] w-full bg-neutral-900 object-cover"
                 />

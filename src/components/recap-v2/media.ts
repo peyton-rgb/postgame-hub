@@ -23,11 +23,23 @@
 // previewed at all, which is why the picker says so at selection time rather
 // than letting the slide vanish at render.
 
-/** Grid thumbnails in the builder's picker. */
+// ── The parameter sets ──────────────────────────────────────────────────────
+//
+// Supabase caches a transform per EXACT parameter set. width=320&quality=70 and
+// width=320&quality=72 are two different cache entries, each regenerated from
+// the original the first time it is asked for — which is why a campaign's first
+// view is slow enough to look broken. So there are exactly two sets here and
+// every caller goes through the helpers below; nothing builds a transform URL
+// by hand. Changing a number invalidates every cached derivative for the whole
+// library, so treat these as settled, not as tuning knobs.
+
+/** Grid thumbnails in the builder's picker. 24KB average across Ghost Amp. */
 export const PICKER_WIDTH = 320;
 export const PICKER_QUALITY = 70;
-/** Hero preview in the builder, and hero stills on the page. */
-export const HERO_PREVIEW_WIDTH = 1200;
+
+/** Hero preview in the builder. 1280x854 at 127KB on a 22MB original. */
+export const HERO_PREVIEW_WIDTH = 1280;
+export const HERO_PREVIEW_QUALITY = 78;
 
 // resize=contain is kept deliberately. It is what the recap page has always
 // sent, and dropping it would silently switch the transformer to its `cover`
@@ -46,4 +58,9 @@ export function transformed(
 /** The picker's grid URL: small and cheap. */
 export function pickerThumb(url: string | null | undefined): string {
   return transformed(url, PICKER_WIDTH, PICKER_QUALITY);
+}
+
+/** The builder's hero preview URL. */
+export function heroPreview(url: string | null | undefined): string {
+  return transformed(url, HERO_PREVIEW_WIDTH, HERO_PREVIEW_QUALITY);
 }

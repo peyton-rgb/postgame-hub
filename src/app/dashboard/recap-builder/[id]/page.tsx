@@ -69,7 +69,11 @@ export default async function RecapBuilderPage({
           </a>
         </p>
       </header>
-      <HeroBuilder items={items} initialSelected={config.hero?.media_ids ?? []} />
+      <HeroBuilder
+        campaignId={id}
+        items={items}
+        initialSelected={config.hero?.media_ids ?? []}
+      />
     </main>
   );
 }
