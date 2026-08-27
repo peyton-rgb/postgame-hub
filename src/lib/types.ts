@@ -122,6 +122,14 @@ export interface Campaign {
     budget?: number;
     total_impressions?: number;
   };
+  /**
+   * Positive display choices, written by the recap builder. jsonb, nullable,
+   * and null on all 626 campaigns today — absent means every field falls back
+   * to the derivation the v2 page already performs. Untyped here on purpose:
+   * it is validated at read time by lib/recap-v2/config.ts, which has to cope
+   * with whatever is actually in the column.
+   */
+  recap_config?: unknown;
 }
 
 export interface AthleteMetrics {
