@@ -77,7 +77,7 @@ export const DASHBOARD_NAV: NavSection[] = [
         // in_edit, brand_review) on purpose, so screen and data use the same
         // words. "Inbound" is the staff deliverable queue.
         name: "Reviews",
-        href: "/dashboard/reviews",
+        href: "/dashboard/reviews/campaigns",
         icon: "reviews",
         children: [
           { name: "Inbound", href: "/dashboard/athlete-deals", icon: "inbound", staffOnly: true },
