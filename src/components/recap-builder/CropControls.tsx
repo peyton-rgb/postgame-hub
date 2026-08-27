@@ -17,11 +17,13 @@
 //            needs the black to run further across than a clean one.
 import { FOCAL_DEFAULTS, type FocalPoint } from "@/lib/recap-v2/config";
 import { heroPreview } from "@/components/recap-v2/media";
-import { paneShift } from "./paneShift";
+// The backdrop sizing and its edge mask live in one unscoped class shared with
+// the page, so the preview cannot show a framing the published page will not.
+import "@/components/recap-v2/recap-v2.css";
+import { backdropTransform } from "./heroTransform";
 
-// paneShift lives in its own module and is shared with the page's hero, so the
-// preview and the published result cannot disagree about what Across means.
-export { paneShift } from "./paneShift";
+// backdropTransform lives in its own module and is shared with the page's
+// hero, so the preview and the published result cannot disagree about framing.
 
 const CONTROLS: Array<{
   key: keyof FocalPoint;
@@ -32,9 +34,9 @@ const CONTROLS: Array<{
   format: (v: number) => string;
   note: string;
 }> = [
-  { key: "x", label: "Across", min: 0, max: 100, step: 1, format: (v) => String(Math.round(v)), note: "slides the photo pane" },
-  { key: "y", label: "Up/down", min: 0, max: 100, step: 1, format: (v) => String(Math.round(v)), note: "pans the photo" },
-  { key: "scale", label: "Zoom", min: 1, max: 2, step: 0.01, format: (v) => `${v.toFixed(2)}×`, note: "" },
+  { key: "x", label: "Across", min: 0, max: 100, step: 1, format: (v) => String(Math.round(v)), note: "slides the backdrop" },
+  { key: "y", label: "Up/down", min: 0, max: 100, step: 1, format: (v) => String(Math.round(v)), note: "pans the backdrop" },
+  { key: "scale", label: "Zoom", min: 0.85, max: 1.7, step: 0.01, format: (v) => `${v.toFixed(2)}×`, note: "" },
   { key: "fade", label: "Fade", min: 45, max: 92, step: 1, format: (v) => String(Math.round(v)), note: "where the black runs out" },
 ];
 
@@ -81,34 +83,32 @@ export function CropControls({
           Reset framing
         </button>
         <p className="pt-1 text-[11px] leading-relaxed text-neutral-600">
-          Across slides the pane; up/down pans the photo inside it. A portrait
-          shot has no horizontal overflow, so across is the only thing that can
-          move it sideways.
+          The photo is a backdrop behind the hero and the overview, sized by
+          height and overspilling the block, with its edges masked so it
+          dissolves on all four sides. These move the backdrop; nothing is
+          cropped.
         </p>
       </div>
 
-      {/* The preview is the page's hero at 16:9 — same pane width, same
-          gradient, same mapping. */}
-      <div className="relative aspect-video overflow-hidden rounded-lg border border-neutral-700 bg-[#07070A]">
-        <div
-          className="absolute bottom-0 right-0 top-0 w-[66%] overflow-hidden transition-transform duration-100"
-          style={{ transform: paneShift(focal.x) }}
-        >
+      {/* The preview is the page's block — same backdrop sizing, same two
+          gradients, same transform. */}
+      <div className="relative aspect-[16/8] overflow-hidden rounded-lg border border-neutral-700 bg-[#07070A] [isolation:isolate]">
+        <div className="absolute inset-0 z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={heroPreview(url)}
             alt=""
-            className="h-full w-full object-cover transition-[object-position,transform] duration-100"
-            style={{ objectPosition: `50% ${focal.y}%`, transform: `scale(${focal.scale})` }}
+            className="rv-backdrop-img transition-transform duration-100"
+            style={{ transform: backdropTransform(focal) }}
           />
         </div>
         <div
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 z-[1]"
           style={{
-            background: `linear-gradient(90deg,#07070A 0%,#07070A 24%,rgba(7,7,10,.93) 37%,rgba(7,7,10,.55) 52%,rgba(7,7,10,.18) calc(${focal.fade}% * .9),rgba(7,7,10,0) ${focal.fade}%),linear-gradient(180deg,rgba(7,7,10,.4) 0%,rgba(7,7,10,0) 26%)`,
+            background: `linear-gradient(90deg,#07070A 0%,#07070A 16%,rgba(7,7,10,.92) 30%,rgba(7,7,10,.55) 46%,rgba(7,7,10,.15) calc(${focal.fade}% * .92),rgba(7,7,10,0) ${focal.fade}%),linear-gradient(180deg,rgba(7,7,10,.55) 0%,rgba(7,7,10,.05) 22%,rgba(7,7,10,.55) 62%,#07070A 96%)`,
           }}
         />
-        <div className="absolute inset-y-0 left-0 z-[2] flex w-[54%] flex-col justify-end p-5">
+        <div className="absolute inset-y-0 left-0 z-[2] flex w-[56%] flex-col justify-end p-5">
           {kicker ? (
             <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/75">{kicker}</p>
           ) : null}

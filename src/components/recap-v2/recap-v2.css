@@ -43,58 +43,113 @@
   }
 }
 
-/* ── Hero ────────────────────────────────────────────────────────────────
-   The photo sits in a right-hand PANE and the copy sits in solid black to its
-   left, with a horizontal gradient running between them. Not a full-bleed
-   photo under an overlay — that forces every still into the frame's aspect
-   ratio, which is why the earlier hero could not use a portrait photo at all.
-   A portrait shot fills the pane's width and is panned vertically instead.
+/* ── Hero + overview: one block, one backdrop ────────────────────────────
+   The photo is a backdrop behind BOTH the hero and the campaign overview,
+   dissolving to black before the numbers section — so the page opens as one
+   piece rather than a photo that stops at an edge.
 
-   --fade is where the gradient reaches zero, as a percentage of frame width.
-   It is per-photo: a busy left edge needs the black to run further across than
-   a clean one does. 45-92 is the usable range. */
-[data-recap-v2="root"] .rv-hero-pane {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 66%;
+   The image is sized by HEIGHT and left to overflow (height:118%, width:auto,
+   max-width:none), so a tall, wide or square photo fills the block whatever
+   its shape. 118 rather than 100 on purpose: it has to overspill the block for
+   the edge mask below to have something to eat.
+
+   .rv-backdrop-img is deliberately NOT scoped to the recap root — the
+   builder's preview carries the same class, so the mask and the sizing cannot
+   be corrected in one place and left stale in the other. */
+[data-recap-v2="root"] .rv-hblock {
+  position: relative;
   overflow: hidden;
+  background: #07070a;
+  isolation: isolate;
 }
-[data-recap-v2="root"] .rv-hero-grad {
+[data-recap-v2="root"] .rv-bg {
   position: absolute;
   inset: 0;
+  z-index: 0;
+}
+
+.rv-backdrop-img {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  height: 118%;
+  width: auto;
+  min-width: 56%;
+  max-width: none;
+  object-fit: cover;
+  display: block;
+  /* Right-anchored, so zooming grows the photo away from the edge it is
+     pinned to rather than drifting off it. */
+  transform-origin: right center;
+
+  /* The photo's own edges dissolve on ALL FOUR sides. The wash only fades
+     left-to-right, which leaves the other three boundaries exposed — and at
+     low zoom the image shrinks inside the block and reads as a floating
+     rectangle with hard edges. Masking the image itself fixes that whatever
+     its size or position. Two gradients intersected: one horizontal, one
+     vertical. */
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent 0%, #000 15%, #000 88%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, #000 13%, #000 85%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(90deg, transparent 0%, #000 15%, #000 88%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, #000 13%, #000 85%, transparent 100%);
+  mask-composite: intersect;
+}
+
+/* Two gradients do the blending on top of the mask.
+   Horizontal: solid black to 16%, so the copy always has ground under it,
+   then clear by the fade point.
+   Vertical: soft at the top, near-clear through the middle so the photo is
+   actually visible, then solid black by 96% — which is what melts the block
+   into the page instead of ending it on a hard edge. */
+[data-recap-v2="root"] .rv-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   pointer-events: none;
-  /* Solid black all the way to 24% so the copy always has ground, then a long
-     ramp that does not reach transparent until the fade point — which is what
-     stops the photo's left edge reading as a hard cut. */
   background:
     linear-gradient(
       90deg,
       #07070a 0%,
-      #07070a 24%,
-      rgba(7, 7, 10, 0.93) 37%,
-      rgba(7, 7, 10, 0.55) 52%,
-      rgba(7, 7, 10, 0.18) calc(var(--fade, 76%) * 0.9),
+      #07070a 16%,
+      rgba(7, 7, 10, 0.92) 30%,
+      rgba(7, 7, 10, 0.55) 46%,
+      rgba(7, 7, 10, 0.15) calc(var(--fade, 76%) * 0.92),
       rgba(7, 7, 10, 0) var(--fade, 76%)
     ),
-    linear-gradient(180deg, rgba(7, 7, 10, 0.4) 0%, rgba(7, 7, 10, 0) 26%);
+    linear-gradient(
+      180deg,
+      rgba(7, 7, 10, 0.55) 0%,
+      rgba(7, 7, 10, 0.05) 22%,
+      rgba(7, 7, 10, 0.55) 62%,
+      #07070a 96%
+    );
 }
 
-/* Below the break there is no room for two columns: the photo fills the frame
-   and the gradient turns vertical so the copy still has ground under it. */
 @media (max-width: 1000px) {
-  [data-recap-v2="root"] .rv-hero-pane {
-    width: 100%;
-    /* Across has nothing to slide when the pane already fills the frame. */
-    transform: none !important;
+  /* No room for a horizontal split: the photo fills the width, centred, and
+     both the mask and the blend become purely vertical. Across has nothing to
+     move, so the transform is forced to the centring one. */
+  .rv-backdrop-img {
+    width: 118%;
+    height: auto;
+    min-height: 100%;
+    right: auto;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) !important;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
   }
-  [data-recap-v2="root"] .rv-hero-grad {
+  [data-recap-v2="root"] .rv-wash {
     background: linear-gradient(
       180deg,
       rgba(7, 7, 10, 0.5) 0%,
-      rgba(7, 7, 10, 0) 32%,
-      rgba(7, 7, 10, 0.92) 100%
+      rgba(7, 7, 10, 0) 26%,
+      rgba(7, 7, 10, 0.72) 60%,
+      #07070a 92%
     );
   }
 }

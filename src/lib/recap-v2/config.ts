@@ -80,23 +80,23 @@ export interface SectionConfig {
 }
 
 /**
- * Per-still framing. Four values, because the hero puts the photo in a
- * right-hand pane against a horizontal fade rather than full-bleed behind an
- * overlay — which is what lets a portrait photo work inside a 16:9 frame.
+ * Per-still framing. Four values, because the photo is a backdrop spanning the
+ * hero and the campaign overview, blended by a horizontal and a vertical
+ * gradient — not a cropped image in a box.
  *
- *   x     0-100   ACROSS. Slides the photo PANE within the frame, as
- *                 translateX((x - 100) * 0.34)%. 100 rests flush against the
- *                 right edge and lower values pull it left. It does NOT pan
- *                 the image:
- *                 a portrait photo fills the pane's width, so there is no
- *                 horizontal overflow to pan and object-position X stays at
- *                 50%. Moving the pane is the only thing that has an effect.
- *   y     0-100   UP/DOWN. Pans the image inside the pane, as the Y of
- *                 object-position. This is where the overflow actually is.
- *   scale 1-2     ZOOM, a transform on the image.
- *   fade  45-92   Where the horizontal gradient reaches zero, as a percentage
- *                 of frame width. Below 45 the copy loses its ground; above 92
- *                 the photo is swallowed.
+ *   x     0-100     ACROSS. 100 rests the backdrop against the right edge;
+ *                   lower values slide it left.
+ *   y     0-100     UP/DOWN. Pans it vertically about the middle.
+ *   scale 0.85-1.7  ZOOM, about transform-origin: right center. Below 0.85
+ *                   the backdrop stops covering the block.
+ *   fade  45-92     Where the horizontal gradient reaches zero, as a
+ *                   percentage of block width. Below 45 the copy loses its
+ *                   ground; above 92 the photo is swallowed.
+ *
+ * All three of the first are one transform on the backdrop — see
+ * components/recap-builder/heroTransform.ts. Nothing crops: the photo is sized
+ * by height and overflows horizontally, so it fills the block whatever its
+ * aspect ratio.
  */
 export interface FocalPoint {
   x: number;
@@ -276,7 +276,7 @@ function validateHero(v: unknown, issues: string[]): HeroConfig | undefined {
         }
         const x = isFiniteNum(raw.x) ? clamp(raw.x, 0, 100) : FOCAL_DEFAULTS.x;
         const y = isFiniteNum(raw.y) ? clamp(raw.y, 0, 100) : FOCAL_DEFAULTS.y;
-        const scale = isFiniteNum(raw.scale) ? clamp(raw.scale, 1, 2) : FOCAL_DEFAULTS.scale;
+        const scale = isFiniteNum(raw.scale) ? clamp(raw.scale, 0.85, 1.7) : FOCAL_DEFAULTS.scale;
         // 45-92 is the usable range of the gradient, not a UI preference: the
         // copy needs ground on the left and the photo needs air on the right.
         const fade = isFiniteNum(raw.fade) ? clamp(raw.fade, 45, 92) : FOCAL_DEFAULTS.fade;
