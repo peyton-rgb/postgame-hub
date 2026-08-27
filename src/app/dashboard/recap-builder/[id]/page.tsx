@@ -74,8 +74,14 @@ export default async function RecapBuilderPage({
         items={items}
         initialSelected={config.hero?.media_ids ?? []}
         initialFocal={config.hero?.focal ?? {}}
-        campaignTitle={config.display_name ?? campaign.name}
-        clientName={campaign.client_name ?? null}
+        initialConfig={config}
+        derived={{
+          title: campaign.name,
+          brand: campaign.client_name ?? "",
+          lede: ["Campaign recap", campaign.settings?.campaign_type]
+            .filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+            .join(" — "),
+        }}
       />
     </main>
   );

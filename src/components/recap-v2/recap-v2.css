@@ -58,23 +58,27 @@
   right: 0;
   top: 0;
   bottom: 0;
-  width: 62%;
+  width: 66%;
   overflow: hidden;
 }
 [data-recap-v2="root"] .rv-hero-grad {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* Solid black all the way to 24% so the copy always has ground, then a long
+     ramp that does not reach transparent until the fade point — which is what
+     stops the photo's left edge reading as a hard cut. */
   background:
     linear-gradient(
       90deg,
       #07070a 0%,
-      rgba(7, 7, 10, 0.98) 20%,
-      rgba(7, 7, 10, 0.72) 40%,
-      rgba(7, 7, 10, 0.3) calc(var(--fade, 76%) * 0.82),
+      #07070a 24%,
+      rgba(7, 7, 10, 0.93) 37%,
+      rgba(7, 7, 10, 0.55) 52%,
+      rgba(7, 7, 10, 0.18) calc(var(--fade, 76%) * 0.9),
       rgba(7, 7, 10, 0) var(--fade, 76%)
     ),
-    linear-gradient(180deg, rgba(7, 7, 10, 0.5) 0%, rgba(7, 7, 10, 0) 30%);
+    linear-gradient(180deg, rgba(7, 7, 10, 0.4) 0%, rgba(7, 7, 10, 0) 26%);
 }
 
 /* Below the break there is no room for two columns: the photo fills the frame
@@ -82,13 +86,15 @@
 @media (max-width: 1000px) {
   [data-recap-v2="root"] .rv-hero-pane {
     width: 100%;
+    /* Across has nothing to slide when the pane already fills the frame. */
+    transform: none !important;
   }
   [data-recap-v2="root"] .rv-hero-grad {
     background: linear-gradient(
       180deg,
-      rgba(7, 7, 10, 0.55) 0%,
-      rgba(7, 7, 10, 0) 34%,
-      rgba(7, 7, 10, 0.9) 100%
+      rgba(7, 7, 10, 0.5) 0%,
+      rgba(7, 7, 10, 0) 32%,
+      rgba(7, 7, 10, 0.92) 100%
     );
   }
 }

@@ -60,8 +60,10 @@ export type ResolvedTakeaways =
 export interface ResolvedHero {
   /** Ordered media ids. Empty when the campaign has no usable stills. */
   mediaIds: string[];
-  /** Per-still crop. Absent for a still means the page's own default. */
+  /** Per-still framing. Absent for a still means FOCAL_DEFAULTS. */
   focal: Record<string, FocalPoint>;
+  /** The line under the title. */
+  lede: string;
 }
 
 export interface ResolvedPerformers {
@@ -81,6 +83,7 @@ export interface ResolvedContent {
 
 export interface ResolvedRecapConfig {
   displayName: Resolved<string>;
+  brand: Resolved<string>;
   sections: Resolved<SectionConfig[]>;
   hero: Resolved<ResolvedHero>;
   takeaways: Resolved<ResolvedTakeaways>;
@@ -115,6 +118,18 @@ export function resolveRecapConfig(data: RecapV2Data): ResolvedRecapConfig {
   const displayName: Resolved<string> = config.display_name
     ? { value: config.display_name, source: "configured" }
     : { value: campaign.name, source: "derived" };
+
+  // The line above the title. client_name is the admin account name and is not
+  // always what belongs on a client-facing page.
+  const brand: Resolved<string> = config.brand
+    ? { value: config.brand, source: "configured" }
+    : { value: campaign.client_name ?? "", source: "derived" };
+
+  // The line under it. Derived, this is what the hero already assembled from
+  // the campaign type — kept exactly so an unconfigured hero is unchanged.
+  const derivedLede = ["Campaign recap", campaign.settings?.campaign_type]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .join(" — ");
 
   // ── sections ────────────────────────────────────────────────────────────
   // Derivation runs regardless, because it answers a question config cannot:
@@ -174,13 +189,18 @@ export function resolveRecapConfig(data: RecapV2Data): ResolvedRecapConfig {
       issues.push(`hero: ${dropped} selected still(s) no longer resolve to an image — skipped`);
     }
     heroResolved = {
-      value: { mediaIds, focal: config.hero.focal },
+      value: { mediaIds, focal: config.hero.focal, lede: config.hero.lede || derivedLede },
       source: "configured",
     };
   } else {
     heroResolved = {
-      value: { mediaIds: selectHeroStills(gallery, 4).map((h) => h.mediaId), focal: {} },
-      source: "derived",
+      value: {
+        mediaIds: selectHeroStills(gallery, 4).map((h) => h.mediaId),
+        focal: {},
+        // A lede with no stills is still the hero's line.
+        lede: config.hero?.lede || derivedLede,
+      },
+      source: config.hero?.lede ? "configured" : "derived",
     };
   }
 
@@ -252,6 +272,7 @@ export function resolveRecapConfig(data: RecapV2Data): ResolvedRecapConfig {
 
   return {
     displayName,
+    brand,
     sections,
     hero: heroResolved,
     takeaways,

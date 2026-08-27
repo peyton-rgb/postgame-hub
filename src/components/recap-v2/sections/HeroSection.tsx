@@ -10,6 +10,8 @@ import { HeroCarousel, type HeroSlide } from "./HeroCarousel";
 export function HeroSection({
   campaign,
   title,
+  brand,
+  lede,
   slides,
 }: {
   campaign: Campaign;
@@ -21,13 +23,13 @@ export function HeroSection({
    * name where it is not.
    */
   title: string;
+  /** The line above the title. Falls back to the account name. */
+  brand: string;
+  /** The line under it. Its own field — see hero.lede in config.ts. */
+  lede: string;
   slides: HeroSlide[];
 }) {
   const s = campaign.settings || {};
-  // Each part drops independently rather than leaving stray separators.
-  const meta = ["Campaign recap", s.campaign_type].filter(
-    (v): v is string => typeof v === "string" && v.trim().length > 0,
-  );
 
   return (
     // min-height, not height. The reference hero is a fixed 100vh, but its
@@ -65,9 +67,9 @@ export function HeroSection({
 
           {/* The hero stays monochrome — a brand mark is the only colour above
               the fold, so this kicker does not take the orange. */}
-          {campaign.client_name ? (
+          {brand ? (
             <p className="font-mono text-[15px] uppercase tracking-[0.36em] text-[rgba(250,248,245,0.75)]">
-              {campaign.client_name}
+              {brand}
             </p>
           ) : null}
 
@@ -86,17 +88,10 @@ export function HeroSection({
               100vh hero and gets clipped by its own overflow-hidden. The
               overview owns the prose; the hero owns the title. */}
 
-          {meta.length > 0 ? (
-            <div className="mt-10 flex flex-wrap items-center gap-[18px] font-mono text-[13px] uppercase tracking-[0.22em] text-[rgba(250,248,245,0.72)]">
-              {meta.map((m, i) => (
-                <span key={m} className="flex items-center gap-[18px]">
-                  {i > 0 ? (
-                    <i className="block h-px w-5 bg-[rgba(250,248,245,0.3)]" aria-hidden="true" />
-                  ) : null}
-                  <span>{m}</span>
-                </span>
-              ))}
-            </div>
+          {lede ? (
+            <p className="mt-10 font-mono text-[13px] uppercase tracking-[0.22em] text-[rgba(250,248,245,0.72)]">
+              {lede}
+            </p>
           ) : null}
         </div>
       </div>

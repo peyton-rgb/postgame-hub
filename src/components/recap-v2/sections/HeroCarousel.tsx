@@ -10,7 +10,8 @@
 //
 // Four values per still, and which element each one moves matters:
 //
-//   across (x)  moves the PANE — translateX((x - 100) * 0.42)%. It must not
+//   across (x)  moves the PANE — translateX((x - 100) * 0.34)%, with 100
+//               resting flush against the right edge. It must not
 //               touch object-position: a portrait photo fills the pane's
 //               width, so there is no horizontal overflow and panning the
 //               image does nothing at all. The slider would move and the
@@ -24,6 +25,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RecapImage } from "../RecapImage";
 import { FOCAL_DEFAULTS, type FocalPoint } from "@/lib/recap-v2/config";
+import { paneShift } from "@/components/recap-builder/paneShift";
 
 export interface HeroSlide {
   id: string;
@@ -33,11 +35,6 @@ export interface HeroSlide {
 }
 
 const INTERVAL_MS = 6500;
-
-/** The mockup's mapping, kept exactly: x=100 rests at 0, x=0 pulls 42% left. */
-function paneShift(x: number): string {
-  return `translateX(${(x - 100) * 0.42}%)`;
-}
 
 export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [current, setCurrent] = useState(0);

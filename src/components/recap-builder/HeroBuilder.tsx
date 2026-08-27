@@ -9,7 +9,13 @@ import { useEffect, useRef, useState } from "react";
 import { MediaPicker, type PickableMedia } from "./MediaPicker";
 import { heroPreview } from "@/components/recap-v2/media";
 import { CropControls, paneShift } from "./CropControls";
-import { FOCAL_DEFAULTS, type FocalPoint } from "@/lib/recap-v2/config";
+import {
+  FOCAL_DEFAULTS,
+  canonicalise,
+  type FocalPoint,
+  type RecapConfig,
+} from "@/lib/recap-v2/config";
+import { saveRecapConfig } from "@/app/dashboard/recap-builder/actions";
 
 /** The reference design shows at most four stills before it repeats. */
 const HERO_MAX = 4;
@@ -19,18 +25,24 @@ export function HeroBuilder({
   items,
   initialSelected,
   initialFocal,
-  campaignTitle,
-  clientName,
+  initialConfig,
+  derived,
 }: {
   campaignId: string;
   items: PickableMedia[];
   initialSelected: string[];
   initialFocal: Record<string, FocalPoint>;
-  campaignTitle: string;
-  clientName: string | null;
+  initialConfig: RecapConfig;
+  /** What the page would show with no config — the placeholders. */
+  derived: { title: string; brand: string; lede: string };
 }) {
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const [focal, setFocal] = useState<Record<string, FocalPoint>>(initialFocal);
+  const [displayName, setDisplayName] = useState(initialConfig.display_name ?? "");
+  const [brand, setBrand] = useState(initialConfig.brand ?? "");
+  const [lede, setLede] = useState(initialConfig.hero?.lede ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
   // Which selected still the crop controls are pointed at. Framing is
   // per-photo, so there has to be a current one.
   const [activeId, setActiveId] = useState<string | null>(initialSelected[0] ?? null);
@@ -66,8 +78,71 @@ export function HeroBuilder({
   const active = activeId ? byId.get(activeId) ?? null : null;
   const activeFocal = (activeId ? focal[activeId] : undefined) ?? FOCAL_DEFAULTS;
 
+  // Only the fields a person has actually filled in are written. An empty box
+  // means "no override" and the page falls back to its derivation — it does not
+  // mean "blank title".
+  const current: RecapConfig = {
+    ...initialConfig,
+    ...(displayName.trim() ? { display_name: displayName.trim() } : {}),
+    ...(brand.trim() ? { brand: brand.trim() } : {}),
+    ...(selected.length > 0 || lede.trim()
+      ? { hero: { media_ids: selected, focal, ...(lede.trim() ? { lede: lede.trim() } : {}) } }
+      : {}),
+  };
+  if (!displayName.trim()) delete current.display_name;
+  if (!brand.trim()) delete current.brand;
+  if (selected.length === 0 && !lede.trim()) delete current.hero;
+
+  // #208: dirty is the normalised form of what was LOADED against the
+  // normalised form of what is on screen. Opening a campaign must never be a
+  // write, and key order must never read as a change.
+  const dirty = canonicalise(initialConfig) !== canonicalise(current);
+
+  async function save() {
+    setSaving(true);
+    setSaveNote(null);
+    const res = await saveRecapConfig(campaignId, current);
+    setSaving(false);
+    if (!res.ok) {
+      setSaveNote(res.error ?? "Could not save.");
+      return;
+    }
+    setSaveNote(
+      res.issues && res.issues.length > 0
+        ? `Saved. ${res.issues.length} value(s) adjusted: ${res.issues[0]}`
+        : "Saved.",
+    );
+  }
+
   return (
     <div className="space-y-8">
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-300">
+          Overview
+        </h2>
+        <Field
+          label="Display name — what the client sees"
+          value={displayName}
+          onChange={setDisplayName}
+          placeholder={derived.title}
+          hint={`Campaign is named "${derived.title}" in the admin.`}
+        />
+        <Field
+          label="Brand"
+          value={brand}
+          onChange={setBrand}
+          placeholder={derived.brand || "Brand"}
+          hint="Separate from the account name on the campaign record."
+        />
+        <Field
+          label="Hero lede — the line under the title"
+          value={lede}
+          onChange={setLede}
+          placeholder={derived.lede}
+          hint="Separate from the campaign overview. These were one field before, so the same copy printed twice."
+        />
+      </section>
+
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-neutral-300">
           Hero stills
@@ -119,8 +194,9 @@ export function HeroBuilder({
                 url={active.url}
                 focal={activeFocal}
                 onChange={(next) => setFocal((prev) => ({ ...prev, [active.id]: next }))}
-                title={campaignTitle}
-                kicker={clientName}
+                title={displayName.trim() || derived.title}
+                kicker={brand.trim() || derived.brand || null}
+                lede={lede.trim() || derived.lede}
               />
             ) : null}
           </section>
@@ -134,12 +210,50 @@ export function HeroBuilder({
         <pre className="overflow-x-auto rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-xs text-neutral-300">
 {JSON.stringify({ media_ids: selected, focal }, null, 2)}
         </pre>
-        <p className="mt-2 text-xs text-amber-400">
-          Not saved yet — writing needs the cache-invalidation decision settled
-          first (a saved config will not appear on the recap until the fetch
-          cache is revalidated).
-        </p>
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={save}
+            disabled={!dirty || saving}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              dirty && !saving
+                ? "bg-orange-500 text-white hover:bg-orange-400"
+                : "cursor-not-allowed bg-neutral-800 text-neutral-500"
+            }`}
+          >
+            {saving ? "Saving…" : dirty ? "Save" : "All changes saved"}
+          </button>
+          {saveNote ? <span className="text-xs text-neutral-400">{saveNote}</span> : null}
+        </div>
       </section>
     </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  hint: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs text-neutral-400">{label}</span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-orange-500"
+      />
+      <span className="mt-1 block text-[11px] text-neutral-600">{hint}</span>
+    </label>
   );
 }

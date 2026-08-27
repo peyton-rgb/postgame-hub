@@ -85,7 +85,9 @@ export interface SectionConfig {
  * overlay — which is what lets a portrait photo work inside a 16:9 frame.
  *
  *   x     0-100   ACROSS. Slides the photo PANE within the frame, as
- *                 translateX((x - 100) * 0.42)%. It does NOT pan the image:
+ *                 translateX((x - 100) * 0.34)%. 100 rests flush against the
+ *                 right edge and lower values pull it left. It does NOT pan
+ *                 the image:
  *                 a portrait photo fills the pane's width, so there is no
  *                 horizontal overflow to pan and object-position X stays at
  *                 50%. Moving the pane is the only thing that has an effect.
@@ -103,12 +105,21 @@ export interface FocalPoint {
   fade: number;
 }
 
-/** What an unset control means — the mockup's slider defaults. */
-export const FOCAL_DEFAULTS: FocalPoint = { x: 50, y: 34, scale: 1, fade: 76 };
+/** What an unset control means — the reference's slider defaults. */
+export const FOCAL_DEFAULTS: FocalPoint = { x: 100, y: 32, scale: 1, fade: 76 };
 
 export interface HeroConfig {
   media_ids: string[];
   focal: Record<string, FocalPoint>;
+  /**
+   * The line under the title.
+   *
+   * Its own field, because one description doing two jobs is what printed the
+   * same copy twice: the hero wants a short line and #overview wants the
+   * opening prose, and settings.description cannot be both. #overview keeps
+   * reading description; this is only the hero's line.
+   */
+  lede?: string;
 }
 
 export interface TakeawaysConfig {
@@ -139,6 +150,12 @@ export interface ContentConfig {
  */
 export interface RecapConfig {
   display_name?: string;
+  /**
+   * The brand as it should read to a client, distinct from
+   * campaign_recaps.client_name — that column is the account name in the admin
+   * and is not always what belongs above a 150px title.
+   */
+  brand?: string;
   sections?: SectionConfig[];
   hero?: HeroConfig;
   takeaways?: TakeawaysConfig;
@@ -240,6 +257,7 @@ function validateHero(v: unknown, issues: string[]): HeroConfig | undefined {
     return undefined;
   }
   const media_ids = stringList(v.media_ids, "hero.media_ids", issues) ?? [];
+  const lede = typeof v.lede === "string" ? v.lede.trim() : "";
   const focal: Record<string, FocalPoint> = {};
   if (v.focal !== undefined) {
     if (!isObj(v.focal)) {
@@ -266,8 +284,8 @@ function validateHero(v: unknown, issues: string[]): HeroConfig | undefined {
       }
     }
   }
-  if (media_ids.length === 0 && Object.keys(focal).length === 0) return undefined;
-  return { media_ids, focal };
+  if (media_ids.length === 0 && Object.keys(focal).length === 0 && !lede) return undefined;
+  return { media_ids, focal, ...(lede ? { lede } : {}) };
 }
 
 // ── the rest ────────────────────────────────────────────────────────────────
@@ -384,7 +402,7 @@ export function validateRecapConfig(input: unknown): ValidationResult {
   }
 
   const known = new Set([
-    "display_name", "sections", "hero", "takeaways", "numbers", "performers", "content",
+    "display_name", "brand", "sections", "hero", "takeaways", "numbers", "performers", "content",
   ]);
   for (const k of Object.keys(input)) {
     if (!known.has(k)) issues.push(`recap_config: unknown key ${k} — ignored`);
@@ -399,6 +417,14 @@ export function validateRecapConfig(input: unknown): ValidationResult {
       issues.push("display_name: expected a string — ignored");
     }
     // An explicitly blank display_name means "no override", not "blank title".
+  }
+
+  if (input.brand !== undefined) {
+    if (typeof input.brand === "string" && input.brand.trim()) {
+      config.brand = input.brand.trim();
+    } else if (typeof input.brand !== "string") {
+      issues.push("brand: expected a string — ignored");
+    }
   }
 
   const sections = validateSections(input.sections, issues);

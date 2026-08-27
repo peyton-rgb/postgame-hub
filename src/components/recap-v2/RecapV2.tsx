@@ -203,7 +203,13 @@ export function RecapV2(data: RecapV2Data) {
 
       {/* Hero always renders: a campaign always has a name, and this is what
           guarantees a zero-metric, zero-photo campaign is still a page. */}
-      <HeroSection campaign={campaign} title={resolved.displayName.value} slides={heroSlides} />
+      <HeroSection
+        campaign={campaign}
+        title={resolved.displayName.value}
+        brand={resolved.brand.value}
+        lede={resolved.hero.value.lede}
+        slides={heroSlides}
+      />
 
       {/* Rendered in the resolved order rather than a fixed one, so a config
           can reorder sections. With no config the order is the derived default

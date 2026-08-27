@@ -17,11 +17,11 @@
 //            needs the black to run further across than a clean one.
 import { FOCAL_DEFAULTS, type FocalPoint } from "@/lib/recap-v2/config";
 import { heroPreview } from "@/components/recap-v2/media";
+import { paneShift } from "./paneShift";
 
-/** Kept identical to the page's paneShift so the preview cannot drift. */
-export function paneShift(x: number): string {
-  return `translateX(${(x - 100) * 0.42}%)`;
-}
+// paneShift lives in its own module and is shared with the page's hero, so the
+// preview and the published result cannot disagree about what Across means.
+export { paneShift } from "./paneShift";
 
 const CONTROLS: Array<{
   key: keyof FocalPoint;
@@ -44,12 +44,14 @@ export function CropControls({
   onChange,
   title,
   kicker,
+  lede,
 }: {
   url: string;
   focal: FocalPoint;
   onChange: (next: FocalPoint) => void;
   title: string;
   kicker: string | null;
+  lede: string;
 }) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
@@ -89,7 +91,7 @@ export function CropControls({
           gradient, same mapping. */}
       <div className="relative aspect-video overflow-hidden rounded-lg border border-neutral-700 bg-[#07070A]">
         <div
-          className="absolute bottom-0 right-0 top-0 w-[62%] overflow-hidden transition-transform duration-100"
+          className="absolute bottom-0 right-0 top-0 w-[66%] overflow-hidden transition-transform duration-100"
           style={{ transform: paneShift(focal.x) }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -103,16 +105,21 @@ export function CropControls({
         <div
           className="pointer-events-none absolute inset-0"
           style={{
-            background: `linear-gradient(90deg,#07070A 0%,rgba(7,7,10,.98) 20%,rgba(7,7,10,.72) 40%,rgba(7,7,10,.3) calc(${focal.fade}% * .82),rgba(7,7,10,0) ${focal.fade}%),linear-gradient(180deg,rgba(7,7,10,.5) 0%,rgba(7,7,10,0) 30%)`,
+            background: `linear-gradient(90deg,#07070A 0%,#07070A 24%,rgba(7,7,10,.93) 37%,rgba(7,7,10,.55) 52%,rgba(7,7,10,.18) calc(${focal.fade}% * .9),rgba(7,7,10,0) ${focal.fade}%),linear-gradient(180deg,rgba(7,7,10,.4) 0%,rgba(7,7,10,0) 26%)`,
           }}
         />
-        <div className="absolute inset-y-0 left-0 z-[2] flex w-[56%] flex-col justify-end p-5">
+        <div className="absolute inset-y-0 left-0 z-[2] flex w-[54%] flex-col justify-end p-5">
           {kicker ? (
             <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/75">{kicker}</p>
           ) : null}
           <p className="mt-1 font-display text-[clamp(20px,3.4vw,42px)] leading-[0.9] text-[#FAF8F5]">
             {title}
           </p>
+          {lede ? (
+            <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-white/70">
+              {lede}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
