@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MediaPicker, type PickableMedia } from "./MediaPicker";
 import { heroPreview } from "@/components/recap-v2/media";
-import { CropControls, paneShift } from "./CropControls";
+import { CropControls } from "./CropControls";
 import {
   FOCAL_DEFAULTS,
   canonicalise,

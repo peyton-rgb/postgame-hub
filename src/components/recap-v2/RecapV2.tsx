@@ -28,7 +28,6 @@ import { ContentSection, type GalleryTile } from "./sections/ContentSection";
 import { HeroSection } from "./sections/HeroSection";
 import type { HeroSlide } from "./sections/HeroCarousel";
 import { NumbersSection } from "./sections/NumbersSection";
-import { OverviewSection } from "./sections/OverviewSection";
 import { PerformersSection, type PerformerCard } from "./sections/PerformersSection";
 import { RecapFooter } from "./sections/RecapFooter";
 import { RecapNav } from "./sections/RecapNav";
@@ -57,6 +56,7 @@ export function RecapV2(data: RecapV2Data) {
   const resolved = resolveRecapConfig(data);
   const { counts } = computePresence(data);
   const sections = visibleSections(resolved);
+  const shows = (key: (typeof sections)[number]) => sections.includes(key);
 
   const stats = computeRecapV2Stats(allAthletes, campaign, collabGroups);
   const gallery = galleryItems(media);
@@ -209,6 +209,7 @@ export function RecapV2(data: RecapV2Data) {
         brand={resolved.brand.value}
         lede={resolved.hero.value.lede}
         slides={heroSlides}
+        showOverview={shows("overview")}
       />
 
       {/* Rendered in the resolved order rather than a fixed one, so a config
@@ -217,7 +218,9 @@ export function RecapV2(data: RecapV2Data) {
       {sections.map((key) => {
         switch (key) {
           case "overview":
-            return <OverviewSection key={key} campaign={campaign} />;
+            // Rendered inside the hero block, over the tail of the same
+            // backdrop — not as a section beneath it.
+            return null;
           case "take":
             return <TakeawaysSection key={key} takeaways={resolved.takeaways.value} />;
           case "numbers":
