@@ -117,19 +117,66 @@ async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promis
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 
+/** Vercel sends `Authorization: Bearer <CRON_SECRET>` once the var exists.
+ *  Same shape as every other scheduled route here. */
+function cronAuthorized(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (secret) return (req.headers.get("authorization") || "") === `Bearer ${secret}`;
+  // Local dev only. Fail CLOSED in production so a missing CRON_SECRET can never
+  // leave this write-capable endpoint open.
+  return process.env.NODE_ENV !== "production";
+}
+
+/** agent_runs.triggered_by is NOT NULL and a foreign key to auth.users, so a
+ *  cron run — which has no session — still needs a real user to attribute to.
+ *  Same resolution as the other syncs: the configured fallback address. */
+async function resolveActor(
+  supabase: ReturnType<typeof createLiveServiceSupabase>,
+  staffId: string | null,
+): Promise<string | null> {
+  if (staffId) return staffId;
+  const email = process.env.SLACK_FALLBACK_EMAIL;
+  if (!email) return null;
+  const { data } = await supabase.from("profiles").select("id").eq("email", email).maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+/**
+ * GET and POST are the same run.
+ *
+ * GET exists because that is the only method Vercel cron issues — a route that
+ * exports POST alone answers a scheduled invocation with 405 and never runs.
+ * POST stays for the staff/manual path, which is how this has always been
+ * triggered by hand.
+ */
+export async function GET(request: NextRequest) {
+  return handleSync(request);
+}
+
 export async function POST(request: NextRequest) {
-  const staff = await getStaffUser();
-  if (!staff) {
+  return handleSync(request);
+}
+
+async function handleSync(request: NextRequest) {
+  const viaCron = cronAuthorized(request);
+  const staff = viaCron ? null : await getStaffUser();
+  if (!viaCron && !staff) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => ({}))) as { apply?: unknown };
-  // Anything other than a literal `true` is a dry run. Defaulting to write would
-  // be the wrong failure mode.
-  const apply = body?.apply === true;
+  // A HUMAN gets the dry-run default: anything other than a literal `true` reads
+  // and reports without writing, because defaulting a hand-run to write is the
+  // wrong failure mode.
+  //
+  // A CRON applies. A scheduled dry run would read the whole admin every day and
+  // change nothing, which is not a sync — it is a cost. `apply: false` can still
+  // be sent explicitly to force a scheduled dry run.
+  const apply = viaCron ? body?.apply !== false : body?.apply === true;
 
   const startedAt = Date.now();
   const supabase = createLiveServiceSupabase();
+  const actorId = await resolveActor(supabase, staff?.id ?? null);
 
   try {
     // 1 ── Every campaign and every account the admin knows about. Fetched
@@ -317,7 +364,7 @@ export async function POST(request: NextRequest) {
 
     // 6 ── Dry run stops here.
     if (!apply) {
-      await logRun(supabase, staff.id, { apply }, { ...report.counts, dry_run: true }, "complete", startedAt);
+      await logRun(supabase, actorId, { apply }, { ...report.counts, dry_run: true }, "complete", startedAt);
       return NextResponse.json({ ok: true, dry_run: true, ...report });
     }
 
@@ -363,7 +410,7 @@ export async function POST(request: NextRequest) {
     const status = written.errors.length > 0 ? "failed" : "complete";
     await logRun(
       supabase,
-      staff.id,
+      actorId,
       { apply },
       { ...report.counts, ...written, errors: written.errors.slice(0, 20) },
       status,
@@ -373,7 +420,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: written.errors.length === 0, dry_run: false, ...report, written });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await logRun(supabase, staff.id, { apply }, null, "failed", startedAt, message).catch(() => {});
+    await logRun(supabase, actorId, { apply }, null, "failed", startedAt, message).catch(() => {});
 
     // Config/auth/rate-limit problems on the admin API are upstream failures.
     const status = err instanceof PostgameAdminError ? 502 : 500;
@@ -386,13 +433,17 @@ export async function POST(request: NextRequest) {
  *  Token/cost columns stay null for the same reason. */
 async function logRun(
   supabase: ReturnType<typeof createLiveServiceSupabase>,
-  staffId: string,
+  staffId: string | null,
   inputPayload: Record<string, unknown>,
   outputPayload: Record<string, unknown> | null,
   status: "complete" | "failed",
   startedAt: number,
   errorMessage?: string,
 ): Promise<void> {
+  if (!staffId) {
+    console.warn("[admin-sync] no actor to attribute the run to — skipping agent_runs insert");
+    return;
+  }
   const { error } = await supabase.from("agent_runs").insert({
     agent_name: "admin_sync",
     triggered_by: staffId,
