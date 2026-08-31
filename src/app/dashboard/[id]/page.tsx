@@ -1307,6 +1307,12 @@ export default function CampaignEditor() {
   const [nameDraft, setNameDraft] = useState("");
   const [clientDraft, setClientDraft] = useState("");
 
+  // "Sync Asana" — pulls campaign managers off the Asana board. The route syncs
+  // the WHOLE board; the result line below is narrowed to this campaign, because
+  // that is the only outcome the person standing on this page asked about.
+  const [syncingAsana, setSyncingAsana] = useState(false);
+  const [asanaResult, setAsanaResult] = useState<string | null>(null);
+
   // Metrics spreadsheet save state
   const [savingMetrics, setSavingMetrics] = useState(false);
 
@@ -1651,6 +1657,42 @@ export default function CampaignEditor() {
       .select()
       .single();
     if (data) setCampaign(data);
+  }
+
+  // Run the Asana → Hub manager sync, then re-read THIS campaign to report what
+  // it actually got. The response's own counts describe the whole board, so the
+  // refetched row — not the response — is what the result line is keyed on: it
+  // is the only thing that answers "did this campaign get a manager?".
+  async function syncAsanaManagers() {
+    if (!campaign || syncingAsana) return;
+    setSyncingAsana(true);
+    setAsanaResult(null);
+    try {
+      const res = await fetch("/api/sync/asana-managers", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `Sync responded ${res.status}`);
+      }
+
+      const { data } = await supabase
+        .from("campaign_recaps")
+        .select("*")
+        .eq("id", campaign.id)
+        .single();
+      if (data) setCampaign(data);
+
+      const manager = (data?.manager_name || data?.manager_email || "").trim();
+      setAsanaResult(
+        manager ? `Synced · Manager: ${manager}` : "Synced · No Asana task linked to this campaign yet",
+      );
+    } catch (e) {
+      // The real reason belongs in the console; the person just needs to know to
+      // try again, not to read an Asana API status code.
+      console.error("[dashboard] Asana manager sync failed:", e);
+      setAsanaResult("Sync failed — try again");
+    } finally {
+      setSyncingAsana(false);
+    }
   }
 
   async function saveCampaignInfo() {
@@ -2671,6 +2713,14 @@ export default function CampaignEditor() {
                 {campaign.published ? "Published" : "Draft"}
               </span>
             </div>
+            {/* Who runs this campaign, per the Asana board. Absent until the
+                manager sync has matched this campaign to a task. */}
+            {(campaign.manager_name || campaign.manager_email) && (
+              <div className="text-[11px] text-gray-500 mt-1">
+                Manager:{" "}
+                <span className="text-gray-300">{campaign.manager_name || campaign.manager_email}</span>
+              </div>
+            )}
           </div>
         </div>
         {/* flex-wrap: this row was already overflowing its container on a phone
@@ -2717,6 +2767,24 @@ export default function CampaignEditor() {
               >
                 Import from Drive
               </button>
+            )}
+          </div>
+          {/* Manager sync. The route reconciles the whole board, so this is a
+              refresh for everyone — the result line is just narrowed to here. */}
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={syncAsanaManagers}
+              disabled={syncingAsana}
+              title="Pull campaign managers from the Asana board"
+              className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {syncingAsana ? "Syncing…" : "Sync Asana"}
+            </button>
+            {asanaResult && (
+              <span className="text-[10px] text-gray-500 text-right leading-tight max-w-[220px]">
+                {asanaResult}
+              </span>
             )}
           </div>
           <button onClick={handlePreviewClick}
