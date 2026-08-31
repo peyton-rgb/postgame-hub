@@ -50,6 +50,10 @@ export interface ProvisionOutcome {
   year: number;
   /** True when the campaign folder already existed and was linked, not created. */
   linkedExisting: boolean;
+  /** How the year shelf was resolved, and what it is actually called — an
+   *  adopted variant ("adidas 2026") is not named after the year. */
+  yearFolderVia: YearFolderVia;
+  yearFolderName: string;
   campaignFolderId: string;
   contentFolderId: string;
   contractsFolderId: string;
@@ -131,27 +135,69 @@ function matchesByName(
 }
 
 /**
+ * True when `name` carries `year` as a standalone token.
+ *
+ * Splitting on runs of non-alphanumerics is deliberate over a regex word
+ * boundary: it is easier to reason about, needs no lookbehind, and treats "_"
+ * as a separator, so "adidas_2026" matches the way "adidas 2026" does.
+ *
+ *   "adidas 2026" ✓   "2026 CK" ✓   "…Football 2026)" ✓
+ *   "20261" ✗         "2026x" ✗     "adidas2026" ✗
+ */
+export function hasYearToken(name: string, year: number): boolean {
+  const target = String(year);
+  return name.split(/[^0-9A-Za-z]+/).some((token) => token === target);
+}
+
+/** How a year shelf was arrived at — reported so an adoption is visible. */
+export type YearFolderVia = "stored" | "exact" | "variant" | "created";
+
+export interface YearFolderResolved {
+  id: string;
+  via: YearFolderVia;
+  /** The folder's actual name. Differs from the year when a variant is adopted. */
+  name: string;
+}
+
+/**
  * Resolve the year shelf under a brand root.
  *
- * Stored id wins. On a miss, exactly one name match is adopted, zero creates
- * one, and MORE THAN ONE refuses — a duplicate year shelf is a human decision,
- * never a guess.
+ * Order, most authoritative first:
+ *   1. stored id from brand_year_folders — never re-resolved by name
+ *   2. a folder named exactly {year}. Exact ALWAYS outranks a variant, even
+ *      when variants also exist.
+ *   3. a folder carrying {year} as a standalone token ("adidas 2026",
+ *      "2026 CK"). Exactly one is adopted as the shelf; more than one refuses.
+ *   4. nothing matched → create a plain {year}.
+ *
+ * Adoption records the folder in brand_year_folders and NOTHING ELSE — the
+ * variant is never renamed. This feature does not rename anything.
+ *
+ * More than one candidate at any level is a human decision, never a guess.
  */
 export async function resolveYearFolder(
   drive: drive_v3.Drive,
   brandRootId: string,
   year: number,
   storedId: string | null,
-): Promise<{ id: string; created: boolean } | { ambiguous: string[] }> {
-  if (storedId) return { id: storedId, created: false };
+): Promise<YearFolderResolved | { ambiguous: Array<{ id: string; name: string }> }> {
+  if (storedId) return { id: storedId, via: "stored", name: String(year) };
 
   const children = await listChildFolders(drive, brandRootId);
-  const matches = matchesByName(children, String(year));
 
-  if (matches.length > 1) return { ambiguous: matches.map((m) => m.id) };
-  if (matches.length === 1) return { id: matches[0].id, created: false };
+  // 2 ── exact wins outright.
+  const exact = matchesByName(children, String(year));
+  if (exact.length > 1) return { ambiguous: exact };
+  if (exact.length === 1) return { id: exact[0].id, via: "exact", name: exact[0].name };
 
-  return { id: await createFolder(String(year), brandRootId), created: true };
+  // 3 ── token-bearing variants. Exact matches are already ruled out above, so
+  // there is no overlap to exclude here.
+  const variants = children.filter((c) => hasYearToken(c.name.trim(), year));
+  if (variants.length > 1) return { ambiguous: variants };
+  if (variants.length === 1) return { id: variants[0].id, via: "variant", name: variants[0].name };
+
+  // 4 ── nothing to adopt.
+  return { id: await createFolder(String(year), brandRootId), via: "created", name: String(year) };
 }
 
 /**
@@ -182,11 +228,12 @@ export async function provisionCampaign(
 
   const yearFolder = await resolveYearFolder(drive, brandRootId, year, storedYearFolderId);
   if ("ambiguous" in yearFolder) {
+    const names = yearFolder.ambiguous.map((f) => `"${f.name}"`).join(", ");
     return {
       campaignId: candidate.id,
       campaignName: candidate.name,
       reason: "ambiguous_year_folder",
-      detail: `${yearFolder.ambiguous.length} folders named "${year}" under the brand root — a human has to pick one`,
+      detail: `${yearFolder.ambiguous.length} folders under the brand root could be the ${year} shelf (${names}) — a human has to pick one`,
     };
   }
 
@@ -213,6 +260,8 @@ export async function provisionCampaign(
     campaignName: candidate.name,
     year,
     linkedExisting,
+    yearFolderVia: yearFolder.via,
+    yearFolderName: yearFolder.name,
     campaignFolderId,
     contentFolderId: subIds.Content,
     contractsFolderId: subIds.Contracts,

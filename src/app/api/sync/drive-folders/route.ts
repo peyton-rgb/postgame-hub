@@ -264,6 +264,12 @@ export async function POST(req: NextRequest) {
         acc[s.reason] = (acc[s.reason] ?? 0) + 1;
         return acc;
       }, {}),
+      // Which year shelves were adopted rather than created, and under what
+      // name. An adopted variant ("adidas 2026") is the one outcome a human
+      // might want to eyeball, so it does not hide inside `details`.
+      adopted_year_folders: provisioned
+        .filter((p) => p.yearFolderVia === "variant")
+        .map((p) => ({ campaign: p.campaignName, year: p.year, folder: p.yearFolderName })),
       details: { provisioned, skipped },
       // True when the cap was hit and there is more waiting — never silently
       // truncate and report it as "all done".
