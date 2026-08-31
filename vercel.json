@@ -26,6 +26,10 @@
       "schedule": "0 11 * * *"
     },
     {
+      "path": "/api/sync/admin-accounts",
+      "schedule": "15 11 * * *"
+    },
+    {
       "path": "/api/sync/drive-folders",
       "schedule": "30 11 * * *"
     }
