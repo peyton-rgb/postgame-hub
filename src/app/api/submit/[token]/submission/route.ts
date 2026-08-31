@@ -60,6 +60,7 @@ async function notifyManager(
   supabase: ReturnType<typeof createServiceSupabase>,
   submissionId: string,
   campaignId: string,
+  linkToken: string | null,
   athlete: { first: string; last: string; school: string | null; ig: string },
 ): Promise<void> {
   try {
@@ -89,9 +90,24 @@ async function notifyManager(
       `📥 *New content submission* — ${campaign.client_name} · ${campaign.name}`,
       `${who}${where} · @${athlete.ig}`,
       `${count(photos, "photo")} + ${count(videos, "video")}`,
+      // Straight to the review queue for THIS form rather than the campaign
+      // dashboard — the manager's next action is reviewing what just landed,
+      // not editing the recap. /dashboard/submission-forms/[id] takes the link
+      // TOKEN as its [id] (the page documents this), and opens the split view
+      // with that form already selected.
+      //
+      // There is no way to point deeper than the form: the page passes only
+      // `initialToken` to SplitView, and nothing under submission-forms reads a
+      // search param. The neighbouring review/[submissionId] route is the
+      // per-FILE AI-editing surface, not a queue highlight, so it is not a
+      // substitute. Falls back to the campaign dashboard if the token is
+      // somehow absent — a link to the wrong page beats no link at all.
+      //
       // Canonical domain, never the request origin: this submission can arrive
       // through a deployment alias the recipient has no access to.
-      `→ ${siteUrl()}/dashboard/${campaign.id}`,
+      linkToken
+        ? `→ ${siteUrl()}/dashboard/submission-forms/${encodeURIComponent(linkToken)}`
+        : `→ ${siteUrl()}/dashboard/${campaign.id}`,
     ].join("\n");
 
     const result = await dmCampaignManager(
@@ -301,7 +317,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       ack_instructions_at: tickTime(body.ackInstructionsAt),
       ack_music_at: tickTime(body.ackMusicAt),
     })
-    .select("id, submitted_at")
+    // submission_link_token comes back rather than being reused from `link`, so
+    // the DM's review-queue link is built from what actually landed in the row.
+    .select("id, submitted_at, submission_link_token")
     .single();
 
   if (insertError || !submission) {
@@ -336,7 +354,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   // can be frozen the moment the response is returned, and a floating promise
   // would be lost. notifyManager never throws and never rejects, so awaiting it
   // cannot change what the athlete sees — only how long the request takes.
-  await notifyManager(supabase, submission.id, link!.campaign_id, {
+  await notifyManager(supabase, submission.id, link!.campaign_id, submission.submission_link_token ?? null, {
     first,
     last,
     school: school || null,
