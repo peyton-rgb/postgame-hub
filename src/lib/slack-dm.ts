@@ -11,9 +11,10 @@
 //   2. conversations.open   → the DM channel with that user
 //   3. chat.postMessage     → the message itself
 //
-// SCOPES: conversations.open needs `im:write`, which the app does not have at
-// time of writing. Until it is added and the app reinstalled, step 2 returns
-// missing_scope and this module logs and gives up — it never throws.
+// SCOPES: chat:write, users:read, users:read.email and — for conversations.open
+// — im:write. All four confirmed live on the "Postgame Hub" app 31 Aug. If one
+// is ever dropped the affected call returns missing_scope and this module logs
+// and gives up; it never throws.
 //
 // STUB-SAFE throughout: no bot token, no recipient, or a Slack-side failure all
 // resolve to a logged no-op. Nothing here is allowed to fail a caller.
@@ -31,10 +32,32 @@ interface SlackResponse {
   error?: string;
   user?: { id?: string };
   channel?: { id?: string };
+  /** Slack puts the actually useful detail here — "missing required field:
+   *  email" arrives beside a bare `invalid_arguments`. Logged with the code,
+   *  because the code alone sent the first debug of this down the wrong path. */
+  response_metadata?: { messages?: string[] };
 }
 
-/** POST to a Slack Web API method. Returns null when the call cannot be made. */
-async function slackPost(method: string, body: Record<string, unknown>): Promise<SlackResponse | null> {
+/** Slack's error code plus whatever detail it attached. Never includes the token. */
+function describeError(body: SlackResponse | null): string {
+  if (!body) return "no response";
+  const detail = (body.response_metadata?.messages ?? []).join("; ");
+  return detail ? `${body.error ?? "unknown"} (${detail})` : (body.error ?? "unknown");
+}
+
+/**
+ * POST to a Slack Web API method. Returns null when the call cannot be made.
+ *
+ * Form-encoded, NOT JSON. users.lookupByEmail is one of the Web API methods
+ * that accepts only application/x-www-form-urlencoded: handed a JSON body it
+ * does not read the parameters at all and answers `invalid_arguments` with
+ * "missing required field: email", which is exactly how this failed in
+ * production on 31 Aug. Every method used here takes flat string parameters and
+ * all three accept form encoding, so one encoding serves the whole module and
+ * the distinction cannot bite again. Anything richer (Block Kit) would need to
+ * move back to JSON on the methods that support it.
+ */
+async function slackPost(method: string, params: Record<string, unknown>): Promise<SlackResponse | null> {
   const token = process.env.SLACK_BOT_TOKEN;
   if (!token) return null;
 
@@ -45,9 +68,11 @@ async function slackPost(method: string, body: Record<string, unknown>): Promise
         // The token is a credential — it goes in the header and is never logged,
         // not on the success path and not in any error below.
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json; charset=utf-8",
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      body: JSON.stringify(body),
+      body: new URLSearchParams(
+        Object.entries(params).map(([key, value]) => [key, String(value)]),
+      ).toString(),
     });
     return (await res.json()) as SlackResponse;
   } catch (e) {
@@ -62,7 +87,7 @@ async function lookupUserId(email: string): Promise<string | null> {
   if (!body?.ok) {
     // users_not_found is routine (the person isn't in the workspace, or their
     // Slack email differs from their Asana one) — the caller falls back.
-    console.warn(`[slack-dm] users.lookupByEmail failed for ${email}: ${body?.error ?? "no response"}`);
+    console.warn(`[slack-dm] users.lookupByEmail failed for ${email}: ${describeError(body)}`);
     return null;
   }
   return body.user?.id ?? null;
@@ -72,7 +97,7 @@ async function lookupUserId(email: string): Promise<string | null> {
 async function openDm(userId: string): Promise<string | null> {
   const body = await slackPost("conversations.open", { users: userId });
   if (!body?.ok) {
-    console.warn(`[slack-dm] conversations.open failed: ${body?.error ?? "no response"}`);
+    console.warn(`[slack-dm] conversations.open failed: ${describeError(body)}`);
     return null;
   }
   return body.channel?.id ?? null;
@@ -90,7 +115,7 @@ async function deliver(email: string, text: string): Promise<boolean> {
   // readable on a lock screen and not just inside the Slack client.
   const body = await slackPost("chat.postMessage", { channel, text, mrkdwn: true });
   if (!body?.ok) {
-    console.warn(`[slack-dm] chat.postMessage failed: ${body?.error ?? "no response"}`);
+    console.warn(`[slack-dm] chat.postMessage failed: ${describeError(body)}`);
     return false;
   }
   return true;
