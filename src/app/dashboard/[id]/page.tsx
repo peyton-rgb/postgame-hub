@@ -1313,6 +1313,12 @@ export default function CampaignEditor() {
   const [syncingAsana, setSyncingAsana] = useState(false);
   const [asanaResult, setAsanaResult] = useState<string | null>(null);
 
+  // "Provision folders" — creates the Drive structure for campaigns that don't
+  // have one yet. Sweeps every eligible campaign, same as Sync Asana; the
+  // result line is narrowed to this one.
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionResult, setProvisionResult] = useState<string | null>(null);
+
   // Metrics spreadsheet save state
   const [savingMetrics, setSavingMetrics] = useState(false);
 
@@ -1692,6 +1698,54 @@ export default function CampaignEditor() {
       setAsanaResult("Sync failed — try again");
     } finally {
       setSyncingAsana(false);
+    }
+  }
+
+  // Run the Drive folder sweep, then re-read THIS campaign to report what it
+  // got. As with Sync Asana, the refetched row is what the result line is keyed
+  // on — the response describes the whole sweep, not this campaign.
+  async function provisionDriveFolders() {
+    if (!campaign || provisioning) return;
+    setProvisioning(true);
+    setProvisionResult(null);
+    try {
+      const res = await fetch("/api/sync/drive-folders", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || `Provision responded ${res.status}`);
+
+      const { data } = await supabase
+        .from("campaign_recaps")
+        .select("*")
+        .eq("id", campaign.id)
+        .single();
+      if (data) setCampaign(data);
+
+      if (data?.drive_folder_id) {
+        setProvisionResult("Folders ready");
+      } else {
+        // Say WHY nothing happened for this campaign — a bare "done" next to an
+        // unchanged campaign reads as a silent failure.
+        const mine = (body?.details?.skipped ?? []).find(
+          (s: { campaignId: string }) => s.campaignId === campaign.id,
+        );
+        const because: Record<string, string> = {
+          no_brand_id: "this campaign has no brand linked yet",
+          no_brand_root: "this brand has no Drive folder set",
+          ambiguous_year_folder: "two year folders match — needs a human",
+          empty_campaign_name: "the campaign name is empty",
+          error: "it errored — see the console",
+        };
+        setProvisionResult(
+          mine
+            ? `Not provisioned · ${because[mine.reason] ?? mine.reason}`
+            : "Swept · nothing to do for this campaign",
+        );
+      }
+    } catch (e) {
+      console.error("[dashboard] Drive folder provisioning failed:", e);
+      setProvisionResult("Provisioning failed — try again");
+    } finally {
+      setProvisioning(false);
     }
   }
 
@@ -2784,6 +2838,24 @@ export default function CampaignEditor() {
             {asanaResult && (
               <span className="text-[10px] text-gray-500 text-right leading-tight max-w-[220px]">
                 {asanaResult}
+              </span>
+            )}
+          </div>
+          {/* Drive folder provisioning. Sweeps every eligible campaign; the
+              result line is narrowed to this one. */}
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={provisionDriveFolders}
+              disabled={provisioning}
+              title="Create the Drive folder structure for new campaigns"
+              className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {provisioning ? "Provisioning…" : "Provision Folders"}
+            </button>
+            {provisionResult && (
+              <span className="text-[10px] text-gray-500 text-right leading-tight max-w-[220px]">
+                {provisionResult}
               </span>
             )}
           </div>

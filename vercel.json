@@ -24,6 +24,10 @@
     {
       "path": "/api/sync/asana-managers",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/sync/drive-folders",
+      "schedule": "30 11 * * *"
     }
   ]
 }

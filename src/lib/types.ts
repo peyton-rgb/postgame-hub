@@ -102,6 +102,12 @@ export interface Campaign {
   manager_name?: string | null;
   asana_task_gid?: string | null;
   asana_synced_at?: string | null;
+  /** Drive subfolders created by /api/sync/drive-folders. The campaign folder
+   *  itself stays in drive_folder_id. Null until that sweep provisions it. */
+  drive_content_folder_id?: string | null;
+  drive_contracts_folder_id?: string | null;
+  drive_trackers_folder_id?: string | null;
+  drive_provisioned_at?: string | null;
   brand_id: string | null;
   created_at: string;
   published: boolean;
