@@ -39,14 +39,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
 import { getDriveClient } from "@/lib/google-drive";
 import { dmCampaignManager } from "@/lib/slack-dm";
+import { siteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
-
-/** Absolute base for links back into the Hub — Slack needs absolute URLs.
- *  Same source and default as lib/slack.ts, so both paths agree. */
-function hubBase(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "https://postgame-hub.vercel.app").replace(/\/$/, "");
-}
 
 /** Pluralise a count without the "(s)" hedge: 1 photo, 2 photos, 0 photos. */
 function count(n: number, noun: string): string {
@@ -94,7 +89,9 @@ async function notifyManager(
       `📥 *New content submission* — ${campaign.client_name} · ${campaign.name}`,
       `${who}${where} · @${athlete.ig}`,
       `${count(photos, "photo")} + ${count(videos, "video")}`,
-      `→ ${hubBase()}/dashboard/${campaign.id}`,
+      // Canonical domain, never the request origin: this submission can arrive
+      // through a deployment alias the recipient has no access to.
+      `→ ${siteUrl()}/dashboard/${campaign.id}`,
     ].join("\n");
 
     const result = await dmCampaignManager(

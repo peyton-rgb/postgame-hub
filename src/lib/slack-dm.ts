@@ -113,7 +113,18 @@ async function deliver(email: string, text: string): Promise<boolean> {
 
   // `text` doubles as the notification/plain-text fallback, so the message is
   // readable on a lock screen and not just inside the Slack client.
-  const body = await slackPost("chat.postMessage", { channel, text, mrkdwn: true });
+  //
+  // Unfurling off in both directions: the only link in these messages is a Hub
+  // dashboard behind staff auth, so a preview card can never show anything but
+  // a login page — it would add a block of dead chrome under a deliberately
+  // four-line message.
+  const body = await slackPost("chat.postMessage", {
+    channel,
+    text,
+    mrkdwn: true,
+    unfurl_links: false,
+    unfurl_media: false,
+  });
   if (!body?.ok) {
     console.warn(`[slack-dm] chat.postMessage failed: ${describeError(body)}`);
     return false;
