@@ -22,6 +22,10 @@
       "schedule": "*/10 * * * *"
     },
     {
+      "path": "/api/admin-sync/campaigns",
+      "schedule": "45 10 * * *"
+    },
+    {
       "path": "/api/sync/asana-managers",
       "schedule": "0 11 * * *"
     },

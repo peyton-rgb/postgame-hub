@@ -180,6 +180,20 @@ function findDuplicates(mappings: Mapping[]): DuplicateLink[] {
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 
+/**
+ * GET and POST are the same run.
+ *
+ * GET exists because that is the only method Vercel cron issues — a route that
+ * exports POST alone answers its own schedule with 405 and never runs. POST
+ * stays for the staff button.
+ *
+ * Neither method reads a request body, so delegating is exact rather than
+ * approximate.
+ */
+export async function GET(req: NextRequest) {
+  return POST(req);
+}
+
 export async function POST(req: NextRequest) {
   const startedAt = Date.now();
   const supabase = createLiveServiceSupabase();
