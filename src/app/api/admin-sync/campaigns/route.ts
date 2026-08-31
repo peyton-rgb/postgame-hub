@@ -14,16 +14,22 @@
 //   • The Hub's `name` is NEVER overwritten. Admin names land in `admin_name`
 //     and divergence is reported as nameDrift for a human to reconcile.
 //   • Inserts only. Existing matched rows get admin_name / admin_is_active /
-//     admin_synced_at refreshed and nothing else.
+//     admin_synced_at refreshed, plus admin_account_id and brand_id FILLED
+//     when they are null — never overwritten. A brand a human chose, or one
+//     already on the row, always wins over anything this sync computes.
 //   • An admin id attached to more than one Hub row is SKIPPED and reported,
 //     never auto-merged.
-//   • brand_id is left null — account→brand mapping is a separate job.
+//   • brand_id now comes from admin_account_map (account → brand). It is still
+//     null when the account is unmapped: the map only ever links on an EXACT
+//     name match, and anything less waits for a human. This sync never guesses
+//     a brand and never creates one.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { getStaffUser } from "@/lib/staff-auth";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import { getAccounts, getCampaigns, PostgameAdminError, type AdminCampaign } from "@/lib/postgame-admin";
+import { loadAccountMap, recordUnknownAccounts } from "@/lib/account-brand-map";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -39,6 +45,8 @@ interface HubRow {
   admin_campaign_id: string | null;
   admin_name: string | null;
   admin_is_active: boolean | null;
+  admin_account_id: string | null;
+  brand_id: string | null;
 }
 
 // ── Normalizers ───────────────────────────────────────────────────────────────
@@ -137,10 +145,22 @@ export async function POST(request: NextRequest) {
       if (id && label) accountMap.set(id, label);
     }
 
+    // admin account id → brand, from admin_account_map. Read once for the run.
+    // An account the map has never seen is INSERTED with brand_id null, so the
+    // human queue at /dashboard/settings/brand-mapping is always complete and
+    // nobody has to re-run the seeding pass to discover a new account.
+    const brandMap = await loadAccountMap(supabase);
+    const unknownAccounts = adminAccounts
+      .map((a) => ({ admin_account_id: (a.account_id ?? "").trim(), account_name: a.account ?? null }))
+      .filter((a) => a.admin_account_id && !brandMap.has(a.admin_account_id));
+    if (apply && unknownAccounts.length > 0) {
+      await recordUnknownAccounts(supabase, unknownAccounts);
+    }
+
     // 2 ── Every Hub row already carrying an admin id.
     const { data: hubData, error: hubError } = await supabase
       .from("campaign_recaps")
-      .select("id, name, slug, admin_campaign_id, admin_name, admin_is_active")
+      .select("id, name, slug, admin_campaign_id, admin_name, admin_is_active, admin_account_id, brand_id")
       .not("admin_campaign_id", "is", null)
       .limit(5000);
     if (hubError) throw new Error(`Failed to load campaign_recaps: ${hubError.message}`);
@@ -184,7 +204,7 @@ export async function POST(request: NextRequest) {
       hub_name: string;
       admin_name: string | null;
     }[] = [];
-    const toRefresh: { row: HubRow; admin_name: string | null; admin_is_active: boolean | null }[] = [];
+    const toRefresh: { row: HubRow; admin_name: string | null; admin_is_active: boolean | null; account_id: string | null }[] = [];
     let skippedDuplicateMatches = 0;
 
     for (const campaign of adminCampaigns) {
@@ -217,8 +237,16 @@ export async function POST(request: NextRequest) {
 
       // Only write when something actually changed — keeps re-runs cheap and
       // makes a timed-out apply safe to resume.
-      if (row.admin_name !== adminName || row.admin_is_active !== adminActive) {
-        toRefresh.push({ row, admin_name: adminName, admin_is_active: adminActive });
+      const accountId = (campaign.account_id ?? "").trim() || null;
+      const needsAccountId = accountId !== null && row.admin_account_id === null;
+      const needsBrandId = row.brand_id === null && accountId !== null && brandMap.get(accountId)?.brand_id;
+      if (
+        row.admin_name !== adminName ||
+        row.admin_is_active !== adminActive ||
+        needsAccountId ||
+        needsBrandId
+      ) {
+        toRefresh.push({ row, admin_name: adminName, admin_is_active: adminActive, account_id: accountId });
       }
     }
 
@@ -237,6 +265,11 @@ export async function POST(request: NextRequest) {
         published: false,
         lifecycle_status: "draft",
         admin_campaign_id: adminId,
+        // The admin's account id, and the brand it maps to when the map knows
+        // one. An unmapped account leaves brand_id null exactly as before —
+        // this fills a gap, it never guesses.
+        admin_account_id: (c.account_id ?? "").trim() || null,
+        brand_id: brandMap.get((c.account_id ?? "").trim())?.brand_id ?? null,
         admin_name: c.campaign_name,
         admin_is_active: toBool(c.is_active),
         admin_synced_at: syncedAt,
@@ -310,6 +343,13 @@ export async function POST(request: NextRequest) {
           admin_name: item.admin_name,
           admin_is_active: item.admin_is_active,
           admin_synced_at: syncedAt,
+          // FILL-ONLY. Both fall back to what the row already holds, so an
+          // existing value — a human's brand choice especially — is never
+          // overwritten by this sync.
+          admin_account_id: item.row.admin_account_id ?? item.account_id,
+          brand_id:
+            item.row.brand_id ??
+            (item.account_id ? brandMap.get(item.account_id)?.brand_id ?? null : null),
         })
         .eq("id", item.row.id);
       if (error) return `refresh ${item.row.id} failed: ${error.message}`;
