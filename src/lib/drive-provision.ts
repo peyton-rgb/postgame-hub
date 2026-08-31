@@ -149,6 +149,32 @@ export function hasYearToken(name: string, year: number): boolean {
   return name.split(/[^0-9A-Za-z]+/).some((token) => token === target);
 }
 
+/**
+ * Folders that must never be adopted as a year shelf, by Drive id.
+ *
+ * Both of these carry 2026 as a standalone token and would otherwise be adopted
+ * — but both are CAMPAIGN folders, not year shelves; "Campaign" is in each
+ * name. Adopting one would file every new campaign for that brand *inside* an
+ * existing campaign. Token matching cannot see the difference, and inventing a
+ * heuristic to guess is explicitly out of scope, so the two known cases are
+ * named here instead.
+ *
+ * A brand whose only candidate is on this list falls through to
+ * ambiguous_year_folder — deliberately NOT to "create a plain {year}", because
+ * a second shelf beside the existing folder is the split-shelf outcome this
+ * resolution order exists to avoid. A human sets the shelf.
+ *
+ * To retire an entry: give the brand a real year shelf in Drive, or seed
+ * brand_year_folders for it — the stored id short-circuits before this list is
+ * ever consulted — then delete the line.
+ */
+export const NEVER_ADOPT_AS_YEAR_FOLDER: Record<string, string> = {
+  // Dr. Scholl's → "Dr. Scholl's 24-Hour Campaign 2026"
+  "1TFvw4l1aAqEYoeNd_s1bX3wFJWq9mEuU": 'Dr. Scholl\'s — "Dr. Scholl\'s 24-Hour Campaign 2026"',
+  // Zenni → "Zenni 2026 Campaign"
+  "1w8cJoa3WgtZrTFnaWGB2Y7FYXpdkAdh7": 'Zenni — "Zenni 2026 Campaign"',
+};
+
 /** How a year shelf was arrived at — reported so an adoption is visible. */
 export type YearFolderVia = "stored" | "exact" | "variant" | "created";
 
@@ -167,8 +193,10 @@ export interface YearFolderResolved {
  *   2. a folder named exactly {year}. Exact ALWAYS outranks a variant, even
  *      when variants also exist.
  *   3. a folder carrying {year} as a standalone token ("adidas 2026",
- *      "2026 CK"). Exactly one is adopted as the shelf; more than one refuses.
- *   4. nothing matched → create a plain {year}.
+ *      "2026 CK"), minus anything in NEVER_ADOPT_AS_YEAR_FOLDER. Exactly one is
+ *      adopted as the shelf; more than one refuses. If every candidate was
+ *      excluded, that refuses too rather than creating a rival shelf.
+ *   4. nothing matched at all → create a plain {year}.
  *
  * Adoption records the folder in brand_year_folders and NOTHING ELSE — the
  * variant is never renamed. This feature does not rename anything.
@@ -180,7 +208,10 @@ export async function resolveYearFolder(
   brandRootId: string,
   year: number,
   storedId: string | null,
-): Promise<YearFolderResolved | { ambiguous: Array<{ id: string; name: string }> }> {
+): Promise<
+  | YearFolderResolved
+  | { ambiguous: Array<{ id: string; name: string }>; blocked?: boolean }
+> {
   if (storedId) return { id: storedId, via: "stored", name: String(year) };
 
   const children = await listChildFolders(drive, brandRootId);
@@ -193,8 +224,14 @@ export async function resolveYearFolder(
   // 3 ── token-bearing variants. Exact matches are already ruled out above, so
   // there is no overlap to exclude here.
   const variants = children.filter((c) => hasYearToken(c.name.trim(), year));
-  if (variants.length > 1) return { ambiguous: variants };
-  if (variants.length === 1) return { id: variants[0].id, via: "variant", name: variants[0].name };
+  const adoptable = variants.filter((c) => !(c.id in NEVER_ADOPT_AS_YEAR_FOLDER));
+
+  if (adoptable.length > 1) return { ambiguous: adoptable };
+  if (adoptable.length === 1) return { id: adoptable[0].id, via: "variant", name: adoptable[0].name };
+
+  // Every candidate was excluded: refuse rather than create a rival shelf
+  // alongside the campaign folder that already carries the year.
+  if (variants.length > 0) return { ambiguous: variants, blocked: true };
 
   // 4 ── nothing to adopt.
   return { id: await createFolder(String(year), brandRootId), via: "created", name: String(year) };
@@ -233,7 +270,9 @@ export async function provisionCampaign(
       campaignId: candidate.id,
       campaignName: candidate.name,
       reason: "ambiguous_year_folder",
-      detail: `${yearFolder.ambiguous.length} folders under the brand root could be the ${year} shelf (${names}) — a human has to pick one`,
+      detail: yearFolder.blocked
+        ? `the only ${year} candidate under the brand root is ${names}, which is a campaign folder rather than a year shelf — set this brand's ${year} shelf by hand`
+        : `${yearFolder.ambiguous.length} folders under the brand root could be the ${year} shelf (${names}) — a human has to pick one`,
     };
   }
 
