@@ -96,6 +96,12 @@ export interface Campaign {
   client_name: string;
   client_logo_url: string | null;
   admin_campaign_id: string | null;
+  /** Campaign manager, mapped from the assignee of this campaign's task on the
+   *  Asana board by /api/sync/asana-managers. Null until that sync matches it. */
+  manager_email?: string | null;
+  manager_name?: string | null;
+  asana_task_gid?: string | null;
+  asana_synced_at?: string | null;
   brand_id: string | null;
   created_at: string;
   published: boolean;

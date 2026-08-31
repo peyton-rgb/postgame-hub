@@ -38,8 +38,78 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
 import { getDriveClient } from "@/lib/google-drive";
+import { dmCampaignManager } from "@/lib/slack-dm";
 
 export const dynamic = "force-dynamic";
+
+/** Absolute base for links back into the Hub — Slack needs absolute URLs.
+ *  Same source and default as lib/slack.ts, so both paths agree. */
+function hubBase(): string {
+  return (process.env.NEXT_PUBLIC_SITE_URL || "https://postgame-hub.vercel.app").replace(/\/$/, "");
+}
+
+/** Pluralise a count without the "(s)" hedge: 1 photo, 2 photos, 0 photos. */
+function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * DM the campaign's manager that content just landed.
+ *
+ * FIRE-AND-FORGET. Every path through this function swallows its own errors:
+ * the athlete's submission is already recorded and committed by the time it
+ * runs, and a Slack outage, a missing scope or an unmapped manager must never
+ * turn a successful submission into an error on the athlete's screen.
+ */
+async function notifyManager(
+  supabase: ReturnType<typeof createServiceSupabase>,
+  submissionId: string,
+  campaignId: string,
+  athlete: { first: string; last: string; school: string | null; ig: string },
+): Promise<void> {
+  try {
+    const [{ data: campaign }, { data: files }] = await Promise.all([
+      supabase
+        .from("campaign_recaps")
+        .select("id, name, client_name, manager_email, manager_name")
+        .eq("id", campaignId)
+        .single(),
+      // asset_type is NOT NULL and is exactly 'photo' or 'video' in this table
+      // (file_class is unpopulated) — it is the honest source for the counts.
+      supabase.from("tier3_submissions").select("asset_type").eq("submission_id", submissionId),
+    ]);
+
+    if (!campaign) {
+      console.error("[submit] manager DM skipped: campaign row not found");
+      return;
+    }
+
+    const rows = (files as Array<{ asset_type: string | null }> | null) ?? [];
+    const photos = rows.filter((r) => r.asset_type === "photo").length;
+    const videos = rows.filter((r) => r.asset_type === "video").length;
+
+    const who = `${athlete.first} ${athlete.last}`.trim();
+    const where = athlete.school ? ` (${athlete.school})` : "";
+    const text = [
+      `📥 *New content submission* — ${campaign.client_name} · ${campaign.name}`,
+      `${who}${where} · @${athlete.ig}`,
+      `${count(photos, "photo")} + ${count(videos, "video")}`,
+      `→ ${hubBase()}/dashboard/${campaign.id}`,
+    ].join("\n");
+
+    const result = await dmCampaignManager(
+      campaign.manager_email,
+      text,
+      "⚠️ No campaign manager linked in Asana for this campaign — you're getting this as the fallback.",
+    );
+
+    if (!result.ok) {
+      console.error(`[submit] manager DM not delivered: ${result.reason}`);
+    }
+  } catch (e) {
+    console.error("[submit] manager DM failed:", e instanceof Error ? e.message : e);
+  }
+}
 
 interface SubmissionLink {
   token: string;
@@ -263,6 +333,18 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       linkedCount = linked?.length ?? 0;
     }
   }
+
+  // ── 3. tell the campaign manager ──
+  // Awaited so the DM actually goes out: this runs on a serverless function that
+  // can be frozen the moment the response is returned, and a floating promise
+  // would be lost. notifyManager never throws and never rejects, so awaiting it
+  // cannot change what the athlete sees — only how long the request takes.
+  await notifyManager(supabase, submission.id, link!.campaign_id, {
+    first,
+    last,
+    school: school || null,
+    ig,
+  });
 
   return NextResponse.json({
     ok: true,

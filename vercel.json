@@ -20,6 +20,10 @@
     {
       "path": "/api/cron/recap-intake",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/sync/asana-managers",
+      "schedule": "0 11 * * *"
     }
   ]
 }
