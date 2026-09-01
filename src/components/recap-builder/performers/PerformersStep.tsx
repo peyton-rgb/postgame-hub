@@ -54,7 +54,7 @@ export default function PerformersStep({
           .order('sort_order', { ascending: true }),
         supabase
           .from('media')
-          .select('id, file_url, file_type, athlete_id, sort_order')
+          .select('id, file_url, type, athlete_id, sort_order')
           .eq('campaign_id', recapId),
         supabase.from('campaign_recaps').select('recap_config').eq('id', recapId).single(),
       ]);
@@ -70,7 +70,7 @@ export default function PerformersStep({
 
       const byAthlete: Record<string, Shot[]> = {};
       (media ?? [])
-        .filter((m: { file_type: string | null }) => !(m.file_type ?? '').startsWith('video'))
+        .filter((m: { type: string | null }) => m.type === 'image')
         .forEach((m: Record<string, unknown>) => {
           const aid = m.athlete_id ? String(m.athlete_id) : null;
           if (!aid) return;

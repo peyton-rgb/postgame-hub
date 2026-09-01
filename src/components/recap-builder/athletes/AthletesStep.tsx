@@ -92,17 +92,17 @@ export default function AthletesStep({
 
       const { data: media } = await supabase
         .from('media')
-        .select('athlete_id, file_type')
+        .select('athlete_id, type')
         .eq('campaign_id', recapId);
 
       if (cancelled) return;
 
       const files = new Map<string, { files: number; videos: number }>();
-      (media ?? []).forEach((m: { athlete_id: string | null; file_type: string | null }) => {
+      (media ?? []).forEach((m: { athlete_id: string | null; type: string | null }) => {
         if (!m.athlete_id) return;
         const e = files.get(m.athlete_id) ?? { files: 0, videos: 0 };
         e.files += 1;
-        if ((m.file_type ?? '').startsWith('video')) e.videos += 1;
+        if (m.type === 'video') e.videos += 1;
         files.set(m.athlete_id, e);
       });
 

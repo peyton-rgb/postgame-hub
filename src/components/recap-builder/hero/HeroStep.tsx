@@ -72,6 +72,10 @@ export default function HeroStep({
   const [name, setName] = useState('');
   const [descHtml, setDescHtml] = useState('');
   const [loaded, setLoaded] = useState(false);
+  // A PostgREST select against a column that does not exist returns
+  // { data: null, error }, which renders as a silently empty grid. That is
+  // exactly how the media.file_type mistake hid, so surface it instead.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // ── load photos, copy and saved hero state ────────────────
   useEffect(() => {
@@ -83,9 +87,9 @@ export default function HeroStep({
         .eq('id', recapId)
         .single();
 
-      const { data: media } = await supabase
+      const { data: media, error: mediaError } = await supabase
         .from('media')
-        .select('id, file_url, file_type, athlete_id, is_hero, hero_order, sort_order, created_at')
+        .select('id, file_url, type, athlete_id, is_hero, hero_order, sort_order, created_at')
         .eq('campaign_id', recapId);
 
       const { data: aths } = await supabase
@@ -94,13 +98,14 @@ export default function HeroStep({
         .eq('campaign_id', recapId);
 
       if (cancelled) return;
+      if (mediaError) setLoadError(mediaError.message);
 
       const nameById = new Map((aths ?? []).map((a: { id: string; name: string | null }) => [a.id, a.name ?? '—']));
 
-      // Photos only — the hero is a still frame (spec §2).
-      const rows = (media ?? []).filter(
-        (m: { file_type: string | null }) => !(m.file_type ?? '').startsWith('video'),
-      );
+      // Photos only — the hero is a still frame (spec §2). media.type is
+      // exactly 'image' or 'video'; test for image rather than negating
+      // video so an unexpected value can never masquerade as a photo.
+      const rows = (media ?? []).filter((m: { type: string | null }) => m.type === 'image');
 
       // Derived fallback order: is_hero -> sort_order -> upload date.
       rows.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
@@ -117,7 +122,9 @@ export default function HeroStep({
         rows.map((m: Record<string, unknown>) => ({
           id: String(m.id),
           url: String(m.file_url),
-          athlete: nameById.get(String(m.athlete_id)) ?? 'Unassigned',
+          // Photos with no athlete_id are campaign-level and still selectable —
+          // the picker sources from media by campaign, never gated on Drive.
+          athlete: m.athlete_id ? (nameById.get(String(m.athlete_id)) ?? 'Unassigned') : 'Unassigned',
           r: null,
         })),
       );
@@ -247,6 +254,15 @@ export default function HeroStep({
 
   if (!loaded) return <p style={{ color: 'rgba(250,248,245,.45)', fontSize: 13 }}>Loading photos…</p>;
 
+  if (loadError) {
+    return (
+      <div className="flagline warn">
+        <span className="fdot" />
+        <span>Could not load campaign photos — {loadError}</span>
+      </div>
+    );
+  }
+
   const names = ['All', ...Array.from(new Set(photos.map((p) => p.athlete)))];
   const shown = photos.filter((p) => filter === 'All' || p.athlete === filter);
 
@@ -273,6 +289,14 @@ export default function HeroStep({
           <div className="hint" style={{ marginBottom: 12 }}>
             Nothing selected — the hero falls back to the first staged photo, ordered by
             is_hero, then sort order, then upload date.
+          </div>
+        )}
+
+        {photos.length === 0 && (
+          <div className="hint" style={{ marginBottom: 12 }}>
+            No photos on this campaign yet. The picker reads the media table by
+            campaign — a tracker sheet and a Drive folder are optional staging,
+            not a requirement.
           </div>
         )}
 
