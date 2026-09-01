@@ -143,8 +143,8 @@
   .desktop .rp-plate{width:860px}
   .mobile  .rp-plate{width:100%}
   .rp-copy{position:absolute;z-index:2}
-  .desktop .rp-copy{left:72px;bottom:118px}
-  .mobile  .rp-copy{left:22px;right:22px;bottom:74px}
+  .desktop .rp-copy{left:72px;bottom:56px}
+  .mobile  .rp-copy{left:22px;right:22px;bottom:36px}
   .rp-brand{display:block}
   .desktop .rp-brand{height:96px;margin-bottom:18px;margin-left:-30px}
   .mobile  .rp-brand{height:54px;margin-bottom:12px;margin-left:-17px}
@@ -161,15 +161,22 @@
   .rp-dot.on{background:var(--orange)}
   .pv-hl{outline:2px solid rgba(215,63,9,.85);outline-offset:-2px;box-shadow:inset 0 0 60px rgba(215,63,9,.15)}
 
-  .rp-next{border-top:none;opacity:.45;max-width:60%}
-  .desktop .rp-next{padding:56px 72px 72px}
-  .mobile  .rp-next{padding:32px 22px 44px}
+  .rp-next{border-top:none}
+  .desktop .rp-next{max-width:76%}
+  .mobile  .rp-next{max-width:100%}
+  .desktop .rp-next{padding:30px 72px 72px}
+  .mobile  .rp-next{padding:20px 22px 44px}
   .rp-skick{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#D73F09}
   .desktop .rp-skick{font-size:12px;margin-bottom:12px}
   .mobile  .rp-skick{font-size:9.5px;margin-bottom:8px}
   .rp-sh{font-family:'Bebas Neue';color:#FAF8F5;line-height:.96}
-  .desktop .rp-sh{font-size:54px}
-  .mobile  .rp-sh{font-size:32px}
+  .desktop .rp-sh{font-size:68px;margin-bottom:26px}
+  .mobile  .rp-sh{font-size:38px;margin-bottom:16px}
+
+  .rp-prose{color:#FAF8F5;font-family:'Arimo',Arial,sans-serif}
+  .desktop .rp-prose{font-size:19px;line-height:1.8}
+  .mobile  .rp-prose{font-size:16px;line-height:1.75}
+  .rp-prose p{margin-bottom:15px}
 
   .bar{position:fixed;left:150px;right:0;bottom:0;display:flex;align-items:center;gap:12px;
     padding:13px 44px;background:rgba(7,7,10,.82);backdrop-filter:blur(24px);border-top:1px solid var(--line);z-index:10}
@@ -248,6 +255,10 @@
               <div class="rp-next">
                 <div class="rp-skick">What we ran</div>
                 <div class="rp-sh">Overview</div>
+                <div class="rp-prose">
+                  <p>The Brooks Ghost Amp campaign activated 76 college athletes representing 69 universities across 7 sports, leveraging a mix of feed posts, Reels, and TikTok content to drive awareness and excitement around the launch. Collectively, the athlete roster represented a combined social following of 466.7K+ followers.</p>
+                  <p>The campaign strategically aligned with Brooks' massive Ghost Amp influencer launch on August 1, when 70 athletes went live simultaneously to create a strong wave of social momentum and visibility around the product launch.</p>
+                </div>
               </div>
             </div>
           </div></div>
@@ -274,13 +285,13 @@
     <button class="btn ghost">← Overview</button>
     <div class="status" id="status"><span class="dot"></span>All changes saved · 2:41 PM</div>
     <button class="btn ghost">Save</button>
-    <button class="btn primary">Next · Takeaways →</button>
+    <button class="btn primary">Next · Performers →</button>
   </div>
   </main>
 </div>
 
 <script>
-const STEPS = ["Athletes","Overview","Hero","Takeaways","Performers","Content","Sections"];
+const STEPS = ["Athletes","Overview","Hero","Performers","Content","Takeaways","Sections"];
 const rail = document.getElementById('rail');
 STEPS.forEach((s,i)=>{
   const el = document.createElement('div');

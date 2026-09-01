@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recap Builder — Performers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&family=Anton&family=JetBrains+Mono:wght@500&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#07070A; --orange:#D73F09; --white:#FAF8F5;
+    --line:rgba(250,248,245,.08); --line-2:rgba(250,248,245,.14);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--black);color:#FAF8F5;
+    font:14.5px/1.6 'Inter',-apple-system,'Segoe UI',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;font-feature-settings:'tnum'}
+  ::selection{background:rgba(215,63,9,.35)}
+
+  .shell{display:flex;min-height:100vh}
+  .sidebar{width:150px;flex:none;border-right:1px solid var(--line);padding:20px 16px;position:sticky;top:0;height:100vh;opacity:.5}
+  .sidebar img{width:100px;display:block;margin-bottom:30px}
+  .sidebar .grp{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(250,248,245,.3);margin:20px 0 8px}
+  .sidebar a{display:block;font-size:12.5px;color:rgba(250,248,245,.5);text-decoration:none;padding:4px 0}
+
+  .main{flex:1;min-width:0}
+  .wrap{max-width:1560px;margin:0 auto;padding:40px 44px 150px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+  .actions{display:flex;gap:10px;padding-bottom:4px}
+  h1{font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--white);margin:8px 0 3px}
+  .meta{font-size:13.5px;color:rgba(250,248,245,.92)}
+  .meta b{font-weight:500}
+
+  .rail{display:flex;margin:34px 0 36px;position:relative}
+  .rail::before{content:'';position:absolute;left:0;right:0;top:14px;height:1px;background:var(--line)}
+  .step{flex:1;position:relative;cursor:pointer;padding-top:30px}
+  .step .n{position:absolute;top:7px;left:0;width:15px;height:15px;border-radius:50%;background:var(--black);border:1px solid var(--line-2);transition:.2s}
+  .step .t{font-size:11px;font-weight:500;letter-spacing:.06em;color:rgba(250,248,245,.35);text-transform:uppercase;transition:.2s}
+  .step:hover .t{color:#FAF8F5}
+  .step.active .n{background:var(--orange);border-color:var(--orange);box-shadow:0 0 12px rgba(215,63,9,.6)}
+  .step.active .t{color:var(--white)}
+  .step.done .n{border-color:rgba(215,63,9,.7);background:rgba(215,63,9,.18)}
+
+  .btn{border:none;cursor:pointer;border-radius:10px;padding:12px 18px;font:600 12.5px 'Inter';letter-spacing:.02em;transition:.15s;white-space:nowrap;color:#FAF8F5}
+  .btn.primary{background:var(--orange);color:#fff}
+  .btn.primary:hover{filter:brightness(1.12);box-shadow:0 0 18px rgba(215,63,9,.35)}
+  .btn.ghost{background:transparent;border:1px solid var(--line-2)}
+  .btn.ghost:hover{border-color:rgba(250,248,245,.3)}
+
+  .split{display:grid;grid-template-columns:1fr 600px;gap:44px;align-items:start}
+
+  /* ── left column ── */
+  .panel{border:1px solid var(--line);border-radius:20px;padding:24px 26px;background:rgba(250,248,245,.015)}
+  .ptop{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:6px}
+  .ptitle{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#FAF8F5}
+  .psub{font-size:12.5px;color:rgba(250,248,245,.55);margin-bottom:20px}
+  .seg{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;overflow:hidden}
+  .seg span{padding:9px 16px;font:600 11px 'JetBrains Mono';letter-spacing:.1em;text-transform:uppercase;cursor:pointer;color:rgba(250,248,245,.55);transition:.15s}
+  .seg span.on{background:rgba(215,63,9,.16);color:#FAF8F5;box-shadow:inset 0 0 0 1px rgba(215,63,9,.6)}
+
+  .flagline{display:flex;align-items:center;gap:9px;font-size:12.5px;border:1px solid var(--line-2);border-radius:12px;padding:11px 14px;margin-bottom:18px}
+  .flagline.warn{border-color:rgba(215,63,9,.55);background:rgba(215,63,9,.07)}
+  .flagline.ok{color:rgba(250,248,245,.6)}
+  .flagline .fdot{width:7px;height:7px;border-radius:50%;background:var(--orange);flex:none}
+  .flagline.ok .fdot{background:rgba(250,248,245,.3)}
+
+  .list{display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;align-items:center;gap:16px;padding:13px 16px;
+    background:rgba(250,248,245,.025);border:1px solid var(--line);border-radius:16px}
+  .row .rk{font-family:'Anton';font-size:24px;color:var(--orange);width:34px;flex:none;text-align:center}
+  .row .tmb{width:56px;height:56px;flex:none;border-radius:12px;overflow:hidden;border:1px solid var(--line-2);position:relative;background:#101014}
+  .row .tmb img{width:100%;height:100%;object-fit:cover;display:block}
+  .row .tmb.unset{border-style:dashed;border-color:rgba(215,63,9,.6)}
+  .row .tmb.unset::after{content:'!';position:absolute;inset:0;display:grid;place-items:center;font:700 18px 'Inter';color:var(--orange)}
+  .row .tmb.none::after{content:'—';position:absolute;inset:0;display:grid;place-items:center;font:600 14px 'Inter';color:rgba(250,248,245,.35)}
+  .row .who{flex:1;min-width:0}
+  .row .who .nm{display:block;font-weight:700;font-size:15.5px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .who .sub{display:block;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:rgba(250,248,245,.5);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .num{text-align:right;flex:none}
+  .row .num b{font-family:'Anton';font-weight:400;font-size:20px}
+  .row .num .l{display:block;font-family:'JetBrains Mono';font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:rgba(250,248,245,.5);margin-top:3px}
+  .row .num .l em{font-style:normal;color:#D73F09}
+  .tbtn{flex:none;border:1px solid var(--line-2);background:transparent;color:rgba(250,248,245,.8);border-radius:999px;
+    padding:8px 14px;font:600 10.5px 'Inter';letter-spacing:.04em;cursor:pointer;transition:.15s;width:132px;text-align:center}
+  .tbtn:hover{border-color:rgba(250,248,245,.4)}
+  .tbtn.need{border-color:rgba(215,63,9,.65);color:#FAF8F5;background:rgba(215,63,9,.1)}
+  .tbtn.need:hover{background:rgba(215,63,9,.2)}
+  .row .tno{flex:none;width:132px;text-align:center;font-size:10px;color:rgba(250,248,245,.35)}
+  .footnote{font-size:12px;color:rgba(250,248,245,.5);margin-top:16px}
+  .footnote code{font-family:'JetBrains Mono';font-size:10.5px}
+
+  /* ── preview panel ── */
+  .rightcol{position:sticky;top:24px}
+  .preview{border:1px solid var(--line-2);border-radius:18px;overflow:hidden;background:#0A0A0E}
+  .pvhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);
+    font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,248,245,.5)}
+  .pvhead .live{color:var(--orange)}
+  .devtoggle{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;overflow:hidden}
+  .devtoggle span{padding:5px 12px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;color:rgba(250,248,245,.5)}
+  .devtoggle span.on{background:rgba(215,63,9,.16);color:#FAF8F5}
+  .pvexpand{cursor:pointer;border:1px solid var(--line-2);border-radius:999px;padding:4px 11px;color:rgba(250,248,245,.7);font-size:10px;letter-spacing:.08em}
+  body.pvfull .preview{position:fixed;inset:24px;z-index:50}
+  body.pvfull .pvbody{max-height:calc(100vh - 110px)}
+  body.pvfull::after{content:'';position:fixed;inset:0;background:rgba(7,7,10,.7);backdrop-filter:blur(6px);z-index:40}
+  body.pvfull .preview{z-index:50}
+  .pvbody{padding:16px;max-height:calc(100vh - 150px);overflow:auto}
+  .pvstage{overflow:hidden;border-radius:12px;clip-path:inset(0 round 12px);border:1px solid var(--line);background:#07070A;margin:0 auto}
+  .pvscale{transform-origin:top left}
+  .pvpage{background:#07070A;font-family:'Arimo',Arial,sans-serif}
+  .pvpage.desktop{width:1280px}
+  .pvpage.mobile{width:390px}
+
+  /* ── recap section ── */
+  .rp-sec{border-top:1px solid rgba(250,248,245,.08)}
+  .desktop .rp-sec{padding:64px 72px 80px}
+  .mobile  .rp-sec{padding:40px 22px 48px}
+  .rp-skick{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#D73F09}
+  .desktop .rp-skick{font-size:12px;margin-bottom:12px}
+  .mobile  .rp-skick{font-size:9.5px;margin-bottom:8px}
+  .rp-sh{font-family:'Bebas Neue';color:#FAF8F5;line-height:.96}
+  .rp-shead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+  .desktop .rp-shead{margin-bottom:40px}
+  .mobile  .rp-shead{margin-bottom:24px;flex-direction:column;align-items:flex-start;gap:14px}
+  .rp-toggle{display:inline-flex;border:1px solid rgba(250,248,245,.16);border-radius:999px;overflow:hidden;backdrop-filter:blur(10px)}
+  .rp-toggle span{font-family:'JetBrains Mono';letter-spacing:.12em;text-transform:uppercase;cursor:pointer;color:rgba(250,248,245,.55);transition:.15s}
+  .desktop .rp-toggle span{font-size:10.5px;padding:10px 18px}
+  .mobile  .rp-toggle span{font-size:9px;padding:8px 14px}
+  .rp-toggle span.on{background:rgba(215,63,9,.2);color:#FAF8F5;box-shadow:inset 0 0 0 1px rgba(215,63,9,.65)}
+  .desktop .rp-sh{font-size:68px}
+  .mobile  .rp-sh{font-size:38px}
+
+  .rp-cards{display:grid}
+  .desktop .rp-cards{grid-template-columns:repeat(4,1fr);gap:18px}
+  .mobile  .rp-cards{grid-template-columns:1fr 1fr;gap:12px}
+  .rp-card{position:relative;border-radius:20px;overflow:hidden;background:#0C0C11;border:1px solid rgba(250,248,245,.1)}
+  .desktop .rp-card.lead{grid-column:span 2;grid-row:span 2}
+  .mobile  .rp-card.lead{grid-column:span 2}
+  .rp-photo{position:relative;overflow:hidden;height:100%}
+  .desktop .rp-card .rp-photo{height:322px}
+  .desktop .rp-card.lead .rp-photo{height:662px}
+  .mobile  .rp-card .rp-photo{height:210px}
+  .mobile  .rp-card.lead .rp-photo{height:330px}
+  .rp-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .rp-photo::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg, rgba(7,7,10,.28) 0%, rgba(7,7,10,0) 22%, rgba(7,7,10,0) 44%, rgba(7,7,10,.62) 70%, rgba(7,7,10,.95) 100%)}
+  .rp-photo .initials{position:absolute;inset:0;display:grid;place-items:center;font-family:'Bebas Neue';color:rgba(250,248,245,.22)}
+  .desktop .rp-photo .initials{font-size:110px}
+  .mobile  .rp-photo .initials{font-size:56px}
+
+  /* rank — explicit, top-left */
+  .rp-rk{position:absolute;top:15px;left:18px;z-index:2;font-family:'Anton';color:#FAF8F5;line-height:1;
+    text-shadow:0 2px 14px rgba(7,7,10,.8)}
+  .rp-rk::after{content:'';display:block;width:20px;height:3px;background:#D73F09;margin-top:6px;border-radius:2px}
+  .desktop .rp-card .rp-rk{font-size:30px}
+  .desktop .rp-card.lead .rp-rk{font-size:46px;top:20px;left:22px}
+  .mobile  .rp-card .rp-rk{font-size:20px;top:10px;left:12px}
+  .mobile  .rp-card.lead .rp-rk{font-size:30px}
+
+  /* instagram — glass circle, bottom-right */
+  .rp-ig{position:absolute;right:16px;bottom:18px;z-index:3;width:40px;height:40px;border-radius:50%;
+    display:grid;place-items:center;background:rgba(7,7,10,.45);border:1px solid rgba(250,248,245,.25);
+    backdrop-filter:blur(8px);transition:.15s}
+  .rp-ig:hover{border-color:#D73F09;background:rgba(215,63,9,.25)}
+  .rp-ig svg{width:18px;height:18px;stroke:#FAF8F5;fill:none;stroke-width:1.8}
+  .mobile .rp-ig{width:28px;height:28px;right:10px;bottom:12px}
+  .mobile .rp-ig svg{width:14px;height:14px}
+  .desktop .rp-card.lead .rp-ig{width:48px;height:48px;right:22px;bottom:24px}
+  .desktop .rp-card.lead .rp-ig svg{width:21px;height:21px}
+
+  .rp-id{position:absolute;left:0;right:56px;bottom:0;padding:0 0 16px 18px;z-index:2}
+  .mobile .rp-id{right:42px;padding:0 0 11px 12px}
+  .desktop .rp-card.lead .rp-id{right:76px;padding:0 0 22px 22px}
+  .rp-id .nm{font-family:'Bebas Neue';color:#FAF8F5;line-height:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .desktop .rp-card .rp-id .nm{font-size:29px}
+  .desktop .rp-card.lead .rp-id .nm{font-size:54px}
+  .mobile  .rp-card .rp-id .nm{font-size:19px}
+  .mobile  .rp-card.lead .rp-id .nm{font-size:30px}
+  .rp-id .sc{font-family:'JetBrains Mono';letter-spacing:.13em;text-transform:uppercase;color:rgba(250,248,245,.6);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .desktop .rp-id .sc{font-size:10px}
+  .desktop .rp-card.lead .rp-id .sc{font-size:11px}
+  .mobile  .rp-id .sc{font-size:7px}
+  /* single metric — stacked, one baseline system */
+  .rp-metric{margin-top:14px}
+  .mobile .rp-metric{margin-top:9px}
+  .desktop .rp-card.lead .rp-metric{margin-top:18px}
+  .rp-metric .v{font-family:'Anton';color:#FAF8F5;font-size:28px;line-height:1}
+  .desktop .rp-card.lead .rp-metric .v{font-size:44px}
+  .mobile .rp-metric .v{font-size:18px}
+  .mobile .rp-card.lead .rp-metric .v{font-size:26px}
+  .rp-metric .ml{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(250,248,245,.6);margin-top:6px;white-space:nowrap}
+  .desktop .rp-card.lead .rp-metric .ml{font-size:10px;margin-top:8px}
+  .mobile .rp-metric .ml{font-size:6.5px;margin-top:4px}
+  .rp-metric .ml em{font-style:normal;color:#D73F09}
+
+  /* thumbnail modal */
+  .modal{position:fixed;inset:0;z-index:60;display:none;place-items:center;background:rgba(7,7,10,.72);backdrop-filter:blur(8px)}
+  .modal.open{display:grid}
+  .mpanel{width:min(720px, 92vw);max-height:84vh;overflow:auto;background:#0A0A0E;border:1px solid var(--line-2);border-radius:18px;padding:22px 24px 26px}
+  .mhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;
+    font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#FAF8F5}
+  .mclose{cursor:pointer;border:1px solid var(--line-2);border-radius:999px;padding:5px 12px;font-size:10.5px;color:rgba(250,248,245,.7)}
+  .mclose:hover{border-color:rgba(250,248,245,.35)}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .mt{position:relative;border-radius:12px;overflow:hidden;cursor:pointer;border:1px solid var(--line-2);transition:.12s}
+  .mt img{width:100%;height:auto;display:block}
+  .mt:hover{border-color:rgba(250,248,245,.4)}
+  .mt.sel{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange), 0 0 16px rgba(215,63,9,.35)}
+  .mt.sel::after{content:'✓  Card thumbnail';position:absolute;left:0;right:0;bottom:0;padding:6px 10px;
+    font:600 10px 'Inter';letter-spacing:.06em;color:#fff;background:linear-gradient(transparent, rgba(7,7,10,.85))}
+
+  .bar{position:fixed;left:150px;right:0;bottom:0;display:flex;align-items:center;gap:12px;
+    padding:13px 44px;background:rgba(7,7,10,.82);backdrop-filter:blur(24px);border-top:1px solid var(--line);z-index:10}
+  .bar .status{flex:1;text-align:center;font-size:12px;color:rgba(250,248,245,.92)}
+  .bar .status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px}
+
+  @media (max-width:1200px){ .split{grid-template-columns:1fr} .rightcol{position:static;order:-1} }
+  @media (max-width:1000px){ .sidebar{display:none} .bar{left:0} .wrap{padding:28px 20px 150px} .step .t{display:none}
+    .row .num{display:none} .row .act{width:auto} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar">
+    <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/render/image/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png?width=260&quality=90&resize=contain" alt="Postgame">
+    <div class="grp">Daily work</div>
+    <a>Campaign dashboard</a><a>Campaigns</a><a>Brands</a><a>Media library</a>
+    <div class="grp">Send to brand</div>
+    <a style="color:#FAF8F5">Recaps</a><a>Brand portals</a><a>Asset packages</a>
+  </aside>
+
+  <main class="main">
+  <div class="wrap">
+
+    <div class="head">
+      <div>
+        <h1>Ghost Amp</h1>
+        <div class="meta"><b>Brooks</b> · 76 athletes · Published</div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost">Preview</button>
+        <button class="btn primary">View live ↗</button>
+      </div>
+    </div>
+
+    <nav class="rail" id="rail"></nav>
+
+    <div class="split">
+      <div class="panel">
+        <div class="ptop">
+          <span class="ptitle">Top Performers — auto top 5</span>
+          <span class="seg" id="basisSeg">
+            <span class="on" data-b="eng">Engagements</span>
+            <span data-b="impr">Impressions</span>
+          </span>
+        </div>
+        <div class="psub">Ranked automatically from campaign metrics. The toggle also appears on the live page — brands can flip the board themselves.</div>
+
+        <div class="flagline" id="flagline"></div>
+
+        <div class="list" id="list"></div>
+
+        <div class="footnote">Thumbnails save as <code>thumb_media_id</code> per athlete · rankings recompute on publish from <code>metrics</code>.</div>
+      </div>
+
+      <!-- preview -->
+      <div class="rightcol">
+      <div class="preview">
+        <div class="pvhead"><span>Page preview</span>
+          <span class="devtoggle"><span class="on" data-d="desktop">Desktop</span><span data-d="mobile">Mobile</span></span>
+          <span class="live">● Live</span>
+          <span class="pvexpand" id="pvExpand">⤢ Expand</span></div>
+        <div class="pvbody">
+          <div class="pvstage" id="pvStage"><div class="pvscale" id="pvScale">
+            <div class="pvpage desktop" id="pvPage">
+              <div class="rp-sec">
+                <div class="rp-shead">
+                  <div>
+                    <div class="rp-skick">The standouts</div>
+                    <div class="rp-sh">Top Performers</div>
+                  </div>
+                  <div class="rp-toggle" id="pvToggle">
+                    <span class="on" data-b="eng">Engagements</span>
+                    <span data-b="impr">Impressions</span>
+                  </div>
+                </div>
+                <div class="rp-cards" id="pvCards"></div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bar">
+    <button class="btn ghost">← Hero</button>
+    <div class="status" id="status"><span class="dot"></span>All changes saved · 12:44 AM</div>
+    <button class="btn ghost">Save</button>
+    <button class="btn primary">Next · Content →</button>
+  </div>
+  </main>
+</div>
+
+<div class="modal" id="tmodal">
+  <div class="mpanel">
+    <div class="mhead"><span id="mtitle">Select thumbnail</span><span class="mclose" id="mclose">✕ Close</span></div>
+    <div class="mgrid" id="mgrid"></div>
+  </div>
+</div>
+
+<script>
+const STEPS = ["Athletes","Overview","Hero","Performers","Content","Takeaways","Sections"];
+const rail = document.getElementById('rail');
+STEPS.forEach((s,i)=>{
+  const el = document.createElement('div');
+  el.className = 'step' + (i===3?' active':'') + (i<3?' done':'');
+  el.innerHTML = `<span class="n"></span><span class="t">${s}</span>`;
+  rail.appendChild(el);
+});
+
+const R  = u => u.replace('/object/public/','/render/image/public/') + '?width=760&height=760&resize=contain&quality=80&format=webp';
+const Rs = u => u.replace('/object/public/','/render/image/public/') + '?width=200&height=200&resize=cover&quality=70&format=webp';
+const Rm = u => u.replace('/object/public/','/render/image/public/') + '?width=420&height=420&resize=contain&quality=76&format=webp';
+const BASE='https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/256d38e5-7de9-47ce-8159-d0920ed5883a/';
+
+/* real Ghost Amp data */
+const A_ENG = [
+ {n:'Andi Vanmeter',     s:'Florida Atlantic · Cross Country', ig:'andi.renay',        fol:100000, eng:13291, impr:64290, fe:11549, re:1742, si:25290, rv:39000, phs:['41ace0ab-7c5d-402d-843d-b7c41f7b9dbf/1787699848446-_-5.jpg','41ace0ab-7c5d-402d-843d-b7c41f7b9dbf/1787699851959-_-1.jpg','41ace0ab-7c5d-402d-843d-b7c41f7b9dbf/1787699853888-_-2.jpg']},
+ {n:'Sophine Kevorkian', s:'LSU · Soccer',                     ig:'sophinekevorkian',  fol:17561,  eng:1171,  impr:10941, fe:775,   re:396,  si:4441,  rv:6500, phs:['29c6e464-9c2b-43a0-90a4-4701e29560c9/1787699874518-DSC09515.jpg']},
+ {n:'Emily Pierce',      s:'Campbell · Track & Field',         ig:'empierce',          fol:23206,  eng:930,   impr:13705, fe:515,   re:415,  si:5869,  rv:7836, phs:['fbb51a19-f21a-4010-8bcb-9c2f3bc9218c/1787343827254-TC_R9922.jpg','fbb51a19-f21a-4010-8bcb-9c2f3bc9218c/1787343830701-TC_R9892.jpg','fbb51a19-f21a-4010-8bcb-9c2f3bc9218c/1787343833145-TC_R0005.jpg','fbb51a19-f21a-4010-8bcb-9c2f3bc9218c/1787699790915-TC_R9971.jpg','fbb51a19-f21a-4010-8bcb-9c2f3bc9218c/1787699794421-TC_R9959.jpg','fbb51a19-f21a-4010-8bcb-9c2f3bc9218c/1787699797161-TC_R9877.jpg','fbb51a19-f21a-4010-8bcb-9c2f3bc9218c/1787699800575-TC_R9995.jpg']},
+ {n:'Pierce Graber',     s:'SUNY Albany · Track & Field',      ig:'Piercegraber',      fol:1351,   eng:804,   impr:6999,  fe:570,   re:234,  si:356,   rv:6643, phs:['04acb9d6-dc92-4853-b641-751de04fb29f/1787859039615-IMG_8536_-_Pierce_Graber.jpeg']},
+ {n:'Lauren Lewis',      s:'South Carolina · Track & Field',   ig:'laurenlewistrack',  fol:5943,   eng:758,   impr:5427,  fe:602,   re:156,  si:1567,  rv:3860, phs:[]},
+ {n:'Kailey Obrien',     s:'Loyola Marymount · Cross Country', ig:'kailey0brien',      fol:6667,   eng:714,   impr:14458, fe:369,   re:345,  si:1758,  rv:12700, phs:['c0c1b9eb-e9a0-4b0a-8ff2-1e6e6cd39c3a/1787859396620-IMG_8048_-_kailey.jpeg','c0c1b9eb-e9a0-4b0a-8ff2-1e6e6cd39c3a/1787859398236-IMG_8063_-_kailey.jpeg','c0c1b9eb-e9a0-4b0a-8ff2-1e6e6cd39c3a/1787859400108-IMG_8065_-_kailey.jpeg']},
+ {n:'Ali Bainbridge',    s:'Nebraska · Track & Field',         ig:'ali_bainbridge2',   fol:8911,   eng:617,   impr:6467,  fe:490,   re:127,  si:2350,  rv:4117, phs:['7761e9f1-bfe5-4fbb-b209-43406f2f8b04/1787859533692-IMG_8335_-_Aliyah_Bainbridge.jpeg','7761e9f1-bfe5-4fbb-b209-43406f2f8b04/1787859535007-IMG_8446_-_Aliyah_Bainbridge.jpeg','7761e9f1-bfe5-4fbb-b209-43406f2f8b04/1787859536553-IMG_8625_-_Aliyah_Bainbridge.jpeg']},
+ {n:'Nate Watson',       s:'Pittsburg State · Track & Field',  ig:'Juicemanate',       fol:2361,   eng:594,   impr:2701,  fe:508,   re:86,   si:623,   rv:2078, phs:['d039e55e-d73d-48b5-b2f6-4a3b804d9740/1787700414210-IMG_9050_-_Nathan_Watson.jpeg','d039e55e-d73d-48b5-b2f6-4a3b804d9740/1787700415488-IMG_9048_-_Nathan_Watson.jpeg','d039e55e-d73d-48b5-b2f6-4a3b804d9740/1787700418208-IMG_9054_-_Nathan_Watson.jpeg']},
+ {n:'Chloe Mader',       s:'Fort Hays State · Track & Field',  ig:'chloe.lou.mader',   fol:3012,   eng:568,   impr:6155,  fe:404,   re:164,  si:794,   rv:5361, phs:[]},
+ {n:'Jordon Bray',       s:'Alabama · Track & Field',          ig:'zoo_bray',          fol:5890,   eng:567,   impr:5553,  fe:315,   re:252,  si:1553,  rv:4000, phs:[]},
+ {n:'Ethan Cook',        s:'Albany State · Soccer',            ig:'cooket5training',   fol:130098, eng:489,   impr:40713, fe:319,   re:170,  si:32902, rv:7811, phs:['9d8b9c4d-efa6-4777-967d-3eeee048d120/1787699831712-DSC04940.jpg','9d8b9c4d-efa6-4777-967d-3eeee048d120/1787699833256-DSC05000.jpg','9d8b9c4d-efa6-4777-967d-3eeee048d120/1787699834730-DSC04794.jpg','9d8b9c4d-efa6-4777-967d-3eeee048d120/1787699836159-DSC04817.jpg','9d8b9c4d-efa6-4777-967d-3eeee048d120/1787699837713-DSC04910.jpg']},
+ {n:'Mary Mclaughlin',   s:'Vanderbilt · Soccer',              ig:'marybethmclll',     fol:7607,   eng:399,   impr:7478,  fe:399,   re:0,    si:2006,  rv:5472, phs:['42bb288a-f169-4a16-99ed-50ce79ddca92/1787859502746-038CBD48-DCEA-4274-AC26-23B75960CF1F_-_Mary_Beth_McLaughlin.jpeg','42bb288a-f169-4a16-99ed-50ce79ddca92/1787859512993-8F697AF4-13F1-4BC6-8AEC-5DDB975AE869_-_Mary_Beth_McLaughlin.jpeg','42bb288a-f169-4a16-99ed-50ce79ddca92/1787859514821-9518FB51-13D8-45DD-928A-8A7622424A80_-_Mary_Beth_McLaughlin.jpeg']},
+];
+
+let basis = 'eng';
+const thumbs = {};   /* athlete → chosen photo path */
+const top5 = () => [...A_ENG].sort((a,b)=> b[basis]-a[basis]).slice(0,5);
+const fmt = n => n>=1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
+function src(a){
+  const m = basis==='eng'
+    ? [['IG Feed',a.fe],['IG Reel',a.re]]
+    : [['IG Story',a.si],['IG Reel',a.rv],['IG Feed',a.fi||0]];
+  m.sort((x,y)=>y[1]-x[1]);
+  return m[0][1]>0 ? m[0][0] : '';
+}
+const IG_SVG = '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1.1" fill="#FAF8F5" stroke="none"/></svg>';
+
+/* ── builder list ── */
+function renderList(){
+  const list = document.getElementById('list');
+  const F = top5();
+  list.innerHTML = F.map((a,i)=>{
+    const pick = thumbs[a.n];
+    const tmb = a.phs.length
+      ? (pick ? `<span class="tmb"><img src="${Rs(BASE+pick)}"></span>` : `<span class="tmb unset"></span>`)
+      : `<span class="tmb none"></span>`;
+    const btn = a.phs.length
+      ? (pick ? `<button class="tbtn set" data-a="${a.n}">Change</button>`
+              : `<button class="tbtn need" data-a="${a.n}">Select thumbnail</button>`)
+      : `<span class="tno">Shows initials</span>`;
+    return `<div class="row">
+      <span class="rk">${i+1}</span>${tmb}
+      <span class="who"><span class="nm">${a.n}</span><span class="sub">${a.s} · @${a.ig}</span></span>
+      <span class="num"><b>${fmt(a[basis])}</b><span class="l">${basis==='eng'?'Eng':'Impr'} · <em>${src(a)}</em></span></span>
+      ${btn}
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.tbtn').forEach(b=> b.onclick = ()=> openPicker(b.dataset.a));
+  /* flag summary */
+  const missing = F.filter(a=> a.phs.length && !thumbs[a.n]);
+  const fl = document.getElementById('flagline');
+  if(missing.length){
+    fl.className = 'flagline warn';
+    fl.innerHTML = `<span class="fdot"></span><span><b>${missing.length} of 5</b> top performers need a thumbnail — ${missing.map(a=>a.n.split(' ')[0]).join(', ')}</span>`;
+  } else {
+    fl.className = 'flagline ok';
+    fl.innerHTML = `<span class="fdot"></span><span>All card thumbnails set.</span>`;
+  }
+}
+
+/* ── recap preview ── */
+function renderPreview(){
+  document.getElementById('pvCards').innerHTML = top5().map((a,i)=>{
+    const pick = thumbs[a.n] || a.phs[0];
+    const media = pick
+      ? `<img loading="lazy" src="${R(BASE+pick)}" alt="">`
+      : `<span class="initials">${a.n.split(' ').map(w=>w[0]).join('')}</span>`;
+    return `<div class="rp-card${i===0?' lead':''}">
+      <div class="rp-photo">${media}
+        <span class="rp-rk">${i+1}</span>
+        <a class="rp-ig" href="https://instagram.com/${a.ig}" target="_blank" rel="noopener" title="@${a.ig}">${IG_SVG}</a>
+        <div class="rp-id">
+          <div class="nm">${a.n}</div><div class="sc">${a.s}</div>
+          <div class="rp-metric">
+            <div class="v">${fmt(a[basis])}</div>
+            <div class="ml">${basis==='eng'?'Engagements':'Impressions'} <em>· via ${src(a)}</em></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  requestAnimationFrame(fitPreview);
+}
+
+/* one basis, two handles */
+function setBasis(b){
+  basis = b;
+  document.querySelectorAll('#basisSeg span').forEach(x=>x.classList.toggle('on', x.dataset.b===b));
+  document.querySelectorAll('#pvToggle span').forEach(x=>x.classList.toggle('on', x.dataset.b===b));
+  renderList(); renderPreview(); touch();
+}
+document.querySelectorAll('#basisSeg span').forEach(s=> s.onclick = ()=> setBasis(s.dataset.b));
+document.querySelectorAll('#pvToggle span').forEach(s=> s.onclick = ()=> setBasis(s.dataset.b));
+
+/* thumbnail modal */
+function openPicker(name){
+  const a = A_ENG.find(x=>x.n===name);
+  document.getElementById('mtitle').textContent = 'Select thumbnail — ' + name;
+  const cur = thumbs[name];
+  document.getElementById('mgrid').innerHTML = a.phs.map(p=>
+    `<span class="mt${p===cur?' sel':''}" data-p="${p}"><img loading="lazy" src="${Rm(BASE+p)}" alt=""></span>`).join('');
+  document.querySelectorAll('#mgrid .mt').forEach(t=>{
+    t.onclick = ()=>{ thumbs[name] = t.dataset.p;
+      document.querySelectorAll('#mgrid .mt').forEach(x=>x.classList.remove('sel'));
+      t.classList.add('sel'); renderList(); renderPreview(); touch(); };
+  });
+  document.getElementById('tmodal').classList.add('open');
+}
+document.getElementById('mclose').onclick = ()=> document.getElementById('tmodal').classList.remove('open');
+document.getElementById('tmodal').addEventListener('click', e=>{ if(e.target.id==='tmodal') e.target.classList.remove('open'); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.getElementById('tmodal').classList.remove('open'); });
+
+/* device toggle + scale + expand */
+let device='desktop';
+document.querySelectorAll('.devtoggle span').forEach(s=>{
+  s.onclick=()=>{ document.querySelectorAll('.devtoggle span').forEach(x=>x.classList.remove('on'));
+    s.classList.add('on'); device=s.dataset.d;
+    document.getElementById('pvPage').className='pvpage '+device; fitPreview(); };
+});
+function fitPreview(){
+  const stage=document.getElementById('pvStage'), scale=document.getElementById('pvScale'), page=document.getElementById('pvPage');
+  const avail=stage.parentElement.clientWidth-2;
+  const pw = device==='desktop'?1280:390;
+  const s = Math.min(1, avail/pw);
+  scale.style.transform=`scale(${s})`; scale.style.width=pw+'px';
+  stage.style.width=Math.round(pw*s)+'px'; stage.style.height=Math.round(page.offsetHeight*s)+'px';
+}
+window.addEventListener('resize', fitPreview);
+document.getElementById('pvExpand').onclick=()=>{
+  document.body.classList.toggle('pvfull');
+  document.getElementById('pvExpand').textContent = document.body.classList.contains('pvfull')?'✕ Close':'⤢ Expand';
+  requestAnimationFrame(fitPreview);
+};
+
+function touch(){
+  const st = document.getElementById('status');
+  st.innerHTML='Unsaved changes';
+  clearTimeout(window._t);
+  window._t=setTimeout(()=>{ st.innerHTML='<span class="dot"></span>Saved '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); },1600);
+}
+
+renderList(); renderPreview();
+</script>
+</body>
+</html>
