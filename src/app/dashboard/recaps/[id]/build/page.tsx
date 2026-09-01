@@ -26,6 +26,8 @@ import BuilderFooter from '@/components/recap-builder/BuilderFooter';
 import PreviewPanel, { type PreviewDevice } from '@/components/recap-builder/PreviewPanel';
 import { useAutosaveStatus } from '@/components/recap-builder/useAutosaveStatus';
 import { STEPS, stepIndex, stepSlug } from '@/components/recap-builder/steps';
+import AthletesStep from '@/components/recap-builder/athletes/AthletesStep';
+import './athletes-step.css';
 
 type RecapHeader = {
   id: string;
@@ -62,7 +64,7 @@ function RecapBuilder() {
   const [loading, setLoading] = useState(true);
   const [device, setDevice] = useState<PreviewDevice>('desktop');
   const [expanded, setExpanded] = useState(false);
-  const { status } = useAutosaveStatus();
+  const { status, touch } = useAutosaveStatus();
 
   useEffect(() => {
     if (!recapId) return;
@@ -125,10 +127,14 @@ function RecapBuilder() {
 
           <div className="split">
             <div>
-              {/* Step bodies land in phases 2–6. */}
-              <p style={{ color: 'rgba(250,248,245,.45)', fontSize: 13 }}>
-                {STEPS[active]} — designed next, in-app.
-              </p>
+              {active === 0 && recapId ? (
+                <AthletesStep recapId={recapId} onTouch={touch} />
+              ) : (
+                /* Remaining step bodies land in phases 3–6. */
+                <p style={{ color: 'rgba(250,248,245,.45)', fontSize: 13 }}>
+                  {STEPS[active]} — designed next, in-app.
+                </p>
+              )}
             </div>
 
             <PreviewPanel

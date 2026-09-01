@@ -1,0 +1,107 @@
+/* ============================================================
+   Recap Builder — Athletes step
+   Ported VERBATIM from docs/recap-builder/prototypes/
+   builder-01-athletes.html. Values unchanged; selectors are
+   prefixed .rb-root for scoping, same as builder-chrome.css.
+
+   builder-01 carries its own ink ramp on :root. Note --ink-68
+   and --ink-45 are NOT what their names suggest (they resolve
+   to #FAF8F5 and .92 alpha respectively) — that is how the
+   approved prototype reads, so it is reproduced exactly rather
+   than "corrected".
+   ============================================================ */
+
+.rb-root {
+  --ink-90: rgba(250, 248, 245, .9);
+  --ink-68: #FAF8F5;
+  --ink-45: rgba(250, 248, 245, .92);
+  --ink-28: rgba(250, 248, 245, .88);
+  --glass: rgba(250, 248, 245, .03);
+}
+
+/* tracker + drive connect rows */
+.rb-root .connect { display: flex; gap: 12px; align-items: center }
+.rb-root .gsheet {
+  width: 52px; height: 52px; flex: none; border: 1px solid var(--line-2);
+  border-radius: 12px; display: grid; place-items: center; background: rgba(250, 248, 245, .05);
+}
+.rb-root .connect input {
+  flex: 1; background: rgba(250, 248, 245, .06); border: 1px solid var(--line-2);
+  border-radius: 12px; padding: 14px 16px; color: var(--white);
+  font: 15.5px var(--font-builder-inter), 'Inter'; outline: none; transition: .2s;
+}
+.rb-root .connect input::placeholder { color: rgba(250, 248, 245, .4) }
+.rb-root .connect input:focus {
+  border-color: rgba(215, 63, 9, .6); box-shadow: 0 0 0 3px rgba(215, 63, 9, .08);
+  background: rgba(250, 248, 245, .08);
+}
+.rb-root .synced { margin-top: 12px; font-size: 12px; color: var(--ink-45) }
+.rb-root .synced .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--orange); margin-right: 8px; vertical-align: 1px;
+}
+
+/* roster health strip */
+.rb-root .health { display: flex; gap: 22px; margin-bottom: 22px; font-size: 12.5px }
+.rb-root .health span { color: var(--ink-45) }
+.rb-root .health b { color: var(--white); font-weight: 600 }
+.rb-root .health .warn { color: #FF8A5C; cursor: pointer }
+.rb-root .health .warn:hover { text-decoration: underline }
+
+/* platform tabs with live per-platform totals */
+.rb-root .ptabs { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 0 }
+.rb-root .ptab { flex: 1; padding: 14px 16px 16px; cursor: pointer; position: relative; transition: .15s; user-select: none }
+.rb-root .ptab:hover { background: rgba(250, 248, 245, .02) }
+.rb-root .ptab .pl {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(250, 248, 245, .35); transition: .15s;
+}
+.rb-root .ptab .pv {
+  font-size: 19px; font-weight: 600; color: rgba(250, 248, 245, .45);
+  letter-spacing: -.01em; margin-top: 3px; transition: .15s;
+}
+.rb-root .ptab .pu { font-size: 11px; color: rgba(250, 248, 245, .3); margin-left: 5px; font-weight: 400 }
+.rb-root .ptab.active { background: rgba(215, 63, 9, .04) }
+.rb-root .ptab.active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: var(--orange); box-shadow: 0 0 14px rgba(215, 63, 9, .55);
+}
+.rb-root .ptab.active .pl { color: var(--orange) }
+.rb-root .ptab.active .pv { color: var(--white) }
+
+/* the grid */
+.rb-root .tablewrap { overflow-x: auto; min-height: 430px }
+.rb-root table { width: 100%; border-collapse: collapse; font-size: 13.5px }
+.rb-root thead th {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: #FAF8F5; text-align: left; padding: 14px 16px 10px 0;
+  border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.rb-root thead th.num, .rb-root td.num { text-align: left }
+.rb-root thead th .auto { color: rgba(215, 63, 9, .7); font-size: 9px; letter-spacing: .06em; margin-left: 3px }
+.rb-root tbody td {
+  padding: 9px 16px 9px 0; border-bottom: 1px solid var(--line);
+  color: var(--ink-68); white-space: nowrap;
+}
+.rb-root tbody tr:hover { background: rgba(250, 248, 245, .02) }
+.rb-root tr.totals td {
+  color: var(--orange); font-weight: 600; background: rgba(215, 63, 9, .04);
+  border-bottom: 1px solid rgba(215, 63, 9, .25); padding: 11px 16px 11px 0;
+}
+.rb-root tr.totals td:first-child { font-size: 12px; letter-spacing: .08em; text-transform: uppercase }
+.rb-root td.name { color: var(--white); font-weight: 600 }
+.rb-root td.dim { color: var(--ink-45) }
+.rb-root td a { color: var(--ink-45); text-decoration: none; font-size: 12.5px }
+.rb-root td a:hover { color: var(--orange) }
+.rb-root td[contenteditable]:focus { outline: 1px solid rgba(215, 63, 9, .55); outline-offset: 2px; border-radius: 3px }
+.rb-root td .dash { color: rgba(250, 248, 245, .3) }
+.rb-root td.calc { color: var(--ink-90) }
+.rb-root .nofolder { color: #FF8A5C; font-size: 12.5px }
+
+.rb-root .tfoot { display: flex; justify-content: space-between; align-items: center; padding-top: 18px }
+.rb-root .morerows { font-size: 12px; color: rgba(250, 248, 245, .55) }
+
+.rb-root section { border-top: 1px solid var(--line); padding-top: 34px; margin-top: 34px }
+.rb-root section.lead { border-top: none; padding-top: 0; margin-top: 0 }
+
+@media (max-width: 1000px) { .rb-root .ptab .pv { font-size: 15px } }
