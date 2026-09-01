@@ -7,16 +7,24 @@
 //
 // TWO THINGS DELIBERATELY NOT PERSISTED IN THIS PHASE:
 //
-//  1. Grid metric edits are session-local. The brief limits
-//     builder writes to draft state — campaign_recaps.settings /
-//     recap_config, and athletes.is_featured / featured_order /
-//     thumbnail refs. athletes.metrics is NOT in that set, and
-//     published recaps read it, so persisting edits here would
-//     change published output. Wiring that needs a decision.
-//  2. Drive files stage to Supabase Storage through the shared
-//     /api/drive/import route (same route the media library
-//     uses), so imports land in campaign media, not in the
-//     publish path.
+//  1. Grid metric edits are session-local, and stay that way by
+//     decision: the tracker sheet plus Resync is the source of
+//     truth for metrics, and persisting hand-edits here would
+//     alter published output (published recaps read
+//     athletes.metrics, which is outside the brief's allowed
+//     write set anyway).
+//
+//     OPEN DESIGN QUESTION — "draft metrics overlay": if hand
+//     edits ever need to survive a reload, they should land in
+//     a draft overlay (campaign_recaps.settings / recap_config)
+//     that the builder reads over the top of athletes.metrics,
+//     never as a write back into athletes.metrics itself. Not
+//     designed yet; revisit before anyone asks for it.
+//  2. The Scan folders button is READ-ONLY. It lists the Drive
+//     folder and matches subfolder names to roster names in
+//     memory to report counts. It creates nothing: no athlete
+//     upserts, no imports. Importing stays in the existing
+//     editor for now.
 //
 // The tracker sheet link and Drive folder link DO persist, into
 // campaign_recaps.settings — allowed draft state, revertible.
@@ -387,35 +395,54 @@ export default function AthletesStep({
             onClick={async () => {
               setScanning(true);
               try {
-                // Shared route, same one the media library uses. Body shape is
-                // { folderUrl, campaignId, force? } and it replies with a
-                // tagged `shape` — see the route header. It lists subfolders
-                // with corpora "allDrives", never "user,allDrives".
-                const res = await fetch('/api/drive/discover-folder', {
+                // READ-ONLY by design. /api/drive/list-folder-files performs no
+                // writes (unlike /api/drive/discover-folder, which upserts
+                // athlete rows) — it just lists media and tags each file with
+                // the subfolder it sits in. Matching happens here, in memory.
+                const res = await fetch('/api/drive/list-folder-files', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ folderUrl: driveLink, campaignId: recapId }),
+                  body: JSON.stringify({ folderUrl: driveLink, recapId, recursive: true }),
                 });
                 const body = await res.json().catch(() => ({}));
 
                 if (!res.ok) {
                   setDriveMsg(String(body?.error ?? `Scan failed (HTTP ${res.status})`));
-                } else if (body?.shape === 'per_athlete') {
-                  const matched = Array.isArray(body.athletes) ? body.athletes.length : 0;
-                  setDriveMsg(
-                    `Scanned just now · ${matched} of ${count} folders matched · ` +
-                      `${body.folderName ?? 'folder'} connected`,
-                  );
-                } else if (body?.shape === 'flat') {
-                  setDriveMsg(
-                    `Scanned just now · flat folder · ${body.fileCount ?? 0} files — ` +
-                      'no per-athlete subfolders found',
-                  );
-                } else if (body?.shape === 'confirm_replace') {
-                  setDriveMsg('A different Drive folder is already connected — reconnecting needs confirmation.');
-                } else {
-                  setDriveMsg('Scan finished, but the response was not recognised.');
+                  return;
                 }
+
+                const files: { folderName?: string | null }[] = Array.isArray(body?.files)
+                  ? body.files
+                  : [];
+
+                // Fold Drive subfolder names onto roster names. Loose match:
+                // case- and punctuation-insensitive, since folders are named by
+                // hand and rarely match the roster spelling exactly.
+                const key = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const rosterByKey = new Map(rows.map((a) => [key(a.name ?? ''), a.id]));
+
+                const filesPerFolder = new Map<string, number>();
+                files.forEach((f) => {
+                  const fn = (f.folderName ?? '').trim();
+                  if (fn) filesPerFolder.set(fn, (filesPerFolder.get(fn) ?? 0) + 1);
+                });
+
+                const matchedAthletes = new Set<string>();
+                let matchedFiles = 0;
+                filesPerFolder.forEach((n, folderName) => {
+                  const id = rosterByKey.get(key(folderName));
+                  if (id) {
+                    matchedAthletes.add(id);
+                    matchedFiles += n;
+                  }
+                });
+
+                const unmatchedAthletes = count - matchedAthletes.size;
+                setDriveMsg(
+                  `Scanned just now · ${matchedAthletes.size} of ${count} athlete folders matched · ` +
+                    `${matchedFiles} files found · ${unmatchedAthletes} athletes have no folder yet ` +
+                    `· nothing imported (scan is read-only)`,
+                );
               } catch (e) {
                 setDriveMsg(String((e as Error)?.message ?? e));
               } finally {
