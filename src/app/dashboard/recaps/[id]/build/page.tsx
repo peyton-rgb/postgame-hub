@@ -27,7 +27,9 @@ import PreviewPanel, { type PreviewDevice } from '@/components/recap-builder/Pre
 import { useAutosaveStatus } from '@/components/recap-builder/useAutosaveStatus';
 import { STEPS, stepIndex, stepSlug } from '@/components/recap-builder/steps';
 import AthletesStep from '@/components/recap-builder/athletes/AthletesStep';
+import OverviewStep from '@/components/recap-builder/overview/OverviewStep';
 import './athletes-step.css';
+import './overview-step.css';
 
 type RecapHeader = {
   id: string;
@@ -64,6 +66,7 @@ function RecapBuilder() {
   const [loading, setLoading] = useState(true);
   const [device, setDevice] = useState<PreviewDevice>('desktop');
   const [expanded, setExpanded] = useState(false);
+  const [preview, setPreview] = useState<React.ReactNode>(null);
   const { status, touch } = useAutosaveStatus();
 
   useEffect(() => {
@@ -129,6 +132,8 @@ function RecapBuilder() {
             <div>
               {active === 0 && recapId ? (
                 <AthletesStep recapId={recapId} onTouch={touch} />
+              ) : active === 1 && recapId ? (
+                <OverviewStep recapId={recapId} onTouch={touch} onPreviewChange={setPreview} />
               ) : (
                 /* Remaining step bodies land in phases 3–6. */
                 <p style={{ color: 'rgba(250,248,245,.45)', fontSize: 13 }}>
@@ -143,8 +148,8 @@ function RecapBuilder() {
               expanded={expanded}
               onToggleExpanded={() => setExpanded((v) => !v)}
             >
-              {/* The recap page render is bound per step in phases 3–5. */}
-              <div style={{ height: 320 }} />
+              {/* Bound by the Overview step; phases 4–5 add hero + performers. */}
+              {preview ?? <div style={{ height: 320 }} />}
             </PreviewPanel>
           </div>
         </div>
