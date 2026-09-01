@@ -10,8 +10,10 @@
 - `builder-03-hero-v11.html` — Step 3: this spec
 
 ## Wizard structure (7 steps, page-per-step — REVERSES the earlier one-page instruction)
-Athletes · Overview · Hero · Takeaways · Performers · Content · Sections
+Athletes · Overview · Hero · Performers · Content · Takeaways · Sections
 (Metrics folded into Overview.)
+On the public page, Takeaways renders **after the Roster**, near the end — a section-order
+concern, not this rail's order.
 
 ---
 
