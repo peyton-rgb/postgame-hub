@@ -25,6 +25,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 // ---------- config ----------
 
@@ -32,6 +33,90 @@ const path = require('path');
 // already describes /dashboard/run-of-show as "a 5-line stub", so the
 // shape is real; 30 keeps the bar low enough to stay meaningful.
 const STUB_LINES = 30;
+
+// The only labels a finding may carry. There is deliberately no
+// "delete" value: unreferenced-by-nav does not mean safe-to-remove, and
+// this audit is not entitled to that conclusion. Anything that looks
+// removable is `needs-human-decision` with the reasoning attached.
+const RECOMMENDED_ACTIONS = [
+  'none',
+  'migrate-preserve-url',
+  'consolidate',
+  'needs-human-decision',
+  'fix',
+  'parked-no-action',
+];
+
+// Enforced in code rather than trusted to prose — a typo or a stray
+// "delete" fails the run instead of reaching a report.
+function action(value) {
+  if (!RECOMMENDED_ACTIONS.includes(value)) {
+    throw new Error(`recommended_action "${value}" is outside the allowed set: ${RECOMMENDED_ACTIONS.join(' | ')}`);
+  }
+  return value;
+}
+
+// Route families that are live, externally-shared URLs — sent in client
+// emails and decks — and must keep resolving forever. They are reached
+// by pasted link, never from the nav, so this sweep sees them as
+// unreferenced. That is a property of the audit, not a defect in the
+// route. Add a prefix here when another family is confirmed external.
+const LEGACY_URL_FAMILIES = ['/pitch', '/quiz', '/run-of-show'];
+
+function isLegacyUrl(route) {
+  return LEGACY_URL_FAMILIES.some((pre) => route === pre || route.startsWith(pre + '/'));
+}
+
+// The palette, as written in tailwind.config.js and globals.css. A hex
+// literal matching one of these is only a tokenisation miss; anything
+// else is real colour drift.
+const PALETTE_HEX = {
+  '07070A': 'surface / --pg-black',
+  D73F09: 'brand / --pg-orange',
+  FAF8F5: 'ink / --pg-off-white',
+  B33407: 'brand-dark',
+};
+
+function expandHex(hex) {
+  const h = hex.replace('#', '').toUpperCase();
+  if (h.length === 3) return h.split('').map((c) => c + c).join('');
+  if (h.length === 8) return h.slice(0, 6); // drop the alpha pair
+  return h;
+}
+
+function hexChannels(h) {
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+// A hex close enough to a palette colour that no eye would catch the
+// difference — #B33507 against the real #B33407 is one digit out. These
+// are typos, not decisions, which makes them the most actionable colour
+// finding in the report.
+const NEAR_MISS_DISTANCE = 32;
+
+// Pure white and pure black sit close to the off-white and near-black
+// tokens, but nobody types #FFFFFF meaning #FAF8F5. They stay
+// off-palette findings; they are just not typos, and listing them as
+// such would bury the ones that are.
+const CANONICAL_HEX = new Set(['FFFFFF', '000000']);
+
+function nearestPaletteMiss(h) {
+  if (PALETTE_HEX[h] || CANONICAL_HEX.has(h)) return null;
+  const [r, g, b] = hexChannels(h);
+  let best = null;
+  for (const key of Object.keys(PALETTE_HEX)) {
+    const [pr, pg, pb] = hexChannels(key);
+    const d = Math.sqrt((r - pr) ** 2 + (g - pg) ** 2 + (b - pb) ** 2);
+    if (d <= NEAR_MISS_DISTANCE && (!best || d < best.distance)) {
+      best = { hex: key, token: PALETTE_HEX[key], distance: Math.round(d * 10) / 10 };
+    }
+  }
+  return best;
+}
+
+// Every hex literal in the source, longest form first so an 8-digit
+// value is not chopped into a 6-digit one.
+const HEX_RE = /#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g;
 
 // Nav rails, relative to the repo root. Each is pure data (no JSX) by
 // convention, which is what makes a regex pass viable here.
@@ -49,48 +134,58 @@ const NAV_FILES = [
 // intentionally defines no `orange` key to avoid clobbering it.
 const VIOLATION_RULES = [
   {
-    id: 'raw-brand-hex',
-    severity: 'high',
-    note: 'Brand hex written literally. tailwind.config.js exposes brand / surface / ink for these.',
-    re: /#(?:D73F09|07070A|FAF8F5)\b/gi,
-  },
-  {
     id: 'glass-alpha-suffix',
+    recommendedAction: action('fix'),
     severity: 'high',
     note: 'glass-1/2/3 carry a fixed alpha and ignore a /NN suffix — tailwind.config.js says so outright. Use glass/[0.055] for a one-off.',
     re: /\b(?:bg|text|border|ring|from|to|via|divide)-glass-[123]\/[0-9[]/g,
   },
   {
-    id: 'arbitrary-color',
-    severity: 'medium',
-    note: 'Arbitrary hex in a utility instead of a palette token. Excludes the three brand hexes, which `raw-brand-hex` owns, so the two rules never count the same characters twice.',
-    re: /\b(?:bg|text|border|ring|fill|stroke|from|to|via|shadow|outline|decoration|divide|accent|caret)-\[#(?!(?:D73F09|07070A|FAF8F5)\])[0-9a-f]{3,8}\]/gi,
-  },
-  {
     id: 'off-palette-hue',
+    recommendedAction: action('needs-human-decision'),
     severity: 'medium',
     note: 'Default Tailwind hue outside the three-color palette (black / orange / off-white).',
     re: /\b(?:bg|text|border|ring|fill|stroke|from|to|via|divide|accent|caret|shadow|outline|decoration)-(?:slate|gray|zinc|neutral|stone|red|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|[1-9]00|950)\b/g,
   },
   {
     id: 'inline-font-family',
+    recommendedAction: action('fix'),
     severity: 'medium',
     note: 'Font family set inline. The four roles are font-display (Bebas), font-sans (Arimo/Arial), font-mono (JetBrains), and Anton where it is loaded.',
     re: /fontFamily\s*:/g,
   },
   {
     id: 'raw-white-black',
+    recommendedAction: action('fix'),
     severity: 'low',
     note: 'text-white / bg-black bypass the ink and surface tokens. An explicit /alpha step is not flagged — that is the opacity ladder.',
     re: /\b(?:bg|text|border)-(?:white|black)\b(?!\/)/g,
   },
   {
     id: 'sub-label-type',
+    recommendedAction: action('needs-human-decision'),
     severity: 'low',
     note: 'Type below the 10px label step at the bottom of the design system scale.',
     re: /\btext-\[(?:[0-9](?:\.[0-9]+)?)px\]/g,
   },
 ];
+
+// The two hex rules come from a dedicated scanner rather than the regex
+// sweep, but still need a row in the report.
+const HEX_RULE_META = {
+  'off-palette-hex': {
+    id: 'off-palette-hex',
+    severity: 'high',
+    recommendedAction: 'fix',
+    note: 'A hex outside the three-colour palette — real drift. Includes near-misses of the brand colour that are one digit out and invisible by eye.',
+  },
+  'palette-hex-literal': {
+    id: 'palette-hex-literal',
+    severity: 'low',
+    recommendedAction: 'fix',
+    note: 'A palette colour written as raw hex where a token already exists (brand, brand-dark, surface, ink). Tokenisation only — the colour on screen is correct.',
+  },
+};
 
 // Tags counted as interactive surface.
 const ELEMENT_TAGS = [
@@ -177,6 +272,27 @@ function walk(dir, out = []) {
     else out.push(full);
   }
   return out;
+}
+
+// Two normalisation levels. `exact` ignores only formatting; `near`
+// also blanks string literals and numbers, which is what collapses a
+// family of per-city scaffold pages that differ by one slug.
+function normalizeForCompare(code, level) {
+  let t = code.replace(/\s+/g, ' ').trim();
+  if (level === 'near') {
+    t = t
+      .replace(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, '"S"')
+      .replace(/\b\d+(?:\.\d+)?\b/g, 'N')
+      // Scaffolds name their component after the route — ChicagoRunOfShow
+      // vs DenverRunOfShow — so the declared name is the last thing
+      // distinguishing two otherwise identical files.
+      .replace(/\bfunction\s+[A-Za-z_$][\w$]*/g, 'function _');
+  }
+  return t;
+}
+
+function shortHash(text) {
+  return crypto.createHash('sha1').update(text).digest('hex').slice(0, 12);
 }
 
 function uniq(list) {
@@ -419,6 +535,19 @@ function analyzePage(repoRoot, absPath, appDir) {
       s.replace(/^\.from\(\s*["'`]/, '').replace(/["'`]$/, '')
     )
   );
+  // Which tables this page WRITES to. A static pass cannot see whether a
+  // table holds rows, so it must never be the basis for calling one dead;
+  // what it can establish is whether a writer exists at all.
+  const tablesWritten = [];
+  {
+    const re = /\.from\(\s*["'`]([^"'`]+)["'`]/g;
+    let m;
+    while ((m = re.exec(code)) !== null) {
+      const window = code.slice(m.index, m.index + 400);
+      if (/\.(insert|update|upsert|delete)\s*\(/.test(window)) tablesWritten.push(m[1]);
+    }
+  }
+
   const apiRoutes = uniq((code.match(/["'`](\/api\/[A-Za-z0-9\-_/[\]${}.]*)/g) || [])
     .map((s) => s.slice(1))
     .map((s) => s.replace(/\$\{[^}]*\}/g, '_'))
@@ -460,6 +589,43 @@ function analyzePage(repoRoot, absPath, appDir) {
 
   // --- design-system violations ---
   const violations = [];
+
+  // Hex literals are split in two, because they are two different
+  // problems wearing the same shape. A palette colour written as hex is
+  // a tokenisation miss and nothing more. Any other hex is real drift
+  // off a three-colour system — and the near-misses among them are
+  // typos of the brand colour that no review would catch by eye.
+  {
+    const re = new RegExp(HEX_RE.source, 'g');
+    let m;
+    while ((m = re.exec(code)) !== null) {
+      const norm = expandHex(m[0]);
+      const line = lineOf(m.index);
+      if (PALETTE_HEX[norm]) {
+        violations.push({
+          rule: 'palette-hex-literal',
+          severity: 'low',
+          recommendedAction: action('fix'),
+          line,
+          text: m[0],
+          token: PALETTE_HEX[norm],
+        });
+      } else {
+        const miss = nearestPaletteMiss(norm);
+        violations.push({
+          rule: 'off-palette-hex',
+          severity: 'high',
+          recommendedAction: action('fix'),
+          line,
+          text: m[0],
+          nearMissOf: miss ? `#${miss.hex}` : null,
+          nearMissToken: miss ? miss.token : null,
+          nearMissDistance: miss ? miss.distance : null,
+        });
+      }
+    }
+  }
+
   for (const rule of VIOLATION_RULES) {
     const re = new RegExp(rule.re.source, rule.re.flags.includes('g') ? rule.re.flags : rule.re.flags + 'g');
     let m;
@@ -467,6 +633,7 @@ function analyzePage(repoRoot, absPath, appDir) {
       violations.push({
         rule: rule.id,
         severity: rule.severity,
+        recommendedAction: rule.recommendedAction,
         line: lineOf(m.index),
         text: m[0].slice(0, 60),
       });
@@ -475,19 +642,30 @@ function analyzePage(repoRoot, absPath, appDir) {
   }
 
   // A trailing newline must not read as an extra line, so this agrees with wc -l.
+  // A page whose whole job is redirect() elsewhere. Worth naming: these
+  // trivially match each other under duplicate detection, but three
+  // shims pointing at three different targets are not a scaffold family
+  // and consolidating them would mean nothing.
+  const redirectTo = (code.match(/\bredirect\s*\(\s*["'`]([^"'`]+)["'`]/) || [])[1] || null;
+
   const lines = raw === '' ? 0 : raw.replace(/\n$/, '').split('\n').length;
 
   return {
     record: {
       route,
       file: relFile,
+      contentHash: {
+        exact: shortHash(normalizeForCompare(code, 'exact')),
+        near: shortHash(normalizeForCompare(code, 'near')),
+      },
       lines,
       bytes: Buffer.byteLength(raw),
       rendering,
       routeGroups: routeGroupsOf(relFromApp),
       dynamicSegments: dynamicSegmentsOf(route),
       routeExports,
-      data: { kind: dataKind, clients, tables, apiRoutes },
+      redirectTo,
+      data: { kind: dataKind, clients, tables, tablesWritten: uniq(tablesWritten), apiRoutes },
       elements: { total: elements.length, ...counts },
       violations,
       // nav, links and flags are filled in by the cross-page pass
@@ -542,6 +720,50 @@ function main(argv) {
     const { record, elements } = analyzePage(repoRoot, f, appDir);
     pages.push(record);
     allElements.push(...elements);
+  }
+
+  // --- duplicate / scaffold families ---
+  //
+  // Near-identical files are recorded, never recommended for removal:
+  // a family of pages differing by one slug is usually a deliberate
+  // scaffold behind a set of URLs that must keep resolving.
+  const nearGroups = new Map();
+  for (const p of pages) {
+    p.isRedirectShim = Boolean(p.redirectTo) && p.lines <= 15 && p.elements.total === 0;
+    if (p.isRedirectShim) continue;
+    const key = p.contentHash.near;
+    if (!nearGroups.has(key)) nearGroups.set(key, []);
+    nearGroups.get(key).push(p);
+  }
+  const duplicateGroups = [];
+  for (const [key, members] of nearGroups) {
+    if (members.length < 2) continue;
+    const sorted = [...members].sort((a, b) => a.route.localeCompare(b.route));
+    const representative = sorted[0];
+    const identical = new Set(members.map((m) => m.contentHash.exact)).size === 1;
+    const legacy = sorted.some((m) => isLegacyUrl(m.route));
+    const group = {
+      key,
+      kind: identical ? 'identical' : 'near-identical',
+      size: sorted.length,
+      representative: representative.file,
+      routes: sorted.map((m) => m.route),
+      legacyUrlFamily: legacy,
+      // A scaffold behind externally-shared URLs is not a consolidation
+      // candidate on its own evidence — a person has to decide.
+      recommendedAction: legacy ? action('migrate-preserve-url') : action('needs-human-decision'),
+    };
+    duplicateGroups.push(group);
+    for (const m of sorted) {
+      m.duplicateOf = m === representative ? null : representative.file;
+      m.duplicateGroup = { key, size: sorted.length, kind: group.kind };
+    }
+  }
+  for (const p of pages) {
+    if (!('duplicateOf' in p)) {
+      p.duplicateOf = null;
+      p.duplicateGroup = null;
+    }
   }
 
   // --- nav rails ---
@@ -661,11 +883,77 @@ function main(argv) {
     // opened from an emailed or shared URL, not a dead route.
     if (status === 'orphan' && p.dynamicSegments.length) flags.push('url-entry-point');
     if (p.violations.some((v) => v.severity === 'high')) flags.push('high-severity-style');
+    if (isLegacyUrl(p.route)) flags.push('legacy-url');
+    if (p.isRedirectShim) flags.push('redirect-shim');
     p.flags = flags;
+
+    // The label a human reads. Ordered so the protective cases win: a
+    // parked route and a live external URL are both correct as they
+    // stand, whatever the reachability test says about them.
+    if (status === 'nav-hidden') {
+      p.recommendedAction = action('parked-no-action');
+      p.actionReason = 'Off the rail on purpose. dashboard-nav.ts: hidden keeps a route live and deletes nothing.';
+    } else if (isLegacyUrl(p.route)) {
+      p.recommendedAction = action('migrate-preserve-url');
+      p.actionReason = 'Live externally-shared URL. Reached by pasted link, not by nav — it must keep resolving.';
+    } else if (status === 'orphan' && flags.includes('url-entry-point')) {
+      p.recommendedAction = action('none');
+      p.actionReason = 'Slug/token landing page. Having no nav link is the intended design.';
+    } else if (status === 'orphan') {
+      p.recommendedAction = action('needs-human-decision');
+      p.actionReason = 'Nothing in src links to it. Unreferenced is not unused — check middleware, redirects, and anything shared outside the repo.';
+    } else if (p.duplicateOf) {
+      p.recommendedAction = action('consolidate');
+      p.actionReason = `Near-identical to ${p.duplicateOf}. Confirm it is not a deliberate scaffold first.`;
+    } else {
+      p.recommendedAction = action('none');
+      p.actionReason = null;
+    }
   }
 
   // Nav entries pointing at a route that has no page.tsx.
-  const navDangling = navEntries.filter((n) => !resolveToPage(n.path));
+  //
+  // This has to be an exact, static question. resolveToPage() also
+  // matches dynamic routes, and /dashboard/[id] matches any single
+  // segment under /dashboard — so /dashboard/in-edit and
+  // /dashboard/posting-instructions looked resolved when neither has a
+  // page. Worse than a 404: at runtime Next.js serves them from the
+  // [id] page with id="in-edit", rendering a page that is not theirs.
+  // That shadowing is recorded per entry as `caughtBy`.
+  const seenNavPath = new Set();
+  const navDangling = [];
+  for (const n of navEntries) {
+    if (routeSet.has(n.path)) continue;
+    if (seenNavPath.has(n.path)) continue;
+    seenNavPath.add(n.path);
+    const shadow = resolveToPage(n.path);
+    navDangling.push({
+      ...n,
+      caughtBy: shadow && shadow !== n.path ? shadow : null,
+      // A parked link is off the rail on purpose — dashboard-nav.ts says
+      // outright that hidden keeps a route live and deletes nothing. A
+      // VISIBLE link to a missing page is the only real defect here.
+      recommendedAction: n.hidden ? action('parked-no-action') : action('fix'),
+      state: n.hidden ? 'parked / awaiting build' : 'visible link, no page',
+    });
+  }
+
+  // Account for every `hidden: true` entry, so the nav-hidden page count
+  // and the nav file's own hidden entries can be reconciled line by line
+  // instead of silently differing.
+  const hiddenReconciliation = [];
+  const seenHidden = new Set();
+  for (const n of navEntries.filter((e) => e.hidden)) {
+    const dupe = seenHidden.has(n.path);
+    seenHidden.add(n.path);
+    const page = pages.find((p) => p.route === n.path);
+    let disposition;
+    if (!page) disposition = 'no page yet — parked';
+    else if (dupe) disposition = 'duplicate href, already counted';
+    else if (page.nav.status === 'nav-hidden') disposition = 'counted as nav-hidden';
+    else disposition = `also linked visibly — counted as ${page.nav.status}`;
+    hiddenReconciliation.push({ href: n.href, label: n.label, rail: n.rail, disposition });
+  }
 
   // --- write ---
   const pagesPath = path.join(outRoot, 'pages.jsonl');
@@ -692,7 +980,7 @@ function main(argv) {
       }))
       .join('\n') + '\n'
   );
-  fs.writeFileSync(summaryPath, buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, navMissing, apiRoutes }));
+  fs.writeFileSync(summaryPath, buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, navMissing, apiRoutes, hiddenReconciliation, duplicateGroups }));
 
   console.log(`hub-sweep: ${pages.length} pages, ${allElements.length} elements -> ${outRoot}`);
   const orphans = pages.filter((p) => p.nav.status === 'orphan').length;
@@ -708,8 +996,9 @@ function table(headers, rows) {
   return out.join('\n');
 }
 
-function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, navMissing, apiRoutes }) {
+function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, navMissing, apiRoutes, hiddenReconciliation, duplicateGroups }) {
   const L = [];
+  const tick = (x) => '`' + String(x) + '`';
   const total = pages.length;
   const loc = pages.reduce((n, p) => n + p.lines, 0);
   const byStatus = {};
@@ -727,6 +1016,12 @@ function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, n
     `**${total} pages** · ${loc.toLocaleString()} lines · ${byRendering.client || 0} client / ${byRendering.server || 0} server · ` +
     `${allElements.length} interactive elements · ${apiRoutes.length} API routes · ${navEntries.length} nav links`
   );
+  L.push('');
+  L.push('## How to read this');
+  L.push('');
+  L.push('Every finding carries a `recommended_action` from a closed set: `none` · `migrate-preserve-url` · `consolidate` · `needs-human-decision` · `fix` · `parked-no-action`.');
+  L.push('');
+  L.push('There is no `delete`. A static sweep can prove that nothing in `src` links to a route; it cannot prove the route is unused. Live URLs get pasted into client emails and decks, routes get parked mid-build on purpose, and near-identical files are often deliberate scaffolds. So anything that looks removable is `needs-human-decision` with the reasoning attached, and the closed set is enforced in code — a run fails rather than emitting a label outside it.');
   L.push('');
 
   // --- reachability ---
@@ -750,29 +1045,47 @@ function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, n
   L.push('');
 
   const orphans = pages.filter((p) => p.nav.status === 'orphan');
-  const entryPoints = orphans.filter((p) => p.flags.includes('url-entry-point'));
-  const deadEnds = orphans.filter((p) => !p.flags.includes('url-entry-point'));
+  const legacy = orphans.filter((p) => p.flags.includes('legacy-url'));
+  const entryPoints = orphans.filter((p) => !p.flags.includes('legacy-url') && p.flags.includes('url-entry-point'));
+  const undecided = orphans.filter((p) => !p.flags.includes('legacy-url') && !p.flags.includes('url-entry-point'));
 
-  if (deadEnds.length) {
-    L.push(`### Unreferenced routes (${deadEnds.length})`);
+  if (legacy.length) {
+    L.push('### Legacy URLs — must keep resolving (' + legacy.length + ')');
     L.push('');
-    L.push('A static route with no nav entry and no link to it anywhere in `src`. These are the real deletion candidates — but check `middleware.ts` and any redirect first.');
+    L.push('Live, externally-shared URLs: sent in client emails and decks. They are reached by pasted link, never from the nav, so this sweep sees them as unreferenced — that is a property of the audit, not a defect in the route. **Not removal candidates.** Where several share one shape, the move is a dynamic route sitting behind the same URLs.');
     L.push('');
     L.push(table(
-      ['Route', 'Lines', 'Data', 'File'],
-      deadEnds.map((p) => [`\`${p.route}\``, String(p.lines), p.data.kind, `\`${p.file}\``])
+      ['Route', 'Lines', 'Action', 'Scaffold family'],
+      legacy.map((p) => [
+        tick(p.route),
+        String(p.lines),
+        tick(p.recommendedAction),
+        p.duplicateGroup ? p.duplicateGroup.kind + ' x' + p.duplicateGroup.size : '—',
+      ])
+    ));
+    L.push('');
+  }
+
+  if (undecided.length) {
+    L.push('### Unreferenced by nav — needs a human (' + undecided.length + ')');
+    L.push('');
+    L.push('No nav entry, and nothing in `src` links to these. Unreferenced is **not** the same as unused: check `middleware.ts`, redirects, and anything shared outside the repo before acting. This audit does not conclude that any route can be removed.');
+    L.push('');
+    L.push(table(
+      ['Route', 'Lines', 'Data', 'Action'],
+      undecided.map((p) => [tick(p.route), String(p.lines), p.data.kind, tick(p.recommendedAction)])
     ));
     L.push('');
   }
 
   if (entryPoints.length) {
-    L.push(`### URL entry points (${entryPoints.length})`);
+    L.push('### URL entry points (' + entryPoints.length + ')');
     L.push('');
-    L.push('Orphaned by the same test, but each takes a slug or token — the shape of a page opened from an emailed or shared link. Expected to have no nav entry; listed so the count is accounted for rather than hidden.');
+    L.push('Orphaned by the same test, but each takes a slug or token — the shape of a page opened from an emailed or shared link. Having no nav entry is the intended design.');
     L.push('');
     L.push(table(
-      ['Route', 'Lines', 'Data'],
-      entryPoints.map((p) => [`\`${p.route}\``, String(p.lines), p.data.kind])
+      ['Route', 'Lines', 'Data', 'Action'],
+      entryPoints.map((p) => [tick(p.route), String(p.lines), p.data.kind, tick(p.recommendedAction)])
     ));
     L.push('');
   }
@@ -789,16 +1102,40 @@ function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, n
   }
 
   if (navDangling.length) {
-    L.push(`### Nav links with no page (${navDangling.length})`);
+    L.push('### Nav links with no page yet (' + navDangling.length + ')');
     L.push('');
-    L.push('An href on a rail that no `page.tsx` answers. A visible one renders a 404 when clicked.');
+    L.push('An href on a rail that no `page.tsx` answers. Every one of these is `hidden: true` — parked on purpose. `dashboard-nav.ts` states the contract: hidden *"keeps a route live while taking its link off the rail; nothing here deletes a route"*, and two are commented *"No route yet — Phase 3 of the content review pipeline."* So these are **parked / awaiting build**, not broken links and not 404s.');
+    L.push('');
+    L.push('`Shadowed by` matters more than it looks: where a dynamic route matches the path, Next.js serves that page instead of 404ing, so the link renders a page that is not its own. That is also what hid two of these from the previous run.');
     L.push('');
     L.push(table(
-      ['Href', 'Label', 'Rail', 'Hidden'],
-      navDangling.map((n) => [`\`${n.href}\``, n.label || '—', n.rail, n.hidden ? 'yes' : '**no**'])
+      ['Href', 'Label', 'State', 'Shadowed by', 'Action'],
+      navDangling.map((n) => [
+        tick(n.href),
+        n.label || '—',
+        n.state,
+        n.caughtBy ? tick(n.caughtBy) : 'nothing — 404',
+        tick(n.recommendedAction),
+      ])
     ));
     L.push('');
   }
+
+  if (hiddenReconciliation && hiddenReconciliation.length) {
+    const counted = hiddenReconciliation.filter((h) => h.disposition === 'counted as nav-hidden').length;
+    L.push('### Reconciling `hidden: true` (' + hiddenReconciliation.length + ' entries -> ' + counted + ' pages)');
+    L.push('');
+    L.push('The nav files carry more hidden entries than there are `nav-hidden` pages, because some point at routes that have no page yet. Every entry is accounted for below rather than dropped.');
+    L.push('');
+    L.push('Note: a raw `grep -c \'hidden: true\'` over `dashboard-nav.ts` returns one more than this table. That extra hit is the contract comment at the top of the file, which quotes the flag while explaining it — it is not an entry. This sweep blanks comments before parsing, so it counts the real ones.');
+    L.push('');
+    L.push(table(
+      ['Href', 'Label', 'Where it went'],
+      hiddenReconciliation.map((h) => [tick(h.href), h.label || '—', h.disposition])
+    ));
+    L.push('');
+  }
+
   if (navMissing.length) {
     L.push(`> Nav file not found, so its rail was not checked: ${navMissing.map((f) => `\`${f}\``).join(', ')}`);
     L.push('');
@@ -821,10 +1158,17 @@ function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, n
   const tableCounts = {};
   for (const p of pages) for (const t of p.data.tables) tableCounts[t] = (tableCounts[t] || 0) + 1;
   const topTables = Object.entries(tableCounts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  const writerCounts = {};
+  for (const p of pages) for (const t of p.data.tablesWritten) writerCounts[t] = (writerCounts[t] || 0) + 1;
   if (topTables.length) {
     L.push('### Most-queried tables');
     L.push('');
-    L.push(table(['Table', 'Pages'], topTables.map(([t, n]) => [`\`${t}\``, String(n)])));
+    L.push('`Writer` counts pages performing an insert / update / upsert / delete. This sweep reads code only — it never connects to the database and so has **no idea whether any table holds rows**. An empty table with a writer in the codebase is a feature nobody has used yet; an empty table with no writer is a different question entirely. Neither is evidence of dead code on its own, and this report does not make that call.');
+    L.push('');
+    L.push(table(
+      ['Table', 'Pages reading', 'Pages writing'],
+      topTables.map(([t, n]) => [tick(t), String(n), writerCounts[t] ? String(writerCounts[t]) : '— read-only here'])
+    ));
     L.push('');
   }
 
@@ -871,20 +1215,63 @@ function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, n
       filesByRule[v.rule].add(p.file);
     }
   }
-  const ruleMeta = Object.fromEntries(VIOLATION_RULES.map((r) => [r.id, r]));
+  const ruleMeta = { ...HEX_RULE_META, ...Object.fromEntries(VIOLATION_RULES.map((r) => [r.id, r])) };
   const ruleRows = Object.entries(byRule)
     .sort((a, b) => {
       const rank = { high: 0, medium: 1, low: 2 };
       const d = rank[ruleMeta[a[0]].severity] - rank[ruleMeta[b[0]].severity];
       return d !== 0 ? d : b[1] - a[1];
     })
-    .map(([id, n]) => [`\`${id}\``, ruleMeta[id].severity, String(n), String(filesByRule[id].size), ruleMeta[id].note]);
+    .map(([id, n]) => [
+      `\`${id}\``,
+      ruleMeta[id].severity,
+      String(n),
+      String(filesByRule[id].size),
+      `\`${ruleMeta[id].recommendedAction}\``,
+      ruleMeta[id].note,
+    ]);
   if (ruleRows.length) {
-    L.push(table(['Rule', 'Severity', 'Hits', 'Files', 'Why'], ruleRows));
+    L.push(table(['Rule', 'Severity', 'Hits', 'Files', 'Action', 'Why'], ruleRows));
+    const hexShort = pages.reduce((n, p) => n + p.violations.filter((v) => v.rule === 'off-palette-hex' && v.text.length === 4).length, 0);
+    const hexLong = byRule['off-palette-hex'] ? byRule['off-palette-hex'] - hexShort : 0;
+    if (hexShort) {
+      L.push('');
+      L.push('`off-palette-hex` splits ' + hexLong + ' six/eight-digit values and ' + hexShort + ' three-digit shorthand (`#111`, `#FFF`, `#000`). Shorthand is counted because it is equally off-palette, but it is listed separately here since a hex audit done by eye tends to miss it.');
+    }
   } else {
     L.push('No findings.');
   }
   L.push('');
+
+  // The highest-value colour finding: a hex one or two digits off a
+  // palette colour renders as a colour nobody can distinguish by eye,
+  // so it survives every visual review.
+  const misses = new Map();
+  for (const p of pages) {
+    for (const v of p.violations) {
+      if (v.rule !== 'off-palette-hex' || !v.nearMissOf) continue;
+      const key = v.text.toUpperCase() + '|' + v.nearMissOf + '|' + v.nearMissToken;
+      misses.set(key, (misses.get(key) || 0) + 1);
+    }
+  }
+  if (misses.size) {
+    const rows = Array.from(misses.entries())
+      .map(([k, n]) => {
+        const [hex, of, token] = k.split('|');
+        return { hex, of, token, n };
+      })
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 20);
+    L.push('### Near-misses of a palette colour (' + misses.size + ' distinct values)');
+    L.push('');
+    L.push('Each of these is close enough to a palette colour that no eye would catch the difference — `#B33507` against the real `#B33407` is a single digit. These are typos, not decisions, and they are the reason the hex findings are split: at 782 hits under one rule they were buried. Pure `#FFFFFF` and `#000000` are excluded — they are off-palette, but nobody types them by accident.');
+    L.push('');
+    L.push(table(
+      ['Written', 'Almost certainly meant', 'Token', 'Hits'],
+      rows.map((r) => [tick(r.hex), tick(r.of), r.token, String(r.n)])
+    ));
+    L.push('');
+  }
 
   const worst = pages
     .filter((p) => p.violations.length)
@@ -919,6 +1306,39 @@ function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, n
     L.push('');
   }
 
+  const shims = pages.filter((p) => p.isRedirectShim);
+  if (shims.length) {
+    L.push('## Redirect shims (' + shims.length + ')');
+    L.push('');
+    L.push('Pages whose entire body is a `redirect()`. They are held out of the duplicate families below: they all look alike by construction, but each points somewhere different, so there is nothing to consolidate. Listed because a shim on a visible nav link means the rail leads somewhere other than where it says.');
+    L.push('');
+    L.push(table(
+      ['Route', 'Redirects to', 'Reachability', 'Action'],
+      shims.map((p) => [tick(p.route), tick(p.redirectTo), tick(p.nav.status), tick(p.recommendedAction)])
+    ));
+    L.push('');
+  }
+
+  if (duplicateGroups && duplicateGroups.length) {
+    L.push('## Duplicate and scaffold families (' + duplicateGroups.length + ')');
+    L.push('');
+    L.push('Files that match after normalising formatting, string literals and numbers. Recorded as `duplicate_of`, never as a removal candidate: a family of pages differing by one slug is usually a deliberate scaffold sitting behind URLs that have to keep resolving.');
+    L.push('');
+    L.push(table(
+      ['Kind', 'Size', 'Representative', 'Routes', 'Action'],
+      duplicateGroups
+        .sort((a, b) => b.size - a.size)
+        .map((g) => [
+          g.kind,
+          String(g.size),
+          tick(g.representative),
+          g.routes.slice(0, 4).map(tick).join(' ') + (g.routes.length > 4 ? ' +' + (g.routes.length - 4) : ''),
+          tick(g.recommendedAction),
+        ])
+    ));
+    L.push('');
+  }
+
   const biggest = [...pages].sort((a, b) => b.lines - a.lines).slice(0, 15);
   L.push('## Largest pages');
   L.push('');
@@ -935,6 +1355,9 @@ function buildSummary({ repoRoot, pages, allElements, navEntries, navDangling, n
   L.push('- Route groups `(name)` and `@slots` are stripped from routes, matching App Router resolution.');
   L.push('- Reachability reads `src/lib/dashboard-nav.ts` and `src/lib/admin/nav.ts` as pure data, then every `href`, `router.push`/`replace` and `redirect` across all of `src` — so a link from a rail, shell or table component counts. A route reached only via `middleware.ts` or an href assembled at runtime still reads as `orphan`; confirm before deleting anything.');
   L.push('- `elements.jsonl` covers `page.tsx` only. An element inside an imported component is attributed to that component and is not counted here, so a page whose body lives in a component looks emptier than it is.');
+  L.push('- Reachability is evidence about links, not about use. A route no link points at may still be live: reached by pasted URL, by `middleware.ts`, or by a redirect. Nothing here is a removal recommendation.');
+  L.push('- Nav-link existence is checked against exact static routes. A dynamic route can shadow a missing page — `/dashboard/[id]` answers `/dashboard/in-edit`, so that link renders the wrong page rather than a 404, and an earlier version of this script mistook the shadow for a real page.');
+  L.push('- Duplicate detection normalises formatting, string literals and numbers, so a family of per-slug scaffolds collapses into one group. Groups are reported, never resolved.');
   L.push('- Style findings are lint, not judgement. `off-palette-hue` in particular flags every non-palette Tailwind hue, including deliberate status colours; Tailwind\'s default `orange-*` is exempt because `tailwind.config.js` records it as intentional.');
   L.push('');
   L.push('Records: `pages.jsonl` (one per page), `elements.jsonl` (one per element). Both are newline-delimited JSON — `jq` reads them directly.');
