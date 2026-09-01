@@ -20,25 +20,29 @@ interface SearchRequestBody {
 }
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const res = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "text-embedding-ada-002",
-      input: text,
-    }),
-  });
+  const res = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.GOOGLE_AI_API_KEY as string,
+      },
+      body: JSON.stringify({
+        content: { parts: [{ text }] },
+        taskType: "RETRIEVAL_QUERY",
+        outputDimensionality: 1536,
+      }),
+    }
+  );
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenAI embeddings ${res.status}: ${err}`);
+    throw new Error(`Gemini embeddings ${res.status}: ${err}`);
   }
 
   const data = await res.json();
-  return data.data[0].embedding;
+  return data.embedding.values;
 }
 
 export async function POST(req: NextRequest) {
