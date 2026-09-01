@@ -21,6 +21,8 @@
 
 export type IgFeed = {
   post_url?: string | null;
+  /** Absent from this dataset; kept so the impressions formula reads whole. */
+  impressions?: number | null;
   likes?: number | null;
   comments?: number | null;
   reposts?: number | null;
@@ -82,6 +84,12 @@ const n = (v: number | null | undefined): number => v ?? 0;
 export const feedEng = (a: BuilderAthlete): number =>
   n(a.metrics?.ig_feed?.likes) + n(a.metrics?.ig_feed?.comments) + n(a.metrics?.ig_feed?.reposts);
 
+// NOTE: builder-01 computes reel engagements as likes + comments only, and
+// that is what this grid column shows, matching the prototype. The ranking in
+// performers/ranking.ts adds reposts + shares, which is what the stored
+// ig_reel.total_engagements and the handoff's recorded top fives agree with.
+// The two differ for athletes with reel reposts (e.g. Lauren Lewis: 151 here,
+// 156 there). Flagged for a decision — see the Phase 5 report.
 export const reelEng = (a: BuilderAthlete): number =>
   n(a.metrics?.ig_reel?.likes) + n(a.metrics?.ig_reel?.comments);
 

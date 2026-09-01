@@ -29,9 +29,11 @@ import { STEPS, stepIndex, stepSlug } from '@/components/recap-builder/steps';
 import AthletesStep from '@/components/recap-builder/athletes/AthletesStep';
 import OverviewStep from '@/components/recap-builder/overview/OverviewStep';
 import HeroStep from '@/components/recap-builder/hero/HeroStep';
+import PerformersStep from '@/components/recap-builder/performers/PerformersStep';
 import './athletes-step.css';
 import './overview-step.css';
 import './hero-step.css';
+import './performers-step.css';
 
 type RecapHeader = {
   id: string;
@@ -145,8 +147,10 @@ function RecapBuilder() {
                   device={device}
                   pageRef={pageRef}
                 />
+              ) : active === 3 && recapId ? (
+                <PerformersStep recapId={recapId} onTouch={touch} onPreviewChange={setPreview} />
               ) : (
-                /* Remaining step bodies land in phases 3–6. */
+                /* Content / Takeaways / Sections stubs land in phase 6. */
                 <p style={{ color: 'rgba(250,248,245,.45)', fontSize: 13 }}>
                   {STEPS[active]} — designed next, in-app.
                 </p>
