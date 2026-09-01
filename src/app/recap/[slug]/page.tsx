@@ -24,6 +24,35 @@ function allowPreviewBypass(sp: { preview?: string; v2?: string } | undefined) {
   return sp?.preview === "1" && process.env.NODE_ENV !== "production";
 }
 
+/**
+ * Is this a surface where unfinished work may be shown?
+ *
+ * BOTH signals are checked, because neither is sufficient on its own here:
+ *
+ *   surface             NODE_ENV      VERCEL_ENV
+ *   local dev           development   production   <- from .env.local
+ *   Vercel preview      production    preview
+ *   Vercel production   production    production
+ *
+ *   - NODE_ENV is "production" for EVERY Vercel build, previews included. It
+ *     is what allowPreviewBypass above uses, which is why `?preview=1` works
+ *     locally and nowhere else. Copying that here would switch v2 off on the
+ *     preview deployments this redesign is reviewed on — the opposite of what
+ *     the gate is for.
+ *   - VERCEL_ENV is the variable that separates preview from production, but
+ *     this repo's .env.local pins VERCEL_ENV="production" for local work, so
+ *     using it alone would switch v2 off on a local dev server.
+ *
+ * Taking "either signal says non-production" as non-production is right for
+ * all three: local dev and Vercel preview allow the flag, and the live site,
+ * where both variables say production, refuses it.
+ */
+function isNonProductionSurface() {
+  return (
+    process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV !== "production"
+  );
+}
+
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
   const sp = (await searchParams) ?? {};
@@ -184,12 +213,14 @@ export default async function RecapPage({ params, searchParams }: Props) {
   // other campaign passes nothing, so existing recaps are untouched.
   const isEvent = campaign.settings?.campaign_type === "event";
 
-  // ── Recap v2 (scaffold) ───────────────────────────────────────────────────
-  // Opt-in via ?v2=1 so the preview deployment serves old and new side by side
-  // across all 82 published campaigns without a second deploy. Reached only on
-  // the default path: `isTop50` has already returned above, and `isEvent` is
-  // excluded here, so those two render exactly as they do today.
-  if (!isEvent && sp?.v2 === "1") {
+  // ── Recap v2 ──────────────────────────────────────────────────────────────
+  // Opt-in via ?v2=1 so one deployment serves old and new side by side across
+  // all 82 published campaigns. Gated to non-production surfaces so a stray
+  // query string cannot put an unfinished design on a live client recap.
+  // Reached only on the default path: `isTop50` has already returned above,
+  // and `isEvent` is excluded here, so those two render exactly as they do
+  // today on every surface.
+  if (!isEvent && sp?.v2 === "1" && isNonProductionSurface()) {
     return (
       <RecapV2
         campaign={campaign}

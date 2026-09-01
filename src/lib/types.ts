@@ -280,6 +280,27 @@ export interface Media {
   /** For collab media only: which slot of the team collab card this asset fills. */
   slot?: "feed" | "reel" | null;
   created_at: string;
+
+  // ── Selection signals ───────────────────────────────────────────────────
+  // All present in the table and returned by `select("*")`; typed here because
+  // the v2 recap orders its hero stills by them. Optional because most are
+  // sparsely populated — see lib/recap-v2/hero.ts for the measured coverage.
+
+  /**
+   * Explicit hero selection, intended to be written by a human in the recap
+   * editor. Currently true on 0 rows. When present it is authoritative: the
+   * hero uses these and nothing else.
+   */
+  public_hero?: boolean | null;
+  public_hero_order?: number | null;
+  /**
+   * Legacy single cover flag — true on exactly one row for 63 of 82 published
+   * campaigns, never more. A lead image, not a full selection.
+   */
+  is_hero?: boolean | null;
+  hero_order?: number | null;
+  /** Populated on 227 of 4,077 rows, and on only 2 campaigns. Unused. */
+  quality_score?: number | null;
 }
 
 /**

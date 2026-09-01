@@ -135,7 +135,10 @@ export const SECTION_LABEL: Record<SectionId, string> = {
 };
 
 export const SECTION_HEADING: Record<SectionId, { kicker: string; title: string }> = {
-  overview: { kicker: "Campaign overview", title: "What we ran" },
+  // Title and kicker swapped from the reference at Peyton's request: the big
+  // Bebas line reads "Campaign overview". Leaving the kicker as "Campaign
+  // overview" too would have printed the same words twice in one header.
+  overview: { kicker: "What we ran", title: "Campaign overview" },
   take: { kicker: "Key takeaways", title: "" },
   numbers: { kicker: "Campaign performance", title: "The numbers" },
   perf: { kicker: "Top performers", title: "Who carried it" },
