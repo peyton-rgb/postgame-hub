@@ -1,0 +1,154 @@
+/* ============================================================
+   Recap Builder — shared chrome
+   Ported VERBATIM from docs/recap-builder/prototypes/*.html.
+
+   Every value here (sizes, spacing, colours, easing) is copied
+   from the approved prototypes. Do not "tidy" or re-derive any
+   of it — where this file and a prototype disagree, the
+   prototype wins. See docs/recap-builder/claude_RECAP-BUILDER-
+   HERO-SPEC.md and the master brief.
+
+   The only change from the prototypes is mechanical: every
+   selector is prefixed with .rb-root so the styles cannot leak
+   into the rest of the dashboard, and the prototypes' mock
+   150px sidebar is replaced by the real DashboardShell rail
+   (240px above the 900px nav breakpoint) — the prototypes drew
+   their own sidebar because they ran standalone.
+   ============================================================ */
+
+.rb-root {
+  --black: #07070A;
+  --orange: #D73F09;
+  --white: #FAF8F5;
+  --line: rgba(250, 248, 245, .08);
+  --line-2: rgba(250, 248, 245, .14);
+
+  background: var(--black);
+  color: #FAF8F5;
+  font: 14.5px/1.6 var(--font-builder-inter), 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum';
+  min-height: 100vh;
+}
+
+.rb-root *{ margin: 0; padding: 0; box-sizing: border-box }
+.rb-root ::selection { background: rgba(215, 63, 9, .35) }
+
+.rb-root .main { flex: 1; min-width: 0 }
+.rb-root .wrap { max-width: 1560px; margin: 0 auto; padding: 40px 44px 150px }
+
+.rb-root .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px }
+.rb-root .actions { display: flex; gap: 10px; padding-bottom: 4px }
+.rb-root h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--white); margin: 8px 0 3px }
+.rb-root .meta { font-size: 13.5px; color: rgba(250, 248, 245, .92) }
+.rb-root .meta b { font-weight: 500 }
+
+/* step rail */
+.rb-root .rail { display: flex; margin: 34px 0 36px; position: relative }
+.rb-root .rail::before { content: ''; position: absolute; left: 0; right: 0; top: 14px; height: 1px; background: var(--line) }
+.rb-root .step { flex: 1; position: relative; cursor: pointer; padding-top: 30px }
+.rb-root .step .n {
+  position: absolute; top: 7px; left: 0; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--black); border: 1px solid var(--line-2); transition: .2s;
+}
+.rb-root .step .t {
+  font-size: 11px; font-weight: 500; letter-spacing: .06em;
+  color: rgba(250, 248, 245, .35); text-transform: uppercase; transition: .2s;
+}
+.rb-root .step:hover .t { color: #FAF8F5 }
+.rb-root .step.active .n { background: var(--orange); border-color: var(--orange); box-shadow: 0 0 12px rgba(215, 63, 9, .6) }
+.rb-root .step.active .t { color: var(--white) }
+.rb-root .step.done .n { border-color: rgba(215, 63, 9, .7); background: rgba(215, 63, 9, .18) }
+
+/* buttons */
+.rb-root .btn {
+  border: none; cursor: pointer; border-radius: 10px; padding: 12px 18px;
+  font: 600 12.5px var(--font-builder-inter), 'Inter';
+  letter-spacing: .02em; transition: .15s; white-space: nowrap; color: #FAF8F5;
+}
+.rb-root .btn.primary { background: var(--orange); color: #fff }
+.rb-root .btn.primary:hover { filter: brightness(1.12); box-shadow: 0 0 18px rgba(215, 63, 9, .35) }
+.rb-root .btn.ghost { background: transparent; border: 1px solid var(--line-2) }
+.rb-root .btn.ghost:hover { border-color: rgba(250, 248, 245, .3) }
+.rb-root .btn:disabled { opacity: .3; cursor: default }
+
+/* split layout */
+.rb-root .split { display: grid; grid-template-columns: 1fr 600px; gap: 44px; align-items: start }
+.rb-root .preview {
+  position: sticky; top: 24px; border: 1px solid var(--line-2);
+  border-radius: 18px; overflow: hidden; background: #0A0A0E;
+}
+.rb-root .pvhead {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+  font-size: 10.5px; font-weight: 600; letter-spacing: .14em;
+  text-transform: uppercase; color: rgba(250, 248, 245, .5);
+}
+.rb-root .pvhead .live { color: var(--orange) }
+.rb-root .pvexpand {
+  cursor: pointer; border: 1px solid var(--line-2); border-radius: 999px;
+  padding: 4px 11px; color: rgba(250, 248, 245, .7); font-size: 10px; letter-spacing: .08em;
+  background: transparent;
+}
+.rb-root .pvexpand:hover { color: #FAF8F5; border-color: rgba(250, 248, 245, .35) }
+
+/* fullscreen preview */
+.rb-root.pvfull .preview {
+  position: fixed; inset: 24px; z-index: 50; background: #0A0A0E;
+  border-radius: 18px; max-width: none;
+}
+.rb-root.pvfull .pvbody { max-height: calc(100vh - 110px) }
+.rb-root.pvfull::after {
+  content: ''; position: fixed; inset: 0; background: rgba(7, 7, 10, .7);
+  backdrop-filter: blur(6px); z-index: 40;
+}
+
+.rb-root .pvbody { padding: 16px; max-height: calc(100vh - 150px); overflow: auto }
+.rb-root .devtoggle { display: inline-flex; border: 1px solid var(--line-2); border-radius: 999px; overflow: hidden }
+.rb-root .devtoggle span {
+  padding: 5px 12px; font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; cursor: pointer; color: rgba(250, 248, 245, .5);
+}
+.rb-root .devtoggle span.on { background: rgba(215, 63, 9, .16); color: #FAF8F5 }
+
+/* scaled true-width page — approved recap redesign */
+.rb-root .pvstage {
+  overflow: hidden; border-radius: 12px; border: 1px solid var(--line);
+  background: #07070A; margin: 0 auto; transition: width .2s;
+}
+.rb-root .pvscale { transform-origin: top left }
+.rb-root .pvpage { background: #07070A; font-family: var(--font-builder-arimo), 'Arimo', Arial, sans-serif }
+.rb-root .pvpage.desktop { width: 1280px }
+.rb-root .pvpage.mobile { width: 390px }
+
+/* focus-follow highlight in the preview */
+.rb-root .pv-hl {
+  outline: 2px solid rgba(215, 63, 9, .85); outline-offset: 8px; border-radius: 4px;
+  box-shadow: 0 0 30px rgba(215, 63, 9, .28); transition: outline-color .2s;
+}
+
+/* footer bar */
+.rb-root .bar {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 12px;
+  padding: 13px 44px; background: rgba(7, 7, 10, .82); backdrop-filter: blur(24px);
+  border-top: 1px solid var(--line); z-index: 10;
+}
+.rb-root .bar .status { flex: 1; text-align: center; font-size: 12px; color: rgba(250, 248, 245, .92) }
+.rb-root .bar .status .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--orange); margin-right: 8px; vertical-align: 1px;
+}
+
+/* The prototypes pinned .bar to their own 150px mock sidebar. In the app the
+   real DashboardShell rail is 240px and collapses to an overlay drawer below
+   the 900px nav breakpoint, so the offset follows that instead. */
+@media (min-width: 900px) { .rb-root .bar { left: 240px } }
+
+@media (max-width: 1200px) {
+  .rb-root .split { grid-template-columns: 1fr }
+  .rb-root .preview { position: static; order: -1 }
+}
+@media (max-width: 1000px) {
+  .rb-root .wrap { padding: 28px 20px 150px }
+  .rb-root .step .t { display: none }
+}
