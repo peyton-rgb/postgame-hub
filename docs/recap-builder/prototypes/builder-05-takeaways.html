@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recap Builder — Takeaways</title>
+<!--
+  builder-05-takeaways.html · step 6 of 7 · Ghost Amp (ghost-amp-961)
+  v4: chrome ported verbatim from builder-04-performers-v2.html (frozen).
+  Statement Takeaways (ADOPT #4): rich text editor (B / I / Orange / Clear),
+  one Anton statement, no support lines. Renders AFTER the Roster.
+  Saves to recap_config.takeaways. Verified DB numbers 2026-08-31:
+  76 athletes · 70 schools · 35,917 eng · 348,831 imp · 227 posts · 11.4% avg feed ER.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,600&family=Bebas+Neue&family=Anton&family=JetBrains+Mono:wght@500&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#07070A; --orange:#D73F09; --white:#FAF8F5;
+    --line:rgba(250,248,245,.08); --line-2:rgba(250,248,245,.14);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--black);color:#FAF8F5;
+    font:14.5px/1.6 'Inter',-apple-system,'Segoe UI',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;font-feature-settings:'tnum'}
+  ::selection{background:rgba(215,63,9,.35)}
+
+  .shell{display:flex;min-height:100vh}
+  .sidebar{width:150px;flex:none;border-right:1px solid var(--line);padding:20px 16px;position:sticky;top:0;height:100vh;opacity:.5}
+  .sidebar img{width:100px;display:block;margin-bottom:30px}
+  .sidebar .grp{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(250,248,245,.3);margin:20px 0 8px}
+  .sidebar a{display:block;font-size:12.5px;color:rgba(250,248,245,.5);text-decoration:none;padding:4px 0}
+
+  .main{flex:1;min-width:0}
+  .wrap{max-width:1560px;margin:0 auto;padding:40px 44px 150px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+  .actions{display:flex;gap:10px;padding-bottom:4px}
+  h1{font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--white);margin:8px 0 3px}
+  .meta{font-size:13.5px;color:rgba(250,248,245,.92)}
+  .meta b{font-weight:500}
+
+  .rail{display:flex;margin:34px 0 36px;position:relative}
+  .rail::before{content:'';position:absolute;left:0;right:0;top:14px;height:1px;background:var(--line)}
+  .step{flex:1;position:relative;cursor:pointer;padding-top:30px}
+  .step .n{position:absolute;top:7px;left:0;width:15px;height:15px;border-radius:50%;background:var(--black);border:1px solid var(--line-2);transition:.2s}
+  .step .t{font-size:11px;font-weight:500;letter-spacing:.06em;color:rgba(250,248,245,.35);text-transform:uppercase;transition:.2s}
+  .step:hover .t{color:#FAF8F5}
+  .step.active .n{background:var(--orange);border-color:var(--orange);box-shadow:0 0 12px rgba(215,63,9,.6)}
+  .step.active .t{color:var(--white)}
+  .step.done .n{border-color:rgba(215,63,9,.7);background:rgba(215,63,9,.18)}
+
+  .btn{border:none;cursor:pointer;border-radius:10px;padding:12px 18px;font:600 12.5px 'Inter';letter-spacing:.02em;transition:.15s;white-space:nowrap;color:#FAF8F5}
+  .btn.primary{background:var(--orange);color:#fff}
+  .btn.primary:hover{filter:brightness(1.12);box-shadow:0 0 18px rgba(215,63,9,.35)}
+  .btn.ghost{background:transparent;border:1px solid var(--line-2)}
+  .btn.ghost:hover{border-color:rgba(250,248,245,.3)}
+
+  .split{display:grid;grid-template-columns:1fr 600px;gap:44px;align-items:start}
+
+  /* ── left column ── */
+  .panel{border:1px solid var(--line);border-radius:20px;padding:24px 26px;background:rgba(250,248,245,.015)}
+  .ptop{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:6px}
+  .ptitle{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#FAF8F5}
+  .psub{font-size:12.5px;color:rgba(250,248,245,.55);margin-bottom:20px}
+  .psub b{color:rgba(250,248,245,.85);font-weight:600}
+
+  .flagline{display:flex;align-items:center;gap:9px;font-size:12.5px;border:1px solid var(--line-2);border-radius:12px;padding:11px 14px;margin-top:18px}
+  .flagline.warn{border-color:rgba(215,63,9,.55);background:rgba(215,63,9,.07)}
+  .flagline .fdot{width:7px;height:7px;border-radius:50%;background:var(--orange);flex:none}
+  .flagline{display:none}
+  .flagline.on{display:flex}
+
+  /* rich text editor — toolbar attached to the field */
+  .rtebox{border:1px solid var(--line-2);border-radius:14px;overflow:hidden;transition:.2s;background:rgba(250,248,245,.02)}
+  .rtebox.focus{border-color:rgba(215,63,9,.6);box-shadow:0 0 0 3px rgba(215,63,9,.08)}
+  .rtebar{display:flex;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid var(--line)}
+  .tb{width:30px;height:28px;display:grid;place-items:center;border:none;background:transparent;border-radius:7px;
+    color:rgba(250,248,245,.55);cursor:pointer;transition:.13s;font-family:'Inter'}
+  .tb:hover{background:rgba(250,248,245,.06);color:#FAF8F5}
+  .tb.on{background:rgba(215,63,9,.16);color:#FAF8F5}
+  .tb:disabled{opacity:.3;cursor:default;background:transparent}
+  .tb .b{font:700 13.5px 'Inter'}
+  .tb .i{font:italic 600 13.5px 'Inter'}
+  .tb .a{font:700 13.5px 'Inter';line-height:1;border-bottom:3px solid var(--orange);padding-bottom:1px}
+  .tb.on .a{color:var(--orange)}
+  .tb svg{display:block}
+  .tbdiv{width:1px;height:16px;background:var(--line-2);margin:0 6px}
+  .rte{min-height:110px;padding:14px 16px;color:#FAF8F5;font:17px/1.6 'Inter';outline:none;cursor:text}
+  .rte:empty::before{content:attr(data-ph);color:rgba(250,248,245,.3)}
+  .rte .mk{color:var(--orange)}
+  .rte b{font-weight:700}
+  .rte i{font-style:italic}
+  .rtemeta{display:flex;justify-content:space-between;align-items:baseline;margin:8px 2px 0;font-size:12px;color:rgba(250,248,245,.5)}
+
+  /* verified-number chips */
+  .chiplab{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,248,245,.5);margin:22px 0 10px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line-2);background:rgba(250,248,245,.03);border-radius:999px;padding:8px 14px;
+    font:500 12px 'Inter';color:rgba(250,248,245,.8);cursor:pointer;transition:.15s}
+  .chip b{color:#FAF8F5;font-weight:600}
+  .chip:hover{border-color:rgba(215,63,9,.6);color:#FAF8F5}
+
+  .footnote{font-size:12px;color:rgba(250,248,245,.5);margin-top:16px}
+  .footnote code{font-family:'JetBrains Mono';font-size:10.5px}
+
+  /* ── preview panel ── */
+  .rightcol{position:sticky;top:24px}
+  .preview{border:1px solid var(--line-2);border-radius:18px;overflow:hidden;background:#0A0A0E}
+  .pvhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);
+    font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,248,245,.5)}
+  .pvhead .live{color:var(--orange)}
+  .devtoggle{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;overflow:hidden}
+  .devtoggle span{padding:5px 12px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;color:rgba(250,248,245,.5)}
+  .devtoggle span.on{background:rgba(215,63,9,.16);color:#FAF8F5}
+  .pvexpand{cursor:pointer;border:1px solid var(--line-2);border-radius:999px;padding:4px 11px;color:rgba(250,248,245,.7);font-size:10px;letter-spacing:.08em}
+  body.pvfull .preview{position:fixed;inset:24px;z-index:50}
+  body.pvfull .pvbody{max-height:calc(100vh - 110px)}
+  body.pvfull::after{content:'';position:fixed;inset:0;background:rgba(7,7,10,.7);backdrop-filter:blur(6px);z-index:40}
+  body.pvfull .preview{z-index:50}
+  .pvbody{padding:16px;max-height:calc(100vh - 150px);overflow:auto}
+  .pvstage{overflow:hidden;border-radius:12px;clip-path:inset(0 round 12px);border:1px solid var(--line);background:#07070A;margin:0 auto}
+  .pvscale{transform-origin:top left}
+  .pvpage{background:#07070A;font-family:'Arimo',Arial,sans-serif}
+  .pvpage.desktop{width:1280px}
+  .pvpage.mobile{width:390px}
+
+  /* ── recap sections ── */
+  .rp-sec{border-top:1px solid rgba(250,248,245,.08)}
+  .desktop .rp-sec{padding:64px 72px 80px}
+  .mobile  .rp-sec{padding:40px 22px 48px}
+  .rp-skick{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#D73F09}
+  .desktop .rp-skick{font-size:12px;margin-bottom:12px}
+  .mobile  .rp-skick{font-size:9.5px;margin-bottom:8px}
+
+  /* faded context: roster above / footer below */
+  .rp-ctx{opacity:.32;pointer-events:none;user-select:none}
+  .rp-ctx .rp-sec{border-top:none}
+  .desktop .rp-ctx .rp-sec{padding:0 72px}
+  .mobile  .rp-ctx .rp-sec{padding:0 22px}
+  .rp-rt{width:100%;border-collapse:collapse;color:rgba(250,248,245,.68)}
+  .desktop .rp-rt{font-size:15px}
+  .mobile  .rp-rt{font-size:12px}
+  .rp-rt th{font-family:'JetBrains Mono';font-weight:500;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(250,248,245,.5);text-align:left;padding:10px 12px 10px 0;border-bottom:1px solid rgba(250,248,245,.08)}
+  .rp-rt td{padding:11px 12px 11px 0;border-bottom:1px solid rgba(250,248,245,.08)}
+  .rp-rt .lk{color:#D73F09;font-family:'JetBrains Mono';font-weight:500;font-size:11px;letter-spacing:.06em}
+  .rp-ctxfade{height:80px;background:linear-gradient(180deg,transparent,#07070A);margin-top:-80px;position:relative}
+
+  /* the takeaways statement */
+  .rp-state{font-family:'Anton',sans-serif;text-transform:uppercase;color:#FAF8F5;
+    line-height:1.03;letter-spacing:-.012em;max-width:20ch;transition:outline-color .2s;outline:1px solid transparent;outline-offset:16px;border-radius:2px}
+  .desktop .rp-state{font-size:80px}
+  .mobile  .rp-state{font-size:38px;outline-offset:10px}
+  .rp-state .mk{color:#D73F09}
+  .rp-state i{font-style:italic}
+  .rp-state.hl{outline-color:rgba(215,63,9,.55)}
+  .desktop .rp-tkpad{padding-top:96px;padding-bottom:110px}
+  .rp-hidden{text-align:center}
+  .desktop .rp-hidden{padding:80px 72px}
+  .mobile  .rp-hidden{padding:56px 22px}
+  .rp-hidden .m{display:inline-block;font-family:'JetBrains Mono';font-weight:500;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(250,248,245,.4);border:1px dashed var(--line-2);border-radius:12px;padding:24px 30px}
+
+  .rp-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(250,248,245,.08)}
+  .desktop .rp-foot{padding:28px 72px}
+  .mobile  .rp-foot{padding:22px 22px}
+  .rp-foot img{height:15px;opacity:.85}
+  .rp-foot .f{font-family:'JetBrains Mono';font-weight:500;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(250,248,245,.4)}
+
+  .bar{position:fixed;left:150px;right:0;bottom:0;display:flex;align-items:center;gap:12px;
+    padding:13px 44px;background:rgba(7,7,10,.82);backdrop-filter:blur(24px);border-top:1px solid var(--line);z-index:10}
+  .bar .status{flex:1;text-align:center;font-size:12px;color:rgba(250,248,245,.92)}
+  .bar .status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px}
+
+  @media (max-width:1200px){ .split{grid-template-columns:1fr} .rightcol{position:static;order:-1} }
+  @media (max-width:1000px){ .sidebar{display:none} .bar{left:0} .wrap{padding:28px 20px 150px} .step .t{display:none} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar">
+    <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/render/image/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png?width=260&quality=90&resize=contain" alt="Postgame">
+    <div class="grp">Daily work</div>
+    <a>Campaign dashboard</a><a>Campaigns</a><a>Brands</a><a>Media library</a>
+    <div class="grp">Send to brand</div>
+    <a style="color:#FAF8F5">Recaps</a><a>Brand portals</a><a>Asset packages</a>
+  </aside>
+
+  <main class="main">
+  <div class="wrap">
+
+    <div class="head">
+      <div>
+        <h1>Ghost Amp</h1>
+        <div class="meta"><b>Brooks</b> · 76 athletes · Published</div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost">Preview</button>
+        <button class="btn primary">View live ↗</button>
+      </div>
+    </div>
+
+    <nav class="rail" id="rail"></nav>
+
+    <div class="split">
+      <div class="panel">
+        <div class="ptop">
+          <span class="ptitle">Takeaways — the statement</span>
+        </div>
+        <div class="psub">One sentence, said big — it prints huge after the roster. <b>Select a phrase and use the toolbar</b>; it styles right here as you work, exactly as it prints.</div>
+
+        <div class="rtebox" id="rtebox">
+          <div class="rtebar">
+            <button class="tb" id="tbB" title="Bold"><span class="b">B</span></button>
+            <button class="tb" id="tbI" title="Italic"><span class="i">I</span></button>
+            <span class="tbdiv"></span>
+            <button class="tb" id="tbA" title="Orange"><span class="a">A</span></button>
+            <span class="tbdiv"></span>
+            <button class="tb" id="tbX" title="Clear formatting">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <path d="M3 2.5h9M6.2 2.5 5 12.5m3-10-1.2 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                <path d="m10.5 9.5 3 3m0-3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="rte" id="rte" contenteditable="true" spellcheck="false" data-ph="Write the statement…">76 athletes at <span class="mk">70 schools</span> turned one shoe into <span class="mk">348K impressions</span> of real running content.</div>
+        </div>
+        <div class="rtemeta"><span>Plain text pastes clean — bold, italics and orange carry to the page.</span><span id="headCount"></span></div>
+
+        <div class="flagline warn" id="zeroNote"><span class="fdot"></span><span>Headline is empty — the Takeaways section hides on the public page until there's a statement.</span></div>
+
+        <div class="chiplab">Verified campaign numbers · click to insert</div>
+        <div class="chips">
+          <span class="chip" data-ins="76 athletes"><b>76</b> athletes</span>
+          <span class="chip" data-ins="70 schools"><b>70</b> schools</span>
+          <span class="chip" data-ins="35.9K engagements"><b>35.9K</b> engagements</span>
+          <span class="chip" data-ins="348K impressions"><b>348K</b> impressions</span>
+          <span class="chip" data-ins="227 posts"><b>227</b> posts</span>
+          <span class="chip" data-ins="11.4% average engagement rate"><b>11.4%</b> avg feed ER</span>
+        </div>
+
+        <div class="footnote">Saves to <code>recap_config.takeaways</code> · renders after the Roster · order &amp; visibility live on the Sections step.</div>
+      </div>
+
+      <!-- preview -->
+      <div class="rightcol">
+      <div class="preview">
+        <div class="pvhead"><span>Page preview</span>
+          <span class="devtoggle"><span class="on" data-d="desktop">Desktop</span><span data-d="mobile">Mobile</span></span>
+          <span class="live">● Live</span>
+          <span class="pvexpand" id="pvExpand">⤢ Expand</span></div>
+        <div class="pvbody">
+          <div class="pvstage" id="pvStage"><div class="pvscale" id="pvScale">
+            <div class="pvpage desktop" id="pvPage">
+
+              <!-- faded context: tail of the roster -->
+              <div class="rp-ctx">
+                <div class="rp-sec">
+                  <table class="rp-rt">
+                    <tr><th>Athlete</th><th>School</th><th>Post</th><th>Reel</th></tr>
+                    <tr><td>Sydney Nilsen</td><td>South Dakota State</td><td><span class="lk">POST ↗</span></td><td><span class="lk">REEL ↗</span></td></tr>
+                    <tr><td>Tara Wells</td><td>Wofford</td><td><span class="lk">POST ↗</span></td><td><span class="lk">REEL ↗</span></td></tr>
+                    <tr><td>Zoe Weisenburger</td><td>North Dakota</td><td><span class="lk">POST ↗</span></td><td><span class="lk">REEL ↗</span></td></tr>
+                  </table>
+                </div>
+                <div class="rp-ctxfade"></div>
+              </div>
+
+              <!-- THE TAKEAWAYS SECTION -->
+              <div class="rp-sec rp-tkpad" id="tkSection">
+                <div class="rp-skick">The takeaway</div>
+                <div class="rp-state" id="pvState"></div>
+              </div>
+              <div class="rp-sec rp-hidden" id="tkHidden" style="display:none">
+                <span class="m">Takeaways hidden — no headline set</span>
+              </div>
+
+              <!-- faded context: footer -->
+              <div class="rp-ctx">
+                <div class="rp-foot">
+                  <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/render/image/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png?width=200&quality=90&resize=contain" alt="">
+                  <span class="f">Campaign recap · Brooks Ghost Amp</span>
+                </div>
+              </div>
+
+            </div>
+          </div></div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bar">
+    <button class="btn ghost">← Content</button>
+    <div class="status" id="status"><span class="dot"></span>All changes saved · 9:04 PM</div>
+    <button class="btn ghost">Save</button>
+    <button class="btn primary">Next · Sections →</button>
+  </div>
+  </main>
+</div>
+
+<script>
+const STEPS = ["Athletes","Overview","Hero","Performers","Content","Takeaways","Sections"];
+const rail = document.getElementById('rail');
+STEPS.forEach((s,i)=>{
+  const el = document.createElement('div');
+  el.className = 'step' + (i===5?' active':'') + (i<5?' done':'');
+  el.innerHTML = `<span class="n"></span><span class="t">${s}</span>`;
+  rail.appendChild(el);
+});
+
+const $ = id => document.getElementById(id);
+const rte = $('rte');
+
+/* ── sanitize editor DOM → text + <b> <i> <span class="mk"> only ── */
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function cleanHtml(){
+  let html = '';
+  (function walk(node, st){
+    node.childNodes.forEach(n=>{
+      if (n.nodeType === 3){
+        let t = escHtml(n.textContent);
+        if (st.b) t = '<b>'+t+'</b>';
+        if (st.i) t = '<i>'+t+'</i>';
+        if (st.mk) t = '<span class="mk">'+t+'</span>';
+        html += t; return;
+      }
+      if (n.nodeType !== 1) return;
+      const s = {...st};
+      const tag = n.tagName;
+      const style = n.getAttribute && (n.getAttribute('style')||'');
+      const color = (n.getAttribute && n.getAttribute('color')) || (style.match(/color:\s*([^;]+)/i)||[])[1] || '';
+      if (tag==='B'||tag==='STRONG'||/font-weight:\s*(bold|[6-9]00)/i.test(style)) s.b = true;
+      if (tag==='I'||tag==='EM'||/font-style:\s*italic/i.test(style)) s.i = true;
+      if ((n.classList&&n.classList.contains('mk')) || /rgb\(\s*215\s*,\s*63\s*,\s*9\s*\)|#d73f09/i.test(color)) s.mk = true;
+      if (tag==='BR'){ html += ' '; return; }
+      walk(n, s);
+    });
+  })(rte, {b:false,i:false,mk:false});
+  for (let k=0;k<3;k++){
+    html = html.replace(/<\/b><b>/g,'').replace(/<\/i><i>/g,'').replace(/<\/span><span class="mk">/g,'');
+  }
+  return html.replace(/<b>\s*<\/b>|<i>\s*<\/i>|<span class="mk">\s*<\/span>/g,'');
+}
+
+/* ── preview render ── */
+function renderPreview(){
+  const html = cleanHtml();
+  const text = rte.textContent.trim();
+  const empty = text.length===0;
+  $('tkSection').style.display = empty?'none':'';
+  $('tkHidden').style.display  = empty?'':'none';
+  $('zeroNote').classList.toggle('on', empty);
+  $('pvState').innerHTML = html;
+  const w = text.match(/\S+/g); const wc = w?w.length:0;
+  $('headCount').textContent = wc ? wc+' words'+(wc>18?' — long for a statement':'') : '';
+  requestAnimationFrame(fitPreview);
+}
+
+/* ── autosave status (verbatim from builder-04) ── */
+function touch(){
+  const st = document.getElementById('status');
+  st.innerHTML='Unsaved changes';
+  clearTimeout(window._t);
+  window._t=setTimeout(()=>{ st.innerHTML='<span class="dot"></span>Saved '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); },1600);
+}
+
+/* ── selection helpers ── */
+function selectionInRte(collapsedOk){
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return null;
+  const r = sel.getRangeAt(0);
+  if (!rte.contains(r.commonAncestorContainer)) return null;
+  if (sel.isCollapsed && !collapsedOk) return null;
+  return r;
+}
+function inMk(){
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return false;
+  let n = sel.anchorNode;
+  while (n && n !== rte){ if (n.nodeType===1 && n.classList && n.classList.contains('mk')) return true; n = n.parentNode; }
+  return false;
+}
+function refreshTools(){
+  const active = !!selectionInRte(true);
+  $('tbB').classList.toggle('on', active && document.queryCommandState('bold'));
+  $('tbI').classList.toggle('on', active && document.queryCommandState('italic'));
+  $('tbA').classList.toggle('on', active && inMk());
+}
+document.addEventListener('selectionchange', refreshTools);
+
+/* ── toolbar commands ── */
+function afterEdit(){
+  const sel = window.getSelection();
+  const hadFocus = document.activeElement === rte;
+  rte.innerHTML = cleanHtml();
+  if (hadFocus){ const r=document.createRange(); r.selectNodeContents(rte); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+  renderPreview(); touch(); refreshTools();
+}
+[['tbB','bold'],['tbI','italic']].forEach(([id,cmd])=>{
+  const b=$(id);
+  b.addEventListener('mousedown',e=>e.preventDefault());
+  b.onclick=()=>{ if(!selectionInRte()) return; document.execCommand(cmd); afterEdit(); };
+});
+$('tbA').addEventListener('mousedown',e=>e.preventDefault());
+$('tbA').onclick=()=>{
+  const r = selectionInRte(); if(!r) return;
+  if (inMk()){
+    const txt = r.toString();
+    r.deleteContents(); r.insertNode(document.createTextNode(txt));
+  } else {
+    const span=document.createElement('span'); span.className='mk';
+    try{ r.surroundContents(span); }
+    catch(e){ const txt=r.toString(); r.deleteContents(); span.textContent=txt; r.insertNode(span); }
+  }
+  afterEdit();
+};
+$('tbX').addEventListener('mousedown',e=>e.preventDefault());
+$('tbX').onclick=()=>{
+  const r = selectionInRte();
+  if (r){ document.execCommand('removeFormat'); const txt=r.toString(); if(inMk()){ r.deleteContents(); r.insertNode(document.createTextNode(txt)); } }
+  else { rte.textContent = rte.textContent; }
+  afterEdit();
+};
+
+/* ── paste as plain text · single line ── */
+rte.addEventListener('paste', e=>{
+  e.preventDefault();
+  const txt = (e.clipboardData||window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, txt.replace(/\s+/g,' '));
+});
+rte.addEventListener('keydown', e=>{
+  if(e.key==='Enter') e.preventDefault();
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='b'){ e.preventDefault(); $('tbB').onclick(); }
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='i'){ e.preventDefault(); $('tbI').onclick(); }
+});
+
+/* ── stat chips insert at caret ── */
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('mousedown',e=>e.preventDefault());
+  chip.onclick=()=>{
+    rte.focus();
+    const sel = window.getSelection();
+    let r;
+    if (sel.rangeCount && rte.contains(sel.getRangeAt(0).commonAncestorContainer)) r = sel.getRangeAt(0);
+    else { r = document.createRange(); r.selectNodeContents(rte); r.collapse(false); }
+    const before = r.startContainer.textContent && r.startOffset>0 ? r.startContainer.textContent[r.startOffset-1] : '';
+    const ins = (before && !/\s/.test(before) ? ' ' : '') + chip.dataset.ins + ' ';
+    r.deleteContents();
+    const tn = document.createTextNode(ins);
+    r.insertNode(tn);
+    r.setStartAfter(tn); r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+    renderPreview(); touch();
+  };
+});
+
+/* focus ring + focus-follow */
+rte.addEventListener('focus',()=>{ $('rtebox').classList.add('focus'); $('pvState').classList.add('hl'); $('pvState').scrollIntoView({block:'center',behavior:'smooth'}); });
+rte.addEventListener('blur',()=>{ $('rtebox').classList.remove('focus'); $('pvState').classList.remove('hl'); });
+rte.addEventListener('input',()=>{ renderPreview(); touch(); });
+
+/* device toggle + scale + expand (verbatim from builder-04) */
+let device='desktop';
+document.querySelectorAll('.devtoggle span').forEach(s=>{
+  s.onclick=()=>{ document.querySelectorAll('.devtoggle span').forEach(x=>x.classList.remove('on'));
+    s.classList.add('on'); device=s.dataset.d;
+    document.getElementById('pvPage').className='pvpage '+device; fitPreview(); };
+});
+function fitPreview(){
+  const stage=document.getElementById('pvStage'), scale=document.getElementById('pvScale'), page=document.getElementById('pvPage');
+  const avail=stage.parentElement.clientWidth-2;
+  const pw = device==='desktop'?1280:390;
+  const s = Math.min(1, avail/pw);
+  scale.style.transform=`scale(${s})`; scale.style.width=pw+'px';
+  stage.style.width=Math.round(pw*s)+'px'; stage.style.height=Math.round(page.offsetHeight*s)+'px';
+}
+window.addEventListener('resize', fitPreview);
+document.getElementById('pvExpand').onclick=()=>{
+  document.body.classList.toggle('pvfull');
+  document.getElementById('pvExpand').textContent = document.body.classList.contains('pvfull')?'✕ Close':'⤢ Expand';
+  requestAnimationFrame(fitPreview);
+};
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'&&document.body.classList.contains('pvfull')) document.getElementById('pvExpand').click(); });
+
+renderPreview();
+</script>
+</body>
+</html>

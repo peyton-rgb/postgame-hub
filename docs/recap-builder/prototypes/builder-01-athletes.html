@@ -3,117 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recap Builder — Step 1 · Athletes</title>
+<title>Recap Builder — Athletes & Metrics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Arimo:wght@400;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --black:#07070A; --orange:#D73F09; --white:#FAF8F5;
-    --ink-90:rgba(250,248,245,.9); --ink-68:rgba(250,248,245,.68); --ink-50:rgba(250,248,245,.5); --ink-30:rgba(250,248,245,.3);
-    --card:rgba(250,248,245,.04); --card-bd:rgba(250,248,245,.10);
-    --raised:rgba(250,248,245,.07); --raised-bd:rgba(250,248,245,.14);
+    --ink-90:rgba(250,248,245,.9); --ink-68:#FAF8F5; --ink-45:rgba(250,248,245,.92); --ink-28:rgba(250,248,245,.88);
+    --line:rgba(250,248,245,.08); --line-2:rgba(250,248,245,.14);
+    --glass:rgba(250,248,245,.03);
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--black);color:var(--ink-68);font:16px/1.6 'Arimo',Arial,sans-serif;-webkit-font-smoothing:antialiased}
-  ::selection{background:rgba(215,63,9,.4)}
+  body{background:var(--black);color:var(--ink-68);
+    font:14.5px/1.6 'Inter',-apple-system,'Segoe UI',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;font-feature-settings:'tnum'}
+  ::selection{background:rgba(215,63,9,.35)}
 
-  /* ---- dashboard shell (context only) ---- */
   .shell{display:flex;min-height:100vh}
-  .sidebar{width:156px;flex:none;border-right:1px solid rgba(250,248,245,.06);padding:18px 14px;position:sticky;top:0;height:100vh;opacity:.55}
-  .sidebar .mark{font-family:'Bebas Neue';font-size:22px;color:var(--white);letter-spacing:.04em;margin-bottom:26px}
-  .sidebar .mark em{color:var(--orange);font-style:normal}
-  .sidebar .grp{font:500 9px/1 'JetBrains Mono';letter-spacing:.14em;color:var(--ink-30);text-transform:uppercase;margin:18px 0 10px;border-left:2px solid rgba(215,63,9,.5);padding-left:6px}
-  .sidebar a{display:block;font-size:12.5px;color:var(--ink-50);text-decoration:none;padding:5px 0}
+  .sidebar{width:150px;flex:none;border-right:1px solid var(--line);padding:20px 16px;position:sticky;top:0;height:100vh;opacity:.5}
+  .sidebar img{width:100px;display:block;margin-bottom:30px}
+  .sidebar .grp{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(250,248,245,.3);margin:20px 0 8px}
+  .sidebar a{display:block;font-size:12.5px;color:rgba(250,248,245,.5);text-decoration:none;padding:4px 0}
 
-  .main{flex:1;min-width:0;display:flex;flex-direction:column}
-  .content{flex:1;max-width:1180px;width:100%;margin:0 auto;padding:34px 40px 140px}
+  .main{flex:1;min-width:0}
+  .content{max-width:1180px;margin:0 auto;padding:40px 44px 150px}
 
-  /* ---- page head ---- */
-  .kicker{font:500 11px/1 'JetBrains Mono';letter-spacing:.22em;color:var(--orange);text-transform:uppercase}
-  h1{font-family:'Bebas Neue';font-size:44px;line-height:.98;color:var(--white);letter-spacing:.01em;margin:8px 0 4px}
-  .meta{font-size:14px;color:var(--ink-50)}
-  .meta b{color:var(--ink-68);font-weight:400}
+  .kicker{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--orange)}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+  .actions{display:flex;gap:10px;padding-bottom:4px}
+  h1{font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--white);margin:8px 0 3px}
+  .meta{font-size:13.5px;color:var(--ink-45)}
+  .meta b{color:var(--ink-68);font-weight:500}
 
-  /* ---- step rail ---- */
-  .rail{display:flex;gap:6px;margin:26px 0 30px;flex-wrap:wrap}
-  .step{display:flex;align-items:center;gap:8px;padding:9px 14px 9px 10px;border-radius:999px;
-    background:var(--card);border:1px solid var(--card-bd);cursor:pointer;user-select:none;transition:.15s}
-  .step:hover{background:var(--raised)}
-  .step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
-    font:500 10px 'JetBrains Mono';color:var(--ink-50);border:1px solid var(--card-bd)}
-  .step .t{font:500 10.5px 'JetBrains Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50)}
-  .step.active{background:rgba(215,63,9,.12);border-color:rgba(215,63,9,.55)}
-  .step.active .n{background:var(--orange);border-color:var(--orange);color:var(--white)}
+  .rail{display:flex;margin:34px 0 40px;position:relative}
+  .rail::before{content:'';position:absolute;left:0;right:0;top:14px;height:1px;background:var(--line)}
+  .step{flex:1;position:relative;cursor:pointer;padding-top:30px}
+  .step .n{position:absolute;top:7px;left:0;width:15px;height:15px;border-radius:50%;
+    background:var(--black);border:1px solid var(--line-2);transition:.2s}
+  .step .t{font-size:11px;font-weight:500;letter-spacing:.06em;color:rgba(250,248,245,.35);text-transform:uppercase;transition:.2s}
+  .step:hover .t{color:var(--ink-68)}
+  .step.active .n{background:var(--orange);border-color:var(--orange);box-shadow:0 0 12px rgba(215,63,9,.6)}
   .step.active .t{color:var(--white)}
-  .step.done .n{border-color:rgba(215,63,9,.5);color:var(--orange)}
 
-  /* ---- cards ---- */
-  .card{background:var(--card);border:1px solid var(--card-bd);border-radius:16px;padding:24px 26px;margin-bottom:20px}
-  .card h2{font:700 17px/1.2 'Arimo';letter-spacing:.06em;text-transform:uppercase;color:var(--white);margin-bottom:4px}
-  .card .sub{font-size:14px;color:var(--ink-50);margin-bottom:18px}
+  section{padding:28px 0;border-top:1px solid var(--line)}
+  h2{font-size:15px;font-weight:600;color:var(--white);letter-spacing:-.01em;margin-bottom:3px}
+  .sub{font-size:13px;color:var(--ink-45);margin-bottom:20px;max-width:660px}
 
-  /* ---- tracker connect row ---- */
-  .connect{display:flex;gap:10px;align-items:center}
-  .connect input{flex:1;background:rgba(250,248,245,.05);border:1px solid var(--card-bd);border-radius:12px;
-    padding:12px 14px;color:var(--white);font:14px 'Arimo';outline:none}
-  .connect input::placeholder{color:var(--ink-30)}
-  .connect input:focus{border-color:rgba(215,63,9,.55)}
-  .btn{border:none;cursor:pointer;border-radius:12px;padding:12px 18px;font:500 11px 'JetBrains Mono';
-    letter-spacing:.14em;text-transform:uppercase;transition:.15s;white-space:nowrap}
-  .btn.primary{background:var(--orange);color:var(--white)}
-  .btn.primary:hover{filter:brightness(1.12)}
-  .btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--ink-68)}
-  .btn.ghost:hover{color:var(--white);background:rgba(255,255,255,.09)}
-  .btn:disabled{opacity:.35;cursor:default}
-  .synced{display:flex;align-items:center;gap:14px;margin-top:12px;font:500 10.5px 'JetBrains Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--ink-50)}
-  .synced .dot{width:7px;height:7px;border-radius:50%;background:var(--orange)}
-  .synced a{color:var(--ink-50)}
+  .connect{display:flex;gap:12px;align-items:center}
+  
+  .gsheet{width:52px;height:52px;flex:none;border:1px solid var(--line-2);border-radius:12px;display:grid;place-items:center;background:rgba(250,248,245,.05)}
+  .connect input{flex:1;background:rgba(250,248,245,.06);border:1px solid var(--line-2);border-radius:12px;
+    padding:14px 16px;color:var(--white);font:15.5px 'Inter';outline:none;transition:.2s}
+  .connect input::placeholder{color:rgba(250,248,245,.4)}
+  .connect input:focus{border-color:rgba(215,63,9,.6);box-shadow:0 0 0 3px rgba(215,63,9,.08);background:rgba(250,248,245,.08)}
+  
+  .btn{border:none;cursor:pointer;border-radius:10px;padding:12px 18px;font:600 12.5px 'Inter';letter-spacing:.02em;transition:.15s;white-space:nowrap}
+  .btn.primary{background:var(--orange);color:#fff}
+  .btn.primary:hover{filter:brightness(1.12);box-shadow:0 0 18px rgba(215,63,9,.35)}
+  .btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--ink-68)}
+  .btn.ghost:hover{color:var(--white);border-color:rgba(250,248,245,.3)}
+  .btn:disabled{opacity:.3;cursor:default}
+  .synced{margin-top:12px;font-size:12px;color:var(--ink-45)}
+  .synced .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px}
 
-  /* ---- health chips ---- */
-  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
-  .chip{font:500 10px 'JetBrains Mono';letter-spacing:.1em;text-transform:uppercase;
-    padding:6px 11px;border-radius:999px;background:var(--raised);border:1px solid var(--raised-bd);color:var(--ink-68)}
-  .chip.warn{border-color:rgba(215,63,9,.5);color:#FF8A5C;background:rgba(215,63,9,.08)}
+  .health{display:flex;gap:22px;margin-bottom:22px;font-size:12.5px}
+  .health span{color:var(--ink-45)} .health b{color:var(--white);font-weight:600}
+  .health .warn{color:#FF8A5C;cursor:pointer} .health .warn:hover{text-decoration:underline}
 
-  /* ---- roster table ---- */
-  .tablewrap{overflow-x:auto}
-  table{width:100%;border-collapse:collapse;font-size:14.5px;font-variant-numeric:tabular-nums}
-  thead th{font:500 10px 'JetBrains Mono';letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50);
-    text-align:left;padding:0 14px 12px 0;border-bottom:1px solid var(--card-bd);white-space:nowrap;cursor:pointer;user-select:none}
-  thead th.num,td.num{text-align:right}
-  thead th .arr{color:var(--ink-30);font-size:9px;margin-left:4px}
-  thead th.sorted{color:var(--orange)} thead th.sorted .arr{color:var(--orange)}
-  tbody td{padding:11px 14px 11px 0;border-bottom:1px solid rgba(250,248,245,.06);color:var(--ink-68);white-space:nowrap}
-  tbody tr:hover{background:rgba(250,248,245,.025)}
-  td.name{color:var(--white);font-weight:700}
-  td .sch{color:var(--ink-50)}
-  td a.handle{color:var(--ink-50);text-decoration:none}
-  td a.handle:hover{color:var(--orange)}
-  td[contenteditable]:focus{outline:1px solid rgba(215,63,9,.6);outline-offset:2px;border-radius:4px;background:rgba(215,63,9,.06)}
-  td .dash{color:var(--ink-30)}
-  td .link{color:var(--orange);text-decoration:none;font:500 10px 'JetBrains Mono';letter-spacing:.08em}
-  td .link.off{color:var(--ink-30)}
-  td .rm{visibility:hidden;color:var(--ink-30);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:6px}
-  tbody tr:hover .rm{visibility:visible}
-  td .rm:hover{color:#FF8A5C;background:rgba(215,63,9,.1)}
-  .tfoot{display:flex;justify-content:space-between;align-items:center;padding-top:16px}
-  .morerows{font:500 10.5px 'JetBrains Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--ink-30)}
+  /* ── platform tabs with live per-platform totals ── */
+  .ptabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:0}
+  .ptab{flex:1;padding:14px 16px 16px;cursor:pointer;position:relative;transition:.15s;user-select:none}
+  .ptab:hover{background:rgba(250,248,245,.02)}
+  .ptab .pl{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(250,248,245,.35);transition:.15s}
+  .ptab .pv{font-size:19px;font-weight:600;color:rgba(250,248,245,.45);letter-spacing:-.01em;margin-top:3px;transition:.15s}
+  .ptab .pu{font-size:11px;color:rgba(250,248,245,.3);margin-left:5px;font-weight:400}
+  .ptab.active{background:rgba(215,63,9,.04)}
+  .ptab.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--orange);box-shadow:0 0 14px rgba(215,63,9,.55)}
+  .ptab.active .pl{color:var(--orange)} .ptab.active .pv{color:var(--white)}
 
-  /* ---- footer bar ---- */
-  .bar{position:fixed;left:156px;right:0;bottom:0;display:flex;align-items:center;gap:14px;
-    padding:14px 40px;background:rgba(7,7,10,.86);backdrop-filter:blur(26px);border-top:1px solid rgba(250,248,245,.08);z-index:10}
-  .bar .status{flex:1;text-align:center;font:500 10.5px 'JetBrains Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50)}
+  .tablewrap{overflow-x:auto;min-height:430px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#FAF8F5;
+    text-align:left;padding:14px 16px 10px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+  thead th.num,td.num{text-align:left}
+  thead th .auto{color:rgba(215,63,9,.7);font-size:9px;letter-spacing:.06em;margin-left:3px}
+  tbody td{padding:9px 16px 9px 0;border-bottom:1px solid var(--line);color:var(--ink-68);white-space:nowrap}
+  tbody tr:hover{background:rgba(250,248,245,.02)}
+  tr.totals td{color:var(--orange);font-weight:600;background:rgba(215,63,9,.04);border-bottom:1px solid rgba(215,63,9,.25);padding:11px 16px 11px 0}
+  tr.totals td:first-child{font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  td.name{color:var(--white);font-weight:600}
+  td.dim{color:var(--ink-45)}
+  td a{color:var(--ink-45);text-decoration:none;font-size:12.5px}
+  td a:hover{color:var(--orange)}
+  td[contenteditable]:focus{outline:1px solid rgba(215,63,9,.55);outline-offset:2px;border-radius:3px}
+  td .dash{color:rgba(250,248,245,.3)}
+  td.calc{color:var(--ink-90)}
+  .tfoot{display:flex;justify-content:space-between;align-items:center;padding-top:18px}
+  .morerows{font-size:12px;color:rgba(250,248,245,.55)}
+
+  .bar{position:fixed;left:150px;right:0;bottom:0;display:flex;align-items:center;gap:12px;
+    padding:13px 44px;background:rgba(7,7,10,.82);backdrop-filter:blur(24px);border-top:1px solid var(--line);z-index:10}
+  .bar .status{flex:1;text-align:center;font-size:12px;color:var(--ink-45)}
   .bar .status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px}
 
-  @media (max-width:1000px){ .sidebar{display:none} .bar{left:0} .content{padding:24px 20px 140px} }
+  @media (max-width:1000px){ .sidebar{display:none} .bar{left:0} .content{padding:28px 20px 150px} .step .t{display:none} .ptab .pv{font-size:15px} }
 </style>
 </head>
 <body>
 <div class="shell">
 
-  <!-- dashboard sidebar: context only, unchanged by this build -->
   <aside class="sidebar">
-    <img class="mark" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/render/image/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png?width=280&quality=90&resize=contain" alt="Postgame" style="width:112px;display:block">
+    <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/render/image/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png?width=260&quality=90&resize=contain" alt="Postgame">
     <div class="grp">Daily work</div>
     <a>Campaign dashboard</a><a>Campaigns</a><a>Brands</a><a>Media library</a>
     <div class="grp">Send to brand</div>
@@ -123,105 +123,282 @@
   <main class="main">
   <div class="content">
 
-    <div class="kicker">Recap Builder</div>
-    <h1>GHOST AMP</h1>
-    <div class="meta"><b>Brooks</b> · 76 athletes · 102 assets · Published</div>
+    <div class="head">
+      <div>
+        <h1>Ghost Amp</h1>
+        <div class="meta"><b>Brooks</b> · 76 athletes · Published</div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost">Preview</button>
+        <button class="btn primary">View live ↗</button>
+      </div>
+    </div>
 
-    <!-- step rail -->
     <nav class="rail" id="rail"></nav>
 
-    <!-- tracker source -->
-    <section class="card">
-      <h2>Tracker Sheet</h2>
-      <div class="sub">The roster reads from the campaign's tracker. Paste the sheet link, then Resync any time the sheet changes — edits made below stay put.</div>
-      <div class="connect">
-        <input type="text" value="https://docs.google.com/spreadsheets/d/1kQ…GhostAMP-tracker" spellcheck="false">
-        <button class="btn ghost">Open sheet ↗</button>
-        <button class="btn primary" onclick="resync(this)">Resync</button>
+    <section style="border-top:none;padding-top:0">
+      <div class="connect" id="connect">
+        <div class="gsheet">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+            <path d="M14.5 2H6.8C5.8 2 5 2.8 5 3.8v16.4c0 1 .8 1.8 1.8 1.8h10.4c1 0 1.8-.8 1.8-1.8V6.5L14.5 2z" fill="#0F9D58"/>
+            <path d="M14.5 2v3.7c0 .4.4.8.8.8H19L14.5 2z" fill="#87CEAC"/>
+            <path d="M8.5 11h7v6.5h-7V11zm1.2 1.2v1h1.9v-1H9.7zm3.1 0v1h1.9v-1h-1.9zm-3.1 2.1v1h1.9v-1H9.7zm3.1 0v1h1.9v-1h-1.9z" fill="#fff"/>
+          </svg>
+        </div>
+        <input type="text" id="sheetlink" value="" placeholder="Paste the tracker sheet link…" spellcheck="false">
+        <button class="btn ghost" id="bOpen" style="display:none">Open ↗</button>
+        <button class="btn primary" id="bResync" style="display:none" onclick="resync(this)">Resync</button>
+        <button class="btn primary" id="bTemplate">New from template</button>
       </div>
-      <div class="synced"><span class="dot"></span><span id="syncmsg">Last synced today, 2:14 PM · 76 rows matched, 0 new</span></div>
+      <div class="connect" style="margin-top:12px">
+        <div class="gsheet">
+          <svg width="26" height="26" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+            <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+            <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+            <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+            <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+            <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+          </svg>
+        </div>
+        <input type="text" id="drivelink" value="https://drive.google.com/drive/folders/…GhostAmp-Campaign" spellcheck="false">
+        <button class="btn ghost">Open ↗</button>
+        <button class="btn primary" onclick="scanDrive(this)">Scan folders</button>
+      </div>
+      <div class="synced"><span class="dot"></span><span id="drivemsg">33 of 76 athlete folders matched · 102 files staged · 43 athletes have no folder yet</span></div>
+      <div class="synced" id="syncline" style="margin-top:6px"><span id="syncmsg">No tracker yet — paste a sheet link, or <b style="color:var(--ink-68);font-weight:500">New from template</b> creates this campaign's performance tracker from the Postgame template.</span></div>
     </section>
 
-    <!-- roster -->
-    <section class="card">
-      <h2>Campaign Roster</h2>
-      <div class="sub">Every section downstream reads from this list — metrics, performers, gallery, and the public roster table. Click any cell to edit. Sort by clicking a column.</div>
-
-      <div class="chips">
-        <span class="chip">76 athletes</span>
-        <span class="chip">36 schools</span>
-        <span class="chip warn">3 missing reel metrics</span>
-        <span class="chip warn">2 possible duplicates — review</span>
+    <section>
+      <div class="health">
+        <span><b>76</b> athletes</span>
+        <span><b>69</b> schools</span>
+        <span class="warn">3 missing reel metrics</span>
+        <span class="warn">2 possible duplicates</span>
+        <span><b>0</b> collab posts</span>
+        <span class="warn">43 without content</span>
       </div>
 
-      <div class="tablewrap" style="margin-top:18px">
-      <table id="roster">
-        <thead><tr>
-          <th>Athlete</th><th>School</th><th>Sport</th><th>IG Handle</th>
-          <th class="num sorted">Followers <span class="arr">▼</span></th>
-          <th class="num">Feed Eng <span class="arr">▼</span></th>
-          <th class="num">Reel Views <span class="arr">▼</span></th>
-          <th>Feed</th><th>Reel</th><th></th>
-        </tr></thead>
-        <tbody>
-          <tr><td class="name" contenteditable>Ethan Cook</td><td class="sch" contenteditable>Albany State University</td><td contenteditable>Soccer</td><td><a class="handle" href="#">@cooket5training</a></td><td class="num" contenteditable>130,098</td><td class="num" contenteditable>319</td><td class="num" contenteditable>7,811</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm" title="Remove">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Andi Vanmeter</td><td class="sch" contenteditable>Florida Atlantic</td><td contenteditable>Cross Country</td><td><a class="handle" href="#">@andi.renay</a></td><td class="num" contenteditable>100,000</td><td class="num" contenteditable>11,549</td><td class="num" contenteditable>39,000</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Emily Pierce</td><td class="sch" contenteditable>Campbell University</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@empierce</a></td><td class="num" contenteditable>23,206</td><td class="num" contenteditable>515</td><td class="num" contenteditable>7,836</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Sophine Kevorkian</td><td class="sch" contenteditable>Louisiana State University</td><td contenteditable>Soccer</td><td><a class="handle" href="#">@sophinekevorkian</a></td><td class="num" contenteditable>17,561</td><td class="num" contenteditable>775</td><td class="num" contenteditable>6,500</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Christian Weddington</td><td class="sch" contenteditable>Fordham University</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@christianweddington</a></td><td class="num" contenteditable>14,912</td><td class="num" contenteditable>172</td><td class="num" contenteditable>1,808</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Yamina Numan</td><td class="sch" contenteditable>St. Thomas University</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@yaminaaa.a</a></td><td class="num" contenteditable>9,221</td><td class="num" contenteditable>103</td><td class="num" contenteditable>801</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Ali Bainbridge</td><td class="sch" contenteditable>University of Nebraska</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@ali_bainbridge2</a></td><td class="num" contenteditable>8,911</td><td class="num" contenteditable>490</td><td class="num" contenteditable>4,117</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Mary Mclaughlin</td><td class="sch" contenteditable>Vanderbilt University</td><td contenteditable>Soccer</td><td><a class="handle" href="#">@marybethmclll</a></td><td class="num" contenteditable>7,607</td><td class="num" contenteditable>399</td><td class="num"><span class="dash">—</span></td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Kailey Obrien</td><td class="sch" contenteditable>Loyola Marymount University</td><td contenteditable>Cross Country</td><td><a class="handle" href="#">@kailey0brien</a></td><td class="num" contenteditable>6,667</td><td class="num" contenteditable>369</td><td class="num" contenteditable>12,700</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Malachi Barendilla</td><td class="sch" contenteditable>Texas A&amp;M – Kingsville</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@malachi_barendilla</a></td><td class="num" contenteditable>6,512</td><td class="num"><span class="dash">—</span></td><td class="num" contenteditable>435</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Lauren Lewis</td><td class="sch" contenteditable>University of South Carolina</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@laurenlewistrack</a></td><td class="num" contenteditable>5,943</td><td class="num" contenteditable>602</td><td class="num" contenteditable>3,860</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-          <tr><td class="name" contenteditable>Jordon Bray</td><td class="sch" contenteditable>University of Alabama</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@zoo_bray</a></td><td class="num" contenteditable>5,890</td><td class="num" contenteditable>315</td><td class="num" contenteditable>4,000</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
-        </tbody>
-      </table>
-      </div>
+      <div class="ptabs" id="ptabs"></div>
+      <div class="tablewrap"><table id="grid"></table></div>
 
       <div class="tfoot">
         <button class="btn ghost">+ Add athlete</button>
-        <span class="morerows">Showing 12 of 76 — scroll continues in the real page</span>
+        <span class="morerows">12 of 76 shown · Σ covers all 76</span>
       </div>
     </section>
 
   </div>
 
-  <!-- wizard footer -->
   <div class="bar">
     <button class="btn ghost" disabled>← Back</button>
-    <div class="status"><span class="dot"></span>All changes saved · 2:31 PM</div>
+    <div class="status" id="status"><span class="dot"></span>All changes saved · 2:31 PM</div>
     <button class="btn ghost">Save</button>
-    <button class="btn primary">Next · Campaign Overview →</button>
+    <button class="btn primary">Next · Overview →</button>
   </div>
   </main>
 </div>
 
 <script>
-  const STEPS = ["Athletes","Overview","Hero","Takeaways","Metrics","Performers","Content","Sections"];
-  const rail = document.getElementById('rail');
-  STEPS.forEach((s,i)=>{
+/* ---------- step rail ---------- */
+const STEPS = ["Athletes","Overview","Hero","Takeaways","Metrics","Performers","Content","Sections"];
+const rail = document.getElementById('rail');
+STEPS.forEach((s,i)=>{
+  const el = document.createElement('div');
+  el.className = 'step' + (i===0?' active':'');
+  el.innerHTML = `<span class="n"></span><span class="t">${s}</span>`;
+  rail.appendChild(el);
+});
+
+/* ---------- real Ghost Amp data (12 of 76) ---------- */
+const A = [
+ {name:"Ethan Cook", files:6, vids:1,          handle:"cooket5training",    fol:130098, school:"Albany State University",      sport:"Soccer",        g:"M",
+  feed:{url:1, likes:297,  com:21, rep:1},    reel:{url:1, views:7811,  likes:151,  com:19},  story:{n:1, impr:32902}, tt:null},
+ {name:"Andi Vanmeter", files:4, vids:1,       handle:"andi.renay",         fol:100000, school:"Florida Atlantic",             sport:"Cross Country", g:"W",
+  feed:{url:1, likes:11500, com:21, rep:28},  reel:{url:1, views:39000, likes:1730, com:12},  story:{n:1, impr:25290}, tt:null},
+ {name:"Emily Pierce", files:8, vids:1,        handle:"empierce",           fol:23206,  school:"Campbell University",          sport:"Track & Field", g:"W",
+  feed:{url:1, likes:502,   com:11, rep:2},   reel:{url:1, views:7836,  likes:403,  com:12},  story:{n:1, impr:5869},  tt:null},
+ {name:"Sophine Kevorkian", files:2, vids:1,   handle:"sophinekevorkian",   fol:17561,  school:"Louisiana State University",   sport:"Soccer",        g:"W",
+  feed:{url:1, likes:720,   com:53, rep:2},   reel:{url:1, views:6500,  likes:370,  com:26},  story:{n:1, impr:4441},  tt:null},
+ {name:"Christian Weddington", files:5, vids:1,handle:"christianweddington",fol:14912,  school:"Fordham University",           sport:"Track & Field", g:"M",
+  feed:{url:1, likes:168,   com:4,  rep:null},reel:{url:1, views:1808,  likes:100,  com:null},story:{n:1, impr:3771},  tt:null},
+ {name:"Yamina Numan", files:0, vids:0,        handle:"yaminaaa.a",         fol:9221,   school:"St. Thomas University",        sport:"Track & Field", g:"W",
+  feed:{url:1, likes:92,    com:10, rep:1},   reel:{url:1, views:801,   likes:23,   com:4},   story:{n:1, impr:2432},  tt:null},
+ {name:"Ali Bainbridge", files:4, vids:1,      handle:"ali_bainbridge2",    fol:8911,   school:"University of Nebraska",       sport:"Track & Field", g:"W",
+  feed:{url:1, likes:469,   com:21, rep:null},reel:{url:1, views:4117,  likes:127,  com:null},story:{n:1, impr:2350},  tt:null},
+ {name:"Mary Mclaughlin", files:4, vids:1,     handle:"marybethmclll",      fol:7607,   school:"Vanderbilt University",        sport:"Soccer",        g:"W",
+  feed:{url:1, likes:385,   com:14, rep:null},reel:{url:1, views:5472,  likes:null, com:null},story:{n:1, impr:2006},  tt:null},
+ {name:"Kailey Obrien", files:4, vids:1,       handle:"kailey0brien",       fol:6667,   school:"Loyola Marymount University",  sport:"Cross Country", g:"W",
+  feed:{url:1, likes:350,   com:19, rep:null},reel:{url:1, views:12700, likes:345,  com:null},story:{n:1, impr:1758},  tt:null},
+ {name:"Lauren Lewis", files:0, vids:0,        handle:"laurenlewistrack",   fol:5943,   school:"University of South Carolina", sport:"Track & Field", g:"W",
+  feed:{url:1, likes:591,   com:8,  rep:3},   reel:{url:1, views:3860,  likes:148,  com:3},   story:{n:1, impr:1567},  tt:null},
+ {name:"Jordon Bray", files:0, vids:0,         handle:"zoo_bray",           fol:5890,   school:"University of Alabama",        sport:"Track & Field", g:"M",
+  feed:{url:1, likes:298,   com:8,  rep:9},   reel:{url:1, views:4000,  likes:252,  com:null},story:{n:1, impr:1553},  tt:null},
+ {name:"Chase Evans", files:8, vids:1,         handle:"_chasevans_",        fol:3497,   school:"Weber State University",       sport:"Cross Country", g:"M",
+  feed:{url:1, likes:194,   com:14, rep:1},   reel:{url:1, views:3550,  likes:106,  com:null},story:{n:1, impr:922},
+  tt:{url:1, fol:1206, views:400, likes:23, com:null}}
+];
+
+/* real full-campaign totals (all 76) — deltas from edits apply on top */
+const T = {
+  identity:{fol:466688},
+  feed:{likes:26689, com:927, rep:232, eng:27848},
+  story:{n:76, impr:119982},
+  reel:{views:228449, likes:7746, com:251, rep:42, eng:8046},
+  tt:{views:400, likes:23, eng:23}
+};
+
+const fmt = n => n==null ? '' : n.toLocaleString('en-US');
+const dash = '<span class="dash">—</span>';
+const ed = (v,cls,key) => `<td class="num" contenteditable data-k="${key}">${v==null?'':fmt(v)}</td>`;
+
+/* per-row auto calcs */
+const feedEng = a => (a.feed.likes||0)+(a.feed.com||0)+(a.feed.rep||0);
+const reelEng = a => (a.reel.likes||0)+(a.reel.com||0);
+const feedRate = a => a.fol ? (feedEng(a)/a.fol*100) : null;
+const reelRate = a => a.reel.views ? (reelEng(a)/a.reel.views*100) : null;
+const ttEng  = a => a.tt ? (a.tt.likes||0)+(a.tt.com||0) : null;
+const ttRate = a => (a.tt && a.tt.views) ? (ttEng(a)/a.tt.views*100) : null;
+const pct = v => v==null ? dash : v.toFixed(2)+'%';
+
+const TABS = [
+ {id:'identity', label:'Identity', total:()=>fmt(T.identity.fol), unit:'followers',
+  head:['Athlete','Handle','Followers','School','Sport','Content'],
+  numCols:[2],
+  totals:()=>['Σ · 76','',fmt(T.identity.fol),'','','102 files'],
+  row:a=>[`<td class="name" contenteditable>${a.name}</td>`,
+          `<td><a href="https://instagram.com/${a.handle}" target="_blank">@${a.handle}</a></td>`,
+          ed(a.fol,'','fol'),
+          `<td class="dim" contenteditable>${a.school}</td>`,
+          `<td contenteditable>${a.sport}</td>`,
+          a.files>0
+            ? `<td><a href="#" title="Open Drive folder">${a.files} file${a.files>1?'s':''}${a.vids?' · '+a.vids+' video':''} ↗</a></td>`
+            : `<td><span style="color:#FF8A5C;font-size:12.5px">no folder</span></td>`]},
+ {id:'feed', label:'IG Feed', total:()=>fmt(T.feed.eng), unit:'engagements',
+  head:['Athlete','Post','Likes','Comments','Reposts','Total eng <span class="auto">auto</span>','Eng rate <span class="auto">auto</span>'],
+  numCols:[2,3,4,5,6],
+  totals:()=>['Σ · 76','',fmt(T.feed.likes),fmt(T.feed.com),fmt(T.feed.rep),fmt(T.feed.eng),''],
+  row:a=>[`<td class="name">${a.name}</td>`,
+          `<td><a href="#">Post ↗</a></td>`,
+          ed(a.feed.likes,'','feed.likes'), ed(a.feed.com,'','feed.com'), ed(a.feed.rep,'','feed.rep'),
+          `<td class="num calc" data-c="feng">${fmt(feedEng(a))}</td>`,
+          `<td class="num calc" data-c="frate">${pct(feedRate(a))}</td>`]},
+ {id:'story', label:'IG Story', total:()=>fmt(T.story.impr), unit:'impressions',
+  head:['Athlete','Stories','Impressions'],
+  numCols:[1,2],
+  totals:()=>['Σ · 76',fmt(T.story.n),fmt(T.story.impr)],
+  row:a=>[`<td class="name">${a.name}</td>`, ed(a.story.n,'','story.n'), ed(a.story.impr,'','story.impr')]},
+ {id:'reel', label:'IG Reel', total:()=>fmt(T.reel.views), unit:'views',
+  head:['Athlete','Reel','Views','Likes','Comments','Total eng <span class="auto">auto</span>','Eng rate <span class="auto">auto</span>'],
+  numCols:[2,3,4,5,6],
+  totals:()=>['Σ · 76','',fmt(T.reel.views),fmt(T.reel.likes),fmt(T.reel.com),fmt(T.reel.eng),''],
+  row:a=>[`<td class="name">${a.name}</td>`,
+          `<td><a href="#">Reel ↗</a></td>`,
+          ed(a.reel.views,'','reel.views'), ed(a.reel.likes,'','reel.likes'), ed(a.reel.com,'','reel.com'),
+          `<td class="num calc" data-c="reng">${a.reel.likes==null&&a.reel.com==null?dash:fmt(reelEng(a))}</td>`,
+          `<td class="num calc" data-c="rrate">${pct(reelRate(a)===0&&a.reel.likes==null?null:reelRate(a))}</td>`]},
+ {id:'tt', label:'TikTok', total:()=>fmt(T.tt.views), unit:'views',
+  head:['Athlete','Post','TT followers','Views','Likes','Total eng <span class="auto">auto</span>','Eng rate <span class="auto">auto</span>'],
+  numCols:[2,3,4,5,6],
+  totals:()=>['Σ · 76','','',fmt(T.tt.views),fmt(T.tt.likes),fmt(T.tt.eng),''],
+  row:a=>{
+    if(!a.tt) return [`<td class="name">${a.name}</td>`,`<td>${dash}</td>`,`<td class="num">${dash}</td>`,`<td class="num" contenteditable data-k="tt.views"></td>`,`<td class="num" contenteditable data-k="tt.likes"></td>`,`<td class="num calc">${dash}</td>`,`<td class="num calc">${dash}</td>`];
+    return [`<td class="name">${a.name}</td>`,
+            `<td><a href="${a.tt.url===1?'#':a.tt.url}">Post ↗</a></td>`,
+            ed(a.tt.fol,'','tt.fol'), ed(a.tt.views,'','tt.views'), ed(a.tt.likes,'','tt.likes'),
+            `<td class="num calc" data-c="teng">${fmt(ttEng(a))}</td>`,
+            `<td class="num calc" data-c="trate">${pct(ttRate(a))}</td>`];
+  }}
+];
+
+/* ---------- render ---------- */
+let active = 0;
+const ptabs = document.getElementById('ptabs');
+const grid  = document.getElementById('grid');
+
+function renderTabs(){
+  ptabs.innerHTML = '';
+  TABS.forEach((t,i)=>{
     const el = document.createElement('div');
-    el.className = 'step' + (i===0?' active':'');
-    el.innerHTML = `<span class="n">${i+1}</span><span class="t">${s}</span>`;
-    rail.appendChild(el);
+    el.className = 'ptab' + (i===active?' active':'');
+    el.innerHTML = `<div class="pl">${t.label}</div><div class="pv" data-tv="${t.id}">${t.total()}<span class="pu">${t.unit}</span></div>`;
+    el.onclick = ()=>{ active=i; renderTabs(); renderGrid(); };
+    ptabs.appendChild(el);
   });
-  function resync(btn){
-    btn.textContent = 'Syncing…'; btn.disabled = true;
-    setTimeout(()=>{ btn.textContent='Resync'; btn.disabled=false;
-      document.getElementById('syncmsg').textContent = 'Last synced just now · 76 rows matched, 0 new';
-    }, 900);
-  }
-  // demo edit → status flip
-  document.querySelectorAll('[contenteditable]').forEach(td=>{
-    td.addEventListener('input',()=>{
-      const st = document.querySelector('.bar .status');
+}
+function renderGrid(){
+  const t = TABS[active];
+  let h = '<thead><tr>' + t.head.map((c,i)=>`<th class="${t.numCols.includes(i)?'num':''}">${c}</th>`).join('') + '</tr></thead><tbody>';
+  h += '<tr class="totals">' + t.totals().map((c,i)=>`<td class="${t.numCols.includes(i)?'num':''}" data-t="${i}">${c}</td>`).join('') + '</tr>';
+  A.forEach((a,ri)=>{ h += `<tr data-r="${ri}">` + t.row(a).join('') + '</tr>'; });
+  grid.innerHTML = h + '</tbody>';
+  wireEdits();
+}
+function num(td){ const v = parseInt(td.textContent.replace(/[^0-9]/g,'')); return isNaN(v)?null:v; }
+function setPath(a, path, v){ const p = path.split('.'); if(p.length===1) a[p[0]]=v; else a[p[0]][p[1]]=v; }
+function getPath(a, path){ const p = path.split('.'); return p.length===1 ? a[p[0]] : (a[p[0]]?a[p[0]][p[1]]:null); }
+
+function wireEdits(){
+  grid.querySelectorAll('td[contenteditable]').forEach(td=>{
+    td.addEventListener('input', ()=>{
+      const tr = td.closest('tr'); const ri = +tr.dataset.r; const a = A[ri];
+      const key = td.dataset.k;
+      if(key){
+        const old = getPath(a,key) || 0;
+        const nv  = num(td) || 0;
+        setPath(a, key, num(td));
+        /* delta the campaign totals so Σ (all 76) stays honest */
+        const map = {'fol':['identity','fol'],'feed.likes':['feed','likes'],'feed.com':['feed','com'],'feed.rep':['feed','rep'],
+                     'story.n':['story','n'],'story.impr':['story','impr'],
+                     'reel.views':['reel','views'],'reel.likes':['reel','likes'],'reel.com':['reel','com'],
+                     'tt.views':['tt','views'],'tt.likes':['tt','likes']};
+        if(map[key]){ T[map[key][0]][map[key][1]] += (nv-old); }
+        if(key.startsWith('feed')) T.feed.eng += (nv-old)*(key!=='feed.likes'&&key!=='feed.com'&&key!=='feed.rep'?0:1);
+        if(key==='reel.likes'||key==='reel.com') T.reel.eng += (nv-old);
+        if(key==='tt.likes') T.tt.eng += (nv-old);
+        /* recompute this row's auto cells */
+        const t = TABS[active];
+        if(t.id==='feed'){ tr.querySelector('[data-c="feng"]').textContent = fmt(feedEng(a)); tr.querySelector('[data-c="frate"]').innerHTML = pct(feedRate(a)); }
+        if(t.id==='reel'){ tr.querySelector('[data-c="reng"]').textContent = fmt(reelEng(a)); tr.querySelector('[data-c="rrate"]').innerHTML = pct(reelRate(a)); }
+        if(t.id==='tt' && a.tt){ tr.querySelector('[data-c="teng"]').textContent = fmt(ttEng(a)); tr.querySelector('[data-c="trate"]').innerHTML = pct(ttRate(a)); }
+        /* refresh Σ row + tab totals */
+        const tot = t.totals();
+        grid.querySelectorAll('tr.totals td').forEach((c,i)=>{ c.innerHTML = tot[i]; });
+        TABS.forEach(tb=>{ const el = ptabs.querySelector(`[data-tv="${tb.id}"]`); if(el) el.innerHTML = tb.total() + `<span class="pu">${tb.unit}</span>`; });
+      }
+      const st = document.getElementById('status');
       st.innerHTML = 'Unsaved changes';
       clearTimeout(window._t);
       window._t = setTimeout(()=>{ st.innerHTML = '<span class="dot"></span>Saved ' + new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }, 1600);
     });
   });
+}
+const linkEl = document.getElementById('sheetlink');
+function trackerState(){
+  const has = linkEl.value.trim().length > 0;
+  document.getElementById('bOpen').style.display   = has?'':'none';
+  document.getElementById('bResync').style.display = has?'':'none';
+  document.getElementById('bTemplate').style.display = has?'none':'';
+  if(has){ document.getElementById('syncmsg').innerHTML = '<span class="dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px"></span>Linked · not synced yet — hit Resync to pull the roster'; }
+  else{ document.getElementById('syncmsg').innerHTML = 'No tracker yet — paste a sheet link, or <b style="color:var(--ink-68);font-weight:500">New from template</b> creates this campaign\'s performance tracker from the Postgame template.'; }
+}
+linkEl.addEventListener('input', trackerState);
+document.getElementById('bTemplate').addEventListener('click', ()=>{
+  linkEl.value = 'https://docs.google.com/spreadsheets/d/NEW…GhostAmp-performance-tracker';
+  trackerState();
+  document.getElementById('syncmsg').innerHTML = '<span class="dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px"></span>Tracker created from template · shared to the campaign folder · hit Resync when it\'s filled';
+});
+function scanDrive(btn){
+  btn.textContent='Scanning…'; btn.disabled=true;
+  setTimeout(()=>{ btn.textContent='Scan folders'; btn.disabled=false;
+    document.getElementById('drivemsg').textContent='Scanned just now · 33 of 76 folders matched · 102 files staged · 43 athletes have no folder yet'; }, 1100);
+}
+function resync(btn){
+  btn.textContent='Syncing…'; btn.disabled=true;
+  setTimeout(()=>{ btn.textContent='Resync'; btn.disabled=false;
+    document.getElementById('syncmsg').innerHTML='<span class="dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px"></span>Synced just now · 76 rows matched · 0 new'; }, 900);
+}
+renderTabs(); renderGrid();
 </script>
 </body>
 </html>
