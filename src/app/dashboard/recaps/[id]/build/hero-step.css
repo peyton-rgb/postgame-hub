@@ -1,0 +1,123 @@
+/* ============================================================
+   Recap Builder — Hero step
+   Ported VERBATIM from docs/recap-builder/prototypes/
+   builder-03-hero-v11.html, the frozen v11 build that
+   claude_RECAP-BUILDER-HERO-SPEC.md calls law.
+
+   Generated mechanically from the prototype's <style> block —
+   no declaration retyped. Selectors prefixed .rb-root; rules
+   already owned by builder-chrome.css / overview-step.css
+   dropped; literal font names routed through next/font vars.
+
+   The element structure these rules style is LOAD-BEARING
+   (spec §4): .rp-imgwrap > .rp-imginner > .rp-img + .rp-blend
+   + .rp-fadeL/T/B. In side mode .rp-img is inset 2px on left,
+   top and bottom so the photo never touches a fading edge —
+   the boundary pixel is the box's own black by construction.
+   Fades are full-box overlays at inset:-2px, never sized-to-
+   zone elements and never CSS masks. Do not "tidy" any of it.
+   ============================================================ */
+
+.rb-root ::selection{background:rgba(215,63,9,.35)}
+.rb-root /* toolbar */
+  .toolbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+.rb-root .count{font-size:13.5px}
+.rb-root .count b{font-weight:700}
+.rb-root .note{font-size:12.5px;color:rgba(250,248,245,.55)}
+.rb-root .fchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.rb-root .fchip{padding:8px 14px;border-radius:999px;border:1px solid var(--line-2);cursor:pointer;font-size:12.5px;color:rgba(250,248,245,.65);transition:.15s}
+.rb-root .fchip:hover{color:#FAF8F5}
+.rb-root .fchip.on{background:rgba(215,63,9,.12);border-color:rgba(215,63,9,.6);color:#FAF8F5}
+.rb-root /* photo grid */
+  .pgrid{columns:4 150px;column-gap:10px}
+.rb-root .ptile{position:relative;display:inline-block;width:100%;margin-bottom:10px;border-radius:14px;overflow:hidden;cursor:pointer;border:1px solid var(--line);transition:.15s;break-inside:avoid}
+.rb-root .ptile img{width:100%;height:auto;display:block;transition:.2s}
+.rb-root .ptile:hover img{transform:scale(1.03)}
+.rb-root .ptile .nm{position:absolute;left:0;right:0;bottom:0;padding:20px 10px 8px;font-size:11px;color:#FAF8F5;
+    background:linear-gradient(rgba(7,7,10,0),rgba(7,7,10,.8))}
+.rb-root .ptile.sel{border-color:var(--orange);box-shadow:0 0 0 2px rgba(215,63,9,.6),0 0 22px rgba(215,63,9,.3)}
+.rb-root .ptile .ord{position:absolute;top:9px;left:9px;width:26px;height:26px;border-radius:50%;background:var(--orange);
+    display:none;place-items:center;font-size:13px;font-weight:700;color:#fff}
+.rb-root .ptile.sel .ord{display:grid}
+.rb-root .ptile .ar{position:absolute;top:9px;right:9px;padding:3px 8px;border-radius:999px;background:rgba(7,7,10,.65);
+    backdrop-filter:blur(6px);font-size:9.5px;font-weight:600;letter-spacing:.06em;color:rgba(250,248,245,.85)}
+.rb-root /* framing controls — under the preview */
+  .frames{margin-top:16px;border:1px solid var(--line-2);border-radius:18px;padding:18px 20px;background:#0A0A0E}
+.rb-root .frames .slabel{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px}
+.rb-root .frames .fsub{font-size:12.5px;color:rgba(250,248,245,.55);margin-bottom:16px}
+.rb-root .sliders{display:grid;grid-template-columns:1fr 1fr;gap:16px 28px}
+.rb-root .sl label{display:flex;justify-content:space-between;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.rb-root .sl label span{color:rgba(250,248,245,.6);font-weight:500}
+.rb-root input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;background:rgba(250,248,245,.15);outline:none}
+.rb-root input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--orange);cursor:pointer;box-shadow:0 0 10px rgba(215,63,9,.5)}
+.rb-root /* preview panel */
+  .rightcol{position:sticky;top:24px}
+.rb-root .desktop .rp-nav{padding:22px 72px}
+.rb-root .mobile  .rp-nav{padding:16px 22px}
+.rb-root .desktop .rp-nav img{height:22px}
+.rb-root .mobile  .rp-nav img{height:16px}
+.rb-root .desktop .rp-links{gap:28px;font-size:11px;letter-spacing:.14em}
+.rb-root .mobile  .rp-links{display:none}
+.rb-root /* full-bleed hero */
+  .rp-hero{position:relative;overflow:hidden}
+.rb-root .desktop .rp-hero{height:820px}
+.rb-root .mobile  .rp-hero{height:640px}
+.rb-root .rp-imgwrap{position:absolute;inset:0;overflow:hidden;background:#07070A}
+.rb-root .rp-img{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:center}
+.rb-root .rp-blend{position:absolute;inset:0;display:none;pointer-events:none}
+.rb-root /* vertical photo: larger,
+.rb-root lives on the right,
+.rb-root bleeds down into the next section */
+  .rp-hero.side{overflow:visible;z-index:2}
+.rb-root .rp-hero.side .rp-imgwrap{left:auto;right:0;top:0;bottom:auto;height:136%;width:52%}
+.rb-root .mobile .rp-hero.side{overflow:hidden}
+.rb-root .mobile .rp-hero.side .rp-imgwrap{left:0 !important;width:100% !important;height:100%;bottom:0}
+.rb-root .rp-hero.side .rp-wash,
+.rb-root .rp-hero.side .rp-plate{display:none}
+.rb-root .rp-hero.side .rp-blend{display:block}
+.rb-root .rp-hero.side .rp-img{left:2px;top:2px;bottom:2px}
+.rb-root /* image never touches the fading edges — boundary pixel is the box's own black */
+  .rp-imginner{position:absolute;inset:0}
+.rb-root .rp-fadeL,
+.rb-root .rp-fadeT,
+.rb-root .rp-fadeB{position:absolute;display:none;pointer-events:none}
+.rb-root .rp-fadeL,
+.rb-root .rp-fadeT,
+.rb-root .rp-fadeB{display:block;inset:-2px}
+.rb-root .rp-wash{position:absolute;inset:0;background:linear-gradient(90deg, rgba(7,7,10,.55) 0%, rgba(7,7,10,0) 62%)}
+.rb-root .rp-mask{position:absolute;inset:0;
+    background:linear-gradient(rgba(7,7,10,.85), rgba(7,7,10,0) 22%, rgba(7,7,10,0) 72%, rgba(7,7,10,.9))}
+.rb-root .rp-plate{position:absolute;left:0;top:0;bottom:0;
+    background:linear-gradient(90deg, rgba(7,7,10,.82) 0%, rgba(7,7,10,.45) 55%, rgba(7,7,10,0) 100%)}
+.rb-root .desktop .rp-plate{width:860px}
+.rb-root .mobile  .rp-plate{width:100%}
+.rb-root .rp-copy{position:absolute;z-index:2}
+.rb-root .desktop .rp-copy{left:72px;bottom:56px}
+.rb-root .mobile  .rp-copy{left:22px;right:22px;bottom:36px}
+.rb-root .rp-brand{display:block}
+.rb-root .desktop .rp-brand{height:96px;margin-bottom:18px;margin-left:-30px}
+.rb-root .mobile  .rp-brand{height:54px;margin-bottom:12px;margin-left:-17px}
+.rb-root .desktop .rp-kick{font-size:12.5px;margin-bottom:10px}
+.rb-root .mobile  .rp-kick{font-size:10px;margin-bottom:10px}
+.rb-root .desktop .rp-name{font-size:140px}
+.rb-root .mobile  .rp-name{font-size:60px}
+.rb-root .rp-dots{position:absolute;z-index:3;display:flex;gap:8px}
+.rb-root .desktop .rp-dots{right:72px;bottom:36px}
+.rb-root .mobile  .rp-dots{right:22px;bottom:96px}
+.rb-root .rp-dot{width:8px;height:8px;border-radius:50%;background:rgba(250,248,245,.3);cursor:pointer}
+.rb-root .rp-dot.on{background:var(--orange)}
+.rb-root .pv-hl{outline:2px solid rgba(215,63,9,.85);outline-offset:-2px;box-shadow:inset 0 0 60px rgba(215,63,9,.15)}
+.rb-root .desktop .rp-next{max-width:76%}
+.rb-root .mobile  .rp-next{max-width:100%}
+.rb-root .desktop .rp-next{padding:30px 72px 72px}
+.rb-root .mobile  .rp-next{padding:20px 22px 44px}
+.rb-root .desktop .rp-skick{font-size:12px;margin-bottom:12px}
+.rb-root .mobile  .rp-skick{font-size:9.5px;margin-bottom:8px}
+.rb-root .desktop .rp-sh{font-size:68px;margin-bottom:26px}
+.rb-root .mobile  .rp-sh{font-size:38px;margin-bottom:16px}
+.rb-root .desktop .rp-prose{font-size:19px;line-height:1.8}
+.rb-root .mobile  .rp-prose{font-size:16px;line-height:1.75}
+@media (max-width:1000px){
+  .rb-root .pgrid{grid-template-columns:repeat(2,1fr)}
+  .rb-root .sliders{grid-template-columns:1fr}
+}

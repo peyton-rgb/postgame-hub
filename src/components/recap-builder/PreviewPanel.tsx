@@ -41,12 +41,16 @@ export default function PreviewPanel({
   onDeviceChange,
   expanded,
   onToggleExpanded,
+  exposePageRef,
   children,
 }: {
   device: PreviewDevice;
   onDeviceChange: (d: PreviewDevice) => void;
   expanded: boolean;
   onToggleExpanded: () => void;
+  /** Receives the .pvpage element. The Hero step measures it to cap a
+   *  bleeding photo at the page bottom (spec §3). */
+  exposePageRef?: React.MutableRefObject<HTMLDivElement | null>;
   /** The recap page render for the current step. */
   children: React.ReactNode;
 }) {
@@ -133,7 +137,13 @@ export default function PreviewPanel({
       <div className="pvbody" ref={bodyRef}>
         <div className="pvstage" ref={stageRef}>
           <div className="pvscale" ref={scaleRef}>
-            <div className={`pvpage ${device}`} ref={pageRef}>
+            <div
+              className={`pvpage ${device}`}
+              ref={(el) => {
+                pageRef.current = el;
+                if (exposePageRef) exposePageRef.current = el;
+              }}
+            >
               {children}
             </div>
           </div>

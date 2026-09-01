@@ -18,7 +18,7 @@
 
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
 import StepRail from '@/components/recap-builder/StepRail';
@@ -28,8 +28,10 @@ import { useAutosaveStatus } from '@/components/recap-builder/useAutosaveStatus'
 import { STEPS, stepIndex, stepSlug } from '@/components/recap-builder/steps';
 import AthletesStep from '@/components/recap-builder/athletes/AthletesStep';
 import OverviewStep from '@/components/recap-builder/overview/OverviewStep';
+import HeroStep from '@/components/recap-builder/hero/HeroStep';
 import './athletes-step.css';
 import './overview-step.css';
+import './hero-step.css';
 
 type RecapHeader = {
   id: string;
@@ -67,6 +69,7 @@ function RecapBuilder() {
   const [device, setDevice] = useState<PreviewDevice>('desktop');
   const [expanded, setExpanded] = useState(false);
   const [preview, setPreview] = useState<React.ReactNode>(null);
+  const pageRef = useRef<HTMLDivElement | null>(null);
   const { status, touch } = useAutosaveStatus();
 
   useEffect(() => {
@@ -134,6 +137,14 @@ function RecapBuilder() {
                 <AthletesStep recapId={recapId} onTouch={touch} />
               ) : active === 1 && recapId ? (
                 <OverviewStep recapId={recapId} onTouch={touch} onPreviewChange={setPreview} />
+              ) : active === 2 && recapId ? (
+                <HeroStep
+                  recapId={recapId}
+                  onTouch={touch}
+                  onPreviewChange={setPreview}
+                  device={device}
+                  pageRef={pageRef}
+                />
               ) : (
                 /* Remaining step bodies land in phases 3–6. */
                 <p style={{ color: 'rgba(250,248,245,.45)', fontSize: 13 }}>
@@ -147,6 +158,7 @@ function RecapBuilder() {
               onDeviceChange={setDevice}
               expanded={expanded}
               onToggleExpanded={() => setExpanded((v) => !v)}
+              exposePageRef={pageRef}
             >
               {/* Bound by the Overview step; phases 4–5 add hero + performers. */}
               {preview ?? <div style={{ height: 320 }} />}
