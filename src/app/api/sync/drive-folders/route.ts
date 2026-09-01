@@ -2,7 +2,12 @@
 // POST /api/sync/drive-folders — provision the Drive folder structure for new
 // campaigns.
 //
-//   Brands (Master) / {brand root} / {year} / {campaign} / {Content,Contracts,Trackers}
+//   {client root} / {brand root} / {year} / {campaign} / {Content,Contracts,Trackers}
+//
+// The brand root is resolved by NAME under DRIVE_CLIENT_ROOT_FOLDER_ID when the
+// brand has no stored one, and the id is persisted on first resolution so the
+// search happens once per brand, ever. The brand folder itself is never
+// created — sales owns that, and "not there yet" is a skip, not a failure.
 //
 // Two callers, one route, exactly as /api/sync/asana-managers:
 //   • the daily Vercel cron, authenticated by CRON_SECRET
@@ -23,10 +28,13 @@ import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import {
   campaignYear,
   provisionCampaign,
+  resolveBrandRoot,
+  type BrandRootVia,
   type CampaignCandidate,
   type ProvisionOutcome,
   type ProvisionSkip,
 } from "@/lib/drive-provision";
+import { getDriveClient } from "@/lib/google-drive";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -44,6 +52,16 @@ const FEATURE_LAUNCH_DATE = "2026-08-31";
  * to its timeout — the same role the Asana sync's page cap plays.
  */
 const MAX_PER_RUN = 50;
+
+/**
+ * The folder holding one subfolder per brand.
+ *
+ * In env rather than a literal because the same id drives
+ * scripts/provision-campaign-folders.ts, and two copies of a Drive id is one
+ * copy too many. A brand with a stored drive_parent_folder_id never needs it,
+ * so a missing var degrades to a per-campaign skip rather than failing the run.
+ */
+const CLIENT_ROOT_ENV = "DRIVE_CLIENT_ROOT_FOLDER_ID";
 
 /** Vercel sends `Authorization: Bearer <CRON_SECRET>` once the var exists. */
 function cronAuthorized(req: NextRequest): boolean {
@@ -161,20 +179,27 @@ export async function POST(req: NextRequest) {
     if (selectError) throw new Error(`candidate query failed: ${selectError.message}`);
     const candidates = (rows ?? []) as CampaignCandidate[];
 
-    // Brand roots in one read rather than per campaign.
+    // Brands in one read rather than per campaign. The NAME comes along because
+    // it is what the brand root is searched for under the client root.
     const brandIds = Array.from(
       new Set(candidates.map((c) => c.brand_id).filter((id): id is string => Boolean(id))),
     );
-    const brandRoots = new Map<string, string | null>();
+    const brands = new Map<string, { name: string; rootId: string | null }>();
     if (brandIds.length) {
-      const { data: brands } = await supabase
+      const { data: brandRows } = await supabase
         .from("brands")
-        .select("id, drive_parent_folder_id")
+        .select("id, name, drive_parent_folder_id")
         .in("id", brandIds);
-      for (const b of (brands ?? []) as Array<{ id: string; drive_parent_folder_id: string | null }>) {
-        brandRoots.set(b.id, b.drive_parent_folder_id);
+      for (const b of (brandRows ?? []) as Array<{
+        id: string;
+        name: string;
+        drive_parent_folder_id: string | null;
+      }>) {
+        brands.set(b.id, { name: b.name, rootId: b.drive_parent_folder_id });
       }
     }
+
+    const clientRootId = (process.env[CLIENT_ROOT_ENV] ?? "").trim();
 
     // Year shelves already known for these brands.
     const yearFolders = new Map<string, string>(); // `${brandId}:${year}` → folderId
@@ -188,7 +213,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const provisioned: ProvisionOutcome[] = [];
+    // brandRootVia rides along with the outcome rather than inside it: the ROUTE
+    // resolves the brand root (it is the half that needs the database), so the
+    // route is what can report how.
+    const provisioned: Array<ProvisionOutcome & { brandRootVia: BrandRootVia }> = [];
     const skipped: ProvisionSkip[] = [];
 
     for (const candidate of candidates) {
@@ -204,15 +232,75 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const brandRoot = brandRoots.get(candidate.brand_id) ?? null;
-        if (!brandRoot) {
+        const brand = brands.get(candidate.brand_id);
+        if (!brand) {
           skipped.push({
             campaignId: candidate.id,
             campaignName: candidate.name,
             reason: "no_brand_root",
-            detail: "brand has no drive_parent_folder_id — fill it in on the brand",
+            detail: `brand ${candidate.brand_id} was not readable — cannot resolve a Drive root`,
           });
           continue;
+        }
+
+        // No stored root and nowhere to look for one. Every brand that DOES
+        // have a stored root still provisions, so this is a per-campaign skip
+        // rather than a failed run.
+        if (!brand.rootId && !clientRootId) {
+          skipped.push({
+            campaignId: candidate.id,
+            campaignName: candidate.name,
+            reason: "no_brand_root",
+            detail: `brand has no drive_parent_folder_id and ${CLIENT_ROOT_ENV} is not configured`,
+          });
+          continue;
+        }
+
+        const rootResult = await resolveBrandRoot(
+          getDriveClient(),
+          clientRootId,
+          brand.name,
+          brand.rootId,
+        );
+
+        if ("ambiguous" in rootResult) {
+          const names = rootResult.ambiguous.map((f) => `"${f.name}"`).join(", ");
+          skipped.push({
+            campaignId: candidate.id,
+            campaignName: candidate.name,
+            reason: "ambiguous_brand_root",
+            detail: `${rootResult.ambiguous.length} folders under the client root could be ${brand.name} (${names}) — a human has to pick one`,
+          });
+          continue;
+        }
+
+        if ("notFound" in rootResult) {
+          // Normal and temporary: sales has not made the brand folder yet. The
+          // next pass picks it up once they do — nothing here creates it.
+          skipped.push({
+            campaignId: candidate.id,
+            campaignName: candidate.name,
+            reason: "brand_root_not_found",
+            detail: `no folder named "${brand.name}" under the client root yet — sales creates it, then this provisions on the next run`,
+          });
+          continue;
+        }
+
+        const brandRoot = rootResult.id;
+
+        // Persist an adopted root so the client root is listed once per brand,
+        // ever. Guarded on NULL for the same reason the account map is: never
+        // overwrite a root someone else set between the read above and here.
+        if (rootResult.via === "matched") {
+          brands.set(candidate.brand_id, { name: brand.name, rootId: brandRoot });
+          const { error: rootError } = await supabase
+            .from("brands")
+            .update({ drive_parent_folder_id: brandRoot })
+            .eq("id", candidate.brand_id)
+            .is("drive_parent_folder_id", null);
+          if (rootError) {
+            console.error("[drive-provision] persisting brand root failed:", rootError.message);
+          }
         }
 
         const year = campaignYear(candidate);
@@ -256,7 +344,7 @@ export async function POST(req: NextRequest) {
           .eq("id", candidate.id);
 
         if (updateError) throw new Error(`update failed: ${updateError.message}`);
-        provisioned.push(result);
+        provisioned.push({ ...result, brandRootVia: rootResult.via });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[drive-provision] ${candidate.id} (${candidate.name}) failed:`, message);
@@ -284,6 +372,12 @@ export async function POST(req: NextRequest) {
       adopted_year_folders: provisioned
         .filter((p) => p.yearFolderVia === "variant")
         .map((p) => ({ campaign: p.campaignName, year: p.year, folder: p.yearFolderName })),
+      // Brand roots found by name and persisted this run. Each one happens
+      // exactly once per brand — every later run reads the stored id — so a
+      // name here is a brand the Hub had never been pointed at before.
+      adopted_brand_roots: provisioned
+        .filter((p) => p.brandRootVia === "matched")
+        .map((p) => ({ campaign: p.campaignName, campaign_id: p.campaignId })),
       details: { provisioned, skipped },
       // True when the cap was hit and there is more waiting — never silently
       // truncate and report it as "all done".

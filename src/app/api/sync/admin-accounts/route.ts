@@ -9,25 +9,52 @@
 //   1. accounts  → upsert into admin_account_map (name refreshed, brand_id
 //                  never touched on conflict — a human's mapping is sacred)
 //   2. auto-link → EXACT name match only, and only when exactly one brand
-//                  matches. Everything else waits for a human.
+//                  matches. An account matching nothing is either created as a
+//                  new brand or handed to a human; see below.
 //   3. backfill  → read the admin's campaigns, stamp admin_account_id on the
 //                  matching Hub rows, and set brand_id where it is still null
 //                  and the map now resolves it.
 //
 // `?dry_run=1` computes all three and writes NOTHING — including the counts it
-// would have written, so the effect can be read before it happens.
+// would have written, so the effect can be read before it happens. The dry run
+// and the real run classify the SAME candidate set, so the two reports diff.
 //
-// This route NEVER creates a brand. An account with no matching brand waits.
+// THIS ROUTE CREATES A BRAND, but only for an account that is unambiguously
+// new. Burger King (1 Sep 2026) is why: sales opened the account, Rich's admin
+// made the campaign, and it provisioned no Drive folders because no Hub brand
+// existed to hang them on — a chain that died two links before Drive.
+//
+// LINKING is still exact-only; the fuzzy ban in lib/account-brand-map.ts is
+// intact. What is new is a veto on CREATING: an account close to an existing
+// brand ("Cane's" beside "Raising Cane's") is refused and queued for a human,
+// because the exact matcher cannot tell a new brand from one already here under
+// a different spelling, and auto-creating that difference makes a duplicate.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { getStaffUser } from "@/lib/staff-auth";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import { getAccounts, getCampaigns, PostgameAdminError } from "@/lib/postgame-admin";
-import { exactBrandFor, indexBrandsByName, normaliseName } from "@/lib/account-brand-map";
+import {
+  exactBrandFor,
+  indexBrandsByName,
+  nearExistingBrands,
+  normaliseName,
+  type MappedBy,
+} from "@/lib/account-brand-map";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
+
+/**
+ * Stands in for a brand id in `?dry_run=1`, where no brand was inserted and
+ * there is therefore no uuid to report.
+ *
+ * Deliberately not a fake uuid: a preview that looks like a real id invites
+ * someone to go looking for the row. Nothing is written in a dry run, so this
+ * value only ever appears in the report.
+ */
+const DRY_RUN_BRAND_ID = "(would-create)";
 
 function cronAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -121,52 +148,126 @@ export async function POST(req: NextRequest) {
       if (error) throw new Error(`admin_account_map upsert failed: ${error.message}`);
     }
 
-    // ── 2. auto-link, exact only ─────────────────────────────────────────────
+    // ── 2. link exactly, create when unambiguously new, else queue ───────────
     const { data: brandRows, error: brandError } = await supabase.from("brands").select("id, name");
     if (brandError) throw new Error(`brands read failed: ${brandError.message}`);
-    const brandsByName = indexBrandsByName((brandRows ?? []) as Array<{ id: string; name: string }>);
+    const brands = (brandRows ?? []) as Array<{ id: string; name: string }>;
+    const brandsByName = indexBrandsByName(brands);
+    // Kept alongside the index because the veto compares against names, and a
+    // brand created below has to be visible to every candidate after it.
+    const brandNames = brands.map((b) => b.name);
 
-    // Only ever fills a NULL. A row already mapped — by a human or a previous
-    // auto pass — is left exactly as it is.
-    const { data: unmappedRows, error: unmappedError } = await supabase
+    const { data: mapRows, error: mapError } = await supabase
       .from("admin_account_map")
-      .select("admin_account_id, account_name")
-      .is("brand_id", null);
-    if (unmappedError) throw new Error(`unmapped read failed: ${unmappedError.message}`);
+      .select("admin_account_id, account_name, brand_id");
+    if (mapError) throw new Error(`admin_account_map read failed: ${mapError.message}`);
+
+    // Accounts that already have a brand. Only ever fills a NULL — a row mapped
+    // by a human or by a previous auto pass is left exactly as it is.
+    const alreadyMapped = new Set(
+      ((mapRows ?? []) as Array<{ admin_account_id: string; brand_id: string | null }>)
+        .filter((r) => r.brand_id)
+        .map((r) => r.admin_account_id),
+    );
+
+    // ONE candidate set for both modes, so `?dry_run=1` is a faithful preview
+    // rather than a differently-scoped report: every unmapped row already in
+    // the map, plus every account the admin returned that the map has not seen.
+    // Pass 1's upsert never touches brand_id, so reading the map before it and
+    // after it gives the same answer — the real run's candidates are these too.
+    const candidateByAccount = new Map<string, string>();
+    for (const row of (mapRows ?? []) as Array<{ admin_account_id: string; account_name: string | null; brand_id: string | null }>) {
+      if (!row.brand_id) candidateByAccount.set(row.admin_account_id, row.account_name ?? "");
+    }
+    for (const row of accountRows) {
+      // The admin's name wins over the stored one — it is the fresher of the two.
+      if (!alreadyMapped.has(row.admin_account_id)) {
+        candidateByAccount.set(row.admin_account_id, row.account_name ?? "");
+      }
+    }
+    const candidates = Array.from(candidateByAccount, ([admin_account_id, account_name]) => ({
+      admin_account_id,
+      account_name,
+    }));
 
     const toLink: Array<{ admin_account_id: string; account_name: string; brand_id: string }> = [];
-    const needsHuman: Array<{ admin_account_id: string; account_name: string }> = [];
-    // In a dry run the map has not been written, so match the freshly fetched
-    // accounts; otherwise match what is actually sitting unmapped.
-    const candidates = dryRun
-      ? accountRows.map((a) => ({ admin_account_id: a.admin_account_id, account_name: a.account_name }))
-      : ((unmappedRows ?? []) as Array<{ admin_account_id: string; account_name: string | null }>);
+    const created: Array<{ admin_account_id: string; account_name: string; brand_id: string }> = [];
+    const vetoed: Array<{ admin_account_id: string; account_name: string; near: string[] }> = [];
+    const needsHuman: Array<{ admin_account_id: string; account_name: string; reason: string }> = [];
+    const mappedAt = new Date().toISOString();
+
+    /** Fill a map row's brand_id, re-checking the NULL at write time so a human
+     *  who mapped it between the read above and here is never overwritten. */
+    const linkAccount = async (accountId: string, brandId: string, how: MappedBy): Promise<void> => {
+      const { error } = await supabase
+        .from("admin_account_map")
+        .update({ brand_id: brandId, mapped_by: how, mapped_at: mappedAt })
+        .eq("admin_account_id", accountId)
+        .is("brand_id", null);
+      if (error) console.error(`[account-map] link ${accountId} failed:`, error.message);
+    };
 
     for (const row of candidates) {
       const brandId = exactBrandFor(row.account_name, brandsByName);
       if (brandId) {
-        toLink.push({
-          admin_account_id: row.admin_account_id,
-          account_name: row.account_name ?? "",
-          brand_id: brandId,
-        });
-      } else {
-        needsHuman.push({ admin_account_id: row.admin_account_id, account_name: row.account_name ?? "" });
+        toLink.push({ ...row, brand_id: brandId });
+        continue;
       }
+
+      // brands.name is NOT NULL and an unnamed brand helps nobody.
+      if (!normaliseName(row.account_name)) {
+        needsHuman.push({ ...row, reason: "account has no usable name" });
+        continue;
+      }
+
+      // THE VETO. Close to something we already have → a human decides. This is
+      // the only thing standing between auto-create and a second Raising Cane's.
+      const near = nearExistingBrands(row.account_name, brandNames);
+      if (near.length) {
+        vetoed.push({ ...row, near });
+        needsHuman.push({
+          ...row,
+          reason: `near existing brand${near.length > 1 ? "s" : ""}: ${near.join(", ")}`,
+        });
+        continue;
+      }
+
+      // Unambiguously new. Name goes in VERBATIM (trimmed only) — same
+      // discipline as folderNameFor(): no case changes, no punctuation tidying.
+      // Everything else defaults, kit_status included: 'placeholder' already
+      // means "kit not sourced yet", which is exactly the queue signal wanted.
+      const name = (row.account_name ?? "").trim();
+      if (dryRun) {
+        created.push({ ...row, brand_id: DRY_RUN_BRAND_ID });
+      } else {
+        const { data: newBrand, error: insertError } = await supabase
+          .from("brands")
+          .insert({ name, admin_brand_id: row.admin_account_id })
+          .select("id")
+          .single();
+
+        if (insertError || !newBrand) {
+          console.error(`[account-map] create brand "${name}" failed:`, insertError?.message);
+          needsHuman.push({ ...row, reason: `brand insert failed: ${insertError?.message ?? "no row returned"}` });
+          continue;
+        }
+        // If this update fails the brand is orphaned for exactly one run: next
+        // pass the account is still unmapped and a brand of that name now
+        // exists, so exactBrandFor picks it up as auto_exact. Self-healing.
+        await linkAccount(row.admin_account_id, newBrand.id, "auto_created");
+        created.push({ ...row, brand_id: newBrand.id });
+      }
+
+      // Visible to the rest of this sweep, so two accounts sharing a name link
+      // to the one brand instead of creating it twice.
+      const key = normaliseName(name);
+      const createdId = created[created.length - 1].brand_id;
+      brandsByName.set(key, [...(brandsByName.get(key) ?? []), createdId]);
+      brandNames.push(name);
     }
 
-    if (!dryRun && toLink.length) {
-      const mappedAt = new Date().toISOString();
-      for (const link of toLink) {
-        const { error } = await supabase
-          .from("admin_account_map")
-          .update({ brand_id: link.brand_id, mapped_by: "auto_exact", mapped_at: mappedAt })
-          .eq("admin_account_id", link.admin_account_id)
-          // Re-checked at write time so a human who mapped this row between the
-          // read above and here is never overwritten.
-          .is("brand_id", null);
-        if (error) console.error(`[account-map] link ${link.admin_account_id} failed:`, error.message);
-      }
+    if (!dryRun) {
+      for (const link of toLink) await linkAccount(link.admin_account_id, link.brand_id, "auto_exact");
     }
 
     // ── 3. backfill campaigns ────────────────────────────────────────────────
@@ -180,9 +281,12 @@ export async function POST(req: NextRequest) {
       if (campaignId && accountId) accountByCampaign.set(campaignId, accountId);
     }
 
-    // The map as it stands after pass 2, for resolving brand_id below.
+    // The map as it stands after pass 2, for resolving brand_id below. Seeded
+    // from this run's own links and creations because a dry run never wrote
+    // them — without that, the preview would under-report the backfill by
+    // exactly the campaigns the run exists to fix.
     const brandByAccount = new Map<string, string>();
-    for (const link of toLink) brandByAccount.set(link.admin_account_id, link.brand_id);
+    for (const link of [...toLink, ...created]) brandByAccount.set(link.admin_account_id, link.brand_id);
     const { data: mappedRows } = await supabase
       .from("admin_account_map")
       .select("admin_account_id, brand_id")
@@ -237,7 +341,16 @@ export async function POST(req: NextRequest) {
       accounts: {
         total: accountRows.length,
         auto_linked: toLink.length,
+        created: created.length,
+        vetoed: vetoed.length,
+        // Everything left for a human — the vetoed accounts plus anything
+        // unusable. `vetoed` is the subset that got here via the near-brand
+        // veto, which is the case worth eyeballing.
         needs_human: needsHuman.length,
+        created_list: created,
+        // The account AND the brand it was near, nearest first. "Near what" is
+        // the useful half: it is the queue a human actually works from.
+        vetoed_list: vetoed,
         needs_human_list: needsHuman,
       },
       backfill: {

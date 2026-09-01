@@ -31,7 +31,17 @@ import { createClient } from "@supabase/supabase-js";
 import { getDriveClient, ensureFolder, findFolderByName } from "../src/lib/google-drive";
 
 const EXECUTE = process.argv.includes("--execute");
-const ROOT = "1z0szyZYdD2CGd9zAeRTO8MM-ArQAgz-a";
+
+// The client root, shared with /api/sync/drive-folders. One source of truth for
+// the id, and no literal to fall back to: a wrong root here would build a whole
+// parallel brand tree, so a missing var stops rather than guesses.
+const ROOT = (process.env.DRIVE_CLIENT_ROOT_FOLDER_ID ?? "").trim();
+if (!ROOT) {
+  console.error(
+    "DRIVE_CLIENT_ROOT_FOLDER_ID is not set — add it to .env.local and re-run with --env-file=.env.local",
+  );
+  process.exit(1);
+}
 
 // The 13, by admin_campaign_id. Years are assigned by decision (1000, 1005 and
 // 1007 have no admin_created_on), so they are listed rather than computed.

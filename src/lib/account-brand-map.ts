@@ -14,13 +14,24 @@
 // "Ykone - Visit Las Vegas" vs "Visit Las Vegas". Every one of those is a
 // plausible guess and a guess is not good enough to stamp on a campaign.
 //
-// This module NEVER creates a brand. An account with no matching brand waits.
+// SIMILARITY IS A VETO, NEVER A LINK. isNearExistingBrand() below measures the
+// same closeness the ban rejects — and uses it only to REFUSE, never to map.
+// The account → brand link is still exact-only; what similarity gates is
+// whether an unmatched account may be treated as a genuinely NEW brand. The
+// four names above are exactly the ones that must not be, because the exact
+// matcher cannot tell "new" from "already here, spelled differently".
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** How a mapping was made. Mirrors the CHECK constraint on the column. */
-export type MappedBy = "auto_exact" | "human";
+/**
+ * How a mapping was made. Mirrors the CHECK constraint on the column.
+ *
+ * 'auto_exact'   — matched an existing brand a human had already vouched for.
+ * 'auto_created' — the brand did not exist and the sync created it.
+ * 'human'        — set at /dashboard/settings/brand-mapping.
+ */
+export type MappedBy = "auto_exact" | "human" | "auto_created";
 
 export interface AccountMapRow {
   admin_account_id: string;
@@ -70,6 +81,104 @@ export function exactBrandFor(
   if (!key) return null;
   const hits = brandsByName.get(key);
   return hits && hits.length === 1 ? hits[0] : null;
+}
+
+/** Normalised, then stripped to letters and digits: "Dr. Scholl's" → "drscholls". */
+function alphanumericOnly(value: string): string {
+  return normaliseName(value).replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Levenshtein edit distance. Two rows rather than a full matrix — the inputs
+ * are brand names, but this runs accounts × brands (120 × 131) every sync.
+ */
+export function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(
+        previous[j] + 1, // deletion
+        current[j - 1] + 1, // insertion
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1), // substitution
+      );
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+/**
+ * Existing brands `accountName` is too close to for it to count as new, nearest
+ * first.
+ *
+ * THIS NEVER LINKS ANYTHING. Its only caller uses a non-empty result to REFUSE
+ * to create a brand and hand the account to a human instead. That asymmetry is
+ * the whole design: a wrong "these are the same" would stamp a guess onto a
+ * campaign, while a wrong "these might be the same" only adds a row to a queue
+ * someone already reads. So the rules below are deliberately generous, and the
+ * cost of a false positive is a human glance.
+ *
+ * Near when ANY of these holds against ANY brand, all on normalised names:
+ *   1. either name contains the other  — "Cane's" ⊂ "Raising Cane's"
+ *   2. equal once non-alphanumerics go — "McDonalds" = "McDonald's"
+ *   3. edit distance ≤ 2 for names of 8+ characters, ≤ 1 for shorter ones
+ *
+ * Rule 3's budget scales with length because two edits in an eight-character
+ * name is a typo and two edits in a four-character name is a different word.
+ * The length taken is the SHORTER of the pair, which is the conservative read:
+ * it hands the tighter budget to the case where a slip matters more.
+ *
+ * Rule 1 is blunt on purpose and will over-fire on very short brands — "SI"
+ * is a substring of "Ykone - Vi(si)t Las Vegas". That costs one queue entry
+ * and is ordered last by distance, behind the match a human actually wants.
+ */
+export function nearExistingBrands(
+  accountName: string | null | undefined,
+  brandNames: string[],
+): string[] {
+  const account = normaliseName(accountName);
+  if (!account) return [];
+  const accountAlnum = alphanumericOnly(account);
+
+  const hits: Array<{ name: string; distance: number }> = [];
+  for (const brandName of brandNames) {
+    const brand = normaliseName(brandName);
+    if (!brand) continue;
+
+    // An exact match is not "near" — it is the existing-brand link, decided by
+    // exactBrandFor() before this is ever consulted.
+    if (brand === account) continue;
+
+    const budget = Math.min(account.length, brand.length) >= 8 ? 2 : 1;
+    const near =
+      account.includes(brand) ||
+      brand.includes(account) ||
+      (accountAlnum.length > 0 && accountAlnum === alphanumericOnly(brand)) ||
+      levenshtein(account, brand) <= budget;
+
+    if (near) hits.push({ name: brandName, distance: levenshtein(account, brand) });
+  }
+
+  // Nearest first, so the brand a human is most likely to have meant leads the
+  // queue entry even when a short-name substring also matched.
+  hits.sort((a, b) => a.distance - b.distance || a.name.localeCompare(b.name));
+  return hits.map((h) => h.name);
+}
+
+/**
+ * True when `accountName` is close enough to an existing brand that creating a
+ * new one would risk a duplicate. See nearExistingBrands() for the rules.
+ */
+export function isNearExistingBrand(
+  accountName: string | null | undefined,
+  brandNames: string[],
+): boolean {
+  return nearExistingBrands(accountName, brandNames).length > 0;
 }
 
 /**

@@ -1,10 +1,13 @@
 // ============================================================
 // Campaign Drive folder provisioning.
 //
-//   Brands (Master) / {brand root} / {year} / {campaign name} /
+//   {client root} / {brand root} / {year} / {campaign name} /
 //       ├── Content
 //       ├── Contracts
 //       └── Trackers
+//
+// The client root (DRIVE_CLIENT_ROOT_FOLDER_ID) holds one folder per brand and
+// is the one level this module never creates into — see resolveBrandRoot.
 //
 // CREATION ONLY. Nothing here ever moves, renames, trashes or deletes anything
 // in Drive. The only mutating call is files.create.
@@ -32,6 +35,8 @@ export const SUBFOLDERS = ["Content", "Contracts", "Trackers"] as const;
 export type SkipReason =
   | "no_brand_id"
   | "no_brand_root"
+  | "ambiguous_brand_root"
+  | "brand_root_not_found"
   | "ambiguous_year_folder"
   | "empty_campaign_name"
   | "error";
@@ -174,6 +179,62 @@ export const NEVER_ADOPT_AS_YEAR_FOLDER: Record<string, string> = {
   // Zenni → "Zenni 2026 Campaign"
   "1w8cJoa3WgtZrTFnaWGB2Y7FYXpdkAdh7": 'Zenni — "Zenni 2026 Campaign"',
 };
+
+/** How a brand root was arrived at. There is no "created" — see below. */
+export type BrandRootVia = "stored" | "matched";
+
+export interface BrandRootResolved {
+  id: string;
+  via: BrandRootVia;
+  /** The folder's actual name, which is the brand's name as SALES spelled it. */
+  name: string;
+}
+
+/**
+ * Resolve a brand's folder under the client root.
+ *
+ * Order, most authoritative first:
+ *   1. stored brands.drive_parent_folder_id — used as-is, never re-resolved
+ *   2. exactly one child of the client root matching the brand name → adopt
+ *   3. two or more matches → ambiguous, a human picks
+ *   4. no match → notFound
+ *
+ * THIS NEVER CREATES THE BRAND FOLDER. Sales owns making it, and "zero matches"
+ * means they have not yet — a normal, temporary state, not a failure. Creating
+ * one here would put a rival folder beside the real one the moment sales made
+ * it, which is the split-tree outcome the whole resolution order exists to
+ * avoid. The next cron pass picks the brand up once the folder appears.
+ *
+ * The caller is expected to PERSIST an adopted id onto the brand. That is what
+ * makes this cheap: the client root is listed once per brand, ever, and step 1
+ * short-circuits every run after.
+ *
+ * Deliberately the same list-and-compare as resolveYearFolder — listChildFolders
+ * + matchesByName, refusing on ambiguity rather than guessing. One matcher, one
+ * set of rules, at both levels.
+ */
+export async function resolveBrandRoot(
+  drive: drive_v3.Drive,
+  clientRootId: string,
+  brandName: string,
+  storedId: string | null,
+): Promise<
+  | BrandRootResolved
+  | { ambiguous: Array<{ id: string; name: string }> }
+  | { notFound: true }
+> {
+  if (storedId) return { id: storedId, via: "stored", name: brandName.trim() };
+
+  const name = brandName.trim();
+  // An unnamed brand cannot be searched for; matching "" against every folder
+  // would be an ambiguity that means nothing.
+  if (!name) return { notFound: true };
+
+  const matches = matchesByName(await listChildFolders(drive, clientRootId), name);
+  if (matches.length > 1) return { ambiguous: matches };
+  if (matches.length === 1) return { id: matches[0].id, via: "matched", name: matches[0].name };
+  return { notFound: true };
+}
 
 /** How a year shelf was arrived at — reported so an adoption is visible. */
 export type YearFolderVia = "stored" | "exact" | "variant" | "created";
