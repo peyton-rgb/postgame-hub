@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Recap Builder — Overview</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&family=Anton&family=JetBrains+Mono:wght@500&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --black:#07070A; --orange:#D73F09; --white:#FAF8F5;
     --line:rgba(250,248,245,.08); --line-2:rgba(250,248,245,.14);
-    --glass:rgba(250,248,245,.03);
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:var(--black);color:#FAF8F5;
@@ -25,7 +24,7 @@
   .sidebar a{display:block;font-size:12.5px;color:rgba(250,248,245,.5);text-decoration:none;padding:4px 0}
 
   .main{flex:1;min-width:0}
-  .content{max-width:1180px;margin:0 auto;padding:40px 44px 150px}
+  .wrap{max-width:1560px;margin:0 auto;padding:40px 44px 150px}
 
   .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
   .actions{display:flex;gap:10px;padding-bottom:4px}
@@ -33,7 +32,7 @@
   .meta{font-size:13.5px;color:rgba(250,248,245,.92)}
   .meta b{font-weight:500}
 
-  .rail{display:flex;margin:34px 0 40px;position:relative}
+  .rail{display:flex;margin:34px 0 36px;position:relative}
   .rail::before{content:'';position:absolute;left:0;right:0;top:14px;height:1px;background:var(--line)}
   .step{flex:1;position:relative;cursor:pointer;padding-top:30px}
   .step .n{position:absolute;top:7px;left:0;width:15px;height:15px;border-radius:50%;
@@ -51,43 +50,207 @@
   .btn.ghost:hover{border-color:rgba(250,248,245,.3)}
   .btn:disabled{opacity:.3;cursor:default}
 
-  /* form */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 28px}
-  .grid .full{grid-column:1/-1}
-  .field label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#FAF8F5;margin-bottom:8px}
+  /* split layout */
+  .split{display:grid;grid-template-columns:1fr 600px;gap:44px;align-items:start}
+  .preview{position:sticky;top:24px;border:1px solid var(--line-2);border-radius:18px;overflow:hidden;background:#0A0A0E}
+  .pvhead{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);
+    font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,248,245,.5)}
+  .pvhead .live{color:var(--orange)}
+  .pvexpand{cursor:pointer;border:1px solid var(--line-2);border-radius:999px;padding:4px 11px;color:rgba(250,248,245,.7);font-size:10px;letter-spacing:.08em}
+  .pvexpand:hover{color:#FAF8F5;border-color:rgba(250,248,245,.35)}
+  /* fullscreen preview */
+  body.pvfull .preview{position:fixed;inset:24px;z-index:50;background:#0A0A0E;border-radius:18px;max-width:none}
+  body.pvfull .pvbody{max-height:calc(100vh - 110px)}
+  body.pvfull::after{content:'';position:fixed;inset:0;background:rgba(7,7,10,.7);backdrop-filter:blur(6px);z-index:40}
+  body.pvfull .preview{z-index:50}
+  .pvbody{padding:16px;max-height:calc(100vh - 150px);overflow:auto}
+  .devtoggle{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;overflow:hidden}
+  .devtoggle span{padding:5px 12px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;color:rgba(250,248,245,.5)}
+  .devtoggle span.on{background:rgba(215,63,9,.16);color:#FAF8F5}
+
+  /* scaled true-width page — approved recap redesign */
+  .pvstage{overflow:hidden;border-radius:12px;border:1px solid var(--line);background:#07070A;margin:0 auto;transition:width .2s}
+  .pvscale{transform-origin:top left}
+  .pvpage{background:#07070A;font-family:'Arimo',Arial,sans-serif}
+  .pvpage.desktop{width:1280px}
+  .pvpage.mobile{width:390px}
+
+  /* nav */
+  .rp-nav{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(250,248,245,.08)}
+  .desktop .rp-nav{padding:22px 72px}
+  .mobile  .rp-nav{padding:16px 22px}
+  .rp-nav img{display:block}
+  .desktop .rp-nav img{height:22px}
+  .mobile  .rp-nav img{height:16px}
+  .rp-links{display:flex;font-family:'JetBrains Mono';font-weight:500;text-transform:uppercase;color:rgba(250,248,245,.5)}
+  .desktop .rp-links{gap:28px;font-size:11px;letter-spacing:.14em}
+  .mobile  .rp-links{display:none}
+
+  /* hero */
+  .rp-hero{text-align:left}
+  .desktop .rp-hero{padding:88px 72px 72px}
+  .mobile  .rp-hero{padding:44px 22px 40px}
+  .rp-brand{display:block}
+  .desktop .rp-brand{height:56px;margin-bottom:36px}
+  .mobile  .rp-brand{height:34px;margin-bottom:22px}
+  .rp-kick{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#D73F09}
+  .desktop .rp-kick{font-size:13px;margin-bottom:18px}
+  .mobile  .rp-kick{font-size:10px;margin-bottom:12px}
+  .rp-name{font-family:'Bebas Neue';line-height:.9;color:#FAF8F5;letter-spacing:.005em}
+  .desktop .rp-name{font-size:150px}
+  .mobile  .rp-name{font-size:64px}
+
+  /* section header pattern: kicker + bebas */
+  .rp-sec{border-top:1px solid rgba(250,248,245,.08)}
+  .desktop .rp-sec{padding:72px 72px}
+  .mobile  .rp-sec{padding:40px 22px}
+  .rp-skick{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#D73F09}
+  .desktop .rp-skick{font-size:12px;margin-bottom:12px}
+  .mobile  .rp-skick{font-size:9.5px;margin-bottom:8px}
+  .rp-sh{font-family:'Bebas Neue';color:#FAF8F5;line-height:.96}
+  .desktop .rp-sh{font-size:54px;margin-bottom:34px}
+  .mobile  .rp-sh{font-size:32px;margin-bottom:20px}
+
+  /* overview prose */
+  .rp-prose{color:rgba(250,248,245,.68)}
+  .desktop .rp-prose{font-size:18px;line-height:1.76;max-width:860px}
+  .mobile  .rp-prose{font-size:14px;line-height:1.7}
+  .rp-prose p{margin-bottom:16px}
+
+  /* the numbers: hero figure */
+  .rp-fig{font-family:'Anton';color:#FAF8F5;line-height:.92;letter-spacing:.01em}
+  .desktop .rp-fig{font-size:150px}
+  .mobile  .rp-fig{font-size:66px}
+  .rp-figl{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:rgba(250,248,245,.55)}
+  .desktop .rp-figl{font-size:12px;margin-top:14px}
+  .mobile  .rp-figl{font-size:9.5px;margin-top:9px}
+  .rp-figrule{background:#D73F09;height:3px}
+  .desktop .rp-figrule{width:120px;margin:28px 0 44px}
+  .mobile  .rp-figrule{width:70px;margin:18px 0 28px}
+
+  /* KPI band — labelled figures on hairlines, not boxes */
+  .rp-band{display:grid;border-top:1px solid rgba(250,248,245,.1)}
+  .desktop .rp-band{grid-template-columns:repeat(4,1fr)}
+  .mobile  .rp-band{grid-template-columns:repeat(2,1fr)}
+  .rp-kpi{border-bottom:1px solid rgba(250,248,245,.1);border-right:1px solid rgba(250,248,245,.1)}
+  .desktop .rp-kpi{padding:26px 22px}
+  .mobile  .rp-kpi{padding:16px 14px}
+  .desktop .rp-kpi:nth-child(4n){border-right:none}
+  .mobile  .rp-kpi:nth-child(2n){border-right:none}
+  .rp-kpi .v{font-family:'Anton';color:#FAF8F5}
+  .desktop .rp-kpi .v{font-size:44px}
+  .mobile  .rp-kpi .v{font-size:26px}
+  .rp-kpi .l{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,248,245,.5)}
+  .desktop .rp-kpi .l{font-size:10.5px;margin-top:8px}
+  .mobile  .rp-kpi .l{font-size:8.5px;margin-top:5px}
+
+  /* platform split: donut + legend */
+  .rp-split{display:grid;align-items:center}
+  .desktop .rp-split{grid-template-columns:340px 1fr;gap:64px;margin-top:64px}
+  .mobile  .rp-split{grid-template-columns:1fr;gap:28px;margin-top:36px}
+  .rp-donut{border-radius:50%;position:relative;margin:0 auto}
+  .desktop .rp-donut{width:300px;height:300px}
+  .mobile  .rp-donut{width:200px;height:200px}
+  .rp-donut::after{content:'';position:absolute;inset:22%;background:#07070A;border-radius:50%}
+  .rp-leg{display:flex;flex-direction:column}
+  .rp-lrow{display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(250,248,245,.1)}
+  .desktop .rp-lrow{padding:16px 0}
+  .mobile  .rp-lrow{padding:11px 0}
+  .rp-lrow .sw{width:12px;height:12px;border-radius:3px;flex:none}
+  .rp-lrow .pl{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:#FAF8F5;flex:1}
+  .desktop .rp-lrow .pl{font-size:12px}
+  .mobile  .rp-lrow .pl{font-size:10px}
+  .rp-lrow .pv2{font-family:'Anton';color:#FAF8F5}
+  .desktop .rp-lrow .pv2{font-size:22px}
+  .mobile  .rp-lrow .pv2{font-size:16px}
+  .rp-lrow .pp{font-family:'JetBrains Mono';color:rgba(250,248,245,.5);width:64px;text-align:right}
+  .desktop .rp-lrow .pp{font-size:12px}
+  .mobile  .rp-lrow .pp{font-size:10px}
+
+  /* focus-follow highlight in the preview */
+  .pv-hl{outline:2px solid rgba(215,63,9,.85);outline-offset:8px;border-radius:4px;
+    box-shadow:0 0 30px rgba(215,63,9,.28);transition:outline-color .2s}
+
+  /* platform breakdown cards in preview */
+  .rp-cards{display:grid}
+  .desktop .rp-cards{grid-template-columns:repeat(4,1fr);gap:16px;margin-top:64px}
+  .mobile  .rp-cards{grid-template-columns:1fr;gap:12px;margin-top:36px}
+  .rp-card{border:1px solid rgba(250,248,245,.1);border-radius:16px}
+  .desktop .rp-card{padding:24px 22px}
+  .mobile  .rp-card{padding:16px 16px}
+  .rp-card .ch{font-family:'JetBrains Mono';font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:#D73F09}
+  .desktop .rp-card .ch{font-size:12px;margin-bottom:16px}
+  .mobile  .rp-card .ch{font-size:10px;margin-bottom:10px}
+  .rp-card .cr{display:flex;justify-content:space-between;border-bottom:1px solid rgba(250,248,245,.08);color:rgba(250,248,245,.68)}
+  .desktop .rp-card .cr{font-size:14.5px;padding:8px 0}
+  .mobile  .rp-card .cr{font-size:12.5px;padding:6px 0}
+  .rp-card .cr:last-child{border-bottom:none}
+  .rp-card .cr b{color:#FAF8F5;font-weight:700;font-family:'Arimo'}
+
+  /* form sections */
+  .sec{padding:24px 0;border-top:1px solid var(--line)}
+  .sec:first-of-type{border-top:none;padding-top:0}
+  .slabel{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#FAF8F5;margin-bottom:14px}
+  .slabel span{color:rgba(250,248,245,.5);font-weight:400;letter-spacing:.02em;text-transform:none;margin-left:10px;font-size:12px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px 22px}
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}
+  .prefix{position:relative}
+  .prefix input{padding-left:28px}
+  .prefix::before{content:attr(data-p);position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(250,248,245,.5);font-size:14px}
+  .field label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#FAF8F5;margin-bottom:8px}
+  .field label em{font-style:normal;color:rgba(215,63,9,.9);font-size:9px;letter-spacing:.06em;margin-left:4px}
+  .field input:read-only{background:rgba(250,248,245,.03);color:rgba(250,248,245,.92)}
   .field input, .field .rich{width:100%;background:rgba(250,248,245,.06);border:1px solid var(--line-2);border-radius:12px;
-    padding:14px 16px;color:var(--white);font:15px 'Inter';outline:none;transition:.2s}
-  .field input::placeholder{color:rgba(250,248,245,.4)}
-  .field input:focus, .field .rich:focus{border-color:rgba(215,63,9,.6);box-shadow:0 0 0 3px rgba(215,63,9,.08);background:rgba(250,248,245,.08)}
+    padding:12px 14px;color:var(--white);font:14.5px 'Inter';outline:none;transition:.2s}
+  .field input::placeholder{color:rgba(250,248,245,.38)}
+  .field input:focus, .field .rich:focus{border-color:rgba(215,63,9,.6);box-shadow:0 0 0 3px rgba(215,63,9,.08)}
   .hint{font-size:12px;color:rgba(250,248,245,.55);margin-top:7px}
-  .hint b{color:#FAF8F5;font-weight:500}
-  .warnline{font-size:12.5px;color:#FF8A5C;margin-top:8px}
-  .warnline:hover{text-decoration:underline;cursor:pointer}
 
-  .brandrow{display:flex;gap:12px;align-items:center}
-  .brandlogo{width:110px;height:52px;flex:none;border:1px solid var(--line-2);border-radius:12px;background:rgba(250,248,245,.06);
-    display:grid;place-items:center;padding:10px}
-  .brandlogo img{max-width:100%;max-height:100%;display:block}
-  .brandrow input{flex:1}
+  /* toggle tiles */
+  .ttiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .ttile{position:relative;border:1px solid var(--line-2);border-radius:14px;padding:16px 14px;cursor:pointer;transition:.18s;text-align:center;user-select:none}
+  .ttile .v{font-size:22px;font-weight:700;color:#FAF8F5}
+  .ttile .l{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(250,248,245,.6);margin-top:4px}
+  .ttile .sw{position:absolute;top:10px;right:10px;width:26px;height:15px;border-radius:999px;background:rgba(250,248,245,.15);transition:.18s}
+  .ttile .sw::after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#FAF8F5;transition:.18s}
+  .ttile.on{border-color:rgba(215,63,9,.5);background:rgba(215,63,9,.05)}
+  .ttile.on .sw{background:var(--orange)}
+  .ttile.on .sw::after{left:13px}
+  .ttile.off{opacity:.4}
+  .ttile.off .v{color:rgba(250,248,245,.55)}
+  .ttile.zero{cursor:default}
+  .az{position:absolute;top:10px;right:12px;font-size:8.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(250,248,245,.45)}
+  .az2{font-style:normal;font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(250,248,245,.4);margin-left:8px}
+  .row.zrow{cursor:default}
 
-  .rich{min-height:190px;line-height:1.75;font-size:15px}
-  .rich p{margin-bottom:14px}
+  /* platform boxes */
+  .pboxes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .pbox{border:1px solid var(--line-2);border-radius:14px;padding:14px 16px;transition:.18s}
+  .pbox.off{opacity:.4}
+  .pbox .pbh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .pbox .pbh .t{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--orange)}
+  .pill{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line-2);
+    border-radius:999px;padding:4px 10px;cursor:pointer;color:rgba(250,248,245,.6);transition:.15s}
+  .pbox.onn .pill{border-color:rgba(215,63,9,.6);color:#FAF8F5;background:rgba(215,63,9,.12)}
+  .pbox .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .pbox .row:last-child{border-bottom:none}
+  .pbox .row b{font-weight:600}
+  .pbox .row.hid{opacity:.35;text-decoration:line-through}
+
   .richbar{display:flex;gap:2px;margin-bottom:8px}
-  .richbar button{background:transparent;border:1px solid var(--line-2);color:#FAF8F5;border-radius:8px;
-    width:34px;height:30px;cursor:pointer;font:600 13px 'Inter'}
-  .richbar button:hover{border-color:rgba(250,248,245,.35)}
-
-  .typechips{display:flex;gap:8px;flex-wrap:wrap}
-  .tchip{padding:11px 16px;border-radius:999px;border:1px solid var(--line-2);cursor:pointer;font-size:13px;color:rgba(250,248,245,.6);transition:.15s}
-  .tchip:hover{color:#FAF8F5;border-color:rgba(250,248,245,.3)}
-  .tchip.on{background:rgba(215,63,9,.12);border-color:rgba(215,63,9,.6);color:#FAF8F5}
+  .richbar button{background:transparent;border:1px solid var(--line-2);color:#FAF8F5;border-radius:8px;width:34px;height:30px;cursor:pointer;font:600 13px 'Inter'}
+  .rich{min-height:150px;line-height:1.75;font-size:14.5px}
+  .rich p{margin-bottom:13px}
 
   .bar{position:fixed;left:150px;right:0;bottom:0;display:flex;align-items:center;gap:12px;
     padding:13px 44px;background:rgba(7,7,10,.82);backdrop-filter:blur(24px);border-top:1px solid var(--line);z-index:10}
   .bar .status{flex:1;text-align:center;font-size:12px;color:rgba(250,248,245,.92)}
   .bar .status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px}
 
-  @media (max-width:1000px){ .sidebar{display:none} .bar{left:0} .content{padding:28px 20px 150px} .step .t{display:none} .grid{grid-template-columns:1fr} }
+  @media (max-width:1200px){ .split{grid-template-columns:1fr} .preview{position:static;order:-1} }
+  @media (max-width:1000px){ .sidebar{display:none} .bar{left:0} .wrap{padding:28px 20px 150px} .step .t{display:none} .grid2,.ttiles,.pboxes{grid-template-columns:1fr 1fr} }
 </style>
 </head>
 <body>
@@ -102,7 +265,7 @@
   </aside>
 
   <main class="main">
-  <div class="content">
+  <div class="wrap">
 
     <div class="head">
       <div>
@@ -117,49 +280,118 @@
 
     <nav class="rail" id="rail"></nav>
 
-    <div class="grid">
+    <div class="split">
+      <!-- ══════════ FORM ══════════ -->
+      <div>
 
-      <div class="field">
-        <label>Display name</label>
-        <input type="text" value="Ghost Amp" spellcheck="false">
-        <div class="hint">Prints at the top of the recap at up to 150px — trademarked terms don't belong here.</div>
-      </div>
-
-      <div class="field">
-        <label>Hero lede</label>
-        <input type="text" value="" placeholder="Campaign recap — Product Seeding">
-        <div class="hint">The line under the title. Empty uses the placeholder shown.</div>
-      </div>
-
-      <div class="field">
-        <label>Brand</label>
-        <div class="brandrow">
-          <div class="brandlogo"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/2c10f2b9-36e1-4bfe-bcaa-ce81e09eda5d/brooks-white.svg" alt="Brooks"></div>
-          <input type="text" value="Brooks" spellcheck="false">
+        <div class="sec">
+          <div class="grid2">
+            <div class="field">
+              <label>Campaign name</label>
+              <input type="text" id="fName" value="Ghost Amp" spellcheck="false">
+            </div>
+            <div class="field">
+              <label>Hero lede</label>
+              <input type="text" id="fLede" value="" placeholder="Campaign Recap — 2026">
+            </div>
+            <div class="field">
+              <label>Quarter</label>
+              <input type="text" value="" placeholder="Q1 2026">
+            </div>
+            <div class="field">
+              <label>Campaign type</label>
+              <input type="text" value="Product Seeding">
+            </div>
+          </div>
         </div>
-        <div class="hint">Logo pulls from the brand kit automatically — this only changes the display name.</div>
-      </div>
 
-      <div class="field">
-        <label>Campaign type</label>
-        <div class="typechips">
-          <span class="tchip on">Product Seeding</span>
-          <span class="tchip">Content Campaign</span>
-          <span class="tchip">Event</span>
-          <span class="tchip">Ambassador</span>
+        <div class="sec">
+          <div class="slabel">Campaign metrics <span>toggle a tile — anything at 0 hides itself</span></div>
+          <div class="ttiles" id="tiles"></div>
         </div>
-        <div class="hint">Feeds the default hero lede and how the campaign is grouped on the recaps page.</div>
-      </div>
 
-      <div class="field full">
-        <label>Campaign overview</label>
-        <div class="richbar">
-          <button><b>B</b></button><button><i>I</i></button><button>••</button><button>¶</button>
+        <div class="sec">
+          <div class="slabel">Platform breakdown <span>toggle a box, click a row to hide that line — zeros hide themselves</span></div>
+          <div class="pboxes" id="pboxes"></div>
         </div>
-        <div class="rich" contenteditable spellcheck="false"><p>The Brooks Ghost Amp campaign activated 76 college athletes representing 69 universities across 7 sports, leveraging a mix of feed posts, Reels, and TikTok content to drive awareness and excitement around the launch. Collectively, the athlete roster represented a combined social following of 466.7K+ followers, providing Brooks with broad reach across key collegiate audiences in Track &amp; Field, Cross Country, Soccer, and other priority sports.</p><p>The campaign strategically aligned with Brooks' massive Ghost Amp influencer launch on August 1, when 70 athletes went live simultaneously to maximize share of voice around the product moment.</p></div>
-        <div class="warnline">Copy check — the overview says 69 universities · the roster counts 36 schools. Click to jump to the roster.</div>
+
+        <div class="sec">
+          <div class="slabel">Campaign actuals <span>actual spend and delivery — CPM calculates itself</span></div>
+          <div class="grid3">
+            <div class="field">
+              <label>Budget</label>
+              <div class="prefix" data-p="$"><input type="text" id="budget" value="" placeholder="25,000"></div>
+            </div>
+            <div class="field">
+              <label>Total impressions</label>
+              <input type="text" id="imprIn" value="348,831" spellcheck="false">
+            </div>
+            <div class="field">
+              <label>Actual CPM <em>auto</em></label>
+              <input type="text" id="cpm" value="" placeholder="— per 1K impressions" readonly>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="slabel">KPI targets <span>goals from the brief / SOW — the recap compares actual vs. target</span></div>
+          <div class="grid4">
+            <div class="field"><label>Athletes</label><input type="text" placeholder="e.g. 50"></div>
+            <div class="field"><label>Content units</label><input type="text" placeholder="e.g. 150"></div>
+            <div class="field"><label>Posts</label><input type="text" placeholder="e.g. 100"></div>
+            <div class="field"><label>Impressions</label><input type="text" placeholder="e.g. 500,000"></div>
+            <div class="field"><label>Engagements</label><input type="text" placeholder="e.g. 25,000"></div>
+            <div class="field"><label>Eng. rate %</label><input type="text" value="8"></div>
+            <div class="field"><label>CPM target ($)</label><input type="text" placeholder="e.g. 12"></div>
+            <div class="field"><label>Other KPIs</label><input type="text" placeholder="Reviews, click targets…"></div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="slabel">Campaign overview</div>
+          <div class="richbar">
+            <button><b>B</b></button><button><i>I</i></button><button>••</button><button>1.</button>
+          </div>
+          <div class="rich" id="fDesc" contenteditable spellcheck="false"><p>The Brooks Ghost Amp campaign activated 76 college athletes representing 69 universities across 7 sports, leveraging a mix of feed posts, Reels, and TikTok content to drive awareness and excitement around the launch. Collectively, the athlete roster represented a combined social following of 466.7K+ followers.</p><p>The campaign strategically aligned with Brooks' massive Ghost Amp influencer launch on August 1, when 70 athletes went live simultaneously to create a strong wave of social momentum and visibility around the product launch.</p></div>
+        </div>
+
       </div>
 
+      <!-- ══════════ LIVE PREVIEW ══════════ -->
+      <div class="preview">
+        <div class="pvhead"><span>Page preview</span>
+          <span class="devtoggle"><span class="on" data-d="desktop">Desktop</span><span data-d="mobile">Mobile</span></span>
+          <span class="live">● Live</span>
+          <span class="pvexpand" id="pvExpand" title="Expand">⤢ Expand</span></div>
+        <div class="pvbody">
+          <div class="pvstage" id="pvStage"><div class="pvscale" id="pvScale">
+            <div class="pvpage desktop" id="pvPage">
+              <div class="rp-nav">
+                <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/render/image/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png?width=400&quality=90&resize=contain" alt="Postgame">
+                <div class="rp-links"><span>Overview</span><span>Numbers</span><span>Performers</span><span>Content</span><span>Roster</span></div>
+              </div>
+              <div class="rp-hero">
+                <img class="rp-brand" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/2c10f2b9-36e1-4bfe-bcaa-ce81e09eda5d/brooks-white.svg" alt="Brooks">
+                <div class="rp-kick" id="pvLede">Campaign Recap · 2026</div>
+                <div class="rp-name" id="pvName">GHOST AMP</div>
+              </div>
+              <div class="rp-sec">
+                <div class="rp-skick">What we ran</div>
+                <div class="rp-sh">Overview</div>
+                <div class="rp-prose" id="pvDesc"></div>
+              </div>
+              <div class="rp-sec">
+                <div class="rp-skick">The results</div>
+                <div class="rp-sh">The Numbers</div>
+                <div id="pvFig"></div>
+                <div class="rp-band" id="pvBand"></div>
+                <div class="rp-split" id="pvSplit"></div>
+                <div class="rp-cards" id="pvCards"></div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -174,7 +406,8 @@
 </div>
 
 <script>
-const STEPS = ["Athletes","Overview","Hero","Takeaways","Metrics","Performers","Content","Sections"];
+/* rail — metrics toggles live on this page now, so the step is gone */
+const STEPS = ["Athletes","Overview","Hero","Performers","Content","Takeaways","Sections"];
 const rail = document.getElementById('rail');
 STEPS.forEach((s,i)=>{
   const el = document.createElement('div');
@@ -182,16 +415,175 @@ STEPS.forEach((s,i)=>{
   el.innerHTML = `<span class="n"></span><span class="t">${s}</span>`;
   rail.appendChild(el);
 });
-document.querySelectorAll('.tchip').forEach(c=>{
-  c.onclick = ()=>{ document.querySelectorAll('.tchip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); touch(); };
-});
+
+/* ─── real Ghost Amp figures (from the live editor's own calcs) ─── */
+const METRICS = [
+  {k:'athletes',   v:'76',     l:'Athletes',          on:true},
+  {k:'colleges',   v:'69',     l:'Colleges',          on:true},
+  {k:'sports',     v:'7',      l:'Sports',            on:true},
+  {k:'posts',      v:'228',    l:'Total posts',       on:true},
+  {k:'followers',  v:'466.7K', l:'Total followers',   on:true},
+  {k:'impr',       v:'348.8K', l:'Total impressions', on:true},
+  {k:'eng',        v:'35.9K',  l:'Total engagements', on:true},
+  {k:'igrate',     v:'8%',     l:'IG avg eng rate',   on:true},
+  {k:'ttrate',     v:'6%',     l:'TikTok avg eng rate',on:true},
+  {k:'clicks',     v:'0',      l:'Clicks',            on:false},
+  {k:'orders',     v:'0',      l:'Orders',            on:false},
+  {k:'sales',      v:'$0',     l:'Sales',             on:false},
+];
+const PLATFORMS = [
+  {k:'feed',  t:'IG Feed',    on:true,  rows:[['Total posts','76',true],['Impressions','0',true],['Likes','26.7K',true],['Total engagements','27.8K',true]]},
+  {k:'reels', t:'IG Reels',   on:true,  rows:[['Total posts','75',true],['Views','228.4K',true],['Likes','7.7K',true],['Total engagements','8K',true]]},
+  {k:'story', t:'IG Stories', on:true,  rows:[['Story count','76',true],['Total impressions','120K',true]]},
+  {k:'tt',    t:'TikTok',     on:true,  rows:[['Total posts','1',true],['Views','400',true],['Likes','23',true],['Total engagements','23',true]]},
+];
+
+/* rule: anything worth 0 is auto-hidden and can't be shown */
+const isZero = v => /^\$?0(\.0+)?%?$/.test(String(v).trim());
+
+/* ─── form renderers ─── */
+const tilesEl = document.getElementById('tiles');
+function renderTiles(){
+  tilesEl.innerHTML = '';
+  METRICS.forEach(m=>{
+    const zero = isZero(m.v);
+    if(zero) m.on = false;
+    const el = document.createElement('div');
+    el.className = 'ttile ' + (m.on?'on':'off') + (zero?' zero':'');
+    el.innerHTML = (zero?'<span class="az">0 · auto-hidden</span>':'<span class="sw"></span>')
+                 + `<div class="v">${m.v}</div><div class="l">${m.l}</div>`;
+    if(!zero) el.onclick = ()=>{ m.on = !m.on; renderTiles(); renderPreview(); touch(); };
+    tilesEl.appendChild(el);
+  });
+}
+const pboxEl = document.getElementById('pboxes');
+function renderPboxes(){
+  pboxEl.innerHTML = '';
+  PLATFORMS.forEach(p=>{
+    p.rows.forEach(r=>{ if(isZero(r[1])) r[2] = false; });
+    const allZero = p.rows.every(r=>isZero(r[1]));
+    if(allZero) p.on = false;
+    const el = document.createElement('div');
+    el.className = 'pbox ' + (p.on?'onn':'off');
+    let rows = p.rows.map((r,i)=>{
+      const z = isZero(r[1]);
+      return `<div class="row ${r[2]?'':'hid'} ${z?'zrow':''}" data-i="${i}"><span>${r[0]}${z?' <em class="az2">0 · auto-hidden</em>':''}</span><b>${r[1]}</b></div>`;
+    }).join('');
+    el.innerHTML = `<div class="pbh"><span class="t">${p.t}</span><span class="pill">${allZero?'Auto-hidden':(p.on?'Visible':'Hidden')}</span></div>${rows}`;
+    if(!allZero) el.querySelector('.pill').onclick = e=>{ e.stopPropagation(); p.on=!p.on; renderPboxes(); renderPreview(); touch(); };
+    el.querySelectorAll('.row').forEach(rEl=>{
+      const r = p.rows[+rEl.dataset.i];
+      if(!isZero(r[1])) rEl.onclick = ()=>{ r[2]=!r[2]; renderPboxes(); renderPreview(); touch(); };
+    });
+    pboxEl.appendChild(el);
+  });
+}
+
+/* ─── live preview ─── */
+function renderPreview(){
+  document.getElementById('pvName').textContent = (document.getElementById('fName').value || 'Campaign name').toUpperCase();
+  const lede = document.getElementById('fLede');
+  document.getElementById('pvLede').textContent = (lede.value.trim() || lede.placeholder).replace('—','·');
+  document.getElementById('pvDesc').innerHTML = document.getElementById('fDesc').innerHTML;
+
+  /* hero figure = impressions if on, else engagements, else followers */
+  const on = METRICS.filter(m=>m.on);
+  const heroPick = ['impr','eng','followers'].map(k=>on.find(m=>m.k===k)).find(Boolean);
+  document.getElementById('pvFig').innerHTML = heroPick ?
+    `<div class="rp-fig">${heroPick.v}</div><div class="rp-figl">${heroPick.l}</div><div class="rp-figrule"></div>` : '';
+
+  /* KPI band = every other enabled metric */
+  document.getElementById('pvBand').innerHTML = on.filter(m=>m!==heroPick)
+    .map(m=>`<div class="rp-kpi"><div class="v">${m.v}</div><div class="l">${m.l}</div></div>`).join('');
+
+  /* platform split: donut from visible platforms' delivery share */
+  const SHARE = {feed:0, reels:228449, story:119982, tt:400};
+  const COLORS = {feed:'rgba(250,248,245,.35)', reels:'#D73F09', story:'rgba(215,63,9,.45)', tt:'rgba(250,248,245,.15)'};
+  const NICE = {feed:'IG Feed', reels:'IG Reels', story:'IG Stories', tt:'TikTok'};
+  const vis = PLATFORMS.filter(p=>p.on && SHARE[p.k] > 0); /* zero-share platforms obey the auto-hide rule */
+  const tot = vis.reduce((s,p)=>s+SHARE[p.k],0);
+  if(tot>0 && vis.length){
+    let acc=0; const stops=[]; const rows=[];
+    vis.forEach(p=>{
+      const share = SHARE[p.k]/tot*100;
+      stops.push(`${COLORS[p.k]} ${acc}% ${acc+share}%`); acc+=share;
+      const disp = SHARE[p.k]>=1000 ? (SHARE[p.k]/1000).toFixed(1).replace('.0','')+'K' : SHARE[p.k];
+      rows.push(`<div class="rp-lrow"><span class="sw" style="background:${COLORS[p.k]}"></span><span class="pl">${NICE[p.k]}</span><span class="pv2">${disp}</span><span class="pp">${share<1&&share>0?'<1':Math.round(share)}%</span></div>`);
+    });
+    document.getElementById('pvSplit').innerHTML =
+      `<div class="rp-donut" style="background:conic-gradient(${stops.join(',')})"></div><div class="rp-leg">${rows.join('')}</div>`;
+  } else { document.getElementById('pvSplit').innerHTML = ''; }
+
+  /* platform breakdown cards — visible boxes only, hidden rows respected */
+  document.getElementById('pvCards').innerHTML = PLATFORMS.filter(p=>p.on).map(p=>
+    `<div class="rp-card"><div class="ch">${p.t}</div>` +
+    p.rows.filter(r=>r[2]).map(r=>`<div class="cr"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('') +
+    `</div>`).join('');
+}
+['fName','fLede'].forEach(id => document.getElementById(id).addEventListener('input', ()=>{ renderPreview(); touch(); }));
+document.getElementById('fDesc').addEventListener('input', ()=>{ renderPreview(); touch(); });
+
 function touch(){
   const st = document.getElementById('status');
   st.innerHTML = 'Unsaved changes';
   clearTimeout(window._t);
   window._t = setTimeout(()=>{ st.innerHTML = '<span class="dot"></span>Saved ' + new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }, 1600);
 }
-document.querySelectorAll('input, .rich').forEach(el=> el.addEventListener('input', touch));
+document.querySelectorAll('input').forEach(el=> el.addEventListener('input', touch));
+
+/* focus-follow: typing in a field highlights where it lands on the page */
+const FOCUS_MAP = [ ['fName','pvName'], ['fLede','pvLede'], ['fDesc','pvDesc'] ];
+FOCUS_MAP.forEach(([src,dst])=>{
+  const s = document.getElementById(src), d = document.getElementById(dst);
+  s.addEventListener('focus', ()=>{
+    d.classList.add('pv-hl');
+    d.scrollIntoView({block:'center', behavior:'smooth'});
+  });
+  s.addEventListener('blur', ()=> d.classList.remove('pv-hl'));
+});
+
+/* device toggle + scale-to-fit */
+let device = 'desktop';
+document.querySelectorAll('.devtoggle span').forEach(s=>{
+  s.onclick = ()=>{ document.querySelectorAll('.devtoggle span').forEach(x=>x.classList.remove('on'));
+    s.classList.add('on'); device = s.dataset.d;
+    const pg = document.getElementById('pvPage');
+    pg.className = 'pvpage ' + device;
+    fitPreview(); };
+});
+function fitPreview(){
+  const stage = document.getElementById('pvStage');
+  const scale = document.getElementById('pvScale');
+  const page  = document.getElementById('pvPage');
+  const avail = stage.parentElement.clientWidth - 2;
+  const pw = device==='desktop' ? 1280 : 390;
+  const s = Math.min(1, avail/pw);
+  scale.style.transform = `scale(${s})`;
+  scale.style.width = pw + 'px';
+  stage.style.width = Math.round(pw*s) + 'px';
+  stage.style.height = Math.round(page.offsetHeight*s) + 'px';
+}
+window.addEventListener('resize', fitPreview);
+document.getElementById('pvExpand').onclick = ()=>{
+  document.body.classList.toggle('pvfull');
+  document.getElementById('pvExpand').textContent = document.body.classList.contains('pvfull') ? '✕ Close' : '⤢ Expand';
+  requestAnimationFrame(fitPreview);
+};
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && document.body.classList.contains('pvfull')) document.getElementById('pvExpand').click(); });
+const _rp = renderPreview;
+renderPreview = function(){ _rp(); requestAnimationFrame(fitPreview); };
+
+/* live CPM */
+const money = s => { const v = parseFloat((s||'').replace(/[^0-9.]/g,'')); return isNaN(v)?null:v; };
+function calcCPM(){
+  const b = money(document.getElementById('budget').value);
+  const i = money(document.getElementById('imprIn').value);
+  document.getElementById('cpm').value = (b && i) ? '$' + (b/(i/1000)).toFixed(2) + ' per 1K impressions' : '';
+}
+['budget','imprIn'].forEach(id => document.getElementById(id).addEventListener('input', ()=>{ calcCPM(); touch(); }));
+calcCPM();
+
+renderTiles(); renderPboxes(); renderPreview();
 </script>
 </body>
 </html>
