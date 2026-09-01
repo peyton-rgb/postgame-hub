@@ -56,7 +56,7 @@ is reading real brand ink rather than compression noise.
 
 ## What to write
 
-Storage: follow the existing convention for the other 309 rows (Supabase Storage), and
+Storage: follow the existing convention for the other 374 rows (Supabase Storage), and
 put a copy in the brand's Drive folder `1uZ2QUb3GZOk-wuMQJup9abIa5I-l3RW5`.
 
 Three `brand_logos` rows, all `variant = 'on_white'` — every file is dark ink for a light
@@ -149,8 +149,10 @@ Promoting it is one `UPDATE` — nothing needs re-downloading.
   up; widening it without teaching the resolver to choose converts a clean failure into an
   intermittent one.
 - *File BBQ Brown as `kind='mono'`.* The only `mono` row in the table is Allstate,
-  `source: "quarantine record 2026-08-24"`, every measurement null. `mono` is where an
-  unusable record was parked, not a colourway slot.
+  `source: "quarantine record 2026-08-24"`, every measurement null — and it also carries
+  `dated: true` with `reject_reason: "DATED - do not use. Kept so backfills from
+  logo_primary_url do not silently reintroduce it."` `mono` is where an unusable record was
+  deliberately parked to block its own re-import, not a colourway slot.
 
 ## Deliberately still missing
 
@@ -162,6 +164,13 @@ from artwork, not stated by the brand. `kit_status`: `placeholder`.
 `/logos-fonts` child: it is verbatim what the client wrote in their campaign brief, and the
 parent covers future harvests of menu and restaurant imagery. Page-level provenance lives in
 each row's `source`.
+
+## Correction to this brief
+
+An earlier revision said "the other 309 rows." The table held **374** before this ingest.
+The 309 figure was quoted from `SESSION-ADDENDUM-2026-08-26.md` rather than counted — it was
+already 65 rows stale when it was read. Corrected above. The lesson is the project's own
+standing rule: run the SELECT, do not quote the doc.
 
 ## The client ask — unchanged, plus one
 
