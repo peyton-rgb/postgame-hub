@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recap Builder — Step 1 · Athletes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Arimo:wght@400;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#07070A; --orange:#D73F09; --white:#FAF8F5;
+    --ink-90:rgba(250,248,245,.9); --ink-68:rgba(250,248,245,.68); --ink-50:rgba(250,248,245,.5); --ink-30:rgba(250,248,245,.3);
+    --card:rgba(250,248,245,.04); --card-bd:rgba(250,248,245,.10);
+    --raised:rgba(250,248,245,.07); --raised-bd:rgba(250,248,245,.14);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--black);color:var(--ink-68);font:16px/1.6 'Arimo',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  ::selection{background:rgba(215,63,9,.4)}
+
+  /* ---- dashboard shell (context only) ---- */
+  .shell{display:flex;min-height:100vh}
+  .sidebar{width:156px;flex:none;border-right:1px solid rgba(250,248,245,.06);padding:18px 14px;position:sticky;top:0;height:100vh;opacity:.55}
+  .sidebar .mark{font-family:'Bebas Neue';font-size:22px;color:var(--white);letter-spacing:.04em;margin-bottom:26px}
+  .sidebar .mark em{color:var(--orange);font-style:normal}
+  .sidebar .grp{font:500 9px/1 'JetBrains Mono';letter-spacing:.14em;color:var(--ink-30);text-transform:uppercase;margin:18px 0 10px;border-left:2px solid rgba(215,63,9,.5);padding-left:6px}
+  .sidebar a{display:block;font-size:12.5px;color:var(--ink-50);text-decoration:none;padding:5px 0}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .content{flex:1;max-width:1180px;width:100%;margin:0 auto;padding:34px 40px 140px}
+
+  /* ---- page head ---- */
+  .kicker{font:500 11px/1 'JetBrains Mono';letter-spacing:.22em;color:var(--orange);text-transform:uppercase}
+  h1{font-family:'Bebas Neue';font-size:44px;line-height:.98;color:var(--white);letter-spacing:.01em;margin:8px 0 4px}
+  .meta{font-size:14px;color:var(--ink-50)}
+  .meta b{color:var(--ink-68);font-weight:400}
+
+  /* ---- step rail ---- */
+  .rail{display:flex;gap:6px;margin:26px 0 30px;flex-wrap:wrap}
+  .step{display:flex;align-items:center;gap:8px;padding:9px 14px 9px 10px;border-radius:999px;
+    background:var(--card);border:1px solid var(--card-bd);cursor:pointer;user-select:none;transition:.15s}
+  .step:hover{background:var(--raised)}
+  .step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+    font:500 10px 'JetBrains Mono';color:var(--ink-50);border:1px solid var(--card-bd)}
+  .step .t{font:500 10.5px 'JetBrains Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50)}
+  .step.active{background:rgba(215,63,9,.12);border-color:rgba(215,63,9,.55)}
+  .step.active .n{background:var(--orange);border-color:var(--orange);color:var(--white)}
+  .step.active .t{color:var(--white)}
+  .step.done .n{border-color:rgba(215,63,9,.5);color:var(--orange)}
+
+  /* ---- cards ---- */
+  .card{background:var(--card);border:1px solid var(--card-bd);border-radius:16px;padding:24px 26px;margin-bottom:20px}
+  .card h2{font:700 17px/1.2 'Arimo';letter-spacing:.06em;text-transform:uppercase;color:var(--white);margin-bottom:4px}
+  .card .sub{font-size:14px;color:var(--ink-50);margin-bottom:18px}
+
+  /* ---- tracker connect row ---- */
+  .connect{display:flex;gap:10px;align-items:center}
+  .connect input{flex:1;background:rgba(250,248,245,.05);border:1px solid var(--card-bd);border-radius:12px;
+    padding:12px 14px;color:var(--white);font:14px 'Arimo';outline:none}
+  .connect input::placeholder{color:var(--ink-30)}
+  .connect input:focus{border-color:rgba(215,63,9,.55)}
+  .btn{border:none;cursor:pointer;border-radius:12px;padding:12px 18px;font:500 11px 'JetBrains Mono';
+    letter-spacing:.14em;text-transform:uppercase;transition:.15s;white-space:nowrap}
+  .btn.primary{background:var(--orange);color:var(--white)}
+  .btn.primary:hover{filter:brightness(1.12)}
+  .btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--ink-68)}
+  .btn.ghost:hover{color:var(--white);background:rgba(255,255,255,.09)}
+  .btn:disabled{opacity:.35;cursor:default}
+  .synced{display:flex;align-items:center;gap:14px;margin-top:12px;font:500 10.5px 'JetBrains Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--ink-50)}
+  .synced .dot{width:7px;height:7px;border-radius:50%;background:var(--orange)}
+  .synced a{color:var(--ink-50)}
+
+  /* ---- health chips ---- */
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .chip{font:500 10px 'JetBrains Mono';letter-spacing:.1em;text-transform:uppercase;
+    padding:6px 11px;border-radius:999px;background:var(--raised);border:1px solid var(--raised-bd);color:var(--ink-68)}
+  .chip.warn{border-color:rgba(215,63,9,.5);color:#FF8A5C;background:rgba(215,63,9,.08)}
+
+  /* ---- roster table ---- */
+  .tablewrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;font-variant-numeric:tabular-nums}
+  thead th{font:500 10px 'JetBrains Mono';letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50);
+    text-align:left;padding:0 14px 12px 0;border-bottom:1px solid var(--card-bd);white-space:nowrap;cursor:pointer;user-select:none}
+  thead th.num,td.num{text-align:right}
+  thead th .arr{color:var(--ink-30);font-size:9px;margin-left:4px}
+  thead th.sorted{color:var(--orange)} thead th.sorted .arr{color:var(--orange)}
+  tbody td{padding:11px 14px 11px 0;border-bottom:1px solid rgba(250,248,245,.06);color:var(--ink-68);white-space:nowrap}
+  tbody tr:hover{background:rgba(250,248,245,.025)}
+  td.name{color:var(--white);font-weight:700}
+  td .sch{color:var(--ink-50)}
+  td a.handle{color:var(--ink-50);text-decoration:none}
+  td a.handle:hover{color:var(--orange)}
+  td[contenteditable]:focus{outline:1px solid rgba(215,63,9,.6);outline-offset:2px;border-radius:4px;background:rgba(215,63,9,.06)}
+  td .dash{color:var(--ink-30)}
+  td .link{color:var(--orange);text-decoration:none;font:500 10px 'JetBrains Mono';letter-spacing:.08em}
+  td .link.off{color:var(--ink-30)}
+  td .rm{visibility:hidden;color:var(--ink-30);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:6px}
+  tbody tr:hover .rm{visibility:visible}
+  td .rm:hover{color:#FF8A5C;background:rgba(215,63,9,.1)}
+  .tfoot{display:flex;justify-content:space-between;align-items:center;padding-top:16px}
+  .morerows{font:500 10.5px 'JetBrains Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--ink-30)}
+
+  /* ---- footer bar ---- */
+  .bar{position:fixed;left:156px;right:0;bottom:0;display:flex;align-items:center;gap:14px;
+    padding:14px 40px;background:rgba(7,7,10,.86);backdrop-filter:blur(26px);border-top:1px solid rgba(250,248,245,.08);z-index:10}
+  .bar .status{flex:1;text-align:center;font:500 10.5px 'JetBrains Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50)}
+  .bar .status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:1px}
+
+  @media (max-width:1000px){ .sidebar{display:none} .bar{left:0} .content{padding:24px 20px 140px} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- dashboard sidebar: context only, unchanged by this build -->
+  <aside class="sidebar">
+    <img class="mark" src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/render/image/public/campaign-media/brand-kits/1774632094358-hv0c0rmo.png?width=280&quality=90&resize=contain" alt="Postgame" style="width:112px;display:block">
+    <div class="grp">Daily work</div>
+    <a>Campaign dashboard</a><a>Campaigns</a><a>Brands</a><a>Media library</a>
+    <div class="grp">Send to brand</div>
+    <a style="color:var(--white)">Recaps</a><a>Brand portals</a><a>Asset packages</a>
+  </aside>
+
+  <main class="main">
+  <div class="content">
+
+    <div class="kicker">Recap Builder</div>
+    <h1>GHOST AMP</h1>
+    <div class="meta"><b>Brooks</b> · 76 athletes · 102 assets · Published</div>
+
+    <!-- step rail -->
+    <nav class="rail" id="rail"></nav>
+
+    <!-- tracker source -->
+    <section class="card">
+      <h2>Tracker Sheet</h2>
+      <div class="sub">The roster reads from the campaign's tracker. Paste the sheet link, then Resync any time the sheet changes — edits made below stay put.</div>
+      <div class="connect">
+        <input type="text" value="https://docs.google.com/spreadsheets/d/1kQ…GhostAMP-tracker" spellcheck="false">
+        <button class="btn ghost">Open sheet ↗</button>
+        <button class="btn primary" onclick="resync(this)">Resync</button>
+      </div>
+      <div class="synced"><span class="dot"></span><span id="syncmsg">Last synced today, 2:14 PM · 76 rows matched, 0 new</span></div>
+    </section>
+
+    <!-- roster -->
+    <section class="card">
+      <h2>Campaign Roster</h2>
+      <div class="sub">Every section downstream reads from this list — metrics, performers, gallery, and the public roster table. Click any cell to edit. Sort by clicking a column.</div>
+
+      <div class="chips">
+        <span class="chip">76 athletes</span>
+        <span class="chip">36 schools</span>
+        <span class="chip warn">3 missing reel metrics</span>
+        <span class="chip warn">2 possible duplicates — review</span>
+      </div>
+
+      <div class="tablewrap" style="margin-top:18px">
+      <table id="roster">
+        <thead><tr>
+          <th>Athlete</th><th>School</th><th>Sport</th><th>IG Handle</th>
+          <th class="num sorted">Followers <span class="arr">▼</span></th>
+          <th class="num">Feed Eng <span class="arr">▼</span></th>
+          <th class="num">Reel Views <span class="arr">▼</span></th>
+          <th>Feed</th><th>Reel</th><th></th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="name" contenteditable>Ethan Cook</td><td class="sch" contenteditable>Albany State University</td><td contenteditable>Soccer</td><td><a class="handle" href="#">@cooket5training</a></td><td class="num" contenteditable>130,098</td><td class="num" contenteditable>319</td><td class="num" contenteditable>7,811</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm" title="Remove">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Andi Vanmeter</td><td class="sch" contenteditable>Florida Atlantic</td><td contenteditable>Cross Country</td><td><a class="handle" href="#">@andi.renay</a></td><td class="num" contenteditable>100,000</td><td class="num" contenteditable>11,549</td><td class="num" contenteditable>39,000</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Emily Pierce</td><td class="sch" contenteditable>Campbell University</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@empierce</a></td><td class="num" contenteditable>23,206</td><td class="num" contenteditable>515</td><td class="num" contenteditable>7,836</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Sophine Kevorkian</td><td class="sch" contenteditable>Louisiana State University</td><td contenteditable>Soccer</td><td><a class="handle" href="#">@sophinekevorkian</a></td><td class="num" contenteditable>17,561</td><td class="num" contenteditable>775</td><td class="num" contenteditable>6,500</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Christian Weddington</td><td class="sch" contenteditable>Fordham University</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@christianweddington</a></td><td class="num" contenteditable>14,912</td><td class="num" contenteditable>172</td><td class="num" contenteditable>1,808</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Yamina Numan</td><td class="sch" contenteditable>St. Thomas University</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@yaminaaa.a</a></td><td class="num" contenteditable>9,221</td><td class="num" contenteditable>103</td><td class="num" contenteditable>801</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Ali Bainbridge</td><td class="sch" contenteditable>University of Nebraska</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@ali_bainbridge2</a></td><td class="num" contenteditable>8,911</td><td class="num" contenteditable>490</td><td class="num" contenteditable>4,117</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Mary Mclaughlin</td><td class="sch" contenteditable>Vanderbilt University</td><td contenteditable>Soccer</td><td><a class="handle" href="#">@marybethmclll</a></td><td class="num" contenteditable>7,607</td><td class="num" contenteditable>399</td><td class="num"><span class="dash">—</span></td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Kailey Obrien</td><td class="sch" contenteditable>Loyola Marymount University</td><td contenteditable>Cross Country</td><td><a class="handle" href="#">@kailey0brien</a></td><td class="num" contenteditable>6,667</td><td class="num" contenteditable>369</td><td class="num" contenteditable>12,700</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Malachi Barendilla</td><td class="sch" contenteditable>Texas A&amp;M – Kingsville</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@malachi_barendilla</a></td><td class="num" contenteditable>6,512</td><td class="num"><span class="dash">—</span></td><td class="num" contenteditable>435</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Lauren Lewis</td><td class="sch" contenteditable>University of South Carolina</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@laurenlewistrack</a></td><td class="num" contenteditable>5,943</td><td class="num" contenteditable>602</td><td class="num" contenteditable>3,860</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+          <tr><td class="name" contenteditable>Jordon Bray</td><td class="sch" contenteditable>University of Alabama</td><td contenteditable>Track &amp; Field</td><td><a class="handle" href="#">@zoo_bray</a></td><td class="num" contenteditable>5,890</td><td class="num" contenteditable>315</td><td class="num" contenteditable>4,000</td><td><a class="link" href="#">POST ↗</a></td><td><a class="link" href="#">REEL ↗</a></td><td><span class="rm">✕</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="tfoot">
+        <button class="btn ghost">+ Add athlete</button>
+        <span class="morerows">Showing 12 of 76 — scroll continues in the real page</span>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- wizard footer -->
+  <div class="bar">
+    <button class="btn ghost" disabled>← Back</button>
+    <div class="status"><span class="dot"></span>All changes saved · 2:31 PM</div>
+    <button class="btn ghost">Save</button>
+    <button class="btn primary">Next · Campaign Overview →</button>
+  </div>
+  </main>
+</div>
+
+<script>
+  const STEPS = ["Athletes","Overview","Hero","Takeaways","Metrics","Performers","Content","Sections"];
+  const rail = document.getElementById('rail');
+  STEPS.forEach((s,i)=>{
+    const el = document.createElement('div');
+    el.className = 'step' + (i===0?' active':'');
+    el.innerHTML = `<span class="n">${i+1}</span><span class="t">${s}</span>`;
+    rail.appendChild(el);
+  });
+  function resync(btn){
+    btn.textContent = 'Syncing…'; btn.disabled = true;
+    setTimeout(()=>{ btn.textContent='Resync'; btn.disabled=false;
+      document.getElementById('syncmsg').textContent = 'Last synced just now · 76 rows matched, 0 new';
+    }, 900);
+  }
+  // demo edit → status flip
+  document.querySelectorAll('[contenteditable]').forEach(td=>{
+    td.addEventListener('input',()=>{
+      const st = document.querySelector('.bar .status');
+      st.innerHTML = 'Unsaved changes';
+      clearTimeout(window._t);
+      window._t = setTimeout(()=>{ st.innerHTML = '<span class="dot"></span>Saved ' + new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }, 1600);
+    });
+  });
+</script>
+</body>
+</html>
