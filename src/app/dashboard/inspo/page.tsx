@@ -251,12 +251,20 @@ export default function InspoLibraryPage() {
               {total} asset{total !== 1 ? 's' : ''} in the Creative Brain
             </p>
           </div>
-          <a
-            href="/dashboard/intake"
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
-          >
-            + Upload New
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="/dashboard/inspo/triage"
+              className="px-4 py-2 border border-[#D73F09]/40 bg-[#D73F09]/10 hover:bg-[#D73F09]/20 text-[#ff6a38] rounded-lg text-sm transition-colors flex items-center gap-1.5"
+            >
+              <span>⚡ Triage Pending</span>
+            </a>
+            <a
+              href="/dashboard/intake"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+            >
+              + Upload New
+            </a>
+          </div>
         </div>
 
         {/* Search bar */}

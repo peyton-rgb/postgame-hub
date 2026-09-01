@@ -120,6 +120,7 @@ export const DASHBOARD_NAV: NavSection[] = [
       // Phase 3 of the content review pipeline.
       { name: "AI editing", href: "/dashboard/ai-editing", icon: "wand", hidden: true },
       { name: "Inspo library", href: "/dashboard/inspo", icon: "inspo" },
+      { name: "Inspo triage", href: "/dashboard/inspo/triage", icon: "inspo" },
       // Built, not yet wired to data. Route stays live for bookmarks.
       { name: "Publishing", href: "/dashboard/publishing", icon: "calendar", hidden: true },
       { name: "Composer", href: "/dashboard/composer", icon: "grid", hidden: true },
