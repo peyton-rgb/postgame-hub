@@ -16,31 +16,24 @@
 //                Kailey 14,458 · Emily 13,705 · Sophine 10,941
 //
 // NOTE ON REEL ENGAGEMENTS. Reel engagements are
-// likes + comments + reposts + shares. Dropping reposts (as
-// builder-01's simpler reelEng does) puts Pierce Graber at 803
-// and Lauren Lewis at 753 — one and five short of the recorded
-// figures. The stored ig_reel.total_engagements agrees with the
-// version used here, so this is the correct formula and
-// builder-01's is the incomplete one. See the note in
-// athletes/metrics.ts.
+// likes + comments + reposts + shares, shared from
+// athletes/metrics.ts. Dropping reposts (as builder-01 did) puts
+// Pierce Graber at 803 and Lauren Lewis at 753 — one and five
+// short of the recorded figures. The stored
+// ig_reel.total_engagements is canonical and agrees with the
+// formula used here.
 // ============================================================
 
-import type { BuilderAthlete } from '../athletes/metrics';
+import { feedEng, reelEng, type BuilderAthlete } from '../athletes/metrics';
 
 export type Basis = 'eng' | 'impr';
 
 const n = (v: number | null | undefined): number => v ?? 0;
 
-/** Feed engagements: likes + comments + reposts. */
-export const feedEngagements = (a: BuilderAthlete): number =>
-  n(a.metrics?.ig_feed?.likes) + n(a.metrics?.ig_feed?.comments) + n(a.metrics?.ig_feed?.reposts);
-
-/** Reel engagements: likes + comments + reposts + shares. */
-export const reelEngagements = (a: BuilderAthlete): number =>
-  n(a.metrics?.ig_reel?.likes) +
-  n(a.metrics?.ig_reel?.comments) +
-  n(a.metrics?.ig_reel?.reposts) +
-  n(a.metrics?.ig_reel?.shares);
+/* Engagement definitions are shared with the Athletes grid and the Overview
+   platform breakdown — one definition, so every surface agrees. */
+export const feedEngagements = feedEng;
+export const reelEngagements = reelEng;
 
 /** Feed impressions — absent from this dataset, kept so the formula reads whole. */
 export const feedImpressions = (a: BuilderAthlete): number => n(a.metrics?.ig_feed?.impressions);

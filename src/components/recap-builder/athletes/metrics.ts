@@ -84,14 +84,20 @@ const n = (v: number | null | undefined): number => v ?? 0;
 export const feedEng = (a: BuilderAthlete): number =>
   n(a.metrics?.ig_feed?.likes) + n(a.metrics?.ig_feed?.comments) + n(a.metrics?.ig_feed?.reposts);
 
-// NOTE: builder-01 computes reel engagements as likes + comments only, and
-// that is what this grid column shows, matching the prototype. The ranking in
-// performers/ranking.ts adds reposts + shares, which is what the stored
-// ig_reel.total_engagements and the handoff's recorded top fives agree with.
-// The two differ for athletes with reel reposts (e.g. Lauren Lewis: 151 here,
-// 156 there). Flagged for a decision — see the Phase 5 report.
+// Reel engagements: likes + comments + reposts + shares.
+//
+// builder-01 computes this as likes + comments only. That is a bug in the
+// prototype, not a design choice: the stored ig_reel.total_engagements
+// includes reposts, and so do the handoff's recorded top fives (Lauren Lewis
+// 758, not 753). The DB definition is canonical, so every surface — this
+// grid, the Overview platform breakdown, and the Performers ranking — uses
+// the formula below. performers/ranking.ts re-exports it rather than
+// keeping a second copy.
 export const reelEng = (a: BuilderAthlete): number =>
-  n(a.metrics?.ig_reel?.likes) + n(a.metrics?.ig_reel?.comments);
+  n(a.metrics?.ig_reel?.likes) +
+  n(a.metrics?.ig_reel?.comments) +
+  n(a.metrics?.ig_reel?.reposts) +
+  n(a.metrics?.ig_reel?.shares);
 
 export const ttEng = (a: BuilderAthlete): number | null =>
   a.metrics?.tiktok ? n(a.metrics.tiktok.likes) + n(a.metrics.tiktok.comments) : null;
@@ -143,6 +149,8 @@ export function campaignTotals(rows: BuilderAthlete[]) {
       views: sum((a) => n(a.metrics?.ig_reel?.views)),
       likes: sum((a) => n(a.metrics?.ig_reel?.likes)),
       comments: sum((a) => n(a.metrics?.ig_reel?.comments)),
+      reposts: sum((a) => n(a.metrics?.ig_reel?.reposts)),
+      shares: sum((a) => n(a.metrics?.ig_reel?.shares)),
       eng: sum(reelEng),
     },
     tt: {

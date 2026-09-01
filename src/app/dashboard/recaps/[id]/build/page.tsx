@@ -30,6 +30,7 @@ import AthletesStep from '@/components/recap-builder/athletes/AthletesStep';
 import OverviewStep from '@/components/recap-builder/overview/OverviewStep';
 import HeroStep from '@/components/recap-builder/hero/HeroStep';
 import PerformersStep from '@/components/recap-builder/performers/PerformersStep';
+import StepStub from '@/components/recap-builder/StepStub';
 import './athletes-step.css';
 import './overview-step.css';
 import './hero-step.css';
@@ -150,10 +151,7 @@ function RecapBuilder() {
               ) : active === 3 && recapId ? (
                 <PerformersStep recapId={recapId} onTouch={touch} onPreviewChange={setPreview} />
               ) : (
-                /* Content / Takeaways / Sections stubs land in phase 6. */
-                <p style={{ color: 'rgba(250,248,245,.45)', fontSize: 13 }}>
-                  {STEPS[active]} — designed next, in-app.
-                </p>
+                <StepStub step={STEPS[active]} />
               )}
             </div>
 
