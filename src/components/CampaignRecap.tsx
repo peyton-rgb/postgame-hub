@@ -1882,6 +1882,14 @@ export function CampaignRecap({
               const collabEntries: GalleryEntry[] = collabGroups
                 .map((g) => ({ kind: "collab" as const, group: g, items: collabMediaItems(g) }))
                 .filter(({ items }) => {
+                  // No content → no card, same rule the solo path applies in
+                  // `filtered` above and the one deriveContainerCollab already
+                  // enforces for container-derived groups (collab-reconcile.ts).
+                  // Without it a tracker-detected collab with nothing uploaded
+                  // yet renders an empty "No media" tile on a client-facing
+                  // recap. Discovering those is the COLLAB POSTS step's job in
+                  // the editor, which reads collabCardData and still lists them.
+                  if (items.length === 0) return false;
                   if (filter === "all") return true;
                   if (filter === "photo") return items.some((m) => m.type === "image");
                   return items.some((m) => m.type === "video");
