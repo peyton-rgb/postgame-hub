@@ -2177,6 +2177,11 @@ export function CampaignRecap({
             // divider keep plain headers: their rows are one collab post's
             // participants and stay in their given order.
             const hasAnySport = showCol("sport") && fullRoster.some(a => (a.sport ?? "").trim() !== "");
+            // Sport is matched and sorted case-folded (the data mixes "Baseball"
+            // and "BASEBALL"), but the folded key is shouty to read in a filter
+            // list, so it is title-cased for display only.
+            const titleCaseSport = (v: string) =>
+              v.toLowerCase().replace(/(^|[\s&/-])([a-z])/g, (_m, pre, ch) => pre + ch.toUpperCase());
             const filterableCols = { month: hasAnyMonth, sport: hasAnySport } as const;
 
             const openFilterPanel = (key: "month" | "sport", el: HTMLElement) => {
@@ -2204,7 +2209,11 @@ export function CampaignRecap({
                   key === "month" ? { month: x } : { sport: x },
                   key === "month" ? { month: y } : { sport: y },
                 ))
-                .map((value) => ({ value, count: counts[value] }));
+                .map((value) => ({
+                  value,                                                   // matching key (folded)
+                  label: key === "sport" ? titleCaseSport(value) : value,  // display only
+                  count: counts[value],
+                }));
             };
 
             const thBase = "px-3 py-3 text-[10px] font-bold uppercase tracking-wider";
@@ -2550,7 +2559,7 @@ export function CampaignRecap({
                   }));
 
             // Never let a filtered roster read as the full one.
-            const filterSummary = [...rosterFilters.month, ...rosterFilters.sport].join(", ");
+            const filterSummary = [...rosterFilters.month, ...rosterFilters.sport.map(titleCaseSport)].join(", ");
             const countLine = rosterFilterActive ? (
               <div className="mt-4 text-xs text-white/50">
                 Showing <span className="font-bold text-[#FAF8F5]">{rosterRows.length}</span> of {rosterAthletes.length}
@@ -2638,7 +2647,7 @@ export function CampaignRecap({
                 style={{ position: "fixed", left: filterAnchor.left, top: filterAnchor.top, zIndex: 60 }}
                 className="min-w-[190px] max-h-[320px] overflow-y-auto rounded-lg border border-white/[0.15] bg-[#161618] shadow-xl p-1.5"
               >
-                {filterOptions(openFilter).map(({ value, count }) => {
+                {filterOptions(openFilter).map(({ value, label, count }) => {
                   const checked = rosterFilters[openFilter].includes(value);
                   return (
                     <label key={value} className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-white/[0.06]">
@@ -2648,7 +2657,7 @@ export function CampaignRecap({
                         onChange={() => toggleRosterFilterValue(openFilter, value)}
                         className="accent-[#D73F09]"
                       />
-                      <span className={`flex-1 text-xs ${checked ? "text-[#FAF8F5]" : "text-white/70"}`}>{value}</span>
+                      <span className={`flex-1 text-xs ${checked ? "text-[#FAF8F5]" : "text-white/70"}`}>{label}</span>
                       <span className="text-[10px] text-white/35">{count}</span>
                     </label>
                   );
