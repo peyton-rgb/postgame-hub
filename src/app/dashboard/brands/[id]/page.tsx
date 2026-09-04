@@ -293,7 +293,18 @@ export default function BrandKitEditorPage() {
       logo_dark_url: logoDark,
       logo_light_url: logoLight,
       logo_mark_url: logoMark,
-      logo_url: logoPrimary || brand.logo_url,
+      // logo_url is WRITE-FROZEN here, pending the brand_logos /
+      // resolveBrandLogo migration. It used to be written as
+      // `logoPrimary || brand.logo_url`, which only updated when Primary was
+      // non-empty — so clearing Primary left logo_url on a stale file and the
+      // two ratcheted apart. 31 of 132 brands now hold a legitimately
+      // DIFFERENT ink in logo_url than in logo_primary_url (adidas, Crocs,
+      // Heydude and Tylenol among them), and logo_url is what athlete-deals,
+      // payouts and athlete-deliverables read FIRST. Mirroring it to Primary
+      // would destroy that value on the next unrelated save of those brands,
+      // so this form no longer touches the column at all. Reconcile the 31
+      // deliberately before anything writes it again — see
+      // claude_LOGO-COLUMN-MAP.md §2.1 and §5.
       website: website || null,
       primary_color: primaryColor,
       secondary_color: secondaryColor,
