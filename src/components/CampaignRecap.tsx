@@ -2535,7 +2535,19 @@ export function CampaignRecap({
                   <span className="text-sm font-black text-white/45 w-6 text-right">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-black uppercase">{a.name}</div>
-                    <div className="text-xs text-white/70">{a.school} &middot; {a.sport}</div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/70">
+                      {/* The 50% floor makes the Month pill wrap to its own line on narrow
+                          phones rather than crushing the school text down to ~36px. Kept as a
+                          percentage so it can never overflow the meta line the way a fixed rem
+                          floor does at 320px; with no pill the span is the only flex child and
+                          fills the line regardless. */}
+                      <span className="min-w-[50%] flex-1">{a.school} &middot; {a.sport}</span>
+                      {showCol("month") && hasAnyMonth && a.month ? (
+                        <span className="ml-auto inline-block flex-shrink-0 whitespace-nowrap rounded-full border border-[#D73F09]/50 bg-[#D73F09]/10 px-2 py-0.5 text-[11px] text-[#FAF8F5]">
+                          {a.month}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     {showCol("ig_followers") && hasAnyFollowers && <div className="text-sm font-bold text-white/70">{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</div>}
