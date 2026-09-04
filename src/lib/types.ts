@@ -264,6 +264,10 @@ export interface Athlete {
   content_rating?: string;
   reach_level?: string;
   notes?: string;
+  /** Participation month, e.g. "December" or "October, January". Only populated
+   *  for always-on campaigns; NULL everywhere else, which is what keeps the
+   *  roster's Month column structurally absent on every other recap. */
+  month?: string | null;
   metrics?: AthleteMetrics;
 }
 

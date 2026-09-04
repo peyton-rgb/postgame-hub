@@ -2015,6 +2015,11 @@ export function CampaignRecap({
             const hasAnyFeedUrl = fullRoster.some(a => a.metrics?.ig_feed?.post_url);
             const hasAnyReelUrl = fullRoster.some(a => a.metrics?.ig_reel?.post_url);
             const hasAnyFollowers = fullRoster.some(a => a.ig_followers && a.ig_followers > 0);
+            // Month is an always-on-campaign concept: only Hydro Flask "Always-On"
+            // has athletes.month populated. showCol() is opt-out (hidden_columns),
+            // so it returns true everywhere — hasAnyMonth is what keeps the column
+            // structurally absent from the other recaps.
+            const hasAnyMonth = fullRoster.some(a => (a.month ?? "").trim() !== "");
             const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
             const collabBracketTitle = (group: CollabGroup) => {
@@ -2056,16 +2061,17 @@ export function CampaignRecap({
               <colgroup>
                 <col style={{ width: "4%" }} />
                 <col style={{ width: "14%" }} />
-                {showCol("school") && <col style={{ width: "21%" }} />}
-                {showCol("sport") && <col style={{ width: "10%" }} />}
-                {showCol("ig_handle") && <col style={{ width: "15%" }} />}
-                {showCol("ig_followers") && hasAnyFollowers && <col style={{ width: "8%" }} />}
-                {showCol("ig_feed_impressions") && hasAnyImpressions && <col style={{ width: "8%" }} />}
-                {showCol("ig_feed_total") && hasAnyEngagements && <col style={{ width: "8%" }} />}
+                {showCol("school") && <col style={{ width: "16%" }} />}
+                {showCol("sport") && <col style={{ width: "8%" }} />}
+                {showCol("ig_handle") && <col style={{ width: "11%" }} />}
+                {showCol("ig_followers") && hasAnyFollowers && <col style={{ width: "7%" }} />}
+                {showCol("ig_feed_impressions") && hasAnyImpressions && <col style={{ width: "7%" }} />}
+                {showCol("ig_feed_total") && hasAnyEngagements && <col style={{ width: "7%" }} />}
                 {showCol("ig_feed_rate") && hasAnyEngRate && <col style={{ width: "7%" }} />}
                 {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <col style={{ width: "6%" }} />}
                 {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <col style={{ width: "6%" }} />}
                 {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <col style={{ width: "6%" }} />}
+                {showCol("month") && hasAnyMonth && <col style={{ width: "14%" }} />}
                 {hasAnyFeedUrl && <col style={{ width: "2.5%" }} />}
                 {hasAnyReelUrl && <col style={{ width: "2.5%" }} />}
               </colgroup>
@@ -2096,6 +2102,7 @@ export function CampaignRecap({
                         {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
                         {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
                         {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
+                        {showCol("month") && hasAnyMonth && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Month</th>}
                         {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
                         {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
                       </tr>
@@ -2123,6 +2130,15 @@ export function CampaignRecap({
                             {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {showCol("month") && hasAnyMonth && (
+                              <td className="px-3 py-3">
+                                {a.month ? (
+                                  <span className="inline-block rounded-full border border-[#D73F09]/50 bg-[#D73F09]/10 px-2 py-0.5 text-[11px] text-[#FAF8F5]">
+                                    {a.month}
+                                  </span>
+                                ) : null}
+                              </td>
+                            )}
                             {hasAnyFeedUrl && (
                               <td className="px-3 py-3 text-center">
                                 {feedSource ? (
@@ -2171,6 +2187,7 @@ export function CampaignRecap({
                             {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3" />}
                             {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3" />}
                             {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3" />}
+                            {showCol("month") && hasAnyMonth && <td className="px-3 py-3" />}
                             {hasAnyFeedUrl && (
                               <td className="px-3 py-3 text-center">
                                 {isFeed ? (
@@ -2319,6 +2336,7 @@ export function CampaignRecap({
                     {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
                     {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
                     {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
+                    {showCol("month") && hasAnyMonth && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Month</th>}
                     {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
                     {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
                   </tr>
@@ -2374,6 +2392,15 @@ export function CampaignRecap({
                       {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
                       {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
                       {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
+                      {showCol("month") && hasAnyMonth && (
+                        <td className="px-3 py-3">
+                          {a.month ? (
+                            <span className="inline-block rounded-full border border-[#D73F09]/50 bg-[#D73F09]/10 px-2 py-0.5 text-[11px] text-[#FAF8F5]">
+                              {a.month}
+                            </span>
+                          ) : null}
+                        </td>
+                      )}
                       {hasAnyFeedUrl && (
                         <td className="px-3 py-3 text-center">
                           {feedUrl ? (
@@ -2439,6 +2466,7 @@ export function CampaignRecap({
                           {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-2" />}
                           {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-2" />}
                           {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-2" />}
+                          {showCol("month") && hasAnyMonth && <td className="px-3 py-2" />}
                           {hasAnyFeedUrl && (
                             <td className="px-3 py-2 text-center">
                               {isFeed && slot.url ? (
