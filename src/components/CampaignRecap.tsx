@@ -1158,6 +1158,144 @@ export function CampaignRecap({
   // to the top regardless of score (sorted by featured_order among themselves).
   // Roster is then sliced to the first 50; the rest live behind an expand button.
   const ROSTER_VISIBLE_COUNT = 10;
+
+  // ── Roster sort + filter (view state only; never persisted) ──────────────
+  // These hooks live here, not inside the roster section's IIFE: that block is
+  // rendered conditionally (`show("roster") && ...`), so a hook inside it would
+  // be a conditional call.
+  type RosterSortCol =
+    | "name" | "school" | "sport" | "ig_handle" | "month"
+    | "ig_followers" | "impressions" | "engagements" | "eng_rate"
+    | "clicks" | "orders" | "sales";
+  const [rosterSort, setRosterSort] = useState<{ col: RosterSortCol; dir: "asc" | "desc" } | null>(null);
+  const [rosterFilters, setRosterFilters] = useState<{ month: string[]; sport: string[] }>({ month: [], sport: [] });
+  const [openFilter, setOpenFilter] = useState<null | "month" | "sport">(null);
+  const [filterAnchor, setFilterAnchor] = useState<{ left: number; top: number } | null>(null);
+
+  // Click cycles asc → desc → cleared. A new column replaces the old one, so
+  // only ever one column sorts at a time.
+  const cycleRosterSort = (col: RosterSortCol) =>
+    setRosterSort((cur) =>
+      !cur || cur.col !== col ? { col, dir: "asc" }
+        : cur.dir === "asc" ? { col, dir: "desc" }
+          : null);
+
+  const closeRosterFilter = useCallback(() => { setOpenFilter(null); setFilterAnchor(null); }, []);
+  const toggleRosterFilterValue = (key: "month" | "sport", value: string) =>
+    setRosterFilters((f) => ({
+      ...f,
+      [key]: f[key].includes(value) ? f[key].filter((v) => v !== value) : [...f[key], value],
+    }));
+
+  useEffect(() => {
+    if (!openFilter) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeRosterFilter(); };
+    const onDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement)?.closest?.("[data-roster-filter]")) return;
+      closeRosterFilter();
+    };
+    // The desktop table sits in an overflow-x-auto wrapper, so the panel is
+    // position:fixed off the trigger's rect rather than absolutely positioned
+    // inside a <th> (which that wrapper would clip). Fixed means it can't
+    // follow the page, so any scroll or resize dismisses it.
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("scroll", closeRosterFilter, true);
+    window.addEventListener("resize", closeRosterFilter);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", closeRosterFilter, true);
+      window.removeEventListener("resize", closeRosterFilter);
+    };
+  }, [openFilter, closeRosterFilter]);
+
+  // Month sorts in the campaign's own sequence, not alphabetically. Map each
+  // value to a calendar index, lay the distinct months out on a circle, and
+  // start the sequence just after the largest gap — for Always-On the Feb→Oct
+  // gap is 8 months, giving Oct, Nov, Dec, Jan, Feb. This also handles a season
+  // that doesn't cross a year boundary (May–Oct starts at May), which a plain
+  // "autumn first" rule gets wrong.
+  const MONTH_INDEX: Record<string, number> = {
+    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+  };
+  // Multi-value entries ("October, January") order by their first month.
+  const firstMonthIndex = (raw?: string | null): number | null => {
+    const first = (raw ?? "").split(",")[0].trim().toLowerCase();
+    const i = MONTH_INDEX[first];
+    return i === undefined ? null : i;
+  };
+  const monthRank = (() => {
+    // Deduped without spreading a Set: this file's TS target rejects iterator
+    // spread (see the pre-existing TS2802 in percentileRank below).
+    const seen: Record<number, true> = {};
+    const present: number[] = [];
+    for (const a of fullRoster) {
+      const i = firstMonthIndex(a.month);
+      if (i !== null && !seen[i]) { seen[i] = true; present.push(i); }
+    }
+    present.sort((a, b) => a - b);
+    const rank = new Map<number, number>();
+    if (present.length === 0) return rank;
+    let startIdx = 0, biggest = -1;
+    for (let i = 0; i < present.length; i++) {
+      const prev = present[(i - 1 + present.length) % present.length];
+      const gap = (present[i] - prev + 12) % 12;
+      if (gap > biggest) { biggest = gap; startIdx = i; }
+    }
+    for (let k = 0; k < present.length; k++) rank.set(present[(startIdx + k) % present.length], k);
+    return rank;
+  })();
+
+  // Accessors return null for anything the row renders as an em dash, so a
+  // blank never sorts as 0 and floats to the top of a descending sort.
+  const rosterValue = (a: any, col: RosterSortCol): string | number | null => {
+    const m = a.metrics || {};
+    switch (col) {
+      case "name": return (a.name ?? "").trim() || null;
+      case "school": return (a.school ?? "").trim() || null;
+      // Sport casing is inconsistent in the data and the cell renders uppercase,
+      // so fold it — otherwise "Baseball" and "BASEBALL" sort apart and appear
+      // as two identical-looking filter rows.
+      case "sport": return (a.sport ?? "").trim().toUpperCase() || null;
+      case "ig_handle": return (a.ig_handle ?? "").trim() || null;
+      case "month": {
+        const i = firstMonthIndex(a.month);
+        return i === null ? null : (monthRank.get(i) ?? null);
+      }
+      case "ig_followers": return a.ig_followers ? Number(a.ig_followers) : null;
+      // Impressions and engagements render a real 0, so 0 is a value here.
+      case "impressions": return getTotalImpressions(a);
+      case "engagements": return getTotalEngagements(a);
+      case "eng_rate": return getBestEngRate(a) > 0 ? getBestEngRate(a) : null;
+      case "clicks": return m.clicks?.link_clicks ? Number(m.clicks.link_clicks) : null;
+      case "orders": return m.clicks?.orders ? Number(m.clicks.orders) : null;
+      case "sales": return m.clicks?.sales ? Number(m.clicks.sales) : null;
+      default: return null;
+    }
+  };
+
+  const rosterComparator = (col: RosterSortCol, dir: "asc" | "desc") => {
+    const sign = dir === "asc" ? 1 : -1;
+    return (a: any, b: any) => {
+      const av = rosterValue(a, col);
+      const bv = rosterValue(b, col);
+      // Blanks sort last in BOTH directions — the sign is applied only to the
+      // comparison between two present values.
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * sign;
+      return (Number(av) - Number(bv)) * sign;
+    };
+  };
+
+  const rosterFilterActive = rosterFilters.month.length > 0 || rosterFilters.sport.length > 0;
+  const rosterMatchesFilters = (a: any) =>
+    (rosterFilters.month.length === 0 || rosterFilters.month.includes((a.month ?? "").trim())) &&
+    (rosterFilters.sport.length === 0 || rosterFilters.sport.includes((a.sport ?? "").trim().toUpperCase()));
+
   const rosterAthletes = (() => {
     // Exclude collab-ONLY athletes (in a collab group with no solo post of their
     // own) — they render only in the collab bracket. A collab participant who
@@ -1222,11 +1360,23 @@ export function CampaignRecap({
     return [...featured, ...nonFeatured];
   })();
 
-  const rosterIsTruncated = rosterAthletes.length > ROSTER_VISIBLE_COUNT;
+  // Filter, then sort, on a copy. rosterAthletes keeps its own meaningful order
+  // (featured first by featured_order, then composite score), which is what the
+  // third click on a header restores.
+  const rosterFilteredAthletes = rosterFilterActive
+    ? rosterAthletes.filter(rosterMatchesFilters)
+    : rosterAthletes;
+  const rosterRows = rosterSort
+    ? [...rosterFilteredAthletes].sort(rosterComparator(rosterSort.col, rosterSort.dir))
+    : rosterFilteredAthletes;
+
+  // Truncation and the "+N" expander both count the rows actually on show, so a
+  // 29-row filter doesn't advertise +132.
+  const rosterIsTruncated = rosterRows.length > ROSTER_VISIBLE_COUNT;
   const visibleRosterAthletes = rosterExpanded || !rosterIsTruncated
-    ? rosterAthletes
-    : rosterAthletes.slice(0, ROSTER_VISIBLE_COUNT);
-  const hiddenRosterCount = rosterAthletes.length - ROSTER_VISIBLE_COUNT;
+    ? rosterRows
+    : rosterRows.slice(0, ROSTER_VISIBLE_COUNT);
+  const hiddenRosterCount = rosterRows.length - ROSTER_VISIBLE_COUNT;
 
   return (
     <div className="recap-container min-h-screen bg-[#111111] text-white font-sans">
@@ -2022,6 +2172,92 @@ export function CampaignRecap({
             const hasAnyMonth = fullRoster.some(a => (a.month ?? "").trim() !== "");
             const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
+            // ── Sortable / filterable header machinery ────────────────────
+            // Solo roster table only. The collab bracket tables above the
+            // divider keep plain headers: their rows are one collab post's
+            // participants and stay in their given order.
+            const hasAnySport = showCol("sport") && fullRoster.some(a => (a.sport ?? "").trim() !== "");
+            const filterableCols = { month: hasAnyMonth, sport: hasAnySport } as const;
+
+            const openFilterPanel = (key: "month" | "sport", el: HTMLElement) => {
+              if (openFilter === key) { closeRosterFilter(); return; }
+              const r = el.getBoundingClientRect();
+              setFilterAnchor({ left: r.left, top: r.bottom + 6 });
+              setOpenFilter(key);
+            };
+
+            // Distinct values for a filter, counted over the rows the filter
+            // can actually reach, ordered by that column's own comparator.
+            const filterOptions = (key: "month" | "sport") => {
+              const counts: Record<string, number> = {};
+              const order: string[] = [];
+              for (const a of rosterAthletes) {
+                const raw = ((key === "month" ? a.month : a.sport) ?? "").trim();
+                const v = key === "sport" ? raw.toUpperCase() : raw;
+                if (!v) continue;
+                if (counts[v] === undefined) { counts[v] = 0; order.push(v); }
+                counts[v] += 1;
+              }
+              const cmp = rosterComparator(key, "asc");
+              return order
+                .sort((x, y) => cmp(
+                  key === "month" ? { month: x } : { sport: x },
+                  key === "month" ? { month: y } : { sport: y },
+                ))
+                .map((value) => ({ value, count: counts[value] }));
+            };
+
+            const thBase = "px-3 py-3 text-[10px] font-bold uppercase tracking-wider";
+            const sortableTh = (
+              col: RosterSortCol,
+              label: string,
+              opts?: { align?: "right" | "center"; filter?: "month" | "sport" },
+            ) => {
+              const active = rosterSort?.col === col;
+              const filterKey = opts?.filter;
+              const filterOpen = !!filterKey && openFilter === filterKey;
+              const filtered = !!filterKey && rosterFilters[filterKey].length > 0;
+              const lit = active || filterOpen || filtered;
+              const align = opts?.align === "right" ? "justify-end"
+                : opts?.align === "center" ? "justify-center" : "justify-start";
+              return (
+                <th
+                  key={col}
+                  scope="col"
+                  aria-sort={active ? (rosterSort!.dir === "asc" ? "ascending" : "descending") : "none"}
+                  className={`${thBase} ${opts?.align === "right" ? "text-right" : ""}`}
+                >
+                  <span className={`flex items-center gap-1 ${align}`}>
+                    <button
+                      type="button"
+                      onClick={() => cycleRosterSort(col)}
+                      title={`Sort by ${label}`}
+                      className={`group inline-flex items-center gap-1 uppercase tracking-wider transition-colors ${lit ? "text-[#FAF8F5]" : "text-white/50 hover:text-white/70"}`}
+                    >
+                      {label}
+                      {active ? (
+                        <span aria-hidden className="text-[#D73F09]">{rosterSort!.dir === "asc" ? "\u2191" : "\u2193"}</span>
+                      ) : filterKey ? null : (
+                        <span aria-hidden className="text-white/20 group-hover:text-white/50 transition-colors">{"\u2195"}</span>
+                      )}
+                    </button>
+                    {filterKey && (
+                      <button
+                        type="button"
+                        data-roster-filter
+                        aria-expanded={filterOpen}
+                        aria-label={`Filter by ${label}`}
+                        onClick={(e) => openFilterPanel(filterKey, e.currentTarget)}
+                        className={`transition-colors ${filterOpen || filtered ? "text-[#D73F09]" : "text-white/20 hover:text-white/50"}`}
+                      >
+                        {"\u25BE"}
+                      </button>
+                    )}
+                  </span>
+                </th>
+              );
+            };
+
             const collabBracketTitle = (group: CollabGroup) => {
               const first = fullRoster.find((a) => a.name === group.athleteNames[0]);
               return first ? `${first.school} ${first.sport} Collab Post` : "Collab Post";
@@ -2302,6 +2538,133 @@ export function CampaignRecap({
               return out;
             })();
 
+            // A bracket is hidden when no athlete in it matches the active
+            // filter; a bracket with at least one match shows whole, since a
+            // collab post's participants only make sense together.
+            const visibleCollabGroups = !rosterFilterActive
+              ? mergedCollabGroups
+              : mergedCollabGroups.filter((g) =>
+                  g.athleteNames.some((n) => {
+                    const a = fullRoster.find((x) => x.name === n);
+                    return !!a && rosterMatchesFilters(a);
+                  }));
+
+            // Never let a filtered roster read as the full one.
+            const filterSummary = [...rosterFilters.month, ...rosterFilters.sport].join(", ");
+            const countLine = rosterFilterActive ? (
+              <div className="mt-4 text-xs text-white/50">
+                Showing <span className="font-bold text-[#FAF8F5]">{rosterRows.length}</span> of {rosterAthletes.length}
+                {filterSummary && <> &middot; {filterSummary}</>}
+              </div>
+            ) : null;
+
+            // Sortable columns for the mobile control, gated exactly as the
+            // desktop headers are so the two can never offer different columns.
+            const mobileSortCols: Array<{ col: RosterSortCol; label: string }> = [
+              { col: "name", label: "Athlete" },
+              ...(showCol("school") ? [{ col: "school" as const, label: "School" }] : []),
+              ...(showCol("sport") ? [{ col: "sport" as const, label: "Sport" }] : []),
+              ...(showCol("ig_handle") ? [{ col: "ig_handle" as const, label: "IG Handle" }] : []),
+              ...(showCol("ig_followers") && hasAnyFollowers ? [{ col: "ig_followers" as const, label: "Followers" }] : []),
+              ...(showCol("ig_feed_impressions") && hasAnyImpressions ? [{ col: "impressions" as const, label: "Impressions" }] : []),
+              ...(showCol("ig_feed_total") && hasAnyEngagements ? [{ col: "engagements" as const, label: "Engagements" }] : []),
+              ...(showCol("ig_feed_rate") && hasAnyEngRate ? [{ col: "eng_rate" as const, label: "Eng. Rate" }] : []),
+              ...(stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") ? [{ col: "clicks" as const, label: "Clicks" }] : []),
+              ...(stats.hasClicks && show("clicks") && showCol("clicks_orders") ? [{ col: "orders" as const, label: "Orders" }] : []),
+              ...(stats.hasClicks && show("clicks") && showCol("clicks_sales") ? [{ col: "sales" as const, label: "Sales" }] : []),
+              ...(showCol("month") && hasAnyMonth ? [{ col: "month" as const, label: "Month" }] : []),
+            ];
+
+            const mobileFilterBtn = (key: "month" | "sport", label: string) => {
+              const on = rosterFilters[key].length > 0;
+              return (
+                <button
+                  type="button"
+                  data-roster-filter
+                  aria-expanded={openFilter === key}
+                  onClick={(e) => openFilterPanel(key, e.currentTarget)}
+                  className={`px-2.5 py-1.5 rounded-md border text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                    on || openFilter === key
+                      ? "border-[#D73F09]/60 bg-[#D73F09]/15 text-[#FAF8F5]"
+                      : "border-white/[0.15] bg-white/[0.04] text-white/50"
+                  }`}
+                >
+                  {label}{on ? ` (${rosterFilters[key].length})` : ""} {"\u25BE"}
+                </button>
+              );
+            };
+
+            // Mobile has no header row, so sorting needs its own control. It
+            // drives the same state as the table — no per-breakpoint logic.
+            const mobileSortBar = (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <select
+                  aria-label="Sort roster by"
+                  value={rosterSort ? rosterSort.col : ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setRosterSort(v ? { col: v as RosterSortCol, dir: "asc" } : null);
+                  }}
+                  className="px-2.5 py-1.5 rounded-md border border-white/[0.15] bg-white/[0.04] text-[11px] font-bold uppercase tracking-wider text-white/70"
+                >
+                  <option value="">Default order</option>
+                  {mobileSortCols.map((c) => (
+                    <option key={c.col} value={c.col}>{c.label}</option>
+                  ))}
+                </select>
+                {rosterSort && (
+                  <button
+                    type="button"
+                    onClick={() => setRosterSort((cur) => cur ? { ...cur, dir: cur.dir === "asc" ? "desc" : "asc" } : cur)}
+                    aria-label={rosterSort.dir === "asc" ? "Sorted ascending" : "Sorted descending"}
+                    className="px-2.5 py-1.5 rounded-md border border-[#D73F09]/60 bg-[#D73F09]/15 text-[11px] font-bold text-[#FAF8F5]"
+                  >
+                    {rosterSort.dir === "asc" ? "\u2191 Asc" : "\u2193 Desc"}
+                  </button>
+                )}
+                {filterableCols.month && mobileFilterBtn("month", "Month")}
+                {filterableCols.sport && mobileFilterBtn("sport", "Sport")}
+              </div>
+            );
+
+            // One panel for both breakpoints. position:fixed off the trigger's
+            // rect, because the desktop table's overflow-x-auto wrapper would
+            // clip a panel positioned inside a <th>.
+            const filterPanel = openFilter && filterAnchor ? (
+              <div
+                data-roster-filter
+                role="dialog"
+                aria-label={`Filter by ${openFilter}`}
+                style={{ position: "fixed", left: filterAnchor.left, top: filterAnchor.top, zIndex: 60 }}
+                className="min-w-[190px] max-h-[320px] overflow-y-auto rounded-lg border border-white/[0.15] bg-[#161618] shadow-xl p-1.5"
+              >
+                {filterOptions(openFilter).map(({ value, count }) => {
+                  const checked = rosterFilters[openFilter].includes(value);
+                  return (
+                    <label key={value} className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-white/[0.06]">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleRosterFilterValue(openFilter, value)}
+                        className="accent-[#D73F09]"
+                      />
+                      <span className={`flex-1 text-xs ${checked ? "text-[#FAF8F5]" : "text-white/70"}`}>{value}</span>
+                      <span className="text-[10px] text-white/35">{count}</span>
+                    </label>
+                  );
+                })}
+                {rosterFilters[openFilter].length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setRosterFilters((f) => ({ ...f, [openFilter]: [] }))}
+                    className="mt-1 w-full text-left px-2 py-1.5 rounded text-[11px] font-bold uppercase tracking-wider text-[#D73F09] hover:bg-white/[0.06]"
+                  >
+                    Clear filter
+                  </button>
+                )}
+              </div>
+            ) : null;
+
             const divider = (
               <div className="flex items-center" style={{ gap: 12, margin: "20px 0" }}>
                 <div className="flex-1" style={{ height: 1, background: "#141416" }} />
@@ -2313,9 +2676,9 @@ export function CampaignRecap({
             return (<>
           {/* Desktop: collab brackets, divider, solo athlete table */}
           <div className="hidden md:block overflow-x-auto">
-            {mergedCollabGroups.length > 0 && (
+            {visibleCollabGroups.length > 0 && (
               <>
-                {mergedCollabGroups.map(renderBracketDesktop)}
+                {visibleCollabGroups.map(renderBracketDesktop)}
                 {divider}
               </>
             )}
@@ -2324,19 +2687,21 @@ export function CampaignRecap({
                 {rosterColgroup}
                 <thead>
                   <tr className="border-b border-white/[0.15]">
-                    <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
-                    <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Athlete</th>
-                    {showCol("school") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">School</th>}
-                    {showCol("sport") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Sport</th>}
-                    {showCol("ig_handle") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">IG Handle</th>}
-                    {showCol("ig_followers") && hasAnyFollowers && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Followers</th>}
-                    {showCol("ig_feed_impressions") && hasAnyImpressions && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
-                    {showCol("ig_feed_total") && hasAnyEngagements && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
-                    {showCol("ig_feed_rate") && hasAnyEngRate && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
-                    {showCol("month") && hasAnyMonth && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Month</th>}
+                    {/* "#" is a running count of the visible rows, never an athlete id: it is
+                        not sortable and carries no arrow. */}
+                    <th scope="col" className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 w-10">#</th>
+                    {sortableTh("name", "Athlete")}
+                    {showCol("school") && sortableTh("school", "School")}
+                    {showCol("sport") && sortableTh("sport", "Sport", filterableCols.sport ? { filter: "sport" } : undefined)}
+                    {showCol("ig_handle") && sortableTh("ig_handle", "IG Handle")}
+                    {showCol("ig_followers") && hasAnyFollowers && sortableTh("ig_followers", "Followers", { align: "right" })}
+                    {showCol("ig_feed_impressions") && hasAnyImpressions && sortableTh("impressions", "Impressions", { align: "right" })}
+                    {showCol("ig_feed_total") && hasAnyEngagements && sortableTh("engagements", "Engagements", { align: "right" })}
+                    {showCol("ig_feed_rate") && hasAnyEngRate && sortableTh("eng_rate", "Eng. Rate", { align: "right" })}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && sortableTh("clicks", "Clicks", { align: "right" })}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_orders") && sortableTh("orders", "Orders", { align: "right" })}
+                    {stats.hasClicks && show("clicks") && showCol("clicks_sales") && sortableTh("sales", "Sales", { align: "right" })}
+                    {showCol("month") && hasAnyMonth && sortableTh("month", "Month", { filter: "month" })}
                     {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
                     {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
                   </tr>
@@ -2515,13 +2880,15 @@ export function CampaignRecap({
                 </tbody>
               </table>
             )}
+            {countLine}
           </div>
 
           {/* Mobile: collab brackets, divider, solo athlete cards */}
           <div className="md:hidden">
-            {mergedCollabGroups.length > 0 && (
+            {mobileSortBar}
+            {visibleCollabGroups.length > 0 && (
               <>
-                {mergedCollabGroups.map(renderBracketMobile)}
+                {visibleCollabGroups.map(renderBracketMobile)}
                 {divider}
               </>
             )}
@@ -2587,7 +2954,9 @@ export function CampaignRecap({
                 );
               })}
             </div>
+            {countLine}
           </div>
+          {filterPanel}
             </>);
           })()}
 
