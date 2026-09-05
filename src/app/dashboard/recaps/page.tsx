@@ -101,7 +101,7 @@ function brandMark(brand: BrandRef | null): string | null {
 
 // Neutral, and deliberately not orange — fill_color is populated on 25
 // of the 30 brands with published recaps; the rest land here.
-const NEUTRAL_FILL = '#3a3a42';
+const NEUTRAL_FILL = 'var(--ink-4)';
 
 function brandFill(brand: BrandRef | null): string {
   return brand?.fill_color || NEUTRAL_FILL;
@@ -110,7 +110,7 @@ function brandFill(brand: BrandRef | null): string {
 // Soft brand-tinted plate behind a logo chip when there's no photo.
 function chipTint(brand: BrandRef | null): string {
   const c = brandFill(brand);
-  return `linear-gradient(150deg, ${c}38 0%, #0d0d11 62%, ${c}1f 100%)`;
+  return `linear-gradient(150deg, ${c}38 0%, var(--ground) 62%, ${c}1f 100%)`;
 }
 
 function initials(name: string): string {
@@ -188,15 +188,18 @@ function RecapsStyles() {
   return (
     <style jsx global>{`
       .rcp-page {
-        --orange: #d73f09;
-        --raised: rgba(250, 248, 245, 0.07);
-        --card: rgba(250, 248, 245, 0.04);
-        --line: rgba(250, 248, 245, 0.1);
-        --line-soft: rgba(250, 248, 245, 0.06);
-        --t1: #faf8f5;
-        --t2: rgba(250, 248, 245, 0.62);
-        --t3: rgba(250, 248, 245, 0.38);
-        --t4: rgba(250, 248, 245, 0.22);
+        /* Local aliases only — every value comes from the global token layer so
+           this block follows data-theme like everything else. The ladder was
+           drifting here (0.62/0.38/0.22 against rungs of 0.84/0.70). */
+        --orange: var(--accent);
+        --raised: var(--surface-raised);
+        --card: var(--surface-card);
+        --line: var(--hairline);
+        --line-soft: var(--hairline-soft);
+        --t1: var(--ink-1);
+        --t2: var(--ink-3);
+        --t3: var(--ink-4);
+        --t4: var(--ink-4);
 
         color: var(--t1);
         font-family: Arial, Helvetica, sans-serif;
@@ -205,7 +208,7 @@ function RecapsStyles() {
         -webkit-font-smoothing: antialiased;
       }
       .rcp-page .mono {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
       }
       .rcp-page .disp {
         font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
@@ -249,7 +252,7 @@ function RecapsStyles() {
         position: sticky;
         top: 0;
         z-index: 20;
-        background: rgba(7, 7, 10, 0.86);
+        background: rgb(var(--ground-rgb) / 0.86);
         backdrop-filter: blur(26px);
         -webkit-backdrop-filter: blur(26px);
         border-bottom: 1px solid var(--line-soft);
@@ -287,11 +290,11 @@ function RecapsStyles() {
         color: var(--t1);
       }
       .rcp-page .seg button.on {
-        background: rgba(250, 248, 245, 0.09);
+        background: var(--surface-raised);
         color: var(--t1);
       }
       .rcp-page .seg .n {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 10px;
         color: var(--t4);
       }
@@ -335,11 +338,11 @@ function RecapsStyles() {
         cursor: pointer;
       }
       .rcp-page select option {
-        background: #141418;
+        background: var(--surface-raised);
       }
       .rcp-page input:focus,
       .rcp-page select:focus {
-        border-color: rgba(215, 63, 9, 0.55);
+        border-color: var(--accent-dim);
       }
       .rcp-page .view {
         display: flex;
@@ -359,7 +362,7 @@ function RecapsStyles() {
         line-height: 0;
       }
       .rcp-page .view button.on {
-        background: rgba(250, 248, 245, 0.09);
+        background: var(--surface-raised);
         color: var(--t1);
       }
 
@@ -371,7 +374,7 @@ function RecapsStyles() {
         gap: 16px;
       }
       .rcp-page .rowmeta .c {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 11px;
         letter-spacing: 0.1em;
         text-transform: uppercase;
@@ -425,13 +428,13 @@ function RecapsStyles() {
       }
       .rcp-page .card:hover {
         transform: translateY(-4px);
-        border-color: rgba(250, 248, 245, 0.2);
+        border-color: var(--hairline);
         background: var(--raised);
       }
       .rcp-page .well {
         position: relative;
         aspect-ratio: 4 / 5;
-        background: #0d0d11;
+        background: var(--ground);
         overflow: hidden;
         flex: none;
       }
@@ -449,9 +452,9 @@ function RecapsStyles() {
         height: 42%;
         background: linear-gradient(
           to top,
-          rgba(7, 7, 10, 0.8) 0%,
-          rgba(7, 7, 10, 0.32) 48%,
-          rgba(7, 7, 10, 0) 100%
+          rgb(var(--ground-rgb) / 0.8) 0%,
+          rgb(var(--ground-rgb) / 0.32) 48%,
+          var(--edge-fade-0) 100%
         );
         pointer-events: none;
       }
@@ -459,8 +462,8 @@ function RecapsStyles() {
         position: absolute;
         inset: 0;
         pointer-events: none;
-        box-shadow: inset 0 0 0 1px rgba(250, 248, 245, 0.05),
-          inset 0 -1px 40px rgba(7, 7, 10, 0.35);
+        box-shadow: inset 0 0 0 1px var(--surface-card),
+          inset 0 -1px 40px rgb(var(--ground-rgb) / 0.35);
       }
       /* brand mark centred on the photo */
       .rcp-page .mark {
@@ -488,7 +491,7 @@ function RecapsStyles() {
         max-width: 100%;
         max-height: 100%;
         object-fit: contain;
-        filter: drop-shadow(0 3px 16px rgba(7, 7, 10, 0.75));
+        filter: drop-shadow(0 3px 16px rgb(var(--ground-rgb) / 0.75));
         transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
       }
       .rcp-page .card:hover .mark img {
@@ -498,13 +501,13 @@ function RecapsStyles() {
         font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
         font-size: 26px;
         letter-spacing: 0.04em;
-        color: rgba(250, 248, 245, 0.94);
-        text-shadow: 0 3px 16px rgba(7, 7, 10, 0.8);
+        color: var(--ink-1);
+        text-shadow: 0 3px 16px rgb(var(--ground-rgb) / 0.8);
         text-align: center;
         line-height: 1.05;
       }
       .rcp-page .mark img.knockout {
-        filter: brightness(0) invert(1) drop-shadow(0 3px 16px rgba(7, 7, 10, 0.75));
+        filter: brightness(0) invert(1) drop-shadow(0 3px 16px rgb(var(--ground-rgb) / 0.75));
       }
       .rcp-page .emptywell img.knockout {
         filter: brightness(0) invert(1);
@@ -518,11 +521,11 @@ function RecapsStyles() {
         position: absolute;
         inset: 0;
         pointer-events: none;
-        background: rgba(7, 7, 10, 0.36);
+        background: rgb(var(--ground-rgb) / 0.36);
         transition: background 0.28s;
       }
       .rcp-page .card:hover .tint {
-        background: rgba(7, 7, 10, 0.24);
+        background: rgb(var(--ground-rgb) / 0.24);
       }
       .rcp-page .vign {
         position: absolute;
@@ -530,9 +533,9 @@ function RecapsStyles() {
         pointer-events: none;
         background: radial-gradient(
           ellipse at 50% 46%,
-          rgba(7, 7, 10, 0.22) 0%,
-          rgba(7, 7, 10, 0.06) 50%,
-          rgba(7, 7, 10, 0) 74%
+          rgb(var(--ground-rgb) / 0.22) 0%,
+          rgb(var(--ground-rgb) / 0.06) 50%,
+          var(--edge-fade-0) 74%
         );
       }
       .rcp-page .flag {
@@ -543,13 +546,13 @@ function RecapsStyles() {
         gap: 6px;
       }
       .rcp-page .pill {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 9px;
         letter-spacing: 0.12em;
         text-transform: uppercase;
         padding: 4px 9px;
         border-radius: 99px;
-        background: rgba(7, 7, 10, 0.6);
+        background: rgb(var(--ground-rgb) / 0.6);
         border: 1px solid var(--line);
         backdrop-filter: blur(10px);
         color: var(--t2);
@@ -557,7 +560,7 @@ function RecapsStyles() {
       .rcp-page .pill.hot {
         background: var(--orange);
         border-color: var(--orange);
-        color: #fff;
+        color: var(--ink-1);
       }
       .rcp-page .kebab {
         position: absolute;
@@ -566,7 +569,7 @@ function RecapsStyles() {
         width: 30px;
         height: 30px;
         border-radius: 9px;
-        background: rgba(7, 7, 10, 0.62);
+        background: rgb(var(--ground-rgb) / 0.62);
         border: 1px solid var(--line);
         backdrop-filter: blur(10px);
         color: var(--t2);
@@ -583,7 +586,7 @@ function RecapsStyles() {
         opacity: 1;
       }
       .rcp-page .kebab:hover {
-        background: rgba(7, 7, 10, 0.9);
+        background: rgb(var(--ground-rgb) / 0.9);
         color: var(--t1);
       }
       .rcp-page .cam {
@@ -592,7 +595,7 @@ function RecapsStyles() {
         right: 10px;
         height: 30px;
         border-radius: 9px;
-        background: rgba(7, 7, 10, 0.62);
+        background: rgb(var(--ground-rgb) / 0.62);
         border: 1px solid var(--line);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
@@ -604,7 +607,7 @@ function RecapsStyles() {
         opacity: 0;
         transition: 0.18s;
         cursor: pointer;
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 9px;
         letter-spacing: 0.12em;
         text-transform: uppercase;
@@ -613,8 +616,8 @@ function RecapsStyles() {
         opacity: 1;
       }
       .rcp-page .cam:hover {
-        background: rgba(7, 7, 10, 0.92);
-        border-color: rgba(215, 63, 9, 0.6);
+        background: rgb(var(--ground-rgb) / 0.92);
+        border-color: var(--accent-dim);
         color: var(--orange);
       }
       .rcp-page .card.empty-card .cam {
@@ -622,11 +625,11 @@ function RecapsStyles() {
         bottom: 12px;
         right: 50%;
         transform: translateX(50%);
-        background: rgba(250, 248, 245, 0.07);
+        background: var(--surface-raised);
       }
       .rcp-page .card.empty-card:hover .cam {
         opacity: 1;
-        border-color: rgba(215, 63, 9, 0.6);
+        border-color: var(--accent-dim);
         color: var(--orange);
       }
 
@@ -651,7 +654,7 @@ function RecapsStyles() {
         flex: 1;
       }
       .rcp-page .brandline {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 10px;
         letter-spacing: 0.17em;
         text-transform: uppercase;
@@ -677,7 +680,7 @@ function RecapsStyles() {
         display: flex;
         align-items: center;
         gap: 14px;
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 11px;
         color: var(--t3);
         margin-top: auto;
@@ -710,7 +713,7 @@ function RecapsStyles() {
         border: 1px solid var(--line);
         background: var(--raised);
         color: var(--t2);
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 10px;
         letter-spacing: 0.11em;
         text-transform: uppercase;
@@ -719,43 +722,43 @@ function RecapsStyles() {
         white-space: nowrap;
       }
       .rcp-page .act:hover {
-        background: rgba(250, 248, 245, 0.12);
-        border-color: rgba(250, 248, 245, 0.3);
+        background: var(--hairline);
+        border-color: var(--ink-4);
         color: var(--t1);
       }
       .rcp-page .act.live {
         border-color: var(--orange);
         background: var(--orange);
-        color: #fff;
+        color: var(--ink-1);
         font-weight: 500;
       }
       .rcp-page .act.live:hover {
-        background: #e8480f;
-        border-color: #e8480f;
-        color: #fff;
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--ink-1);
       }
       .rcp-page .act.live svg {
         opacity: 1;
       }
       .rcp-page .act.grey {
         border-color: var(--line);
-        background: rgba(250, 248, 245, 0.06);
+        background: var(--surface-card);
         color: var(--t3);
       }
       .rcp-page .act.grey:hover {
-        background: rgba(250, 248, 245, 0.12);
-        border-color: rgba(250, 248, 245, 0.26);
+        background: var(--hairline);
+        border-color: var(--hairline);
         color: var(--t1);
       }
       .rcp-page .act.edit {
-        border-color: rgba(215, 63, 9, 0.4);
-        background: rgba(215, 63, 9, 0.12);
+        border-color: var(--accent-dim);
+        background: var(--accent-dim);
         color: var(--orange);
       }
       .rcp-page .act.edit:hover {
-        background: rgba(215, 63, 9, 0.22);
-        border-color: rgba(215, 63, 9, 0.7);
-        color: #ff6a33;
+        background: var(--accent-dim);
+        border-color: var(--accent-dim);
+        color: var(--accent);
       }
       .rcp-page .act svg {
         opacity: 0.85;
@@ -772,7 +775,7 @@ function RecapsStyles() {
         opacity: 1;
       }
       .rcp-page .card.empty-card .well {
-        background: rgba(250, 248, 245, 0.035);
+        background: var(--surface-card);
         border-bottom: 1px solid var(--line-soft);
       }
       .rcp-page .emptywell {
@@ -801,10 +804,10 @@ function RecapsStyles() {
         font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
         font-size: 40px;
         letter-spacing: 0.05em;
-        color: rgba(250, 248, 245, 0.28);
+        color: var(--hairline);
       }
       .rcp-page .emptywell .lbl {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 9px;
         letter-spacing: 0.16em;
         text-transform: uppercase;
@@ -824,13 +827,13 @@ function RecapsStyles() {
         right: 10px;
         z-index: 30;
         min-width: 186px;
-        background: rgba(14, 14, 18, 0.97);
+        background: rgb(var(--ground-rgb) / 0.97);
         border: 1px solid var(--line);
         border-radius: 12px;
         padding: 5px;
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 18px 48px rgb(var(--ground-rgb) / 0.6);
         display: flex;
         flex-direction: column;
         gap: 1px;
@@ -843,7 +846,7 @@ function RecapsStyles() {
         border: 0;
         background: transparent;
         color: var(--t2);
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 10px;
         letter-spacing: 0.09em;
         text-transform: uppercase;
@@ -854,12 +857,12 @@ function RecapsStyles() {
         transition: 0.14s;
       }
       .rcp-page .menu button:hover {
-        background: rgba(250, 248, 245, 0.09);
+        background: var(--surface-raised);
         color: var(--t1);
       }
       .rcp-page .menu button.danger:hover {
-        background: rgba(239, 68, 68, 0.16);
-        color: #fca5a5;
+        background: var(--accent-dim);
+        color: var(--accent);
       }
       .rcp-page .menu .sep {
         height: 1px;
@@ -872,7 +875,7 @@ function RecapsStyles() {
         position: absolute;
         inset: 0;
         z-index: 40;
-        background: rgba(7, 7, 10, 0.86);
+        background: rgb(var(--ground-rgb) / 0.86);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         display: flex;
@@ -896,7 +899,7 @@ function RecapsStyles() {
         gap: 8px;
       }
       .rcp-page .confirm button {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 10px;
         letter-spacing: 0.11em;
         text-transform: uppercase;
@@ -910,7 +913,7 @@ function RecapsStyles() {
       .rcp-page .confirm button.go {
         background: var(--orange);
         border-color: var(--orange);
-        color: #fff;
+        color: var(--ink-1);
       }
 
       /* ---------- list ---------- */
@@ -937,13 +940,13 @@ function RecapsStyles() {
         padding: 11px 16px;
       }
       .rcp-page .lh {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 10px;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: var(--t4);
         border-bottom: 1px solid var(--line-soft);
-        background: rgba(250, 248, 245, 0.02);
+        background: var(--surface-card);
       }
       .rcp-page .lr {
         border-bottom: 1px solid var(--line-soft);
@@ -963,7 +966,7 @@ function RecapsStyles() {
         border-bottom: 0;
       }
       .rcp-page .lr:hover {
-        background: rgba(250, 248, 245, 0.045);
+        background: var(--surface-card);
       }
       .rcp-page .lname {
         display: flex;
@@ -1014,7 +1017,7 @@ function RecapsStyles() {
         text-overflow: ellipsis;
       }
       .rcp-page .num {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 12px;
         color: var(--t2);
         text-align: right;
@@ -1023,7 +1026,7 @@ function RecapsStyles() {
         color: var(--t4);
       }
       .rcp-page .ldate {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 11px;
         color: var(--t3);
       }
@@ -1062,7 +1065,7 @@ function RecapsStyles() {
         font-size: 26px;
       }
       .rcp-page .bghead .ct {
-        font-family: var(--font-mono), 'JetBrains Mono', monospace;
+        font-family: var(--font-arimo), Arial, sans-serif;
         font-size: 11px;
         color: var(--t4);
       }
@@ -1090,7 +1093,7 @@ function RecapsStyles() {
       }
       .rcp-page .skel .w {
         aspect-ratio: 4 / 5;
-        background: rgba(250, 248, 245, 0.04);
+        background: var(--surface-card);
       }
       .rcp-page .skel .b {
         padding: 15px;
@@ -1101,7 +1104,7 @@ function RecapsStyles() {
       .rcp-page .skel .l {
         height: 10px;
         border-radius: 4px;
-        background: rgba(250, 248, 245, 0.05);
+        background: var(--surface-card);
       }
       @keyframes rcpPulse {
         0%,
@@ -1204,27 +1207,27 @@ function CardPhotoPicker({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ground/80 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget && !savingId) onClose();
       }}
     >
-      <div className="w-[95vw] h-[85vh] max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden flex flex-col">
+      <div className="w-[95vw] h-[85vh] max-w-4xl bg-ground border border-hairline rounded-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-hairline flex items-center justify-between">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold tracking-widest text-[#D73F09] uppercase">
+            <div className="text-[10px] font-bold tracking-widest text-[var(--accent)] uppercase">
               Card photo
             </div>
-            <h2 className="text-xl font-black text-white truncate">Choose card photo</h2>
-            <div className="text-xs text-gray-500 mt-0.5">
+            <h2 className="text-xl font-black text-ink-1 truncate">Choose card photo</h2>
+            <div className="text-xs text-ink-4 mt-0.5">
               Sets the card thumbnail and the public hero image.
             </div>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white"
+            className="w-8 h-8 rounded-lg hover:bg-surface-raised flex items-center justify-center text-ink-3 hover:text-ink-1"
           >
             ✕
           </button>
@@ -1234,15 +1237,15 @@ function CardPhotoPicker({
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <svg className="animate-spin h-8 w-8 text-[#D73F09]" viewBox="0 0 24 24">
+              <svg className="animate-spin h-8 w-8 text-[var(--accent)]" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             </div>
           ) : error ? (
-            <div className="text-center text-red-400 mt-20 text-sm">{error}</div>
+            <div className="text-center text-accent mt-20 text-sm">{error}</div>
           ) : images.length === 0 ? (
-            <div className="text-center text-gray-500 mt-20 text-sm">
+            <div className="text-center text-ink-4 mt-20 text-sm">
               No images found for this campaign.
             </div>
           ) : (
@@ -1257,11 +1260,11 @@ function CardPhotoPicker({
                     disabled={!!savingId}
                     className={`relative group rounded-lg overflow-hidden border-2 transition-all disabled:cursor-wait ${
                       isCurrent
-                        ? 'border-[#D73F09] ring-2 ring-[#D73F09]/30'
-                        : 'border-white/10 hover:border-white/30'
+                        ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30'
+                        : 'border-hairline hover:border-hairline'
                     }`}
                   >
-                    <div className="aspect-square bg-black">
+                    <div className="aspect-square bg-ground">
                       <img
                         src={supabaseImageUrl(img.thumbnail_url || img.file_url, 400) || img.file_url}
                         alt=""
@@ -1277,13 +1280,13 @@ function CardPhotoPicker({
                       />
                     </div>
                     {isCurrent && (
-                      <div className="absolute top-2 left-2 bg-[#D73F09] px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
+                      <div className="absolute top-2 left-2 bg-[var(--accent)] px-1.5 py-0.5 rounded text-[8px] font-black text-ink-1 uppercase tracking-wide">
                         Current
                       </div>
                     )}
                     {isSaving && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <svg className="animate-spin h-6 w-6 text-[#D73F09]" viewBox="0 0 24 24">
+                      <div className="absolute inset-0 bg-ground/60 flex items-center justify-center">
+                        <svg className="animate-spin h-6 w-6 text-[var(--accent)]" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
@@ -1373,23 +1376,23 @@ function DeleteRecapDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ground/80 backdrop-blur-sm p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget && !deleting) onClose();
       }}
     >
-      <div className="w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/10">
-          <div className="text-[10px] font-bold tracking-widest text-red-400 uppercase">
+      <div className="w-full max-w-md bg-ground border border-hairline rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-hairline">
+          <div className="text-[10px] font-bold tracking-widest text-accent uppercase">
             Delete recap
           </div>
-          <h2 className="text-lg font-black text-white truncate">{recap.name}</h2>
+          <h2 className="text-lg font-black text-ink-1 truncate">{recap.name}</h2>
         </div>
 
         <div className="p-6">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <svg className="animate-spin h-7 w-7 text-white/40" viewBox="0 0 24 24">
+              <svg className="animate-spin h-7 w-7 text-ink-1/40" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
@@ -1397,58 +1400,58 @@ function DeleteRecapDialog({
           ) : isBlocked ? (
             // Blockers: explanation instead of a delete control.
             <div>
-              <p className="text-sm text-white/70 leading-relaxed mb-3">
+              <p className="text-sm text-ink-1/70 leading-relaxed mb-3">
                 This recap can&apos;t be deleted — it&apos;s referenced by:
               </p>
               <ul className="space-y-1.5 mb-4">
                 {blockers.map((b) => (
-                  <li key={b.table} className="text-sm text-white/80 flex items-center gap-2">
-                    <span className="w-1 h-1 rounded-full bg-red-400" />
+                  <li key={b.table} className="text-sm text-ink-1/80 flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-accent" />
                     {b.count} {b.label}
                   </li>
                 ))}
               </ul>
-              <p className="text-xs text-white/40 leading-relaxed">
+              <p className="text-xs text-ink-1/40 leading-relaxed">
                 Remove or re-point those references first, then delete this recap.
               </p>
             </div>
           ) : (
             <div>
-              <p className="text-sm text-white/70 leading-relaxed mb-3">
+              <p className="text-sm text-ink-1/70 leading-relaxed mb-3">
                 This permanently deletes{' '}
-                <span className="font-semibold text-white">{w?.mediaCount ?? 0} media files</span> and{' '}
-                <span className="font-semibold text-white">{w?.athleteCount ?? 0} athlete rows</span>.
+                <span className="font-semibold text-ink-1">{w?.mediaCount ?? 0} media files</span> and{' '}
+                <span className="font-semibold text-ink-1">{w?.athleteCount ?? 0} athlete rows</span>.
                 This cannot be undone.
               </p>
               {w?.slotted && (
-                <p className="text-sm text-red-400 leading-relaxed mb-4 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                <p className="text-sm text-accent leading-relaxed mb-4 bg-accent/10 border border-accent/20 rounded-lg px-3 py-2">
                   ⚠ This recap is live on the website ({w.slotCount} slot
                   {w.slotCount === 1 ? '' : 's'}) — deleting removes that content from the public
                   site.
                 </p>
               )}
-              <label className="block text-xs text-white/50 mb-1.5">
-                Type <span className="font-mono font-semibold text-white/80">DELETE</span> to confirm
+              <label className="block text-xs text-ink-1/50 mb-1.5">
+                Type <span className="font-mono font-semibold text-ink-1/80">DELETE</span> to confirm
               </label>
               <input
                 type="text"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 autoFocus
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-red-500/50 transition-colors"
+                className="w-full bg-surface-card border border-hairline rounded-lg px-3 py-2 text-sm text-ink-1 placeholder:text-ink-1/25 focus:outline-none focus:border-accent/50 transition-colors"
                 placeholder="DELETE"
               />
             </div>
           )}
 
-          {error && <div className="mt-4 text-sm text-red-400">{error}</div>}
+          {error && <div className="mt-4 text-sm text-accent">{error}</div>}
         </div>
 
-        <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-hairline flex justify-end gap-2">
           <button
             onClick={onClose}
             disabled={deleting}
-            className="text-[12px] font-semibold px-4 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
+            className="text-[12px] font-semibold px-4 py-2 rounded-lg bg-surface-card text-ink-1/60 hover:bg-surface-raised hover:text-ink-1 transition-all disabled:opacity-50"
           >
             {isBlocked ? 'Close' : 'Cancel'}
           </button>
@@ -1457,7 +1460,7 @@ function DeleteRecapDialog({
               onClick={doDelete}
               disabled={!canDelete}
               title={!canDelete && !deleting ? "Type DELETE in the box above to confirm" : undefined}
-              className="text-[12px] font-semibold px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-500/85 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-[12px] font-semibold px-4 py-2 rounded-lg bg-accent text-ink-1 hover:bg-accent/85 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {deleting ? 'Deleting…' : 'Delete recap'}
             </button>
