@@ -50,7 +50,16 @@ active, stop and ask. Parallel sessions cause branch drift. Use a git worktree f
 **Name twins — these are different tables. Check which one you need.**
 - `campaign_recaps` (canonical campaign entity) ≠ `brand_campaigns` (1,089 legacy rows) ≠ the `campaigns` view
 - `athletes` (9,436) ≠ `athletes_master` (scaffolded, never populated) ≠ `people` (52,809, migrated ColdFusion roster)
+- **`campaign_optins` ≠ `optin_campaigns`** — near-anagrams, opposite meanings, easy to grab the
+  wrong one. `optin_campaigns` is the LIVE spine (2 rows) behind the athlete opt-in and
+  deliverable pipeline (`athlete_campaign_optins`, `athlete_deliverables`). `campaign_optins`
+  plus `campaign_optin_submissions` is the LEGACY public opt-in-page product — **0 rows each**.
+  The split runs through one route: `/dashboard/campaign-optin`'s list page reads LEGACY
+  `campaign_optins`, while its `[id]` subpage reads LIVE `optin_campaigns`. The nav's
+  "Campaign opt-in" deliberately skips that route and points at `/dashboard?tab=optin`.
+  Verified 2026-09-04.
 - If a task says "athletes," confirm which table before writing.
+- If a task says "opt-ins," confirm which of the two tables before writing.
 
 **Other traps**
 - **Ownership lives on the column; curation lives in the link table.** `media.campaign_id` is
