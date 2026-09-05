@@ -6,19 +6,32 @@
 // incoming webhook: these messages name an athlete and are addressed to the one
 // manager who owns the campaign, so they must never land in a channel.
 //
-// Three Web API calls, plain fetch, no SDK:
+// Up to three Web API calls, plain fetch, no SDK:
 //   1. users.lookupByEmail  → the user id behind an @pstgm.com address
+//                             SKIPPED when profiles.slack_user_id is set
 //   2. conversations.open   → the DM channel with that user
 //   3. chat.postMessage     → the message itself
 //
-// SCOPES: chat:write, users:read, users:read.email and — for conversations.open
-// — im:write. All four confirmed live on the "Postgame Hub" app 31 Aug. If one
-// is ever dropped the affected call returns missing_scope and this module logs
-// and gives up; it never throws.
+// Step 1 is the fragile one: it is the only call needing users:read.email, and
+// it is the only one that can fail for reasons outside this app (the person's
+// Slack email differing from their Asana one, a deactivated account). So a
+// recipient whose profiles.slack_user_id is populated skips it entirely and
+// goes straight to step 2. Email lookup remains the fallback for everyone
+// whose id has not been recorded yet.
+//
+// SCOPES: chat:write and im:write (conversations.open) are required on every
+// path; users:read / users:read.email are required ONLY for the email-lookup
+// path. If a scope is missing the affected call returns missing_scope and this
+// module logs and gives up; it never throws.
+//
+// Note that a stored id cannot rescue a token that is missing chat:write or
+// im:write, nor an invalid_auth token — those break every path equally.
 //
 // STUB-SAFE throughout: no bot token, no recipient, or a Slack-side failure all
 // resolve to a logged no-op. Nothing here is allowed to fail a caller.
 // ============================================================
+
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const SLACK_API = "https://slack.com/api";
 
@@ -81,6 +94,39 @@ async function slackPost(method: string, params: Record<string, unknown>): Promi
   }
 }
 
+/**
+ * A Supabase client that can read `profiles`.
+ *
+ * Aliased to the library's own client type rather than a hand-rolled structural
+ * interface: the builder chain's real types are generic and do not match a
+ * simplified shape, and slack-dm still imports no app code — callers hand a
+ * client in, or don't.
+ */
+export type ProfileReader = SupabaseClient;
+
+/**
+ * The Slack id recorded against an email in `profiles`, or null.
+ *
+ * `ilike` rather than `eq`: manager_email arrives from Asana and its casing is
+ * not guaranteed to match the profile row. Never throws — a database hiccup
+ * here must degrade to the email lookup, not lose the message.
+ */
+async function storedUserId(db: ProfileReader | undefined, email: string): Promise<string | null> {
+  if (!db) return null;
+  try {
+    const { data } = await db
+      .from("profiles")
+      .select("slack_user_id")
+      .ilike("email", email)
+      .maybeSingle();
+    const id = (data as { slack_user_id: string | null } | null)?.slack_user_id;
+    return id ?? null;
+  } catch (e) {
+    console.warn(`[slack-dm] profiles lookup failed for ${email}:`, e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 /** Slack user id for an email address, or null if there isn't one. */
 async function lookupUserId(email: string): Promise<string | null> {
   const body = await slackPost("users.lookupByEmail", { email });
@@ -103,10 +149,18 @@ async function openDm(userId: string): Promise<string | null> {
   return body.channel?.id ?? null;
 }
 
-/** Deliver one message to one email address. Returns false if it didn't land. */
-async function deliver(email: string, text: string): Promise<boolean> {
-  const userId = await lookupUserId(email);
+/**
+ * Deliver one message to one person. Returns false if it didn't land.
+ *
+ * Stored id first, email lookup second. The stored id is trusted without a
+ * round-trip: if it is stale, conversations.open says so and the caller falls
+ * back to the next recipient exactly as it would for a failed lookup.
+ */
+async function deliver(email: string, text: string, db?: ProfileReader): Promise<boolean> {
+  const stored = await storedUserId(db, email);
+  const userId = stored ?? (await lookupUserId(email));
   if (!userId) return false;
+  if (stored) console.log(`[slack-dm] using stored slack_user_id for ${email} (no email lookup)`);
 
   const channel = await openDm(userId);
   if (!channel) return false;
@@ -145,6 +199,7 @@ export async function dmCampaignManager(
   managerEmail: string | null | undefined,
   text: string,
   unmappedNotice: string,
+  db?: ProfileReader,
 ): Promise<DmOutcome> {
   if (!process.env.SLACK_BOT_TOKEN) {
     return { ok: false, reason: "SLACK_BOT_TOKEN is not set", usedFallback: false };
@@ -154,20 +209,30 @@ export async function dmCampaignManager(
   const manager = (managerEmail ?? "").trim();
 
   if (manager) {
-    if (await deliver(manager, text)) {
+    if (await deliver(manager, text, db)) {
       return { ok: true, channel: "dm", recipient: manager, usedFallback: false };
     }
     // Mapped but unreachable: still the right message, just the wrong inbox.
-    if (fallback && fallback !== manager && (await deliver(fallback, text))) {
+    const fallbackUsable = Boolean(fallback) && fallback !== manager;
+    if (fallbackUsable && (await deliver(fallback, text, db))) {
       return { ok: true, channel: "dm", recipient: fallback, usedFallback: true };
     }
-    return { ok: false, reason: `could not reach ${manager} or the fallback`, usedFallback: true };
+    // Say which recipients were actually tried. The old wording claimed "or the
+    // fallback" even when no fallback was configured or it was the same address
+    // as the manager, which sent the first debug of this looking for a failure
+    // that had never been attempted.
+    const reason = !fallback
+      ? `could not reach ${manager}; SLACK_FALLBACK_EMAIL is not set`
+      : fallback === manager
+        ? `could not reach ${manager} (SLACK_FALLBACK_EMAIL is the same address)`
+        : `could not reach ${manager} or the fallback ${fallback}`;
+    return { ok: false, reason, usedFallback: fallbackUsable };
   }
 
   if (!fallback) {
     return { ok: false, reason: "no manager mapped and SLACK_FALLBACK_EMAIL is not set", usedFallback: false };
   }
-  if (await deliver(fallback, `${unmappedNotice}\n\n${text}`)) {
+  if (await deliver(fallback, `${unmappedNotice}\n\n${text}`, db)) {
     return { ok: true, channel: "dm", recipient: fallback, usedFallback: true };
   }
   return { ok: false, reason: `could not reach the fallback ${fallback}`, usedFallback: true };
