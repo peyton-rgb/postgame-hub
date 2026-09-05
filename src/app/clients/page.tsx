@@ -120,6 +120,15 @@ const LOGO_VH: Record<string, number> = {
   'raising-canes': 14.75,
 };
 const LOGO_VH_DEFAULT = 6.4;
+// Per-brand logo placement. A band can move its mark off-centre when the
+// footage is busy where the mark would otherwise land — Allstate's logo sat
+// straight over jacket embroidery. `pool` is the radial scrim's centre and
+// must track the mark, or the legibility pool ends up behind nothing.
+const LOGO_PLACE: Record<string, { cls: string; pool: string }> = {
+  allstate: { cls: 'items-start justify-start p-[4.5vh]', pool: '26% 28%' },
+};
+const LOGO_PLACE_DEFAULT = { cls: 'items-center justify-center p-6', pool: '50% 50%' };
+const placement = (slug: string) => LOGO_PLACE[slug] ?? LOGO_PLACE_DEFAULT;
 const ROSTER_LOGO_RATIO = 0.55;
 
 const logoHeight = (slug: string, roster = false) =>
@@ -152,19 +161,19 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
           >
             <source src={clip} type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-surface/65 pointer-events-none" />
+          <div className="absolute inset-0 bg-surface/50 pointer-events-none" />
         </div>
       )}
 
-      {/* Localised pool behind the mark. The flat scrim alone could not hold a
-          white wordmark over busy frames (the Allstate jacket embroidery read
-          straight through it). Palette only — #07070a at varying alpha. */}
+      {/* Localised pool behind the mark, carrying the legibility on its own so
+          the flat scrim can stay light and the footage reads at rest. Tighter
+          and faster falling off than a full-band wash; centred on the mark via
+          `pool`. Palette only — #07070a at varying alpha. */}
       {clip && (
         <div
           className="absolute inset-0 z-[5] pointer-events-none"
           style={{
-            background:
-              'radial-gradient(ellipse 44% 60% at 50% 50%, rgba(7,7,10,0.78) 0%, rgba(7,7,10,0.45) 45%, rgba(7,7,10,0) 72%)',
+            background: `radial-gradient(ellipse 36% 50% at ${placement(brand.slug).pool}, rgba(7,7,10,0.72) 0%, rgba(7,7,10,0.34) 50%, rgba(7,7,10,0) 68%)`,
           }}
         />
       )}
@@ -175,7 +184,9 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
         </div>
       )}
 
-      <div className="relative z-10 w-full h-full flex items-center justify-center p-6 pointer-events-none">
+      <div
+        className={`relative z-10 w-full h-full flex ${placement(brand.slug).cls} pointer-events-none`}
+      >
         {brand.logoUrl ? (
           <img
             ref={(el) => {
@@ -243,10 +254,17 @@ export default function ClientsPage() {
   const matchesFilter = (brand: Brand) =>
     activeFilter === null || brand.category === activeFilter;
 
-  const filteredFeatured = useMemo(
-    () => featuredBrands.filter(matchesFilter),
-    [activeFilter]
-  );
+  // Stable partition: bands that have footage first, the three that do not
+  // (Hollister, McDonald's, Dove) after them. Hollister was band two, so the
+  // page opened footage / void / footage. Two `filter` passes rather than a
+  // comparator so relative order inside each group is exactly as authored.
+  const filteredFeatured = useMemo(() => {
+    const shown = featuredBrands.filter(matchesFilter);
+    return [
+      ...shown.filter((b) => CLIPS[b.slug]),
+      ...shown.filter((b) => !CLIPS[b.slug]),
+    ];
+  }, [activeFilter]);
 
   const filteredRoster = useMemo(
     () =>
