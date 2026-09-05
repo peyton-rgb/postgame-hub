@@ -36,6 +36,7 @@ import {
 } from "@/lib/drive-provision";
 import { getDriveClient } from "@/lib/google-drive";
 
+import { repairSubfolderIds } from "@/lib/drive-subfolder-repair";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
@@ -45,6 +46,9 @@ export const maxDuration = 300;
  * the archive", and moving it earlier turns one into the other.
  */
 const FEATURE_LAUNCH_DATE = "2026-08-31";
+
+/** Content-id repairs attempted per run. Each is up to 3 Drive lookups. */
+const REPAIR_PER_RUN = 25;
 
 /**
  * Most campaigns per run. Each one costs several Drive round trips, so this is
@@ -357,6 +361,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Second pass: campaigns that already have a folder but never had their
+    // Content id recorded, because one of the five ad-hoc writers of
+    // drive_folder_id set it and this route's own `.is("drive_folder_id", null)`
+    // filter then excluded them forever. Adopt-only unless ?create=1 —
+    // see lib/drive-subfolder-repair.ts.
+    const repairUrl = new URL(req.url);
+    const repairCreate = repairUrl.searchParams.get("create") === "1";
+    const repairLimit = Number(repairUrl.searchParams.get("repair_limit")) || REPAIR_PER_RUN;
+
+    // Creating is restricted to 'active' campaigns. Adopting an existing folder
+    // is free, but creating one puts a new folder in the team's shared drive,
+    // and a delivered or closed campaign will never have anything filed into a
+    // Content folder made for it now. The daily cron passes no ?create, so its
+    // pass stays adopt-only across every status.
+    const repair = await repairSubfolderIds(supabase, {
+      limit: repairLimit,
+      create: repairCreate,
+      statuses: repairCreate ? ["active"] : undefined,
+    });
+
     const report = {
       candidates: candidates.length,
       provisioned: provisioned.filter((p) => !p.linkedExisting).length,
@@ -382,6 +406,17 @@ export async function POST(req: NextRequest) {
       // True when the cap was hit and there is more waiting — never silently
       // truncate and report it as "all done".
       capped: candidates.length === MAX_PER_RUN,
+      // The Content-id repair pass. `needs_creation` is the count whose campaign
+      // folder has no Content child at all — re-run with ?create=1 to make them.
+      subfolder_repair: {
+        considered: repair.considered,
+        repaired: repair.repaired.length,
+        needs_creation: repair.skipped.filter(
+          (r) => r.reason === "no Content subfolder in the campaign folder",
+        ).length,
+        errors: repair.skipped.filter((r) => r.reason === "drive error").length,
+        details: repair,
+      },
     };
 
     await logRun(supabase, actorId, inputPayload, report, "complete", startedAt).catch(() => {});
