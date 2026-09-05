@@ -173,7 +173,8 @@ export function contrastRatio(a: string | null, b: string | null): number | null
  *
  * Deliberately below WCAG's 3:1 — that figure is for UI components that must be
  * *identified*, and a brand mark is not one. The job here is narrower: catch
- * marks that are genuinely invisible (a white file mistagged on_white) without
+ * marks that are genuinely invisible (a white file mistagged on_white -- there
+ * are 13 such rows in brand_logos) without
  * demoting quiet-but-legible ones. goodr's teal at 2.4:1 and Heydude's mid-tone
  * at 2.6:1 read perfectly well on off-white; Dove's #CDCDCF at 1.7:1 does not.
  *
@@ -183,29 +184,6 @@ export function contrastRatio(a: string | null, b: string | null): number | null
  */
 const MIN_LOGO_CONTRAST = 1.8;
 
-/**
- * Measured ink for files whose brand_logos.ink_hex is null.
- *
- * TEMPORARY. Sampled from the mean of each file's opaque pixels during the
- * contrast audit. Several of these are files tagged `on_white` whose ink is
- * actually white — the variant label is wrong in the data, which is why they
- * rendered invisible on the off-white tile. Delete this map once the
- * ink_hex backfill migration has run; the selection logic below then reads the
- * real column and needs no override.
- */
-const MEASURED_INK: Record<string, string> = {
-  verb: '#FFFFFF',
-  york: '#FFFFFF',
-  momentec: '#F9F9F9',
-  tylenol: '#FFFFFF',
-  gametime: '#D3F9EC',
-  'thigh-society': '#FFFFFF',
-  easton: '#FDF7D2',
-  'monday-haircare': '#F0DCD9',
-  bero: '#DEB98F',
-  flipgrid: '#33E237',
-  topps: '#E67378',
-};
 
 /** Relative luminance, for deciding which ink survives on a given fill. */
 export function isLightFill(hex: string | null): boolean {
@@ -265,11 +243,10 @@ export async function loadClientsPage(): Promise<{
     // exactly the failure the resolver's own comment warns about, one level up.
     // So the rest logo is chosen by its ink's contrast against the tile ground,
     // and only falls back to the label when no ink is known either way.
-    const inkOf = (pick: typeof lightPick, slug: string) =>
-      pick?.inkHex ?? MEASURED_INK[slug] ?? null;
-
-    const lightInk = inkOf(lightPick, slug);
-    const darkInk = inkOf(darkPick, slug);
+    // ink_hex is populated for every non-dated row now, so the column is the
+    // only source — no override map. A null here means genuinely unknown.
+    const lightInk = lightPick?.inkHex ?? null;
+    const darkInk = darkPick?.inkHex ?? null;
     const lightContrast = contrastRatio(lightInk, TILE_GROUND);
     const darkContrast = contrastRatio(darkInk, TILE_GROUND);
 
