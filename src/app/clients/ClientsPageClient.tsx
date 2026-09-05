@@ -7,6 +7,7 @@ import gsap from 'gsap';
 import SiteFooter from '@/components/SiteFooter';
 import CampaignCarousel from './CampaignCarousel';
 import {
+  TILE_LOGO_SCALE_DEFAULT,
   isLightFill,
   type ClientBrand,
   type FeaturedFilm,
@@ -51,80 +52,6 @@ function useLogoHover<T extends HTMLElement>() {
   return { hostRef, logoRef };
 }
 
-// ---- 4. Featured work: a card, not a band -------------------------------
-
-function FilmCard({ film }: { film: FeaturedFilm }) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  // Seven videos on one screen: none autoplay. Each holds its poster and plays
-  // on hover, which keeps the page cheap and the grid calm at rest.
-  const onEnter = () => videoRef.current?.play().catch(() => {});
-  const onLeave = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.pause();
-    v.currentTime = 0;
-  };
-
-  // logoBand requires real transparency. brightness(0) invert on a plate gives
-  // a solid white rectangle.
-  const logo = film.logoBand;
-
-  const inner = (
-    <>
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-2">
-        <video
-          ref={videoRef}
-          poster={film.poster}
-          muted
-          loop
-          playsInline
-          preload="none"
-          className="absolute inset-0 h-full w-full object-cover"
-        >
-          <source src={film.clip} type="video/mp4" />
-        </video>
-        <div className="pointer-events-none absolute inset-0 bg-surface/35" />
-        {logo && (
-          <img
-            src={logo}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute inset-0 m-auto h-[16%] w-auto max-w-[46%] object-contain"
-            style={{
-              filter:
-                'brightness(0) invert(1) drop-shadow(0 2px 10px rgba(7,7,10,0.5)) drop-shadow(0 0 2px rgba(7,7,10,0.85))',
-            }}
-          />
-        )}
-      </div>
-
-      <div className="px-4 py-4">
-        <p className="font-display text-[19px] leading-none tracking-wide text-ink">{film.name}</p>
-        <p className="mt-2 font-mono text-[10px] uppercase leading-relaxed tracking-[0.2em] text-ink/40">
-          {film.campaignCount > 0
-            ? `${film.campaignCount} campaign${film.campaignCount === 1 ? '' : 's'}`
-            : 'Campaign work'}
-          {film.campaignName ? ` · ${film.campaignName}` : ''}
-        </p>
-      </div>
-    </>
-  );
-
-  const cls =
-    'group block overflow-hidden rounded-lg border border-ink/12 bg-surface transition-colors duration-200 hover:border-ink/25';
-
-  return film.href ? (
-    <Link href={film.href} className={cls} onMouseEnter={onEnter} onMouseLeave={onLeave}>
-      {inner}
-    </Link>
-  ) : (
-    <div className={cls} onMouseEnter={onEnter} onMouseLeave={onLeave}>
-      {inner}
-    </div>
-  );
-}
-
 // ---- 3. Client directory: small, quiet, all of them ---------------------
 
 function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
@@ -136,6 +63,10 @@ function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
   const restLogo = brand.restLogoReads ? brand.logoOnLight ?? brand.logoOnDark : null;
   const same = restLogo === hoverLogo;
   const loading = eager ? 'eager' : 'lazy';
+  // Per-brand box height, so every mark carries comparable ink area. A single
+  // max-height cannot do this: aspect ratios here run 0.75:1 to 8.79:1 and
+  // several files are mostly transparent padding.
+  const boxH = `${((brand.tileLogoScale ?? TILE_LOGO_SCALE_DEFAULT) * 100).toFixed(1)}%`;
 
   const inner = (
     <>
@@ -154,7 +85,8 @@ function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
             alt={brand.name}
             loading={loading}
             fetchPriority={eager ? 'high' : undefined}
-            className={`relative z-[3] max-h-[46%] max-w-[62%] object-contain transition-opacity duration-200 ease-out ${
+            style={{ height: boxH }}
+            className={`relative z-[3] w-auto max-w-[86%] object-contain transition-opacity duration-200 ease-out ${
               same ? '' : 'group-hover:opacity-0 group-focus-visible:opacity-0'
             }`}
           />
@@ -164,7 +96,8 @@ function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
               alt=""
               aria-hidden
               loading={loading}
-              className="absolute inset-[16%_18%] z-[3] m-auto max-h-[52%] max-w-[64%] object-contain opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
+              style={{ height: boxH }}
+              className="absolute inset-0 z-[3] m-auto w-auto max-w-[86%] object-contain opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
             />
           )}
         </>
@@ -275,21 +208,6 @@ export default function ClientsPageClient({
           <div className="mt-[3vh] grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
             {tiles.map((brand, i) => (
               <BrandTile key={brand.slug} brand={brand} eager={i < 16} />
-            ))}
-          </div>
-        </section>
-
-        {/* 4. Featured work — the films, as cards */}
-        <section className="mx-auto w-full max-w-[1400px] px-6 py-[7vh] sm:px-10">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink/40">
-            Featured work
-          </h2>
-          <p className="mt-2 font-display text-[clamp(24px,2.6vw,38px)] leading-none tracking-tight text-ink">
-            Campaigns we produced end to end
-          </p>
-          <div className="mt-[5vh] grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {films.map((film) => (
-              <FilmCard key={film.slug} film={film} />
             ))}
           </div>
         </section>

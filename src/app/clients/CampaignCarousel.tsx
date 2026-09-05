@@ -136,25 +136,30 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
                     fetchPriority={i < 2 ? 'high' : undefined}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
-                  {/* Soft scrim under the top-left mark only, so the logo always
-                      reads without dimming the whole photograph. */}
+                  {/* The mark is centred and dominant now, so the scrim is a
+                      centre-weighted pool rather than a top bar — enough to hold
+                      a white logo over a bright frame without flattening the
+                      photograph at the edges. */}
                   <div
-                    className="pointer-events-none absolute inset-x-0 top-0 h-1/3"
+                    className="pointer-events-none absolute inset-0"
                     style={{
                       background:
-                        'linear-gradient(to bottom, rgba(7,7,10,0.62) 0%, rgba(7,7,10,0.28) 45%, rgba(7,7,10,0) 100%)',
+                        'radial-gradient(ellipse 62% 48% at 50% 50%, rgba(7,7,10,0.58) 0%, rgba(7,7,10,0.34) 55%, rgba(7,7,10,0.10) 100%)',
                     }}
                   />
-                  {/* logoBand, not logoOnDark: it is the pick that requires real
-                      transparency. brightness(0) invert on a plate produces a
-                      solid white rectangle, which is exactly what appeared here. */}
-                  {film.logoBand && (
+                  {/* Knock out only when the file is dark-ink artwork. Crocs'
+                      badge mark silhouetted into a plain white disc. */}
+                  {film.photoLogo && (
                     <img
-                      src={film.logoBand}
+                      src={film.photoLogo}
                       alt=""
                       aria-hidden
-                      className="absolute left-4 top-4 h-6 w-auto max-w-[45%] object-contain"
-                      style={{ filter: 'brightness(0) invert(1)' }}
+                      className="absolute inset-0 m-auto h-auto max-h-[26%] w-auto max-w-[68%] object-contain"
+                      style={{
+                        filter: film.photoLogoKnockout
+                          ? 'brightness(0) invert(1) drop-shadow(0 2px 14px rgba(7,7,10,0.5))'
+                          : 'drop-shadow(0 2px 14px rgba(7,7,10,0.5))',
+                      }}
                     />
                   )}
                 </div>

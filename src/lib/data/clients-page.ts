@@ -25,12 +25,18 @@ import {
 } from '@/lib/brand-logo';
 
 /**
- * Band logo sizes live in brands.lockup_scale as a multiplier on this base,
- * which is the semantic the column already had (Adidas 0.72 == 7.91vh / 11).
- * Heights themselves were measured from each file's alpha bounds and equalise
- * ink AREA rather than box height — see the migration for the derivation.
+ * brands.lockup_scale is the fraction of a directory TILE's height that the
+ * logo box should occupy. Solved per brand from alpha bounds measured on the
+ * file the tile actually renders, so every mark carries comparable ink AREA
+ * rather than being clamped to the same max-height.
+ *
+ * Fixed clamps gave a 24.5x spread in ink area across the 67 tiles that show a
+ * logo (Armani 0.011 of the tile, BERO 0.275). These values bring that to 1.5x.
+ *
+ * Its previous meaning — box height in vh over an 11vh base — belonged to the
+ * 38vh bands, which no longer exist.
  */
-export const BAND_LOGO_BASE_VH = 11;
+export const TILE_LOGO_SCALE_DEFAULT = 0.42;
 
 /**
  * Supabase slug -> brands.ts slug, for brands the detail route knows under a
@@ -169,8 +175,8 @@ export type ClientBrand = {
   logoOnDark: string | null;
   /** False when no variant reads on the tile ground — the tile shows its name. */
   restLogoReads: boolean;
-  /** Box height in vh for a full-bleed band, from lockup_scale. */
-  bandLogoVh: number | null;
+  /** Fraction of the tile's height the logo box should occupy. */
+  tileLogoScale: number | null;
   hasFootage: boolean;
 };
 
@@ -279,9 +285,9 @@ function pickForGround(
   logos: BrandLogoRow[],
   variant: 'on_white' | 'on_black' | 'on_brand',
   ground: string,
-  opts: { requireAlpha?: boolean } = {}
+  opts: { requireAlpha?: boolean; kindOrder?: string[] } = {}
 ): { url: string; inkHex: string | null } | null {
-  const KIND_RANK = ['lockup', 'mark', 'wordmark', 'mono'];
+  const KIND_RANK = opts.kindOrder ?? ['lockup', 'mark', 'wordmark', 'mono'];
   const candidates = logos
     .filter(
       (l) =>
@@ -349,16 +355,28 @@ export async function loadClientsPage(): Promise<{
 
     // Legacy columns are the last resort, and only for the rest state — their
     // ink is unknown, so they are trusted only when brand_logos has nothing.
-    // Bands knock the logo out to white, so they need real transparency — a
-    // plate would knock out to a solid white rectangle. Ink colour is irrelevant
-    // there (everything becomes white), so any variant will do.
-    const bandPick =
-      pickForGround(logos, 'on_white', TILE_GROUND, { requireAlpha: true }) ??
-      pickForGround(logos, 'on_black', '#07070A', { requireAlpha: true });
+    // On a photograph, prefer real light-ink artwork and render it untouched.
+    // Knocking out is the fallback, not the default: brightness(0) invert turns
+    // any artwork into its silhouette, which is fine for a wordmark and wrong
+    // for a filled mark.
+    const lightInkPick =
+      pickForGround(logos, 'on_black', '#07070A', { requireAlpha: true }) ??
+      pickForGround(logos, 'on_brand', '#07070A', { requireAlpha: true });
+
+    // Knockout fallback prefers a wordmark or lockup over a mark, since a
+    // silhouetted mark loses whatever made it legible.
+    const knockoutPick =
+      pickForGround(logos, 'on_white', TILE_GROUND, {
+        requireAlpha: true,
+        kindOrder: ['wordmark', 'lockup', 'mark', 'mono'],
+      }) ?? null;
+
+    const photoLogo = lightInkPick?.url ?? knockoutPick?.url ?? r.logo_light_url ?? null;
+    const photoLogoKnockout = !lightInkPick && Boolean(knockoutPick ?? r.logo_light_url);
 
     const onLight = restPick?.url ?? (logos.length ? null : r.logo_dark_url ?? r.logo_primary_url) ?? null;
     const onDark = hoverPick?.url ?? r.logo_light_url ?? r.logo_white_url ?? null;
-    const bandLogo = bandPick?.url ?? r.logo_primary_url ?? r.logo_dark_url ?? null;
+
 
     const scale = r.lockup_scale == null ? null : Number(r.lockup_scale);
 
@@ -371,11 +389,11 @@ export async function loadClientsPage(): Promise<{
       fillConfidence: r.fill_color_confidence,
       logoOnLight: onLight,
       logoOnDark: onDark,
-      logoBand: bandLogo,
+      photoLogo,
+      photoLogoKnockout,
       /** False when no on_white file survives the tile ground — use a named tile. */
       restLogoReads: Boolean(onLight),
-      bandLogoVh:
-        scale != null && Number.isFinite(scale) ? scale * BAND_LOGO_BASE_VH : null,
+      tileLogoScale: scale != null && Number.isFinite(scale) ? scale : null,
       hasFootage: Boolean(CLIPS[slug]),
     };
   });
