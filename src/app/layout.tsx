@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Inter, JetBrains_Mono } from "next/font/google";
+import { Bebas_Neue, Inter, Arimo } from "next/font/google";
 import "./globals.css";
 import "@/styles/motion.css";
 import SiteNav from "@/components/SiteNav";
@@ -12,19 +12,22 @@ const bebasNeue = Bebas_Neue({
   display: "swap",
 });
 
-// Inter for body copy on editorial campaign pages; JetBrains Mono for
-// uppercase labels/kickers ("THE WORK", stat captions). Loaded once here so
-// every page can opt-in via the --font-inter / --font-mono CSS variables.
+// Inter for body copy on editorial campaign pages. Kept: those are
+// client-facing and out of scope for the Hub theming pass.
 const inter = Inter({
   weight: ["400", "500", "700"],
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
 });
-const mono = JetBrains_Mono({
+// Arimo carries body AND labels — labels are Arimo Bold uppercase letterspaced
+// .16em, not a third family. It also fills --font-mono so the 166 existing
+// font-mono call sites resolve to Arimo instead of the browser default while
+// they are migrated. JetBrains Mono is removed.
+const arimo = Arimo({
   weight: ["400", "700"],
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-arimo",
   display: "swap",
 });
 
@@ -68,7 +71,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${bebasNeue.variable} ${inter.variable} ${mono.variable}`}>
+    <html lang="en" data-theme="dark" className={`${bebasNeue.variable} ${inter.variable} ${arimo.variable}`}>
       <body>
         <PageWrapper>
           {/* SiteNav hides itself on /dashboard, /login, /recap, /pitch, etc.
