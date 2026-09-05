@@ -1,6 +1,6 @@
 ---
 name: postgame-design-system
-description: Use whenever working on the Postgame Hub or any Postgame-branded output — frontend components, page layouts, public and brand-facing pages, or brand-facing copy (creator briefs, campaign recaps, opt-in and delivery pages, athlete captions, pitch pages, case studies, decks), plus marketing materials and generated graphics or video. Covers two specs that differ: Hub surfaces (two fonts — Bebas Neue display, Arimo body and labels — a raised contrast ladder, and a per-user dark/light theme) and client-facing output (the unmigrated four-font system — Bebas Neue display, Anton heavy, Arimo body, JetBrains Mono labels — the original ladder, always dark). Also the three-color palette (#07070A black, #D73F09 orange, #FAF8F5 off-white), the Liquid Glass surface recipes, the logo-file-not-typography rule, the NCAA trademark blocklist, layout patterns and their mobile reflow, brand voice, and tech-stack conventions (Next.js App Router, Tailwind, Supabase, shadcn/ui, Vercel). Apply to any frontend code, copywriting, image or video generation, or design decision touching a Postgame product or deliverable.
+description: Use whenever working on the Postgame Hub or any Postgame-branded output — frontend components, page layouts, public and brand-facing pages, or brand-facing copy (creator briefs, campaign recaps, opt-in and delivery pages, athlete captions, pitch pages, case studies, decks), plus marketing materials and generated graphics or video. Covers two specs on a tool-vs-deliverable axis, NOT internal vs external: tools (the staff Hub and the athlete app — two fonts, Bebas Neue display and Arimo for body and labels, a raised contrast ladder, per-user dark/light theme) and deliverables (recaps, pitch pages, decks, portals, generated graphics — the unmigrated four-font system of Bebas Neue, Anton, Arimo and JetBrains Mono, the original ladder, always dark). Also the three-color palette (#07070A black, #D73F09 orange, #FAF8F5 off-white), the Liquid Glass surface recipes, the logo-file-not-typography rule, the NCAA trademark blocklist, layout patterns and their mobile reflow, brand voice, and tech-stack conventions (Next.js App Router, Tailwind, Supabase, shadcn/ui, Vercel). Apply to any frontend code, copywriting, image or video generation, or design decision touching a Postgame product or deliverable.
 ---
 
 # Postgame Design System
@@ -15,20 +15,36 @@ For the full pattern geometry and mobile reflow rules, read
 
 ---
 
-## Two surfaces, two specs
+## Tools and deliverables — two specs
 
-This system now covers two things with different rules.
+This system covers two kinds of thing, and the axis is **not** internal vs external.
 
-**Hub surfaces** — the staff app at postgame-hub.vercel.app. Two fonts, the raised
-contrast ladder, and a per-user dark/light theme. Optimised for people reading it
-eight hours a day.
+**A tool** is used repeatedly and must stay legible for hours. Two fonts, the raised
+contrast ladder, a per-user dark/light theme. Legibility beats presentation.
 
-**Client-facing output** — recaps, pitch pages, case studies, decks, opt-in pages,
-generated graphics and video. Four fonts, the original ladder, always dark. This is
-the brand presentation and it has not been migrated.
+**A deliverable** is handed to someone and represents the brand. Four fonts, the
+original ladder, always dark. Presentation beats everything.
+
+| | Tools | Deliverables |
+|---|---|---|
+| | Staff Hub (`/dashboard/*`, `/media-library`) | Recaps, pitch pages, case studies, decks |
+| | **The athlete app** (`/athlete/*`) | Opt-in and delivery pages |
+| | Submission-form **editor** (`/dashboard/submission-forms`) | The **form itself** (`/submit/[token]`) |
+| | | Brand portal (`/portal/[token]`) |
+| | | Generated graphics and video |
+| Fonts | Bebas + Arimo | Bebas + Anton + Arimo + Mono |
+| Ladder | 100/95/84/70 dark · 100/96/88/78 light | 100/90/68/50 |
+| Theme | Per-user, `profiles.theme` | Always dark |
+
+**The athlete app is a tool despite being external.** An athlete opens it repeatedly
+to upload work and check deliverables — that is a tool, and 10px Mono at 50% fails
+them the same way it fails staff. Internal/external was never the real boundary.
+
+**A route can host both.** The submission-form editor is a tool; the form it
+generates is a deliverable. Judge the surface, not the folder it lives in.
 
 Where the two disagree, the section says which applies. If you are unsure which you
-are building, ask — a recap rendered in Hub type is off-brand for the client.
+are building, ask — a recap rendered in tool type is off-brand for the client.
 
 ---
 
@@ -57,8 +73,8 @@ good it looks.
    a hard rectangular edge on the black ground gets a soft black gradient at
    that edge so it dissolves into the background. Subtle — it must never darken
    a face. Put the fade on the empty side of the crop. In the Hub this fade is a
-   token, not a hardcoded black, so it follows the theme. Client-facing output
-   always fades to `#07070A`.
+   token, not a hardcoded black, so it follows the theme. Deliverables always
+   fade to `#07070A`.
 
 5. **Orange is a destination, not a surface.** `#D73F09` marks where the eye
    lands: CTAs, rules, eyebrows, active states, step numbers, links. Never a
@@ -96,7 +112,7 @@ Three colors. There is no fourth. Depth comes from opacity and blur, not hue.
 
 **Opacity ladder** — ink is never used at a random opacity.
 
-| Rung | Hub dark | Hub light | Client-facing |
+| Rung | Tool dark | Tool light | Deliverable |
 |---|---|---|---|
 | Display, headlines, stat figures, active nav | 100% | 100% | 100% |
 | Lead paragraphs | 95% | 96% | 90% |
@@ -107,12 +123,12 @@ Hub values are raised deliberately: 68% body and 50% labels are fine for a page 
 once and tiring in a tool used all day. Light needs slightly more than dark at every
 rung — light-on-dark blooms and reads heavier than its opacity, dark-on-light does not.
 
-Client-facing output keeps the original ladder. Do not raise it there without a
-separate decision.
+Deliverables keep the original ladder. Do not raise it there without a separate
+decision.
 
 ---
 
-## Theme — Hub only
+## Theme — tools only
 
 Two themes on the same three colours. The palette does not grow; the roles swap.
 
@@ -130,7 +146,7 @@ A component that names a colour cannot be themed.
 
 Theme is per-user, stored on `profiles.theme`, default dark.
 
-Client-facing output is **always dark**. A client opening a recap sees the brand
+Deliverables are **always dark**. A client opening a recap sees the brand
 presentation, not a staff member's preference.
 
 ---
@@ -139,14 +155,14 @@ presentation, not a staff member's preference.
 
 If type doesn't fit one of these roles, the role is wrong — not the font list.
 
-**Hub: two jobs, two fonts.**
+**Tools: two jobs, two fonts.**
 
 | Role | Font | For |
 |---|---|---|
 | Display | Bebas Neue | Hero lines, H1/H2, athlete names, card titles, **stat figures**. Uppercase, tight. |
 | Body | Arimo Regular / Bold | Everything read at length, **and labels** — eyebrows, stat labels, captions, nav, buttons, tags. Labels are Arimo Bold, uppercase, letterspaced `.16em`. Metrically identical to Arial; `Arial` is the correct fallback. |
 
-**Client-facing: four jobs, four fonts.** Unchanged — Bebas Neue display, Anton for
+**Deliverables: four jobs, four fonts.** Unchanged — Bebas Neue display, Anton for
 campaign titles and stat figures only, Arimo body, JetBrains Mono labels.
 
 Why the Hub dropped two: Anton ships in one weight and does nothing Bebas cannot at
@@ -155,9 +171,9 @@ stat-figure sizes. JetBrains Mono is the most characterful thing in the system, 
 everywhere — every eyebrow, stat label, nav item and button.
 
 Anton ships in one weight only. It cannot do anything needing a light or
-regular cut — which is why client-facing pull quotes are Arimo Bold, not Anton.
+regular cut — which is why deliverable pull quotes are Arimo Bold, not Anton.
 
-**Client-facing sizes. Hub uses the same scale with Bebas in place of Anton and
+**Deliverable sizes. Tools use the same scale with Bebas in place of Anton and
 Arimo Bold in place of Mono.**
 
 | Role | Desktop | Tablet | Mobile |
@@ -165,13 +181,13 @@ Arimo Bold in place of Mono.**
 | Hero H1 (Bebas) | 76–92 | 56 | 40 |
 | Section H2 (Bebas) | 48–58 | 40 | 30–32 |
 | H3 (Bebas) | 20–26 | 20 | 20 |
-| Campaign title (Anton → Bebas in Hub) | 68 | 48 | 34 |
-| Stat figure (Anton → Bebas in Hub) | 68 (56 if long) | 48 | 40 |
+| Campaign title (Anton → Bebas in tools) | 68 | 48 | 34 |
+| Stat figure (Anton → Bebas in tools) | 68 (56 if long) | 48 | 40 |
 | Pull quote (Arimo Bold) | 46 | 34 | 26 |
 | Lead para (Arimo) | 21 | 19 | 18 |
 | Body (Arimo) | 16 | 16 | 16 |
-| Eyebrow (Mono → Arimo Bold `.16em` in Hub) | 13 | 12 | 11 |
-| Label (Mono → Arimo Bold `.16em` in Hub) | 10 | 10 | 10 |
+| Eyebrow (Mono → Arimo Bold `.16em` in tools) | 13 | 12 | 11 |
+| Label (Mono → Arimo Bold `.16em` in tools) | 10 | 10 | 10 |
 
 Line-height: hero 0.90 · H2 0.98 · stat 0.92 · lead 1.5 · body 1.76 (1.7
 mobile). **Body never drops below 16px.** Display shrinks hard; body does not.
@@ -197,11 +213,11 @@ Card padding 24–26 desktop → 20 mobile.
 
 **Buttons.** Radius 12; nav pills radius 999.
 
-- **Hub** — Primary: accent fill, Arimo Bold label uppercase letterspaced `.16em`.
+- **Tools** — Primary: accent fill, Arimo Bold label uppercase letterspaced `.16em`.
   Secondary: glass pill at the Raised recipe, label on the ink ladder. Distinguish
   actions by **fill vs outline, never by hue** — no green approve, no red reject,
   no blue link.
-- **Client-facing** — Primary: orange fill, Mono label in white, uppercase.
+- **Deliverables** — Primary: orange fill, Mono label in white, uppercase.
   Secondary: glass pill, `rgba(255,255,255,0.06)` fill, 1px `rgba(255,255,255,0.14)`
   border.
 
@@ -313,11 +329,11 @@ than rebuilding buttons/dialogs/inputs from scratch.
 
 ---
 
-## Self-check — Hub surfaces
+## Self-check — tools (Hub, athlete app)
 
 - More than three colours, or orange as a background
 - A font outside **Bebas Neue and Arimo**
-- Anton or JetBrains Mono anywhere in Hub chrome
+- Anton or JetBrains Mono anywhere in a tool surface
 - Body copy below 16px, or body outside the 84% (dark) / 88% (light) step
 - Labels below the 70% (dark) / 78% (light) step
 - A hardcoded `#FAF8F5`, `#07070A`, `bg-black` or `text-white` in a component —
@@ -325,7 +341,7 @@ than rebuilding buttons/dialogs/inputs from scratch.
 - Heavy borders or drop shadows instead of translucency and blur
 - A hover-only interaction on mobile
 
-## Self-check — client-facing output
+## Self-check — deliverables
 
 Unchanged. Four fonts, the 100/90/68/50 ladder, always dark, plus every rule about
 logos, invented people, projections and NCAA terms — those apply to both and were
@@ -343,10 +359,10 @@ Run this against any output before showing it. Any hit means it's wrong:
 - The icon with a solid square behind it — it's transparent; a square means the
   wrong file (the old JPEG)
 - Body copy below 16px, or body at full opacity (should be 68% — the
-  client-facing rung)
+  deliverable rung)
 - Heavy borders or drop shadows instead of translucency and blur
 - A hard image edge on the black ground with no fade
-- A font outside the client-facing four (Bebas Neue, Anton, Arimo, JetBrains Mono)
+- A font outside the deliverable four (Bebas Neue, Anton, Arimo, JetBrains Mono)
 - A hover-only interaction on mobile
 - Any of the four NCAA terms in brand-facing copy
 - Copy that sounds like a press release

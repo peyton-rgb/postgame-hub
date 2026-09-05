@@ -1,10 +1,10 @@
 # Postgame layout patterns
 
-**These are client-facing patterns.** Sizes, fonts and the 100/90/68/50 ladder here
-are the client-facing spec — Anton figures and Mono labels are correct in this file
-and must not be migrated. For Hub surfaces read the Hub columns in SKILL.md: Bebas
-in place of Anton, Arimo Bold `.16em` in place of Mono, the raised ladder, and a
-themed ground in place of hardcoded black.
+**These are deliverable patterns.** Sizes, fonts and the 100/90/68/50 ladder here
+are the deliverable spec — Anton figures and Mono labels are correct in this file
+and must not be migrated. For tool surfaces (the staff Hub and the athlete app)
+read the tool columns in SKILL.md: Bebas in place of Anton, Arimo Bold `.16em` in
+place of Mono, the raised ladder, and a themed ground in place of hardcoded black.
 
 The recurring layout blocks, with desktop geometry as built and how each
 reflows down. Read this when building or reviewing a page layout. For colors,
