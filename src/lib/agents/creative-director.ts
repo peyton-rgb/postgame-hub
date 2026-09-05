@@ -17,6 +17,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import type { Concept, AgentRun } from '@/lib/types/briefs';
 
+import { assertAgentBudget } from "@/lib/agents/budget";
 // Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
 const anthropic = new Anthropic();
 
@@ -354,6 +355,16 @@ export async function generateConcepts(
   );
 
   // Create the agent_runs record BEFORE calling Claude (status: running)
+  // Spend cap. Checked before the run row is created, so a blocked call
+  // leaves no orphan 'running' row behind it.
+  const budget = await assertAgentBudget(supabase, 'creative_director', {
+    triggeredBy: userId,
+    context: { brief_id: briefId },
+  });
+  if (!budget.allowed) {
+    throw new Error(`creative_director skipped — ${budget.reason}`);
+  }
+
   const { data: agentRun, error: runError } = await supabase
     .from('agent_runs')
     .insert({

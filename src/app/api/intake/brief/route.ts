@@ -23,6 +23,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import type { ParsedBriefFields } from '@/lib/types/intake';
 
+import { assertAgentBudget } from "@/lib/agents/budget";
 const anthropic = new Anthropic();
 
 const adminSupabase = createClient(
@@ -149,6 +150,20 @@ export async function POST(request: NextRequest) {
         text: `Parse this brand brief and extract structured fields as JSON.\n\n--- BRIEF DOCUMENT ---\n${textContent}\n--- END DOCUMENT ---\n\nSchema:\n${JSON.stringify(BRIEF_PARSE_SCHEMA, null, 2)}`,
       },
     ];
+  }
+
+  // Spend cap. Before the run row, so a blocked call leaves no orphan
+  // 'running' row. Same 'intake' budget as lib/agents/intake-agent.ts — one
+  // cap covers both entry points into that agent.
+  const budget = await assertAgentBudget(adminSupabase, 'intake', {
+    triggeredBy: user.id,
+    context: { action: 'brief_parse', file_name: file.name },
+  });
+  if (!budget.allowed) {
+    return NextResponse.json(
+      { error: `Intake agent skipped — ${budget.reason}` },
+      { status: 429 },
+    );
   }
 
   // --- Step 3: Create agent_runs record ---
