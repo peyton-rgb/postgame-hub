@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import gsap from 'gsap';
 import type { FeaturedFilm } from '@/lib/data/clients-page';
 
 /**
@@ -45,22 +46,36 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
     el.scrollTo({ left, behavior: reduced ? 'auto' : 'smooth' });
   }, [reduced]);
 
-  // Auto-advance. Disabled entirely under reduced motion — not slowed, off.
+  // Continuous drift rather than a step every five seconds. A scripted
+  // scrollTo per card reads as a jump however it is eased; advancing a couple
+  // of pixels per frame reads as motion. Driven off gsap.ticker, which Lenis
+  // already runs, so there is one rAF loop on the page rather than two
+  // competing for the same frame.
   useEffect(() => {
     if (reduced || films.length < 2) return;
-    const id = window.setInterval(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const PX_PER_SECOND = 22;
+    let carry = 0;
+
+    const drift = (_t: number, deltaMs: number) => {
       if (paused.current) return;
-      setActive((prev) => {
-        const el = scrollerRef.current;
-        const atEnd =
-          el != null && el.scrollLeft >= el.scrollWidth - el.clientWidth - 4;
-        const next = atEnd ? 0 : (prev + 1) % films.length;
-        scrollToIndex(next);
-        return next;
-      });
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [reduced, films.length, scrollToIndex]);
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      carry += (PX_PER_SECOND * deltaMs) / 1000;
+      const step = Math.floor(carry);
+      if (step < 1) return;
+      carry -= step;
+      // Wrap at the end rather than bouncing: the row reads as a loop.
+      el.scrollLeft = el.scrollLeft >= max - 1 ? 0 : el.scrollLeft + step;
+    };
+
+    gsap.ticker.add(drift);
+    return () => {
+      gsap.ticker.remove(drift);
+    };
+  }, [reduced, films.length]);
 
   // Keep `active` honest when the reader scrolls or drags by hand.
   useEffect(() => {
@@ -98,6 +113,13 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
   const release = () => {
     paused.current = false;
   };
+  // A drag should stop the drift for a beat after release, not fight it.
+  const holdBriefly = () => {
+    paused.current = true;
+    window.setTimeout(() => {
+      paused.current = false;
+    }, 1600);
+  };
 
   return (
     <section
@@ -115,10 +137,14 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
         // this container back to native scrolling, which is also what makes
         // drag and momentum feel right.
         data-lenis-prevent
+        onPointerDown={hold}
+        onPointerUp={holdBriefly}
+        onTouchStart={hold}
+        onTouchEnd={holdBriefly}
         // The row bleeds off both edges. Padding is a normal page gutter, not
         // half a viewport: centring the first card would leave ~680px of dead
         // space on the left and the row would read as a contained slider.
-        className="flex snap-x gap-4 overflow-x-auto scroll-smooth px-6 pb-2 sm:px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-4 overflow-x-auto px-6 pb-2 sm:px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {films.map((film, i) => {
           const isActive = i === active;
@@ -201,7 +227,7 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
           );
 
           const cls =
-            'w-[min(68vw,268px)] shrink-0 snap-center outline-none focus-visible:ring-2 focus-visible:ring-brand/70 rounded-2xl';
+            'w-[min(68vw,268px)] shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-brand/70 rounded-2xl';
 
           return film.href ? (
             <Link key={film.slug} href={film.href} className={cls} aria-label={film.name}>
