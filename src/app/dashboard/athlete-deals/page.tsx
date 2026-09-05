@@ -289,7 +289,7 @@ export default async function AthleteDealsReviewPage({ searchParams }: { searchP
 
   return (
     <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 20px 60px" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Athlete deals</h1>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Inbound reviews</h1>
       <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>
         Approve athlete content, then verify their live posts to release payment. Grouped by athlete + deal.
       </p>
