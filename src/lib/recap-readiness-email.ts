@@ -24,7 +24,10 @@ function files(n: number): string {
  * The report body. Plain text: it is a list of campaigns with links, which
  * gains nothing from HTML and stays readable in any client.
  */
-export function renderReadinessEmail(checks: ReadinessCheck[]): { subject: string; text: string } {
+export function renderReadinessEmail(
+  checks: ReadinessCheck[],
+  change?: { newlyChecked: ReadinessCheck[]; flipped: ReadinessCheck[] },
+): { subject: string; text: string } {
   const ready = checks.filter((c) => c.ready);
   const notReady = checks.filter((c) => !c.ready);
   const today = new Date().toLocaleDateString("en-US", {
@@ -41,6 +44,20 @@ export function renderReadinessEmail(checks: ReadinessCheck[]): { subject: strin
     `${ready.length} ready, ${notReady.length} not.`,
     "",
   ];
+
+  // What changed goes first — the mail only sends when something did, so the
+  // reason it arrived should be the first thing read, not inferred by diffing
+  // against yesterday's copy.
+  if (change && (change.newlyChecked.length > 0 || change.flipped.length > 0)) {
+    lines.push("WHAT CHANGED");
+    for (const c of change.flipped) {
+      lines.push(`  now ready — ${c.clientName} · ${c.name}`);
+    }
+    for (const c of change.newlyChecked) {
+      lines.push(`  newly delivered — ${c.clientName} · ${c.name}${c.ready ? " (ready)" : ""}`);
+    }
+    lines.push("");
+  }
 
   lines.push(`READY (${ready.length})`);
   if (ready.length === 0) {
@@ -72,6 +89,8 @@ export function renderReadinessEmail(checks: ReadinessCheck[]): { subject: strin
 
   lines.push("");
   lines.push("Ready means the campaign has files in its Drive content folder or media rows in the Hub.");
+  lines.push("This report is sent only when a campaign newly appears or flips to ready;");
+  lines.push("the checks themselves run and are recorded every day.");
   lines.push("A tracker sheet and brief doc are reported but do not decide readiness.");
 
   return { subject: `Recap readiness — ${today}`, text: lines.join("\n") };

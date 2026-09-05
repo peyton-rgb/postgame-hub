@@ -195,3 +195,52 @@ export async function deliveredInWindow(
   ];
   return rows.sort((a, b) => a.client_name.localeCompare(b.client_name) || a.name.localeCompare(b.name));
 }
+
+/**
+ * The most recent prior recap_readiness verdict for each of these recaps.
+ *
+ * Absent from the map means this recap has never been checked — which, for the
+ * sweep, is how "newly delivered" is detected. There is no separate signal for
+ * a campaign entering the window; a campaign the sweep has never seen is one it
+ * has never reported on, whether it just flipped to 'delivered' or just crossed
+ * into the 120 days.
+ */
+export async function priorVerdicts(
+  db: SupabaseClient,
+  recapIds: string[],
+): Promise<Map<string, boolean>> {
+  const prior = new Map<string, boolean>();
+  if (recapIds.length === 0) return prior;
+
+  // Ordered newest-last so the final write per recap wins, which avoids paging
+  // a per-recap query and keeps this to one round trip.
+  const { data, error } = await db
+    .from("recap_readiness")
+    .select("recap_id, ready, checked_at")
+    .in("recap_id", recapIds)
+    .order("checked_at", { ascending: true });
+
+  if (error) {
+    // Fail LOUD-ish but non-fatally: an empty map makes every campaign look
+    // new, which sends one over-full email rather than silently suppressing a
+    // real change.
+    console.warn(`[readiness] prior verdicts unavailable: ${error.message}`);
+    return prior;
+  }
+  for (const row of (data as Array<{ recap_id: string; ready: boolean }> | null) ?? []) {
+    prior.set(row.recap_id, row.ready);
+  }
+  return prior;
+}
+
+/** Ready / not-ready totals from the latest verdict per recap, for the weekly digest. */
+export async function readinessTotals(
+  db: SupabaseClient,
+  days = 120,
+): Promise<{ total: number; ready: number; notReady: number }> {
+  const recaps = await deliveredInWindow(db, days);
+  const prior = await priorVerdicts(db, recaps.map((r) => r.id));
+  let ready = 0;
+  for (const r of recaps) if (prior.get(r.id)) ready += 1;
+  return { total: recaps.length, ready, notReady: recaps.length - ready };
+}

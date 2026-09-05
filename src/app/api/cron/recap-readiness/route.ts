@@ -27,7 +27,7 @@ import { NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
 import { sendMail } from "@/lib/mail";
 import { startRun, finishRun, failRun } from "@/lib/agents/run-log";
-import { checkRecap, deliveredInWindow, type ReadinessCheck } from "@/lib/recap-readiness";
+import { checkRecap, deliveredInWindow, priorVerdicts, type ReadinessCheck } from "@/lib/recap-readiness";
 import { renderReadinessEmail, WINDOW_DAYS } from "@/lib/recap-readiness-email";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +69,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, campaigns: 0, emailed: false });
     }
 
+    // What the last sweep concluded, read BEFORE this run writes its own rows.
+    const prior = await priorVerdicts(supabase, recaps.map((r) => r.id));
+
     // Sequential rather than Promise.all: each check may make a paged Drive
     // call, and a burst across every delivered campaign is the shape that gets
     // an API rate-limited.
@@ -77,7 +80,20 @@ export async function GET(req: Request) {
       checks.push(await checkRecap(supabase, recap));
     }
 
-    const { subject, text } = renderReadinessEmail(checks);
+    // Email only on news. Two things count:
+    //   • a campaign this sweep has never checked — it newly became delivered,
+    //     or newly entered the 120-day window
+    //   • a campaign that was not ready last time and is ready now
+    //
+    // A ready -> not-ready regression is deliberately NOT news: readiness is
+    // driven by counts that only grow in normal use, so a drop means data was
+    // removed, and a daily email is the wrong channel for that. It still lands
+    // in the rows, and the weekly digest still shows the totals.
+    const newlyChecked = checks.filter((c) => !prior.has(c.recapId));
+    const flipped = checks.filter((c) => prior.get(c.recapId) === false && c.ready);
+    const changed = newlyChecked.length > 0 || flipped.length > 0;
+
+    const { subject, text } = renderReadinessEmail(checks, { newlyChecked, flipped });
 
     if (dryRun) {
       return NextResponse.json({
@@ -85,19 +101,29 @@ export async function GET(req: Request) {
         dryRun: true,
         campaigns: checks.length,
         ready: checks.filter((c) => c.ready).length,
+        wouldEmail: changed,
+        newlyChecked: newlyChecked.length,
+        flipped: flipped.length,
         subject,
         text,
       });
     }
 
-    const sent = await sendMail({ to: REPORT_TO, subject, text });
-    if (!sent.sent) console.error(`[readiness] report not sent: ${sent.error}`);
+    // Rows are written either way — only the email is conditional. The history
+    // stays complete, so the weekly digest and "when did this become ready"
+    // both keep working on quiet days.
+    const sent = changed
+      ? await sendMail({ to: REPORT_TO, subject, text })
+      : { sent: false, error: null as string | null };
+    if (changed && !sent.sent) console.error(`[readiness] report not sent: ${sent.error}`);
 
     await finishRun(supabase, runId, {
       model: "none",
       output: {
         campaigns: checks.length,
         ready: checks.filter((c) => c.ready).length,
+        newly_checked: newlyChecked.length,
+        flipped_to_ready: flipped.length,
         emailed: sent.sent,
         email_error: sent.error,
       },
@@ -108,6 +134,8 @@ export async function GET(req: Request) {
       ok: true,
       campaigns: checks.length,
       ready: checks.filter((c) => c.ready).length,
+      newlyChecked: newlyChecked.length,
+      flipped: flipped.length,
       emailed: sent.sent,
     });
   } catch (e) {

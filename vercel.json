@@ -36,6 +36,10 @@
     {
       "path": "/api/sync/drive-folders",
       "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/cron/recap-readiness",
+      "schedule": "0 12 * * *"
     }
   ]
 }
