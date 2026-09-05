@@ -1,6 +1,6 @@
 ---
 name: postgame-design-system
-description: Use whenever working on the Postgame Hub or any Postgame-branded output — frontend components, page layouts, public and brand-facing pages, or brand-facing copy (creator briefs, campaign recaps, opt-in and delivery pages, athlete captions, pitch pages, case studies, decks), plus marketing materials and generated graphics or video. Covers Postgame's four-font type system (Bebas Neue display, Anton heavy, Arimo body, JetBrains Mono labels), the three-color palette (#07070A black, #D73F09 orange, #FAF8F5 off-white), the Liquid Glass Dark surface recipe, the logo-file-not-typography rule, the NCAA trademark blocklist, layout patterns and their mobile reflow, brand voice, and tech-stack conventions (Next.js App Router, Tailwind, Supabase, shadcn/ui, Vercel). Apply to any frontend code, copywriting, image or video generation, or design decision touching a Postgame product or deliverable.
+description: Use whenever working on the Postgame Hub or any Postgame-branded output — frontend components, page layouts, public and brand-facing pages, or brand-facing copy (creator briefs, campaign recaps, opt-in and delivery pages, athlete captions, pitch pages, case studies, decks), plus marketing materials and generated graphics or video. Covers two specs that differ: Hub surfaces (two fonts — Bebas Neue display, Arimo body and labels — a raised contrast ladder, and a per-user dark/light theme) and client-facing output (the unmigrated four-font system — Bebas Neue display, Anton heavy, Arimo body, JetBrains Mono labels — the original ladder, always dark). Also the three-color palette (#07070A black, #D73F09 orange, #FAF8F5 off-white), the Liquid Glass surface recipes, the logo-file-not-typography rule, the NCAA trademark blocklist, layout patterns and their mobile reflow, brand voice, and tech-stack conventions (Next.js App Router, Tailwind, Supabase, shadcn/ui, Vercel). Apply to any frontend code, copywriting, image or video generation, or design decision touching a Postgame product or deliverable.
 ---
 
 # Postgame Design System
@@ -11,7 +11,24 @@ recap. The product is the Postgame Hub (Next.js + Supabase) plus brand-facing
 deliverables.
 
 For the full pattern geometry and mobile reflow rules, read
-`reference/patterns.md`. Everything below applies to all Postgame work.
+`reference/patterns.md`.
+
+---
+
+## Two surfaces, two specs
+
+This system now covers two things with different rules.
+
+**Hub surfaces** — the staff app at postgame-hub.vercel.app. Two fonts, the raised
+contrast ladder, and a per-user dark/light theme. Optimised for people reading it
+eight hours a day.
+
+**Client-facing output** — recaps, pitch pages, case studies, decks, opt-in pages,
+generated graphics and video. Four fonts, the original ladder, always dark. This is
+the brand presentation and it has not been migrated.
+
+Where the two disagree, the section says which applies. If you are unsure which you
+are building, ask — a recap rendered in Hub type is off-brand for the client.
 
 ---
 
@@ -39,7 +56,9 @@ good it looks.
 4. **Flat edges get an edge-blend.** Any image, video tile, or media panel with
    a hard rectangular edge on the black ground gets a soft black gradient at
    that edge so it dissolves into the background. Subtle — it must never darken
-   a face. Put the fade on the empty side of the crop.
+   a face. Put the fade on the empty side of the crop. In the Hub this fade is a
+   token, not a hardcoded black, so it follows the theme. Client-facing output
+   always fades to `#07070A`.
 
 5. **Orange is a destination, not a surface.** `#D73F09` marks where the eye
    lands: CTAs, rules, eyebrows, active states, step numbers, links. Never a
@@ -75,42 +94,84 @@ Three colors. There is no fourth. Depth comes from opacity and blur, not hue.
 | `--pg-orange` | `#D73F09` | Accent only (rule 5) |
 | `--pg-off-white` | `#FAF8F5` | Display, text, light elements |
 
-**Opacity ladder** — off-white is never used at a random opacity:
+**Opacity ladder** — ink is never used at a random opacity.
 
-| 100% | Display, headlines, stat figures, active nav |
-| 90% | Lead paragraphs |
-| 68% | Body copy — the default |
-| 50% | Labels, captions, meta, inactive nav |
+| Rung | Hub dark | Hub light | Client-facing |
+|---|---|---|---|
+| Display, headlines, stat figures, active nav | 100% | 100% | 100% |
+| Lead paragraphs | 95% | 96% | 90% |
+| Body copy — the default | 84% | 88% | 68% |
+| Labels, captions, meta, inactive nav | 70% | 78% | 50% |
+
+Hub values are raised deliberately: 68% body and 50% labels are fine for a page read
+once and tiring in a tool used all day. Light needs slightly more than dark at every
+rung — light-on-dark blooms and reads heavier than its opacity, dark-on-light does not.
+
+Client-facing output keeps the original ladder. Do not raise it there without a
+separate decision.
+
+---
+
+## Theme — Hub only
+
+Two themes on the same three colours. The palette does not grow; the roles swap.
+
+| Role | Dark | Light |
+|---|---|---|
+| Ground | `#07070A` | `#FAF8F5` |
+| Ink | `#FAF8F5` | `#07070A` |
+| Accent | `#D73F09` | `#D73F09` |
+
+Accent never moves — orange has adequate contrast on both grounds — and never becomes
+a page background or a large fill in either theme.
+
+Components reference **roles**, never literals. `text-ink`, not `text-[#FAF8F5]`.
+A component that names a colour cannot be themed.
+
+Theme is per-user, stored on `profiles.theme`, default dark.
+
+Client-facing output is **always dark**. A client opening a recap sees the brand
+presentation, not a staff member's preference.
 
 ---
 
 ## Typography
 
-**Four jobs, four fonts.** If type doesn't fit one of these roles, the role is
-wrong — not the font list.
+If type doesn't fit one of these roles, the role is wrong — not the font list.
+
+**Hub: two jobs, two fonts.**
 
 | Role | Font | For |
 |---|---|---|
-| Display | Bebas Neue | Hero lines, H1/H2, athlete names, card titles. Uppercase, tight. |
-| Heavy | Anton | Campaign titles and stat figures **only**. Used sparingly. |
-| Body | Arimo Regular / Bold | Everything read at length. Metrically identical to Arial; `Arial` is the correct fallback. |
-| Label | JetBrains Mono Medium | Eyebrows, stat labels, captions, nav, buttons, tags. Uppercase, letterspaced. |
+| Display | Bebas Neue | Hero lines, H1/H2, athlete names, card titles, **stat figures**. Uppercase, tight. |
+| Body | Arimo Regular / Bold | Everything read at length, **and labels** — eyebrows, stat labels, captions, nav, buttons, tags. Labels are Arimo Bold, uppercase, letterspaced `.16em`. Metrically identical to Arial; `Arial` is the correct fallback. |
+
+**Client-facing: four jobs, four fonts.** Unchanged — Bebas Neue display, Anton for
+campaign titles and stat figures only, Arimo body, JetBrains Mono labels.
+
+Why the Hub dropped two: Anton ships in one weight and does nothing Bebas cannot at
+stat-figure sizes. JetBrains Mono is the most characterful thing in the system, but at
+10px and 50% opacity it was the least legible thing in the Hub, and labels are
+everywhere — every eyebrow, stat label, nav item and button.
 
 Anton ships in one weight only. It cannot do anything needing a light or
-regular cut — which is why pull quotes are Arimo Bold, not Anton.
+regular cut — which is why client-facing pull quotes are Arimo Bold, not Anton.
+
+**Client-facing sizes. Hub uses the same scale with Bebas in place of Anton and
+Arimo Bold in place of Mono.**
 
 | Role | Desktop | Tablet | Mobile |
 |---|---|---|---|
 | Hero H1 (Bebas) | 76–92 | 56 | 40 |
 | Section H2 (Bebas) | 48–58 | 40 | 30–32 |
 | H3 (Bebas) | 20–26 | 20 | 20 |
-| Campaign title (Anton) | 68 | 48 | 34 |
-| Stat figure (Anton) | 68 (56 if long) | 48 | 40 |
+| Campaign title (Anton → Bebas in Hub) | 68 | 48 | 34 |
+| Stat figure (Anton → Bebas in Hub) | 68 (56 if long) | 48 | 40 |
 | Pull quote (Arimo Bold) | 46 | 34 | 26 |
 | Lead para (Arimo) | 21 | 19 | 18 |
 | Body (Arimo) | 16 | 16 | 16 |
-| Eyebrow (Mono) | 13 | 12 | 11 |
-| Label (Mono) | 10 | 10 | 10 |
+| Eyebrow (Mono → Arimo Bold `.16em` in Hub) | 13 | 12 | 11 |
+| Label (Mono → Arimo Bold `.16em` in Hub) | 10 | 10 | 10 |
 
 Line-height: hero 0.90 · H2 0.98 · stat 0.92 · lead 1.5 · body 1.76 (1.7
 mobile). **Body never drops below 16px.** Display shrinks hard; body does not.
@@ -122,16 +183,27 @@ mobile). **Body never drops below 16px.** Display shrinks hard; body does not.
 Translucent layered panels on a rich dark ground. Depth from transparency and
 blur, never heavy borders or drop shadows.
 
-| Tier | Fill | Border | Radius | Blur | For |
+| Tier | Dark fill | Light fill | Border (dark / light) | Radius | Blur |
 |---|---|---|---|---|---|
-| Raised | `rgba(250,248,245,0.07)` | 1px `rgba(250,248,245,0.14)` | 16–20 | 26 | Stat bars, nav pills, modals |
-| Card | `rgba(250,248,245,0.04)` | 1px `rgba(250,248,245,0.10)` | 16 | 26 | Grid cards, tiles, list rows |
+| Raised | `rgba(250,248,245,0.07)` | `rgba(7,7,10,0.05)` | `0.14` / `0.12` | 16–20 | 26 |
+| Card | `rgba(250,248,245,0.04)` | `rgba(7,7,10,0.035)` | `0.10` / `0.09` | 16 | 26 |
+
+Lower alpha on light — dark over light reads stronger than light over dark.
+
+The name stays "Liquid Glass Dark" because dark is the default and the only thing
+clients see. Light is a Hub affordance, not a second brand.
 
 Card padding 24–26 desktop → 20 mobile.
 
-**Buttons.** Primary: orange fill, radius 12, Mono label in white, uppercase.
-Secondary: glass pill, `rgba(255,255,255,0.06)` fill, 1px
-`rgba(255,255,255,0.14)` border, radius 12. Nav pills: radius 999.
+**Buttons.** Radius 12; nav pills radius 999.
+
+- **Hub** — Primary: accent fill, Arimo Bold label uppercase letterspaced `.16em`.
+  Secondary: glass pill at the Raised recipe, label on the ink ladder. Distinguish
+  actions by **fill vs outline, never by hue** — no green approve, no red reject,
+  no blue link.
+- **Client-facing** — Primary: orange fill, Mono label in white, uppercase.
+  Secondary: glass pill, `rgba(255,255,255,0.06)` fill, 1px `rgba(255,255,255,0.14)`
+  border.
 
 ---
 
@@ -241,7 +313,23 @@ than rebuilding buttons/dialogs/inputs from scratch.
 
 ---
 
-## Self-check — what off-brand looks like
+## Self-check — Hub surfaces
+
+- More than three colours, or orange as a background
+- A font outside **Bebas Neue and Arimo**
+- Anton or JetBrains Mono anywhere in Hub chrome
+- Body copy below 16px, or body outside the 84% (dark) / 88% (light) step
+- Labels below the 70% (dark) / 78% (light) step
+- A hardcoded `#FAF8F5`, `#07070A`, `bg-black` or `text-white` in a component —
+  it must reference a role
+- Heavy borders or drop shadows instead of translucency and blur
+- A hover-only interaction on mobile
+
+## Self-check — client-facing output
+
+Unchanged. Four fonts, the 100/90/68/50 ladder, always dark, plus every rule about
+logos, invented people, projections and NCAA terms — those apply to both and were
+never in question.
 
 Run this against any output before showing it. Any hit means it's wrong:
 
@@ -254,10 +342,11 @@ Run this against any output before showing it. Any hit means it's wrong:
 - The wide wordmark crammed into a square slot — that's the icon's job
 - The icon with a solid square behind it — it's transparent; a square means the
   wrong file (the old JPEG)
-- Body copy below 16px, or body at full opacity (should be 68%)
+- Body copy below 16px, or body at full opacity (should be 68% — the
+  client-facing rung)
 - Heavy borders or drop shadows instead of translucency and blur
 - A hard image edge on the black ground with no fade
-- A font outside the four above
+- A font outside the client-facing four (Bebas Neue, Anton, Arimo, JetBrains Mono)
 - A hover-only interaction on mobile
 - Any of the four NCAA terms in brand-facing copy
 - Copy that sounds like a press release
