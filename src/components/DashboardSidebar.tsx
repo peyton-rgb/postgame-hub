@@ -22,7 +22,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
-import { pickBrandLogo } from '@/lib/brand-logo';
+import { pickBrandLogo, type BrandLogoColumns } from '@/lib/brand-logo';
 import { useHubTheme } from '@/lib/use-hub-theme';
 import {
   DASHBOARD_NAV,
@@ -381,8 +381,13 @@ export default function DashboardSidebar() {
   const supabase = createBrowserSupabase();
 
   // Holds the Postgame logo URL once fetched from Supabase.
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  // The row, not the URL — the URL is a function of the row AND the theme, so
+  // deriving it keeps the two from drifting apart.
+  const [logoRow, setLogoRow] = useState<BrandLogoColumns | null>(null);
   const theme = useHubTheme();
+  // pickBrandLogo() inverts the column names on purpose: logo_light_url is
+  // light INK, which belongs on the DARK ground.
+  const logoUrl = pickBrandLogo(logoRow, theme)?.url ?? null;
 
   // Whether the current viewer is staff (role !== 'athlete'), mirroring the
   // is_staff() DB helper. staffOnly nav links stay hidden until this is
@@ -413,14 +418,19 @@ export default function DashboardSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch the Postgame brand logo when the sidebar mounts, and again if the
-  // theme changes. Brand ID is hardcoded — this is the Postgame brand's row in
-  // the brands table, and it doesn't change.
+  // Fetch the Postgame brand row ONCE. Brand ID is hardcoded — this is the
+  // Postgame brand's row in the brands table, and it doesn't change.
   //
-  // Selects BOTH ink variants rather than logo_primary_url alone, because the
-  // wordmark has to survive a theme flip: the primary file is light ink and
-  // disappeared against the light ground. pickBrandLogo() inverts the column
-  // names — logo_light_url is light INK, so it belongs on the DARK ground.
+  // Selects both ink variants, not logo_primary_url alone, because the wordmark
+  // has to survive a theme flip: the primary file is light ink and disappeared
+  // against the light ground.
+  //
+  // Deliberately fetch-once-then-derive rather than refetching per theme. An
+  // earlier version keyed this effect on [theme] and raced: useHubTheme starts
+  // at 'dark' and corrects on mount, so two requests went out and whichever
+  // resolved last won — often the stale dark one, which put the light-ink
+  // wordmark back on a light ground. Deriving from state has no such window,
+  // and costs one request instead of two.
   useEffect(() => {
     async function fetchLogo() {
       const { data } = await supabase
@@ -428,11 +438,10 @@ export default function DashboardSidebar() {
         .select('logo_primary_url,logo_light_url,logo_dark_url,logo_url')
         .eq('id', '7a0e28e9-d62f-427d-a207-cd22596fcf50')
         .single();
-      const picked = pickBrandLogo(data, theme);
-      if (picked) setLogoUrl(picked.url);
+      if (data) setLogoRow(data);
     }
     fetchLogo();
-  }, [theme]);
+  }, []);
 
   useEffect(() => {
     try {
