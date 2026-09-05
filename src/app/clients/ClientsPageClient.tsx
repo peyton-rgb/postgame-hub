@@ -133,17 +133,28 @@ function Band({ brand, index }: { brand: ClientBrand; index: number }) {
   const className = `featured-strip relative block w-full h-[38vh] overflow-hidden ${
     clip ? 'bg-surface' : 'bg-surface-2'
   }`;
+  // Height is also set inline. h-[38vh] is an arbitrary Tailwind value, and a
+  // stale .next has twice served this page without a stylesheet — at which
+  // point the bands fall back to auto height and the whole premise of the
+  // layout goes with them. The inline value cannot be lost that way.
+  const style = { height: '38vh' } as const;
 
   if (!brand.href) {
     return (
-      <div data-strip-index={index} className={className}>
+      <div data-strip-index={index} className={className} style={style}>
         {inner}
       </div>
     );
   }
 
   return (
-    <Link ref={stripRef} href={brand.href} data-strip-index={index} className={className}>
+    <Link
+      ref={stripRef}
+      href={brand.href}
+      data-strip-index={index}
+      className={className}
+      style={style}
+    >
       {inner}
     </Link>
   );
@@ -159,14 +170,17 @@ function Band({ brand, index }: { brand: ClientBrand; index: number }) {
  * anti-card rule still governs the full-bleed bands above. Square corners, no
  * lift, no scale, no shadow.
  */
-function BrandTile({ brand }: { brand: ClientBrand }) {
+function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
   const fill = brand.fill ?? '#07070A';
   // On a light fill, white ink disappears — keep the dark-ink file for both states.
   const hoverLogo = isLightFill(fill)
     ? brand.logoOnLight ?? brand.logoOnDark
     : brand.logoOnDark ?? brand.logoOnLight;
-  const restLogo = brand.logoOnLight ?? brand.logoOnDark;
+  // restLogoReads is false when no variant's ink survives the tile ground; the
+  // named tile is correct there, not an invisible image.
+  const restLogo = brand.restLogoReads ? brand.logoOnLight ?? brand.logoOnDark : null;
   const sameBothStates = restLogo === hoverLogo;
+  const loading = eager ? 'eager' : 'lazy';
 
   const inner = (
     <>
@@ -180,7 +194,8 @@ function BrandTile({ brand }: { brand: ClientBrand }) {
           <img
             src={restLogo}
             alt={brand.name}
-            loading="lazy"
+            loading={loading}
+            fetchPriority={eager ? 'high' : undefined}
             className={`relative z-[3] max-w-[68%] max-h-[58%] object-contain transition-opacity duration-200 ease-out ${
               sameBothStates ? '' : 'group-hover:opacity-0 group-focus-visible:opacity-0'
             }`}
@@ -190,7 +205,7 @@ function BrandTile({ brand }: { brand: ClientBrand }) {
               src={hoverLogo}
               alt=""
               aria-hidden
-              loading="lazy"
+              loading={loading}
               className="absolute inset-[11%_13%] m-auto z-[3] max-w-[74%] max-h-[63%] object-contain opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
             />
           )}
@@ -198,10 +213,7 @@ function BrandTile({ brand }: { brand: ClientBrand }) {
       ) : (
         // No logo file anywhere. A named tile in the brand's own colour reads as
         // a deliberate variant; an empty white square reads as a failure.
-        <span
-          className="relative z-[3] px-3 text-center font-display text-[clamp(14px,1.5vw,22px)] leading-none tracking-wide text-surface transition-colors duration-200 group-hover:text-ink"
-          style={{ color: undefined }}
-        >
+        <span className="relative z-[3] px-3 text-center font-display text-[clamp(14px,1.5vw,22px)] leading-none tracking-wide text-surface transition-colors duration-200 group-hover:text-ink">
           {brand.name}
         </span>
       )}
@@ -209,7 +221,7 @@ function BrandTile({ brand }: { brand: ClientBrand }) {
   );
 
   const className =
-    'group relative flex aspect-[3/2] items-center justify-center overflow-hidden bg-[#FAF8F5] p-4';
+    'group relative flex aspect-[3/2] items-center justify-center overflow-hidden bg-[#FAF8F5] p-4 outline outline-1 -outline-offset-[0.5px] outline-ink/10';
 
   if (!brand.href) {
     return (
@@ -340,9 +352,13 @@ export default function ClientsPageClient({
           <p className="mb-[4vh] font-mono text-[10px] uppercase tracking-[0.3em] text-ink/40">
             {tiles.length} Brands
           </p>
-          <div className="grid grid-cols-2 gap-px bg-ink/10 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {tiles.map((brand) => (
-              <BrandTile key={brand.slug} brand={brand} />
+          {/* The roster rarely divides evenly by the column count, so the last
+              row is usually short. The grid ground is the page ground and each
+              tile draws its own hairline, so the remainder reads as unused page
+              rather than as a dark hole punched in a slab of tiles. */}
+          <div className="grid grid-cols-2 gap-px bg-surface sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            {tiles.map((brand, i) => (
+              <BrandTile key={brand.slug} brand={brand} eager={i < 12} />
             ))}
           </div>
         </section>

@@ -120,6 +120,8 @@ export type ClientBrand = {
   logoOnLight: string | null;
   /** Light-ink file, for the brand-colour tile on hover and for the bands. */
   logoOnDark: string | null;
+  /** False when no variant reads on the tile ground — the tile shows its name. */
+  restLogoReads: boolean;
   /** Box height in vh for a full-bleed band, from lockup_scale. */
   bandLogoVh: number | null;
   hasFootage: boolean;
@@ -136,6 +138,73 @@ type BrandRow = {
   logo_light_url: string | null;
   logo_white_url: string | null;
   lockup_scale: number | string | null;
+};
+
+/** The tile ground. Every rest-state logo has to survive on this. */
+export const TILE_GROUND = '#FAF8F5';
+
+function rgb(hex: string | null): [number, number, number] | null {
+  if (!hex) return null;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function luminance(c: [number, number, number]): number {
+  const f = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+}
+
+/** WCAG contrast ratio between two hexes; null when either is unknown. */
+export function contrastRatio(a: string | null, b: string | null): number | null {
+  const ca = rgb(a);
+  const cb = rgb(b);
+  if (!ca || !cb) return null;
+  const [hi, lo] = [luminance(ca), luminance(cb)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * The bar a logo must clear against the ground it sits on.
+ *
+ * Deliberately below WCAG's 3:1 — that figure is for UI components that must be
+ * *identified*, and a brand mark is not one. The job here is narrower: catch
+ * marks that are genuinely invisible (a white file mistagged on_white) without
+ * demoting quiet-but-legible ones. goodr's teal at 2.4:1 and Heydude's mid-tone
+ * at 2.6:1 read perfectly well on off-white; Dove's #CDCDCF at 1.7:1 does not.
+ *
+ * Note the ink figures themselves are conservative: they are the mean of every
+ * opaque pixel, so a mark with dark outlines over a pale field scores lower than
+ * it actually reads.
+ */
+const MIN_LOGO_CONTRAST = 1.8;
+
+/**
+ * Measured ink for files whose brand_logos.ink_hex is null.
+ *
+ * TEMPORARY. Sampled from the mean of each file's opaque pixels during the
+ * contrast audit. Several of these are files tagged `on_white` whose ink is
+ * actually white — the variant label is wrong in the data, which is why they
+ * rendered invisible on the off-white tile. Delete this map once the
+ * ink_hex backfill migration has run; the selection logic below then reads the
+ * real column and needs no override.
+ */
+const MEASURED_INK: Record<string, string> = {
+  verb: '#FFFFFF',
+  york: '#FFFFFF',
+  momentec: '#F9F9F9',
+  tylenol: '#FFFFFF',
+  gametime: '#D3F9EC',
+  'thigh-society': '#FFFFFF',
+  easton: '#FDF7D2',
+  'monday-haircare': '#F0DCD9',
+  bero: '#DEB98F',
+  flipgrid: '#33E237',
+  topps: '#E67378',
 };
 
 /** Relative luminance, for deciding which ink survives on a given fill. */
@@ -186,18 +255,37 @@ export async function loadClientsPage(): Promise<{
 
     // brand_logos first, legacy columns second. A lockup reads better than a
     // bare mark at tile size, so that is the preferred kind here.
+    const lightPick = resolveBrandLogo(logos, { surface: 'light', prefer: 'lockup' });
+    const darkPick =
+      resolveBrandLogo(logos, { surface: 'brand', prefer: 'lockup' }) ??
+      resolveBrandLogo(logos, { surface: 'dark', prefer: 'lockup' });
+
+    // The variant LABEL is not enough. Several files tagged on_white carry white
+    // ink, and rendering one on the off-white tile produces an invisible logo —
+    // exactly the failure the resolver's own comment warns about, one level up.
+    // So the rest logo is chosen by its ink's contrast against the tile ground,
+    // and only falls back to the label when no ink is known either way.
+    const inkOf = (pick: typeof lightPick, slug: string) =>
+      pick?.inkHex ?? MEASURED_INK[slug] ?? null;
+
+    const lightInk = inkOf(lightPick, slug);
+    const darkInk = inkOf(darkPick, slug);
+    const lightContrast = contrastRatio(lightInk, TILE_GROUND);
+    const darkContrast = contrastRatio(darkInk, TILE_GROUND);
+
+    const lightReads = lightContrast == null || lightContrast >= MIN_LOGO_CONTRAST;
+    const darkReads = darkContrast != null && darkContrast >= MIN_LOGO_CONTRAST;
+
+    // Prefer the on_white file, but hand over to the other variant when its ink
+    // measurably fails and the other measurably passes.
+    const restPick = lightReads ? lightPick : darkReads ? darkPick : null;
+
     const onLight =
-      resolveBrandLogo(logos, { surface: 'light', prefer: 'lockup' })?.url ??
-      r.logo_dark_url ??
-      r.logo_primary_url ??
+      restPick?.url ??
+      (lightReads ? r.logo_dark_url ?? r.logo_primary_url : null) ??
       null;
 
-    const onDark =
-      resolveBrandLogo(logos, { surface: 'brand', prefer: 'lockup' })?.url ??
-      resolveBrandLogo(logos, { surface: 'dark', prefer: 'lockup' })?.url ??
-      r.logo_light_url ??
-      r.logo_white_url ??
-      null;
+    const onDark = darkPick?.url ?? r.logo_light_url ?? r.logo_white_url ?? null;
 
     const scale = r.lockup_scale == null ? null : Number(r.lockup_scale);
 
@@ -210,6 +298,8 @@ export async function loadClientsPage(): Promise<{
       fillConfidence: r.fill_color_confidence,
       logoOnLight: onLight,
       logoOnDark: onDark,
+      /** False when no variant's ink survives the tile ground — use a named tile. */
+      restLogoReads: Boolean(onLight) && (lightReads || darkReads),
       bandLogoVh:
         scale != null && Number.isFinite(scale) ? scale * BAND_LOGO_BASE_VH : null,
       hasFootage: Boolean(CLIPS[slug]),
