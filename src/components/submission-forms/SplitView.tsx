@@ -1222,8 +1222,8 @@ function Styles() {
  --ln:rgba(250,248,245,.08);--ln2:rgba(250,248,245,.045);
  --t1:rgba(250,248,245,.96);--t2:rgba(250,248,245,.62);
  --t3:rgba(250,248,245,.38);--t4:rgba(250,248,245,.24);--gr:#4ade80;
- --mono:var(--font-mono),ui-monospace,monospace;--bd:Arial,Helvetica,sans-serif;
- --anton:var(--font-anton),Arial,sans-serif;
+ --mono:var(--font-arimo),Arial,Helvetica,sans-serif;--bd:Arial,Helvetica,sans-serif;
+ --anton:var(--font-bebas),Arial,Helvetica,sans-serif;
  color:var(--t2);font:14px/1.55 var(--bd)}
 .sfx *{box-sizing:border-box}
 /* Deliberately NOT a blanket border/background reset: DeliverablesField,

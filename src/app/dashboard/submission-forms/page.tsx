@@ -13,15 +13,11 @@
 
 import DashboardContent from "@/components/DashboardContent";
 import SplitView from "@/components/submission-forms/SplitView";
-import { anton } from "./fonts";
 
 export default function SubmissionFormsPage() {
   return (
     <DashboardContent>
-      {/* Anton is loaded per-route, not globally — see ./fonts.ts */}
-      <div className={anton.variable}>
-        <SplitView />
-      </div>
+      <SplitView />
     </DashboardContent>
   );
 }
