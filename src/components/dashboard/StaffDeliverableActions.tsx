@@ -47,14 +47,14 @@ export default function StaffDeliverableActions({
           <button
             onClick={() => act("reject")}
             disabled={!!loading}
-            style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "rgba(255,255,255,0.85)", background: "transparent", cursor: "pointer" }}
+            style={{ border: "1px solid var(--hairline)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "var(--ink-2)", background: "transparent", cursor: "pointer" }}
           >
             {loading === "reject" ? "…" : "Request changes"}
           </button>
           <button
             onClick={() => act("approve")}
             disabled={!!loading}
-            style={{ background: "#34C759", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#0a3d1c", fontWeight: 700, border: "none", cursor: "pointer" }}
+            style={{ background: "var(--accent)", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "rgb(var(--pg-off-white-rgb))", fontWeight: 700, border: "none", cursor: "pointer" }}
           >
             {loading === "approve" ? "…" : "Approve"}
           </button>
@@ -63,12 +63,12 @@ export default function StaffDeliverableActions({
         <button
           onClick={() => act("verify")}
           disabled={!!loading}
-          style={{ background: "#D73F09", borderRadius: 8, padding: "7px 16px", fontSize: 12, color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: "0.04em" }}
+          style={{ background: "var(--accent)", borderRadius: 8, padding: "7px 16px", fontSize: 12, color: "rgb(var(--pg-off-white-rgb))", fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: "0.04em" }}
         >
           {loading === "verify" ? "…" : "VERIFY"}
         </button>
       )}
-      {error && <span style={{ fontSize: 11, color: "#ff6b6b" }}>{error}</span>}
+      {error && <span style={{ fontSize: 11, color: "var(--accent)" }}>{error}</span>}
     </div>
   );
 }
