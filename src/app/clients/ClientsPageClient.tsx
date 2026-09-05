@@ -244,7 +244,7 @@ export default function ClientsPageClient({
         </section>
 
         {/* 2. Intro + stats */}
-        <section className="mx-auto w-full max-w-[1400px] px-6 pb-[6vh] pt-[7vh] sm:px-10">
+        <section className="mx-auto w-full max-w-[1400px] px-6 pb-[3vh] pt-[6vh] sm:px-10">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand">Our Partners</p>
           <h1 className="mt-4 max-w-[21ch] font-display text-[clamp(38px,5.2vw,80px)] leading-[0.92] tracking-tight text-ink">
             The brands behind the biggest campaigns
@@ -258,17 +258,17 @@ export default function ClientsPageClient({
               athletes, producing the content and running the campaign to post.
             </p>
 
-            <dl className="flex flex-wrap gap-x-[4vw] gap-y-8 lg:col-span-5 lg:justify-end">
+            <dl className="grid grid-cols-3 gap-x-6 lg:col-span-5">
               {[
                 { n: `${tiles.length}`, l: 'Brand partners' },
                 { n: '50,000+', l: 'College athletes' },
                 { n: '2021', l: 'Running NIL since' },
               ].map((s) => (
-                <div key={s.l}>
-                  <dt className="font-display text-[clamp(28px,3.2vw,50px)] leading-none tracking-tight text-ink">
+                <div key={s.l} className="min-w-0">
+                  <dt className="font-display text-[clamp(24px,2.6vw,42px)] leading-none tracking-tight text-ink">
                     {s.n}
                   </dt>
-                  <dd className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">
+                  <dd className="mt-2.5 font-mono text-[9px] uppercase leading-snug tracking-[0.2em] text-ink/40">
                     {s.l}
                   </dd>
                 </div>
@@ -278,14 +278,14 @@ export default function ClientsPageClient({
         </section>
 
         {/* 3. The directory — every client, small and quiet */}
-        <section className="mx-auto w-full max-w-[1400px] px-6 py-[7vh] sm:px-10">
+        <section className="mx-auto w-full max-w-[1400px] px-6 pb-[7vh] pt-[4vh] sm:px-10">
           <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink/40">
             Some of our clients
           </h2>
           <p className="mt-2 font-display text-[clamp(24px,2.6vw,38px)] leading-none tracking-tight text-ink">
             {tiles.length} brands
           </p>
-          <div className="mt-[5vh] grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
+          <div className="mt-[3vh] grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
             {tiles.map((brand, i) => (
               <BrandTile key={brand.slug} brand={brand} eager={i < 16} />
             ))}
