@@ -28,12 +28,21 @@ const STATUS_LABELS: Record<TaggingStatus, string> = {
   reviewed: 'Reviewed',
 };
 
+// Five states on three colours. The chip TEXT already names the state, so hue
+// was carrying no information a reader did not already have — it was carrying
+// five off-palette hues instead. States now separate by weight on the ink
+// ladder, and only `failed` takes accent, because it is the only one asking for
+// action.
+//
+// DESIGN REVIEW: collapsing five hues to four weights is a visible change, not a
+// substitution. If pending and tagged prove hard to tell apart at a glance, the
+// fix is an outline-vs-fill distinction, not a fourth colour.
 const STATUS_COLORS: Record<TaggingStatus, string> = {
-  pending: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
-  processing: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  tagged: 'bg-green-600/20 text-green-300 border-green-600/30',
-  failed: 'bg-red-600/20 text-red-300 border-red-600/30',
-  reviewed: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  pending: 'bg-surface-card text-ink-4 border-hairline',
+  processing: 'bg-surface-raised text-ink-2 border-hairline',
+  tagged: 'bg-surface-card text-ink-3 border-hairline',
+  failed: 'bg-accent/15 text-accent border-accent/30',
+  reviewed: 'bg-surface-card text-ink-3 border-ink-4',
 };
 
 // --- Tab types ---
@@ -315,20 +324,20 @@ export default function IntakePage() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold">Station 1 — Content Intake</h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-ink-3 mt-1">
             Upload footage, tag content with AI, and parse briefs. Everything here feeds the brain.
           </p>
         </div>
         <a
           href="/dashboard/inspo"
-          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-gray-300"
+          className="px-4 py-2 bg-surface-raised hover:bg-surface-raised rounded-lg text-sm transition-colors text-ink-3"
         >
           View Inspo Library →
         </a>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 mb-8 bg-white/5 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-8 bg-surface-card rounded-lg p-1 w-fit">
         {([
           { key: 'upload' as Tab, label: 'Upload Footage', icon: '↑' },
           { key: 'queue' as Tab, label: 'Tag Queue', icon: '◎' },
@@ -339,8 +348,8 @@ export default function IntakePage() {
             onClick={() => setActiveTab(key)}
             className={`px-5 py-2.5 rounded-md text-sm font-medium transition-all ${
               activeTab === key
-                ? 'bg-[#D73F09] text-white'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[var(--accent)] text-ink-1'
+                : 'text-ink-3 hover:text-ink-1 hover:bg-surface-card'
             }`}
           >
             <span className="mr-2">{icon}</span>
@@ -363,8 +372,8 @@ export default function IntakePage() {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all ${
               dragActive
-                ? 'border-[#D73F09] bg-[#D73F09]/10'
-                : 'border-gray-600 hover:border-gray-400 hover:bg-white/5'
+                ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                : 'border-ink-4 hover:border-ink-4 hover:bg-surface-card'
             }`}
           >
             <div className="text-5xl mb-4">{uploading ? '⏳' : '🎬'}</div>
@@ -375,10 +384,10 @@ export default function IntakePage() {
                 ? 'Drop files here'
                 : 'Drag footage here or click to browse'}
             </p>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-ink-3">
               Accepts video (MP4, MOV, WebM) and images (JPG, PNG, WebP, HEIC)
             </p>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-ink-4 mt-2">
               Max 500MB per file. Files go to the inspo library for AI tagging.
             </p>
             <input
@@ -397,16 +406,16 @@ export default function IntakePage() {
 
           {/* Upload results */}
           {uploadResults.length > 0 && (
-            <div className="mt-6 p-4 rounded-lg bg-white/5 border border-white/10">
-              <h3 className="text-sm font-medium text-gray-300 mb-2">Upload Results</h3>
+            <div className="mt-6 p-4 rounded-lg bg-surface-card border border-hairline">
+              <h3 className="text-sm font-medium text-ink-3 mb-2">Upload Results</h3>
               {uploadResults.map((msg, i) => (
-                <p key={i} className={`text-sm ${msg.includes('failed') ? 'text-red-400' : 'text-green-400'}`}>
+                <p key={i} className={`text-sm ${msg.includes('failed') ? 'text-accent' : 'text-ink-3'}`}>
                   {msg}
                 </p>
               ))}
               <button
                 onClick={() => { setActiveTab('queue'); setQueueFilter('pending'); }}
-                className="mt-3 text-sm text-[#D73F09] hover:underline"
+                className="mt-3 text-sm text-[var(--accent)] hover:underline"
               >
                 → View in tag queue to start tagging
               </button>
@@ -415,15 +424,15 @@ export default function IntakePage() {
 
           {/* Quick info */}
           <div className="mt-8 grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-              <h3 className="text-sm font-medium text-gray-300 mb-1">How it works</h3>
-              <p className="text-xs text-gray-500">
+            <div className="p-4 rounded-lg bg-surface-card border border-hairline">
+              <h3 className="text-sm font-medium text-ink-3 mb-1">How it works</h3>
+              <p className="text-xs text-ink-4">
                 Upload → files land in the tag queue → Claude Vision analyzes each one across 13 categories → tags get saved to the inspo library → the Creative Director uses them for future concepts.
               </p>
             </div>
-            <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-              <h3 className="text-sm font-medium text-gray-300 mb-1">Video thumbnails</h3>
-              <p className="text-xs text-gray-500">
+            <div className="p-4 rounded-lg bg-surface-card border border-hairline">
+              <h3 className="text-sm font-medium text-ink-3 mb-1">Video thumbnails</h3>
+              <p className="text-xs text-ink-4">
                 For videos, a thumbnail is automatically extracted from the first second. Claude tags the thumbnail — full video processing (frame-by-frame) comes in a future update.
               </p>
             </div>
@@ -439,24 +448,24 @@ export default function IntakePage() {
           {/* Queue stats */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             {([
-              { key: 'pending', label: 'Pending', color: 'text-yellow-400' },
-              { key: 'processing', label: 'Processing', color: 'text-blue-400' },
-              { key: 'tagged', label: 'Tagged', color: 'text-green-400' },
-              { key: 'failed', label: 'Failed', color: 'text-red-400' },
+              { key: 'pending', label: 'Pending', color: 'text-ink-4' },
+              { key: 'processing', label: 'Processing', color: 'text-ink-2' },
+              { key: 'tagged', label: 'Tagged', color: 'text-ink-3' },
+              { key: 'failed', label: 'Failed', color: 'text-accent' },
             ] as const).map(({ key, label, color }) => (
               <button
                 key={key}
                 onClick={() => setQueueFilter(key)}
                 className={`p-4 rounded-lg border transition-all ${
                   queueFilter === key
-                    ? 'bg-white/10 border-[#D73F09]'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    ? 'bg-surface-raised border-[var(--accent)]'
+                    : 'bg-surface-card border-hairline hover:bg-surface-raised'
                 }`}
               >
                 <p className={`text-2xl font-bold ${color}`}>
                   {counts[key]}
                 </p>
-                <p className="text-xs text-gray-400">{label}</p>
+                <p className="text-xs text-ink-3">{label}</p>
               </button>
             ))}
           </div>
@@ -467,7 +476,7 @@ export default function IntakePage() {
               {queueFilter === 'pending' && (
                 <button
                   onClick={handleTagAll}
-                  className="px-4 py-2 bg-[#D73F09] hover:bg-[#b33507] text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent)] text-ink-1 text-sm font-medium rounded-lg transition-colors"
                 >
                   Tag All Pending ({queueItems.filter(i => i.tagging_status === 'pending').length})
                 </button>
@@ -477,28 +486,28 @@ export default function IntakePage() {
                 <button
                   onClick={handleExtractAllThumbnails}
                   disabled={extractingThumbs}
-                  className="px-4 py-2 bg-blue-600/20 border border-blue-600/30 hover:bg-blue-600/30 text-blue-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-surface-card border border-hairline hover:bg-surface-raised text-ink-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {extractingThumbs ? 'Extracting...' : `Extract Thumbnails (${queueItems.filter(i => i.mime_type?.startsWith('video/') && !i.thumbnail_url).length} videos)`}
                 </button>
               )}
               <button
                 onClick={fetchQueue}
-                className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-sm rounded-lg transition-colors"
+                className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-ink-1 text-sm rounded-lg transition-colors"
               >
                 Refresh
               </button>
               {thumbProgress && (
-                <span className="text-xs text-gray-400">{thumbProgress}</span>
+                <span className="text-xs text-ink-3">{thumbProgress}</span>
               )}
             </div>
           )}
 
           {/* Queue list */}
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading...</div>
+            <div className="text-center py-12 text-ink-4">Loading...</div>
           ) : queueItems.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-ink-4">
               <p className="text-lg mb-2">No items in this queue</p>
               <p className="text-sm">Upload some footage to get started</p>
             </div>
@@ -510,12 +519,12 @@ export default function IntakePage() {
                   onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
                   className={`rounded-lg border overflow-hidden cursor-pointer transition-all ${
                     selectedItem?.id === item.id
-                      ? 'border-[#D73F09] ring-1 ring-[#D73F09]'
-                      : 'border-white/10 hover:border-white/20'
+                      ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]'
+                      : 'border-hairline hover:border-ink-1/20'
                   }`}
                 >
                   {/* Thumbnail */}
-                  <div className="aspect-video bg-black/50 relative">
+                  <div className="aspect-video bg-ground/50 relative">
                     {(item.thumbnail_url || item.file_url) && item.mime_type?.startsWith('image/') ? (
                       <img
                         src={item.thumbnail_url || item.file_url || ''}
@@ -529,7 +538,7 @@ export default function IntakePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="flex items-center justify-center h-full text-gray-600">
+                      <div className="flex items-center justify-center h-full text-ink-4">
                         <span className="text-3xl">{item.mime_type?.startsWith('video/') ? '🎬' : '📷'}</span>
                       </div>
                     )}
@@ -538,18 +547,18 @@ export default function IntakePage() {
                       {STATUS_LABELS[item.tagging_status as TaggingStatus] || item.tagging_status}
                     </span>
                     {/* Content type badge */}
-                    <span className="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full bg-black/60 text-gray-300">
+                    <span className="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full bg-ground/60 text-ink-3">
                       {item.content_type}
                     </span>
                   </div>
 
                   {/* Info */}
-                  <div className="p-3 bg-white/5">
+                  <div className="p-3 bg-surface-card">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-gray-400 truncate">
+                      <p className="text-xs text-ink-3 truncate">
                         {item.format?.toUpperCase()} · {item.file_size_bytes ? `${(item.file_size_bytes / (1024 * 1024)).toFixed(1)} MB` : 'Unknown size'}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-ink-4">
                         {new Date(item.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -559,7 +568,7 @@ export default function IntakePage() {
                       <button
                         onClick={(e) => { e.stopPropagation(); handleTag(item.id); }}
                         disabled={taggingIds.has(item.id)}
-                        className="mt-2 w-full px-3 py-1.5 bg-[#D73F09] hover:bg-[#b33507] disabled:bg-gray-700 text-white text-xs font-medium rounded transition-colors"
+                        className="mt-2 w-full px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent)] disabled:bg-surface-raised text-ink-1 text-xs font-medium rounded transition-colors"
                       >
                         {taggingIds.has(item.id) ? 'Tagging...' : 'Tag with AI'}
                       </button>
@@ -568,7 +577,7 @@ export default function IntakePage() {
                       <button
                         onClick={(e) => { e.stopPropagation(); handleTag(item.id); }}
                         disabled={taggingIds.has(item.id)}
-                        className="mt-2 w-full px-3 py-1.5 bg-red-700 hover:bg-red-600 disabled:bg-gray-700 text-white text-xs font-medium rounded transition-colors"
+                        className="mt-2 w-full px-3 py-1.5 bg-accent hover:bg-accent disabled:bg-surface-raised text-ink-1 text-xs font-medium rounded transition-colors"
                       >
                         {taggingIds.has(item.id) ? 'Retrying...' : 'Retry'}
                       </button>
@@ -576,7 +585,7 @@ export default function IntakePage() {
 
                     {/* Show tags preview if tagged */}
                     {item.tagging_status === 'tagged' && item.visual_description && (
-                      <p className="mt-2 text-xs text-gray-400 line-clamp-2">
+                      <p className="mt-2 text-xs text-ink-3 line-clamp-2">
                         {item.visual_description}
                       </p>
                     )}
@@ -588,12 +597,12 @@ export default function IntakePage() {
 
           {/* Detail panel for selected item */}
           {selectedItem && selectedItem.tagging_status === 'tagged' && (
-            <div className="mt-6 p-6 rounded-lg bg-white/5 border border-white/10">
+            <div className="mt-6 p-6 rounded-lg bg-surface-card border border-hairline">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Tag Details</h3>
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="text-gray-400 hover:text-white text-sm"
+                  className="text-ink-3 hover:text-ink-1 text-sm"
                 >
                   Close
                 </button>
@@ -602,8 +611,8 @@ export default function IntakePage() {
               {/* Visual description */}
               {selectedItem.visual_description && (
                 <div className="mb-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Description</p>
-                  <p className="text-sm text-gray-300">{selectedItem.visual_description}</p>
+                  <p className="text-xs text-ink-4 uppercase tracking-wider mb-1">Description</p>
+                  <p className="text-sm text-ink-3">{selectedItem.visual_description}</p>
                 </div>
               )}
 
@@ -611,13 +620,13 @@ export default function IntakePage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Pro Tags */}
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Pro Tags (Technical)</p>
+                  <p className="text-xs text-ink-4 uppercase tracking-wider mb-2">Pro Tags (Technical)</p>
                   {selectedItem.pro_tags && Object.entries(selectedItem.pro_tags).map(([key, values]) => (
                     <div key={key} className="mb-2">
-                      <p className="text-xs text-gray-400">{key.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-ink-3">{key.replace(/_/g, ' ')}</p>
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {(values as string[])?.map((tag: string) => (
-                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-300 border border-blue-700/30">
+                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-surface-card/40 text-ink-2 border border-hairline/30">
                             {tag}
                           </span>
                         ))}
@@ -628,13 +637,13 @@ export default function IntakePage() {
 
                 {/* Social Tags */}
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Social Tags (Platform)</p>
+                  <p className="text-xs text-ink-4 uppercase tracking-wider mb-2">Social Tags (Platform)</p>
                   {selectedItem.social_tags && Object.entries(selectedItem.social_tags).map(([key, values]) => (
                     <div key={key} className="mb-2">
-                      <p className="text-xs text-gray-400">{key.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-ink-3">{key.replace(/_/g, ' ')}</p>
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {(values as string[])?.map((tag: string) => (
-                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-700/30">
+                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-surface-card text-ink-3 border border-hairline">
                             {tag}
                           </span>
                         ))}
@@ -645,13 +654,13 @@ export default function IntakePage() {
 
                 {/* Context Tags */}
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Context Tags (Content)</p>
+                  <p className="text-xs text-ink-4 uppercase tracking-wider mb-2">Context Tags (Content)</p>
                   {selectedItem.context_tags && Object.entries(selectedItem.context_tags).map(([key, values]) => (
                     <div key={key} className="mb-2">
-                      <p className="text-xs text-gray-400">{key.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-ink-3">{key.replace(/_/g, ' ')}</p>
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {(values as string[])?.map((tag: string) => (
-                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-300 border border-green-700/30">
+                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-surface-card text-ink-3 border border-hairline">
                             {tag}
                           </span>
                         ))}
@@ -664,10 +673,10 @@ export default function IntakePage() {
               {/* Vibe words */}
               {selectedItem.search_phrases?.length > 0 && (
                 <div className="mt-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Vibe Words</p>
+                  <p className="text-xs text-ink-4 uppercase tracking-wider mb-2">Vibe Words</p>
                   <div className="flex flex-wrap gap-1">
                     {selectedItem.search_phrases.map((word: string) => (
-                      <span key={word} className="text-xs px-2 py-0.5 rounded-full bg-[#D73F09]/20 text-[#e8663d] border border-[#D73F09]/30">
+                      <span key={word} className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--accent)]/30">
                         {word}
                       </span>
                     ))}
@@ -678,10 +687,10 @@ export default function IntakePage() {
               {/* Brief fit */}
               {selectedItem.brief_fit?.length > 0 && (
                 <div className="mt-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Brief Fit</p>
+                  <p className="text-xs text-ink-4 uppercase tracking-wider mb-2">Brief Fit</p>
                   <div className="flex flex-wrap gap-1">
                     {selectedItem.brief_fit.map((fit: string) => (
-                      <span key={fit} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300 border border-white/20">
+                      <span key={fit} className="text-xs px-2 py-0.5 rounded-full bg-surface-raised text-ink-3 border border-ink-1/20">
                         {fit}
                       </span>
                     ))}
@@ -700,7 +709,7 @@ export default function IntakePage() {
         <div className="max-w-3xl">
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-2">Brief Intake Agent</h2>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-ink-3">
               Upload a raw brief (PDF or Word doc) and the Intake agent will parse it into structured fields.
               You review and correct before anything gets saved.
             </p>
@@ -709,13 +718,13 @@ export default function IntakePage() {
           {/* Brief upload zone */}
           <div
             onClick={() => briefInputRef.current?.click()}
-            className="border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all border-gray-600 hover:border-gray-400 hover:bg-white/5"
+            className="border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all border-ink-4 hover:border-ink-4 hover:bg-surface-card"
           >
             <div className="text-4xl mb-3">{briefParsing ? '⏳' : '📄'}</div>
             <p className="text-lg font-medium mb-1">
               {briefParsing ? 'Parsing brief...' : 'Drop a brief document here'}
             </p>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-ink-3">
               Accepts PDF and Word documents
             </p>
             <input
@@ -732,9 +741,9 @@ export default function IntakePage() {
 
           {/* Parsed brief results */}
           {parsedBrief && (
-            <div className="mt-6 p-6 rounded-lg bg-white/5 border border-white/10">
+            <div className="mt-6 p-6 rounded-lg bg-surface-card border border-hairline">
               {'error' in parsedBrief ? (
-                <div className="text-red-400">
+                <div className="text-accent">
                   <p className="font-medium">Parsing failed</p>
                   <p className="text-sm mt-1">{parsedBrief.error as string}</p>
                 </div>
@@ -742,16 +751,16 @@ export default function IntakePage() {
                 <>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">Parsed Brief Fields</h3>
-                    <span className="text-xs px-2 py-1 rounded-full bg-green-600/20 text-green-300 border border-green-600/30">
+                    <span className="text-xs px-2 py-1 rounded-full bg-surface-raised/20 text-ink-3 border border-hairline/30">
                       AI Extracted
                     </span>
                   </div>
 
                   {/* Summary */}
                   {parsedBrief.raw_summary && (
-                    <div className="mb-4 p-3 rounded-lg bg-white/5">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Summary</p>
-                      <p className="text-sm text-gray-300">{parsedBrief.raw_summary as string}</p>
+                    <div className="mb-4 p-3 rounded-lg bg-surface-card">
+                      <p className="text-xs text-ink-4 uppercase tracking-wider mb-1">Summary</p>
+                      <p className="text-sm text-ink-3">{parsedBrief.raw_summary as string}</p>
                     </div>
                   )}
 
@@ -767,8 +776,8 @@ export default function IntakePage() {
                     ].map(({ key, label }) => (
                       parsedBrief[key] ? (
                         <div key={key}>
-                          <p className="text-xs text-gray-500">{label}</p>
-                          <p className="text-sm text-white">{parsedBrief[key] as string}</p>
+                          <p className="text-xs text-ink-4">{label}</p>
+                          <p className="text-sm text-ink-1">{parsedBrief[key] as string}</p>
                         </div>
                       ) : null
                     ))}
@@ -780,12 +789,12 @@ export default function IntakePage() {
                     if (!items?.length) return null;
                     return (
                       <div key={key} className="mt-4">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                        <p className="text-xs text-ink-4 uppercase tracking-wider mb-1">
                           {key.replace(/_/g, ' ')}
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {items.map((item: string, i: number) => (
-                            <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300">
+                            <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-surface-raised text-ink-3">
                               {item}
                             </span>
                           ))}
@@ -797,12 +806,12 @@ export default function IntakePage() {
                   {/* Deadlines */}
                   {parsedBrief.deadlines && Object.keys(parsedBrief.deadlines as object).length > 0 && (
                     <div className="mt-4">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Deadlines</p>
+                      <p className="text-xs text-ink-4 uppercase tracking-wider mb-1">Deadlines</p>
                       <div className="grid grid-cols-2 gap-2">
                         {Object.entries(parsedBrief.deadlines as Record<string, string>).map(([key, val]) => (
                           <div key={key} className="text-sm">
-                            <span className="text-gray-400">{key.replace(/_/g, ' ')}:</span>{' '}
-                            <span className="text-white">{val}</span>
+                            <span className="text-ink-3">{key.replace(/_/g, ' ')}:</span>{' '}
+                            <span className="text-ink-1">{val}</span>
                           </div>
                         ))}
                       </div>
@@ -811,16 +820,16 @@ export default function IntakePage() {
 
                   {/* Confidence flags */}
                   {(parsedBrief.confidence_flags as Array<Record<string, string>>)?.length > 0 && (
-                    <div className="mt-4 p-3 rounded-lg bg-yellow-900/20 border border-yellow-700/30">
-                      <p className="text-xs text-yellow-400 uppercase tracking-wider mb-2">
+                    <div className="mt-4 p-3 rounded-lg bg-surface-card/20 border border-hairline/30">
+                      <p className="text-xs text-ink-4 uppercase tracking-wider mb-2">
                         Needs Your Review
                       </p>
                       {(parsedBrief.confidence_flags as Array<Record<string, string>>).map((flag, i) => (
                         <div key={i} className="text-sm mb-2 last:mb-0">
-                          <span className="text-yellow-300 font-medium">{flag.field}:</span>{' '}
-                          <span className="text-gray-400">{flag.reason}</span>
+                          <span className="text-ink-4 font-medium">{flag.field}:</span>{' '}
+                          <span className="text-ink-3">{flag.reason}</span>
                           {flag.suggestion && (
-                            <p className="text-xs text-gray-500 mt-0.5">→ {flag.suggestion}</p>
+                            <p className="text-xs text-ink-4 mt-0.5">→ {flag.suggestion}</p>
                           )}
                         </div>
                       ))}
@@ -838,13 +847,13 @@ export default function IntakePage() {
                           window.location.href = '/dashboard/campaign-briefs/new?from=intake';
                         }
                       }}
-                      className="px-6 py-2.5 bg-[#D73F09] hover:bg-[#b33507] text-white font-medium rounded-lg transition-colors"
+                      className="px-6 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent)] text-ink-1 font-medium rounded-lg transition-colors"
                     >
                       Create Brief from This
                     </button>
                     <button
                       onClick={() => setParsedBrief(null)}
-                      className="px-6 py-2.5 bg-white/10 hover:bg-white/15 text-gray-300 rounded-lg transition-colors"
+                      className="px-6 py-2.5 bg-surface-raised hover:bg-surface-raised text-ink-3 rounded-lg transition-colors"
                     >
                       Discard
                     </button>
