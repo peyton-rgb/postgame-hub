@@ -132,7 +132,7 @@ export default function CampaignList() {
         brand_id: selectedBrandId || null,
         type: "recap",
         published: false,
-        settings: { primary_color: "#D73F09", layout: "masonry", columns: 4, campaign_type: recapType },
+        settings: { primary_color: "var(--accent)", layout: "masonry", columns: 4, campaign_type: recapType },
       })
       .select()
       .single();
@@ -249,13 +249,13 @@ export default function CampaignList() {
       {/* Header row with brand filter + create button */}
       <div className="flex items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 shrink-0">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-ink-4 shrink-0">
             Filter by brand
           </label>
           <select
             value={brandFilterId}
             onChange={(e) => setBrandFilterId(e.target.value)}
-            className="px-3 py-2 bg-[#111] border border-gray-800 rounded-lg text-sm text-white font-bold focus:border-[#D73F09] focus:outline-none min-w-[220px]"
+            className="px-3 py-2 bg-surface-card border border-hairline rounded-lg text-sm text-ink-1 font-bold focus:border-[var(--accent)] focus:outline-none min-w-[220px]"
           >
             <option value="">All Brands</option>
             {brands.map((b) => (
@@ -267,7 +267,7 @@ export default function CampaignList() {
           {brandFilterId && (
             <button
               onClick={() => setBrandFilterId("")}
-              className="text-[11px] font-bold text-gray-500 hover:text-white uppercase tracking-wider"
+              className="text-[11px] font-bold text-ink-4 hover:text-ink-1 uppercase tracking-wider"
             >
               Clear
             </button>
@@ -275,7 +275,7 @@ export default function CampaignList() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407] shrink-0"
+          className="px-5 py-2 bg-[var(--accent)] text-ink-1 text-sm font-bold rounded-lg hover:bg-[var(--accent)] shrink-0"
         >
           + New Campaign
         </button>
@@ -283,27 +283,27 @@ export default function CampaignList() {
 
       {/* Delete confirmation modal */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#111] border border-gray-700 rounded-2xl p-8 w-[420px]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ground/80 backdrop-blur-sm">
+          <div className="bg-surface-card border border-hairline rounded-2xl p-8 w-[420px]">
             <h2 className="text-lg font-black mb-2">Delete Campaign</h2>
-            <p className="text-sm text-gray-400 mb-1">
-              Are you sure you want to delete <span className="text-white font-bold">{confirmDelete.name}</span>?
+            <p className="text-sm text-ink-3 mb-1">
+              Are you sure you want to delete <span className="text-ink-1 font-bold">{confirmDelete.name}</span>?
             </p>
-            <p className="text-xs text-red-400/70 mb-6">
+            <p className="text-xs text-accent/70 mb-6">
               This will permanently remove the campaign and all its athletes, media, and metrics. This cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
                 disabled={deleting === confirmDelete.id}
-                className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500 disabled:opacity-50"
+                className="flex-1 px-4 py-3 border border-hairline rounded-lg text-ink-3 font-bold text-sm hover:border-ink-4 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteCampaign(confirmDelete)}
                 disabled={deleting === confirmDelete.id}
-                className="flex-1 px-4 py-3 bg-red-600 rounded-lg text-white font-bold text-sm hover:bg-red-500 disabled:opacity-50"
+                className="flex-1 px-4 py-3 bg-accent rounded-lg text-ink-1 font-bold text-sm hover:bg-accent disabled:opacity-50"
               >
                 {deleting === confirmDelete.id ? "Deleting..." : "Delete Campaign"}
               </button>
@@ -314,32 +314,32 @@ export default function CampaignList() {
 
       {/* Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#111] border border-gray-700 rounded-2xl p-8 w-[480px]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ground/80 backdrop-blur-sm">
+          <div className="bg-surface-card border border-hairline rounded-2xl p-8 w-[480px]">
             <h2 className="text-lg font-black mb-6">New Campaign</h2>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">
               Campaign Name
             </label>
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. Adidas EVO SL"
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white mb-4 focus:border-[#D73F09] outline-none"
+              className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 mb-4 focus:border-[var(--accent)] outline-none"
             />
 
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">
               Recap Type
             </label>
             <select
               value={recapType}
               onChange={(e) => setRecapType(e.target.value as "recap" | "top_50" | "event")}
-              className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm mb-4 focus:border-[#D73F09] outline-none appearance-none"
+              className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm mb-4 focus:border-[var(--accent)] outline-none appearance-none"
             >
               <option value="recap">Campaign Recap</option>
               <option value="top_50">Top 50 List</option>
               <option value="event">Event Recap</option>
             </select>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">
               Brand
             </label>
             <div className="relative mb-4">
@@ -352,7 +352,7 @@ export default function CampaignList() {
                   if (brand) setNewClient(brand.name);
                   else setNewClient("");
                 }}
-                className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none"
+                className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-[var(--accent)] outline-none appearance-none"
               >
                 <option value="">Select a brand...</option>
                 {brands.map((b) => (
@@ -377,8 +377,8 @@ export default function CampaignList() {
             {/* Brand Campaign selector */}
             {selectedBrandId && brandCampaigns.length > 0 && (
               <div className="mb-4">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                  Campaign <span className="text-gray-700 normal-case">(optional)</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">
+                  Campaign <span className="text-ink-4 normal-case">(optional)</span>
                 </label>
                 <select
                   value={selectedBrandCampaignId}
@@ -388,7 +388,7 @@ export default function CampaignList() {
                     const bc = brandCampaigns.find((c) => c.id === bcId);
                     if (bc) setNewName(bc.name);
                   }}
-                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none"
+                  className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-[var(--accent)] outline-none appearance-none"
                 >
                   <option value="">Select a campaign or enter name above...</option>
                   {brandCampaigns.map((bc) => (
@@ -403,8 +403,8 @@ export default function CampaignList() {
             {/* Link to Performance Tracker */}
             {trackers.length > 0 && (
               <div className="mb-5">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                  Link Performance Tracker <span className="text-gray-700 normal-case">(optional)</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">
+                  Link Performance Tracker <span className="text-ink-4 normal-case">(optional)</span>
                 </label>
                 <select
                   value={selectedTrackerId}
@@ -412,7 +412,7 @@ export default function CampaignList() {
                     setSelectedTrackerId(e.target.value);
                     if (e.target.value) { setCsvFile(null); setSheetUrl(""); setSheetCheck(null); } // clear other sources
                   }}
-                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none appearance-none"
+                  className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-[var(--accent)] outline-none appearance-none"
                 >
                   <option value="">Select a tracker to import athletes...</option>
                   {trackers.map((t) => (
@@ -422,7 +422,7 @@ export default function CampaignList() {
                   ))}
                 </select>
                 {selectedTrackerId && (
-                  <p className="text-[10px] text-green-500/70 mt-1.5">
+                  <p className="text-[10px] text-ink-3/70 mt-1.5">
                     All athletes &amp; metrics from this tracker will be imported into the recap.
                   </p>
                 )}
@@ -433,8 +433,8 @@ export default function CampaignList() {
             {!selectedTrackerId && (
               <>
                 {/* Google Sheet link */}
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                  Import from Google Sheet link <span className="text-gray-700 normal-case">(optional)</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">
+                  Import from Google Sheet link <span className="text-ink-4 normal-case">(optional)</span>
                 </label>
                 <div className="flex gap-2 mb-1.5">
                   <input
@@ -445,34 +445,34 @@ export default function CampaignList() {
                       if (e.target.value.trim()) setCsvFile(null); // sheet + CSV are mutually exclusive
                     }}
                     placeholder="https://docs.google.com/spreadsheets/d/…"
-                    className="flex-1 px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none"
+                    className="flex-1 px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-[var(--accent)] outline-none"
                   />
                   <button
                     type="button"
                     onClick={checkSheet}
                     disabled={!sheetUrl.trim() || sheetChecking}
-                    className="px-4 py-3 border border-gray-700 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-40 whitespace-nowrap"
+                    className="px-4 py-3 border border-hairline rounded-lg text-sm font-bold text-ink-3 hover:text-ink-1 hover:border-ink-4 disabled:opacity-40 whitespace-nowrap"
                   >
                     {sheetChecking ? "Checking…" : "Check link"}
                   </button>
                 </div>
                 {sheetCheck ? (
                   sheetCheck.ok ? (
-                    <p className="text-[10px] text-green-500/80 mb-5">
+                    <p className="text-[10px] text-ink-3/80 mb-5">
                       ✓ {sheetCheck.count} athlete{sheetCheck.count === 1 ? "" : "s"} found{sheetCheck.gid ? ` (tab gid ${sheetCheck.gid})` : ""} — imported on create.
                     </p>
                   ) : (
-                    <p className="text-[10px] text-red-400/80 mb-5">
+                    <p className="text-[10px] text-accent/80 mb-5">
                       Couldn&apos;t read this sheet: {sheetCheck.reason || "unknown error"}. Make sure it&apos;s shared with the Postgame Google account.
                     </p>
                   )
                 ) : (
-                  <div className="text-[10px] text-gray-600 mb-5">Paste a tracker tab link — the gid in the URL picks the tab.</div>
+                  <div className="text-[10px] text-ink-4 mb-5">Paste a tracker tab link — the gid in the URL picks the tab.</div>
                 )}
 
                 {/* CSV upload */}
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                  Import Roster CSV <span className="text-gray-700 normal-case">(optional)</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">
+                  Import Roster CSV <span className="text-ink-4 normal-case">(optional)</span>
                 </label>
                 <div
                   onDragEnter={(e) => { e.preventDefault(); dragCounterRef.current++; setCsvDragging(true); }}
@@ -497,37 +497,37 @@ export default function CampaignList() {
                   }}
                   className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all mb-6 ${
                     csvDragging
-                      ? "border-[#D73F09] bg-[#D73F09]/5"
+                      ? "border-[var(--accent)] bg-[var(--accent)]/5"
                       : csvFile
-                        ? "border-green-500/40 bg-green-500/5"
-                        : "border-gray-700 hover:border-gray-500"
+                        ? "border-hairline/40 bg-surface-raised/5"
+                        : "border-hairline hover:border-ink-4"
                   }`}
                 >
                   {csvFile ? (
                     <div className="flex items-center justify-center gap-3">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       <div>
-                        <div className="text-sm font-bold text-green-400">{csvFile.name}</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">Athletes will be imported on create</div>
+                        <div className="text-sm font-bold text-ink-3">{csvFile.name}</div>
+                        <div className="text-[10px] text-ink-4 mt-0.5">Athletes will be imported on create</div>
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); setCsvFile(null); }}
-                        className="ml-2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-red-400 hover:bg-red-400/10 flex items-center justify-center text-xs"
+                        className="ml-2 w-6 h-6 rounded-full bg-surface-raised text-ink-3 hover:text-accent hover:bg-accent/10 flex items-center justify-center text-xs"
                       >
                         ×
                       </button>
                     </div>
                   ) : (
                     <>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={csvDragging ? "#D73F09" : "#555"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={csvDragging ? "var(--accent)" : "var(--ink-4)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" y1="3" x2="12" y2="15" />
                       </svg>
-                      <div className="text-xs font-bold text-gray-400">Drop CSV here or click to browse</div>
-                      <div className="text-[10px] text-gray-600 mt-1">Athlete roster + metrics spreadsheet</div>
+                      <div className="text-xs font-bold text-ink-3">Drop CSV here or click to browse</div>
+                      <div className="text-[10px] text-ink-4 mt-1">Athlete roster + metrics spreadsheet</div>
                     </>
                   )}
                 </div>
@@ -538,14 +538,14 @@ export default function CampaignList() {
               <button
                 onClick={() => { setShowCreate(false); setCsvFile(null); setSheetUrl(""); setSheetCheck(null); setCsvDragging(false); setSelectedTrackerId(""); setSelectedBrandId(""); setSelectedBrandCampaignId(""); setBrandCampaigns([]); setRecapType("recap"); }}
                 disabled={creating}
-                className="flex-1 px-4 py-3 border border-gray-700 rounded-lg text-gray-400 font-bold text-sm hover:border-gray-500 disabled:opacity-50"
+                className="flex-1 px-4 py-3 border border-hairline rounded-lg text-ink-3 font-bold text-sm hover:border-ink-4 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={createCampaign}
                 disabled={creating || !newName.trim() || !newClient.trim()}
-                className="flex-1 px-4 py-3 bg-[#D73F09] rounded-lg text-white font-bold text-sm hover:bg-[#B33407] disabled:opacity-50"
+                className="flex-1 px-4 py-3 bg-[var(--accent)] rounded-lg text-ink-1 font-bold text-sm hover:bg-[var(--accent)] disabled:opacity-50"
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-2">
@@ -567,15 +567,15 @@ export default function CampaignList() {
           : campaigns;
 
         if (loading) {
-          return <div className="text-gray-500 text-center py-20">Loading...</div>;
+          return <div className="text-ink-4 text-center py-20">Loading...</div>;
         }
         if (campaigns.length === 0) {
           return (
             <div className="text-center py-20">
-              <p className="text-gray-500 mb-4">No campaigns yet.</p>
+              <p className="text-ink-4 mb-4">No campaigns yet.</p>
               <button
                 onClick={() => setShowCreate(true)}
-                className="text-[#D73F09] font-bold text-sm hover:underline"
+                className="text-[var(--accent)] font-bold text-sm hover:underline"
               >
                 Create your first campaign →
               </button>
@@ -586,10 +586,10 @@ export default function CampaignList() {
           const brandName = brands.find((b: any) => b.id === brandFilterId)?.name || "this brand";
           return (
             <div className="text-center py-20">
-              <p className="text-gray-500 mb-4">No campaigns for {brandName}.</p>
+              <p className="text-ink-4 mb-4">No campaigns for {brandName}.</p>
               <button
                 onClick={() => setBrandFilterId("")}
-                className="text-[#D73F09] font-bold text-sm hover:underline"
+                className="text-[var(--accent)] font-bold text-sm hover:underline"
               >
                 Clear filter →
               </button>
@@ -602,7 +602,7 @@ export default function CampaignList() {
             {filteredCampaigns.map((c) => (
               <div
                 key={c.id}
-                className="relative flex items-center gap-4 px-5 py-4 bg-[#111] border border-gray-800 rounded-lg hover:border-gray-600 transition-colors group"
+                className="relative flex items-center gap-4 px-5 py-4 bg-surface-card border border-hairline rounded-lg hover:border-ink-4 transition-colors group"
               >
                 <Link href={`/dashboard/${c.id}`} className="absolute inset-0 z-0" />
                 <div className="flex-1 min-w-0">
@@ -611,8 +611,8 @@ export default function CampaignList() {
                     <span
                       className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${
                         c.published
-                          ? "bg-green-900/30 text-green-400"
-                          : "bg-gray-800 text-gray-500"
+                          ? "bg-surface-card/30 text-ink-3"
+                          : "bg-surface-raised text-ink-4"
                       }`}
                     >
                       {c.published ? "Published" : "Draft"}
@@ -626,12 +626,12 @@ export default function CampaignList() {
                         className="h-[16px] max-w-[60px] object-contain flex-shrink-0"
                       />
                     ) : null}
-                    <span className="text-xs text-gray-500">{c.client_name}</span>
-                    <span className="text-[10px] text-gray-700">
+                    <span className="text-xs text-ink-4">{c.client_name}</span>
+                    <span className="text-[10px] text-ink-4">
                       {new Date(c.created_at).toLocaleDateString()}
                     </span>
                     {c.published && (
-                      <span className="text-[10px] text-[#D73F09]">/recap/{c.slug}</span>
+                      <span className="text-[10px] text-[var(--accent)]">/recap/{c.slug}</span>
                     )}
                   </div>
                 </div>
@@ -641,7 +641,7 @@ export default function CampaignList() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="relative z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#D73F09] hover:bg-[#D73F09]/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    className="relative z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-ink-4 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                     title="View live recap"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -658,7 +658,7 @@ export default function CampaignList() {
                     e.stopPropagation();
                     setConfirmDelete(c);
                   }}
-                  className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                  className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-ink-4 hover:text-accent hover:bg-accent/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                   title="Delete campaign"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
