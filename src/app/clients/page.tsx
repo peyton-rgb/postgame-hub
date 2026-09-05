@@ -1,28 +1,8 @@
-// ============================================================
-// Public Clients Page — /clients
-//
-// Showcases every brand Postgame has partnered with, organized
-// into 2 visual tiers so the biggest names hit hardest:
-//
-//   1. Featured    — cinematic motion cards with brand logos,
-//      animated gradient backgrounds, and hover effects
-//   2. Full Roster — compact PartnerCard rows for every other
-//      brand, merged from partnerBrands + logoWallBrands and
-//      sorted alphabetically
-//
-// A filter bar lets visitors browse by industry category.
-// No auth required — this is a public marketing page.
-//
-// Design: Dark premium theme matching the Postgame brand.
-// Color: Beaver Orange #D73F09 for accents.
-// ============================================================
-
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PostgameLogo } from '@/components/PostgameLogo';
-import Image from 'next/image';
 import {
   featuredBrands,
   partnerBrands,
@@ -32,348 +12,47 @@ import {
   type BrandCategory,
 } from '@/lib/data/brands';
 
-// ---- Filter Pill ----
-// A clickable pill button used in the category filter bar.
-// "active" means it's the currently selected filter.
-
-function FilterPill({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`text-xs font-semibold px-4 py-2 rounded-full border transition-all duration-200 ${
-        active
-          ? 'bg-[#D73F09] border-[#D73F09] text-white'
-          : 'bg-transparent border-white/20 text-white/50 hover:border-white/40 hover:text-white/80'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-// ---- Brand Logo ----
-// Renders a brand logo image with a fallback to initials if
-// the image doesn't load or no URL is provided.
-
-function BrandLogo({
+function BrandMark({
   brand,
-  size = 'md',
   className = '',
 }: {
   brand: Brand;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }) {
   const [imgError, setImgError] = useState(false);
-
-  const sizeClasses = {
-    sm: 'w-6 h-6',
-    md: 'w-10 h-10',
-    lg: 'w-16 h-16',
-    xl: 'w-24 h-24',
-  };
-
-  const textSizes = {
-    sm: 'text-[8px]',
-    md: 'text-xs',
-    lg: 'text-lg',
-    xl: 'text-2xl',
-  };
 
   if (brand.logoUrl && !imgError) {
     return (
       <img
         src={brand.logoUrl}
         alt={`${brand.name} logo`}
-        className={`${sizeClasses[size]} object-contain ${className}`}
+        className={`object-contain ${className}`}
         onError={() => setImgError(true)}
       />
     );
   }
 
-  // Fallback: show initials in a styled circle
   return (
-    <div
-      className={`${sizeClasses[size]} rounded-full flex items-center justify-center ${className}`}
-      style={{ backgroundColor: `${brand.primaryColor}30` }}
+    <span
+      className="font-mono text-[11px] font-bold tracking-widest text-ink/40"
+      style={{ color: brand.primaryColor }}
     >
-      <span
-        className={`${textSizes[size]} font-bold`}
-        style={{ color: brand.primaryColor }}
-      >
-        {brand.initials}
-      </span>
-    </div>
+      [{brand.initials}]
+    </span>
   );
 }
-
-// ---- Featured Brand Card (Motion Card) ----
-// Large cinematic card with animated gradient background that
-// shifts on hover, brand logo centered, badge overlay,
-// and a shimmering light sweep effect on mouseenter.
-
-function FeaturedCard({ brand }: { brand: Brand }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
-  const [isHovered, setIsHovered] = useState(false);
-  const [imgError, setImgError] = useState(false);
-
-  // Track mouse position relative to card for the radial glow effect
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePos({ x, y });
-  };
-
-  const inner = (
-    <div
-      ref={cardRef}
-      className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02]"
-      style={{ aspectRatio: '16 / 10' }}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Base gradient background using brand color */}
-      <div
-        className="absolute inset-0 transition-all duration-700"
-        style={{
-          background: `linear-gradient(135deg, ${brand.primaryColor}22 0%, #0a0a0a 40%, ${brand.primaryColor}15 70%, #0a0a0a 100%)`,
-        }}
-      />
-
-      {/* Animated mesh gradient overlay — shifts with mouse position */}
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-500"
-        style={{
-          background: `radial-gradient(ellipse 60% 60% at ${mousePos.x}% ${mousePos.y}%, ${brand.primaryColor}30, transparent 70%)`,
-        }}
-      />
-
-      {/* Subtle grid pattern for depth */}
-      <div
-        className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-500"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}
-      />
-
-      {/* Shimmering light sweep on hover */}
-      <div
-        className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"
-        style={{
-          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)',
-        }}
-      />
-
-      {/* Border glow effect */}
-      <div
-        className="absolute inset-0 rounded-2xl border transition-all duration-500"
-        style={{
-          borderColor: isHovered ? `${brand.primaryColor}60` : 'rgba(255,255,255,0.08)',
-        }}
-      />
-
-      {/* Content layer */}
-      <div className="relative h-full flex flex-col items-center justify-center p-6 z-10">
-        {/* Brand logo — large and centered */}
-        {brand.logoUrl && !imgError ? (
-          <img
-            src={brand.logoUrl}
-            alt={`${brand.name} logo`}
-            className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <span
-            className="text-5xl sm:text-6xl font-black tracking-[0.15em] transition-all duration-500 group-hover:scale-110"
-            style={{ color: `${brand.primaryColor}60` }}
-          >
-            {brand.initials}
-          </span>
-        )}
-
-        {/* Brand name + category below logo */}
-        <div className="mt-4 text-center transition-all duration-500 group-hover:translate-y-0 translate-y-1 opacity-70 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-          <div className="text-sm font-bold text-white tracking-wide">
-            {brand.name}
-          </div>
-          <div className="text-[10px] text-white/40 tracking-[0.15em] uppercase mt-1">
-            {brand.category}
-          </div>
-        </div>
-      </div>
-
-      {/* Badge (top-left corner) */}
-      {brand.badge && (
-        <span className="absolute top-3 left-3 z-20 bg-[#D73F09]/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide backdrop-blur-sm">
-          {brand.badge}
-        </span>
-      )}
-
-      {/* Animated corner accent lines */}
-      <div
-        className="absolute top-0 right-0 w-16 h-16 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-all duration-500"
-        style={{
-          background: `linear-gradient(225deg, ${brand.primaryColor}40 0%, transparent 60%)`,
-        }}
-      />
-      <div
-        className="absolute bottom-0 left-0 w-16 h-16 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-all duration-500"
-        style={{
-          background: `linear-gradient(45deg, ${brand.primaryColor}40 0%, transparent 60%)`,
-        }}
-      />
-
-      {/* Arrow icon (bottom-right, appears on hover) */}
-      <span className="absolute bottom-3 right-3 z-20 text-white/0 group-hover:text-white/60 transition-all duration-300 text-sm">
-        →
-      </span>
-    </div>
-  );
-
-  return (
-    <Link href={`/clients/${brand.slug}`}>
-      {inner}
-    </Link>
-  );
-}
-
-// ---- Partner Card ----
-// Compact card with real brand logo, brand-colored accent,
-// name, category, and hover effect.
-
-function PartnerCard({ brand }: { brand: Brand }) {
-  const [imgError, setImgError] = useState(false);
-
-  const inner = (
-    <div className="group relative flex items-center gap-4 bg-[#111] border border-white/10 rounded-xl px-5 py-4 hover:border-white/20 transition-all duration-300 cursor-pointer overflow-hidden">
-      {/* Brand color accent bar on left */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-[3px] opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-300"
-        style={{ backgroundColor: brand.primaryColor }}
-      />
-
-      {/* Subtle brand color glow on hover */}
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-500"
-        style={{
-          background: `radial-gradient(ellipse at 0% 50%, ${brand.primaryColor}08, transparent 60%)`,
-        }}
-      />
-
-      {/* Logo */}
-      <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-all duration-300 relative z-10 overflow-hidden p-1.5">
-        {brand.logoUrl && !imgError ? (
-          <img
-            src={brand.logoUrl}
-            alt={`${brand.name} logo`}
-            className="w-full h-full object-contain"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <span
-            className="text-[11px] font-bold"
-            style={{ color: brand.primaryColor }}
-          >
-            {brand.initials}
-          </span>
-        )}
-      </div>
-
-      {/* Name + category */}
-      <div className="flex-1 min-w-0 relative z-10">
-        <div className="text-[13px] font-semibold text-white truncate">
-          {brand.name}
-        </div>
-        <div className="text-[10px] text-white/30 tracking-wide">
-          {brand.category}
-        </div>
-      </div>
-
-      {/* Badge */}
-      {brand.badge && (
-        <span className="text-[9px] font-bold text-[#D73F09] tracking-wider uppercase relative z-10 flex-shrink-0">
-          {brand.badge}
-        </span>
-      )}
-
-      {/* Arrow */}
-      <span className="text-white/15 group-hover:text-white/50 transition-colors text-sm flex-shrink-0 relative z-10">
-        →
-      </span>
-    </div>
-  );
-
-  return (
-    <Link href={`/clients/${brand.slug}`}>
-      {inner}
-    </Link>
-  );
-}
-
-// ---- Section Header ----
-// Reusable section label + title combo used for each tier.
-
-function SectionHeader({
-  label,
-  title,
-  count,
-}: {
-  label: string;
-  title: string;
-  count?: number;
-}) {
-  return (
-    <div className="mb-6 flex items-end justify-between">
-      <div>
-        <div className="text-[10px] font-bold tracking-[0.2em] text-[#D73F09] uppercase mb-1">
-          {label}
-        </div>
-        <h2 className="text-lg font-bold text-white">{title}</h2>
-      </div>
-      {count !== undefined && (
-        <div className="text-[11px] text-white/20 font-semibold tracking-wider">
-          {count} brands
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- Main Page Component ----
 
 export default function ClientsPage() {
-  // Which category filter is active — null means "All"
   const [activeFilter, setActiveFilter] = useState<BrandCategory | null>(null);
 
-  // Filter function — returns true if a brand matches the active filter
   const matchesFilter = (brand: Brand) =>
     activeFilter === null || brand.category === activeFilter;
 
-  // Pre-filter each tier so we don't recalculate on every render
-  // useMemo is a React tool that caches the result until activeFilter changes
   const filteredFeatured = useMemo(
     () => featuredBrands.filter(matchesFilter),
     [activeFilter]
   );
-  // Full roster = partnerBrands + logoWallBrands, filtered, then alphabetized.
-  // Brand names that start with a digit (e.g. "1-800 Contacts") get pushed to
-  // the bottom of the list so the A–Z letter brands aren't visually interrupted.
+
   const filteredRoster = useMemo(
     () =>
       [...partnerBrands, ...logoWallBrands]
@@ -381,197 +60,370 @@ export default function ClientsPage() {
         .sort((a, b) => {
           const aNum = /^\d/.test(a.name.trim());
           const bNum = /^\d/.test(b.name.trim());
-          if (aNum !== bNum) return aNum ? 1 : -1; // number-named brands go last
+          if (aNum !== bNum) return aNum ? 1 : -1;
           return a.name.localeCompare(b.name);
         }),
     [activeFilter]
   );
 
-  // Total brand count for the hero stat
   const totalBrands =
     featuredBrands.length + partnerBrands.length + logoWallBrands.length;
 
+  // Alphabetical groupings for the running editorial index
+  const rosterGroups = useMemo(() => {
+    const groups: { [key: string]: Brand[] } = {};
+    filteredRoster.forEach((brand) => {
+      const firstChar = brand.name.trim().charAt(0).toUpperCase();
+      const key = /^[A-Z]$/.test(firstChar) ? firstChar : '#';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(brand);
+    });
+    return Object.entries(groups).sort(([a], [b]) => {
+      if (a === '#') return 1;
+      if (b === '#') return -1;
+      return a.localeCompare(b);
+    });
+  }, [filteredRoster]);
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Top nav rendered globally by SiteNav in layout.tsx. */}
-
-      {/* ====== HERO SECTION ====== */}
-      <section className="relative pt-28 pb-16 px-6 text-center overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {/* Central glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-[#D73F09]/[0.03] rounded-full blur-[120px]" />
-          {/* Floating accent orbs */}
-          <div className="absolute top-20 left-[15%] w-32 h-32 bg-[#D73F09]/[0.04] rounded-full blur-[80px] animate-pulse" />
-          <div className="absolute bottom-10 right-[20%] w-40 h-40 bg-[#D73F09]/[0.03] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        </div>
-
-        <div className="relative max-w-2xl mx-auto">
-          {/* Eyebrow label with decorative lines */}
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <div className="h-px w-8 bg-[#D73F09]/40" />
-            <div className="text-[10px] font-bold tracking-[0.3em] text-[#D73F09] uppercase">
-              Our Partners
+    <div className="min-h-screen bg-surface text-ink antialiased selection:bg-brand selection:text-ink">
+      {/* ====== MASTHEAD & EDITORIAL FOLIO ====== */}
+      <header className="border-b border-ink/10 pt-28 pb-10">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8">
+          {/* Top metadata ticker */}
+          <div className="flex flex-wrap items-center justify-between gap-4 font-mono text-[11px] tracking-[0.2em] uppercase text-ink/40 pb-8 border-b border-ink/10">
+            <div className="flex items-center gap-3">
+              <span className="inline-block w-2 h-2 bg-brand" />
+              <span>POSTGAME ATHLETE ROSTER // INDEX DIRECTORY</span>
             </div>
-            <div className="h-px w-8 bg-[#D73F09]/40" />
+            <div className="flex items-center gap-6">
+              <span>VOL. V</span>
+              <span>{totalBrands} PARTNER BRANDS</span>
+              <span>EST. 2020</span>
+            </div>
           </div>
 
-          {/* Main headline */}
-          <h1 className="text-4xl sm:text-5xl font-black leading-[1.1] mb-4">
-            The Brands Behind
-            <br />
-            <span className="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
-              the Biggest Campaigns
+          {/* Hero editorial headline */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-10 pb-6 items-end">
+            <div className="lg:col-span-8">
+              <span className="font-mono text-xs tracking-[0.25em] text-brand uppercase block mb-3">
+                COLOPHON & CLIENT INDEX
+              </span>
+              <h1 className="font-display text-6xl sm:text-8xl lg:text-9xl tracking-tight leading-[0.85] text-ink uppercase">
+                THE BRANDS
+              </h1>
+            </div>
+
+            <div className="lg:col-span-4 flex flex-col justify-between border-l border-ink/10 lg:pl-8">
+              <p className="text-sm leading-relaxed text-ink/70">
+                A definitive catalog of sports marketing, consumer goods,
+                and digital native brands executing national NIL campaigns
+                through Postgame.
+              </p>
+
+              {/* Condensed ledger numbers */}
+              <div className="grid grid-cols-3 gap-4 pt-8 mt-8 border-t border-ink/10 font-mono">
+                <div>
+                  <div className="font-display text-3xl text-ink leading-none">
+                    {totalBrands}
+                  </div>
+                  <div className="text-[10px] tracking-wider uppercase text-ink/40 mt-1">
+                    Partners
+                  </div>
+                </div>
+                <div>
+                  <div className="font-display text-3xl text-brand leading-none">
+                    60K+
+                  </div>
+                  <div className="text-[10px] tracking-wider uppercase text-ink/40 mt-1">
+                    Athletes
+                  </div>
+                </div>
+                <div>
+                  <div className="font-display text-3xl text-ink leading-none">
+                    05
+                  </div>
+                  <div className="text-[10px] tracking-wider uppercase text-ink/40 mt-1">
+                    Years
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ====== RUNNING CATEGORY INDEX BAR ====== */}
+      <nav aria-label="Index filters" className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-ink/10">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 py-3.5">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar font-mono text-xs uppercase tracking-wider">
+            <span className="text-ink/30 pr-3 border-r border-ink/10 shrink-0">
+              FILTER //
             </span>
-          </h1>
 
-          {/* Subheadline */}
-          <p className="text-sm text-white/40 max-w-md mx-auto mb-12 leading-relaxed">
-            From Fortune 500 icons to breakout DTC brands — we&apos;ve powered{' '}
-            {totalBrands}+ partnerships that move culture.
-          </p>
+            <button
+              onClick={() => setActiveFilter(null)}
+              className={`px-3 py-1.5 transition-colors shrink-0 text-left ${
+                activeFilter === null
+                  ? 'bg-ink text-surface font-semibold'
+                  : 'text-ink/60 hover:text-ink hover:bg-ink/5'
+              }`}
+            >
+              ALL ({totalBrands})
+            </button>
 
-          {/* Stats row — animated counters */}
-          <div className="flex justify-center gap-12 sm:gap-16">
-            <div className="text-center group">
-              <div className="text-3xl sm:text-4xl font-black text-[#D73F09] group-hover:scale-110 transition-transform duration-300">
-                {totalBrands}+
-              </div>
-              <div className="text-[10px] text-white/30 uppercase tracking-[0.15em] mt-1">
-                Brands
-              </div>
-            </div>
-            <div className="text-center group">
-              <div className="text-3xl sm:text-4xl font-black text-[#D73F09] group-hover:scale-110 transition-transform duration-300">
-                60K+
-              </div>
-              <div className="text-[10px] text-white/30 uppercase tracking-[0.15em] mt-1">
-                Athletes
-              </div>
-            </div>
-            <div className="text-center group">
-              <div className="text-3xl sm:text-4xl font-black text-[#D73F09] group-hover:scale-110 transition-transform duration-300">
-                5
-              </div>
-              <div className="text-[10px] text-white/30 uppercase tracking-[0.15em] mt-1">
-                Years of NIL
-              </div>
-            </div>
+            {brandCategories.map((cat, idx) => {
+              const count = [...featuredBrands, ...partnerBrands, ...logoWallBrands].filter(
+                (b) => b.category === cat
+              ).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveFilter(cat)}
+                  className={`px-3 py-1.5 transition-colors shrink-0 text-left flex items-center gap-1.5 ${
+                    activeFilter === cat
+                      ? 'bg-ink text-surface font-semibold'
+                      : 'text-ink/60 hover:text-ink hover:bg-ink/5'
+                  }`}
+                >
+                  <span className="opacity-40 text-[10px]">
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <span>{cat}</span>
+                  <span className="opacity-40 text-[10px]">({count})</span>
+                </button>
+              );
+            })}
           </div>
         </div>
-      </section>
+      </nav>
 
-      {/* ====== FILTER BAR ====== */}
-      <div className="sticky top-[57px] z-40 bg-[#0a0a0a]/95 backdrop-blur-sm border-y border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex gap-2 flex-wrap">
-          <FilterPill
-            label="All"
-            active={activeFilter === null}
-            onClick={() => setActiveFilter(null)}
-          />
-          {brandCategories.map((cat) => (
-            <FilterPill
-              key={cat}
-              label={cat}
-              active={activeFilter === cat}
-              onClick={() => setActiveFilter(cat)}
-            />
-          ))}
-        </div>
-      </div>
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 py-16">
+        {/* ====== EDITORIAL FEATURED LEDGER ====== */}
+        {filteredFeatured.length > 0 && (
+          <section className="mb-24">
+            <div className="flex items-baseline justify-between border-b border-ink pb-3 mb-6">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs uppercase tracking-[0.25em] text-brand">
+                  SECTION 01
+                </span>
+                <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink/30">
+                  //
+                </span>
+                <h2 className="font-display text-2xl tracking-wide uppercase text-ink">
+                  HEADLINE CAMPAIGNS
+                </h2>
+              </div>
+              <span className="font-mono text-xs text-ink/40">
+                [{filteredFeatured.length} KEY ACCOUNTS]
+              </span>
+            </div>
 
-      {/* ====== FEATURED TIER ====== */}
-      {filteredFeatured.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pt-12 pb-6">
-          <SectionHeader
-            label="Featured Partners"
-            title="Headliner Brands"
-            count={filteredFeatured.length}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {filteredFeatured.map((brand) => (
-              <FeaturedCard key={brand.slug} brand={brand} />
-            ))}
+            {/* Asymmetrical Editorial Grid for Featured */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-ink/10 border border-ink/10">
+              {filteredFeatured.map((brand, idx) => (
+                <Link
+                  key={brand.slug}
+                  href={`/clients/${brand.slug}`}
+                  className="group relative bg-surface p-8 sm:p-10 flex flex-col justify-between min-h-[340px] hover:bg-surface-2 transition-colors overflow-hidden"
+                >
+                  {/* Top Bar inside card */}
+                  <div className="flex items-start justify-between">
+                    <span className="font-mono text-xs text-ink/30 tracking-widest">
+                      № {String(idx + 1).padStart(2, '0')}
+                    </span>
+                    {brand.badge ? (
+                      <span className="font-mono text-[10px] tracking-wider uppercase text-brand border border-brand/40 px-2 py-0.5">
+                        {brand.badge}
+                      </span>
+                    ) : (
+                      <span className="font-mono text-[10px] tracking-wider uppercase text-ink/40">
+                        {brand.category}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Center Brand Logo / Mark */}
+                  <div className="my-8 flex items-center justify-start h-24">
+                    <BrandMark
+                      brand={brand}
+                      className="max-h-16 max-w-[160px] filter grayscale contrast-125 opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
+                    />
+                  </div>
+
+                  {/* Bottom Typography */}
+                  <div className="border-t border-ink/10 pt-4 flex items-end justify-between">
+                    <div>
+                      <div className="font-display text-3xl tracking-tight text-ink group-hover:text-brand transition-colors">
+                        {brand.name}
+                      </div>
+                      <div className="font-mono text-[11px] tracking-wider uppercase text-ink/40 mt-0.5">
+                        {brand.category}
+                      </div>
+                    </div>
+                    <span className="font-mono text-sm text-ink/20 group-hover:text-ink transition-colors translate-x-0 group-hover:translate-x-1 duration-200">
+                      →
+                    </span>
+                  </div>
+
+                  {/* Brand Color Edge Tick */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ backgroundColor: brand.primaryColor }}
+                  />
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ====== THE EDITORIAL RUNNING INDEX ====== */}
+        {filteredRoster.length > 0 && (
+          <section>
+            <div className="flex items-baseline justify-between border-b border-ink pb-3 mb-10">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs uppercase tracking-[0.25em] text-brand">
+                  SECTION 02
+                </span>
+                <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink/30">
+                  //
+                </span>
+                <h2 className="font-display text-2xl tracking-wide uppercase text-ink">
+                  ALPHABETICAL INDEX
+                </h2>
+              </div>
+              <span className="font-mono text-xs text-ink/40">
+                [{filteredRoster.length} ENTRIES]
+              </span>
+            </div>
+
+            {/* Print magazine-style multi-letter ledger */}
+            <div className="space-y-12">
+              {rosterGroups.map(([letter, brands]) => (
+                <div
+                  key={letter}
+                  className="grid grid-cols-1 lg:grid-cols-12 border-t border-ink/20 pt-4"
+                >
+                  {/* Big letter marker */}
+                  <div className="lg:col-span-2 mb-4 lg:mb-0">
+                    <span className="font-display text-6xl text-ink/20 sticky top-20 select-none">
+                      {letter}
+                    </span>
+                  </div>
+
+                  {/* Ledger list */}
+                  <div className="lg:col-span-10 divide-y divide-ink/10">
+                    {brands.map((brand) => (
+                      <Link
+                        key={brand.slug}
+                        href={`/clients/${brand.slug}`}
+                        className="group py-3.5 px-2 -mx-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-ink/[0.03] transition-colors"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          {/* Monogram / miniature emblem */}
+                          <div className="w-8 h-8 shrink-0 bg-surface-2 border border-ink/10 flex items-center justify-center p-1">
+                            <BrandMark
+                              brand={brand}
+                              className="max-h-5 max-w-full filter grayscale contrast-125 opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all"
+                            />
+                          </div>
+
+                          <div className="min-w-0">
+                            <span className="font-display text-2xl tracking-wide text-ink group-hover:text-brand transition-colors mr-3">
+                              {brand.name}
+                            </span>
+                            {brand.badge && (
+                              <span className="align-middle inline-block font-mono text-[9px] uppercase tracking-wider text-brand border border-brand/30 px-1.5 py-0.2 mr-2">
+                                {brand.badge}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right metadata columns */}
+                        <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-12 shrink-0 font-mono text-xs">
+                          <span className="text-ink/40 uppercase tracking-wider text-[11px]">
+                            {brand.category}
+                          </span>
+                          <span className="text-ink/20 group-hover:text-ink transition-colors">
+                            № {brand.slug.slice(0, 4).toUpperCase()} →
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ====== EMPTY STATE ====== */}
+        {filteredFeatured.length === 0 && filteredRoster.length === 0 && (
+          <div className="py-24 text-center border-y border-ink/10 my-12">
+            <div className="font-mono text-xs uppercase tracking-[0.25em] text-brand mb-2">
+              CATALOG SEARCH // ZERO RESULTS
+            </div>
+            <p className="font-display text-4xl text-ink mb-6">
+              NO PARTNERS FOUND UNDER THIS SECTOR
+            </p>
+            <button
+              onClick={() => setActiveFilter(null)}
+              className="font-mono text-xs uppercase tracking-wider text-ink border border-ink/30 px-6 py-3 hover:bg-ink hover:text-surface transition-colors"
+            >
+              RESET TO ALL RECORDS
+            </button>
+          </div>
+        )}
+
+        {/* ====== FOOTER CALLOUT ====== */}
+        <section className="mt-32 border-t-2 border-ink pt-12 pb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-end">
+            <div className="lg:col-span-8">
+              <span className="font-mono text-xs tracking-[0.25em] text-brand uppercase block mb-3">
+                COLOPHON 03 // PARTNERSHIP INQUIRIES
+              </span>
+              <h3 className="font-display text-4xl sm:text-6xl text-ink uppercase tracking-tight leading-none">
+                READY TO COMMISSION YOUR CAMPAIGN?
+              </h3>
+              <p className="text-sm text-ink/70 mt-4 max-w-xl leading-relaxed">
+                Connect with the Postgame representation desk. Custom NIL athlete
+                rosters built specifically for brand objectives, media rights, and regional activation.
+              </p>
+            </div>
+
+            <div className="lg:col-span-4 flex lg:justify-end">
+              <a
+                href="https://www.home.pstgm.com/contactus"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto text-center font-mono text-xs uppercase tracking-[0.2em] font-semibold bg-brand text-ink px-8 py-4 hover:bg-brand/90 transition-colors inline-block"
+              >
+                INITIATE PARTNERSHIP →
+              </a>
+            </div>
           </div>
         </section>
-      )}
+      </main>
 
-      {/* ====== FULL ROSTER ====== */}
-      {filteredRoster.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pt-10 pb-10">
-          <SectionHeader
-            label="Brand Partners"
-            title="Full Roster"
-            count={filteredRoster.length}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredRoster.map((brand) => (
-              <PartnerCard key={brand.slug} brand={brand} />
-            ))}
+      {/* ====== COLOPHON FOOTER ====== */}
+      <footer className="border-t border-ink/10 bg-surface py-12">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-8 border-b border-ink/10">
+            <PostgameLogo size="sm" />
+            <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-ink/40">
+              SARASOTA [HQ] // PHILADELPHIA // TAMPA
+            </div>
           </div>
-        </section>
-      )}
 
-      {/* ====== EMPTY STATE ====== */}
-      {filteredFeatured.length === 0 && filteredRoster.length === 0 && (
-        <div className="max-w-6xl mx-auto px-6 py-20 text-center">
-          <div className="text-white/20 text-lg font-semibold mb-2">
-            No brands in this category yet
+          <div className="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono text-[10px] text-ink/30 uppercase tracking-widest">
+            <div>
+              © {new Date().getFullYear()} POSTGAME, LLC. ALL RIGHTS RESERVED.
+            </div>
+            <div>
+              ATHLETE INFLUENCER MARKETING // NIL COMPLIANCE SECURED
+            </div>
           </div>
-          <button
-            onClick={() => setActiveFilter(null)}
-            className="text-[#D73F09] text-sm font-semibold hover:underline"
-          >
-            Show all brands →
-          </button>
-        </div>
-      )}
-
-      {/* ====== CTA SECTION ====== */}
-      <section className="relative overflow-hidden py-20 px-6 text-center">
-        {/* Gradient background instead of flat color */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#D73F09] via-[#C53508] to-[#A52D07]" />
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '60px 60px',
-          }}
-        />
-
-        <div className="relative">
-          <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">
-            Ready to join this roster?
-          </h2>
-          <p className="text-sm text-white/80 mb-8 max-w-md mx-auto">
-            Let&apos;s build your next athlete influencer campaign together.
-          </p>
-          <a
-            href="https://www.home.pstgm.com/contactus"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-white text-[#D73F09] font-bold text-sm px-8 py-3.5 rounded-lg hover:bg-white/90 hover:scale-105 transition-all duration-300"
-          >
-            Get Started →
-          </a>
-        </div>
-      </section>
-
-      {/* ====== FOOTER ====== */}
-      <footer className="bg-black py-10 px-6 text-center border-t border-white/5">
-        <div className="flex justify-center mb-3">
-          <PostgameLogo size="sm" />
-        </div>
-        <div className="text-[11px] text-white/25 max-w-md mx-auto leading-relaxed">
-          Postgame™ manages the largest sports marketing and influencer
-          campaigns in college sports. Headquartered in Sarasota, FL with
-          offices in Philadelphia and Tampa.
-        </div>
-        <div className="text-[10px] text-white/15 mt-4">
-          © {new Date().getFullYear()} Postgame, LLC. All rights reserved.
         </div>
       </footer>
     </div>
