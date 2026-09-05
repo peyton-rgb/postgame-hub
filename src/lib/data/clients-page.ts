@@ -203,6 +203,15 @@ type BrandRow = {
  */
 export const TILE_GROUND = '#0A0A0A';   // bg-surface-2 — the directory is dark now
 
+/**
+ * The effective ground a carousel mark sits on: a photograph under the card's
+ * 0.70 scrim. Dark frames composite to roughly this, so it is what a colour
+ * logo has to survive. pickForGround measures against it, which is how a mark
+ * whose own colour cannot hold (Allstate's navy) falls through to the brand's
+ * light-ink file instead.
+ */
+export const PHOTO_SCRIM_GROUND = '#1C1C1F';
+
 function rgb(hex: string | null): [number, number, number] | null {
   if (!hex) return null;
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -365,24 +374,26 @@ export async function loadClientsPage(): Promise<{
 
     // Legacy columns are the last resort, and only for the rest state — their
     // ink is unknown, so they are trusted only when brand_logos has nothing.
-    // On a photograph, prefer real light-ink artwork and render it untouched.
-    // Knocking out is the fallback, not the default: brightness(0) invert turns
-    // any artwork into its silhouette, which is fine for a wordmark and wrong
-    // for a filled mark.
+    // On a photograph the mark renders in its own colours, so the pick is the
+    // brand-colour file — which lives in on_white, since on_black variants are
+    // usually white knockouts.
+    //
+    // A scrim can only darken, so it rescues a light mark and actively hurts a
+    // dark one. Allstate's colour artwork is #0033A0 navy: measured against its
+    // own frame under a 0.70 scrim it reaches 1.6:1 and cannot be saved by more
+    // scrim. Where the colour ink cannot hold against a scrimmed frame, fall
+    // back to the brand's light-ink file instead.
+    const colourPick = pickForGround(logos, 'on_white', PHOTO_SCRIM_GROUND, {
+      requireAlpha: true,
+      kindOrder: ['lockup', 'wordmark', 'mark', 'mono'],
+    });
     const lightInkPick =
-      pickForGround(logos, 'on_black', '#07070A', { requireAlpha: true }) ??
-      pickForGround(logos, 'on_brand', '#07070A', { requireAlpha: true });
+      pickForGround(logos, 'on_black', PHOTO_SCRIM_GROUND, { requireAlpha: true }) ??
+      pickForGround(logos, 'on_brand', PHOTO_SCRIM_GROUND, { requireAlpha: true });
 
-    // Knockout fallback prefers a wordmark or lockup over a mark, since a
-    // silhouetted mark loses whatever made it legible.
-    const knockoutPick =
-      pickForGround(logos, 'on_white', TILE_GROUND, {
-        requireAlpha: true,
-        kindOrder: ['wordmark', 'lockup', 'mark', 'mono'],
-      }) ?? null;
-
-    const photoLogo = lightInkPick?.url ?? knockoutPick?.url ?? r.logo_light_url ?? null;
-    const photoLogoKnockout = !lightInkPick && Boolean(knockoutPick ?? r.logo_light_url);
+    const photoLogo = colourPick?.url ?? lightInkPick?.url ?? r.logo_light_url ?? null;
+    // Nothing is knocked out any more — the file renders as drawn.
+    const photoLogoKnockout = false;
 
     const onLight =
       restPick?.url ??

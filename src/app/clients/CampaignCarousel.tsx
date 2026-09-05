@@ -110,6 +110,11 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
     >
       <div
         ref={scrollerRef}
+        // Lenis hijacks wheel events globally; without this it swallows the
+        // horizontal gesture and the row feels stuck. data-lenis-prevent hands
+        // this container back to native scrolling, which is also what makes
+        // drag and momentum feel right.
+        data-lenis-prevent
         // The row bleeds off both edges. Padding is a normal page gutter, not
         // half a viewport: centring the first card would leave ~680px of dead
         // space on the left and the row would read as a contained slider.
@@ -119,9 +124,14 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
           const isActive = i === active;
           const card = (
             <>
+              {/* Glass: a surface layer over the photo, a hairline catching the
+                  top edge, a soft shadow beneath, and blur only at the very
+                  edge where the card meets the page. Depth, not a bevel. */}
               <div
-                className={`relative overflow-hidden rounded-2xl bg-surface-2 transition-transform duration-500 ease-out ${
-                  isActive ? 'scale-100' : 'scale-[0.94]'
+                className={`relative overflow-hidden rounded-2xl bg-surface-2 shadow-[0_20px_44px_-16px_rgba(0,0,0,0.85)] ring-1 ring-inset ring-white/10 backdrop-blur-sm transition-all duration-500 ease-out ${
+                  isActive
+                    ? 'scale-100 ring-white/16 shadow-[0_26px_56px_-18px_rgba(0,0,0,0.9)]'
+                    : 'scale-[0.955]'
                 }`}
               >
                 <div className="relative aspect-[3/4] w-full">
@@ -136,15 +146,21 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
                     fetchPriority={i < 2 ? 'high' : undefined}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
-                  {/* The mark is centred and dominant now, so the scrim is a
-                      centre-weighted pool rather than a top bar — enough to hold
-                      a white logo over a bright frame without flattening the
-                      photograph at the edges. */}
+                  {/* Hairline light catching the top edge of the glass. */}
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px"
+                    style={{
+                      background:
+                        'linear-gradient(to right, rgba(250,248,245,0) 0%, rgba(250,248,245,0.30) 22%, rgba(250,248,245,0.30) 78%, rgba(250,248,245,0) 100%)',
+                    }}
+                  />
+                  {/* Scrim, strengthened for full-colour marks: colour holds far
+                      less well over moving footage than a white knockout. */}
                   <div
                     className="pointer-events-none absolute inset-0"
                     style={{
                       background:
-                        'radial-gradient(ellipse 62% 48% at 50% 50%, rgba(7,7,10,0.58) 0%, rgba(7,7,10,0.34) 55%, rgba(7,7,10,0.10) 100%)',
+                        'radial-gradient(ellipse 66% 52% at 50% 50%, rgba(7,7,10,0.70) 0%, rgba(7,7,10,0.46) 55%, rgba(7,7,10,0.16) 100%)',
                     }}
                   />
                   {/* Knock out only when the file is dark-ink artwork. Crocs'
@@ -155,10 +171,12 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
                       alt=""
                       aria-hidden
                       className="absolute inset-0 m-auto h-auto max-h-[26%] w-auto max-w-[68%] object-contain"
+                      // Rendered in its own colours. The shadow is edge
+                      // separation, not decoration — colour artwork needs it
+                      // against a moving frame far more than a knockout did.
                       style={{
-                        filter: film.photoLogoKnockout
-                          ? 'brightness(0) invert(1) drop-shadow(0 2px 14px rgba(7,7,10,0.5))'
-                          : 'drop-shadow(0 2px 14px rgba(7,7,10,0.5))',
+                        filter:
+                          'drop-shadow(0 1px 2px rgba(7,7,10,0.85)) drop-shadow(0 3px 16px rgba(7,7,10,0.6))',
                       }}
                     />
                   )}
@@ -183,7 +201,7 @@ export default function CampaignCarousel({ films }: { films: FeaturedFilm[] }) {
           );
 
           const cls =
-            'w-[min(74vw,304px)] shrink-0 snap-center outline-none focus-visible:ring-2 focus-visible:ring-brand/70 rounded-2xl';
+            'w-[min(68vw,268px)] shrink-0 snap-center outline-none focus-visible:ring-2 focus-visible:ring-brand/70 rounded-2xl';
 
           return film.href ? (
             <Link key={film.slug} href={film.href} className={cls} aria-label={film.name}>
