@@ -50,12 +50,66 @@ const POSTERS: Record<string, string> = {
     'https://static.wixstatic.com/media/ba5ed8_9e8bacb6acaa4e469d66c4fca67f290bf000.jpg',
 };
 
+function useLogoHover() {
+  const stripRef = useRef<HTMLAnchorElement | null>(null);
+  const logoRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+    const hasHover = window.matchMedia('(hover: hover)').matches;
+
+    if (prefersReducedMotion || !hasHover) return;
+
+    const strip = stripRef.current;
+    const logo = logoRef.current;
+    if (!strip || !logo) return;
+
+    gsap.set(logo, { transformOrigin: 'center center' });
+
+    const scaleTo = gsap.quickTo(logo, 'scale', {
+      duration: 0.34,
+      ease: 'power3.out',
+    });
+
+    const onMouseEnter = () => {
+      if (scaleTo.tween) {
+        scaleTo.tween.duration(0.34);
+      }
+      scaleTo(1.08);
+    };
+
+    const onMouseLeave = () => {
+      if (scaleTo.tween) {
+        scaleTo.tween.duration(0.26);
+      }
+      scaleTo(1);
+    };
+
+    strip.addEventListener('mouseenter', onMouseEnter);
+    strip.addEventListener('mouseleave', onMouseLeave);
+
+    return () => {
+      strip.removeEventListener('mouseenter', onMouseEnter);
+      strip.removeEventListener('mouseleave', onMouseLeave);
+      gsap.killTweensOf(logo);
+    };
+  }, []);
+
+  return { stripRef, logoRef };
+}
+
 function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
   const clip = CLIPS[brand.slug];
   const poster = POSTERS[brand.slug];
+  const { stripRef, logoRef } = useLogoHover();
 
   return (
     <Link
+      ref={stripRef}
       href={`/clients/${brand.slug}`}
       data-strip-index={index}
       className="featured-strip relative block w-full h-[38vh] overflow-hidden bg-surface"
@@ -86,12 +140,20 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
       <div className="relative z-10 w-full h-full flex items-center justify-center p-6 pointer-events-none">
         {brand.logoUrl ? (
           <img
+            ref={(el) => {
+              logoRef.current = el;
+            }}
             src={brand.logoUrl}
             alt={brand.name}
-            className="h-[7vh] w-auto max-w-[26vw] object-contain brightness-0 invert pointer-events-none select-none"
+            className="h-[7vh] w-auto max-w-[26vw] object-contain brightness-0 invert pointer-events-none select-none will-change-transform"
           />
         ) : (
-          <span className="font-display text-[6vh] tracking-wider text-ink select-none">
+          <span
+            ref={(el) => {
+              logoRef.current = el;
+            }}
+            className="font-display text-[6vh] tracking-wider text-ink select-none will-change-transform"
+          >
             {brand.initials}
           </span>
         )}
@@ -101,20 +163,31 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
 }
 
 function RosterStrip({ brand }: { brand: Brand }) {
+  const { stripRef, logoRef } = useLogoHover();
+
   return (
     <Link
+      ref={stripRef}
       href={`/clients/${brand.slug}`}
       className="relative block w-full h-[12vh] overflow-hidden bg-surface"
     >
       <div className="w-full h-full flex items-center justify-center p-4 pointer-events-none">
         {brand.logoUrl ? (
           <img
+            ref={(el) => {
+              logoRef.current = el;
+            }}
             src={brand.logoUrl}
             alt={brand.name}
-            className="h-[4vh] w-auto max-w-[20vw] object-contain brightness-0 invert pointer-events-none select-none"
+            className="h-[4vh] w-auto max-w-[20vw] object-contain brightness-0 invert pointer-events-none select-none will-change-transform"
           />
         ) : (
-          <span className="font-display text-xl tracking-wider text-ink/70 select-none">
+          <span
+            ref={(el) => {
+              logoRef.current = el;
+            }}
+            className="font-display text-xl tracking-wider text-ink/70 select-none will-change-transform"
+          >
             {brand.initials}
           </span>
         )}
