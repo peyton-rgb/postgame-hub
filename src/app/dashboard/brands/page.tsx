@@ -66,10 +66,15 @@ function BrandCard({
   return (
     <div className="group bg-surface-card border border-hairline-soft rounded-xl p-4 hover:border-hairline transition-all duration-300 cursor-default">
       <div className="flex items-start gap-3">
-        {/* Logo */}
+        {/* Logo. The tint, the initials fallback and the swatch below all take
+            their colour from brands.primary_color — CLIENT colours, deliberately
+            off-palette. Each carries data-brand-color so the design collector
+            skips it: the exemption lives in the markup and cannot drift into a
+            route-wide rule that would hide a real violation. */}
         <div
           className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-hairline-soft group-hover:border-hairline transition-colors"
           style={{ backgroundColor: `${color}10` }}
+          data-brand-color
         >
           {brand.logo_url ? (
             <img
@@ -81,6 +86,7 @@ function BrandCard({
             <span
               className="text-sm font-bold"
               style={{ color: `${color}80` }}
+              data-brand-color
             >
               {initials}
             </span>
@@ -137,6 +143,7 @@ function BrandCard({
             className="w-6 h-6 rounded-full border border-hairline flex-shrink-0"
             style={{ backgroundColor: brand.primary_color }}
             title={brand.primary_color}
+            data-brand-color
           />
         )}
       </div>
