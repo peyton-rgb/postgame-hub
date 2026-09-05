@@ -106,12 +106,12 @@ function Band({ brand, index }: { brand: ClientBrand; index: number }) {
       <div
         className={`relative z-10 w-full h-full flex ${placement(brand.slug).cls} pointer-events-none`}
       >
-        {brand.logoOnLight || brand.logoOnDark ? (
+        {brand.logoBand || brand.logoOnLight || brand.logoOnDark ? (
           <img
             ref={(el) => {
               logoRef.current = el;
             }}
-            src={(brand.logoOnLight || brand.logoOnDark) as string}
+            src={(brand.logoBand || brand.logoOnLight || brand.logoOnDark) as string}
             alt={brand.name}
             style={{ height, filter: LOGO_FILTER }}
             className="w-auto max-w-[26vw] object-contain pointer-events-none select-none will-change-transform"

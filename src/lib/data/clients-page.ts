@@ -21,7 +21,6 @@ import { createPlainSupabase } from '@/lib/supabase';
 import {
   BRAND_LOGO_COLUMNS,
   groupLogosByBrand,
-  resolveBrandLogo,
   type BrandLogoRow,
 } from '@/lib/brand-logo';
 
@@ -203,6 +202,65 @@ function routeHref(slug: string): string | null {
   return `/clients/${ROUTE_SLUG_ALIASES[slug] ?? slug}`;
 }
 
+/**
+ * Pick one file for one ground.
+ *
+ * This does what @/lib/brand-logo's resolveBrandLogo does, plus two things the
+ * tile grid needs and the shared resolver deliberately leaves to its caller:
+ *
+ *   1. It ranks by whether the file's INK actually reads on the ground, not by
+ *      a fixed kind preference. Asking for `prefer: 'lockup'` returns the
+ *      lockup and stops — so Drink Lick got its #728859 lockup while a #060606
+ *      wordmark sat unused in the same variant at 19:1.
+ *
+ *   2. It handles plates. `has_alpha === false` means the background is baked
+ *      in, and the variant label does NOT tell you what colour it is: several
+ *      files here are tagged on_white but are 78-86% dark pixels, so on a white
+ *      tile they draw a dark box. A plate is therefore only used when bg_hex is
+ *      recorded AND matches the ground it is going onto. Unknown background =
+ *      not used, because the failure is a visible rectangle, not a subtle one.
+ *      Bands reject plates outright: they knock the logo out with
+ *      brightness(0) invert, which turns any plate into a solid rectangle.
+ *
+ * It never crosses variants. `brand-logo.ts` is explicit that falling back on
+ * variant is what makes a logo invisible — an on_black file carries light ink
+ * by definition and can never be the right answer on a white tile. When no file
+ * in the requested variant reads, this returns null and the tile shows its name.
+ */
+function pickForGround(
+  logos: BrandLogoRow[],
+  variant: 'on_white' | 'on_black' | 'on_brand',
+  ground: string,
+  opts: { requireAlpha?: boolean } = {}
+): { url: string; inkHex: string | null } | null {
+  const KIND_RANK = ['lockup', 'mark', 'wordmark', 'mono'];
+  const candidates = logos
+    .filter(
+      (l) =>
+        l.variant === variant &&
+        !l.dated &&
+        !l.reject_reason &&
+        !!l.url &&
+        (l.has_alpha !== false ||
+          (!opts.requireAlpha &&
+            l.bg_hex != null &&
+            (contrastRatio(l.bg_hex, ground) ?? 99) < 1.3))
+    )
+    .map((l) => {
+      const c = contrastRatio(l.ink_hex, ground);
+      return { row: l, contrast: c, reads: c == null || c >= MIN_LOGO_CONTRAST };
+    })
+    .filter((x) => x.reads)
+    .sort((a, b) => {
+      const ra = KIND_RANK.indexOf(a.row.kind);
+      const rb = KIND_RANK.indexOf(b.row.kind);
+      return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
+    });
+
+  const best = candidates[0];
+  return best ? { url: best.row.url, inkHex: best.row.ink_hex } : null;
+}
+
 export async function loadClientsPage(): Promise<{
   bands: ClientBrand[];
   silentBands: ClientBrand[];
@@ -231,38 +289,29 @@ export async function loadClientsPage(): Promise<{
     const logos = byBrand.get(r.id) ?? [];
     const slug = r.slug as string;
 
-    // brand_logos first, legacy columns second. A lockup reads better than a
-    // bare mark at tile size, so that is the preferred kind here.
-    const lightPick = resolveBrandLogo(logos, { surface: 'light', prefer: 'lockup' });
-    const darkPick =
-      resolveBrandLogo(logos, { surface: 'brand', prefer: 'lockup' }) ??
-      resolveBrandLogo(logos, { surface: 'dark', prefer: 'lockup' });
+    // Rest state: the tile is off-white, so only an on_white file can be right,
+    // and only one whose ink survives that ground. No variant crossing.
+    const restPick = pickForGround(logos, 'on_white', TILE_GROUND);
 
-    // The variant LABEL is not enough. Several files tagged on_white carry white
-    // ink, and rendering one on the off-white tile produces an invisible logo —
-    // exactly the failure the resolver's own comment warns about, one level up.
-    // So the rest logo is chosen by its ink's contrast against the tile ground,
-    // and only falls back to the label when no ink is known either way.
-    // ink_hex is populated for every non-dated row now, so the column is the
-    // only source — no override map. A null here means genuinely unknown.
-    const lightInk = lightPick?.inkHex ?? null;
-    const darkInk = darkPick?.inkHex ?? null;
-    const lightContrast = contrastRatio(lightInk, TILE_GROUND);
-    const darkContrast = contrastRatio(darkInk, TILE_GROUND);
+    // Hover state: the tile fills with the brand's own colour. On a light fill
+    // white ink dies, so the ground decides which variant to ask for.
+    const fill = r.fill_color ?? '#07070A';
+    const hoverPick = isLightFill(fill)
+      ? pickForGround(logos, 'on_white', fill) ?? pickForGround(logos, 'on_brand', fill)
+      : pickForGround(logos, 'on_brand', fill) ?? pickForGround(logos, 'on_black', fill);
 
-    const lightReads = lightContrast == null || lightContrast >= MIN_LOGO_CONTRAST;
-    const darkReads = darkContrast != null && darkContrast >= MIN_LOGO_CONTRAST;
+    // Legacy columns are the last resort, and only for the rest state — their
+    // ink is unknown, so they are trusted only when brand_logos has nothing.
+    // Bands knock the logo out to white, so they need real transparency — a
+    // plate would knock out to a solid white rectangle. Ink colour is irrelevant
+    // there (everything becomes white), so any variant will do.
+    const bandPick =
+      pickForGround(logos, 'on_white', TILE_GROUND, { requireAlpha: true }) ??
+      pickForGround(logos, 'on_black', '#07070A', { requireAlpha: true });
 
-    // Prefer the on_white file, but hand over to the other variant when its ink
-    // measurably fails and the other measurably passes.
-    const restPick = lightReads ? lightPick : darkReads ? darkPick : null;
-
-    const onLight =
-      restPick?.url ??
-      (lightReads ? r.logo_dark_url ?? r.logo_primary_url : null) ??
-      null;
-
-    const onDark = darkPick?.url ?? r.logo_light_url ?? r.logo_white_url ?? null;
+    const onLight = restPick?.url ?? (logos.length ? null : r.logo_dark_url ?? r.logo_primary_url) ?? null;
+    const onDark = hoverPick?.url ?? r.logo_light_url ?? r.logo_white_url ?? null;
+    const bandLogo = bandPick?.url ?? r.logo_primary_url ?? r.logo_dark_url ?? null;
 
     const scale = r.lockup_scale == null ? null : Number(r.lockup_scale);
 
@@ -275,8 +324,9 @@ export async function loadClientsPage(): Promise<{
       fillConfidence: r.fill_color_confidence,
       logoOnLight: onLight,
       logoOnDark: onDark,
-      /** False when no variant's ink survives the tile ground — use a named tile. */
-      restLogoReads: Boolean(onLight) && (lightReads || darkReads),
+      logoBand: bandLogo,
+      /** False when no on_white file survives the tile ground — use a named tile. */
+      restLogoReads: Boolean(onLight),
       bandLogoVh:
         scale != null && Number.isFinite(scale) ? scale * BAND_LOGO_BASE_VH : null,
       hasFootage: Boolean(CLIPS[slug]),
