@@ -535,7 +535,7 @@ export default function DashboardSidebar() {
         onClick={() => setDrawerOpen(false)}
         className={`flex flex-1 items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors min-w-0 ${
           active
-            ? 'bg-surface-raised text-ink-1 font-medium ring-1 ring-inset ring-white/15'
+            ? 'bg-surface-raised text-ink-1 font-medium ring-1 ring-inset ring-ink/15'
             : 'text-ink-4 hover:text-ink-2 hover:bg-surface-card'
         }`}
       >

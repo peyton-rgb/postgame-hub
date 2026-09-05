@@ -63,10 +63,31 @@ export default async function DashboardLayout({
   const theme = await getTheme();
 
   return (
-    <div data-theme={theme} className="min-h-screen bg-ground text-ink-1">
-      <ThemeMirror theme={theme} />
-      <StaffNotificationBell />
-      <DashboardShell>{children}</DashboardShell>
-    </div>
+    <>
+      {/* The wrapper below is min-h-screen, but <body> sits OUTSIDE it and keeps
+          the :root (dark) ground — visible on overscroll bounce, and behind any
+          short page. Painting body from the same channel primitives keeps the
+          two in step. Scoped to this layout, so public routes and deliverables
+          are untouched and stay dark.
+          Keyed on :has([data-theme]) rather than baked from the server value, so
+          body follows a client-side flip too — a toggle changes the attribute,
+          and a server-rendered literal would not have followed it.
+          Known gap: anything portalled to document.body still renders outside
+          the themed scope and will read the dark tokens. Moving data-theme onto
+          <html> would fix that too, but the root layout is shared with the
+          public site and must not inherit a staff preference. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html:
+            'body:has([data-theme="light"]){background-color:rgb(var(--pg-off-white-rgb))}' +
+            'body:has([data-theme="dark"]){background-color:rgb(var(--pg-black-rgb))}',
+        }}
+      />
+      <div data-theme={theme} className="min-h-screen bg-ground text-ink-1">
+        <ThemeMirror theme={theme} />
+        <StaffNotificationBell />
+        <DashboardShell>{children}</DashboardShell>
+      </div>
+    </>
   );
 }

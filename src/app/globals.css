@@ -89,8 +89,17 @@
   --card-line-a:     0.09;
 }
 
-/* ── 3. Derived — complete colours. Theme-agnostic by construction. ── */
-:root {
+/* ── 3. Derived — complete colours, built from the roles above.
+   THE SELECTOR MATTERS. A custom property is resolved where it is DECLARED, not
+   where it is used, and the computed value then inherits. Declaring these on
+   :root alone resolved every one of them against the dark roles and inherited
+   that result into the light subtree — so var(--ink-1) stayed off-white on an
+   off-white ground while Tailwind's bg-surface-card, which resolves at the
+   element, was correct. That split is why the bug looked partial.
+   Matching [data-theme] as well re-declares them inside each themed scope, so
+   they resolve against that scope's roles. ── */
+:root,
+[data-theme] {
   --ground:         rgb(var(--ground-rgb));
   --ink:            rgb(var(--ink-rgb));
   --accent:         rgb(var(--accent-rgb));

@@ -274,7 +274,7 @@ export default function InspoLibraryPage() {
             placeholder="Search assets — try a vibe, sport, athlete name, or description..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-ink/20 transition-all"
           />
         </div>
 
@@ -401,7 +401,7 @@ export default function InspoLibraryPage() {
                     onClick={() => setSelectedItem(item)}
                     className={`group relative rounded-lg overflow-hidden cursor-pointer border transition-all ${
                       selectedItem?.id === item.id
-                        ? 'border-white/40 ring-1 ring-white/20'
+                        ? 'border-white/40 ring-1 ring-ink/20'
                         : 'border-white/5 hover:border-white/20'
                     }`}
                   >

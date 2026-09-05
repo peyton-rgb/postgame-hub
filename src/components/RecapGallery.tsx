@@ -95,7 +95,7 @@ function MasonryCard({ athlete, items: rawItems }: { athlete: Athlete; items: Me
         )}
 
         {/* Creator overlay — top of card so it never blocks video controls */}
-        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-black/85 to-transparent">
+        <div className="absolute top-0 left-0 right-0 z-[2] px-3 pt-2.5 pb-5 bg-gradient-to-b from-ground/85 to-transparent">
           <div className="min-w-0">
             <div className="text-[11px] font-black uppercase text-white truncate">
               {athlete.name}

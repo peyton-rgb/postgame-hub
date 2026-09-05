@@ -3857,7 +3857,7 @@ export default function CampaignEditor() {
                         )}
                         <span className="absolute top-2 left-2 text-[9px] font-black text-white bg-black/70 border border-white/20 rounded px-1.5 py-0.5">#{c.rank}</span>
                         <span className="absolute top-2 right-2 text-[10px] font-black text-white bg-[#D73F09]/90 rounded px-1.5 py-0.5">{c.metric}</span>
-                        <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-black/85 to-transparent">
+                        <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-ground/85 to-transparent">
                           <div className="text-xs font-black uppercase tracking-wide text-white truncate">{c.name}</div>
                           <div className="text-[8px] font-bold uppercase tracking-wider text-gray-300 truncate">
                             {c.sub}{c.isCollab ? " · Collab" : ""}
