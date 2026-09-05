@@ -14,6 +14,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import DashboardContent from '@/components/DashboardContent';
 import { createBrowserSupabase } from '@/lib/supabase';
+import { pickBrandLogo } from "@/lib/brand-logo";
+import { useHubTheme } from "@/lib/use-hub-theme";
 
 // ---- Types ----
 
@@ -33,6 +35,11 @@ interface Brand {
   campaign_count?: number;
   // Brand kit fields
   logo_primary_url: string | null;
+  // Ink variants. The name describes the INK, not the background:
+  // logo_light_url is light ink (for dark grounds), logo_dark_url is dark ink
+  // (for light grounds). See pickBrandLogo().
+  logo_light_url: string | null;
+  logo_dark_url: string | null;
   brand_guidelines_url: string | null;
   font_primary: string | null;
 }
@@ -46,6 +53,11 @@ function BrandCard({
   brand: Brand;
   campaignCount: number;
 }) {
+  const theme = useHubTheme();
+  // Inverted against the column names on purpose — logo_light_url is light INK,
+  // which belongs on a dark ground. Reading it in light mode is what made client
+  // marks invisible.
+  const picked = pickBrandLogo(brand, theme);
   const color = brand.primary_color || 'var(--accent)';
   const initials = brand.name
     .split(' ')
@@ -76,13 +88,15 @@ function BrandCard({
           style={{ backgroundColor: `${color}10` }}
           data-brand-color
         >
-          {brand.logo_url ? (
+          {picked ? (
             <img
-              src={brand.logo_url}
+              src={picked.url}
               alt={brand.name}
               className="w-10 h-10 object-contain"
             />
           ) : (
+            // Themed empty slot — initials on the brand tint. Always legible in
+            // both themes, and reads as deliberate rather than broken.
             <span
               className="text-sm font-bold"
               style={{ color: `${color}80` }}

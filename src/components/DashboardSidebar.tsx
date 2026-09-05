@@ -22,6 +22,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
+import { pickBrandLogo } from '@/lib/brand-logo';
+import { useHubTheme } from '@/lib/use-hub-theme';
 import {
   DASHBOARD_NAV,
   resolveActiveHref,
@@ -380,6 +382,7 @@ export default function DashboardSidebar() {
 
   // Holds the Postgame logo URL once fetched from Supabase.
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const theme = useHubTheme();
 
   // Whether the current viewer is staff (role !== 'athlete'), mirroring the
   // is_staff() DB helper. staffOnly nav links stay hidden until this is
@@ -410,22 +413,26 @@ export default function DashboardSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch the Postgame brand logo once when the sidebar mounts.
-  // Brand ID is hardcoded — this is the Postgame brand's row in the
-  // brands table, and it doesn't change.
+  // Fetch the Postgame brand logo when the sidebar mounts, and again if the
+  // theme changes. Brand ID is hardcoded — this is the Postgame brand's row in
+  // the brands table, and it doesn't change.
+  //
+  // Selects BOTH ink variants rather than logo_primary_url alone, because the
+  // wordmark has to survive a theme flip: the primary file is light ink and
+  // disappeared against the light ground. pickBrandLogo() inverts the column
+  // names — logo_light_url is light INK, so it belongs on the DARK ground.
   useEffect(() => {
     async function fetchLogo() {
       const { data } = await supabase
         .from('brands')
-        .select('logo_primary_url')
+        .select('logo_primary_url,logo_light_url,logo_dark_url,logo_url')
         .eq('id', '7a0e28e9-d62f-427d-a207-cd22596fcf50')
         .single();
-      if (data?.logo_primary_url) {
-        setLogoUrl(data.logo_primary_url);
-      }
+      const picked = pickBrandLogo(data, theme);
+      if (picked) setLogoUrl(picked.url);
     }
     fetchLogo();
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     try {

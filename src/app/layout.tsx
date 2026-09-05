@@ -70,8 +70,12 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // No data-theme on <html> on purpose. :root in globals.css already carries the
+  // dark values, so the default needs no attribute — and an attribute here would
+  // shadow the dashboard wrapper, which is the real per-user source. Deliverables
+  // render outside that wrapper and stay dark by default.
   return (
-    <html lang="en" data-theme="dark" className={`${bebasNeue.variable} ${inter.variable} ${arimo.variable}`}>
+    <html lang="en" className={`${bebasNeue.variable} ${inter.variable} ${arimo.variable}`}>
       <body>
         <PageWrapper>
           {/* SiteNav hides itself on /dashboard, /login, /recap, /pitch, etc.
