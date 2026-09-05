@@ -35,11 +35,35 @@
 // cron should have without someone asking for it. Campaigns whose folder has no
 // "Content" child are reported, not modified.
 //
+// PACING. The first production run hit "User rate limit exceeded" and got
+// through 5 of 25 campaigns. Each campaign is three folder lookups, issued back
+// to back with nothing between them, so 25 campaigns is 75 Drive calls in a
+// tight loop — comfortably enough to trip Google's per-user limit.
+//
+// Three changes, none of which is sufficient alone:
+//   • a short delay between calls, so the loop stops arriving as a burst
+//   • retry with exponential backoff + jitter on throttling only
+//   • a smaller batch, so one run cannot queue 75 calls in the first place
+//
+// Backoff alone would have kept the burst and just spread the failures; a
+// delay alone would still fail whenever Drive is busy for another reason.
+//
+// A DEADLINE bounds the whole pass. The route's budget is 300s and the
+// provisioning sweep runs first, so the repair cannot be allowed to spend the
+// remainder in backoff — it stops cleanly and reports what is left rather than
+// being killed mid-update by the platform.
+//
 // Nothing here moves, renames or deletes, and nothing reads file content.
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { findFolderByName, ensureFolder } from "@/lib/google-drive";
+import {
+  findFolderByName,
+  ensureFolder,
+  withDriveRetry,
+  driveSleep,
+  isDriveRateLimit,
+} from "@/lib/google-drive";
 import { SUBFOLDERS } from "@/lib/drive-provision";
 
 export interface RepairOutcome {
@@ -54,7 +78,7 @@ export interface RepairOutcome {
 export interface RepairSkip {
   campaignId: string;
   name: string;
-  reason: "no Content subfolder in the campaign folder" | "drive error";
+  reason: "no Content subfolder in the campaign folder" | "drive error" | "not attempted";
   detail?: string;
 }
 
@@ -62,6 +86,8 @@ export interface RepairReport {
   considered: number;
   repaired: RepairOutcome[];
   skipped: RepairSkip[];
+  /** Set when the pass stopped before working through every candidate. */
+  stoppedEarly: null | "deadline" | "rate limited";
 }
 
 const COLUMN_FOR: Record<string, string> = {
@@ -78,10 +104,20 @@ const COLUMN_FOR: Record<string, string> = {
  */
 export async function repairSubfolderIds(
   db: SupabaseClient,
-  opts: { limit?: number; create?: boolean; statuses?: string[] } = {},
+  opts: {
+    limit?: number;
+    create?: boolean;
+    statuses?: string[];
+    /** Milliseconds between Drive calls. */
+    paceMs?: number;
+    /** Stop starting new campaigns after this long. */
+    deadlineMs?: number;
+  } = {},
 ): Promise<RepairReport> {
-  const limit = opts.limit ?? 25;
+  const limit = opts.limit ?? 10;
   const create = opts.create ?? false;
+  const paceMs = opts.paceMs ?? 250;
+  const deadline = Date.now() + (opts.deadlineMs ?? 120_000);
 
   // `statuses` narrows which campaigns are touched. It exists because creating
   // is not symmetric with adopting: adopting a folder that already exists is
@@ -101,22 +137,40 @@ export async function repairSubfolderIds(
   if (error) throw new Error(`repair candidate query failed: ${error.message}`);
 
   const candidates = (data as Array<{ id: string; name: string; drive_folder_id: string }> | null) ?? [];
-  const report: RepairReport = { considered: candidates.length, repaired: [], skipped: [] };
+  const report: RepairReport = {
+    considered: candidates.length,
+    repaired: [],
+    skipped: [],
+    stoppedEarly: null,
+  };
 
   for (const c of candidates) {
+    if (Date.now() > deadline) {
+      report.stoppedEarly = "deadline";
+      report.skipped.push({ campaignId: c.id, name: c.name, reason: "not attempted" });
+      continue;
+    }
     try {
       const patch: Record<string, string> = {};
       const recorded: string[] = [];
       let createdAny = false;
 
+      // Both branches are paced and retried identically — ?create=1 issues the
+      // same lookup and can add a create on top, so it is the heavier of the two
+      // and the one that most needs the pacing.
       for (const sub of SUBFOLDERS) {
+        await driveSleep(paceMs);
         if (create) {
-          const { id, created } = await ensureFolder(sub, c.drive_folder_id);
+          const { id, created } = await withDriveRetry(`ensureFolder ${sub}`, () =>
+            ensureFolder(sub, c.drive_folder_id),
+          );
           patch[COLUMN_FOR[sub]] = id;
           recorded.push(sub);
           createdAny = createdAny || created;
         } else {
-          const id = await findFolderByName(sub, c.drive_folder_id);
+          const id = await withDriveRetry(`findFolderByName ${sub}`, () =>
+            findFolderByName(sub, c.drive_folder_id),
+          );
           if (id) {
             patch[COLUMN_FOR[sub]] = id;
             recorded.push(sub);
@@ -159,6 +213,13 @@ export async function repairSubfolderIds(
         reason: "drive error",
         detail: e instanceof Error ? e.message : String(e),
       });
+      // Still throttled after the retries: Drive is asking for a longer pause
+      // than this run can give it. Stop rather than spending the remaining
+      // candidates confirming the same thing — they keep for the next run.
+      if (isDriveRateLimit(e)) {
+        report.stoppedEarly = "rate limited";
+        break;
+      }
     }
   }
 
