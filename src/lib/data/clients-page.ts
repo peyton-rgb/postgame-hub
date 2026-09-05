@@ -88,7 +88,9 @@ export const SILENT_BAND_ORDER = ['hollister', 'mcdonalds', 'dove'] as const;
 // Footage. Self-hosted in Supabase storage — these are the archive cuts
 // (1.2-3.7MB each, 12s) rather than the Wix originals (14-27MB, 27s). Seven
 // films in one grid made the payload decisive: ~17.5MB total against ~130MB.
-const FILM_BASE = 'https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/clients-page/films';
+const SB_CLIENTS =
+  'https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/clients-page';
+const FILM_BASE = `${SB_CLIENTS}/films`;
 
 export const CLIPS: Record<string, string> = {
   adidas: `${FILM_BASE}/adidas.mp4`,
@@ -111,7 +113,29 @@ export const POSTERS: Record<string, string> = {
 };
 
 /**
- * Hero. The Postgame-branded cut, not a client's — a clients page should not
+ * Carousel stills. 3:4 portrait crops cut from each film.
+ *
+ * public.media holds 724 campaign images across four of these seven brands,
+ * but `aspect_ratio` is null on all 3,530 image rows and `public_selected` is
+ * false on every one — so there is no way to query for a portrait crop or for a
+ * curated pick. allstate, crocs and 7-eleven have no campaign images at all.
+ * Cutting from the films is what gives all seven a consistent 3:4 frame.
+ */
+const CAROUSEL_BASE = `${SB_CLIENTS}/carousel`;
+
+export const CAROUSEL_STILLS: Record<string, string> = {
+  adidas: `${CAROUSEL_BASE}/adidas.jpg`,
+  cvs: `${CAROUSEL_BASE}/cvs.jpg`,
+  allstate: `${CAROUSEL_BASE}/allstate.jpg`,
+  crocs: `${CAROUSEL_BASE}/crocs.jpg`,
+  wendys: `${CAROUSEL_BASE}/wendys.jpg`,
+  'raising-canes': `${CAROUSEL_BASE}/raising-canes.jpg`,
+  '7eleven': `${CAROUSEL_BASE}/7-eleven.jpg`,
+};
+
+/**
+ * Hero fallback video, kept for reference. The carousel replaced it as the
+ * page's opening element. — a clients page should not
  * lead with one client's logo. Re-encoded from the 60MB HEVC master in
  * banner_videos: HEVC does not play in Chrome or Firefox, so this is H.264,
  * 1920x1038, 30fps, 5.5MB.
@@ -125,6 +149,8 @@ export const HERO = {
 export type FeaturedFilm = ClientBrand & {
   clip: string;
   poster: string;
+  /** 3:4 portrait crop, for the hero carousel. */
+  still: string;
   campaignCount: number;
   campaignName: string | null;
 };
@@ -387,6 +413,7 @@ export async function loadClientsPage(): Promise<{
         ...b,
         clip: CLIPS[b.slug],
         poster: POSTERS[b.slug],
+        still: CAROUSEL_STILLS[b.slug],
         campaignCount: c?.count ?? 0,
         campaignName: c?.latest ?? null,
       };

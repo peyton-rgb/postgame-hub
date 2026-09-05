@@ -5,8 +5,8 @@ import Link from 'next/link';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import SiteFooter from '@/components/SiteFooter';
+import CampaignCarousel from './CampaignCarousel';
 import {
-  HERO,
   isLightFill,
   type ClientBrand,
   type FeaturedFilm,
@@ -66,7 +66,9 @@ function FilmCard({ film }: { film: FeaturedFilm }) {
     v.currentTime = 0;
   };
 
-  const logo = film.logoOnDark ?? film.logoOnLight;
+  // logoBand requires real transparency. brightness(0) invert on a plate gives
+  // a solid white rectangle.
+  const logo = film.logoBand;
 
   const inner = (
     <>
@@ -225,23 +227,8 @@ export default function ClientsPageClient({
   return (
     <div className="min-h-screen bg-surface text-ink">
       <main className="w-full">
-        {/* 1. Hero — one visual. Postgame's own cut, not a client's. */}
-        <section className="relative w-full pt-[64px]">
-          <div className="relative aspect-[21/9] w-full overflow-hidden bg-surface-2 sm:aspect-[21/8]">
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              poster={HERO.poster}
-              className="absolute inset-0 h-full w-full object-cover"
-            >
-              <source src={HERO.video} type="video/mp4" />
-            </video>
-            <div className="pointer-events-none absolute inset-0 bg-surface/30" />
-          </div>
-        </section>
+        {/* 1. Brand campaign carousel — the page's opening element. */}
+        <CampaignCarousel films={films} />
 
         {/* 2. Intro + stats */}
         <section className="mx-auto w-full max-w-[1400px] px-6 pb-[3vh] pt-[6vh] sm:px-10">
