@@ -85,26 +85,48 @@ export const BAND_ORDER = [
 /** The three bands that have no footage, in the order they appear. */
 export const SILENT_BAND_ORDER = ['hollister', 'mcdonalds', 'dove'] as const;
 
-// Footage. Still hotlinked from the Wix CDN — the archive copies are smaller
-// and self-hosted but the upload to Supabase storage is not approved yet.
+// Footage. Self-hosted in Supabase storage — these are the archive cuts
+// (1.2-3.7MB each, 12s) rather than the Wix originals (14-27MB, 27s). Seven
+// films in one grid made the payload decisive: ~17.5MB total against ~130MB.
+const FILM_BASE = 'https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/clients-page/films';
+
 export const CLIPS: Record<string, string> = {
-  adidas: 'https://video.wixstatic.com/video/ba5ed8_ebf91867c7b84bc0b5198a8c85c50c0f/1080p/mp4/file.mp4',
-  cvs: 'https://video.wixstatic.com/video/ba5ed8_bc5962641cd34a73bcf0e16398f387ad/1080p/mp4/file.mp4',
-  allstate: 'https://video.wixstatic.com/video/ba5ed8_c6023f2d60c6486da454627cad71dd8a/1080p/mp4/file.mp4',
-  crocs: 'https://video.wixstatic.com/video/ba5ed8_0b4b2841c82c40d8a4332a62cafe0f88/1080p/mp4/file.mp4',
-  '7eleven': 'https://video.wixstatic.com/video/ba5ed8_8a2570e013304468aff3de0821397150/1080p/mp4/file.mp4',
-  'raising-canes': 'https://video.wixstatic.com/video/ba5ed8_50e5c84c697443299a000521408f8645/1080p/mp4/file.mp4',
-  wendys: 'https://video.wixstatic.com/video/ba5ed8_9e8bacb6acaa4e469d66c4fca67f290b/1080p/mp4/file.mp4',
+  adidas: `${FILM_BASE}/adidas.mp4`,
+  cvs: `${FILM_BASE}/cvs.mp4`,
+  allstate: `${FILM_BASE}/allstate.mp4`,
+  crocs: `${FILM_BASE}/crocs.mp4`,
+  '7eleven': `${FILM_BASE}/7-eleven.mp4`,
+  'raising-canes': `${FILM_BASE}/raising-canes.mp4`,
+  wendys: `${FILM_BASE}/wendys.mp4`,
 };
 
 export const POSTERS: Record<string, string> = {
-  adidas: 'https://static.wixstatic.com/media/ba5ed8_ebf91867c7b84bc0b5198a8c85c50c0ff000.jpg',
-  cvs: 'https://static.wixstatic.com/media/ba5ed8_bc5962641cd34a73bcf0e16398f387adf000.jpg',
-  allstate: 'https://static.wixstatic.com/media/ba5ed8_c6023f2d60c6486da454627cad71dd8af000.jpg',
-  crocs: 'https://static.wixstatic.com/media/ba5ed8_0b4b2841c82c40d8a4332a62cafe0f88f000.jpg',
-  '7eleven': 'https://static.wixstatic.com/media/ba5ed8_8a2570e013304468aff3de0821397150f000.jpg',
-  'raising-canes': 'https://static.wixstatic.com/media/ba5ed8_50e5c84c697443299a000521408f8645f000.jpg',
-  wendys: 'https://static.wixstatic.com/media/ba5ed8_9e8bacb6acaa4e469d66c4fca67f290bf000.jpg',
+  adidas: `${FILM_BASE}/adidas.jpg`,
+  cvs: `${FILM_BASE}/cvs.jpg`,
+  allstate: `${FILM_BASE}/allstate.jpg`,
+  crocs: `${FILM_BASE}/crocs.jpg`,
+  '7eleven': `${FILM_BASE}/7-eleven.jpg`,
+  'raising-canes': `${FILM_BASE}/raising-canes.jpg`,
+  wendys: `${FILM_BASE}/wendys.jpg`,
+};
+
+/**
+ * Hero. The Postgame-branded cut, not a client's — a clients page should not
+ * lead with one client's logo. Re-encoded from the 60MB HEVC master in
+ * banner_videos: HEVC does not play in Chrome or Firefox, so this is H.264,
+ * 1920x1038, 30fps, 5.5MB.
+ */
+export const HERO = {
+  video: `https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/clients-page/hero/postgame-hero.mp4`,
+  poster: `https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/clients-page/hero/postgame-hero.jpg`,
+};
+
+/** One featured film: a brand, its clip, and a real campaign line. */
+export type FeaturedFilm = ClientBrand & {
+  clip: string;
+  poster: string;
+  campaignCount: number;
+  campaignName: string | null;
 };
 
 export type ClientBrand = {
@@ -262,8 +284,7 @@ function pickForGround(
 }
 
 export async function loadClientsPage(): Promise<{
-  bands: ClientBrand[];
-  silentBands: ClientBrand[];
+  films: FeaturedFilm[];
   tiles: ClientBrand[];
 }> {
   const supabase = createPlainSupabase();
@@ -334,14 +355,47 @@ export async function loadClientsPage(): Promise<{
   });
 
   const bySlug = new Map(all.map((b) => [b.slug, b]));
-  const pick = (slugs: readonly string[]) =>
-    slugs.map((s) => bySlug.get(s)).filter((b): b is ClientBrand => Boolean(b));
+
+  // Campaign lines come from brand_campaigns — real campaign names and counts,
+  // not invented copy. brands.tagline is empty for all 88, so it is not an option.
+  const filmSlugs = [...BAND_ORDER];
+  const filmIds = filmSlugs
+    .map((sl) => bySlug.get(sl)?.id)
+    .filter((x): x is string => Boolean(x));
+
+  const { data: campaignRows } = filmIds.length
+    ? await supabase
+        .from('brand_campaigns')
+        .select('brand_id,name,created_at')
+        .in('brand_id', filmIds)
+    : { data: [] as { brand_id: string; name: string | null; created_at: string | null }[] };
+
+  const campaignsByBrand = new Map<string, { count: number; latest: string | null }>();
+  for (const row of campaignRows ?? []) {
+    const cur = campaignsByBrand.get(row.brand_id) ?? { count: 0, latest: null };
+    cur.count += 1;
+    if (row.name && !cur.latest) cur.latest = row.name;
+    campaignsByBrand.set(row.brand_id, cur);
+  }
+
+  const films: FeaturedFilm[] = filmSlugs
+    .map((sl) => bySlug.get(sl))
+    .filter((b): b is ClientBrand => Boolean(b))
+    .map((b) => {
+      const c = campaignsByBrand.get(b.id);
+      return {
+        ...b,
+        clip: CLIPS[b.slug],
+        poster: POSTERS[b.slug],
+        campaignCount: c?.count ?? 0,
+        campaignName: c?.latest ?? null,
+      };
+    });
 
   return {
-    bands: pick(BAND_ORDER),
-    silentBands: pick(SILENT_BAND_ORDER),
-    // The grid is the full roster, bands included — a brand that headlines a
-    // band still belongs in the alphabetical roster below it.
+    films,
+    // The directory is the whole roster, alphabetically. Brands with a film
+    // still appear here — a directory lists everyone.
     tiles: all.slice().sort((a, b) => {
       const an = /^\d/.test(a.name.trim());
       const bn = /^\d/.test(b.name.trim());
