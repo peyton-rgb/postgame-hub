@@ -317,58 +317,48 @@ export default function ClientsPageClient({
   return (
     <div className="min-h-screen bg-surface text-ink">
       <main className="w-full flex flex-col">
-        {/* 1. Page header. Top padding clears the fixed SiteNav. */}
-        <header className="w-full bg-surface px-6 pt-[168px] pb-[7vh] sm:px-10">
+        {/* 1. Page header. Top padding clears the fixed SiteNav.
+            Headline, intro and stats are sized to land inside one screen, and
+            the intro and stats sit side by side rather than stacking down the
+            left with the right half empty. */}
+        <header className="w-full bg-surface px-6 pb-[7vh] pt-[124px] sm:px-10">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand">
             Our Partners
           </p>
-          <h1 className="mt-5 max-w-[15ch] font-display text-[clamp(48px,9vw,140px)] leading-[0.88] tracking-tight text-ink">
+          <h1 className="mt-4 max-w-[21ch] font-display text-[clamp(38px,5.6vw,88px)] leading-[0.92] tracking-tight text-ink">
             The brands behind the biggest campaigns
           </h1>
-          <p className="mt-8 max-w-[62ch] text-[15px] leading-relaxed text-ink/60">
-            Postgame has connected iconic brands with over 50,000 college athletes
-            since 2021. adidas, Hollister, Armani, Gillette, Allstate, Crocs,
-            McDonald&rsquo;s and CVS have all run campaigns through us. We build them
-            end to end — casting the athletes, producing the content and running the
-            campaign to post.
-          </p>
 
-          {/* 4. Proof. Brand count is derived from the roster below, so it cannot
-              drift; the athlete figure and start year are Postgame's own published
-              numbers. No icons, palette only. */}
-          <dl className="mt-[7vh] flex flex-wrap gap-x-[8vw] gap-y-8 border-t border-ink/15 pt-8">
-            {[
-              { n: `${tiles.length}`, l: 'Brand partners' },
-              { n: '50,000+', l: 'College athletes' },
-              { n: 'Since 2021', l: 'Running NIL campaigns' },
-            ].map((s) => (
-              <div key={s.l}>
-                <dt className="font-display text-[clamp(34px,4.5vw,64px)] leading-none tracking-tight text-ink">
-                  {s.n}
-                </dt>
-                <dd className="mt-3 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">
-                  {s.l}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <div className="mt-[6vh] grid gap-x-[6vw] gap-y-10 border-t border-ink/15 pt-8 lg:grid-cols-12">
+            <p className="max-w-[68ch] text-[15px] leading-relaxed text-ink/60 lg:col-span-7">
+              Postgame has connected iconic brands with over 50,000 college athletes
+              since 2021. adidas, Hollister, Armani, Gillette, Allstate, Crocs,
+              McDonald&rsquo;s and CVS have all run campaigns through us. We build them
+              end to end — casting the athletes, producing the content and running
+              the campaign to post.
+            </p>
+
+            {/* Proof. Brand count is derived from the roster below, so it cannot
+                drift; the athlete figure and start year are Postgame's own
+                published numbers. No icons, palette only. */}
+            <dl className="flex flex-wrap gap-x-[4vw] gap-y-8 lg:col-span-5 lg:justify-end">
+              {[
+                { n: `${tiles.length}`, l: 'Brand partners' },
+                { n: '50,000+', l: 'College athletes' },
+                { n: '2021', l: 'Running NIL since' },
+              ].map((s) => (
+                <div key={s.l}>
+                  <dt className="font-display text-[clamp(28px,3.2vw,50px)] leading-none tracking-tight text-ink">
+                    {s.n}
+                  </dt>
+                  <dd className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">
+                    {s.l}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </header>
-
-        {/* ====================================================================
-            2. HERO BANNER — PLACEHOLDER, NOT DESIGNED
-            Deliberately empty. The brief did not specify this section and it
-            has not been invented. Replace this whole block; nothing below
-            depends on its height or contents.
-        ==================================================================== */}
-        <section
-          data-placeholder="hero-banner"
-          aria-label="Hero banner placeholder"
-          className="w-full border-y border-ink/15 bg-surface-2 px-6 py-[7vh] sm:px-10"
-        >
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand">
-            Hero banner — not yet specified
-          </p>
-        </section>
 
         {/* 3. Featured Work */}
         <div className="w-full bg-surface px-6 pb-[5vh] pt-[4vh] sm:px-10">
