@@ -100,22 +100,22 @@ function BrandCard({
             )}
           </div>
           {brand.industry && (
-            <div className="text-[11px] text-ink-1/30 mb-2">{brand.industry}</div>
+            <div className="text-[11px] text-ink-4 mb-2">{brand.industry}</div>
           )}
           {brand.tagline && (
-            <div className="text-[10px] text-ink-1/20 italic mb-2 line-clamp-1">
+            <div className="text-[10px] text-ink-4 italic mb-2 line-clamp-1">
               {brand.tagline}
             </div>
           )}
 
           {/* Stats row */}
-          <div className="flex items-center gap-4 text-[10px] text-ink-1/25">
+          <div className="flex items-center gap-4 text-[10px] text-ink-4">
             <span>
-              <span className="text-ink-1/50 font-semibold">{campaignCount}</span>{' '}
+              <span className="text-ink-4 font-semibold">{campaignCount}</span>{' '}
               {campaignCount === 1 ? 'campaign' : 'campaigns'}
             </span>
             <span>
-              <span className="text-ink-1/50 font-semibold">{kitItems}/5</span>{' '}
+              <span className="text-ink-4 font-semibold">{kitItems}/5</span>{' '}
               kit items
             </span>
             {brand.website && (
@@ -221,7 +221,7 @@ export default function BrandsPage() {
           Brand Management
         </div>
         <h1 className="text-2xl font-bold text-ink-1 mb-1">Brands</h1>
-        <p className="text-sm text-ink-1/40">
+        <p className="text-sm text-ink-4">
           All brand partners and their campaign history
         </p>
       </div>
@@ -243,7 +243,7 @@ export default function BrandsPage() {
               className="bg-surface-card border border-hairline-soft rounded-lg p-3 text-center"
             >
               <div className="text-xl font-bold text-ink-1">{stat.value}</div>
-              <div className="text-[10px] text-ink-1/30 uppercase tracking-wider">
+              <div className="text-[10px] text-ink-4 uppercase tracking-wider">
                 {stat.label}
               </div>
             </div>
@@ -258,9 +258,9 @@ export default function BrandsPage() {
           placeholder="Search brands..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 bg-surface-card border border-hairline rounded-lg px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-1/25 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+          className="flex-1 bg-surface-card border border-hairline rounded-lg px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-4 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
         />
-        <label className="flex items-center gap-2 text-xs text-ink-1/40 cursor-pointer">
+        <label className="flex items-center gap-2 text-xs text-ink-4 cursor-pointer">
           <input
             type="checkbox"
             checked={showArchived}
@@ -273,7 +273,7 @@ export default function BrandsPage() {
 
       {/* Results count */}
       {!loading && (
-        <div className="text-[11px] text-ink-1/20 mb-4">
+        <div className="text-[11px] text-ink-4 mb-4">
           Showing {filtered.length} of {brands.length} brands
         </div>
       )}
@@ -314,10 +314,10 @@ export default function BrandsPage() {
       {/* Empty state */}
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
-          <div className="text-ink-1/20 text-lg font-semibold mb-2">
+          <div className="text-ink-4 text-lg font-semibold mb-2">
             No matching brands
           </div>
-          <p className="text-sm text-ink-1/15">
+          <p className="text-sm text-ink-4">
             Try adjusting your search terms
           </p>
         </div>

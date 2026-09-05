@@ -72,9 +72,9 @@ const APPROVAL_COLORS: Record<string, string> = {
 };
 
 const TIER_COLORS: Record<number, string> = {
-  1: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+  1: 'bg-accent/20 text-ink-2 border-accent/40',
   2: 'bg-slate-400/20 text-slate-300 border-slate-400/40',
-  3: 'bg-orange-700/20 text-orange-400 border-orange-700/40',
+  3: 'bg-accent/20 text-accent border-accent/40',
 };
 
 export default function BrandApprovalPage() {
@@ -228,39 +228,39 @@ export default function BrandApprovalPage() {
   const groups = groupedByBrand();
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-ink-1">
+    <div className="min-h-screen bg-ground text-ink-1">
       <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-3xl font-bold">Brand Approval</h1>
-            <span className="text-xs px-2 py-1 rounded bg-orange-600/20 text-orange-300 border border-orange-600/30">
+            <span className="text-xs px-2 py-1 rounded bg-accent/20 text-accent border border-accent/30">
               Gate 2
             </span>
           </div>
-          <p className="text-zinc-400">
+          <p className="text-ink-3">
             Edited content ready for client review. Brand approves → Publishing. Changes requested → back to Editing.
           </p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+          <div className="bg-surface-card rounded-xl p-4 border border-hairline">
             <div className="text-2xl font-bold">{counts.total}</div>
-            <div className="text-sm text-zinc-400">Total</div>
+            <div className="text-sm text-ink-3">Total</div>
           </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-hairline/30">
+          <div className="bg-surface-card rounded-xl p-4 border border-hairline/30">
             <div className="text-2xl font-bold text-ink-4">{counts.pending}</div>
-            <div className="text-sm text-zinc-400">Awaiting Review</div>
+            <div className="text-sm text-ink-3">Awaiting Review</div>
           </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-hairline/30">
+          <div className="bg-surface-card rounded-xl p-4 border border-hairline/30">
             <div className="text-2xl font-bold text-ink-3">{counts.approved}</div>
-            <div className="text-sm text-zinc-400">Approved</div>
+            <div className="text-sm text-ink-3">Approved</div>
           </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-hairline/30">
+          <div className="bg-surface-card rounded-xl p-4 border border-hairline/30">
             <div className="text-2xl font-bold text-accent">{counts.changes_requested}</div>
-            <div className="text-sm text-zinc-400">Changes Requested</div>
+            <div className="text-sm text-ink-3">Changes Requested</div>
           </div>
         </div>
 
@@ -272,8 +272,8 @@ export default function BrandApprovalPage() {
               onClick={() => setFilter(status)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === status
-                  ? 'bg-orange-600 text-ink-1'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-ink-1'
+                  ? 'bg-accent text-ink-1'
+                  : 'bg-surface-raised text-ink-3 hover:bg-surface-raised hover:text-ink-1'
               }`}
             >
               {status === 'all' ? 'All' : APPROVAL_LABELS[status]}
@@ -286,11 +286,11 @@ export default function BrandApprovalPage() {
           {/* Content grid */}
           <div className={`flex-1 ${selectedItem ? 'w-2/3' : 'w-full'}`}>
             {loading ? (
-              <div className="text-center py-20 text-zinc-500">Loading brand approval queue...</div>
+              <div className="text-center py-20 text-ink-4">Loading brand approval queue...</div>
             ) : items.length === 0 ? (
               <div className="text-center py-20">
-                <div className="text-zinc-500 text-lg mb-2">No content awaiting brand approval</div>
-                <p className="text-zinc-600 text-sm">
+                <div className="text-ink-4 text-lg mb-2">No content awaiting brand approval</div>
+                <p className="text-ink-4 text-sm">
                   Content appears here after editing is complete and Postgame has reviewed the edit.
                 </p>
               </div>
@@ -299,7 +299,7 @@ export default function BrandApprovalPage() {
                 <div key={brandName} className="mb-8">
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     {brandName}
-                    <span className="text-sm text-zinc-500 font-normal">({brandItems.length})</span>
+                    <span className="text-sm text-ink-4 font-normal">({brandItems.length})</span>
                   </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {brandItems.map(item => (
@@ -309,13 +309,13 @@ export default function BrandApprovalPage() {
                         className={`
                           relative rounded-xl overflow-hidden cursor-pointer border transition-all
                           ${selectedItem?.id === item.id
-                            ? 'border-orange-500 ring-2 ring-orange-500/30'
-                            : 'border-zinc-700/50 hover:border-zinc-600'
+                            ? 'border-accent ring-2 ring-orange-500/30'
+                            : 'border-hairline/50 hover:border-ink-4'
                           }
                         `}
                       >
                         {/* Thumbnail */}
-                        <div className="aspect-video bg-zinc-800 relative">
+                        <div className="aspect-video bg-surface-raised relative">
                           {item.thumbnail_url || item.file_url ? (
                             item.mime_type?.startsWith('video/') ? (
                               <video
@@ -334,7 +334,7 @@ export default function BrandApprovalPage() {
                               />
                             )
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                            <div className="w-full h-full flex items-center justify-center text-ink-4">
                               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <rect x="2" y="2" width="20" height="20" rx="2" />
                                 <circle cx="8" cy="8" r="2" />
@@ -357,11 +357,11 @@ export default function BrandApprovalPage() {
                         </div>
 
                         {/* Info */}
-                        <div className="p-3 bg-zinc-900/80">
+                        <div className="p-3 bg-surface-card/80">
                           <div className="text-sm text-ink-1 font-medium truncate">
                             {item.athlete_name || 'Unknown'}
                           </div>
-                          <div className="text-xs text-zinc-500 truncate mt-0.5">
+                          <div className="text-xs text-ink-4 truncate mt-0.5">
                             {item.campaign_name}
                           </div>
                         </div>
@@ -375,11 +375,11 @@ export default function BrandApprovalPage() {
 
           {/* Detail panel */}
           {selectedItem && (
-            <div className="w-1/3 min-w-[360px] bg-zinc-900 rounded-xl border border-zinc-800 p-5 sticky top-8 self-start max-h-[calc(100vh-6rem)] overflow-y-auto">
+            <div className="w-1/3 min-w-[360px] bg-surface-card rounded-xl border border-hairline p-5 sticky top-8 self-start max-h-[calc(100vh-6rem)] overflow-y-auto">
               {/* Close */}
               <button
                 onClick={() => setSelectedItem(null)}
-                className="absolute top-3 right-3 text-zinc-500 hover:text-ink-1"
+                className="absolute top-3 right-3 text-ink-4 hover:text-ink-1"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -387,7 +387,7 @@ export default function BrandApprovalPage() {
               </button>
 
               {/* Preview */}
-              <div className="aspect-video bg-zinc-800 rounded-lg overflow-hidden mb-4">
+              <div className="aspect-video bg-surface-raised rounded-lg overflow-hidden mb-4">
                 {selectedItem.mime_type?.startsWith('video/') ? (
                   <video src={selectedItem.file_url || ''} controls className="w-full h-full object-cover" />
                 ) : (
@@ -397,13 +397,13 @@ export default function BrandApprovalPage() {
 
               {/* Info */}
               <h3 className="text-lg font-bold mb-1">{selectedItem.athlete_name || 'Unknown Athlete'}</h3>
-              <p className="text-sm text-zinc-400 mb-4">
+              <p className="text-sm text-ink-3 mb-4">
                 {selectedItem.campaign_name} · {selectedItem.brand_name}
               </p>
 
               {/* Current status */}
               <div className="mb-5">
-                <label className="text-xs text-zinc-500 uppercase tracking-wide mb-2 block">Brand Approval Status</label>
+                <label className="text-xs text-ink-4 uppercase tracking-wide mb-2 block">Brand Approval Status</label>
                 <span className={`inline-block text-sm px-3 py-1.5 rounded-lg border ${APPROVAL_COLORS[selectedItem.brand_approval_status || 'pending']}`}>
                   {APPROVAL_LABELS[selectedItem.brand_approval_status || 'pending']}
                 </span>
@@ -413,17 +413,17 @@ export default function BrandApprovalPage() {
               <div className="space-y-3 mb-5">
                 {selectedItem.action_description && (
                   <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Description</label>
-                    <p className="text-sm text-zinc-300">{selectedItem.action_description}</p>
+                    <label className="text-xs text-ink-4 uppercase tracking-wide mb-1 block">Description</label>
+                    <p className="text-sm text-ink-2">{selectedItem.action_description}</p>
                   </div>
                 )}
 
                 {selectedItem.mood_tags && selectedItem.mood_tags.length > 0 && (
                   <div>
-                    <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Mood</label>
+                    <label className="text-xs text-ink-4 uppercase tracking-wide mb-1 block">Mood</label>
                     <div className="flex flex-wrap gap-1">
                       {selectedItem.mood_tags.map(tag => (
-                        <span key={tag} className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400">{tag}</span>
+                        <span key={tag} className="text-xs px-2 py-1 rounded bg-surface-raised text-ink-3">{tag}</span>
                       ))}
                     </div>
                   </div>
@@ -432,13 +432,13 @@ export default function BrandApprovalPage() {
 
               {/* Feedback textarea */}
               <div className="mb-4">
-                <label className="text-xs text-zinc-500 uppercase tracking-wide mb-2 block">Brand Feedback</label>
+                <label className="text-xs text-ink-4 uppercase tracking-wide mb-2 block">Brand Feedback</label>
                 <textarea
                   value={feedbackText}
                   onChange={e => setFeedbackText(e.target.value)}
                   placeholder="Add feedback or change requests..."
                   rows={3}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-ink-1 placeholder-zinc-600 focus:outline-none focus:border-orange-500 resize-none"
+                  className="w-full bg-surface-raised border border-hairline rounded-lg px-3 py-2 text-sm text-ink-1 placeholder-zinc-600 focus:outline-none focus:border-accent resize-none"
                 />
               </div>
 
@@ -470,9 +470,9 @@ export default function BrandApprovalPage() {
 
               {/* Show existing feedback if any */}
               {selectedItem.brand_feedback && selectedItem.brand_approval_status !== 'pending' && (
-                <div className="mt-4 p-3 rounded-lg bg-zinc-800 border border-zinc-700">
-                  <label className="text-xs text-zinc-500 uppercase tracking-wide mb-1 block">Previous Feedback</label>
-                  <p className="text-sm text-zinc-300">{selectedItem.brand_feedback}</p>
+                <div className="mt-4 p-3 rounded-lg bg-surface-raised border border-hairline">
+                  <label className="text-xs text-ink-4 uppercase tracking-wide mb-1 block">Previous Feedback</label>
+                  <p className="text-sm text-ink-2">{selectedItem.brand_feedback}</p>
                 </div>
               )}
             </div>

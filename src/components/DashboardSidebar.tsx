@@ -520,7 +520,7 @@ export default function DashboardSidebar() {
         className={`flex flex-1 items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors min-w-0 ${
           active
             ? 'bg-surface-raised text-ink-1 font-medium ring-1 ring-inset ring-white/15'
-            : 'text-ink-1/50 hover:text-ink-1/80 hover:bg-surface-card'
+            : 'text-ink-4 hover:text-ink-2 hover:bg-surface-card'
         }`}
       >
         <LinkIcon />
@@ -548,7 +548,7 @@ export default function DashboardSidebar() {
             onClick={() => toggleGroup(link.href)}
             aria-expanded={open}
             aria-label={`${open ? 'Collapse' : 'Expand'} ${link.name}`}
-            className="flex items-center justify-center w-6 h-8 -ml-1 text-ink-1/30 hover:text-ink-1/70 transition-colors flex-shrink-0"
+            className="flex items-center justify-center w-6 h-8 -ml-1 text-ink-4 hover:text-ink-3 transition-colors flex-shrink-0"
           >
             <span
               className={`inline-flex transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
@@ -581,7 +581,7 @@ export default function DashboardSidebar() {
             below is glass rather than orange: two orange cues compete. */}
         <div className="flex items-center gap-2 px-3 mb-1.5">
           <span className="block w-[3px] h-3 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-          <span className="text-[10px] uppercase tracking-widest text-ink-1/40">
+          <span className="text-[10px] uppercase tracking-widest text-ink-4">
             {section.label}
           </span>
         </div>
@@ -616,7 +616,7 @@ export default function DashboardSidebar() {
           aria-label="Open navigation"
           aria-expanded={drawerOpen}
           aria-controls="dashboard-drawer"
-          className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg text-ink-1/70 hover:text-ink-1 hover:bg-surface-card transition-colors flex-shrink-0"
+          className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface-card transition-colors flex-shrink-0"
         >
           <MenuIcon />
         </button>
@@ -664,7 +664,7 @@ export default function DashboardSidebar() {
           type="button"
           onClick={() => setDrawerOpen(false)}
           aria-label="Close navigation"
-          className="nav:hidden flex items-center justify-center w-8 h-8 -mr-1 rounded-lg text-ink-1/40 hover:text-ink-1/80 hover:bg-surface-card transition-colors flex-shrink-0"
+          className="nav:hidden flex items-center justify-center w-8 h-8 -mr-1 rounded-lg text-ink-4 hover:text-ink-2 hover:bg-surface-card transition-colors flex-shrink-0"
         >
           <CloseIcon />
         </button>
@@ -679,7 +679,7 @@ export default function DashboardSidebar() {
       <div className="px-3 py-3 border-t border-hairline-soft">
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-ink-1/40 hover:text-ink-1/70 hover:bg-surface-card transition-colors w-full"
+          className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-ink-4 hover:text-ink-3 hover:bg-surface-card transition-colors w-full"
         >
           <LogOutIcon />
           Sign Out

@@ -520,7 +520,7 @@ export default function IntakePage() {
                   className={`rounded-lg border overflow-hidden cursor-pointer transition-all ${
                     selectedItem?.id === item.id
                       ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]'
-                      : 'border-hairline hover:border-ink-1/20'
+                      : 'border-hairline hover:border-ink-4'
                   }`}
                 >
                   {/* Thumbnail */}
@@ -690,7 +690,7 @@ export default function IntakePage() {
                   <p className="text-xs text-ink-4 uppercase tracking-wider mb-2">Brief Fit</p>
                   <div className="flex flex-wrap gap-1">
                     {selectedItem.brief_fit.map((fit: string) => (
-                      <span key={fit} className="text-xs px-2 py-0.5 rounded-full bg-surface-raised text-ink-3 border border-ink-1/20">
+                      <span key={fit} className="text-xs px-2 py-0.5 rounded-full bg-surface-raised text-ink-3 border border-ink-4">
                         {fit}
                       </span>
                     ))}
