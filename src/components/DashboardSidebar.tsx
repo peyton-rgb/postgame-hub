@@ -519,8 +519,8 @@ export default function DashboardSidebar() {
         onClick={() => setDrawerOpen(false)}
         className={`flex flex-1 items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors min-w-0 ${
           active
-            ? 'bg-white/10 text-white font-medium ring-1 ring-inset ring-white/15'
-            : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+            ? 'bg-surface-raised text-ink-1 font-medium ring-1 ring-inset ring-white/15'
+            : 'text-ink-1/50 hover:text-ink-1/80 hover:bg-surface-card'
         }`}
       >
         <LinkIcon />
@@ -548,7 +548,7 @@ export default function DashboardSidebar() {
             onClick={() => toggleGroup(link.href)}
             aria-expanded={open}
             aria-label={`${open ? 'Collapse' : 'Expand'} ${link.name}`}
-            className="flex items-center justify-center w-6 h-8 -ml-1 text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
+            className="flex items-center justify-center w-6 h-8 -ml-1 text-ink-1/30 hover:text-ink-1/70 transition-colors flex-shrink-0"
           >
             <span
               className={`inline-flex transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
@@ -560,7 +560,7 @@ export default function DashboardSidebar() {
         </div>
 
         {open && (
-          <div className="ml-[18px] pl-3 border-l border-white/[0.08] flex flex-col">
+          <div className="ml-[18px] pl-3 border-l border-hairline-soft flex flex-col">
             {kids.map((child) => (
               <div key={child.href + child.name} className="flex">
                 {renderRow(child)}
@@ -580,8 +580,8 @@ export default function DashboardSidebar() {
         {/* Section band — the orange lives here, which is why the active state
             below is glass rather than orange: two orange cues compete. */}
         <div className="flex items-center gap-2 px-3 mb-1.5">
-          <span className="block w-[3px] h-3 rounded-full bg-[#D73F09]" aria-hidden="true" />
-          <span className="text-[10px] uppercase tracking-widest text-white/40">
+          <span className="block w-[3px] h-3 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+          <span className="text-[10px] uppercase tracking-widest text-ink-1/40">
             {section.label}
           </span>
         </div>
@@ -602,7 +602,7 @@ export default function DashboardSidebar() {
           so the page lands underneath it without every page needing a matching
           offset; sticky keeps it in reach once the page scrolls. */}
       <div
-        className="nav:hidden sticky top-0 z-30 flex items-center gap-2 bg-black border-b border-white/10"
+        className="nav:hidden sticky top-0 z-30 flex items-center gap-2 bg-ground border-b border-hairline"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))',
@@ -616,11 +616,11 @@ export default function DashboardSidebar() {
           aria-label="Open navigation"
           aria-expanded={drawerOpen}
           aria-controls="dashboard-drawer"
-          className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors flex-shrink-0"
+          className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg text-ink-1/70 hover:text-ink-1 hover:bg-surface-card transition-colors flex-shrink-0"
         >
           <MenuIcon />
         </button>
-        <span className="text-sm font-medium text-white truncate">{activeTitle}</span>
+        <span className="text-sm font-medium text-ink-1 truncate">{activeTitle}</span>
       </div>
 
       {/* Scrim. Sits under the rail's z-50 and over page content, which carries
@@ -629,13 +629,13 @@ export default function DashboardSidebar() {
         <div
           onClick={() => setDrawerOpen(false)}
           aria-hidden="true"
-          className="nav:hidden fixed inset-0 z-40 bg-black/60"
+          className="nav:hidden fixed inset-0 z-40 bg-ground/60"
         />
       )}
 
     <aside
       id="dashboard-drawer"
-      className={`fixed left-0 top-0 h-full w-[240px] bg-black border-r border-white/10 flex flex-col z-50 transition-transform duration-200 ease-out nav:transition-none ${
+      className={`fixed left-0 top-0 h-full w-[240px] bg-ground border-r border-hairline flex flex-col z-50 transition-transform duration-200 ease-out nav:transition-none ${
         drawerOpen ? 'translate-x-0' : '-translate-x-full'
       } nav:translate-x-0`}
       style={{
@@ -648,7 +648,7 @@ export default function DashboardSidebar() {
          when the fetch fails we hold the row height with an empty box rather
          than falling back to a typed wordmark. A missing mark is acceptable;
          a typed one is not. */}
-      <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-white/[0.08]">
+      <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-hairline-soft">
         <Link href="/dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center">
           {logoUrl ? (
             <img
@@ -664,7 +664,7 @@ export default function DashboardSidebar() {
           type="button"
           onClick={() => setDrawerOpen(false)}
           aria-label="Close navigation"
-          className="nav:hidden flex items-center justify-center w-8 h-8 -mr-1 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors flex-shrink-0"
+          className="nav:hidden flex items-center justify-center w-8 h-8 -mr-1 rounded-lg text-ink-1/40 hover:text-ink-1/80 hover:bg-surface-card transition-colors flex-shrink-0"
         >
           <CloseIcon />
         </button>
@@ -676,10 +676,10 @@ export default function DashboardSidebar() {
       </nav>
 
       {/* Sign Out — fixed at bottom */}
-      <div className="px-3 py-3 border-t border-white/[0.08]">
+      <div className="px-3 py-3 border-t border-hairline-soft">
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors w-full"
+          className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-ink-1/40 hover:text-ink-1/70 hover:bg-surface-card transition-colors w-full"
         >
           <LogOutIcon />
           Sign Out
