@@ -1,9 +1,14 @@
 // ============================================================
-// Campaign manager overview (staff-only)
+// Opt-in pipeline overview (staff-only)
 //
-// "What's the state of every active campaign, and what needs me?" — per-deal
+// "Which athletes opted in, and where are their deliverables stuck?" — per-deal
 // rollups (opt-ins, deliverable funnel, needs-action badges) computed from the
 // athlete tables. Read-only; actions happen in /dashboard/athlete-deals.
+//
+// Scope: this is the athlete opt-in + deliverable pipeline, built on
+// optin_campaigns / athlete_campaign_optins / athlete_deliverables. It is NOT
+// the campaign list — that is Campaign dashboard (/dashboard/readiness), which
+// reads admin_campaigns. Route stays /dashboard/campaigns for bookmarks.
 // ============================================================
 
 import Link from "next/link";
@@ -95,18 +100,18 @@ export default async function CampaignsOverviewPage() {
 
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "28px 20px 60px" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Campaigns</h1>
-      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 20 }}>Status at a glance across every active campaign.</p>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Opt-in pipeline</h1>
+      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 20 }}>Athlete opt-ins and their deliverables, at a glance.</p>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-        <Stat n={totals.activeCampaigns} label="Active campaigns" />
+        <Stat n={totals.activeCampaigns} label="Live opt-ins" />
         <Stat n={totals.needsAction} label="Items needing action" alert />
-        <Stat n={totals.overdue} label="Overdue campaigns" alert />
+        <Stat n={totals.overdue} label="Overdue opt-ins" alert />
       </div>
 
       {campaigns.length === 0 ? (
         <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: 24, fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
-          No active campaigns yet. Live deals and any campaign with opt-ins will show up here.
+          No live opt-ins yet. Opt-in campaigns and their deliverables will show up here.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

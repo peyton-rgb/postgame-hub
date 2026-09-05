@@ -70,7 +70,6 @@ export const DASHBOARD_NAV: NavSection[] = [
     label: "Daily work",
     links: [
       { name: "Campaign dashboard", href: "/dashboard/readiness", icon: "readiness", staffOnly: true },
-      { name: "Campaigns", href: "/dashboard/campaigns", icon: "campaigns", staffOnly: true },
       { name: "Brands", href: "/dashboard/brands", icon: "brands" },
       {
         // Child labels mirror athlete_deliverables.status values (in_review,
@@ -104,6 +103,12 @@ export const DASHBOARD_NAV: NavSection[] = [
       // NOT /dashboard/campaign-optin — that index page is the legacy
       // `campaign_optins` product. See claude_REPO-REUSE-MAP.md.
       { name: "Campaign opt-in", href: "/dashboard?tab=optin", icon: "optin" },
+      // Read-only rollup of the SAME optin_campaigns rows the line above
+      // lists — that one authors opt-ins, this one tracks their deliverables.
+      // Sat under Daily work labelled "Campaigns" until 2026-09-04, where it
+      // read as the campaign list and made a 636-recap Hub look empty. The
+      // campaign list is Campaign dashboard. Route unchanged for bookmarks.
+      { name: "Opt-in pipeline", href: "/dashboard/campaigns", icon: "campaigns", staffOnly: true },
       // Also a ?tab= surface on /dashboard, not a route of its own —
       // /dashboard/run-of-show is a 5-line stub.
       { name: "Run of shows", href: "/dashboard?tab=ros", icon: "runofshow" },
