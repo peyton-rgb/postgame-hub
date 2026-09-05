@@ -1,28 +1,8 @@
-// ============================================================
-// Public Clients Page — /clients
-//
-// Showcases every brand Postgame has partnered with, organized
-// into 2 visual tiers so the biggest names hit hardest:
-//
-//   1. Featured    — cinematic motion cards with brand logos,
-//      animated gradient backgrounds, and hover effects
-//   2. Full Roster — compact PartnerCard rows for every other
-//      brand, merged from partnerBrands + logoWallBrands and
-//      sorted alphabetically
-//
-// A filter bar lets visitors browse by industry category.
-// No auth required — this is a public marketing page.
-//
-// Design: Dark premium theme matching the Postgame brand.
-// Color: Beaver Orange #D73F09 for accents.
-// ============================================================
-
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PostgameLogo } from '@/components/PostgameLogo';
-import Image from 'next/image';
 import {
   featuredBrands,
   partnerBrands,
@@ -32,348 +12,186 @@ import {
   type BrandCategory,
 } from '@/lib/data/brands';
 
-// ---- Filter Pill ----
-// A clickable pill button used in the category filter bar.
-// "active" means it's the currently selected filter.
-
-function FilterPill({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`text-xs font-semibold px-4 py-2 rounded-full border transition-all duration-200 ${
-        active
-          ? 'bg-[#D73F09] border-[#D73F09] text-white'
-          : 'bg-transparent border-white/20 text-white/50 hover:border-white/40 hover:text-white/80'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-// ---- Brand Logo ----
-// Renders a brand logo image with a fallback to initials if
-// the image doesn't load or no URL is provided.
-
-function BrandLogo({
+function BrandMark({
   brand,
-  size = 'md',
   className = '',
 }: {
   brand: Brand;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }) {
   const [imgError, setImgError] = useState(false);
-
-  const sizeClasses = {
-    sm: 'w-6 h-6',
-    md: 'w-10 h-10',
-    lg: 'w-16 h-16',
-    xl: 'w-24 h-24',
-  };
-
-  const textSizes = {
-    sm: 'text-[8px]',
-    md: 'text-xs',
-    lg: 'text-lg',
-    xl: 'text-2xl',
-  };
 
   if (brand.logoUrl && !imgError) {
     return (
       <img
         src={brand.logoUrl}
         alt={`${brand.name} logo`}
-        className={`${sizeClasses[size]} object-contain ${className}`}
+        className={`object-contain ${className}`}
         onError={() => setImgError(true)}
       />
     );
   }
 
-  // Fallback: show initials in a styled circle
   return (
-    <div
-      className={`${sizeClasses[size]} rounded-full flex items-center justify-center ${className}`}
-      style={{ backgroundColor: `${brand.primaryColor}30` }}
-    >
-      <span
-        className={`${textSizes[size]} font-bold`}
-        style={{ color: brand.primaryColor }}
-      >
-        {brand.initials}
-      </span>
-    </div>
+    <span className="font-display text-4xl sm:text-6xl tracking-widest text-[#FAF8F5]">
+      {brand.initials}
+    </span>
   );
 }
 
-// ---- Featured Brand Card (Motion Card) ----
-// Large cinematic card with animated gradient background that
-// shifts on hover, brand logo centered, badge overlay,
-// and a shimmering light sweep effect on mouseenter.
+function FeaturedTunnelSlide({
+  brand,
+  index,
+}: {
+  brand: Brand;
+  index: number;
+}) {
+  const indexStr = String(index + 1).padStart(2, '0');
 
-function FeaturedCard({ brand }: { brand: Brand }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
-  const [isHovered, setIsHovered] = useState(false);
-  const [imgError, setImgError] = useState(false);
-
-  // Track mouse position relative to card for the radial glow effect
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePos({ x, y });
-  };
-
-  const inner = (
-    <div
-      ref={cardRef}
-      className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02]"
-      style={{ aspectRatio: '16 / 10' }}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+  return (
+    <Link
+      href={`/clients/${brand.slug}`}
+      className="group relative min-h-screen w-full flex flex-col justify-between p-6 sm:p-12 lg:p-16 border-b border-[#FAF8F5]/15 bg-[#07070a] overflow-hidden transition-colors duration-700 hover:bg-[#07070a]/90"
     >
-      {/* Base gradient background using brand color */}
-      <div
-        className="absolute inset-0 transition-all duration-700"
-        style={{
-          background: `linear-gradient(135deg, ${brand.primaryColor}22 0%, #0a0a0a 40%, ${brand.primaryColor}15 70%, #0a0a0a 100%)`,
-        }}
-      />
+      {/* Background cinematic bleed: pitch black to Beaver Orange flare */}
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#07070a] to-[#D73F09]/20 opacity-40 group-hover:opacity-100 group-hover:scale-105 transition-all duration-1000 ease-out pointer-events-none" />
 
-      {/* Animated mesh gradient overlay — shifts with mouse position */}
+      {/* Massive screen-filling ghost typography (tunnel wall) */}
       <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-500"
-        style={{
-          background: `radial-gradient(ellipse 60% 60% at ${mousePos.x}% ${mousePos.y}%, ${brand.primaryColor}30, transparent 70%)`,
-        }}
-      />
+        aria-hidden="true"
+        className="absolute -bottom-6 -right-8 pointer-events-none select-none font-display text-[26vw] leading-none tracking-tighter uppercase text-[#FAF8F5]/[0.03] group-hover:text-[#D73F09]/15 transition-colors duration-700 whitespace-nowrap"
+      >
+        {brand.name}
+      </div>
 
-      {/* Subtle grid pattern for depth */}
-      <div
-        className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-500"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}
-      />
-
-      {/* Shimmering light sweep on hover */}
-      <div
-        className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"
-        style={{
-          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)',
-        }}
-      />
-
-      {/* Border glow effect */}
-      <div
-        className="absolute inset-0 rounded-2xl border transition-all duration-500"
-        style={{
-          borderColor: isHovered ? `${brand.primaryColor}60` : 'rgba(255,255,255,0.08)',
-        }}
-      />
-
-      {/* Content layer */}
-      <div className="relative h-full flex flex-col items-center justify-center p-6 z-10">
-        {/* Brand logo — large and centered */}
-        {brand.logoUrl && !imgError ? (
-          <img
-            src={brand.logoUrl}
-            alt={`${brand.name} logo`}
-            className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <span
-            className="text-5xl sm:text-6xl font-black tracking-[0.15em] transition-all duration-500 group-hover:scale-110"
-            style={{ color: `${brand.primaryColor}60` }}
-          >
-            {brand.initials}
+      {/* Top HUD: Broadcast index & category coordinate */}
+      <div className="relative z-10 flex items-start justify-between border-b border-[#FAF8F5]/10 pb-6">
+        <div className="flex items-baseline gap-4">
+          <span className="font-mono text-xs tracking-widest text-[#D73F09] uppercase">
+            STAGE // {indexStr}
           </span>
-        )}
+          <span className="hidden sm:inline font-mono text-xs tracking-widest text-[#FAF8F5]/40 uppercase">
+            HEADLINER DOSSIER
+          </span>
+        </div>
 
-        {/* Brand name + category below logo */}
-        <div className="mt-4 text-center transition-all duration-500 group-hover:translate-y-0 translate-y-1 opacity-70 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-          <div className="text-sm font-bold text-white tracking-wide">
+        <div className="flex items-center gap-3">
+          {brand.badge && (
+            <span className="font-mono text-[10px] tracking-widest uppercase bg-[#D73F09] text-[#FAF8F5] px-2.5 py-1">
+              {brand.badge}
+            </span>
+          )}
+          <span className="font-mono text-xs tracking-widest uppercase text-[#FAF8F5]/60">
+            {brand.category}
+          </span>
+        </div>
+      </div>
+
+      {/* Centerpiece: Brand scale & identity projection */}
+      <div className="relative z-10 my-auto py-12 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+        <div className="max-w-4xl">
+          <div className="w-24 h-24 sm:w-36 sm:h-36 mb-8 border border-[#FAF8F5]/15 bg-[#07070a] p-4 flex items-center justify-center group-hover:border-[#D73F09] transition-colors duration-500">
+            <BrandMark brand={brand} className="max-w-full max-h-full" />
+          </div>
+          <h2 className="font-display text-7xl sm:text-9xl lg:text-[11rem] leading-[0.85] tracking-tight uppercase text-[#FAF8F5]">
+            {brand.name}
+          </h2>
+        </div>
+
+        <div className="flex flex-col items-start lg:items-end gap-3">
+          <span className="font-mono text-xs tracking-widest text-[#FAF8F5]/40 uppercase">
+            NIL CAMPAIGN PARTNER
+          </span>
+          <div className="inline-flex items-center gap-3 font-mono text-sm tracking-widest uppercase text-[#D73F09] group-hover:text-[#FAF8F5] transition-colors duration-300">
+            <span>EXPLORE DOSSIER</span>
+            <span className="transform group-hover:translate-x-2 transition-transform duration-300">
+              →
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom broadcast keyline */}
+      <div className="relative z-10 flex items-center justify-between border-t border-[#FAF8F5]/10 pt-4 font-mono text-[11px] text-[#FAF8F5]/30 uppercase tracking-widest">
+        <span>POSTGAME // VERIFIED ATHLETE NETWORK</span>
+        <span className="group-hover:text-[#FAF8F5] transition-colors duration-300">
+          SEC.0{index + 1}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function RosterRow({
+  brand,
+  index,
+}: {
+  brand: Brand;
+  index: number;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const indexStr = String(index + 1).padStart(3, '0');
+
+  return (
+    <Link
+      href={`/clients/${brand.slug}`}
+      className="group relative flex flex-col sm:flex-row sm:items-center justify-between p-5 sm:p-6 border-b border-[#FAF8F5]/10 bg-[#07070a] hover:bg-[#D73F09]/10 transition-colors duration-300"
+    >
+      <div className="flex items-center gap-5 min-w-0">
+        <span className="font-mono text-xs tracking-widest text-[#FAF8F5]/30 group-hover:text-[#D73F09] transition-colors duration-300 w-10 flex-shrink-0">
+          {indexStr}
+        </span>
+
+        <div className="w-10 h-10 border border-[#FAF8F5]/10 bg-[#07070a] flex items-center justify-center p-1.5 flex-shrink-0 group-hover:border-[#D73F09] transition-colors duration-300">
+          {brand.logoUrl && !imgError ? (
+            <img
+              src={brand.logoUrl}
+              alt={`${brand.name} logo`}
+              className="max-w-full max-h-full object-contain"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <span className="font-mono text-xs font-bold text-[#FAF8F5]">
+              {brand.initials}
+            </span>
+          )}
+        </div>
+
+        <div className="truncate">
+          <div className="font-display text-3xl sm:text-4xl uppercase tracking-tight text-[#FAF8F5] group-hover:text-[#FAF8F5] transition-colors duration-300 truncate">
             {brand.name}
           </div>
-          <div className="text-[10px] text-white/40 tracking-[0.15em] uppercase mt-1">
-            {brand.category}
-          </div>
         </div>
       </div>
 
-      {/* Badge (top-left corner) */}
-      {brand.badge && (
-        <span className="absolute top-3 left-3 z-20 bg-[#D73F09]/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-md tracking-wide backdrop-blur-sm">
-          {brand.badge}
-        </span>
-      )}
-
-      {/* Animated corner accent lines */}
-      <div
-        className="absolute top-0 right-0 w-16 h-16 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-all duration-500"
-        style={{
-          background: `linear-gradient(225deg, ${brand.primaryColor}40 0%, transparent 60%)`,
-        }}
-      />
-      <div
-        className="absolute bottom-0 left-0 w-16 h-16 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-all duration-500"
-        style={{
-          background: `linear-gradient(45deg, ${brand.primaryColor}40 0%, transparent 60%)`,
-        }}
-      />
-
-      {/* Arrow icon (bottom-right, appears on hover) */}
-      <span className="absolute bottom-3 right-3 z-20 text-white/0 group-hover:text-white/60 transition-all duration-300 text-sm">
-        →
-      </span>
-    </div>
-  );
-
-  return (
-    <Link href={`/clients/${brand.slug}`}>
-      {inner}
-    </Link>
-  );
-}
-
-// ---- Partner Card ----
-// Compact card with real brand logo, brand-colored accent,
-// name, category, and hover effect.
-
-function PartnerCard({ brand }: { brand: Brand }) {
-  const [imgError, setImgError] = useState(false);
-
-  const inner = (
-    <div className="group relative flex items-center gap-4 bg-[#111] border border-white/10 rounded-xl px-5 py-4 hover:border-white/20 transition-all duration-300 cursor-pointer overflow-hidden">
-      {/* Brand color accent bar on left */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-[3px] opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-300"
-        style={{ backgroundColor: brand.primaryColor }}
-      />
-
-      {/* Subtle brand color glow on hover */}
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity duration-500"
-        style={{
-          background: `radial-gradient(ellipse at 0% 50%, ${brand.primaryColor}08, transparent 60%)`,
-        }}
-      />
-
-      {/* Logo */}
-      <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-all duration-300 relative z-10 overflow-hidden p-1.5">
-        {brand.logoUrl && !imgError ? (
-          <img
-            src={brand.logoUrl}
-            alt={`${brand.name} logo`}
-            className="w-full h-full object-contain"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <span
-            className="text-[11px] font-bold"
-            style={{ color: brand.primaryColor }}
-          >
-            {brand.initials}
+      <div className="mt-3 sm:mt-0 flex items-center justify-between sm:justify-end gap-6 flex-shrink-0">
+        {brand.badge && (
+          <span className="font-mono text-[9px] tracking-widest uppercase bg-[#D73F09] text-[#FAF8F5] px-2 py-0.5">
+            {brand.badge}
           </span>
         )}
-      </div>
-
-      {/* Name + category */}
-      <div className="flex-1 min-w-0 relative z-10">
-        <div className="text-[13px] font-semibold text-white truncate">
-          {brand.name}
-        </div>
-        <div className="text-[10px] text-white/30 tracking-wide">
+        <span className="font-mono text-xs tracking-widest uppercase text-[#FAF8F5]/40 group-hover:text-[#FAF8F5]/70 transition-colors duration-300">
           {brand.category}
-        </div>
-      </div>
-
-      {/* Badge */}
-      {brand.badge && (
-        <span className="text-[9px] font-bold text-[#D73F09] tracking-wider uppercase relative z-10 flex-shrink-0">
-          {brand.badge}
         </span>
-      )}
-
-      {/* Arrow */}
-      <span className="text-white/15 group-hover:text-white/50 transition-colors text-sm flex-shrink-0 relative z-10">
-        →
-      </span>
-    </div>
-  );
-
-  return (
-    <Link href={`/clients/${brand.slug}`}>
-      {inner}
+        <span className="font-mono text-sm text-[#FAF8F5]/30 group-hover:text-[#D73F09] group-hover:translate-x-1 transition-all duration-300">
+          →
+        </span>
+      </div>
     </Link>
   );
 }
 
-// ---- Section Header ----
-// Reusable section label + title combo used for each tier.
-
-function SectionHeader({
-  label,
-  title,
-  count,
-}: {
-  label: string;
-  title: string;
-  count?: number;
-}) {
-  return (
-    <div className="mb-6 flex items-end justify-between">
-      <div>
-        <div className="text-[10px] font-bold tracking-[0.2em] text-[#D73F09] uppercase mb-1">
-          {label}
-        </div>
-        <h2 className="text-lg font-bold text-white">{title}</h2>
-      </div>
-      {count !== undefined && (
-        <div className="text-[11px] text-white/20 font-semibold tracking-wider">
-          {count} brands
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- Main Page Component ----
-
 export default function ClientsPage() {
-  // Which category filter is active — null means "All"
   const [activeFilter, setActiveFilter] = useState<BrandCategory | null>(null);
 
-  // Filter function — returns true if a brand matches the active filter
   const matchesFilter = (brand: Brand) =>
     activeFilter === null || brand.category === activeFilter;
 
-  // Pre-filter each tier so we don't recalculate on every render
-  // useMemo is a React tool that caches the result until activeFilter changes
   const filteredFeatured = useMemo(
     () => featuredBrands.filter(matchesFilter),
     [activeFilter]
   );
-  // Full roster = partnerBrands + logoWallBrands, filtered, then alphabetized.
-  // Brand names that start with a digit (e.g. "1-800 Contacts") get pushed to
-  // the bottom of the list so the A–Z letter brands aren't visually interrupted.
+
   const filteredRoster = useMemo(
     () =>
       [...partnerBrands, ...logoWallBrands]
@@ -381,132 +199,170 @@ export default function ClientsPage() {
         .sort((a, b) => {
           const aNum = /^\d/.test(a.name.trim());
           const bNum = /^\d/.test(b.name.trim());
-          if (aNum !== bNum) return aNum ? 1 : -1; // number-named brands go last
+          if (aNum !== bNum) return aNum ? 1 : -1;
           return a.name.localeCompare(b.name);
         }),
     [activeFilter]
   );
 
-  // Total brand count for the hero stat
   const totalBrands =
     featuredBrands.length + partnerBrands.length + logoWallBrands.length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Top nav rendered globally by SiteNav in layout.tsx. */}
+    <main className="min-h-screen bg-[#07070a] text-[#FAF8F5]">
+      {/* ====== TUNNEL PORTAL HERO ====== */}
+      <section className="relative min-h-screen flex flex-col justify-between p-6 sm:p-12 lg:p-16 border-b border-[#FAF8F5]/15 overflow-hidden">
+        {/* Deep stadium tunnel backlighting */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#07070a] via-[#07070a] to-[#D73F09]/25 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-96 bg-[radial-gradient(ellipse_80%_60%_at_50%_100%,#D73F09_0%,transparent_75%)] opacity-30 pointer-events-none" />
 
-      {/* ====== HERO SECTION ====== */}
-      <section className="relative pt-28 pb-16 px-6 text-center overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {/* Central glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-[#D73F09]/[0.03] rounded-full blur-[120px]" />
-          {/* Floating accent orbs */}
-          <div className="absolute top-20 left-[15%] w-32 h-32 bg-[#D73F09]/[0.04] rounded-full blur-[80px] animate-pulse" />
-          <div className="absolute bottom-10 right-[20%] w-40 h-40 bg-[#D73F09]/[0.03] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        {/* Top broadcast feed bar */}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#FAF8F5]/10 pb-6">
+          <div className="flex items-center gap-3">
+            <span className="inline-block w-2.5 h-2.5 bg-[#D73F09] animate-pulse" />
+            <span className="font-mono text-xs tracking-widest uppercase text-[#FAF8F5]">
+              POSTGAME // TUNNEL TRANSMISSION
+            </span>
+          </div>
+          <div className="font-mono text-xs tracking-widest uppercase text-[#FAF8F5]/40 flex items-center gap-6">
+            <span>ACTIVE CAMPAIGNS: 60,000+ ATHLETES</span>
+            <span>EST. 2020</span>
+          </div>
         </div>
 
-        <div className="relative max-w-2xl mx-auto">
-          {/* Eyebrow label with decorative lines */}
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <div className="h-px w-8 bg-[#D73F09]/40" />
-            <div className="text-[10px] font-bold tracking-[0.3em] text-[#D73F09] uppercase">
-              Our Partners
-            </div>
-            <div className="h-px w-8 bg-[#D73F09]/40" />
+        {/* Center monolithic title */}
+        <div className="relative z-10 py-16 lg:py-24">
+          <div className="font-mono text-xs sm:text-sm tracking-[0.3em] uppercase text-[#D73F09] mb-4">
+            COMMERCIAL PARTNER INDEX
           </div>
-
-          {/* Main headline */}
-          <h1 className="text-4xl sm:text-5xl font-black leading-[1.1] mb-4">
-            The Brands Behind
-            <br />
-            <span className="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
-              the Biggest Campaigns
-            </span>
+          <h1 className="font-display text-[19vw] sm:text-[18vw] leading-[0.8] tracking-tighter uppercase text-[#FAF8F5] select-none">
+            CLIENTS
           </h1>
-
-          {/* Subheadline */}
-          <p className="text-sm text-white/40 max-w-md mx-auto mb-12 leading-relaxed">
-            From Fortune 500 icons to breakout DTC brands — we&apos;ve powered{' '}
-            {totalBrands}+ partnerships that move culture.
+          <p className="mt-8 max-w-xl text-base sm:text-lg text-[#FAF8F5]/70 leading-relaxed font-normal">
+            From iconic Fortune 50 giants to disruptive breakout DTC brands. Over{' '}
+            <span className="text-[#FAF8F5] font-semibold">{totalBrands}+</span> brand
+            partnerships powered through our nationwide NIL athlete roster.
           </p>
+        </div>
 
-          {/* Stats row — animated counters */}
-          <div className="flex justify-center gap-12 sm:gap-16">
-            <div className="text-center group">
-              <div className="text-3xl sm:text-4xl font-black text-[#D73F09] group-hover:scale-110 transition-transform duration-300">
-                {totalBrands}+
-              </div>
-              <div className="text-[10px] text-white/30 uppercase tracking-[0.15em] mt-1">
-                Brands
-              </div>
+        {/* Hero stat chyron */}
+        <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-[#FAF8F5]/10 pt-6">
+          <div className="border-l border-[#FAF8F5]/15 pl-4">
+            <div className="font-display text-4xl sm:text-5xl text-[#FAF8F5] leading-none">
+              {totalBrands}+
             </div>
-            <div className="text-center group">
-              <div className="text-3xl sm:text-4xl font-black text-[#D73F09] group-hover:scale-110 transition-transform duration-300">
-                60K+
-              </div>
-              <div className="text-[10px] text-white/30 uppercase tracking-[0.15em] mt-1">
-                Athletes
-              </div>
+            <div className="font-mono text-[10px] tracking-widest text-[#FAF8F5]/40 uppercase mt-1">
+              PARTNER BRANDS
             </div>
-            <div className="text-center group">
-              <div className="text-3xl sm:text-4xl font-black text-[#D73F09] group-hover:scale-110 transition-transform duration-300">
-                5
-              </div>
-              <div className="text-[10px] text-white/30 uppercase tracking-[0.15em] mt-1">
-                Years of NIL
-              </div>
+          </div>
+          <div className="border-l border-[#FAF8F5]/15 pl-4">
+            <div className="font-display text-4xl sm:text-5xl text-[#D73F09] leading-none">
+              60K+
+            </div>
+            <div className="font-mono text-[10px] tracking-widest text-[#FAF8F5]/40 uppercase mt-1">
+              ATHLETE NETWORK
+            </div>
+          </div>
+          <div className="border-l border-[#FAF8F5]/15 pl-4">
+            <div className="font-display text-4xl sm:text-5xl text-[#FAF8F5] leading-none">
+              5 YRS
+            </div>
+            <div className="font-mono text-[10px] tracking-widest text-[#FAF8F5]/40 uppercase mt-1">
+              NIL DOMINANCE
+            </div>
+          </div>
+          <div className="border-l border-[#FAF8F5]/15 pl-4">
+            <div className="font-display text-4xl sm:text-5xl text-[#D73F09] leading-none">
+              #1
+            </div>
+            <div className="font-mono text-[10px] tracking-widest text-[#FAF8F5]/40 uppercase mt-1">
+              COLLEGIATE SCALE
             </div>
           </div>
         </div>
       </section>
 
-      {/* ====== FILTER BAR ====== */}
-      <div className="sticky top-[57px] z-40 bg-[#0a0a0a]/95 backdrop-blur-sm border-y border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex gap-2 flex-wrap">
-          <FilterPill
-            label="All"
-            active={activeFilter === null}
-            onClick={() => setActiveFilter(null)}
-          />
-          {brandCategories.map((cat) => (
-            <FilterPill
-              key={cat}
-              label={cat}
-              active={activeFilter === cat}
-              onClick={() => setActiveFilter(cat)}
-            />
-          ))}
+      {/* ====== STICKY TUNNEL FILTER MATRIX ====== */}
+      <div className="sticky top-0 z-40 bg-[#07070a]/95 backdrop-blur-md border-b border-[#FAF8F5]/15">
+        <div className="max-w-full px-6 sm:px-12 py-4 flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setActiveFilter(null)}
+              className={`font-mono text-xs tracking-widest uppercase px-4 py-2 border transition-all duration-200 ${
+                activeFilter === null
+                  ? 'bg-[#D73F09] border-[#D73F09] text-[#FAF8F5]'
+                  : 'bg-transparent border-[#FAF8F5]/20 text-[#FAF8F5]/60 hover:border-[#D73F09] hover:text-[#FAF8F5]'
+              }`}
+            >
+              ALL CATEGORIES [{totalBrands}]
+            </button>
+            {brandCategories.map((cat) => {
+              const count = [
+                ...featuredBrands,
+                ...partnerBrands,
+                ...logoWallBrands,
+              ].filter((b) => b.category === cat).length;
+
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveFilter(cat)}
+                  className={`font-mono text-xs tracking-widest uppercase px-4 py-2 border whitespace-nowrap transition-all duration-200 ${
+                    activeFilter === cat
+                      ? 'bg-[#D73F09] border-[#D73F09] text-[#FAF8F5]'
+                      : 'bg-transparent border-[#FAF8F5]/20 text-[#FAF8F5]/60 hover:border-[#D73F09] hover:text-[#FAF8F5]'
+                  }`}
+                >
+                  {cat} [{count}]
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="hidden lg:block font-mono text-[10px] tracking-widest uppercase text-[#FAF8F5]/40 flex-shrink-0">
+            SCROLL TO DESCEND
+          </div>
         </div>
       </div>
 
-      {/* ====== FEATURED TIER ====== */}
+      {/* ====== HEADLINER TUNNEL SLIDES ====== */}
       {filteredFeatured.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pt-12 pb-6">
-          <SectionHeader
-            label="Featured Partners"
-            title="Headliner Brands"
-            count={filteredFeatured.length}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {filteredFeatured.map((brand) => (
-              <FeaturedCard key={brand.slug} brand={brand} />
-            ))}
+        <section>
+          <div className="px-6 sm:px-12 py-6 bg-[#07070a] border-b border-[#FAF8F5]/10 flex items-center justify-between">
+            <div className="font-mono text-xs tracking-widest uppercase text-[#D73F09]">
+              // FEATURED HEADLINERS
+            </div>
+            <div className="font-mono text-xs tracking-widest uppercase text-[#FAF8F5]/40">
+              {filteredFeatured.length} KEY CLIENTS
+            </div>
           </div>
+
+          {filteredFeatured.map((brand, i) => (
+            <FeaturedTunnelSlide key={brand.slug} brand={brand} index={i} />
+          ))}
         </section>
       )}
 
-      {/* ====== FULL ROSTER ====== */}
+      {/* ====== FULL ROSTER BROADCAST MATRIX ====== */}
       {filteredRoster.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pt-10 pb-10">
-          <SectionHeader
-            label="Brand Partners"
-            title="Full Roster"
-            count={filteredRoster.length}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredRoster.map((brand) => (
-              <PartnerCard key={brand.slug} brand={brand} />
+        <section className="border-b border-[#FAF8F5]/15">
+          <div className="px-6 sm:px-12 py-8 bg-[#07070a] border-b border-[#FAF8F5]/10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div className="font-mono text-xs tracking-widest uppercase text-[#D73F09] mb-1">
+                // FULL COMMERCIAL ROSTER
+              </div>
+              <h2 className="font-display text-5xl sm:text-6xl uppercase tracking-tight text-[#FAF8F5]">
+                BRAND ARCHIVE
+              </h2>
+            </div>
+            <div className="font-mono text-xs tracking-widest uppercase text-[#FAF8F5]/40">
+              SHOWING {filteredRoster.length} VERIFIED PARTNERS
+            </div>
+          </div>
+
+          <div className="divide-y divide-[#FAF8F5]/10">
+            {filteredRoster.map((brand, i) => (
+              <RosterRow key={brand.slug} brand={brand} index={i} />
             ))}
           </div>
         </section>
@@ -514,66 +370,76 @@ export default function ClientsPage() {
 
       {/* ====== EMPTY STATE ====== */}
       {filteredFeatured.length === 0 && filteredRoster.length === 0 && (
-        <div className="max-w-6xl mx-auto px-6 py-20 text-center">
-          <div className="text-white/20 text-lg font-semibold mb-2">
-            No brands in this category yet
+        <section className="min-h-[50vh] flex flex-col items-center justify-center p-12 text-center">
+          <div className="font-mono text-xs tracking-widest uppercase text-[#D73F09] mb-3">
+            [ZERO ENTRIES FOUND]
+          </div>
+          <div className="font-display text-4xl sm:text-6xl uppercase text-[#FAF8F5] mb-6">
+            NO BRANDS IN THIS SECTOR
           </div>
           <button
             onClick={() => setActiveFilter(null)}
-            className="text-[#D73F09] text-sm font-semibold hover:underline"
+            className="font-mono text-xs tracking-widest uppercase px-6 py-3 border border-[#D73F09] text-[#FAF8F5] bg-[#D73F09] hover:bg-transparent hover:text-[#FAF8F5] transition-colors duration-200"
           >
-            Show all brands →
+            RESET ROSTER FILTER →
           </button>
-        </div>
+        </section>
       )}
 
-      {/* ====== CTA SECTION ====== */}
-      <section className="relative overflow-hidden py-20 px-6 text-center">
-        {/* Gradient background instead of flat color */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#D73F09] via-[#C53508] to-[#A52D07]" />
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '60px 60px',
-          }}
-        />
+      {/* ====== TUNNEL EXIT // CALL TO ACTION ====== */}
+      <section className="relative min-h-[80vh] flex flex-col justify-between p-6 sm:p-12 lg:p-16 bg-[#D73F09] text-[#FAF8F5] overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_0%,#07070a_0%,transparent_100%)] opacity-30 pointer-events-none" />
 
-        <div className="relative">
-          <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">
-            Ready to join this roster?
+        <div className="relative z-10 flex items-center justify-between border-b border-[#FAF8F5]/20 pb-6 font-mono text-xs tracking-widest uppercase">
+          <span>EXIT TUNNEL // NEXT CAMPAIGN</span>
+          <span>POSTGAME COMMERCIAL DESK</span>
+        </div>
+
+        <div className="relative z-10 my-auto py-16 max-w-5xl">
+          <div className="font-mono text-xs sm:text-sm tracking-[0.3em] uppercase text-[#07070a] font-bold mb-4">
+            COMMERCIAL ATHLETE PLACEMENT
+          </div>
+          <h2 className="font-display text-7xl sm:text-9xl lg:text-[10rem] leading-[0.85] tracking-tight uppercase text-[#FAF8F5] mb-8">
+            ENTER THE ROSTER.
           </h2>
-          <p className="text-sm text-white/80 mb-8 max-w-md mx-auto">
-            Let&apos;s build your next athlete influencer campaign together.
+          <p className="max-w-xl text-base sm:text-lg text-[#FAF8F5]/90 leading-relaxed mb-10">
+            Postgame commands the largest roster of collegiate athlete talent in
+            the world. Deploy your brand at national scale.
           </p>
           <a
             href="https://www.home.pstgm.com/contactus"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block bg-white text-[#D73F09] font-bold text-sm px-8 py-3.5 rounded-lg hover:bg-white/90 hover:scale-105 transition-all duration-300"
+            className="inline-block bg-[#07070a] text-[#FAF8F5] font-mono text-xs tracking-[0.2em] uppercase px-8 py-5 border border-[#07070a] hover:bg-[#FAF8F5] hover:text-[#07070a] transition-all duration-300"
           >
-            Get Started →
+            INITIATE CAMPAIGN →
           </a>
+        </div>
+
+        <div className="relative z-10 border-t border-[#FAF8F5]/20 pt-4 font-mono text-[11px] uppercase tracking-widest flex items-center justify-between">
+          <span>POSTGAME AGENCY GROUP</span>
+          <span>FLORIDA // PENNSYLVANIA</span>
         </div>
       </section>
 
-      {/* ====== FOOTER ====== */}
-      <footer className="bg-black py-10 px-6 text-center border-t border-white/5">
-        <div className="flex justify-center mb-3">
+      {/* ====== BROADCAST SIGN-OFF FOOTER ====== */}
+      <footer className="bg-[#07070a] p-8 sm:p-16 border-t border-[#FAF8F5]/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
           <PostgameLogo size="sm" />
+          <div className="font-mono text-xs tracking-widest uppercase text-[#FAF8F5]/40">
+            NIL INFLUENCER MARKETING AT SCALE
+          </div>
         </div>
-        <div className="text-[11px] text-white/25 max-w-md mx-auto leading-relaxed">
-          Postgame™ manages the largest sports marketing and influencer
-          campaigns in college sports. Headquartered in Sarasota, FL with
-          offices in Philadelphia and Tampa.
-        </div>
-        <div className="text-[10px] text-white/15 mt-4">
-          © {new Date().getFullYear()} Postgame, LLC. All rights reserved.
+
+        <div className="border-t border-[#FAF8F5]/10 pt-8 flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-widest text-[#FAF8F5]/30">
+          <div>
+            HEADQUARTERED IN SARASOTA, FL // OFFICES IN PHILADELPHIA &amp; TAMPA
+          </div>
+          <div>
+            © {new Date().getFullYear()} POSTGAME, LLC. ALL RIGHTS RESERVED.
+          </div>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
