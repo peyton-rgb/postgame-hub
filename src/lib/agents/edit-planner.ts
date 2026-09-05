@@ -98,7 +98,7 @@ export async function createEditPlan(
   const { data: agentRun } = await supabase
     .from('agent_runs')
     .insert({
-      agent_name: 'edit-planner',
+      agent_name: 'edit_planner',
       triggered_by: userId,
       input_payload: {
         edit_job_id: input.edit_job_id,

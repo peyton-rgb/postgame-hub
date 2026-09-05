@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Concept, AgentRun } from '@/lib/types/briefs';
 
 import { assertAgentBudget } from "@/lib/agents/budget";
+import { costUsd as modelCostUsd } from "@/lib/agents/pricing";
 // Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
 const anthropic = new Anthropic();
 
@@ -525,7 +526,7 @@ export async function generateConcepts(
   // Calculate cost (approximate: Sonnet input $3/M tokens, output $15/M tokens)
   const inputTokens = response.usage?.input_tokens || 0;
   const outputTokens = response.usage?.output_tokens || 0;
-  const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+  const costUsd = modelCostUsd('claude-sonnet-4-20250514', inputTokens, outputTokens);
 
   await supabase
     .from('agent_runs')

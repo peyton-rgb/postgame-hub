@@ -24,6 +24,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { ParsedBriefFields } from '@/lib/types/intake';
 
 import { assertAgentBudget } from "@/lib/agents/budget";
+import { costUsd as modelCostUsd } from "@/lib/agents/pricing";
 const anthropic = new Anthropic();
 
 const adminSupabase = createClient(
@@ -289,7 +290,7 @@ export async function POST(request: NextRequest) {
   // --- Step 6: Log success ---
   const inputTokens = response.usage?.input_tokens || 0;
   const outputTokens = response.usage?.output_tokens || 0;
-  const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+  const costUsd = modelCostUsd('claude-sonnet-4-20250514', inputTokens, outputTokens);
 
   await adminSupabase
     .from('agent_runs')

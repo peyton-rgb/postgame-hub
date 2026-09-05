@@ -48,7 +48,7 @@ export async function evaluateVideo(
   const { data: agentRun } = await supabase
     .from('agent_runs')
     .insert({
-      agent_name: 'video-evaluator',
+      agent_name: 'video_evaluator',
       triggered_by: userId,
       input_payload: {
         edit_job_id: input.edit_job_id,

@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { CreatorBrief, CreatorBriefSection } from '@/lib/types/briefs';
 
 import { assertAgentBudget } from "@/lib/agents/budget";
+import { costUsd as modelCostUsd } from "@/lib/agents/pricing";
 const anthropic = new Anthropic();
 
 const supabase = createClient(
@@ -447,7 +448,7 @@ export async function generateCreatorBrief(
   // --- Log success ---
   const inputTokens = response.usage?.input_tokens || 0;
   const outputTokens = response.usage?.output_tokens || 0;
-  const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+  const costUsd = modelCostUsd('claude-sonnet-4-20250514', inputTokens, outputTokens);
 
   await supabase
     .from('agent_runs')

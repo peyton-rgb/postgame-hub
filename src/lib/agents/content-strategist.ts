@@ -21,6 +21,17 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+import { createClient } from "@supabase/supabase-js";
+import { trackedCall } from "@/lib/agents/run-log";
+
+// Service client, added so this module can record its own agent_runs rows.
+// It previously called a model and logged nothing, so its spend was invisible
+// to agent_budgets.
+const runLogSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 const anthropic = new Anthropic();
 
 // Use Haiku for speed — suggestions don't need the full power of Sonnet,
@@ -310,11 +321,12 @@ Return ONLY valid JSON array of objects. No markdown code fences.`;
 
   let text = '';
   try {
-    const response = await anthropic.messages.create({
+    const response = await trackedCall(runLogSupabase, { agentName: 'content_strategist', model: 'claude-sonnet-4-20250514', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
       model: MODEL,
       max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
-    });
+    }));
     text = response.content[0].type === 'text' ? response.content[0].text : '';
   } catch (err) {
     console.error('Anthropic API error in generateOnDemandSuggestions:', err);
@@ -431,11 +443,12 @@ Return ONLY valid JSON. No markdown code fences.`;
 
   let text = '';
   try {
-    const response = await anthropic.messages.create({
+    const response = await trackedCall(runLogSupabase, { agentName: 'content_strategist', model: 'claude-sonnet-4-20250514', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
       model: MODEL,
       max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
-    });
+    }));
     text = response.content[0].type === 'text' ? response.content[0].text : '';
   } catch (err) {
     console.error('Anthropic API error in generateWeeklyCalendar:', err);
@@ -541,11 +554,12 @@ Return ONLY a valid JSON array. No markdown code fences.`;
 
   let text = '';
   try {
-    const response = await anthropic.messages.create({
+    const response = await trackedCall(runLogSupabase, { agentName: 'content_strategist', model: 'claude-sonnet-4-20250514', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
       model: MODEL,
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
-    });
+    }));
     text = response.content[0].type === 'text' ? response.content[0].text : '';
   } catch (err) {
     console.error('Anthropic API error in analyzeContentGaps:', err);

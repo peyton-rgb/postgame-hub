@@ -8,6 +8,7 @@ import { writeFile, unlink, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 
+import { trackedCall } from "@/lib/agents/run-log";
 // Vercel Pro: this route can take up to 5 minutes for video processing + Anthropic generation
 export const maxDuration = 300;
 
@@ -397,12 +398,13 @@ export async function POST(req: NextRequest) {
     // Call Anthropic
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const response = await anthropic.messages.create({
+    const response = await trackedCall(serviceSupabase, { agentName: 'pitch_generator', model: 'claude-sonnet-4-6', triggeredBy: user?.id ?? null, triggerSource: user?.id ? 'user' : 'system' }, () =>
+      anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 8000,
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
-    });
+    }));
 
     // Extract text from response
     let rawJson = "";
