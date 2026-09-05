@@ -106,7 +106,7 @@ function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
           ref={(el) => {
             logoRef.current = el;
           }}
-          className="relative z-[3] px-2 text-center font-display text-[13px] leading-tight tracking-wide text-surface transition-colors duration-200 group-hover:text-ink"
+          className="relative z-[3] px-2 text-center font-display text-[15px] leading-tight tracking-wide text-ink/80 transition-colors duration-200 group-hover:text-ink"
         >
           {brand.name}
         </span>
@@ -114,8 +114,11 @@ function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
     </>
   );
 
+  // Dark tile, hairline border, brand colour filling on hover. 16:9 because
+  // most marks are wide: at 4:3 fourteen of them hit the cell width before
+  // reaching a comparable ink area, at 16:9 only four do.
   const cls =
-    'group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-md border border-ink/10 bg-[#FAF8F5] p-3 transition-colors duration-200';
+    'group relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-lg border border-ink/12 bg-surface-2 p-4 transition-colors duration-200 hover:border-ink/25';
 
   return brand.href ? (
     <Link ref={hostRef} href={brand.href} className={cls} aria-label={brand.name}>
@@ -205,9 +208,9 @@ export default function ClientsPageClient({
           <p className="mt-2 font-display text-[clamp(24px,2.6vw,38px)] leading-none tracking-tight text-ink">
             {tiles.length} brands
           </p>
-          <div className="mt-[3vh] grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
+          <div className="mt-[3vh] grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {tiles.map((brand, i) => (
-              <BrandTile key={brand.slug} brand={brand} eager={i < 16} />
+              <BrandTile key={brand.slug} brand={brand} eager={i < 12} />
             ))}
           </div>
         </section>

@@ -36,7 +36,7 @@ import {
  * Its previous meaning — box height in vh over an 11vh base — belonged to the
  * 38vh bands, which no longer exist.
  */
-export const TILE_LOGO_SCALE_DEFAULT = 0.42;
+export const TILE_LOGO_SCALE_DEFAULT = 0.40;
 
 /**
  * Supabase slug -> brands.ts slug, for brands the detail route knows under a
@@ -169,7 +169,7 @@ export type ClientBrand = {
   href: string | null;
   fill: string | null;
   fillConfidence: string | null;
-  /** Dark-ink file, for the white tile at rest. */
+  /** Rest-state file for the dark tile: light-ink artwork. */
   logoOnLight: string | null;
   /** Light-ink file, for the brand-colour tile on hover and for the bands. */
   logoOnDark: string | null;
@@ -193,8 +193,15 @@ type BrandRow = {
   lockup_scale: number | string | null;
 };
 
-/** The tile ground. Every rest-state logo has to survive on this. */
-export const TILE_GROUND = '#FAF8F5';
+/**
+ * The tile ground. Every rest-state logo has to survive on this.
+ *
+ * The directory was a slab of white tiles on a black page, which read as a
+ * different site. Inverting it also fixed a data problem: on white only 67 of
+ * 88 brands had a logo that read, because most of the library is light-ink
+ * artwork built for dark grounds. On #0A0A0A that becomes 85 of 88.
+ */
+export const TILE_GROUND = '#0A0A0A';   // bg-surface-2 — the directory is dark now
 
 function rgb(hex: string | null): [number, number, number] | null {
   if (!hex) return null;
@@ -342,12 +349,15 @@ export async function loadClientsPage(): Promise<{
     const logos = byBrand.get(r.id) ?? [];
     const slug = r.slug as string;
 
-    // Rest state: the tile is off-white, so only an on_white file can be right,
-    // and only one whose ink survives that ground. No variant crossing.
-    const restPick = pickForGround(logos, 'on_white', TILE_GROUND);
+    // Rest state: the tile is dark, so it wants light-ink artwork — on_black
+    // first, on_brand second. No crossing into on_white: that is dark ink and
+    // would vanish.
+    const restPick =
+      pickForGround(logos, 'on_black', TILE_GROUND) ??
+      pickForGround(logos, 'on_brand', TILE_GROUND);
 
     // Hover state: the tile fills with the brand's own colour. On a light fill
-    // white ink dies, so the ground decides which variant to ask for.
+    // white ink dies, so the ground still decides which variant to ask for.
     const fill = r.fill_color ?? '#07070A';
     const hoverPick = isLightFill(fill)
       ? pickForGround(logos, 'on_white', fill) ?? pickForGround(logos, 'on_brand', fill)
@@ -374,7 +384,10 @@ export async function loadClientsPage(): Promise<{
     const photoLogo = lightInkPick?.url ?? knockoutPick?.url ?? r.logo_light_url ?? null;
     const photoLogoKnockout = !lightInkPick && Boolean(knockoutPick ?? r.logo_light_url);
 
-    const onLight = restPick?.url ?? (logos.length ? null : r.logo_dark_url ?? r.logo_primary_url) ?? null;
+    const onLight =
+      restPick?.url ??
+      (logos.length ? null : r.logo_light_url ?? r.logo_white_url) ??
+      null;
     const onDark = hoverPick?.url ?? r.logo_light_url ?? r.logo_white_url ?? null;
 
 
