@@ -15,6 +15,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { notifyManagers, dealContext } from "@/lib/manager-notify";
 
+import { trackedCall } from "@/lib/agents/run-log";
 // claude-api skill default. Override per-deploy for cost (e.g. claude-sonnet-4-6).
 const MODEL = process.env.AUTO_EDITOR_MODEL || "claude-opus-4-8";
 const MAX_PHOTOS = 16; // cap images per run; anything beyond is logged, not silently dropped
@@ -163,13 +164,14 @@ function stubEval(d: Deliverable, preliminary: boolean): Evaluation {
 }
 
 async function callScoreTool(client: Anthropic, content: any[]): Promise<any[]> {
-  const res = await client.messages.create({
+  const res = await trackedCall(createServiceSupabase(), { agentName: 'auto_editor', model: MODEL, triggerSource: 'system' }, () =>
+      client.messages.create({
     model: MODEL,
     max_tokens: 4000,
     tools: [SCORE_TOOL as any],
     tool_choice: { type: "tool", name: SCORE_TOOL.name },
     messages: [{ role: "user", content }],
-  });
+  }));
   const block: any = res.content.find((b: any) => b.type === "tool_use");
   return Array.isArray(block?.input?.evaluations) ? block.input.evaluations : [];
 }

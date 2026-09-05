@@ -23,6 +23,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import type { ParsedBriefFields } from '@/lib/types/intake';
 
+import { assertAgentBudget } from "@/lib/agents/budget";
+import { costUsd as modelCostUsd } from "@/lib/agents/pricing";
 const anthropic = new Anthropic();
 
 const adminSupabase = createClient(
@@ -151,6 +153,20 @@ export async function POST(request: NextRequest) {
     ];
   }
 
+  // Spend cap. Before the run row, so a blocked call leaves no orphan
+  // 'running' row. Same 'intake' budget as lib/agents/intake-agent.ts — one
+  // cap covers both entry points into that agent.
+  const budget = await assertAgentBudget(adminSupabase, 'intake', {
+    triggeredBy: user.id,
+    context: { action: 'brief_parse', file_name: file.name },
+  });
+  if (!budget.allowed) {
+    return NextResponse.json(
+      { error: `Intake agent skipped — ${budget.reason}` },
+      { status: 429 },
+    );
+  }
+
   // --- Step 3: Create agent_runs record ---
   const { data: agentRun, error: runError } = await adminSupabase
     .from('agent_runs')
@@ -274,7 +290,7 @@ export async function POST(request: NextRequest) {
   // --- Step 6: Log success ---
   const inputTokens = response.usage?.input_tokens || 0;
   const outputTokens = response.usage?.output_tokens || 0;
-  const costUsd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+  const costUsd = modelCostUsd('claude-sonnet-4-20250514', inputTokens, outputTokens);
 
   await adminSupabase
     .from('agent_runs')

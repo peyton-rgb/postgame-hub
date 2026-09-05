@@ -20,6 +20,17 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+import { createClient } from "@supabase/supabase-js";
+import { trackedCall } from "@/lib/agents/run-log";
+
+// Service client, added so this module can record its own agent_runs rows.
+// It previously called a model and logged nothing, so its spend was invisible
+// to agent_budgets.
+const runLogSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 const anthropic = new Anthropic();
 
 // --- NCAA restricted terms ---
@@ -247,12 +258,13 @@ Return a JSON object with this exact shape:
 ${config.hashtagLimit === 0 ? 'This channel does not use hashtags — return an empty array.' : ''}
 The FTC note should be a clean, compliant disclosure for NIL/sponsored content.`;
 
-  const response = await anthropic.messages.create({
+  const response = await trackedCall(runLogSupabase, { agentName: 'distributor', model: 'claude-fable-5', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
     model: 'claude-fable-5',
     max_tokens: 2048,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
-  });
+  }));
 
   const textBlock = response.content.find((block) => block.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
@@ -324,12 +336,13 @@ ${params.context ? `Context: ${params.context}` : ''}
 
 Return a JSON array of hashtag strings (without the # symbol).`;
 
-  const response = await anthropic.messages.create({
+  const response = await trackedCall(runLogSupabase, { agentName: 'distributor', model: 'claude-fable-5', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
     model: 'claude-fable-5',
     max_tokens: 512,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
-  });
+  }));
 
   const textBlock = response.content.find((block) => block.type === 'text');
   if (!textBlock || textBlock.type !== 'text') return [];

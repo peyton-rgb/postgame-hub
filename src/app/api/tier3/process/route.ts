@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase";
 import Anthropic from "@anthropic-ai/sdk";
 
+import { trackedCall } from "@/lib/agents/run-log";
 const anthropic = new Anthropic();
 
 function normalize(str: string): string {
@@ -200,7 +201,8 @@ export async function POST(req: NextRequest) {
     const bytes = Buffer.from(await thumb.arrayBuffer());
     if (!bytes.length) throw new Error("thumbnail fetch returned no bytes");
 
-    const msg = await anthropic.messages.create({
+    const msg = await trackedCall(supabase, { agentName: 'tier3_scorer', model: SCORING_MODEL, triggerSource: 'system' }, () =>
+      anthropic.messages.create({
       model: SCORING_MODEL,
       max_tokens: 512,
       system: SCORING_SYSTEM,
@@ -220,7 +222,7 @@ export async function POST(req: NextRequest) {
           ],
         },
       ],
-    });
+    }));
 
     const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
     if (!text) throw new Error("model returned no text block");
