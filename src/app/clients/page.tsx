@@ -70,23 +70,15 @@ function useLogoHover() {
 
     gsap.set(logo, { transformOrigin: 'center center' });
 
-    const scaleTo = gsap.quickTo(logo, 'scale', {
-      duration: 0.34,
-      ease: 'power3.out',
-    });
-
+    // A hover fires a couple of times a second, so a plain tween is right here —
+    // quickTo owns one persistent tween and cannot express a different duration
+    // and ease per direction. overwrite:'auto' stops enter/leave stacking.
     const onMouseEnter = () => {
-      if (scaleTo.tween) {
-        scaleTo.tween.duration(0.34);
-      }
-      scaleTo(1.08);
+      gsap.to(logo, { scale: 1.08, duration: 0.34, ease: 'power3.out', overwrite: 'auto' });
     };
 
     const onMouseLeave = () => {
-      if (scaleTo.tween) {
-        scaleTo.tween.duration(0.26);
-      }
-      scaleTo(1);
+      gsap.to(logo, { scale: 1, duration: 0.26, ease: 'power2.out', overwrite: 'auto' });
     };
 
     strip.addEventListener('mouseenter', onMouseEnter);
