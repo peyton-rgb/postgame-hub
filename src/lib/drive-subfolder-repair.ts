@@ -78,18 +78,25 @@ const COLUMN_FOR: Record<string, string> = {
  */
 export async function repairSubfolderIds(
   db: SupabaseClient,
-  opts: { limit?: number; create?: boolean } = {},
+  opts: { limit?: number; create?: boolean; statuses?: string[] } = {},
 ): Promise<RepairReport> {
   const limit = opts.limit ?? 25;
   const create = opts.create ?? false;
 
-  const { data, error } = await db
+  // `statuses` narrows which campaigns are touched. It exists because creating
+  // is not symmetric with adopting: adopting a folder that already exists is
+  // free, whereas creating one puts a new folder in the team's shared drive.
+  // Restricting creation to the campaigns still being worked on ('active')
+  // avoids manufacturing Content folders for hundreds of finished campaigns
+  // that will never have anything filed in them.
+  let query = db
     .from("campaign_recaps")
     .select("id, name, drive_folder_id")
     .not("drive_folder_id", "is", null)
-    .is("drive_content_folder_id", null)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .is("drive_content_folder_id", null);
+  if (opts.statuses?.length) query = query.in("lifecycle_status", opts.statuses);
+
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
 
   if (error) throw new Error(`repair candidate query failed: ${error.message}`);
 

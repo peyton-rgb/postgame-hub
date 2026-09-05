@@ -366,9 +366,19 @@ export async function POST(req: NextRequest) {
     // drive_folder_id set it and this route's own `.is("drive_folder_id", null)`
     // filter then excluded them forever. Adopt-only unless ?create=1 —
     // see lib/drive-subfolder-repair.ts.
+    const repairUrl = new URL(req.url);
+    const repairCreate = repairUrl.searchParams.get("create") === "1";
+    const repairLimit = Number(repairUrl.searchParams.get("repair_limit")) || REPAIR_PER_RUN;
+
+    // Creating is restricted to 'active' campaigns. Adopting an existing folder
+    // is free, but creating one puts a new folder in the team's shared drive,
+    // and a delivered or closed campaign will never have anything filed into a
+    // Content folder made for it now. The daily cron passes no ?create, so its
+    // pass stays adopt-only across every status.
     const repair = await repairSubfolderIds(supabase, {
-      limit: REPAIR_PER_RUN,
-      create: new URL(req.url).searchParams.get("create") === "1",
+      limit: repairLimit,
+      create: repairCreate,
+      statuses: repairCreate ? ["active"] : undefined,
     });
 
     const report = {
