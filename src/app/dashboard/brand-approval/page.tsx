@@ -64,9 +64,11 @@ const APPROVAL_LABELS: Record<string, string> = {
 };
 
 const APPROVAL_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
-  approved: 'bg-green-600/20 text-green-300 border-green-600/30',
-  changes_requested: 'bg-red-600/20 text-red-300 border-red-600/30',
+  // State by weight, not hue — the chip text already names it. Only
+  // changes_requested asks for action, so only it takes accent.
+  pending: 'bg-surface-card text-ink-4 border-hairline',
+  approved: 'bg-surface-card text-ink-3 border-hairline',
+  changes_requested: 'bg-accent/15 text-accent border-accent/30',
 };
 
 const TIER_COLORS: Record<number, string> = {
@@ -226,7 +228,7 @@ export default function BrandApprovalPage() {
   const groups = groupedByBrand();
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-zinc-950 text-ink-1">
       <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* Header */}
@@ -248,16 +250,16 @@ export default function BrandApprovalPage() {
             <div className="text-2xl font-bold">{counts.total}</div>
             <div className="text-sm text-zinc-400">Total</div>
           </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-yellow-900/30">
-            <div className="text-2xl font-bold text-yellow-300">{counts.pending}</div>
+          <div className="bg-zinc-900 rounded-xl p-4 border border-hairline/30">
+            <div className="text-2xl font-bold text-ink-4">{counts.pending}</div>
             <div className="text-sm text-zinc-400">Awaiting Review</div>
           </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-green-900/30">
-            <div className="text-2xl font-bold text-green-300">{counts.approved}</div>
+          <div className="bg-zinc-900 rounded-xl p-4 border border-hairline/30">
+            <div className="text-2xl font-bold text-ink-3">{counts.approved}</div>
             <div className="text-sm text-zinc-400">Approved</div>
           </div>
-          <div className="bg-zinc-900 rounded-xl p-4 border border-red-900/30">
-            <div className="text-2xl font-bold text-red-300">{counts.changes_requested}</div>
+          <div className="bg-zinc-900 rounded-xl p-4 border border-hairline/30">
+            <div className="text-2xl font-bold text-accent">{counts.changes_requested}</div>
             <div className="text-sm text-zinc-400">Changes Requested</div>
           </div>
         </div>
@@ -270,8 +272,8 @@ export default function BrandApprovalPage() {
               onClick={() => setFilter(status)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === status
-                  ? 'bg-orange-600 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                  ? 'bg-orange-600 text-ink-1'
+                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-ink-1'
               }`}
             >
               {status === 'all' ? 'All' : APPROVAL_LABELS[status]}
@@ -356,7 +358,7 @@ export default function BrandApprovalPage() {
 
                         {/* Info */}
                         <div className="p-3 bg-zinc-900/80">
-                          <div className="text-sm text-white font-medium truncate">
+                          <div className="text-sm text-ink-1 font-medium truncate">
                             {item.athlete_name || 'Unknown'}
                           </div>
                           <div className="text-xs text-zinc-500 truncate mt-0.5">
@@ -377,7 +379,7 @@ export default function BrandApprovalPage() {
               {/* Close */}
               <button
                 onClick={() => setSelectedItem(null)}
-                className="absolute top-3 right-3 text-zinc-500 hover:text-white"
+                className="absolute top-3 right-3 text-zinc-500 hover:text-ink-1"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -436,7 +438,7 @@ export default function BrandApprovalPage() {
                   onChange={e => setFeedbackText(e.target.value)}
                   placeholder="Add feedback or change requests..."
                   rows={3}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 resize-none"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-ink-1 placeholder-zinc-600 focus:outline-none focus:border-orange-500 resize-none"
                 />
               </div>
 
@@ -444,13 +446,13 @@ export default function BrandApprovalPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleBrandAction(selectedItem.id, 'approved', feedbackText || undefined)}
-                  className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  className="flex-1 bg-accent hover:opacity-90 text-ink-1 py-2.5 rounded-lg text-sm font-semibold transition-opacity"
                 >
                   Approve
                 </button>
                 <button
                   onClick={() => handleBrandAction(selectedItem.id, 'changes_requested', feedbackText || 'Changes needed')}
-                  className="flex-1 bg-red-600/80 hover:bg-red-600 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  className="flex-1 bg-transparent border border-hairline hover:bg-surface-raised text-ink-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                 >
                   Request Changes
                 </button>
@@ -458,8 +460,8 @@ export default function BrandApprovalPage() {
 
               {/* When changes are requested, explain what happens */}
               {selectedItem.brand_approval_status === 'changes_requested' && (
-                <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-800/30">
-                  <p className="text-xs text-red-300">
+                <div className="mt-4 p-3 rounded-lg bg-surface-card/20 border border-hairline/30">
+                  <p className="text-xs text-accent">
                     This item has been sent back to the Editing Queue with feedback.
                     The editor will revise and resubmit for review.
                   </p>
