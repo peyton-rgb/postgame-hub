@@ -10,12 +10,6 @@ import { usePathname } from "next/navigation";
 // in "/" unless the bare path is genuinely meant to stay public.
 const HIDDEN_ROUTES = ["/admin", "/dashboard", "/board", "/login", "/authorize", "/reset-password", "/media-library", "/brief/", "/run-of-show/", "/recap/", "/optin/", "/bts", "/pitch/", "/portal", "/pkg/", "/packages", "/athlete", "/v/", "/submit/", "/quiz/", "/w9"];
 
-// Exact-match hides. Deliberately separate from HIDDEN_ROUTES: "/clients" as a
-// prefix would also swallow /clients/[slug] and /clients/[slug]/[campaign],
-// which still want the header. The /clients index is a full-bleed page that
-// opens on footage, so it — and only it — renders without the nav.
-const EXACT_HIDDEN_ROUTES = ["/clients"];
-
 export default function SiteNav() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -31,7 +25,6 @@ export default function SiteNav() {
   }, []);
 
   if (HIDDEN_ROUTES.some(r => pathname.startsWith(r))) return null;
-  if (EXACT_HIDDEN_ROUTES.includes(pathname)) return null;
 
   const isHome = pathname === "/homepage" || pathname === "/";
   const navClass = `pg-nav${!isHome || scrolled ? " solid" : ""}`;

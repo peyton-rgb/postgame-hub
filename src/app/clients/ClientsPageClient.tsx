@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Lenis from 'lenis';
+import SiteFooter from '@/components/SiteFooter';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
@@ -316,14 +317,41 @@ export default function ClientsPageClient({
   return (
     <div className="min-h-screen bg-surface text-ink">
       <main className="w-full flex flex-col">
-        {/* 1. Header title card */}
-        <header className="w-full bg-surface px-6 pt-[14vh] pb-[6vh] sm:px-10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink/40">
-            Postgame // Client Roster
+        {/* 1. Page header. Top padding clears the fixed SiteNav. */}
+        <header className="w-full bg-surface px-6 pt-[168px] pb-[7vh] sm:px-10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand">
+            Our Partners
           </p>
-          <h1 className="mt-4 font-display text-[clamp(52px,11vw,168px)] leading-[0.86] tracking-tight text-ink">
-            Clients
+          <h1 className="mt-5 max-w-[15ch] font-display text-[clamp(48px,9vw,140px)] leading-[0.88] tracking-tight text-ink">
+            The brands behind the biggest campaigns
           </h1>
+          <p className="mt-8 max-w-[62ch] text-[15px] leading-relaxed text-ink/60">
+            Postgame has connected iconic brands with over 50,000 college athletes
+            since 2021. adidas, Hollister, Armani, Gillette, Allstate, Crocs,
+            McDonald&rsquo;s and CVS have all run campaigns through us. We build them
+            end to end — casting the athletes, producing the content and running the
+            campaign to post.
+          </p>
+
+          {/* 4. Proof. Brand count is derived from the roster below, so it cannot
+              drift; the athlete figure and start year are Postgame's own published
+              numbers. No icons, palette only. */}
+          <dl className="mt-[7vh] flex flex-wrap gap-x-[8vw] gap-y-8 border-t border-ink/15 pt-8">
+            {[
+              { n: `${tiles.length}`, l: 'Brand partners' },
+              { n: '50,000+', l: 'College athletes' },
+              { n: 'Since 2021', l: 'Running NIL campaigns' },
+            ].map((s) => (
+              <div key={s.l}>
+                <dt className="font-display text-[clamp(34px,4.5vw,64px)] leading-none tracking-tight text-ink">
+                  {s.n}
+                </dt>
+                <dd className="mt-3 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">
+                  {s.l}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </header>
 
         {/* ====================================================================
@@ -342,15 +370,28 @@ export default function ClientsPageClient({
           </p>
         </section>
 
-        {/* 3 + 4. Full-bleed bands: seven with footage, then three without */}
+        {/* 3. Featured Work */}
+        <div className="w-full bg-surface px-6 pb-[5vh] pt-[4vh] sm:px-10">
+          <h2 className="font-display text-[clamp(30px,4vw,60px)] leading-none tracking-tight text-ink">
+            Featured Work
+          </h2>
+          <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">
+            Campaigns we produced end to end
+          </p>
+        </div>
+
+        {/* Full-bleed bands: seven with footage, then three without */}
         {allBands.map((brand, index) => (
           <Band key={brand.slug} brand={brand} index={index} />
         ))}
 
         {/* 5. Brand tile grid — the full roster */}
         <section className="w-full bg-surface px-6 py-[10vh] sm:px-10">
-          <p className="mb-[4vh] font-mono text-[10px] uppercase tracking-[0.3em] text-ink/40">
-            {tiles.length} Brands
+          <h2 className="font-display text-[clamp(30px,4vw,60px)] leading-none tracking-tight text-ink">
+            All Clients
+          </h2>
+          <p className="mt-3 mb-[5vh] font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40">
+            {tiles.length} brands, alphabetically
           </p>
           {/* The roster rarely divides evenly by the column count, so the last
               row is usually short. The grid ground is the page ground and each
@@ -378,6 +419,9 @@ export default function ClientsPageClient({
           </a>
         </section>
       </main>
+
+      {/* 6. The shared site footer, same as /homepage and /press. */}
+      <SiteFooter />
     </div>
   );
 }
