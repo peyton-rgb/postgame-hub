@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import SiteFooter from '@/components/SiteFooter';
-import CampaignCarousel from './CampaignCarousel';
+import HeroCarousel from './HeroCarousel';
 import {
   TILE_LOGO_SCALE_DEFAULT,
   isLightFill,
@@ -50,6 +50,40 @@ function useLogoHover<T extends HTMLElement>() {
   }, []);
 
   return { hostRef, logoRef };
+}
+
+// ---- copy ----------------------------------------------------------------
+//
+// Everything below is lifted verbatim from the live site, with one exception
+// marked as a draft. Nothing here is a paraphrase that strengthens a claim the
+// source does not make, and no result or statistic is invented.
+//
+// Athlete count: the live site carries THREE different figures — 60,000
+// (homepage, "created content for our partners"), 75,000+ (/about, network
+// reach) and 50,000+ (the old copy on this page). 60,000 is the chosen one.
+
+const APP_LINKS = [
+  { label: 'App Store', href: 'https://apps.apple.com/us/app/postgame-app/id1541500365' },
+  { label: 'Google Play', href: 'https://play.google.com/store/apps/details?id=com.pstgm.postgame' },
+];
+
+/**
+ * One eyebrow treatment, so every section is labelled the same way.
+ *
+ * An eyebrow is a label, not a heading — where the section also carries a real
+ * headline, marking both as <h2> gives the section two headings and makes the
+ * outline read as twice as many sections as there are. `heading` promotes the
+ * eyebrow only for the sections whose label IS their only title.
+ */
+function SectionLabel({
+  children,
+  heading = false,
+}: {
+  children: React.ReactNode;
+  heading?: boolean;
+}) {
+  const cls = 'font-mono text-[10px] uppercase tracking-[0.3em] text-brand';
+  return heading ? <h2 className={cls}>{children}</h2> : <p className={cls}>{children}</p>;
 }
 
 // ---- 3. Client directory: small, quiet, all of them ---------------------
@@ -163,72 +197,108 @@ export default function ClientsPageClient({
   return (
     <div className="min-h-screen bg-surface text-ink">
       <main className="w-full">
-        {/* 1. Brand campaign carousel — the page's opening element. */}
-        <CampaignCarousel films={films} />
+        {/* 1. Hero + card row — one system. The card that leaves the row
+            becomes the hero; clicking a card promotes it immediately. */}
+        <HeroCarousel films={films} />
 
-        {/* 2. Intro + stats */}
-        <section className="mx-auto w-full max-w-[1400px] px-6 pb-[3vh] pt-[6vh] sm:px-10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand">Our Partners</p>
-          <h1 className="mt-4 max-w-[21ch] font-display text-[clamp(38px,5.2vw,80px)] leading-[0.92] tracking-tight text-ink">
-            The brands behind the biggest campaigns
-          </h1>
-
-          <div className="mt-[5vh] grid gap-x-[6vw] gap-y-10 border-t border-ink/15 pt-8 lg:grid-cols-12">
-            <p className="max-w-[68ch] text-[15px] leading-relaxed text-ink/60 lg:col-span-7">
-              Postgame has connected iconic brands with over 50,000 college athletes since
-              2021. adidas, Hollister, Armani, Gillette, Allstate, Crocs, McDonald&rsquo;s and
-              CVS have all run campaigns through us. We build them end to end — casting the
-              athletes, producing the content and running the campaign to post.
+        {/* 2. Who Postgame is, and how they have used athletes for these
+            brands. Two paragraphs, every sentence verbatim from
+            home.pstgm.com — this page is a showcase of the work, not a sales
+            page, so the services, platform and results sections that used to
+            sit here are gone. */}
+        <section className="pg-grain w-full border-t border-ink/12 bg-surface-3">
+          <div className="mx-auto w-full max-w-[1400px] px-6 pb-[9vh] pt-[9vh] sm:px-10">
+          <SectionLabel heading>Who we are</SectionLabel>
+          {/* Two columns rather than one 70ch measure hugging the left edge
+              with the right half empty. Same two paragraphs, no new copy —
+              the second one moves across instead of down. */}
+          <div className="mt-6 grid gap-x-[6vw] gap-y-6 border-t border-ink/15 pt-8 md:grid-cols-2">
+            <p className="max-w-[58ch] text-[16px] leading-relaxed text-ink/70">
+              Postgame manages strategic partnerships between brands and college athletes for
+              influencer, social and experiential campaigns. As a full-service sports marketing
+              agency, we connect brands with the biggest names in sports.
             </p>
+            <p className="max-w-[58ch] text-[16px] leading-relaxed text-ink/70">
+              Since 2021 we&rsquo;ve been at the forefront — setting the standard, breaking
+              records, and proving what&rsquo;s possible in NIL. More than 60,000 college
+              athletes have created content for our partners, powering every one of the largest
+              NIL campaigns in college sports history.
+            </p>
+          </div>
+          </div>
+        </section>
 
-            <dl className="grid grid-cols-3 gap-x-6 lg:col-span-5">
-              {[
-                { n: `${tiles.length}`, l: 'Brand partners' },
-                { n: '50,000+', l: 'College athletes' },
-                { n: '2021', l: 'Running NIL since' },
-              ].map((s) => (
-                <div key={s.l} className="min-w-0">
-                  <dt className="font-display text-[clamp(24px,2.6vw,42px)] leading-none tracking-tight text-ink">
-                    {s.n}
-                  </dt>
-                  <dd className="mt-2.5 font-mono text-[9px] uppercase leading-snug tracking-[0.2em] text-ink/40">
-                    {s.l}
-                  </dd>
-                </div>
+        {/* 3. The work — the directory. */}
+        <section className="pg-grain w-full border-t border-ink/12 bg-surface">
+          <div className="mx-auto w-full max-w-[1400px] px-6 pb-[9vh] pt-[8vh] sm:px-10">
+            <SectionLabel>The work</SectionLabel>
+            <h2 className="mt-2 font-display text-[clamp(24px,2.6vw,38px)] leading-none tracking-tight text-ink">
+              {tiles.length} brands
+            </h2>
+
+            {/* The grid sits on its own slightly raised panel so 88 tiles read
+                as one object on the page rather than as the page itself. */}
+            <div className="mt-[3vh] rounded-2xl border border-ink/12 bg-surface-3 p-4 sm:p-6">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {tiles.map((brand, i) => (
+                  <BrandTile key={brand.slug} brand={brand} eager={i < 12} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. ATHLETE CALLOUT — deliberately secondary: one bordered block,
+            small type, no headline weight. Brands are the audience above. */}
+        <section className="pg-grain w-full border-t border-ink/12 bg-surface-3 pt-[6vh]">
+          <div className="mx-auto w-full max-w-[1400px] px-6 sm:px-10">
+          <div className="flex flex-col gap-5 rounded-xl border border-ink/15 bg-surface/70 px-6 py-7 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+            <div className="min-w-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ink/40">
+                Athletes
+              </p>
+              <p className="mt-2 max-w-[52ch] text-[14px] leading-relaxed text-ink/60">
+                Download the app — an exclusive opportunity for current college athletes to earn
+                money by promoting Postgame throughout the year.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-3">
+              {APP_LINKS.map((a) => (
+                <a
+                  key={a.label}
+                  href={a.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="whitespace-nowrap rounded-md border border-ink/25 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink/70 transition-colors duration-200 hover:border-ink/50 hover:text-ink"
+                >
+                  {a.label}
+                </a>
               ))}
-            </dl>
+            </div>
+          </div>
           </div>
         </section>
 
-        {/* 3. The directory — every client, small and quiet */}
-        <section className="mx-auto w-full max-w-[1400px] px-6 pb-[7vh] pt-[4vh] sm:px-10">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink/40">
-            Some of our clients
-          </h2>
-          <p className="mt-2 font-display text-[clamp(24px,2.6vw,38px)] leading-none tracking-tight text-ink">
-            {tiles.length} brands
-          </p>
-          <div className="mt-[3vh] grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {tiles.map((brand, i) => (
-              <BrandTile key={brand.slug} brand={brand} eager={i < 12} />
-            ))}
-          </div>
-        </section>
-
-        {/* 5. CTA */}
-        <section className="mx-auto w-full max-w-[1400px] border-t border-ink/15 px-6 py-[12vh] sm:px-10">
-          <h2 className="max-w-[14ch] font-display text-[clamp(32px,5vw,72px)] leading-[0.92] tracking-tight text-ink">
-            Put your brand in this room.
-          </h2>
-          <a
-            href="https://www.home.pstgm.com/contactus"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-[5vh] inline-block border-b-2 border-brand pb-1 font-mono text-[11px] uppercase tracking-[0.28em] text-ink transition-colors duration-200 hover:text-brand"
-          >
-            Start a campaign
-          </a>
-        </section>
+        {/* 5. CTA — the page's one full-bleed close. It was a small headline
+            against a screen of empty black; it now carries its own ground and
+            the page's single solid use of the brand orange. */}
+        <div className="pg-grain w-full bg-surface-3 pt-[10vh]">
+          <section className="w-full border-t border-ink/12 bg-surface/60">
+            <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-10 px-6 py-[14vh] sm:px-10 lg:flex-row lg:items-end lg:justify-between">
+              <h2 className="max-w-[12ch] font-display text-[clamp(44px,7vw,104px)] leading-[0.88] tracking-tight text-ink">
+                Put your brand in this room.
+              </h2>
+              <a
+                href="https://www.home.pstgm.com/contactus"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block shrink-0 self-start rounded-md bg-brand px-8 py-4 font-mono text-[11px] uppercase tracking-[0.24em] text-ink transition-colors duration-200 hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/60 lg:self-auto"
+              >
+                Start a campaign
+              </a>
+            </div>
+          </section>
+        </div>
       </main>
 
       <SiteFooter />

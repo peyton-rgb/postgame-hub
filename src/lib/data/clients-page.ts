@@ -130,6 +130,7 @@ export const POSTERS: Record<string, string> = {
 const CAROUSEL_BASE = `${SB_CLIENTS}/carousel`;
 
 export const CAROUSEL_STILLS: Record<string, string> = {
+  // Cut from each film.
   adidas: `${CAROUSEL_BASE}/adidas.jpg`,
   cvs: `${CAROUSEL_BASE}/cvs.jpg`,
   allstate: `${CAROUSEL_BASE}/allstate.jpg`,
@@ -137,7 +138,51 @@ export const CAROUSEL_STILLS: Record<string, string> = {
   wendys: `${CAROUSEL_BASE}/wendys.jpg`,
   'raising-canes': `${CAROUSEL_BASE}/raising-canes.jpg`,
   '7eleven': `${CAROUSEL_BASE}/7-eleven.jpg`,
+  // Stills-only brands. Chosen from public.media by is_hero, then
+  // quality_score, then rank; EXIF-rotated, cropped 3:4 biased 32% from the
+  // top so faces do not sit dead-centre, and re-encoded at 900x1200.
+  // aspect_ratio is null on every image row, so the crop could not be chosen
+  // by query — each candidate was measured off its own pixels.
+  brooks: `${CAROUSEL_BASE}/brooks.jpg`,
+  bero: `${CAROUSEL_BASE}/bero.jpg`,
+  hydroflask: `${CAROUSEL_BASE}/hydroflask.jpg`,
+  statsports: `${CAROUSEL_BASE}/statsports.jpg`,
+  'taco-johns': `${CAROUSEL_BASE}/taco-johns.jpg`,
+  goodr: `${CAROUSEL_BASE}/goodr.jpg`,
+  brewshock: `${CAROUSEL_BASE}/brewshock.jpg`,
+  mcdonalds: `${CAROUSEL_BASE}/mcdonalds.jpg`,
+  papatui: `${CAROUSEL_BASE}/papatui.jpg`,
+  dove: `${CAROUSEL_BASE}/dove.jpg`,
+  whoop: `${CAROUSEL_BASE}/whoop.jpg`,
+  zenni: `${CAROUSEL_BASE}/zenni.jpg`,
 };
+
+/**
+ * The row, in display order: the seven film brands interleaved with the twelve
+ * stills-only ones rather than grouped, so the row does not read as "the real
+ * ones first, then the rest". Only the seven with a clip can take the hero.
+ */
+export const CARD_ORDER = [
+  'adidas',
+  'brooks',
+  'cvs',
+  'bero',
+  'allstate',
+  'hydroflask',
+  'crocs',
+  'statsports',
+  'wendys',
+  'taco-johns',
+  '7eleven',
+  'goodr',
+  'raising-canes',
+  'brewshock',
+  'mcdonalds',
+  'papatui',
+  'dove',
+  'whoop',
+  'zenni',
+] as const;
 
 /**
  * Hero fallback video, kept for reference. The carousel replaced it as the
@@ -153,12 +198,19 @@ export const HERO = {
 
 /** One featured film: a brand, its clip, and a real campaign line. */
 export type FeaturedFilm = ClientBrand & {
-  clip: string;
-  poster: string;
-  /** 3:4 portrait crop, for the hero carousel. */
+  /** null for the twelve stills-only brands. */
+  clip: string | null;
+  poster: string | null;
+  /** 3:4 portrait crop. Every card has one. */
   still: string;
   campaignCount: number;
   campaignName: string | null;
+  /**
+   * Whether this card may take the hero. False for the stills-only brands: a
+   * frozen photo where every other hero plays reads as a video that failed to
+   * load. They render an identical card and link to their detail page instead.
+   */
+  canPromote: boolean;
 };
 
 export type ClientBrand = {
@@ -173,6 +225,14 @@ export type ClientBrand = {
   logoOnLight: string | null;
   /** Light-ink file, for the brand-colour tile on hover and for the bands. */
   logoOnDark: string | null;
+  /**
+   * The file to use over photography: full-colour where it survives the scrim
+   * ground, light-ink otherwise. Set by the loader; it was missing from this
+   * type, so every consumer of it was an implicit `any`.
+   */
+  photoLogo: string | null;
+  /** Always false — the file renders as drawn rather than being silhouetted. */
+  photoLogoKnockout: boolean;
   /** False when no variant reads on the tile ground — the tile shows its name. */
   restLogoReads: boolean;
   /** Fraction of the tile's height the logo box should occupy. */
@@ -426,7 +486,7 @@ export async function loadClientsPage(): Promise<{
 
   // Campaign lines come from brand_campaigns — real campaign names and counts,
   // not invented copy. brands.tagline is empty for all 88, so it is not an option.
-  const filmSlugs = [...BAND_ORDER];
+  const filmSlugs = [...CARD_ORDER];
   const filmIds = filmSlugs
     .map((sl) => bySlug.get(sl)?.id)
     .filter((x): x is string => Boolean(x));
@@ -446,18 +506,22 @@ export async function loadClientsPage(): Promise<{
     campaignsByBrand.set(row.brand_id, cur);
   }
 
-  const films: FeaturedFilm[] = filmSlugs
-    .map((sl) => bySlug.get(sl))
+  const films: FeaturedFilm[] = CARD_ORDER.map((sl) => bySlug.get(sl))
     .filter((b): b is ClientBrand => Boolean(b))
+    // A slug with no uploaded still would render an empty card, so drop it
+    // rather than leave a hole in the row.
+    .filter((b) => Boolean(CAROUSEL_STILLS[b.slug]))
     .map((b) => {
       const c = campaignsByBrand.get(b.id);
+      const clip = CLIPS[b.slug] ?? null;
       return {
         ...b,
-        clip: CLIPS[b.slug],
-        poster: POSTERS[b.slug],
+        clip,
+        poster: POSTERS[b.slug] ?? null,
         still: CAROUSEL_STILLS[b.slug],
         campaignCount: c?.count ?? 0,
         campaignName: c?.latest ?? null,
+        canPromote: Boolean(clip),
       };
     });
 
