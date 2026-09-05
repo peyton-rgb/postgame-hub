@@ -122,12 +122,19 @@ const LOGO_VH: Record<string, number> = {
 const LOGO_VH_DEFAULT = 6.4;
 // Per-brand logo placement. A band can move its mark off-centre when the
 // footage is busy where the mark would otherwise land — Allstate's logo sat
-// straight over jacket embroidery. `pool` is the radial scrim's centre and
-// must track the mark, or the legibility pool ends up behind nothing.
-const LOGO_PLACE: Record<string, { cls: string; pool: string }> = {
-  allstate: { cls: 'items-start justify-start p-[4.5vh]', pool: '26% 28%' },
+// straight over jacket embroidery.
+// The knockout and the legibility shadow are one filter chain. brightness-0 and
+// invert are Tailwind *filter* utilities, so setting `filter` inline alongside
+// them would replace the whole property and the mark would render in full
+// colour. The shadow follows the letterforms, so unlike a background pool there
+// is no shape to see on light footage.
+const LOGO_FILTER =
+  'brightness(0) invert(1) drop-shadow(0 2px 12px rgba(7,7,10,0.55)) drop-shadow(0 0 2px rgba(7,7,10,0.9))';
+
+const LOGO_PLACE: Record<string, { cls: string }> = {
+  allstate: { cls: 'items-start justify-start p-[4.5vh]' },
 };
-const LOGO_PLACE_DEFAULT = { cls: 'items-center justify-center p-6', pool: '50% 50%' };
+const LOGO_PLACE_DEFAULT = { cls: 'items-center justify-center p-6' };
 const placement = (slug: string) => LOGO_PLACE[slug] ?? LOGO_PLACE_DEFAULT;
 const ROSTER_LOGO_RATIO = 0.55;
 
@@ -165,18 +172,6 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
         </div>
       )}
 
-      {/* Localised pool behind the mark, carrying the legibility on its own so
-          the flat scrim can stay light and the footage reads at rest. Tighter
-          and faster falling off than a full-band wash; centred on the mark via
-          `pool`. Palette only — #07070a at varying alpha. */}
-      {clip && (
-        <div
-          className="absolute inset-0 z-[5] pointer-events-none"
-          style={{
-            background: `radial-gradient(ellipse 36% 50% at ${placement(brand.slug).pool}, rgba(7,7,10,0.72) 0%, rgba(7,7,10,0.34) 50%, rgba(7,7,10,0) 68%)`,
-          }}
-        />
-      )}
 
       {index === 0 && (
         <div className="absolute top-6 left-6 z-20 font-mono text-[10px] uppercase tracking-[0.28em] text-ink/40 pointer-events-none">
@@ -194,8 +189,8 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
             }}
             src={brand.logoUrl}
             alt={brand.name}
-            style={{ height: logoHeight(brand.slug) }}
-            className="w-auto max-w-[26vw] object-contain brightness-0 invert pointer-events-none select-none will-change-transform"
+            style={{ height: logoHeight(brand.slug), filter: LOGO_FILTER }}
+            className="w-auto max-w-[26vw] object-contain pointer-events-none select-none will-change-transform"
           />
         ) : (
           <span
