@@ -19,10 +19,6 @@ scripts/.import-runs/
 /CampaignEditorBanner.tsx
 /alphaboost_picker_data.json
 /media-library-followups-spec.md
-/phase2/
-/phase3/
-/phase4/
-/route.ts
 /scripts/walk-alphaboost-folders.js
 /walk-stderr.log
 
