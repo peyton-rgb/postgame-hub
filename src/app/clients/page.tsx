@@ -94,6 +94,37 @@ function useLogoHover() {
   return { stripRef, logoRef };
 }
 
+// Logo optical weight.
+//
+// h-[7vh] normalised the BOX, not the mark, and the marks are nothing alike:
+// aspect ratios run 0.75:1 (7-Eleven) to 5.34:1 (Crocs), and several PNGs carry
+// large transparent margins (Wendy's 64%, Raising Cane's 52%, McDonald's 44%).
+// Equal box height therefore produced an 11x spread in actual ink area —
+// Crocs 262 vh^2 against Raising Cane's 24 vh^2 — which is why the arch read
+// tiny beside the wordmarks.
+//
+// These heights equalise INK AREA (~105 vh^2) rather than box height: measured
+// alpha bounds per file, solved h = sqrt(area / aspect), then divided by that
+// file's ink/box ratio to cancel its padding. Clamped to 4.2-9.5vh of ink.
+// The value is the BOX height; the visible mark is smaller by the padding.
+const LOGO_VH: Record<string, number> = {
+  crocs: 4.43,
+  hollister: 4.67,
+  allstate: 4.86,
+  cvs: 5.18,
+  adidas: 7.91,
+  dove: 8.6,
+  '7-eleven': 9.51,
+  mcdonalds: 10.26,
+  wendys: 14.02,
+  'raising-canes': 14.75,
+};
+const LOGO_VH_DEFAULT = 6.4;
+const ROSTER_LOGO_RATIO = 0.55;
+
+const logoHeight = (slug: string, roster = false) =>
+  `${((LOGO_VH[slug] ?? LOGO_VH_DEFAULT) * (roster ? ROSTER_LOGO_RATIO : 1)).toFixed(2)}vh`;
+
 function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
   const clip = CLIPS[brand.slug];
   const poster = POSTERS[brand.slug];
@@ -104,7 +135,9 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
       ref={stripRef}
       href={`/clients/${brand.slug}`}
       data-strip-index={index}
-      className="featured-strip relative block w-full h-[38vh] overflow-hidden bg-surface"
+      className={`featured-strip relative block w-full h-[38vh] overflow-hidden ${
+        clip ? 'bg-surface' : 'bg-surface-2'
+      }`}
     >
       {clip && (
         <div className="strip-media-layer absolute -top-[15%] left-0 w-full h-[130%] pointer-events-none will-change-transform origin-center">
@@ -119,8 +152,21 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
           >
             <source src={clip} type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-surface/50 pointer-events-none" />
+          <div className="absolute inset-0 bg-surface/65 pointer-events-none" />
         </div>
+      )}
+
+      {/* Localised pool behind the mark. The flat scrim alone could not hold a
+          white wordmark over busy frames (the Allstate jacket embroidery read
+          straight through it). Palette only — #07070a at varying alpha. */}
+      {clip && (
+        <div
+          className="absolute inset-0 z-[5] pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse 44% 60% at 50% 50%, rgba(7,7,10,0.78) 0%, rgba(7,7,10,0.45) 45%, rgba(7,7,10,0) 72%)',
+          }}
+        />
       )}
 
       {index === 0 && (
@@ -137,7 +183,8 @@ function FeaturedStrip({ brand, index }: { brand: Brand; index: number }) {
             }}
             src={brand.logoUrl}
             alt={brand.name}
-            className="h-[7vh] w-auto max-w-[26vw] object-contain brightness-0 invert pointer-events-none select-none will-change-transform"
+            style={{ height: logoHeight(brand.slug) }}
+            className="w-auto max-w-[26vw] object-contain brightness-0 invert pointer-events-none select-none will-change-transform"
           />
         ) : (
           <span
@@ -171,7 +218,8 @@ function RosterStrip({ brand }: { brand: Brand }) {
             }}
             src={brand.logoUrl}
             alt={brand.name}
-            className="h-[4vh] w-auto max-w-[20vw] object-contain brightness-0 invert pointer-events-none select-none will-change-transform"
+            style={{ height: logoHeight(brand.slug, true) }}
+            className="w-auto max-w-[20vw] object-contain brightness-0 invert pointer-events-none select-none will-change-transform"
           />
         ) : (
           <span
