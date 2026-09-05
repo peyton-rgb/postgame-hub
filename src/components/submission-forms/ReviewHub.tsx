@@ -664,10 +664,10 @@ function Styles() {
     // queue and Request reshoot appearing to work and doing nothing. This block
     // interpolates no values, so nothing needs escaping.
     <style dangerouslySetInnerHTML={{ __html: `
-.rvx{--bg:#0B0B0F;--surface:#131319;--surface2:#1A1A22;
- --line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);
- --text:#F2F1EE;--muted:#9A9AA4;--faint:#6B6B75;
- --orange:#D73F09;--good:#4FB88A;--mid:#D99A2B;--bad:#CF5049;--red:#A31410;
+.rvx{--bg:var(--ground);--surface:var(--surface-card);--surface2:var(--surface-raised);
+ --line:var(--surface-raised);--line2:var(--hairline);
+ --text:var(--ink-1);--muted:var(--ink-3);--faint:var(--ink-4);
+ --orange:var(--accent);--good:var(--ink-3);--mid:var(--ink-2);--bad:var(--accent);--red:var(--accent);
  background:var(--bg);color:var(--text);min-height:100vh;
  font-family:Arimo,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -683,7 +683,7 @@ function Styles() {
 .rvx .back{display:flex;align-items:center;gap:7px;color:var(--muted);text-decoration:none;
  font-size:14px;padding:7px 11px;border-radius:8px;background:transparent;border:0}
 .rvx .back:hover{background:var(--surface2);color:var(--text)}
-.rvx .mark{width:38px;height:38px;border-radius:9px;background:#fff;display:flex;
+.rvx .mark{width:38px;height:38px;border-radius:9px;background:var(--ink-1);display:flex;
  align-items:center;justify-content:center;flex:none}
 .rvx .mark img{width:26px;height:26px;object-fit:contain}
 /* min-width:0 so the flex child may shrink: without it the campaign name and
@@ -717,16 +717,16 @@ function Styles() {
 .rvx .school{font-size:13px;color:var(--muted)}
 .rvx .chip{display:inline-block;font-size:13px;padding:3px 9px;border-radius:7px;
  border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
-.rvx .chip.ok{border-color:rgba(79,184,138,.4);color:var(--good)}
-.rvx .chip.warn{border-color:rgba(207,80,73,.45);color:var(--bad)}
+.rvx .chip.ok{border-color:var(--surface-raised);color:var(--good)}
+.rvx .chip.warn{border-color:var(--accent-dim);color:var(--bad)}
 .rvx .qwrap{display:flex;align-items:center;gap:10px}
 .rvx .qnum{font-size:17px;font-weight:700;width:26px}
 .rvx .qbars{display:flex;gap:3px;width:96px}
-.rvx .qb{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.11);overflow:hidden}
+.rvx .qb{flex:1;height:5px;border-radius:3px;background:var(--hairline);overflow:hidden}
 .rvx .qb i{display:block;height:100%;border-radius:3px}
 .rvx .go{background:var(--surface2);border:1px solid var(--line2);color:var(--text);
  padding:7px 15px;border-radius:8px;font-size:14px;white-space:nowrap}
-.rvx .go:hover{border-color:var(--orange);color:#F0A184}
+.rvx .go:hover{border-color:var(--orange);color:var(--accent)}
 
 /* workspace */
 .rvx .work{display:grid;grid-template-columns:210px 1fr 340px;height:calc(100vh - 71px);min-height:560px}
@@ -737,7 +737,7 @@ function Styles() {
  margin-bottom:6px;cursor:pointer;align-items:center}
 .rvx .thumb:hover{background:var(--surface2)}
 .rvx .thumb.on{background:var(--surface2);border-color:var(--orange)}
-.rvx .thumb img{width:42px;height:56px;object-fit:cover;border-radius:6px;background:#000;flex:none}
+.rvx .thumb img{width:42px;height:56px;object-fit:cover;border-radius:6px;background:var(--ground);flex:none}
 .rvx .thumb .tn{font-size:13px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .rvx .thumb .ts{font-size:13px;font-weight:700;margin-left:auto}
 .rvx .dot{width:7px;height:7px;border-radius:50%;flex:none}
@@ -745,7 +745,7 @@ function Styles() {
 .rvx .dot.needs_edit{background:var(--orange)}
 .rvx .dot.rejected{background:var(--bad)}
 
-.rvx .stagewrap{display:flex;flex-direction:column;min-width:0;background:#0E0E13;
+.rvx .stagewrap{display:flex;flex-direction:column;min-width:0;background:var(--surface-card);
  /* min-height:0 matters: a grid item defaults to min-height:auto, which is its
     content size, so a tall photo pushes the column past its row and the whole
     page scrolls instead of the image fitting. This is what makes the stage's
@@ -755,31 +755,31 @@ function Styles() {
 .rvx .fname{font-size:15px;font-weight:600;word-break:break-all}
 .rvx .fmeta{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .rvx .st{font-size:12px;padding:1px 7px;border-radius:6px;border:1px solid var(--line2)}
-.rvx .st.approved{border-color:rgba(79,184,138,.45);color:var(--good)}
-.rvx .st.needs_edit{border-color:rgba(215,63,9,.5);color:#F0A184}
-.rvx .st.rejected{border-color:rgba(207,80,73,.45);color:var(--bad)}
+.rvx .st.approved{border-color:var(--surface-raised);color:var(--good)}
+.rvx .st.needs_edit{border-color:var(--accent-dim);color:var(--accent)}
+.rvx .st.rejected{border-color:var(--accent-dim);color:var(--bad)}
 .rvx .crops{display:flex;gap:5px;margin-left:auto}
 .rvx .crops button{background:transparent;border:1px solid var(--line2);color:var(--muted);
  padding:5px 10px;border-radius:7px;font-size:13px}
 .rvx .crops button:hover{color:var(--text)}
-.rvx .crops button.on{background:rgba(215,63,9,.16);border-color:var(--orange);color:#F0A184}
+.rvx .crops button.on{background:var(--accent-dim);border-color:var(--orange);color:var(--accent)}
 .rvx .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:20px;position:relative}
 .rvx .stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
 .rvx .poster{position:absolute;top:28px;left:28px;font-size:12px;color:var(--muted);
- background:rgba(0,0,0,.6);border:1px solid var(--line2);border-radius:7px;padding:3px 9px}
-.rvx .cropbox{position:absolute;border:1px solid rgba(255,255,255,.85);
- box-shadow:0 0 0 9999px rgba(11,11,15,.6);pointer-events:none;display:none}
+ background:rgb(var(--ground-rgb) / .6);border:1px solid var(--line2);border-radius:7px;padding:3px 9px}
+.rvx .cropbox{position:absolute;border:1px solid var(--ink-2);
+ box-shadow:0 0 0 9999px rgb(var(--ground-rgb) / .6);pointer-events:none;display:none}
 .rvx .cropbox.on{display:block}
 
 .rvx .tl{padding:12px 20px 16px;border-top:1px solid var(--line)}
 .rvx .scrub{position:relative;height:22px;cursor:pointer;touch-action:none}
 .rvx .tl.off .scrub{cursor:default;opacity:.45}
-.rvx .track{position:absolute;top:9px;left:0;right:0;height:4px;border-radius:3px;background:rgba(255,255,255,.14)}
+.rvx .track{position:absolute;top:9px;left:0;right:0;height:4px;border-radius:3px;background:var(--hairline)}
 .rvx .fill{position:absolute;top:9px;left:0;height:4px;width:0;border-radius:3px;background:var(--orange)}
-.rvx .head{position:absolute;top:4px;left:0;width:3px;height:14px;border-radius:2px;background:#fff;transform:translateX(-1px)}
-.rvx .tl.off .head{background:rgba(255,255,255,.4)}
+.rvx .head{position:absolute;top:4px;left:0;width:3px;height:14px;border-radius:2px;background:var(--ink-1);transform:translateX(-1px)}
+.rvx .tl.off .head{background:var(--ink-4)}
 .rvx .mk{position:absolute;top:3px;width:13px;height:13px;border-radius:50%;background:var(--orange);
- border:2px solid #0E0E13;transform:translateX(-6.5px);z-index:2}
+ border:2px solid var(--surface-card);transform:translateX(-6.5px);z-index:2}
 .rvx .times{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:2px;
  font-variant-numeric:tabular-nums}
 .rvx .tlnote{font-size:12.5px;color:var(--faint);margin:8px 0 0;line-height:1.45}
@@ -794,16 +794,16 @@ function Styles() {
 .rvx .item{display:flex;gap:10px;padding:10px 11px;border:1px solid var(--line);
  border-radius:10px;margin-bottom:7px;cursor:pointer;align-items:flex-start}
 .rvx .item:hover{border-color:var(--line2)}
-.rvx .item.on{border-color:var(--orange);background:rgba(215,63,9,.08)}
+.rvx .item.on{border-color:var(--orange);background:var(--accent-dim)}
 .rvx .box{width:16px;height:16px;border-radius:5px;border:1px solid var(--line2);flex:none;
  margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent}
-.rvx .item.on .box{background:var(--orange);border-color:var(--orange);color:#fff}
+.rvx .item.on .box{background:var(--orange);border-color:var(--orange);color:var(--ink-1)}
 .rvx .itxt{flex:1;min-width:0}
 .rvx .i1{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
 .rvx .i2{font-size:13px;color:var(--muted);margin-top:2px}
 .rvx .tag{font-size:12px;padding:2px 7px;border-radius:6px;border:1px solid var(--line2);
  color:var(--muted);flex:none;height:fit-content}
-.rvx .tag.hi{border-color:rgba(207,80,73,.45);color:var(--bad)}
+.rvx .tag.hi{border-color:var(--accent-dim);color:var(--bad)}
 .rvx .tc{font-size:13px;color:var(--orange);flex:none;width:44px;font-variant-numeric:tabular-nums}
 .rvx .del{background:none;border:0;color:var(--faint);font-size:17px;line-height:1;flex:none;padding:0 2px}
 .rvx .del:hover{color:var(--bad)}
@@ -815,25 +815,25 @@ function Styles() {
 .rvx .addrow input::placeholder{color:var(--faint)}
 .rvx .addrow button{background:var(--surface2);border:1px solid var(--line2);color:var(--muted);
  border-radius:8px;padding:0 13px}
-.rvx .addrow button:hover{border-color:var(--orange);color:#F0A184}
+.rvx .addrow button:hover{border-color:var(--orange);color:var(--accent)}
 
 .rvx .actions{border-top:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
 .rvx .btn{width:100%;padding:12px;border-radius:9px;font-size:14.5px;font-weight:500;
  border:1px solid var(--line2);background:transparent;color:var(--text)}
 .rvx .btn:hover{border-color:var(--text)}
 .rvx .btn:disabled{opacity:.45;cursor:not-allowed}
-.rvx .btn.primary{background:var(--good);border-color:var(--good);color:#06231A;font-weight:600}
+.rvx .btn.primary{background:var(--good);border-color:var(--good);color:var(--surface-raised);font-weight:600}
 .rvx .btn.primary:hover{filter:brightness(1.07)}
 /* Greyed, but NOT disabled — see the comment on the buttons. */
 .rvx .btn.primary.muted{background:var(--surface2);border-color:var(--line2);color:var(--muted);font-weight:500}
 .rvx .btn.primary.muted:hover{border-color:var(--good);color:var(--good)}
-.rvx .btn.queue.live{background:var(--orange);border-color:var(--orange);color:#fff;font-weight:600}
+.rvx .btn.queue.live{background:var(--orange);border-color:var(--orange);color:var(--ink-1);font-weight:600}
 .rvx .btn.queue.live:disabled{opacity:1}
-.rvx .btn.danger{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.rvx .btn.danger{background:var(--red);border-color:var(--red);color:var(--ink-1);font-weight:600}
 .rvx .btn.danger:hover{filter:brightness(1.15)}
 
 /* reshoot confirm */
-.rvx .scrim{position:fixed;inset:0;background:rgba(6,6,9,.72);display:flex;align-items:center;
+.rvx .scrim{position:fixed;inset:0;background:rgb(var(--ground-rgb) / .72);display:flex;align-items:center;
  justify-content:center;padding:20px;z-index:60}
 .rvx .modal{background:var(--surface);border:1px solid var(--line2);border-radius:14px;
  padding:20px;width:100%;max-width:460px}
@@ -846,7 +846,7 @@ function Styles() {
 
 .rvx .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:70;
  background:var(--surface2);border:1px solid var(--line2);color:var(--text);
- padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+ padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 8px 30px rgb(var(--ground-rgb) / .45)}
 
 @media(max-width:1100px){
  .rvx .work{grid-template-columns:170px 1fr 300px}
