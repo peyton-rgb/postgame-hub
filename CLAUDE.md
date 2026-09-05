@@ -79,6 +79,30 @@ active, stop and ask. Parallel sessions cause branch drift. Use a git worktree f
 
 ---
 
+## Styling landmines
+
+**A CSS custom property resolves where it is DECLARED, not where it is used, and the
+computed result inherits.** This is the single biggest trap in the theme layer. Every
+derived token once sat in `:root`, resolved against the dark roles there, and inherited
+those already-resolved values into the light-themed subtree — so `--ink-1` read
+`rgb(250 248 245 / 1)` *inside* a light element even though `--ink-rgb` was correctly
+`7 7 10` at that same node. Redeclaring only the primitives per theme is not enough: the
+derived layer has to be redeclared inside each theme scope too, which is why it is
+declared on `:root, [data-theme]` and not on `:root` alone.
+
+It fails in a way that looks like the theme "half working" — Tailwind utilities resolve
+at the element and were correct, while `var(--token)` call sites in inline styles and
+injected CSS were wrong, in the same component.
+
+**Diagnose it at the themed node, never at `:root`:**
+```js
+getComputedStyle(document.querySelector('[data-theme]')).getPropertyValue('--ink-1')
+```
+Three theming bugs in one night passed `tsc` and were only ever visible this way. If a
+colour looks wrong, read the computed token before reading the code.
+
+---
+
 ## Brand rules — non-negotiable on any generated output
 - The Postgame mark on any product, mockup, or graphic is **always the real logo file** from the
   `brands` table (Postgame brand ID `7a0e28e9-d62f-427d-a207-cd22596fcf50`).
