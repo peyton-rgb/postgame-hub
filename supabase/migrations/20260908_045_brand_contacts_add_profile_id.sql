@@ -1,4 +1,4 @@
--- Migration 044 · brand_contacts.profile_id
+-- Migration 045 · brand_contacts.profile_id
 --
 -- APPLIED to xqaybwhpgxillpbbqtks on 8 Sep as remote version
 -- 20260908213148 (name: brand_contacts_add_profile_id). This file is a
