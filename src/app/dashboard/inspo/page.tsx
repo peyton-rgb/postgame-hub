@@ -35,8 +35,8 @@ const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
 
 const CONTENT_TYPE_COLORS: Record<ContentType, string> = {
   produced: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  athlete_ugc: 'bg-green-600/20 text-green-300 border-green-600/30',
-  bts: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
+  athlete_ugc: 'bg-status-ok/20 text-status-ok border-status-ok/30',
+  bts: 'bg-status-warn/20 text-status-warn border-status-warn/30',
   raw_footage: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
   photography: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
   talking_head: 'bg-pink-600/20 text-pink-300 border-pink-600/30',
@@ -355,7 +355,7 @@ export default function InspoLibraryPage() {
                 setStatusFilter('ready');
                 setSortBy('newest');
               }}
-              className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
+              className="px-3 py-1.5 text-sm text-status-bad hover:text-status-bad transition-colors"
             >
               Clear Filters
             </button>
@@ -442,7 +442,7 @@ export default function InspoLibraryPage() {
 
                       {/* Hero star */}
                       {item.is_hero && (
-                        <span className="absolute top-1 right-1 text-yellow-400 text-sm">★</span>
+                        <span className="absolute top-1 right-1 text-status-warn text-sm">★</span>
                       )}
 
                       {/* Hover overlay */}
@@ -546,7 +546,7 @@ export default function InspoLibraryPage() {
                   onClick={() => handleToggleHero(selectedItem)}
                   className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
                     selectedItem.is_hero
-                      ? 'bg-yellow-600/20 text-yellow-300 border border-yellow-600/30 hover:bg-yellow-600/30'
+                      ? 'bg-status-warn/20 text-status-warn border border-status-warn/30 hover:bg-status-warn/30'
                       : 'bg-white/10 hover:bg-white/20'
                   }`}
                 >
@@ -590,7 +590,7 @@ export default function InspoLibraryPage() {
                     {selectedItem.brief_fit.map((fit, i) => (
                       <span
                         key={i}
-                        className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-600/10 text-green-300 border border-green-600/20"
+                        className="inline-block px-2 py-0.5 text-xs rounded-full bg-status-ok/10 text-status-ok border border-status-ok/20"
                       >
                         {fit.replace(/_/g, ' ')}
                       </span>

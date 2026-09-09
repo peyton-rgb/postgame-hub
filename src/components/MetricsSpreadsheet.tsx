@@ -688,7 +688,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
         <div className="text-sm text-gray-400">
           <span className="font-bold text-white">{rows.length}</span> athlete{rows.length !== 1 ? "s" : ""}
           {newCount > 0 && <span className="text-[#D73F09] ml-1">({newCount} unsaved)</span>}
-          {deletedIds.length > 0 && <span className="text-red-400 ml-1">({deletedIds.length} to delete)</span>}
+          {deletedIds.length > 0 && <span className="text-status-bad ml-1">({deletedIds.length} to delete)</span>}
         </div>
         <div className="flex items-center gap-2">
           <div className="relative" ref={colToggleRef}>
@@ -774,14 +774,14 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
 
       {/* Sheet import status */}
       {sheetMsg && (
-        <div className={`text-xs ${sheetMsg.ok ? "text-green-400" : "text-red-400/90"}`}>
+        <div className={`text-xs ${sheetMsg.ok ? "text-status-ok" : "text-status-bad/90"}`}>
           {sheetMsg.text}
         </div>
       )}
 
       {/* CSV status */}
       {csvFileName && (
-        <div className="flex items-center gap-2 text-xs text-green-400">
+        <div className="flex items-center gap-2 text-xs text-status-ok">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
           Imported: {csvFileName}
         </div>
@@ -864,7 +864,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
             </div>
           )}
           {sheetMsg && !sheetMsg.ok && (
-            <div className="mt-3 text-xs text-red-400/90 max-w-md mx-auto">{sheetMsg.text}</div>
+            <div className="mt-3 text-xs text-status-bad/90 max-w-md mx-auto">{sheetMsg.text}</div>
           )}
         </div>
       ) : (
@@ -1003,7 +1003,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
                         </td>
                         <td className="sticky left-8 z-10 bg-black w-8 px-1 py-1 text-center border-r border-gray-800">
                           <button onClick={() => deleteRow(row._key, row.id)}
-                            className="text-gray-700 hover:text-red-500 transition-colors" title="Delete">
+                            className="text-gray-700 hover:text-status-bad transition-colors" title="Delete">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                             </svg>
@@ -1042,7 +1042,7 @@ export default function MetricsSpreadsheet({ athletes, campaignId, onSave, savin
                     {/* Delete button */}
                     <td className="sticky left-8 z-10 bg-black w-8 px-1 py-1 text-center border-r border-gray-800">
                       <button onClick={() => deleteRow(row._key, row.id)}
-                        className="text-gray-700 hover:text-red-500 transition-colors" title="Delete">
+                        className="text-gray-700 hover:text-status-bad transition-colors" title="Delete">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         </svg>

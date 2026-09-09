@@ -156,7 +156,7 @@ export default function BtsListClient() {
   }
   if (loadError) {
     return (
-      <div className="text-sm text-red-400">
+      <div className="text-sm text-status-bad">
         Failed to load submissions: {loadError}
       </div>
     );
@@ -235,7 +235,7 @@ export default function BtsListClient() {
                 </span>
                 {s.sheetSyncError && (
                   <span
-                    className="text-xs font-bold text-yellow-400"
+                    className="text-xs font-bold text-status-warn"
                     title={s.sheetSyncError}
                   >
                     ⚠ Sheet sync failed

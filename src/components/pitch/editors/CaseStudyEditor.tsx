@@ -130,7 +130,7 @@ export default function CaseStudyEditor({ data, onChange }: Props) {
             </span>
             <button
               onClick={() => patch({ heroImageUrl: "" })}
-              className="text-xs text-gray-500 hover:text-red-400"
+              className="text-xs text-gray-500 hover:text-status-bad"
             >
               &times;
             </button>
@@ -165,7 +165,7 @@ export default function CaseStudyEditor({ data, onChange }: Props) {
           </div>
         )}
         {uploadError ? (
-          <div className="mt-2 text-xs text-red-400">{uploadError}</div>
+          <div className="mt-2 text-xs text-status-bad">{uploadError}</div>
         ) : null}
       </Field>
       <Field label="Hero Image Alt Text">
@@ -203,7 +203,7 @@ export default function CaseStudyEditor({ data, onChange }: Props) {
             />
             <button
               onClick={() => removeAthlete(i)}
-              className="text-xs text-gray-500 hover:text-red-400"
+              className="text-xs text-gray-500 hover:text-status-bad"
             >
               &times;
             </button>

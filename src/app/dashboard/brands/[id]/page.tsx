@@ -141,7 +141,7 @@ function AssetRow({
       </a>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="px-2 py-1 text-[10px] font-bold text-red-400/60 hover:text-red-400 border border-transparent hover:border-red-400/30 rounded transition-colors opacity-0 group-hover:opacity-100"
+        className="px-2 py-1 text-[10px] font-bold text-status-bad/60 hover:text-status-bad border border-transparent hover:border-status-bad/30 rounded transition-colors opacity-0 group-hover:opacity-100"
       >
         Delete
       </button>
@@ -483,7 +483,7 @@ export default function BrandKitEditorPage() {
                       <span
                         className={`text-[10px] font-bold px-2 py-1 rounded ${
                           c.status === "active"
-                            ? "bg-green-900/30 text-green-400"
+                            ? "bg-status-ok/30 text-status-ok"
                             : "bg-gray-800 text-gray-500"
                         }`}
                       >
@@ -544,7 +544,7 @@ export default function BrandKitEditorPage() {
                       <span
                         className={`text-[10px] font-bold px-2 py-1 rounded ${
                           r.published
-                            ? "bg-green-900/30 text-green-400"
+                            ? "bg-status-ok/30 text-status-ok"
                             : "bg-gray-800 text-gray-500"
                         }`}
                       >
@@ -696,7 +696,7 @@ export default function BrandKitEditorPage() {
                         <span className="text-[10px] text-gray-600 font-mono">{c.hex}</span>
                         <button
                           onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
-                          className="text-gray-700 hover:text-red-400 transition-colors ml-1"
+                          className="text-gray-700 hover:text-status-bad transition-colors ml-1"
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

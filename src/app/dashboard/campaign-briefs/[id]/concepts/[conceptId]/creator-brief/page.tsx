@@ -99,7 +99,7 @@ function VideographerSearch({
           <div className="text-sm font-semibold text-gray-900">{selected.name}</div>
           {selected.phone && <div className="text-xs text-gray-500">{selected.phone}</div>}
         </div>
-        <button onClick={onClear} className="text-gray-400 hover:text-red-500 text-sm">✕</button>
+        <button onClick={onClear} className="text-gray-400 hover:text-status-bad text-sm">✕</button>
       </div>
     );
   }
@@ -389,7 +389,7 @@ export default function CreatorBriefEditorPage() {
               this approved concept.
             </p>
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
+              <div className="bg-red-50 border border-status-bad text-status-bad px-4 py-3 rounded-xl mb-4 text-sm">
                 {error}
               </div>
             )}
@@ -498,11 +498,11 @@ export default function CreatorBriefEditorPage() {
 
       {error && (
         <div className="max-w-3xl mx-auto px-6 mt-4">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex justify-between">
+          <div className="bg-red-50 border border-status-bad text-status-bad px-4 py-3 rounded-xl text-sm flex justify-between">
             {error}
             <button
               onClick={() => setError(null)}
-              className="text-red-400 hover:text-red-600 text-xs ml-4"
+              className="text-status-bad hover:text-status-bad text-xs ml-4"
             >
               Dismiss
             </button>
@@ -1251,9 +1251,9 @@ function SectionPreview({
             ))}
           </ul>
           {tip && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <div className="font-semibold text-amber-700 text-sm">{tip.title}</div>
-              <div className="text-amber-600 text-sm mt-1">{tip.text}</div>
+            <div className="bg-amber-50 border border-status-warn rounded-xl p-4">
+              <div className="font-semibold text-status-warn text-sm">{tip.title}</div>
+              <div className="text-status-warn text-sm mt-1">{tip.text}</div>
             </div>
           )}
         </div>
@@ -1347,21 +1347,21 @@ function SectionPreview({
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <div className="text-green-600 font-semibold text-sm mb-3">Do&apos;s</div>
+            <div className="text-status-ok font-semibold text-sm mb-3">Do&apos;s</div>
             <ul className="space-y-2">
               {dos.map((d, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                  <span className="text-green-500 mt-0.5">&#10003;</span>{d}
+                  <span className="text-status-ok mt-0.5">&#10003;</span>{d}
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <div className="text-red-600 font-semibold text-sm mb-3">Don&apos;ts</div>
+            <div className="text-status-bad font-semibold text-sm mb-3">Don&apos;ts</div>
             <ul className="space-y-2">
               {donts.map((d, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                  <span className="text-red-500 mt-0.5">&#10007;</span>{d}
+                  <span className="text-status-bad mt-0.5">&#10007;</span>{d}
                 </li>
               ))}
             </ul>

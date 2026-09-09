@@ -75,7 +75,7 @@ type ReviewStatus = 'pending_internal' | 'pending_brand' | 'approved' | 'revisio
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending_internal: {
     label: 'Pending Internal',
-    color: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
+    color: 'bg-status-warn/20 text-status-warn border-status-warn/30',
   },
   pending_brand: {
     label: 'Pending Brand',
@@ -83,11 +83,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   },
   approved: {
     label: 'Approved',
-    color: 'bg-green-600/20 text-green-300 border-green-600/30',
+    color: 'bg-status-ok/20 text-status-ok border-status-ok/30',
   },
   revision_requested: {
     label: 'Revisions',
-    color: 'bg-red-600/20 text-red-300 border-red-600/30',
+    color: 'bg-status-bad/20 text-status-bad border-status-bad/30',
   },
 };
 
@@ -504,7 +504,7 @@ export default function ReviewsDashboardPage() {
                           <button
                             onClick={() => setShowRejectForm(true)}
                             disabled={actionLoading}
-                            className="flex-1 px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 text-sm font-medium rounded-lg border border-red-600/30 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 bg-status-bad/20 hover:bg-status-bad/30 text-status-bad text-sm font-medium rounded-lg border border-status-bad/30 transition-colors disabled:opacity-50"
                           >
                             Request Changes
                           </button>
@@ -542,16 +542,16 @@ export default function ReviewsDashboardPage() {
                       )}
 
                       {selectedReview.status === 'approved' && (
-                        <div className="bg-green-600/10 border border-green-600/20 rounded-lg p-3">
-                          <p className="text-xs text-green-300">
+                        <div className="bg-status-ok/10 border border-status-ok/20 rounded-lg p-3">
+                          <p className="text-xs text-status-ok">
                             This asset has been approved and is ready for delivery.
                           </p>
                         </div>
                       )}
 
                       {selectedReview.status === 'revision_requested' && (
-                        <div className="bg-red-600/10 border border-red-600/20 rounded-lg p-3">
-                          <p className="text-xs text-red-300">
+                        <div className="bg-status-bad/10 border border-status-bad/20 rounded-lg p-3">
+                          <p className="text-xs text-status-bad">
                             Changes requested — revision round {selectedReview.revision_round}.
                             Review the feedback below and re-submit.
                           </p>

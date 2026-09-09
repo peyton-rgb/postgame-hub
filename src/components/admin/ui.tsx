@@ -39,7 +39,7 @@ export function StatTile({ label, value, href }: { label: string; value: string;
 /** Honest pending state for features waiting on an unapplied migration. */
 export function PendingMigration({ migration, feature }: { migration: string; feature: string }) {
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+    <div className="rounded-lg border border-status-warn bg-amber-50 px-4 py-3 text-[13px] text-status-warn">
       <span className="font-medium">{feature}</span> arrives with migration{" "}
       <code className="rounded bg-amber-100 px-1">{migration}</code> — written, reviewed in the
       morning, not applied yet. No placeholder data is shown here on purpose.
@@ -49,7 +49,7 @@ export function PendingMigration({ migration, feature }: { migration: string; fe
 
 export function ErrorNote({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-900">
+    <div className="rounded-lg border border-status-bad bg-red-50 px-4 py-3 text-[13px] text-status-bad">
       {message}
     </div>
   );
@@ -75,14 +75,14 @@ export function FlagCell({
 }) {
   if (state === "missing") {
     return (
-      <span title={title ?? "Missing"} className="inline-block font-semibold text-red-600">
+      <span title={title ?? "Missing"} className="inline-block font-semibold text-status-bad">
         ✕
       </span>
     );
   }
   if (state === "done") {
     return (
-      <span title={title ?? "Done"} className="inline-block font-semibold text-green-600">
+      <span title={title ?? "Done"} className="inline-block font-semibold text-status-ok">
         ✓
       </span>
     );

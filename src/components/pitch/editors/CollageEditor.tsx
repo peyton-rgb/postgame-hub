@@ -101,7 +101,7 @@ export default function CollageEditor({ data, onChange }: Props) {
               </span>
               <button
                 onClick={() => removePlate(i)}
-                className="text-xs text-gray-500 hover:text-red-400"
+                className="text-xs text-gray-500 hover:text-status-bad"
               >
                 &times;
               </button>

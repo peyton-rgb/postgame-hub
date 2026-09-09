@@ -347,7 +347,7 @@ export default function NewBriefPage() {
 
         {/* Error message */}
         {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-status-bad/50 border border-status-bad text-status-bad px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
@@ -566,9 +566,9 @@ export default function NewBriefPage() {
 
                   {/* Parse error */}
                   {parseError && (
-                    <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg text-sm">
+                    <div className="bg-status-bad/50 border border-status-bad text-status-bad px-4 py-3 rounded-lg text-sm">
                       {parseError}
-                      <button onClick={() => setParseError(null)} className="ml-3 text-red-400 hover:text-red-200">
+                      <button onClick={() => setParseError(null)} className="ml-3 text-status-bad hover:text-status-bad">
                         Dismiss
                       </button>
                     </div>
@@ -576,18 +576,18 @@ export default function NewBriefPage() {
 
                   {/* Parsed results preview */}
                   {parsedBrief && (
-                    <div className="bg-green-900/20 border border-green-800/50 rounded-xl p-4">
+                    <div className="bg-status-ok/20 border border-status-ok/50 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-green-400 font-medium text-sm">AI Parsed Successfully</span>
+                        <span className="text-status-ok font-medium text-sm">AI Parsed Successfully</span>
                         <span className="text-gray-500 text-xs">— review below and edit anything that looks off</span>
                       </div>
 
                       {/* Confidence flags */}
                       {parsedBrief.confidence_flags && (parsedBrief.confidence_flags as unknown[]).length > 0 && (
                         <div className="mb-3 space-y-1">
-                          <span className="text-yellow-400 text-xs font-medium">Heads up — the AI flagged these:</span>
+                          <span className="text-status-warn text-xs font-medium">Heads up — the AI flagged these:</span>
                           {(parsedBrief.confidence_flags as { field: string; reason: string }[]).map((flag, i) => (
-                            <div key={i} className="text-xs text-yellow-300/70 bg-yellow-900/20 rounded px-2 py-1">
+                            <div key={i} className="text-xs text-status-warn/70 bg-status-warn/20 rounded px-2 py-1">
                               <span className="font-medium">{flag.field}:</span> {flag.reason}
                             </div>
                           ))}

@@ -76,10 +76,10 @@ const CHANNEL_DOT_COLORS: Record<string, string> = {
 // --- Status badges ---
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
-  approved: { label: 'Approved', classes: 'bg-green-600/20 text-green-300 border-green-600/30' },
+  approved: { label: 'Approved', classes: 'bg-status-ok/20 text-status-ok border-status-ok/30' },
   scheduled: { label: 'Scheduled', classes: 'bg-blue-600/20 text-blue-300 border-blue-600/30' },
   published: { label: 'Published', classes: 'bg-purple-600/20 text-purple-300 border-purple-600/30' },
-  failed: { label: 'Failed', classes: 'bg-red-600/20 text-red-300 border-red-600/30' },
+  failed: { label: 'Failed', classes: 'bg-status-bad/20 text-status-bad border-status-bad/30' },
 };
 
 // --- Helpers ---
@@ -559,8 +559,8 @@ export default function PublishingPage() {
 
                             {/* Error */}
                             {item.publish_error && (
-                              <div className="mb-4 p-2 bg-red-600/10 border border-red-600/20 rounded-lg">
-                                <p className="text-xs text-red-400">{item.publish_error}</p>
+                              <div className="mb-4 p-2 bg-status-bad/10 border border-status-bad/20 rounded-lg">
+                                <p className="text-xs text-status-bad">{item.publish_error}</p>
                               </div>
                             )}
 
@@ -595,7 +595,7 @@ export default function PublishingPage() {
                               {/* Remove from queue */}
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleRemoveFromQueue(item.id); }}
-                                className="px-4 py-1.5 bg-red-600/10 text-red-400 border border-red-600/20 rounded-lg text-xs font-medium hover:bg-red-600/20 transition"
+                                className="px-4 py-1.5 bg-status-bad/10 text-status-bad border border-status-bad/20 rounded-lg text-xs font-medium hover:bg-status-bad/20 transition"
                               >
                                 Remove from Queue
                               </button>

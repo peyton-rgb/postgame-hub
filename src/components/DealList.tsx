@@ -98,7 +98,7 @@ export default function DealList() {
               Are you sure you want to delete{" "}
               <span className="text-white font-bold">{confirmDelete.brand_name}</span>?
             </p>
-            <p className="text-xs text-red-400/70 mb-6">This cannot be undone.</p>
+            <p className="text-xs text-status-bad/70 mb-6">This cannot be undone.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
@@ -191,7 +191,7 @@ export default function DealList() {
                     <span
                       className={`text-xs font-bold px-2 py-1 rounded ${
                         deal.published
-                          ? "bg-green-900/30 text-green-400"
+                          ? "bg-status-ok/30 text-status-ok"
                           : "bg-gray-800 text-gray-500"
                       }`}
                     >
@@ -203,7 +203,7 @@ export default function DealList() {
                         e.stopPropagation();
                         setConfirmDelete(deal);
                       }}
-                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
                       title="Delete deal"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -240,7 +240,7 @@ export default function DealList() {
                     <span
                       className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${
                         deal.published
-                          ? "bg-green-900/30 text-green-400"
+                          ? "bg-status-ok/30 text-status-ok"
                           : "bg-gray-800 text-gray-500"
                       }`}
                     >
@@ -260,7 +260,7 @@ export default function DealList() {
                     e.stopPropagation();
                     setConfirmDelete(deal);
                   }}
-                  className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                  className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                   title="Delete deal"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

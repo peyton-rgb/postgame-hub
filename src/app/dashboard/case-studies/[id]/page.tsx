@@ -212,7 +212,7 @@ export default function CaseStudyEditor() {
                 />
                 <button
                   onClick={() => removeHighlight(i)}
-                  className="px-3 text-gray-600 hover:text-red-400 transition-colors"
+                  className="px-3 text-gray-600 hover:text-status-bad transition-colors"
                   title="Remove"
                 >
                   ×

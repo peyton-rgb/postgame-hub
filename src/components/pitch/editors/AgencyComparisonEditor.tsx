@@ -96,7 +96,7 @@ export default function AgencyComparisonEditor({ data, onChange }: Props) {
               <span className="text-xs font-bold text-[#D73F09]">Row {i + 1}</span>
               <button
                 onClick={() => removeRow(i)}
-                className="text-xs text-gray-500 hover:text-red-400"
+                className="text-xs text-gray-500 hover:text-status-bad"
               >
                 &times;
               </button>
@@ -172,7 +172,7 @@ export default function AgencyComparisonEditor({ data, onChange }: Props) {
               </span>
               <button
                 onClick={() => removeBenefit(i)}
-                className="text-xs text-gray-500 hover:text-red-400"
+                className="text-xs text-gray-500 hover:text-status-bad"
               >
                 &times;
               </button>

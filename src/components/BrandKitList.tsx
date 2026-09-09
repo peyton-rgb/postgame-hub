@@ -38,8 +38,8 @@ function getKitChecklist(b: Brand & Record<string, unknown>): boolean[] {
 
 function getKitLabel(score: number): { label: string; color: string; bg: string } {
   if (score === 0) return { label: "No Kit", color: "text-gray-500", bg: "bg-gray-800" };
-  if (score === 7) return { label: "Complete", color: "text-green-400", bg: "bg-green-900/30" };
-  return { label: "Partial", color: "text-yellow-400", bg: "bg-yellow-900/30" };
+  if (score === 7) return { label: "Complete", color: "text-status-ok", bg: "bg-status-ok/30" };
+  return { label: "Partial", color: "text-status-warn", bg: "bg-status-warn/30" };
 }
 
 function getInitials(name: string) {
@@ -107,12 +107,12 @@ export default function BrandKitList() {
         </div>
         <div className="w-px h-8 bg-gray-800" />
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-black text-green-400">{withKit}</span>
+          <span className="text-2xl font-black text-status-ok">{withKit}</span>
           <span className="text-xs text-gray-500 font-bold uppercase">Have Kit Data</span>
         </div>
         <div className="w-px h-8 bg-gray-800" />
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-black text-yellow-400">{needKit}</span>
+          <span className="text-2xl font-black text-status-warn">{needKit}</span>
           <span className="text-xs text-gray-500 font-bold uppercase">Need Kits</span>
         </div>
         <div className="w-px h-8 bg-gray-800" />
@@ -233,7 +233,7 @@ export default function BrandKitList() {
                       key={item}
                       className={`text-[9px] font-bold text-center py-1 rounded ${
                         checklist[i]
-                          ? "bg-green-900/30 text-green-400"
+                          ? "bg-status-ok/30 text-status-ok"
                           : "bg-gray-800/50 text-gray-700"
                       }`}
                     >

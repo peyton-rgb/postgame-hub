@@ -134,7 +134,7 @@ export default function ReviewPage() {
   }, [d]);
 
   if (loading) return <DashboardContent><div className="text-white/40 text-sm py-16 text-center">Loading…</div></DashboardContent>;
-  if (error || !d) return <DashboardContent><div className="text-red-400 text-sm py-16 text-center">{error || "Not found"}</div></DashboardContent>;
+  if (error || !d) return <DashboardContent><div className="text-status-bad text-sm py-16 text-center">{error || "Not found"}</div></DashboardContent>;
 
   const s = d.submission;
   const idx = d.siblings.indexOf(s.id);
@@ -358,7 +358,7 @@ export default function ReviewPage() {
               </div>
 
               <div className="flex gap-2">
-                <button onClick={approveSubmission} disabled={busy} className="flex-1 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-emerald-400 disabled:opacity-50">
+                <button onClick={approveSubmission} disabled={busy} className="flex-1 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-status-ok disabled:opacity-50">
                   Approve{s.status === "approved" ? "d ✓" : ""}
                 </button>
                 <button onClick={rejectSubmission} disabled={busy} className="flex-1 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-white/60 disabled:opacity-50">
@@ -413,6 +413,6 @@ function Media({ label, url, isVideo, thumb, big }: { label: string; url: string
 
 function StepDot({ status }: { status: string }) {
   const cls =
-    status === "completed" ? "bg-emerald-400" : status === "running" ? "bg-[#D73F09] animate-pulse" : status === "failed" ? "bg-red-400" : "bg-white/20";
+    status === "completed" ? "bg-status-ok" : status === "running" ? "bg-accent animate-pulse" : status === "failed" ? "bg-status-bad" : "bg-surface-raised";
   return <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${cls}`} />;
 }
