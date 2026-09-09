@@ -164,10 +164,24 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
   // campaign_id because review_sessions carries no brand_id. head+count so
   // the count comes from SQL and no rows cross the wire. The table has 0 rows
   // database-wide today, so this is a real 0, not a placeholder.
+  //
+  // NAME-TWIN: review_sessions.campaign_id REFERENCES brand_campaigns, NOT
+  // campaign_recaps. An earlier cut of this passed campaign_recaps ids
+  // straight in, which can never match a brand_campaigns key — it would have
+  // returned 0 forever, and looked correct today only because the table is
+  // empty. The ids have to come from brand_campaigns for this brand.
+  // Confirmed in information_schema; same trap as campaign_optins vs
+  // optin_campaigns in CLAUDE.md.
+  const brandCampaignsRes = await supabase
+    .from("brand_campaigns")
+    .select("id")
+    .eq("brand_id", brandId);
+  const brandCampaignIds = ((brandCampaignsRes.data ?? []) as { id: string }[]).map((r) => r.id);
+
   const waitingRes = await supabase
     .from("review_sessions")
     .select("id", { count: "exact", head: true })
-    .in("campaign_id", campaigns.length ? campaigns.map((c) => c.id) : [NO_MATCH])
+    .in("campaign_id", brandCampaignIds.length ? brandCampaignIds : [NO_MATCH])
     .is("brand_decision", null);
   const waitingCount = waitingRes.count ?? 0;
 
