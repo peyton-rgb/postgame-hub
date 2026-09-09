@@ -43,6 +43,20 @@ These render live client-facing recaps. Breaking them breaks work already delive
 Only one agent works this repo at a time. If another Claude Code or Cowork session may be
 active, stop and ask. Parallel sessions cause branch drift. Use a git worktree for real parallelism.
 
+**Agent builds go in `~/postgame/hub-claude`, never in `~/postgame/hub`.**
+Peyton runs a dev server on port 3001 out of the primary checkout. `next dev`
+and `next build` share one `.next` per directory, so a build or a
+`rm -rf .next/...` in the primary checkout pulls compiled routes out from under
+that running server — which is exactly how `/portal/choose` started 404ing on
+2026-09-09. It was not a stale cache and not a regression; it was a second
+process writing the same `.next`.
+
+`~/postgame/hub-claude` is a worktree with `node_modules` and `.env.local`
+symlinked to the primary checkout and its own `.next`. Verified: a full build
+there leaves the primary `.next` untouched. Run every build and dev server from
+it. Note a branch can only be checked out in one worktree at a time, so the
+branch being worked on has to live in whichever checkout is using it.
+
 ---
 
 ## Schema landmines

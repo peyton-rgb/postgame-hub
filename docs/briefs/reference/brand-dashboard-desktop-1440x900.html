@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brand portal — dashboard (desktop, 1440 × 900)</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html{-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  body{margin:0;background:#1a1a1e;font-family:Arimo,Arial,sans-serif;color:#FAF8F5;padding:32px}
+  .label{color:rgba(250,248,245,.5);font-size:13px;margin-bottom:12px}
+  .frame{width:1440px;height:900px;background:#07070A;position:relative;overflow:hidden;display:grid;grid-template-columns:72px 1fr;border-radius:8px;font-size:13px}
+  .rail{display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:6px;border-right:1px solid rgba(250,248,245,.09);background:#0A0A0D}
+  .rail img{width:32px;height:32px;margin-bottom:14px}
+  .rail i{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(250,248,245,.45)}
+  .rail i.on{background:rgba(250,248,245,.1);color:#FAF8F5}
+  .rail i svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .rail .sp{flex:1}
+  .rail .ava{width:34px;height:34px;border-radius:50%;background:rgba(250,248,245,.14);border:2px solid rgba(250,248,245,.2)}
+  .main{padding:16px 22px 18px;display:grid;grid-template-rows:auto auto 1fr;gap:12px;min-height:0}
+  .topbar{display:flex;align-items:center;justify-content:space-between}
+  .pills{display:flex;gap:4px;background:#111114;border:1px solid rgba(250,248,245,.09);border-radius:999px;padding:4px}
+  .pills span{padding:7px 14px;border-radius:999px;color:rgba(250,248,245,.6)}
+  .pills span.on{background:#FAF8F5;color:#07070A;font-weight:700}
+  .tools{display:flex;align-items:center;gap:8px}
+  .t{height:36px;padding:0 14px;border-radius:999px;background:#111114;border:1px solid rgba(250,248,245,.09);display:flex;align-items:center;gap:8px;color:rgba(250,248,245,.75)}
+  .t.search{width:220px;color:rgba(250,248,245,.4)}
+  .av{width:36px;height:36px;border-radius:50%;background:#D73F09;display:flex;align-items:center;justify-content:center}
+  .av svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .head{display:flex;align-items:flex-end;justify-content:space-between}
+  h1{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:38px;line-height:.92;margin:0;letter-spacing:.01em}
+  .sub{color:rgba(250,248,245,.55);margin:4px 0 0}
+  .kpis{display:flex;gap:26px}
+  .kpi{text-align:right}
+  .kpi b{display:block;font-family:Anton,Impact,sans-serif;font-weight:400;font-size:26px;line-height:1}
+  .kpi span{font-size:11px;color:rgba(250,248,245,.5)}
+  .kpi .up{color:#5DCAA5;font-size:11px;margin-left:6px}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(6,1fr);gap:10px;min-height:0}
+  .tile{background:#111114;border:1px solid rgba(250,248,245,.08);border-radius:14px;padding:14px;position:relative;overflow:hidden;min-height:0;display:flex;flex-direction:column}
+  .tile h3{margin:0 0 6px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .tile h3 .ic{width:18px;height:18px;border-radius:5px;background:rgba(250,248,245,.08);display:inline-flex;align-items:center;justify-content:center}
+  .tile h3 .ic svg{width:11px;height:11px;stroke:rgba(250,248,245,.75);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .tile .more{position:absolute;top:13px;right:13px;font-size:11px;color:rgba(250,248,245,.5)}
+  .muted{color:rgba(250,248,245,.5);font-size:11px}
+  .num{font-family:Anton,Impact,sans-serif;font-weight:400}
+  .alert{grid-column:1/4;grid-row:1/3;background:#D73F09;border-color:#D73F09;color:#fff}
+  .alert h3{color:#fff} .alert h3 .ic{background:#fff} .alert h3 .ic svg{stroke:#D73F09}
+  .alert .count{position:absolute;top:12px;right:12px;background:#fff;color:#D73F09;font-weight:700;font-size:11px;padding:3px 8px;border-radius:999px}
+  .alert .item{margin-top:6px;background:rgba(0,0,0,.28);border-radius:9px;padding:6px 9px;display:flex;align-items:center;gap:9px;line-height:1.2;font-size:12px}
+  .alert .item .ki{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.16);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .alert .item .ki svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .alert .item b{display:block;font-size:12px}
+  .alert .item small{color:rgba(255,255,255,.8);font-size:11px}
+  .alert .item em{margin-left:auto;font-style:normal;font-size:11px;background:rgba(255,255,255,.18);padding:3px 7px;border-radius:999px;white-space:nowrap}
+  .alert .cta{margin-top:auto;background:#fff;color:#D73F09;font-weight:700;text-align:center;padding:7px;border-radius:999px;font-size:12px}
+  .chart{grid-column:4/8;grid-row:1/3}
+  .seg{position:absolute;top:10px;right:12px;display:flex;gap:3px;background:rgba(250,248,245,.05);border-radius:999px;padding:3px}
+  .seg span{padding:4px 10px;border-radius:999px;font-size:11px;color:rgba(250,248,245,.5)}
+  .seg span.on{background:#D73F09;color:#fff;font-weight:700}
+  .bars{flex:1;display:flex;align-items:flex-end;gap:8px;margin-top:8px;padding-bottom:4px;border-bottom:1px solid rgba(250,248,245,.08)}
+  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%}
+  .bar i{display:block;border-radius:4px 4px 2px 2px;background:rgba(250,248,245,.12)}
+  .bar i.o{background:#D73F09}.bar i.p{background:rgba(215,63,9,.45)}
+  .days{display:flex;gap:8px;margin-top:6px}
+  .days span{flex:1;text-align:center;font-size:10px;color:rgba(250,248,245,.5)}
+  .days span.on{color:#FAF8F5;font-weight:700}
+  .legend{display:flex;gap:14px;margin-top:6px;font-size:11px;color:rgba(250,248,245,.6)}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .ring{grid-column:8/10;grid-row:1/3}
+  .ringwrap{display:flex;align-items:center;gap:12px;margin-top:4px}
+  .ringwrap svg{width:82px;height:82px;flex:0 0 auto}
+  .ringwrap .n{font-size:26px;line-height:1}
+  .split{margin-top:auto;display:flex;flex-direction:column;gap:6px}
+  .split div{display:flex;align-items:center;gap:8px;font-size:11px}
+  .split div span{width:56px;color:rgba(250,248,245,.6)}
+  .split div .b{flex:1;height:6px;border-radius:3px;background:rgba(250,248,245,.1)}
+  .split div .b i{display:block;height:6px;border-radius:3px;background:#D73F09}
+  .split div b{width:30px;text-align:right}
+  .photo{grid-column:10/13;grid-row:1/4;padding:0}
+  .photo img{width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block}
+  .photo .over{position:absolute;left:0;right:0;bottom:0;padding:70px 16px 14px;background:linear-gradient(0deg,rgba(7,7,10,.94),rgba(7,7,10,0))}
+  .photo .over small{display:block;font-size:11px;color:rgba(250,248,245,.7);margin-bottom:4px}
+  .photo .over h2{font-family:Anton,Impact,sans-serif;font-weight:400;text-transform:uppercase;font-size:28px;line-height:.92;margin:0 0 8px}
+  .photo .over .stats{display:flex;gap:14px;font-size:11px;color:rgba(250,248,245,.75)}
+  .photo .over .stats b{display:block;font-family:Anton,Impact,sans-serif;font-weight:400;font-size:18px;color:#FAF8F5}
+  .photo .tag{position:absolute;top:12px;left:12px;background:rgba(7,7,10,.6);border:1px solid rgba(250,248,245,.2);padding:4px 9px;border-radius:999px;font-size:11px}
+  .roster{grid-column:1/8;grid-row:3/6}
+  table{width:100%;border-collapse:collapse;margin-top:6px}
+  th{text-align:left;font-weight:400;font-size:10px;color:rgba(250,248,245,.45);padding:4px 6px;border-bottom:1px solid rgba(250,248,245,.08)}
+  td{padding:6px;border-bottom:1px solid rgba(250,248,245,.06);font-size:12px;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  td .who{display:flex;align-items:center;gap:8px}
+  td .who img{width:26px;height:26px;border-radius:50%;object-fit:cover}
+  td .who small{display:block;font-size:10px;color:rgba(250,248,245,.5)}
+  .st{display:inline-block;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700}
+  .st.g{background:rgba(93,202,165,.15);color:#5DCAA5}
+  .st.o{background:rgba(215,63,9,.18);color:#FF6A3D}
+  .st.n{background:rgba(250,248,245,.08);color:rgba(250,248,245,.65)}
+  .mini{width:80px;height:5px;border-radius:3px;background:rgba(250,248,245,.1);display:inline-block;vertical-align:middle;margin-right:6px}
+  .mini i{display:block;height:5px;border-radius:3px;background:#D73F09}
+  .sched{grid-column:8/10;grid-row:3/6}
+  .day{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid rgba(250,248,245,.06);font-size:11px}
+  .day:last-child{border-bottom:0}
+  .day .d{width:34px;text-align:center;color:rgba(250,248,245,.5);line-height:1.2}
+  .day .d b{display:block;font-family:Anton,Impact,sans-serif;font-weight:400;font-size:16px;color:#FAF8F5}
+  .day .d.on b{color:#D73F09}
+  .day .ev{flex:1}
+  .day .ev b{display:block;font-size:12px}
+  .day .ev small{color:rgba(250,248,245,.5);font-size:10px}
+  .day .n{width:22px;height:22px;border-radius:7px;background:rgba(215,63,9,.18);color:#FF6A3D;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:11px}
+  .top{grid-column:10/13;grid-row:4/7}
+  .post{display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid rgba(250,248,245,.06)}
+  .post:last-child{border-bottom:0}
+  .post img{width:34px;height:42px;border-radius:7px;object-fit:cover}
+  .post .r{font-family:Anton,Impact,sans-serif;color:rgba(250,248,245,.4);width:14px}
+  .post b{display:block;font-size:12px}
+  .post small{font-size:10px;color:rgba(250,248,245,.5)}
+  .post .v{margin-left:auto;text-align:right;font-size:11px}
+  .post .v b{font-family:Anton,Impact,sans-serif;font-weight:400;font-size:15px}
+  .content{grid-column:1/10;grid-row:6/7;flex-direction:row;align-items:center;gap:10px}
+  .content h3{margin:0;width:110px;flex:0 0 auto;flex-direction:column;align-items:flex-start;gap:4px}
+  .content h3 small{font-weight:400;color:rgba(250,248,245,.5);font-size:10px}
+  .camps{flex:1;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+  .camp{background:rgba(250,248,245,.04);border:1px solid rgba(250,248,245,.07);border-radius:10px;padding:9px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}
+  .camp .cn{font-family:"Bebas Neue",Impact,sans-serif;font-size:16px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .camp .cm{font-size:10px;color:rgba(250,248,245,.5)}
+  .camp .cb{height:4px;border-radius:2px;background:rgba(250,248,245,.1);margin-top:auto}
+  .camp .cb i{display:block;height:4px;border-radius:2px;background:rgba(250,248,245,.35)}
+  .camp.live .cb i{background:#D73F09}
+  .camp .cf{display:flex;justify-content:space-between;font-size:10px;color:rgba(250,248,245,.55)}
+  .camp .cf b{color:rgba(250,248,245,.7)}
+  .camp.live .cf b{color:#FF6A3D}
+</style>
+</head>
+<body>
+<div class="label">Brand portal — Dashboard reference (desktop, 1440 × 900). Real athlete photos from published recaps; brand names omitted; all figures illustrative — in the build every number comes from a query or is not shown.</div>
+<div class="frame">
+  <div class="rail">
+    <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/postgame-icon.svg" alt="Postgame">
+    <i class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></i>
+    <i><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></i>
+    <i><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg></i>
+    <i><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></i>
+    <i><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></i>
+    <span class="sp"></span>
+    <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></i>
+    <span class="ava"></span>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div class="pills"><span class="on">Home</span><span>Campaigns</span><span>Athletes</span><span>Content</span><span>Reports</span></div>
+      <div class="tools"><span class="t search">Search campaigns, athletes, posts</span><span class="t">This quarter ▾</span><span class="t">Notifications</span><span class="av"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span></div>
+    </div>
+    <div class="head">
+      <div><h1>Welcome back</h1><p class="sub">Tuesday, September 8</p></div>
+      <div class="kpis">
+        <div class="kpi"><b>4</b><span>Live campaigns</span></div>
+        <div class="kpi"><b>26</b><span>Athletes active</span></div>
+        <div class="kpi"><b>2.4M<span class="up">▲ 18%</span></b><span>Reach · 14 days</span></div>
+        <div class="kpi"><b>68<span class="up">▲ 12</span></b><span>Posts this month</span></div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="tile alert">
+        <h3><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h0"/><path d="M10.3 3.9 2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>Waiting on you</h3>
+        <span class="count">3</span>
+        <div class="item"><span class="ki"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></span><div><b>Two reels to review</b><small>Diamond Sports · Rafael Betancourt</small></div><em>Due today</em></div>
+        <div class="item"><span class="ki"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 17l5-5 4 4 3-3 6 6"/></svg></span><div><b>Athlete approval</b><small>Always-On · Brynn Roberts</small></div><em>2 days</em></div>
+        <div class="item"><span class="ki"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg></span><div><b>Caption edit requested</b><small>Glycerin Flex · Kayla Macleod</small></div><em>4 days</em></div>
+        <div class="cta">Review all 3</div>
+      </div>
+      <div class="tile chart">
+        <h3><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7"/></svg></span>Posts going live</h3>
+        <div class="seg"><span class="on">Week</span><span>Month</span><span>Quarter</span></div>
+        <div class="bars">
+          <div class="bar"><i class="p" style="height:12%"></i><i class="o" style="height:22%"></i></div>
+          <div class="bar"><i class="p" style="height:18%"></i><i class="o" style="height:34%"></i></div>
+          <div class="bar"><i class="p" style="height:8%"></i><i class="o" style="height:20%"></i></div>
+          <div class="bar"><i class="p" style="height:28%"></i><i class="o" style="height:58%"></i></div>
+          <div class="bar"><i style="height:16%"></i><i style="height:30%"></i></div>
+          <div class="bar"><i style="height:10%"></i><i style="height:14%"></i></div>
+          <div class="bar"><i style="height:6%"></i><i style="height:10%"></i></div>
+        </div>
+        <div class="days"><span>Sun</span><span>Mon</span><span class="on">Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+        <div class="legend"><span><i style="background:#D73F09"></i>Feed + Reels</span><span><i style="background:rgba(215,63,9,.45)"></i>Stories</span><span><i style="background:rgba(250,248,245,.12)"></i>Scheduled</span><span style="margin-left:auto">This week 12 · last week 9</span></div>
+      </div>
+      <div class="tile ring">
+        <h3><span class="ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>Deliverables</h3>
+        <div class="ringwrap">
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(250,248,245,.1)" stroke-width="10"/><circle cx="50" cy="50" r="40" fill="none" stroke="#D73F09" stroke-width="10" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="96" transform="rotate(-90 50 50)"/></svg>
+          <div><div class="num n">62%</div><div class="muted" style="margin-top:3px">31 of 50 delivered</div><div class="muted">6 in review · 13 scheduled</div></div>
+        </div>
+        <div class="split">
+          <div><span>Instagram</span><div class="b"><i style="width:64%"></i></div><b>64%</b></div>
+          <div><span>TikTok</span><div class="b"><i style="width:28%"></i></div><b>28%</b></div>
+          <div><span>X</span><div class="b"><i style="width:8%"></i></div><b>8%</b></div>
+        </div>
+      </div>
+      <div class="tile photo">
+        <img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/e6dcfb46-d2ec-42f2-b002-2a79c027bb78/1b269a00-9f4e-4960-8cc0-7616ed97acd0/1777999853884-DSC07574.jpg" alt="">
+        <span class="tag">Latest wrapped</span>
+        <div class="over"><small>Trey Bridges · Grambling State · Baseball</small><h2>World Cup</h2>
+          <div class="stats"><div><b>18</b>Athletes</div><div><b>41</b>Posts</div><div><b>1.1M</b>Reach</div><div><b>4.2%</b>Engagement</div></div></div>
+      </div>
+      <div class="tile roster">
+        <h3><span class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0 0-6M21.5 20a5.5 5.5 0 0 0-4-5.3"/></svg></span>Live campaign · Campaign name <span class="muted" style="font-weight:400;margin-left:6px">Q3 2026 · Instagram + TikTok · 26 athletes · 9 schools</span></h3>
+        <span class="more">All athletes ›</span>
+        <table>
+          <thead><tr><th>Athlete</th><th>School</th><th>Deliverables</th><th>Progress</th><th>Status</th><th>Reach</th><th>Next</th></tr></thead>
+          <tbody>
+            <tr><td><div class="who"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/9b5a651f-9225-4a9f-bbd1-a72d0a994a98/0122b9a1-4c8c-48d7-ac06-f53cca8e7158/1779867887076-Untitled-35.jpg" alt=""><div>Rafael Betancourt<small>Baseball</small></div></div></td><td>South Florida</td><td>1 Reel · 2 Stories</td><td><span class="mini"><i style="width:66%"></i></span>2/3</td><td><span class="st o">In review</span></td><td>184K</td><td>Thu</td></tr>
+            <tr><td><div class="who"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/1eac6ff4-29c0-4ec7-994d-c1fec313839e/7d8f0670-7a11-4dae-9883-a753760e08b1/1775756974900-TylerCorboMedia-3191.jpg" alt=""><div>Brynn Roberts<small>Cheer &amp; Dance</small></div></div></td><td>Denver</td><td>2 Reels</td><td><span class="mini"><i style="width:100%"></i></span>2/2</td><td><span class="st g">Posted</span></td><td>96K</td><td>—</td></tr>
+            <tr><td><div class="who"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/da8511e3-390e-4f3c-93ab-ef7cbe860d7d/d7172225-c5d7-4acb-82f8-a46f59c74e49/1775580630490-Brooks_Glycerin_Flex_Kayla_Macleod_005.jpeg" alt=""><div>Kayla Macleod<small>Lacrosse</small></div></div></td><td>Clemson</td><td>1 Reel · 1 Story</td><td><span class="mini"><i style="width:50%"></i></span>1/2</td><td><span class="st o">Caption edit</span></td><td>72K</td><td>Fri</td></tr>
+            <tr><td><div class="who"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/4d7f7e3a-0a4e-4e01-a652-8aaeb50be129/7a8f52e9-8822-471a-9288-043bb4a52dc6/1779916004988-pstg4_1.73.1.JPEG" alt=""><div>Wade Taylor<small>Basketball</small></div></div></td><td>Texas A&amp;M</td><td>1 TikTok · 1 Reel</td><td><span class="mini"><i style="width:100%"></i></span>2/2</td><td><span class="st g">Posted</span></td><td>310K</td><td>—</td></tr>
+            <tr><td><div class="who"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/01a9c500-6fab-4d17-9814-4a2df095f83b/c5787733-17d3-4a7b-8508-5d0d1cf426dd/1776354612948-Post3.PNG" alt=""><div>Imari Berry<small>Basketball</small></div></div></td><td>Louisville</td><td>1 Reel · 2 Stories</td><td><span class="mini"><i style="width:33%"></i></span>1/3</td><td><span class="st n">Scheduled</span></td><td>58K</td><td>Sat</td></tr>
+            <tr><td><div class="who"><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/77599a89-b246-4020-bbe6-e1e28ca6635c/3b1c76b7-0e4a-443f-b732-c678d7af7cdf/1776356976375-3.png" alt=""><div>Jessica Timmons<small>Basketball</small></div></div></td><td>Alabama</td><td>2 Reels</td><td><span class="mini"><i style="width:0%"></i></span>0/2</td><td><span class="st n">Opted in</span></td><td>—</td><td>Mon</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tile sched">
+        <h3><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>This week</h3>
+        <span class="more">Calendar ›</span>
+        <div class="day"><div class="d on"><b>8</b>Tue</div><div class="ev"><b>Reels in review</b><small>Diamond Sports · 2 pending</small></div><span class="n">2</span></div>
+        <div class="day"><div class="d"><b>10</b>Thu</div><div class="ev"><b>4 posts go live</b><small>Campaign name · IG + TikTok</small></div><span class="n">4</span></div>
+        <div class="day"><div class="d"><b>11</b>Fri</div><div class="ev"><b>Content drop</b><small>Shoot day edits delivered</small></div><span class="n">6</span></div>
+        <div class="day"><div class="d"><b>12</b>Sat</div><div class="ev"><b>2 posts go live</b><small>Campaign name · Stories</small></div><span class="n">2</span></div>
+        <div class="day"><div class="d"><b>15</b>Tue</div><div class="ev"><b>Recap delivered</b><small>Always-On · Q3</small></div><span class="n">1</span></div>
+      </div>
+      <div class="tile top">
+        <h3><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg></span>Top posts · 30 days</h3>
+        <span class="more">All results ›</span>
+        <div class="post"><span class="r">1</span><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/4d7f7e3a-0a4e-4e01-a652-8aaeb50be129/7a8f52e9-8822-471a-9288-043bb4a52dc6/1779916004988-pstg4_1.73.1.JPEG" alt=""><div><b>Wade Taylor</b><small>IG Reel · Texas A&amp;M</small></div><div class="v"><b>310K</b><br>views</div></div>
+        <div class="post"><span class="r">2</span><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/9b5a651f-9225-4a9f-bbd1-a72d0a994a98/0122b9a1-4c8c-48d7-ac06-f53cca8e7158/1779867887076-Untitled-35.jpg" alt=""><div><b>Rafael Betancourt</b><small>TikTok · South Florida</small></div><div class="v"><b>184K</b><br>views</div></div>
+        <div class="post"><span class="r">3</span><img src="https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/1eac6ff4-29c0-4ec7-994d-c1fec313839e/7d8f0670-7a11-4dae-9883-a753760e08b1/1775756974900-TylerCorboMedia-3191.jpg" alt=""><div><b>Brynn Roberts</b><small>IG Reel · Denver</small></div><div class="v"><b>96K</b><br>views</div></div>
+      </div>
+      <div class="tile content">
+        <h3>Campaigns<small>4 live · 44 wrapped</small></h3>
+        <div class="camps">
+          <div class="camp live"><div class="cn">Campaign name</div><div class="cm">Q3 2026 · IG + TikTok</div><div class="cb"><i style="width:38%"></i></div><div class="cf"><span>19 of 50 posted</span><b>Live</b></div></div>
+          <div class="camp live"><div class="cn">Campaign name</div><div class="cm">Q3 2026 · Instagram</div><div class="cb"><i style="width:72%"></i></div><div class="cf"><span>18 of 25 posted</span><b>Live</b></div></div>
+          <div class="camp live"><div class="cn">Campaign name</div><div class="cm">Q3 2026 · TikTok</div><div class="cb"><i style="width:10%"></i></div><div class="cf"><span>3 of 30 posted</span><b>Live</b></div></div>
+          <div class="camp live"><div class="cn">Campaign name</div><div class="cm">Q3 2026 · IG + X</div><div class="cb"><i style="width:55%"></i></div><div class="cf"><span>11 of 20 posted</span><b>Live</b></div></div>
+          <div class="camp"><div class="cn">World Cup</div><div class="cm">Q2 2026 · 18 athletes</div><div class="cb"><i style="width:100%"></i></div><div class="cf"><span>Recap delivered</span><b>Wrapped</b></div></div>
+          <div class="camp"><div class="cn">Diamond Sports</div><div class="cm">Q2 2026 · 22 athletes</div><div class="cb"><i style="width:100%"></i></div><div class="cf"><span>Recap delivered</span><b>Wrapped</b></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
