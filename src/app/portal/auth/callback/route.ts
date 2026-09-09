@@ -166,18 +166,34 @@ export async function GET(request: NextRequest) {
   // ---- 6 · stamp + activate the attachments ------------------------
   const ids = attachments.map((a) => a.id);
 
-  // Unclaimed rows get the attachment-level link and their activation
-  // timestamp. Scoped to profile_id IS NULL so a repeat sign-in never
-  // rewrites an activated_at that already means something.
+  // (a) Claim unclaimed attachments. `.is("profile_id", null)` so this can
+  // never take an attachment another login already holds.
   await svc
     .from("brand_contacts")
-    .update({ profile_id: user.id, activated_at: nowIso, status: "active" })
+    .update({ profile_id: user.id, status: "active" })
     .in("id", ids)
     .is("profile_id", null);
 
-  // Rows already claimed by THIS login that are still sitting at invited
-  // or bounced. Scoped to their own profile_id, so this cannot touch
-  // anyone else's attachment.
+  // (b) Stamp the activation date ONLY where there isn't one.
+  //
+  // Deliberately a separate statement scoped to activated_at IS NULL,
+  // rather than being folded into (a). profile_id and activated_at are
+  // independently populated in the live data: the pilot attachment was
+  // activated on 2026-08-17 through the password signup flow, which set
+  // activated_at but not profile_id (the column did not exist yet). Setting
+  // both together on "profile_id is null" would silently rewrite that real
+  // August date to today the first time they sign in with OAuth. Checked
+  // against the actual row before writing this.
+  await svc
+    .from("brand_contacts")
+    .update({ activated_at: nowIso })
+    .in("id", ids)
+    .eq("profile_id", user.id)
+    .is("activated_at", null);
+
+  // (c) Rows already claimed by THIS login that are still sitting at
+  // invited or bounced. Scoped to their own profile_id, so this cannot
+  // touch anyone else's attachment.
   await svc
     .from("brand_contacts")
     .update({ status: "active" })
