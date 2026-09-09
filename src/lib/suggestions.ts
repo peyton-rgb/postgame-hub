@@ -12,6 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceSupabase } from "@/lib/supabase-server";
 
+import { trackedCall } from "@/lib/agents/run-log";
 const MODEL = process.env.AUTO_EDITOR_MODEL || "claude-opus-4-8";
 
 // Rough pre-approval cost estimates, in Higgsfield credits, shown for triage
@@ -113,13 +114,14 @@ async function modelSuggestions(deliverable: any, evaluation: any, deal: any, ch
   });
 
   try {
-    const res = await client.messages.create({
+    const res = await trackedCall(createServiceSupabase(), { agentName: 'suggestions', model: MODEL, triggerSource: 'system' }, () =>
+      client.messages.create({
       model: MODEL,
       max_tokens: 2000,
       tools: [SUGGEST_TOOL as any],
       tool_choice: { type: "tool", name: SUGGEST_TOOL.name },
       messages: [{ role: "user", content }],
-    });
+    }));
     const block: any = res.content.find((b: any) => b.type === "tool_use");
     const raw = Array.isArray(block?.input?.suggestions) ? block.input.suggestions : [];
     return raw.map((s: any) => ({

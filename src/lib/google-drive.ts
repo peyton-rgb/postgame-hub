@@ -503,3 +503,79 @@ export async function trashFilesByName(
   }
   return ids.length;
 }
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
+/** Pause. Named so a bare setTimeout in a Drive loop is obvious at the call site. */
+export function driveSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Reasons Google gives that mean "slow down", as opposed to "you may not".
+ *
+ * This distinction is the whole point of the helper below. Drive answers BOTH
+ * throttling and a genuine permission denial with HTTP 403, so retrying on the
+ * status alone would sit in a backoff loop against a folder the service account
+ * will never be allowed to read, and would turn one permanent failure into four
+ * slow ones.
+ */
+const RETRYABLE_REASONS = new Set([
+  "userRateLimitExceeded",
+  "rateLimitExceeded",
+  "quotaExceeded",
+  "backendError",
+  "internalError",
+]);
+
+/** Does this error mean "retry later"? */
+export function isDriveRateLimit(err: unknown): boolean {
+  const e = err as {
+    code?: number;
+    status?: number;
+    errors?: Array<{ reason?: string }>;
+    response?: { status?: number; data?: { error?: { errors?: Array<{ reason?: string }> } } };
+  };
+
+  const status = e?.code ?? e?.status ?? e?.response?.status;
+  if (status === 429) return true;
+  if (typeof status === "number" && status >= 500) return true;
+
+  const reasons = [
+    ...(e?.errors ?? []),
+    ...(e?.response?.data?.error?.errors ?? []),
+  ].map((r) => r?.reason);
+
+  // 403 only counts when Google named a throttling reason.
+  return reasons.some((r) => r && RETRYABLE_REASONS.has(r));
+}
+
+/**
+ * Run a Drive call, retrying only throttling with exponential backoff + jitter.
+ *
+ * Jitter matters: the repair pass makes the same three lookups per campaign in
+ * a tight loop, so a fixed backoff would re-collide with itself on every retry.
+ *
+ * Anything that is not a rate limit is rethrown immediately and unchanged.
+ */
+export async function withDriveRetry<T>(
+  label: string,
+  fn: () => Promise<T>,
+  opts: { retries?: number; baseMs?: number } = {},
+): Promise<T> {
+  const retries = opts.retries ?? 3;
+  const baseMs = opts.baseMs ?? 500;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isDriveRateLimit(err) || attempt >= retries) throw err;
+      const wait = Math.round(baseMs * 2 ** attempt * (1 + Math.random()));
+      console.warn(
+        `[drive] ${label} rate-limited (attempt ${attempt + 1}/${retries + 1}), retrying in ${wait}ms`,
+      );
+      await driveSleep(wait);
+    }
+  }
+}

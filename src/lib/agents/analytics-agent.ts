@@ -27,6 +27,17 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+import { createClient } from "@supabase/supabase-js";
+import { trackedCall } from "@/lib/agents/run-log";
+
+// Service client, added so this module can record its own agent_runs rows.
+// It previously called a model and logged nothing, so its spend was invisible
+// to agent_budgets.
+const runLogSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 const anthropic = new Anthropic();
 
 // Type for metrics data passed to the agent
@@ -149,7 +160,8 @@ export async function scorePerformance(metrics: MetricsInput): Promise<ScoreResu
     description: metrics.inspo_item?.visual_description || 'No description available',
   };
 
-  const response = await anthropic.messages.create({
+  const response = await trackedCall(runLogSupabase, { agentName: 'analytics', model: 'claude-sonnet-4-20250514', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1024,
     system: SCORING_SYSTEM,
@@ -162,7 +174,7 @@ Metrics:
 ${JSON.stringify(metricsContext, null, 2)}`,
       },
     ],
-  });
+  }));
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
@@ -234,7 +246,8 @@ export async function generateInsights(
       condensed.filter((m) => m.d7_engagement_rate > 0).length
     : 0;
 
-  const response = await anthropic.messages.create({
+  const response = await trackedCall(runLogSupabase, { agentName: 'analytics', model: 'claude-sonnet-4-20250514', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
     system: INSIGHTS_SYSTEM,
@@ -255,7 +268,7 @@ ${JSON.stringify(condensed, null, 2)}
 Return JSON matching the insights schema.`,
       },
     ],
-  });
+  }));
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
@@ -291,7 +304,8 @@ export async function suggestTopPerformers(
   // Take top 10 candidates
   const candidates = sorted.slice(0, 10);
 
-  const response = await anthropic.messages.create({
+  const response = await trackedCall(runLogSupabase, { agentName: 'analytics', model: 'claude-sonnet-4-20250514', triggerSource: 'system' }, () =>
+    anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
     system: `You are the Analytics Agent for Postgame. Given top-performing content assets, explain WHY each one performed well and how it could be repurposed.
@@ -318,7 +332,7 @@ ${JSON.stringify(candidates.map((m) => ({
 })), null, 2)}`,
       },
     ],
-  });
+  }));
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
