@@ -146,6 +146,9 @@ export async function middleware(request: NextRequest) {
     "/portal/settings",
     // The toolbar search box's results page.
     "/portal/search",
+    // The recap library. /portal/reports (the metrics dashboard) is already
+    // listed above; this is the shelf that used to share its name.
+    "/portal/recaps",
   ]);
 
   // Campaign detail lives under an allowlisted parent, so it is a prefix
@@ -256,5 +259,6 @@ export const config = {
     "/portal/content",
     "/portal/settings",
     "/portal/search",
+    "/portal/recaps",
   ],
 };

@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import PortalShell, { TileEmpty } from "@/components/portal/PortalShell";
+import PortalShell from "@/components/portal/PortalShell";
 import { resolveSessionPortal } from "@/lib/portal/session-portal";
 import { getPostgameIcon } from "@/lib/portal-data";
-import { loadReports } from "@/lib/portal/pages-data";
-import ReportsLibrary from "./ReportsLibrary";
+import { loadReportsMetrics } from "@/lib/portal/pages-data";
+import ReportsDashboard from "./ReportsDashboard";
 
-// Reports (Phase 3b): the recap library, grouped by quarter.
+// Reports: the metrics dashboard across every wrapped campaign.
+//
+// The recap-card library that used to live here is now /portal/recaps. Two
+// different things were sharing one name — the shelf of recaps to open, and
+// the numbers across them.
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const metadata: Metadata = {
@@ -19,7 +23,7 @@ export default async function Page({
   searchParams: Record<string, string | undefined>;
 }) {
   const { brand, preview } = await resolveSessionPortal(searchParams.brand);
-  const [icon, data] = await Promise.all([getPostgameIcon(), loadReports(brand.id)]);
+  const [icon, data] = await Promise.all([getPostgameIcon(), loadReportsMetrics(brand.id)]);
 
   return (
     <PortalShell
@@ -27,20 +31,13 @@ export default async function Page({
       postgameIcon={icon}
       preview={preview}
       title="Reports"
-      subtitle={data.total > 0 ? `${data.total} wrapped campaigns` : null}
+      subtitle={
+        data.rows.length > 0
+          ? `${data.rows.length} wrapped ${data.rows.length === 1 ? "campaign" : "campaigns"}`
+          : null
+      }
     >
-      <div className="pgd-page">
-        {data.total === 0 ? (
-          <div className="pgd-panel">
-            <TileEmpty
-              line="No recaps yet"
-              note="Wrapped campaigns and their recaps will be listed here."
-            />
-          </div>
-        ) : (
-          <ReportsLibrary groups={data.groups} />
-        )}
-      </div>
+      <ReportsDashboard data={data} />
     </PortalShell>
   );
 }

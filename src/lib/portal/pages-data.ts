@@ -110,6 +110,35 @@ const WEB_SAFE = /\.(jpe?g|png|gif|webp)($|\?)/i;
  * 600, not 420: the Content tiles reach 300px wide, which is 600 device
  * pixels on a 2x screen.
  */
+/**
+ * The searchable text for a media row: who, where, which campaign, and the
+ * filename. Lowercased once here so filtering is a substring test rather than
+ * a per-keystroke rebuild of four fields.
+ *
+ * The filename is decoded (%20 back to a space) and stripped of its path and
+ * the upload timestamp prefix, so "darius acuff" matches
+ * ".../1775691416036-2026_CVS_Darius_Acuff_Jr.18.jpg".
+ */
+function searchText(
+  athlete: string | null | undefined,
+  school: string | null | undefined,
+  campaign: string | null | undefined,
+  url: string
+): string {
+  let file = "";
+  try {
+    file = decodeURIComponent(url.split("?")[0].split("/").pop() ?? "");
+  } catch {
+    file = url.split("?")[0].split("/").pop() ?? "";
+  }
+  // Drop the "1775691416036-" upload prefix and turn separators into spaces.
+  file = file.replace(/^\d{10,}-/, "").replace(/[._\-]+/g, " ");
+  return [athlete, school, campaign, file]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 export function mediaThumb(
   thumbnailUrl: string | null,
   fileUrl: string | null
@@ -305,6 +334,18 @@ export interface MediaItem {
   thumbUrl: string;
   /** Serve if thumbUrl fails. Only set where thumbUrl is a transform call. */
   thumbFallbackUrl: string | null;
+  /**
+   * Everything about this row that is searchable, lowercased, built once.
+   *
+   * THERE IS NO CAPTION OR TAG COLUMN ON `media`. The columns are id,
+   * athlete_id, campaign_id, type, urls, storage/source ids, sizes, focal
+   * points, hero flags and `slot` — and `slot` is populated on 5 of CVS's 460
+   * rows with no vocabulary behind it. So the free text on a media row is the
+   * athlete, the school, the campaign and the FILENAME, which is real text
+   * people recognise ("2026_CVS_Darius_Acuff_Jr.18.jpg"). Logged as the reason
+   * keyword search covers those four and not "tags".
+   */
+  haystack: string;
   isVideo: boolean;
   athleteName: string | null;
   /** From athletes.school via media.athlete_id — the gallery's school filter. */
@@ -452,6 +493,12 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
         // fails the MediaItem[] assignment.
         school: null as string | null,
         campaignName: c.name,
+        haystack: searchText(
+          m.athlete_id ? nameById.get(m.athlete_id) : null,
+          null,
+          c.name,
+          url
+        ),
         createdAt: m.created_at,
       };
     })
@@ -610,6 +657,12 @@ export async function loadContentGallery(brandId: string) {
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
         school: m.athlete_id ? schoolById.get(m.athlete_id) ?? null : null,
         campaignName: m.campaign_id ? nameByCampaign.get(m.campaign_id) ?? null : null,
+        haystack: searchText(
+          m.athlete_id ? nameById.get(m.athlete_id) : null,
+          m.athlete_id ? schoolById.get(m.athlete_id) : null,
+          m.campaign_id ? nameByCampaign.get(m.campaign_id) : null,
+          url
+        ),
         createdAt: m.created_at,
       };
     })
@@ -1010,4 +1063,205 @@ export async function loadPortalSearch(brandId: string, rawQuery: string) {
   }));
 
   return { query: q, tooShort: false, campaigns, athletes };
+}
+
+// ---- 8 · Reports: the metrics dashboard -------------------------
+// The recap LIBRARY moved to /portal/recaps; this is what /portal/reports is
+// now — one page of numbers for every wrapped campaign.
+//
+// SAME RULES AS EVERY OTHER SURFACE. Nothing is invented, nothing is
+// zero-filled, and a figure appears only where at least one athlete reported
+// it. The headline totals come from portal_brand_report_totals (migration
+// 058) because a distinct-person count cannot be summed from per-campaign
+// counts, and the per-campaign rows come from portal_campaign_post_metrics,
+// which is already the source the Results tab uses — so a campaign's row here
+// and its own Results tab cannot disagree.
+
+export interface ReportRow {
+  campaignId: string;
+  name: string;
+  slug: string | null;
+  quarter: string | null;
+  quarterSort: number;
+  athletes: number | null;
+  posts: number | null;
+  reelViews: number | null;
+  impressions: number | null;
+  followers: number | null;
+}
+
+export interface ReportQuarter {
+  label: string;
+  sortKey: number;
+  posts: number;
+  reelViews: number;
+}
+
+export interface TopAthlete {
+  athleteId: string;
+  name: string;
+  school: string | null;
+  campaignName: string | null;
+  views: number;
+  postUrl: string | null;
+}
+
+export interface ReportsMetrics {
+  totals: { label: string; value: string; sub?: string }[];
+  rows: ReportRow[];
+  /** Which optional columns any row actually has. A column nobody has is not
+      rendered — an empty column asserts a measurement that was never taken. */
+  columns: { athletes: boolean; posts: boolean; reelViews: boolean; impressions: boolean; followers: boolean };
+  quarters: ReportQuarter[];
+  topAthletes: TopAthlete[];
+}
+
+/** PostgREST returns numeric as a string; bigint too. */
+function num(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function loadReportsMetrics(brandId: string): Promise<ReportsMetrics> {
+  const supabase = createServerSupabase();
+
+  const [totalsRes, campRes, statsRes, topRes] = await Promise.all([
+    supabase
+      .from("portal_brand_report_totals")
+      .select(
+        "campaigns, athletes, posts, reel_views, reel_views_athletes, impressions, impressions_athletes, followers, followers_athletes"
+      )
+      .eq("brand_id", brandId)
+      .maybeSingle(),
+    supabase
+      .from("portal_campaigns")
+      .select("id, name, slug, lifecycle_status, admin_created_on, quarter")
+      .eq("brand_id", brandId),
+    supabase.from("portal_campaign_stats").select("campaign_id, athletes").eq("brand_id", brandId),
+    supabase
+      .from("portal_top_posts")
+      .select("athlete_id, athlete_name, school, campaign_name, views, post_url")
+      .eq("brand_id", brandId)
+      .order("views", { ascending: false })
+      .limit(10),
+  ]);
+
+  const wrapped = ((campRes.data ?? []) as RawCampaign[]).filter((c) =>
+    isWrapped(c.lifecycle_status)
+  );
+
+  // One request for the per-campaign metrics, scoped to the wrapped ids. 46
+  // for CVS, so far inside PostgREST's 1000-row ceiling.
+  const metricsById = new Map<string, PostMetricsRow>();
+  if (wrapped.length > 0) {
+    const { data } = await supabase
+      .from("portal_campaign_post_metrics")
+      .select(POST_METRICS_SELECT)
+      .in("campaign_id", wrapped.map((c) => c.id));
+    for (const m of (data ?? []) as unknown as (PostMetricsRow & { campaign_id: string })[]) {
+      metricsById.set(m.campaign_id, m);
+    }
+  }
+
+  const athletesById = new Map<string, number>();
+  for (const r of (statsRes.data ?? []) as { campaign_id: string; athletes: number | null }[]) {
+    if (r.athletes !== null) athletesById.set(r.campaign_id, r.athletes);
+  }
+
+  const rows: ReportRow[] = wrapped
+    .map((c) => {
+      // Same quarter rule as the recap library: a STORED quarter wins, but
+      // only when it is a real value — 12 of CVS's 13 non-null quarters are
+      // the empty string, which is falsy.
+      const stored = c.quarter && c.quarter.trim() ? c.quarter.trim() : null;
+      const derived = c.admin_created_on ? quarterFromDate(c.admin_created_on) : null;
+      const m = metricsById.get(c.id);
+      // A figure is null, not 0, where nobody reported it — so the table can
+      // leave the cell blank instead of asserting a zero.
+      const has = (contributors: number | null | undefined) => (contributors ?? 0) > 0;
+      return {
+        campaignId: c.id,
+        name: c.name ?? "Campaign",
+        slug: c.slug,
+        quarter: stored || derived?.label || null,
+        quarterSort: derived?.sortKey ?? 0,
+        athletes: athletesById.get(c.id) ?? null,
+        posts: m && num(m.posts) ? num(m.posts) : null,
+        reelViews: has(m?.reel_views_athletes) ? num(m?.reel_views) : null,
+        impressions:
+          has(m?.feed_impressions_athletes) || has(m?.story_impressions_athletes)
+            ? (num(m?.feed_impressions) ?? 0) + (num(m?.story_impressions) ?? 0)
+            : null,
+        followers: has(m?.followers_athletes) ? num(m?.followers) : null,
+      };
+    })
+    .sort((a, b) => b.quarterSort - a.quarterSort || a.name.localeCompare(b.name));
+
+  const columns = {
+    athletes: rows.some((r) => r.athletes !== null),
+    posts: rows.some((r) => r.posts !== null),
+    reelViews: rows.some((r) => r.reelViews !== null),
+    impressions: rows.some((r) => r.impressions !== null),
+    followers: rows.some((r) => r.followers !== null),
+  };
+
+  // ---- the quarter chart -------------------------------------------
+  // Grouped from the rows above rather than queried again, so the bars and the
+  // table are arithmetically the same numbers. Quarters with neither posts nor
+  // views are dropped: an empty bar pair says nothing a missing one doesn't.
+  const byQuarter = new Map<string, ReportQuarter>();
+  for (const r of rows) {
+    if (!r.quarter) continue;
+    const q = byQuarter.get(r.quarter) ?? {
+      label: r.quarter,
+      sortKey: r.quarterSort,
+      posts: 0,
+      reelViews: 0,
+    };
+    q.posts += r.posts ?? 0;
+    q.reelViews += r.reelViews ?? 0;
+    q.sortKey = Math.max(q.sortKey, r.quarterSort);
+    byQuarter.set(r.quarter, q);
+  }
+  // Array.from, not a spread: this file's tsconfig target predates iterable
+  // spread of a Map iterator.
+  const quarters = Array.from(byQuarter.values())
+    .filter((q) => q.posts > 0 || q.reelViews > 0)
+    .sort((a, b) => a.sortKey - b.sortKey);
+
+  // ---- headline totals ---------------------------------------------
+  const t = (totalsRes.data ?? null) as Record<string, unknown> | null;
+  const totals: { label: string; value: string; sub?: string }[] = [];
+  const add = (label: string, value: unknown, contributors?: unknown, sub?: string) => {
+    const n = num(value);
+    if (n === null || n <= 0) return;
+    if (contributors !== undefined && (num(contributors) ?? 0) < 1) return;
+    totals.push({ label, value: compact(n), sub });
+  };
+  add("Campaigns", t?.campaigns);
+  add("Athletes", t?.athletes, undefined, "distinct people");
+  add("Posts", t?.posts);
+  add("Reel views", t?.reel_views, t?.reel_views_athletes);
+  add("Impressions", t?.impressions, t?.impressions_athletes, "feed + stories");
+
+  const topAthletes: TopAthlete[] = (
+    (topRes.data ?? []) as {
+      athlete_id: string;
+      athlete_name: string | null;
+      school: string | null;
+      campaign_name: string | null;
+      views: number;
+      post_url: string | null;
+    }[]
+  ).map((a) => ({
+    athleteId: a.athlete_id,
+    name: a.athlete_name ?? "Athlete",
+    school: titleCaseSchool(a.school),
+    campaignName: a.campaign_name,
+    views: a.views,
+    postUrl: a.post_url,
+  }));
+
+  return { totals, rows, columns, quarters, topAthletes };
 }

@@ -6,7 +6,7 @@ import type { ReportGroup } from "@/lib/portal/pages-data";
 // The recap library's client half: a quarter filter over the pre-grouped
 // server data. Client-side because the whole library is 10 rows for CVS and a
 // round trip per selection would be slower than filtering in place.
-export default function ReportsLibrary({ groups }: { groups: ReportGroup[] }) {
+export default function RecapLibrary({ groups }: { groups: ReportGroup[] }) {
   const [quarter, setQuarter] = useState("");
   const shown = quarter ? groups.filter((g) => g.label === quarter) : groups;
 

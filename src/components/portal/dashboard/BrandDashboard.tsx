@@ -133,7 +133,20 @@ export default function BrandDashboard({
                     {data.roster.subline}
                   </span>
                 </h3>
-                <a className="pgd-more" href="/portal/athletes">
+                {/* THIS CAMPAIGN'S roster, not the 1,501-person directory.
+                    The tile is showing 12 of one campaign's athletes, so
+                    "All athletes" meant "the rest of these" — and it was
+                    landing people in a filterless list of everyone the brand
+                    has ever worked with. Falls back to the directory only
+                    when the campaign has no slug to link to. */}
+                <a
+                  className="pgd-more"
+                  href={
+                    data.roster.campaignSlug
+                      ? `/portal/campaigns/${data.roster.campaignSlug}?tab=athletes`
+                      : "/portal/athletes"
+                  }
+                >
                   All athletes &rsaquo;
                 </a>
                 <div className="pgd-scroll">

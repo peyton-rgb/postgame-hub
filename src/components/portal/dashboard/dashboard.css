@@ -657,7 +657,9 @@
    a gallery of 460 items and a directory of 1,501 athletes are lists, and
    a list that cannot scroll is a list you cannot read.
    ============================================================ */
-.pgd-page { overflow-y: auto; min-height: 0; padding-bottom: 32px }
+/* min-width: 0 so a wide child (the Reports table) cannot stretch the column
+   it sits in. */
+.pgd-page { overflow-y: auto; min-height: 0; min-width: 0; padding-bottom: 32px }
 .pgd.pgd-scrolls { height: 100vh }
 .pgd.pgd-scrolls .pgd-main { height: 100vh; overflow: hidden }
 
@@ -743,6 +745,74 @@
 .pgd-state-live, .pgd-state-wrapped { font-size: 14px; font-weight: 700; white-space: nowrap }
 .pgd-state-live { color: var(--orange-soft) }
 .pgd-state-wrapped { color: var(--ink-50) }
+
+/* ---- Reports: chart, table -----------------------------------
+   The bar chart is CSS, not a charting library. Two series over at most a
+   handful of quarters is a list of widths; a library would be 80KB to draw
+   what a div does, and the design system's own colours are not any library's
+   defaults.
+
+   TWO SCALES, one per series, stated in the heading. Posts run in the
+   hundreds and reel views in the millions on the same data, so a shared
+   scale renders every posts bar as a hairline — the bars would be honest and
+   unreadable. Each bar carries its own value as text, so the number is never
+   inferred from the length.
+   ------------------------------------------------------------- */
+.pgd-chart-rows { display: flex; flex-direction: column; gap: 14px }
+.pgd-chart-row { display: flex; align-items: center; gap: 16px }
+.pgd-chart-label {
+  flex: 0 0 84px; font-size: 14px; color: var(--ink-60);
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 20px; letter-spacing: 0.02em;
+}
+.pgd-chart-bars { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+/* The bar and its value, side by side. The value outside the bar is what lets
+   the bar be its true width. */
+.pgd-chart-line { display: flex; align-items: center; gap: 10px; min-width: 0 }
+.pgd-chart-track { flex: 1; min-width: 0; display: flex }
+.pgd-chart-line em {
+  font-style: normal; font-size: 14px; color: var(--ink-60);
+  white-space: nowrap; flex: 0 0 132px;
+}
+.pgd-chart-bar { height: 20px; border-radius: 4px; min-width: 3px }
+/* Ink for posts, orange for views — the accent marks the series a brand came
+   for, and it is a bar, not a background fill. */
+.pgd-chart-posts { background: rgba(250, 248, 245, 0.16); color: var(--ink-90) }
+.pgd-chart-views { background: var(--orange); color: #fff }
+
+.pgd-table-actions { display: flex; justify-content: flex-end; margin-bottom: 12px }
+/* The table is wider than a phone and, with every column present, wider than
+   the content column at 1440, so it scrolls in its own container.
+   max-width: 100% is what CONTAINS it: without it the table's 720px min-width
+   propagated up through the panel and the page and laid the whole main column
+   out at 760px — at 390 that pushed the header, the search field and every
+   panel off the right edge, clipped by .pgd's overflow-x: hidden so the page
+   looked cropped rather than scrollable. */
+.pgd-table-scroll { overflow-x: auto; max-width: 100%; margin: 0 -4px; padding: 0 4px }
+.pgd-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 720px }
+.pgd-table th {
+  text-align: left; font-weight: 400; font-size: 14px; color: var(--ink-45);
+  padding: 0 12px 8px 0; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
+}
+.pgd-table th button {
+  background: none; border: 0; padding: 0; font: inherit; color: inherit;
+  cursor: pointer; white-space: nowrap;
+}
+.pgd-table th button:hover { color: var(--ink) }
+.pgd-table th button.on { color: var(--ink); font-weight: 700 }
+.pgd-table td {
+  padding: 11px 12px 11px 0; font-size: 16px;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.06);
+}
+.pgd-table tr:last-child td { border-bottom: 0 }
+/* Figures right-aligned and tabular, so the digits line up down the column. */
+.pgd-table .pgd-num-col { text-align: right; font-variant-numeric: tabular-nums }
+.pgd-table td a { color: var(--orange-soft); text-decoration: none; white-space: nowrap }
+.pgd-table td a:hover { text-decoration: underline }
+
+/* A qualifier under a headline figure's label — "distinct people", "feed +
+   stories" — where the label alone would overstate what was counted. */
+.pgd-fig-sub { display: block; font-style: normal; font-size: 14px; color: var(--ink-45) }
 
 /* ---- recap cards -------------------------------------------
    Photo, name, button, tight. The generic .pgd-card stretches to its row's
@@ -873,6 +943,39 @@
   background: var(--ink); color: #07070A; padding: 2px 8px; border-radius: 999px;
 }
 .pgd-shot.pgd-picked { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange) }
+
+/* Keyword chips, under the filter row. A chip is a removable value, which is
+   the one job a pill shape is still right for here. */
+.pgd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 16px }
+.pgd-term {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--ink); color: #07070A; font: inherit; font-size: 14px; font-weight: 700;
+}
+.pgd-term span { font-size: 16px; line-height: 1; opacity: 0.6 }
+.pgd-term:hover span { opacity: 1 }
+.pgd-term-clear {
+  background: none; border: 0; cursor: pointer; font: inherit; font-size: 14px;
+  color: var(--ink-50); padding: 6px 4px;
+}
+.pgd-term-clear:hover { color: var(--ink) }
+
+/* Lightbox paging. Big hit areas down the left and right edges. */
+.pgd-lb-step {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 52px; height: 52px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(17, 17, 20, 0.9); color: var(--ink);
+  font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+}
+.pgd-lb-step:hover { background: rgba(17, 17, 20, 1) }
+.pgd-lb-step[disabled] { opacity: 0.3; cursor: default }
+.pgd-lb-prev { left: 18px }
+.pgd-lb-next { right: 18px }
+.pgd-lb-count {
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  font-size: 14px; color: var(--ink-50);
+}
 
 .pgd-lightbox {
   position: fixed; inset: 0; z-index: 200; background: rgba(7, 7, 10, 0.94);
@@ -1027,7 +1130,7 @@
 /* simple panels + table for Settings / Results */
 .pgd-panel {
   background: var(--tile); border: 0; border-radius: 14px;
-  padding: 20px; margin-bottom: 12px;
+  padding: 20px; margin-bottom: 12px; min-width: 0;
 }
 .pgd-panel h3 { margin: 0 0 14px; font-size: 18px; font-weight: 700; line-height: 1.25 }
 .pgd-rows { display: flex; flex-direction: column }
@@ -1079,6 +1182,13 @@
   .pgd-hero-photo::after {
     background: linear-gradient(0deg, rgba(7, 7, 10, 0.94) 0%, rgba(7, 7, 10, 0.45) 55%, rgba(7, 7, 10, 0.1) 100%);
   }
+  .pgd-chart-row { flex-direction: column; align-items: stretch; gap: 6px }
+  .pgd-chart-label { flex: none }
+  /* The value moves under its bar: a 132px reserved column beside a bar in a
+     350px panel left the bar 200px and the two fighting. */
+  .pgd-chart-line { flex-direction: column; align-items: stretch; gap: 2px }
+  .pgd-chart-line em { flex: none }
+  .pgd-table { min-width: 640px }
   /* 56px Anton x5 is a whole phone screen of numbers before the first
      takeaway. The Results row drops to 38 and the panel rows to 32; both are
      still the largest type on the page. */

@@ -221,3 +221,136 @@ figures line up down the grid.
 It described the build, not the page. A brand reading it learns their settings
 are broken rather than that these are the details Postgame holds for them, and
 every panel already says who maintains it.
+
+---
+
+## Features
+
+### 15 · Reports is a metrics dashboard
+
+Five headline totals, a quarter chart, a sortable table, top ten athletes, CSV
+export. Verified against CVS as `authenticated`: **46 campaigns, 1,501
+athletes, 1,835 posts, 65,578,076 reel views, 7,207,142 impressions.**
+
+**A new view, `portal_brand_report_totals` (migration 058), and it had to be
+SQL.** `athletes` is a distinct-PERSON count across campaigns, and adding up
+per-campaign athlete counts double-counts everyone on more than one campaign —
+2,096 CVS athlete rows are 1,501 people. The dedupe rule is
+`lower(btrim(name))`, deliberately **the same rule as `portal_brand_stats`**:
+the Reports page and the dashboard KPI sit two clicks apart, and two different
+athlete counts for one brand is exactly the bug that produced "1,501 vs
+1,523". The 1,501 here matches the KPI exactly.
+
+Per-campaign rows come from `portal_campaign_post_metrics` — already the
+source the Results tab uses — so a campaign's row in this table and its own
+Results tab cannot disagree.
+
+**Judgement calls:**
+
+- **Impressions = feed + story, added.** Each guarded independently, so a
+  brand with feed data and no story data still gets a true figure. The label
+  carries "feed + stories" so the sum is not mistaken for one platform.
+- **Two scales on the chart, stated in the heading.** Posts run in the
+  hundreds and reel views in the millions on the same data; one shared scale
+  renders every posts bar as a hairline — honest and unreadable. Each bar
+  carries its own value as text, so no length has to be decoded.
+- **A series with nothing in it draws no bar.** Q4 2025 has 63 posts and no
+  reel views, and a bar reading "0 reel views" asserts a measurement that was
+  never taken.
+- **Bar values sit outside the bars.** With the label inside, a bar needed a
+  116px minimum and 63 posts looked like a quarter of 265 rather than a fifth.
+  Measured after the change: 243px vs 1022px, i.e. 24% for 24%.
+- **The chart is CSS, not a charting library.** Two series over three quarters
+  is a list of widths; a library would be 80KB to draw what a div does, and
+  the design system's colours are not any library's defaults.
+- **Nulls sort last in both directions.** An absent measurement is not a small
+  one, so it does not rise to the top of a descending sort.
+- **A column nobody has is not rendered**, and a cell is blank rather than 0
+  where that campaign has no figure. A zero in a metrics table is a claim.
+- **The CSV carries raw numbers, not the display strings.** "8M" is useless in
+  a spreadsheet. Fields are RFC 4180 quoted.
+
+### 16 · Content keyword search — there are no tags to search
+
+Asked for "any tag/caption text on the media row". **`media` has no caption or
+tag column.** Its columns are ids, type, urls, storage/source ids, sizes,
+focal points, hero flags and `slot` — and `slot` is populated on 5 of CVS's
+460 rows with no vocabulary behind it.
+
+So the searchable free text on a media row is athlete, school, campaign and
+the **filename**, which is real text people recognise
+("2026_CVS_Darius_Acuff_Jr.18.jpg"). The filename is decoded, stripped of its
+path and its upload-timestamp prefix, and separators become spaces, so "darius
+acuff" matches. Built once per row in the loader as a lowercase haystack
+rather than rebuilt per keystroke across four fields.
+
+Terms become removable chips and AND together with the dropdown filters.
+Chips rather than one free-text box because they compose: "cvs" + "bag"
+narrows, and either can be dropped without retyping the other. Verified in a
+browser: "taylor" → 7 of 411 (athlete name), "snapinsta" → 24 of 411
+(filename only, which is what proves the filename is in scope), chip removal
+restores 40.
+
+**Follow-up:** real tags need a column. If tagging matters, `media.slot` is
+the candidate to formalise — it exists, it is unused, and it has no controlled
+vocabulary yet.
+
+### 17 · Recaps replaces Athletes in the rail
+
+Rail is **Home · Campaigns · Content · Recaps · Reports**. The recap-card
+library moved from `/portal/reports` to `/portal/recaps`; `/portal/reports` is
+now the numbers. Two different things had been sharing one name: a shelf of
+delivered recaps to open, and the totals across them.
+
+`/portal/athletes` still works and is still linked — from a campaign's
+Athletes tab, the roster tile, the Reports top ten, and search — it is just
+not a rail item. The directory is a reference list of 1,501 people; five rail
+items that each answer a question beat six where one is a phone book.
+
+The Recaps icon is a document, not a tick: a tick reads as a completed task,
+and these are delivered artefacts.
+
+### 18 · "All athletes ›" goes to the campaign's Athletes tab
+
+The tile shows 12 of one campaign's athletes, so "All athletes" meant "the
+rest of these" — and it was landing people in a filterless list of everyone
+the brand has ever worked with. Now
+`/portal/campaigns/<slug>?tab=athletes`, falling back to the directory only
+when the campaign has no slug.
+
+### 19 · 20 · New-tab links
+
+Audited every outbound link on the session portal: Top posts (dashboard), Top
+content (Results), Open recap (Recaps library and the Reports table) all carry
+`target="_blank" rel="noopener noreferrer"`. A post is Instagram and a recap is
+a different app surface; in both cases the portal should still be there when
+the tab is closed. The two other `/recap/` links in the tree are the old token
+portal, left alone.
+
+### 21 · The content lightbox needed next/previous and Esc
+
+It opened on click and closed on the backdrop or the Close button. **Neither
+paging nor Esc existed**, so it was verified as broken and then built:
+
+- The lightbox now holds an **index**, not the item — next and previous need
+  to know where they are in the list, and an item alone cannot say.
+- Esc closes, ArrowLeft/ArrowRight step, bound only while it is open so the
+  grid's own keyboard behaviour is untouched otherwise.
+- Paging **stops at the ends rather than wrapping**: wrapping from the last
+  item back to the first reads as a bug when you are paging to see what is
+  there. The controls are disabled rather than hidden, so they do not move
+  under the pointer.
+
+Verified in a browser: opened at tile 3 ("3 of 40"), ArrowRight → 4, two
+ArrowLefts → 2, Escape closed it.
+
+### Phone regression caught while rendering
+
+The Reports table's `min-width: 720px` propagated up through the panel and the
+page and laid the whole main column out at **760px**. At 390 that pushed the
+header, the search field and every panel off the right edge — clipped by
+`.pgd`'s `overflow-x: hidden`, so the page looked cropped rather than
+scrollable, and the cause was nowhere near the header it broke. Fixed with
+`max-width: 100%` on the scroll container plus `min-width: 0` on `.pgd-page`
+and `.pgd-panel`; after the fix the only element wider than the viewport is
+the table, and its scroll parent clips it, which is the intent.

@@ -94,6 +94,8 @@ export interface RosterTile {
   /** "Live campaign" when an active campaign has athletes, else "Latest roster". */
   title: string;
   campaignName: string;
+  /** So "All athletes" can go to THIS campaign's roster, not the directory. */
+  campaignSlug: string | null;
   subline: string;
   rows: RosterRow[];
 }
@@ -332,6 +334,7 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
     roster = {
       title: liveWithAthletes ? "Live campaign" : "Latest roster",
       campaignName: rosterCampaign.name ?? "Campaign",
+      campaignSlug: rosterCampaign.slug,
       subline: [
         rosterCampaign.quarter,
         rosterCampaign.platform,
