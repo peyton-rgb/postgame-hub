@@ -157,7 +157,7 @@ export default async function ServicesExperientialPage() {
         <a href="/services/elevated" className="pg-btn svc-link">Elevated</a>
         <a href="/services/scaled" className="pg-btn svc-link">Scaled</a>
         <a href="/services/always-on" className="pg-btn svc-link">Always On</a>
-        <a href="/services/experiential" className="svc-link active">Experiential</a>
+        <a href="/services/experiential" className="pg-btn svc-link active">Experiential</a>
       </div>
 
       <section className="section" style={{ paddingTop: 0 }}>

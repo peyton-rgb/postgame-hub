@@ -84,7 +84,7 @@ export default async function CampaignInstructionsPublicPage({ params }: Props) 
         `}} />
 
         <div className="ci-tabs">
-          <button className="ci-tab active" id="tab-athlete" onClick={() => (window as any).switchTab('athlete')}>🏃 Athletes</button>
+          <button className="pg-btn ci-tab active" id="tab-athlete" onClick={() => (window as any).switchTab('athlete')}>🏃 Athletes</button>
           <button className="pg-btn ci-tab" id="tab-crew" onClick={() => (window as any).switchTab('crew')}>🎥 Crew</button>
         </div>
 

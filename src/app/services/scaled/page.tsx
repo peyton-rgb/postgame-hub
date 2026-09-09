@@ -58,10 +58,10 @@ const SHARED_STYLES = `
   .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
   .feature{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;transition:border-color 0.25s;}
   .feature:hover{border-color:var(--orange);}
-  .feature-num{font-size:11px;font-weight:800;color:var(--text-dim);letter-spacing:0.1em;margin-bottom:16px;}
+  .feature-num{color:var(--text-dim);margin-bottom:16px;}
   .feature-title{margin-bottom:10px;}
   .services-nav{display:flex;gap:12px;flex-wrap:wrap;padding:0 48px 48px;}
-  .svc-link{padding:10px 20px;border-radius:8px;border:1px solid var(--border);color:var(--text-muted);font-size:13px;font-weight:700;text-decoration:none;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.05em;}
+  .svc-link{padding:10px 20px;border-radius:8px;border:1px solid var(--border);text-decoration:none;transition:all 0.2s;}
   .svc-link:hover,.svc-link.active{border-color:var(--orange);color:var(--orange);}
   .cta{text-align:center;padding:100px 24px;background:radial-gradient(ellipse at 50% 100%,rgba(215,63,9,0.1) 0%,transparent 60%);}
   .cta-title{margin:0 0 16px;}
@@ -167,10 +167,10 @@ export default async function ServicesScaledPage() {
       </div>
 
       <div className="services-nav">
-        <a href="/services/elevated" className="svc-link">Elevated</a>
-        <a href="/services/scaled" className="svc-link active">Scaled</a>
-        <a href="/services/always-on" className="svc-link">Always On</a>
-        <a href="/services/experiential" className="svc-link">Experiential</a>
+        <a href="/services/elevated" className="pg-btn svc-link">Elevated</a>
+        <a href="/services/scaled" className="pg-btn svc-link active">Scaled</a>
+        <a href="/services/always-on" className="pg-btn svc-link">Always On</a>
+        <a href="/services/experiential" className="pg-btn svc-link">Experiential</a>
       </div>
 
       <section className="section" style={{ paddingTop: 0 }}>
@@ -186,7 +186,7 @@ export default async function ServicesScaledPage() {
             { num:"06", title:"Volume Pricing", desc:"The more athletes you activate, the lower your cost per post. Scaled is built for efficiency without sacrificing quality." },
           ].map((f) => (
             <div key={f.num} className="feature">
-              <div className="feature-num">{f.num}</div>
+              <div className="pg-label feature-num">{f.num}</div>
               <div className="pg-h3 feature-title">{f.title}</div>
               <p className="pg-body feature-desc">{f.desc}</p>
             </div>

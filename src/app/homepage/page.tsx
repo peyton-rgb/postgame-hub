@@ -47,8 +47,8 @@ function Fallback() {
     <div className="pg-page">
       <div className="hp-hero"><div className="hp-hero-inner">
         <div className="pg-eyebrow" style={{marginBottom:20}}>NIL Campaign Management</div>
-        <h1 className="hp-hero-title d hp-title-anim">We Build<br/>Athlete-Powered<br/>Campaigns</h1>
-        <p className="hp-hero-desc hp-desc-anim">Postgame connects brands with college athletes to create authentic, high-performing NIL campaigns at scale.</p>
+        <h1 className="pg-h1 hp-hero-title d hp-title-anim">We Build<br/>Athlete-Powered<br/>Campaigns</h1>
+        <p className="pg-lead hp-hero-desc hp-desc-anim">Postgame connects brands with college athletes to create authentic, high-performing NIL campaigns at scale.</p>
         <div className="btn-group" style={{justifyContent:"center",marginTop:40}}>
           <a href="/deals" className="btn-primary">Deal Tracker</a>
           <a href="/contact" className="btn-secondary">Work With Us</a>
@@ -114,13 +114,13 @@ export default async function HomepagePage() {
   .hp-btns-anim{animation:hpFadeUp 0.6s ease 0.9s both;}
   .hp-stats-anim{animation:hpFadeUp 0.6s ease 1.1s both;}
   @keyframes hpFadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-        .hp-hero-title{font-size:clamp(72px,12vw,140px);line-height:0.9;letter-spacing:0.01em;margin:16px 0 28px;color:#fff;}
-        .hp-hero-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.6);max-width:540px;margin:0 auto;}
+        .hp-hero-title{margin:16px 0 28px;}
+        .hp-hero-desc{max-width:540px;margin:0 auto;}
         .hp-stats{display:flex;justify-content:center;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);}
         .hp-stat{flex:1;max-width:220px;padding:36px 24px;text-align:center;border-right:1px solid rgba(255,255,255,0.08);}
         .hp-stat:last-child{border-right:none;}
-        .hp-stat-num{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:52px;line-height:1;color:var(--orange);letter-spacing:0.02em;}
-        .hp-stat-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.18em;color:rgba(255,255,255,0.4);margin-top:6px;}
+        .hp-stat-num{color:var(--orange);}
+        .hp-stat-label{margin-top:6px;}
         .hp-sec{padding:96px 48px;}
         .hp-sec-alt{padding:96px 48px;background:rgba(255,255,255,0.015);}
         .hp-featured{position:relative;border-radius:24px;overflow:hidden;min-height:440px;display:flex;flex-direction:column;justify-content:flex-end;padding:40px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:border-color 0.25s;}
@@ -132,32 +132,29 @@ export default async function HomepagePage() {
         .hp-card:hover{border-color:rgba(215,63,9,0.35);transform:translateY(-3px);}
         .hp-card-body{padding:20px 24px 24px;}
         .hp-card-nm{min-height:180px;display:flex;flex-direction:column;justify-content:flex-end;padding:24px;}
-        .hp-card-brand{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--orange);margin-bottom:4px;}
-        .hp-card-title{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:28px;line-height:1;}
-        .hp-card-meta{font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px;}
+        .hp-card-brand{color:var(--orange);margin-bottom:4px;}
+        .hp-card-meta{margin-top:4px;}
         .hp-athletes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px;}
         .hp-athlete{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:3/4;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);transition:border-color 0.2s,transform 0.25s;}
         .hp-athlete:hover{border-color:rgba(215,63,9,0.4);transform:translateY(-4px);}
         .hp-athlete img{width:100%;height:100%;object-fit:cover;object-position:center 15%;}
         .hp-athlete-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.82) 0%,transparent 50%);}
         .hp-athlete-info{position:absolute;bottom:0;left:0;right:0;padding:20px;}
-        .hp-athlete-sport{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--orange);margin-bottom:4px;}
-        .hp-athlete-name{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:26px;line-height:1;}
-        .hp-athlete-school{font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;}
+        .hp-athlete-sport{color:var(--orange);margin-bottom:4px;}
+        .hp-athlete-school{margin-top:2px;}
         .hp-brands-wrap{padding:64px 48px 48px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);}
         .hp-services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px;}
         .hp-service{padding:36px 28px;border-radius:20px;background:rgba(255,255,255,0.04);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.08);transition:border-color 0.25s,background 0.25s;}
         .hp-service:hover{border-color:rgba(215,63,9,0.4);background:rgba(255,255,255,0.065);}
         .hp-service-accent{border-left:3px solid var(--orange);}
-        .hp-service-num{font-size:11px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:0.12em;margin-bottom:16px;}
-        .hp-service-accent .hp-service-num{color:var(--orange);}
-        .hp-service-title{font-size:20px;font-weight:800;margin-bottom:12px;}
-        .hp-service-desc{font-size:18px;line-height:1.4;color:rgba(255,255,255,0.55);}
+        .hp-service-num{margin-bottom:16px;}
+        .hp-service-accent
+        .hp-service-title{margin-bottom:12px;}
         .hp-cta{padding:120px 24px;text-align:center;position:relative;overflow:hidden;}
         .hp-cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 100%,rgba(215,63,9,0.14) 0%,transparent 60%);pointer-events:none;}
         .hp-cta-inner{position:relative;z-index:1;}
-        .hp-cta-title{font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;font-size:clamp(56px,8vw,96px);line-height:0.92;letter-spacing:0.02em;margin-bottom:20px;}
-        .hp-cta-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.55);max-width:480px;margin:0 auto 40px;}
+        .hp-cta-title{margin-bottom:20px;}
+        .hp-cta-desc{max-width:480px;margin:0 auto 40px;}
         .rc-1{background:linear-gradient(135deg,#1a1a2e,#0f3460);}
         .rc-2{background:linear-gradient(135deg,#1a1a1a,#3d1f14);}
         .rc-3{background:linear-gradient(135deg,#141414,#1e3a1e);}
@@ -165,8 +162,6 @@ export default async function HomepagePage() {
         .rc-5{background:linear-gradient(135deg,#1a1a1a,#1e3a3a);}
         @media(max-width:900px){
           .hp-hero{padding:100px 20px 64px;}
-          .hp-hero-title{font-size:clamp(56px,16vw,80px);}
-          .hp-hero-desc{font-size:14px;}
           .hp-stat{min-width:50%;flex:none;}
           .hp-sec,.hp-sec-alt{padding:64px 20px;}
           .hp-masonry{column-count:2;}
@@ -174,8 +169,7 @@ export default async function HomepagePage() {
           .hp-services-grid{grid-template-columns:1fr;}
           .hp-brands-wrap{padding:48px 20px;}
           .hp-cta{padding:80px 20px;}
-          .hp-cta-desc,.hp-service-desc{font-size:14px;}
-          .hp-cta-title{font-size:clamp(48px,14vw,72px);}
+          .hp-cta-desc,
         }
         @media(max-width:600px){
           .hp-masonry{column-count:1;}
@@ -188,8 +182,8 @@ export default async function HomepagePage() {
         <HomeHeroSlides slides={heroSlides} />
         <div className="hp-hero-inner">
           {s("hero_eyebrow") && <div className="pg-eyebrow" style={{marginBottom:20}}>{s("hero_eyebrow")}</div>}
-          <h1 className="hp-hero-title d hp-title-anim">{s("hero_title") || "We Build\nAthlete-Powered\nCampaigns"}</h1>
-          {s("hero_desc") && <p className="hp-hero-desc hp-desc-anim">{s("hero_desc")}</p>}
+          <h1 className="pg-h1 hp-hero-title d hp-title-anim">{s("hero_title") || "We Build\nAthlete-Powered\nCampaigns"}</h1>
+          {s("hero_desc") && <p className="pg-lead hp-hero-desc hp-desc-anim">{s("hero_desc")}</p>}
           <div className="btn-group" style={{justifyContent:"center",marginTop:40}}>
             {s("hero_cta_primary") && <a href={settingUrl(raw("hero_cta_primary"))||"/deals"} className="btn-primary">{s("hero_cta_primary")}</a>}
             {s("hero_cta_secondary") && <a href={settingUrl(raw("hero_cta_secondary"))||"/contact"} className="btn-secondary">{s("hero_cta_secondary")}</a>}
@@ -206,8 +200,8 @@ export default async function HomepagePage() {
         <div className="hp-stats hp-stats-anim">
           {stats.map((st, i) => (
             <div key={i} className="hp-stat">
-              <div className="hp-stat-num">{st.value}</div>
-              <div className="hp-stat-label">{st.label}</div>
+              <div className="pg-stat hp-stat-num">{st.value}</div>
+              <div className="pg-label hp-stat-label">{st.label}</div>
             </div>
           ))}
         </div>
@@ -240,9 +234,9 @@ export default async function HomepagePage() {
                     }
                     <div className="hp-athlete-overlay"/>
                     <div className="hp-athlete-info">
-                      {String(item.sport||"") && <div className="hp-athlete-sport">{String(item.sport||"")}</div>}
-                      <div className="d hp-athlete-name">{name}</div>
-                      {String(item.school||"") && <div className="hp-athlete-school">{String(item.school||"")}</div>}
+                      {String(item.sport||"") && <div className="pg-eyebrow hp-athlete-sport">{String(item.sport||"")}</div>}
+                      <div className="pg-h3 hp-athlete-name">{name}</div>
+                      {String(item.school||"") && <div className="pg-label hp-athlete-school">{String(item.school||"")}</div>}
                     </div>
                   </div>
                 );
@@ -275,9 +269,9 @@ export default async function HomepagePage() {
             <div className="hp-services-grid">
               {svcs.map((item,i) => (
                 <div key={i} className={`hp-service${item.accent?" hp-service-accent":""}`}>
-                  <div className="hp-service-num">{String(item.num||String(i+1).padStart(2,"0"))}</div>
-                  <div className="hp-service-title">{String(item.name||item.title||"")}</div>
-                  {(item.desc||item.description) && <p className="hp-service-desc">{String(item.desc||item.description||"")}</p>}
+                  <div className="pg-label hp-service-num">{String(item.num||String(i+1).padStart(2,"0"))}</div>
+                  <div className="pg-h3 hp-service-title">{String(item.name||item.title||"")}</div>
+                  {(item.desc||item.description) && <p className="pg-body hp-service-desc">{String(item.desc||item.description||"")}</p>}
                 </div>
               ))}
             </div>
@@ -289,8 +283,8 @@ export default async function HomepagePage() {
       {show("cta") && (s("cta_title")||s("cta_desc")) && (
         <section className="hp-cta">
           <div className="hp-cta-inner">
-            {s("cta_title") && <h2 className="hp-cta-title">{s("cta_title")}</h2>}
-            {s("cta_desc") && <p className="hp-cta-desc">{s("cta_desc")}</p>}
+            {s("cta_title") && <h2 className="pg-h1 hp-cta-title">{s("cta_title")}</h2>}
+            {s("cta_desc") && <p className="pg-lead hp-cta-desc">{s("cta_desc")}</p>}
             <div className="btn-group" style={{justifyContent:"center"}}>
               <a href="/contact" className="btn-primary">Get In Touch</a>
               <a href="/campaigns" className="btn-secondary">See Our Work</a>

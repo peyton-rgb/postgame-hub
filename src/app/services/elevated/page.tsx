@@ -154,7 +154,7 @@ export default async function ServicesElevatedPage() {
       </div>
 
       <div className="services-nav">
-        <a href="/services/elevated" className="svc-link active">Elevated</a>
+        <a href="/services/elevated" className="pg-btn svc-link active">Elevated</a>
         <a href="/services/scaled" className="pg-btn svc-link">Scaled</a>
         <a href="/services/always-on" className="pg-btn svc-link">Always On</a>
         <a href="/services/experiential" className="pg-btn svc-link">Experiential</a>
