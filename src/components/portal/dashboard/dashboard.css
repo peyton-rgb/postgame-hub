@@ -51,12 +51,15 @@
   grid-template-columns: 72px 1fr;
   font-size: 16px;
   line-height: 1.5;
-  /* Locked to the viewport like the reference's fixed 1440x900 frame: the
-     whole dashboard fits, nothing stretches, and the PAGE never scrolls.
-     Tiles that hold more than fits scroll inside themselves instead.
-     Unlocked below 1100px, where stacking and page scroll are correct. */
-  height: 100vh;
-  overflow: hidden;
+  /* THE PAGE SCROLLS. It used to be locked to the viewport, like the
+     reference's fixed 1440x900 frame — the whole dashboard fitting on one
+     screen, with tiles scrolling inside themselves. That worked at 13px and
+     collapsed at 16: three flexible rows sharing 900px minus the header left
+     the roster showing ONE athlete and Top posts cut off mid-second-row.
+     Fitting the frame is not worth a tile that can't show its own contents,
+     so the content row gets the height it needs and the campaigns and
+     activity rows sit below the fold. */
+  min-height: 100vh;
 }
 
 /* ---- left icon rail ------------------------------------------ */
@@ -68,6 +71,8 @@
   gap: 6px;
   border-right: 1px solid var(--hair);
   background: #0A0A0D;
+  /* Sticky, not fixed: the page scrolls now, and the rail is the navigation,
+     so it stays put while the campaigns and activity rows come up. */
   position: sticky;
   top: 0;
   height: 100vh;
@@ -128,7 +133,6 @@
      navigation) and the greeting has risen into the space it freed. */
   grid-template-rows: auto 1fr;
   gap: 12px;
-  height: 100vh;
   min-height: 0;
   min-width: 0;
 }
@@ -176,12 +180,14 @@
   font-weight: 400; font-size: 32px; line-height: 1;
 }
 .pgd-kpi span { font-size: 14px; color: var(--ink-50) }
-/* Wraps inside its own column rather than running out sideways: at 14px
-   "across all campaigns" is wider than the figure it belongs to, and
-   nowrap put it under the KPI to its left. */
+/* ONE LINE, always. This was clamped to 104px so it would stay inside its
+   own column, which at 14px broke "across all campaigns" over three lines.
+   The label is shortened at the source instead, and the KPI is simply as
+   wide as its widest line — .pgd-kpis is a flex row, so a wider item widens
+   that item and overlaps nothing. */
 .pgd-kpi small {
   display: block; font-size: 14px; color: var(--ink-45); margin-top: 3px;
-  max-width: 104px; margin-left: auto; line-height: 1.25;
+  white-space: nowrap; line-height: 1.25;
 }
 
 /* ---- the tile grid ------------------------------------------- */
@@ -190,10 +196,31 @@
   /* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so one wide
      child (the roster table) can push the whole grid past the viewport. */
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  /* Three flexible content rows, an auto campaigns strip, then a fixed 120px
-     workflow strip. The empty tiles get a fixed budget; everything left over
-     goes to the tiles with data in them. */
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto 120px;
+  /* THREE ROWS: the content row, the campaigns row, the activity strip.
+     Was five, three of them fractions of the viewport.
+
+     690px for the content row, measured in the browser rather than chosen.
+     The ask was 480 for "8 roster rows and all 6 top posts"; at the new type
+     480 shows six. What 8 rows actually cost, all measured at 1440x900:
+
+       roster row      64px  (16px name over a 14px sport, plus padding)
+       8 rows         512
+       sticky thead    33    scrolls nothing, permanently occupies the top
+       bottom fade     24    row 8 has to sit clear of it to be readable
+       tile chrome    116    20px padding x2, plus the two-line heading
+       ------------------
+                      685 -> 690
+
+     Top posts' six rows come to 616px, which fits inside the same 690 with
+     no inner scroll at all.
+
+     A DEFINITE 690, not minmax(690px, auto): with `auto` the row grew to the
+     tallest tile's max-content — 918px, the roster's full twelve rows — which
+     pushed Campaigns to y=1080 and cut the roster across the fold anyway.
+     Definite keeps the promise the number makes: 8 rows and 6 posts above the
+     fold, the remaining four a scroll inside the roster, and Campaigns at
+     y=865 with Activity at y=1032. */
+  grid-template-rows: 690px auto auto;
   gap: 10px;
   min-height: 0;
 }
@@ -228,11 +255,11 @@
    Row template is 3fr 3fr 3fr / auto / 120px: the content rows share the
    space and the workflow strip is a fixed 120, so the empty tiles cannot
    grow into the room the real ones need. */
-.pgd-photo    { grid-column: 1 / 4;   grid-row: 1 / 4; padding: 0 }
-.pgd-roster   { grid-column: 4 / 10;  grid-row: 1 / 4 }
-.pgd-top      { grid-column: 10 / 13; grid-row: 1 / 4 }
-.pgd-camps    { grid-column: 1 / 13;  grid-row: 4 / 5 }
-.pgd-activity { grid-column: 1 / 13;  grid-row: 5 / 6 }
+.pgd-photo    { grid-column: 1 / 4;   grid-row: 1 / 2; padding: 0 }
+.pgd-roster   { grid-column: 4 / 10;  grid-row: 1 / 2 }
+.pgd-top      { grid-column: 10 / 13; grid-row: 1 / 2 }
+.pgd-camps    { grid-column: 1 / 13;  grid-row: 2 / 3 }
+.pgd-activity { grid-column: 1 / 13;  grid-row: 3 / 4 }
 
 /* ---- Activity ------------------------------------------------
    Was four tiles — Waiting on you, Posts going live, Deliverables, This
@@ -466,10 +493,10 @@
 
 /* ---- tablet: 6 columns, tiles stack in the brief's order ----- */
 @media (max-width: 1100px) {
-  /* Unlock: below the reference width the dashboard stacks and the page is
-     meant to scroll. */
-  .pgd { height: auto; min-height: 100vh; overflow: visible }
-  .pgd-main { height: auto }
+  /* The page already scrolls; below the reference width the tiles also stack,
+     so the content row's 620px floor comes off — each tile is its own row
+     here and sizes to what it holds. */
+  .pgd-grid { grid-template-rows: none }
   .pgd-rail { height: auto; min-height: 100vh }
   /* overflow-x stays auto — the roster table has min-width: 520px so its
      columns stay readable, and below ~600px that width has to scroll INSIDE
