@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PostgameLogo } from "@/components/PostgameLogo";
-import { useHubTheme } from "@/lib/use-hub-theme";
+import { PostgameLogoAuto } from "@/components/PostgameLogoAuto";
 import { createBrowserSupabase } from "@/lib/supabase";
 import BtsListClient from "./BtsListClient";
 
@@ -14,7 +13,6 @@ import BtsListClient from "./BtsListClient";
  * Supabase fetch in a useEffect. Auth is enforced by middleware.
  */
 export default function BtsAdminPage() {
-  const theme = useHubTheme();
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -22,7 +20,7 @@ export default function BtsAdminPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
-              <PostgameLogo size="md" ink={theme === "light" ? "dark" : "light"} />
+              <PostgameLogoAuto size="md" />
             </Link>
             <span className="text-ink-4">/</span>
             <Link

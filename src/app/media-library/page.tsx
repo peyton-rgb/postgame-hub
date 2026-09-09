@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Campaign, Athlete, Media } from "@/lib/types";
-import { PostgameLogo } from "@/components/PostgameLogo";
+import { PostgameLogoAuto } from "@/components/PostgameLogoAuto";
 import DrivePicker from "@/components/DrivePicker";
 import { extractDriveFolderId } from "@/lib/drive-url";
 import Link from "next/link";
@@ -621,7 +621,7 @@ export default function MediaLibrary() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
-              <PostgameLogo size="md" />
+              <PostgameLogoAuto size="md" />
             </Link>
             <h1 className="text-xl font-black">Media Library</h1>
           </div>
