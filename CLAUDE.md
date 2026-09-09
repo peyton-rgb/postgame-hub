@@ -89,6 +89,9 @@ active, stop and ask. Parallel sessions cause branch drift. Use a git worktree f
 - Design system: true black `#07070a`, brand orange `#D73F09` (accent only, never a background fill),
   off-white `#FAF8F5`. Bebas Neue (display), Anton (heavy headlines), Arimo/Arial (body),
   JetBrains Mono (labels). Liquid Glass Dark aesthetic.
+- Video-review surfaces (inspo triage) are always dark. They pin `data-theme="dark"`
+  on a route layout rather than following the user's theme — judging a clip's
+  exposure and colour against bright chrome judges it against the wrong reference.
 - Every surface gets checked mobile-first through desktop before it's considered done.
 
 ---

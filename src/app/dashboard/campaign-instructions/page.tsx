@@ -4,10 +4,20 @@ import { useEffect, useState } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import Link from "next/link";
 
+// This page styles itself with inline style objects rather than Tailwind, so it
+// could not follow the theme through the utility classes the other pages use.
+// Pointing the palette at the CSS custom properties gets the same result: the
+// channel vars swap under [data-theme], so every style object below follows the
+// theme without any of them changing.
+//
+// Status colours (the DO/DON'T headers, the danger button) deliberately stay
+// literal. There is no status token layer on this branch yet, and the pages that
+// are already migrated still use Tailwind's own red-400/green-400 — so matching
+// them is the convention, not an oversight. See job seq 28 for status colours.
 const C = {
-  bg:"#000",surface:"#0f0f0f",surface2:"#161616",
-  border:"rgba(255,255,255,0.08)",border2:"rgba(255,255,255,0.13)",
-  orange:"#D73F09",text:"#fff",text2:"rgba(255,255,255,0.6)",text3:"rgba(255,255,255,0.35)",
+  bg:"var(--ground)",surface:"var(--surface-card)",surface2:"var(--surface-raised)",
+  border:"var(--hairline-soft)",border2:"var(--hairline)",
+  orange:"var(--accent)",text:"var(--ink-1)",text2:"var(--ink-3)",text3:"var(--ink-4)",
 };
 const S = {
   page:{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"Arial,sans-serif"} as const,
@@ -21,19 +31,19 @@ const S = {
   card:{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:12,padding:20,marginBottom:12},
   cardTitle:{fontSize:11,fontWeight:800,textTransform:"uppercase" as const,letterSpacing:"0.1em",color:C.text3,marginBottom:14},
   label:{display:"block",fontSize:11,fontWeight:700,color:C.text3,textTransform:"uppercase" as const,letterSpacing:"0.08em",marginBottom:5},
-  input:{width:"100%",padding:"9px 12px",background:"#1a1a1a",border:`1px solid ${C.border2}`,borderRadius:8,color:C.text,fontSize:13,fontFamily:"Arial,sans-serif",outline:"none",boxSizing:"border-box" as const},
-  textarea:{width:"100%",padding:"9px 12px",background:"#1a1a1a",border:`1px solid ${C.border2}`,borderRadius:8,color:C.text,fontSize:13,fontFamily:"Arial,sans-serif",outline:"none",minHeight:80,resize:"vertical" as const,boxSizing:"border-box" as const},
+  input:{width:"100%",padding:"9px 12px",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:8,color:C.text,fontSize:13,fontFamily:"Arial,sans-serif",outline:"none",boxSizing:"border-box" as const},
+  textarea:{width:"100%",padding:"9px 12px",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:8,color:C.text,fontSize:13,fontFamily:"Arial,sans-serif",outline:"none",minHeight:80,resize:"vertical" as const,boxSizing:"border-box" as const},
   btnOrange:{padding:"9px 20px",background:C.orange,border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:800,cursor:"pointer",textTransform:"uppercase" as const,letterSpacing:"0.06em"},
   btnGhost:{padding:"8px 16px",border:`1px solid ${C.border2}`,borderRadius:8,background:"none",color:C.text2,fontSize:12,fontWeight:700,cursor:"pointer",textDecoration:"none" as const},
   btnAdd:{padding:"7px 14px",borderRadius:8,border:`1px dashed ${C.border2}`,background:"none",color:C.text3,fontSize:12,fontWeight:700,cursor:"pointer",width:"100%",marginTop:8},
   btnDanger:{padding:"5px 10px",borderRadius:6,border:"1px solid rgba(255,80,80,0.25)",background:"none",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer"},
   listItem:(active:boolean)=>({padding:"10px 12px",borderRadius:8,cursor:"pointer",background:active?"rgba(215,63,9,0.1)":"transparent",border:`1px solid ${active?"rgba(215,63,9,0.25)":"transparent"}`,marginBottom:4}),
   tabs:{display:"flex",gap:4,marginBottom:20},
-  tab:(on:boolean)=>({padding:"8px 18px",borderRadius:20,border:"none",background:on?"#D73F09":"#1a1a1a",color:on?"#fff":C.text2,fontSize:13,fontWeight:700,cursor:"pointer"}),
+  tab:(on:boolean)=>({padding:"8px 18px",borderRadius:20,border:"none",background:on?C.orange:C.surface2,color:on?"#fff":C.text2,fontSize:13,fontWeight:700,cursor:"pointer"}),
   toast:{position:"fixed" as const,bottom:24,right:24,background:C.surface2,border:`1px solid ${C.orange}`,borderRadius:10,padding:"10px 20px",color:C.orange,fontSize:13,fontWeight:700,zIndex:99999},
   row2:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12} as const,
   mb:(n:number)=>({marginBottom:n}),
-  listBullet:{background:"#1a1a1a",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:8} as const,
+  listBullet:{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:8} as const,
 };
 
 interface Deliverable { text: string; required: boolean }
