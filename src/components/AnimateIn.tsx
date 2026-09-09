@@ -17,7 +17,10 @@ export default function AnimateIn({ children, className = "anim-fade-up", as: Ta
     if (!el) return;
     const obs = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) { setInView(true); obs.disconnect(); }
-    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+      // Was rootMargin -40px, which DELAYED the reveal until the element was
+      // 40px inside the viewport, on top of a 550ms transition. Now it fires
+      // slightly early so content is up within 300ms of arriving.
+    }, { threshold: 0.1, rootMargin: "0px 0px 15% 0px" });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);

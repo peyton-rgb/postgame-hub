@@ -9,11 +9,12 @@ export default async function Page() {
 
   return (
     <main className="min-h-screen bg-[#08080b] text-[#FAF8F5]">
-      <section className="max-w-[1180px] mx-auto px-9 pt-14">
-        <h1
-          className="text-[46px] leading-[.95] tracking-[1px]"
-          style={{ fontFamily: "var(--font-bebas), sans-serif" }}
-        >
+      {/* The nav is fixed at var(--nav-h) (64px), so a page that starts its
+          content at less than that renders its first heading UNDER it — pt-14
+          was 56px and clipped this one. Offsetting from the variable keeps the
+          two in step if the nav height ever changes. */}
+      <section className="max-w-[1180px] mx-auto px-9 pt-[calc(var(--nav-h)+56px)]">
+        <h1 className="pg-h1">
           OUR <span className="text-[#D73F09]">WORK</span>
         </h1>
         <p className="pg-body mt-[10px] max-w-[560px]">

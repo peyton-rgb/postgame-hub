@@ -19,6 +19,7 @@
 // ============================================================
 
 import Image from 'next/image';
+import { pluralize, yearsLabel } from "@/lib/plural";
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getBrandBySlug, type Brand } from '@/lib/data/brands';
@@ -395,14 +396,14 @@ export default async function BrandPage({ params }: Props) {
           </p>
 
           <div className="bp-stats">
-            <Stat num={stats.athletes} label="Athletes" />
-            <Stat num={stats.campaigns} label="Campaigns" />
-            <Stat num={stats.schools} label="Schools" />
-            <Stat num={stats.sports} label="Sports" />
+            <Stat num={stats.athletes} label={pluralize(stats.athletes, 'Athlete')} />
+            <Stat num={stats.campaigns} label={pluralize(stats.campaigns, 'Campaign')} />
+            <Stat num={stats.schools} label={pluralize(stats.schools, 'School')} />
+            <Stat num={stats.sports} label={pluralize(stats.sports, 'Sport')} />
             {partnerYears !== null && (
               <Stat
                 num={partnerYears === 0 ? '<1' : String(partnerYears)}
-                label={partnerYears === 1 ? 'Yr Partner' : 'Yrs Partner'}
+                label={yearsLabel(partnerYears)}
               />
             )}
           </div>

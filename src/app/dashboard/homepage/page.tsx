@@ -9,7 +9,6 @@ const PAGE_ID = "1e2328e1-26d0-41c5-8876-8af003a22a6a";
 
 type Tab = "hero" | "sections" | "settings";
 
-interface StatItem { value: string; label: string }
 interface CampaignItem { brand: string; name: string; meta: string; gradient: string; featured: boolean; image_url?: string; media_type?: "image" | "video"; aspect_ratio?: "landscape" | "portrait"; campaign_id?: string; focal_point?: string }
 interface AthleteItem { name: string; sport: string; school: string; image_url?: string; brand?: string; brand_id?: string; deal_id?: string; gradient?: string }
 interface BrandItem { name: string; logo_url: string }
@@ -210,8 +209,6 @@ const response = await fetch("/api/suggest-athletes", {
     setSections((prev) => prev.map((s) => s.id === sectionId ? { ...s, content } : s));
   }, []);
 
-  const getStats = (): StatItem[] => (settings.stats as StatItem[] || []);
-  const setStats = (stats: StatItem[]) => updateSetting("stats", stats);
 
   const getPublicSections = (): Record<string, boolean> => (settings.public_sections as Record<string, boolean> || {});
   const isSectionVisible = (type: string) => getPublicSections()[type] !== false;
@@ -372,33 +369,16 @@ const response = await fetch("/api/suggest-athletes", {
           </div>
 
           <div style={S.card}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 20px" }}>Stats</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {getStats().map((stat, i) => (
-                <div key={i} style={S.itemCard}>
-                  <div style={S.row}>
-                    <div style={S.col}>
-                      <label style={S.label}>Value</label>
-                      <input style={S.input} value={stat.value} onChange={(e) => {
-                        const s = [...getStats()];
-                        s[i] = { ...s[i], value: e.target.value };
-                        setStats(s);
-                      }} />
-                    </div>
-                    <div style={S.col}>
-                      <label style={S.label}>Label</label>
-                      <input style={S.input} value={stat.label} onChange={(e) => {
-                        const s = [...getStats()];
-                        s[i] = { ...s[i], label: e.target.value };
-                        setStats(s);
-                      }} />
-                    </div>
-                    <button style={S.btnDanger} onClick={() => setStats(getStats().filter((_, j) => j !== i))}>Remove</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button style={S.btnAdd} onClick={() => setStats([...getStats(), { value: "", label: "" }])}>+ Add Stat</button>
+            <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 12px" }}>Stats</h3>
+            {/* Editing these here is what let the homepage claim 500+ campaigns
+                and 150+ brand partners while /campaigns and /services said
+                something else. The band now reads src/lib/site-stats.ts. */}
+            <p style={{ ...S.label, lineHeight: 1.6, margin: 0 }}>
+              The homepage stat band is set in <code>src/lib/site-stats.ts</code> so it cannot
+              disagree with the same figures on /campaigns, /clients, /deals and /services.
+              Change the numbers there. Whether the band shows at all is still the section
+              toggle above.
+            </p>
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { CAMPAIGNS } from "@/lib/site-stats";
 import HomeHeroSlides, { type HeroSlide } from "@/components/HomeHeroSlides";
 import CampaignCoverFlow from "@/components/CampaignCoverFlow";
 import { getCoverFlowCampaigns } from "@/lib/getCoverFlowCampaigns";
@@ -178,8 +179,8 @@ export default async function CampaignsPage() {
         <HomeHeroSlides slides={heroSlides} />
         <div style={{ position: "relative", zIndex: 1 }}>
         <div className="pg-eyebrow eyebrow">Our Work</div>
-        <h1 className="pg-h1 hero-title">394+ Campaigns.<br />One Playbook.</h1>
-        <p className="pg-lead hero-desc">From single-athlete posts to full-scale, multi-school activations â this is what athlete-powered marketing looks like at scale.</p>
+        <h1 className="pg-h1 hero-title">{CAMPAIGNS} Campaigns.<br />One Playbook.</h1>
+        <p className="pg-lead hero-desc">From single-athlete posts to full-scale, multi-school activations — this is what athlete-powered marketing looks like at scale.</p>
         </div>
       </section>
 

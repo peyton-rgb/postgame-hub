@@ -12,6 +12,7 @@
 // ============================================================
 
 import Link from 'next/link';
+import { pluralize } from "@/lib/plural";
 import { notFound } from 'next/navigation';
 import { getBrandBySlug } from '@/lib/data/brands';
 import { createPlainSupabase, createServiceSupabase } from '@/lib/supabase';
@@ -286,11 +287,11 @@ export default async function CampaignPage({ params, searchParams }: Props) {
 
           {/* Stat strip — first three accented orange, last two white (prototype convention). */}
           <div className="mt-[60px] grid gap-6 max-w-[920px] pt-[30px] border-t border-white/[0.08] grid-cols-5 max-[820px]:grid-cols-3 max-[820px]:gap-[18px]">
-            <Stat n={athletesArr.length} label="Athletes" accent />
-            <Stat n={schoolsCount} label="Universities" accent />
-            <Stat n={sportsList.length} label="Sports" accent />
-            <Stat n={allVideos.length} label="Video Clips" />
-            <Stat n={allImages.length} label="Photos" />
+            <Stat n={athletesArr.length} label={pluralize(athletesArr.length, 'Athlete')} accent />
+            <Stat n={schoolsCount} label={pluralize(schoolsCount, 'University', 'Universities')} accent />
+            <Stat n={sportsList.length} label={pluralize(sportsList.length, 'Sport')} accent />
+            <Stat n={allVideos.length} label={pluralize(allVideos.length, 'Video Clip')} />
+            <Stat n={allImages.length} label={pluralize(allImages.length, 'Photo')} />
           </div>
         </div>
       </header>

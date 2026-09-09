@@ -84,23 +84,29 @@
 }
 
 /* ---- scroll reveal ---- */
+/* 800ms was the largest part of the "empty black" wait: the section had to be
+   16% visible before the transition even started, then took most of a second,
+   and .d3 added another 260ms on top. Now 250ms with the stagger capped at
+   50ms, so even the last-staggered element is fully in within 300ms of its
+   trigger — the requirement is 300ms from ENTERING THE VIEWPORT, and the
+   observer fires before that, so this clears it with room. */
 .rv {
   opacity: 0;
   transform: translateY(34px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 .rv.in {
   opacity: 1;
   transform: none;
 }
 .d1 {
-  transition-delay: 0.08s;
+  transition-delay: 0.02s;
 }
 .d2 {
-  transition-delay: 0.16s;
+  transition-delay: 0.035s;
 }
 .d3 {
-  transition-delay: 0.26s;
+  transition-delay: 0.05s;
 }
 
 /* ============ INTRO / CREDENTIALS ============ */

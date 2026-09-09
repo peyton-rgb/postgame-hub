@@ -1,5 +1,6 @@
 
 import { PostgameLogo } from "@/components/PostgameLogo";
+import { ATHLETES, BRAND_PARTNERS, YEARS_IN_NIL } from "@/lib/site-stats";
 
 import { createPlainSupabase } from "@/lib/supabase";
 
@@ -153,9 +154,9 @@ export default async function ServicesScaledPage() {
           </div>
           <div className="hero-stats">
             <div><div className="pg-stat stat-num">500<span>+</span></div><div className="pg-label stat-label">Athletes Per Campaign</div></div>
-            <div><div className="pg-stat stat-num">100<span>+</span></div><div className="pg-label stat-label">Brand Partners</div></div>
-            <div><div className="pg-stat stat-num">4<span>yrs</span></div><div className="pg-label stat-label">In The NIL Space</div></div>
-            <div><div className="pg-stat stat-num">70K<span>+</span></div><div className="pg-label stat-label">Athlete Network</div></div>
+            <div><div className="pg-stat stat-num">{BRAND_PARTNERS}</div><div className="pg-label stat-label">Brand Partners</div></div>
+            <div><div className="pg-stat stat-num">{YEARS_IN_NIL}<span>yrs</span></div><div className="pg-label stat-label">In The NIL Space</div></div>
+            <div><div className="pg-stat stat-num">{ATHLETES}</div><div className="pg-label stat-label">Athlete Network</div></div>
           </div>
         </div>
 
