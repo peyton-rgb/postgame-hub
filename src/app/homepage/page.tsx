@@ -1,4 +1,5 @@
 import { getHomepage, getPitchTickerLogos, type HomepageData, type PageSection, type BrandTickerItem } from "@/lib/public-site";
+import { SITE_STAT_BAND } from "@/lib/site-stats";
 import SiteFooter from "@/components/SiteFooter";
 import AnimateIn from "@/components/AnimateIn";
 import Image from "next/image";
@@ -96,7 +97,11 @@ export default async function HomepagePage() {
   const s = (k: string) => settingText(raw(k));
   const ps = (page.settings as Record<string, unknown>)?.public_sections as Record<string, boolean> | undefined;
   const show = (k: string) => !ps || ps[k] !== false;
-  const stats = (getSetting(page, "stats") as {value:string;label:string}[] | undefined) || [];
+  // The band's NUMBERS come from src/lib/site-stats.ts, not from
+  // pages.settings->'stats'. Editing them per page is what let the homepage
+  // claim 500+ campaigns and 150+ brand partners while /campaigns and
+  // /services said something else. Visibility is still a CMS toggle below.
+  const stats = SITE_STAT_BAND;
   const fc = getSection(sections, "featured_campaigns");
   const fa = getSection(sections, "featured_athletes");
   const bp = getSection(sections, "brand_partners");

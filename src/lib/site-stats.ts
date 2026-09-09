@@ -28,11 +28,13 @@ export const ATHLETES = "60,000+";
 /**
  * Brand partners.
  *
- * Source: the `brands` table, rounded DOWN to the nearest ten so the claim is
- * always conservative. 132 rows on 9 Sep 2026 (126 of them unarchived).
- * Recompute:  select floor(count(*)/10.0)*10 from brands;
+ * Source: the `brands` table, UNARCHIVED ONLY, rounded DOWN to the nearest ten
+ * so the claim is always conservative. 126 unarchived of 132 rows on
+ * 9 Sep 2026. Archived brands are excluded deliberately: they are former
+ * records rather than current partners, and counting them inflates the claim.
+ * Recompute:  select floor(count(*)/10.0)*10 from brands where not archived;
  */
-export const BRAND_PARTNERS = "130+";
+export const BRAND_PARTNERS = "120+";
 
 /**
  * Campaigns run.
@@ -72,3 +74,21 @@ export function splitStat(value: string): { n: string; suffix: string } {
   const m = value.match(/^([\d,.]+)(.*)$/);
   return m ? { n: m[1], suffix: m[2] } : { n: value, suffix: "" };
 }
+
+/**
+ * The homepage stat band.
+ *
+ * This used to live in pages.settings->'stats' and was editable at
+ * /dashboard/homepage, which is how it came to disagree with every other page:
+ * 500+ campaigns, 300+ athletes and 150+ brand partners, none of them matching
+ * the figures beside them. The values now come from the constants above, so the
+ * band cannot drift again.
+ *
+ * The section's VISIBILITY is still a CMS toggle — settings.page_sections still
+ * decides whether the band renders at all. Only the numbers are fixed here.
+ */
+export const SITE_STAT_BAND: { value: string; label: string }[] = [
+  { value: CAMPAIGNS, label: "Campaigns Executed" },
+  { value: ATHLETES, label: "Athletes in Network" },
+  { value: BRAND_PARTNERS, label: "Brand Partners" },
+];
