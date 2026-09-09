@@ -58,6 +58,13 @@ active, stop and ask. Parallel sessions cause branch drift. Use a git worktree f
   `campaign_optins`, while its `[id]` subpage reads LIVE `optin_campaigns`. The nav's
   "Campaign opt-in" deliberately skips that route and points at `/dashboard?tab=optin`.
   Verified 2026-09-04.
+- **`postgame_contacts.profile_id` ≠ `brand_contacts.profile_id`** — same column name, two
+  tables, two meanings. `postgame_contacts.profile_id` (migration 029) is the IDENTITY link:
+  one human, one login, and it is what `getBrandSession()` in `src/lib/portal/brand-session.ts`
+  resolves brand scope through today. `brand_contacts.profile_id` (migration 045, applied
+  2026-09-08) is the ATTACHMENT link: which person-per-brand row a given sign-in redeemed, and
+  the intended basis for brand-portal RLS in Phase 2. Grabbing the wrong one silently resolves
+  the wrong scope rather than erroring. Verified 2026-09-08.
 - If a task says "athletes," confirm which table before writing.
 - If a task says "opt-ins," confirm which of the two tables before writing.
 
