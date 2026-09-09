@@ -35,6 +35,8 @@
 
 import { createServerSupabase } from "@/lib/supabase-server";
 import { titleCaseSchool } from "@/lib/portal/format";
+import { campaignFigures } from "@/lib/portal/pages-data";
+import { POST_METRICS_SELECT, type PostMetricsRow } from "@/lib/portal/post-metrics";
 
 /** delivered OR closed. Phase 3 brief §2: "delivered (and closed until backfilled)". */
 export const WRAPPED_STATUSES = ["delivered", "closed"] as const;
@@ -82,6 +84,8 @@ export interface LatestWrapped {
   heroUrl: string | null;
   /** Only figures actually present. An absent figure is omitted, never zeroed. */
   figures: { label: string; value: string }[];
+  /** "From post metrics" when the figures were summed rather than set. */
+  figuresSource: string | null;
 }
 
 export interface RosterTile {
@@ -248,12 +252,26 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
   }
 
   const wrappedWithHero = wrapped.find((c) => heroByCampaign.has(c.id)) ?? null;
+
+  // One row, only when there is a tile to fill. Same fallback rule as the
+  // campaign detail page's Results tab — the tile and the page it links to
+  // must not disagree about a campaign's numbers.
+  const wrappedPostMetrics = wrappedWithHero
+    ? ((
+        await supabase
+          .from("portal_campaign_post_metrics")
+          .select(POST_METRICS_SELECT)
+          .eq("campaign_id", wrappedWithHero.id)
+          .maybeSingle()
+      ).data as PostMetricsRow | null)
+    : null;
+
   const latestWrapped: LatestWrapped | null = wrappedWithHero
     ? {
         name: wrappedWithHero.name ?? "Campaign",
         slug: wrappedWithHero.slug,
         heroUrl: heroByCampaign.get(wrappedWithHero.id) ?? null,
-        figures: readFigures(wrappedWithHero.kpi_targets),
+        ...campaignFigures(wrappedWithHero.kpi_targets, wrappedPostMetrics, 3),
       }
     : null;
 
@@ -375,34 +393,6 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
 }
 
 /**
- * Figures for the Latest wrapped tile, from the recap's structured
- * kpi_targets only.
- *
- * Returns ONLY keys that are present and non-empty. A recap with an empty
- * kpi_targets object — which is what 44 of CVS's 46 wrapped campaigns have —
- * yields an empty array, and the tile renders the campaign name and "Recap
- * delivered" with no figures. Never zero-filled.
- */
-function readFigures(raw: Record<string, unknown> | null): { label: string; value: string }[] {
-  if (!raw || typeof raw !== "object") return [];
-  const WANTED: [string, string][] = [
-    ["athletes", "Athletes"],
-    ["posts", "Posts"],
-    ["reach", "Reach"],
-    ["engagement", "Engagement"],
-  ];
-  const out: { label: string; value: string }[] = [];
-  for (const [key, label] of WANTED) {
-    const v = raw[key];
-    if (v === null || v === undefined || v === "") continue;
-    const text = String(v).trim();
-    if (!text) continue;
-    out.push({ label, value: text });
-  }
-  return out;
-}
-
-/**
  * A picture of each athlete, for headshots and Top posts thumbnails.
  *
  * `athletes` has no headshot column (Phase 3 brief §6 says as much), so this
@@ -477,11 +467,4 @@ async function loadRosterViews(
 }
 
 /** 933000 -> "933K", 1100000 -> "1.1M". Used for view and follower counts. */
-export function compactNumber(n: number): string {
-  if (n >= 1_000_000) {
-    const m = n / 1_000_000;
-    return `${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}M`;
-  }
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(n);
-}
+export { compact as compactNumber } from "@/lib/portal/format";

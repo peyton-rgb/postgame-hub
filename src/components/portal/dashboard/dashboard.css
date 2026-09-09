@@ -311,6 +311,13 @@
   display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
   font-weight: 400; font-size: 18px; color: var(--ink);
 }
+/* Source line under the hero tile's figures. Sits below rather than beside
+   them: the overlay is only as wide as the tile and a trailing inline label
+   wrapped mid-phrase at 1440. */
+.pgd-over .pgd-stats-src {
+  display: block; margin-top: 8px; font-size: 10px;
+  letter-spacing: 0.02em; color: rgba(250, 248, 245, 0.55);
+}
 .pgd-tag {
   position: absolute; top: 12px; left: 12px; background: rgba(7, 7, 10, 0.6);
   border: 1px solid rgba(250, 248, 245, 0.2); padding: 4px 9px;
@@ -755,7 +762,8 @@
   .pgd-overview-split { grid-template-columns: minmax(0, 1fr) }
 }
 
-/* "by delivery date" marker beside a derived quarter heading. */
+/* Secondary marker beside a heading: "by delivery date" on a derived
+   quarter, "From post metrics" on derived campaign figures. */
 .pgd-group-note {
   margin-left: 10px; font-family: var(--font-arimo), Arimo, Arial, sans-serif;
   font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none;

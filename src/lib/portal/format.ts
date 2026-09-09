@@ -88,3 +88,19 @@ export function initials(name: string): string {
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+/**
+ * 933000 -> "933K", 1100000 -> "1.1M".
+ *
+ * One definition for every portal surface that prints a count. Previously
+ * four identical copies (pages-data, dashboard-data, AthletesGrid,
+ * CampaignDetail) drifting independently.
+ */
+export function compact(n: number): string {
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return String(Math.round(n));
+}

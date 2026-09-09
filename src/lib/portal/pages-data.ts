@@ -14,7 +14,15 @@
 
 import { createServerSupabase } from "@/lib/supabase-server";
 import { richText } from "@/lib/rich-text";
-import { titleCaseSchool } from "@/lib/portal/format";
+import { compact, titleCaseSchool } from "@/lib/portal/format";
+import {
+  figuresFromPostMetrics,
+  POST_METRICS_SELECT,
+  POST_METRICS_SOURCE,
+  type PostMetricsRow,
+} from "@/lib/portal/post-metrics";
+
+export { compact };
 
 export const WRAPPED = ["delivered", "closed"] as const;
 const NO_MATCH = "00000000-0000-0000-0000-000000000000";
@@ -23,15 +31,6 @@ function isWrapped(status: string | null): boolean {
   return !!status && (WRAPPED as readonly string[]).includes(status);
 }
 
-/** 933000 -> "933K". Shared with the dashboard's formatter. */
-export function compact(n: number): string {
-  if (n >= 1_000_000) {
-    const m = n / 1_000_000;
-    return `${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}M`;
-  }
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(n);
-}
 
 /**
  * A resized thumbnail URL for a Supabase Storage object.
@@ -278,7 +277,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
   if (!row) return null;
   const c = row as RawCampaign;
 
-  const [athletesRes, mediaRes, statsRes] = await Promise.all([
+  const [athletesRes, mediaRes, statsRes, postMetricsRes] = await Promise.all([
     // Rosters run to 418 on one CVS campaign — under the 1000 cap, so a single
     // fetch is safe here.
     supabase
@@ -297,6 +296,14 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     supabase
       .from("portal_campaign_stats")
       .select("athletes, schools")
+      .eq("campaign_id", c.id)
+      .maybeSingle(),
+    // Fetched unconditionally rather than behind an `if kpi_targets is empty`,
+    // so it rides the same round trip. It is only READ when kpi_targets is
+    // empty — a recap with real targets always shows those.
+    supabase
+      .from("portal_campaign_post_metrics")
+      .select(POST_METRICS_SELECT)
       .eq("campaign_id", c.id)
       .maybeSingle(),
   ]);
@@ -383,7 +390,11 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     // 1600, not the 900 the cards use: this hero spans the full content
     // column (1325px at 1440) and 900 visibly upscales.
     heroUrl: c.hero_image_url || (await loadHeroes(supabase, [c.id], 1600)).get(c.id) || null,
-    figures: readFigures(c.kpi_targets, 4),
+    // 5, not the 4 the tiles use: kpi_targets only ever holds four keys, but
+    // the derived set is five (posts, reel views, feed and story impressions,
+    // followers) and the Results tab is the one surface with room for all of
+    // them.
+    ...campaignFigures(c.kpi_targets, postMetricsRes.data as PostMetricsRow | null, 5),
     takeawaysHtml: richText(
       typeof c.key_takeaways === "string"
         ? c.key_takeaways
@@ -395,6 +406,30 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     media: items,
     athleteCount: stat?.athletes ?? athletes.length,
     schoolCount: stat?.schools ?? 0,
+  };
+}
+
+/**
+ * The figures for one campaign, and where they came from.
+ *
+ * kpi_targets is what the agency set out to hit and always wins when it has
+ * anything in it. Seven of the eight backfilled CVS campaigns have an empty
+ * one — their trackers held no metrics — so rather than show a bare Results
+ * tab those fall back to what the athletes actually posted, labelled so a
+ * brand can tell a derived total from an agreed target.
+ */
+export function campaignFigures(
+  kpiTargets: Record<string, unknown> | null,
+  postMetrics: PostMetricsRow | null,
+  max = 4
+): { figures: { label: string; value: string }[]; figuresSource: string | null } {
+  const targets = readFigures(kpiTargets, max);
+  if (targets.length) return { figures: targets, figuresSource: null };
+
+  const derived = figuresFromPostMetrics(postMetrics, max);
+  return {
+    figures: derived,
+    figuresSource: derived.length ? POST_METRICS_SOURCE : null,
   };
 }
 

@@ -284,7 +284,15 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
             <>
               {c.figures.length > 0 && (
                 <section className="pgd-panel">
-                  <h3>Results</h3>
+                  <h3>
+                    Results
+                    {/* Named when the numbers were summed from what the
+                        athletes posted rather than set as recap targets, so
+                        nobody reads a derived total as an agreed one. */}
+                    {c.figuresSource && (
+                      <span className="pgd-group-note">{c.figuresSource}</span>
+                    )}
+                  </h3>
                   <div style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>
                     {c.figures.map((f) => (
                       <span className="pgd-stat" key={f.label}>
