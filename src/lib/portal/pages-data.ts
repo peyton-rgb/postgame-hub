@@ -264,6 +264,16 @@ export interface MediaItem {
   createdAt: string | null;
 }
 
+/** One row of the Results tab's Top content list. */
+export interface DetailPost {
+  id: string;
+  name: string;
+  school: string | null;
+  views: number | null;
+  postUrl: string | null;
+  thumbUrl: string | null;
+}
+
 export async function loadCampaignDetail(brandId: string, slug: string) {
   const supabase = createServerSupabase();
 
@@ -282,7 +292,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     // fetch is safe here.
     supabase
       .from("athletes")
-      .select("id, name, school, sport, ig_followers, metrics")
+      .select("id, name, school, sport, ig_followers, metrics, post_url")
       .eq("campaign_id", c.id)
       .not("name", "is", null)
       .order("ig_followers", { ascending: false, nullsFirst: false })
@@ -315,6 +325,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     sport: string | null;
     ig_followers: number | null;
     metrics: Record<string, any> | null;
+    post_url: string | null;
   }[];
 
   const media = (mediaRes.data ?? []) as {
@@ -346,6 +357,32 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     views: reelViews(a.metrics),
     headshotUrl: headshots.get(a.id) ?? null,
   }));
+
+  // ---- Top content -------------------------------------------------
+  // The campaign's six highest-viewed posts, under the Results figures. Same
+  // shape and same guarded metric as the dashboard's Top posts tile
+  // (reelViews below drops the aggregate-shaped values), so a brand meets one
+  // pattern for "the posts that worked" rather than two.
+  //
+  // Ranked on views, so a row without a view count is not in it at all —
+  // there is nothing to rank it by and no figure to show.
+  const topContent: DetailPost[] = rawAthletes
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      school: titleCaseSchool(a.school),
+      views: reelViews(a.metrics),
+      // The column first, then the per-platform URL — which one is populated
+      // depends on how the row was imported.
+      postUrl:
+        (a.post_url && a.post_url.trim()) ||
+        (typeof a.metrics?.ig_reel?.post_url === "string" ? a.metrics.ig_reel.post_url : null) ||
+        null,
+      thumbUrl: headshots.get(a.id) ?? null,
+    }))
+    .filter((p): p is DetailPost => p.views !== null)
+    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    .slice(0, 6);
 
   const items: MediaItem[] = media
     .map((m) => {
@@ -403,6 +440,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
           : null
     ),
     athletes,
+    topContent,
     media: items,
     athleteCount: stat?.athletes ?? athletes.length,
     schoolCount: stat?.schools ?? 0,
@@ -817,4 +855,102 @@ export async function loadSettings(brandId: string): Promise<SettingsData> {
     })),
     logos: (logosRes.data ?? []) as SettingsLogoRow[],
   };
+}
+
+// ---- 7 · Search -------------------------------------------------
+// The toolbar search box was a decorative span for the whole of 3b. This is
+// what it does now: one query across the brand's campaigns and one across its
+// athletes, both scoped by brand_id like every other read on these pages.
+//
+// SERVER-SIDE, not a filter over a loaded list. The athlete directory is
+// 1,501 people for CVS and PostgREST caps a response at 1000 rows, so
+// "search" done in the browser would silently miss people. `ilike` with the
+// term wrapped in % is the same matching the Campaigns page's own box uses,
+// and it runs in Postgres where the whole set is visible.
+
+export interface SearchHit {
+  kind: "campaign" | "athlete";
+  /** Stable key: campaign id, or the directory's athlete_key. */
+  key: string;
+  name: string;
+  meta: string | null;
+  href: string | null;
+}
+
+/** Postgres pattern metacharacters, so a name with a % in it searches for a %. */
+function likeTerm(q: string): string {
+  return `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
+}
+
+export async function loadPortalSearch(brandId: string, rawQuery: string) {
+  const q = rawQuery.trim();
+  // Two characters, because one matches most of the directory and the result
+  // would be a truncated list masquerading as an answer.
+  if (q.length < 2) {
+    return { query: q, tooShort: q.length > 0, campaigns: [], athletes: [] as SearchHit[] };
+  }
+
+  const supabase = createServerSupabase();
+  const term = likeTerm(q);
+
+  const [campRes, athRes] = await Promise.all([
+    supabase
+      .from("portal_campaigns")
+      .select("id, name, slug, lifecycle_status, quarter, campaign_type")
+      .eq("brand_id", brandId)
+      .ilike("name", term)
+      .limit(40),
+    supabase
+      .from("portal_brand_athletes")
+      .select("athlete_key, name, school, sport, followers, last_campaign")
+      .eq("brand_id", brandId)
+      .ilike("name", term)
+      .order("followers", { ascending: false, nullsFirst: false })
+      .limit(60),
+  ]);
+
+  const campaigns: SearchHit[] = ((campRes.data ?? []) as {
+    id: string;
+    name: string | null;
+    slug: string | null;
+    lifecycle_status: string | null;
+    quarter: string | null;
+    campaign_type: string | null;
+  }[]).map((c) => ({
+    kind: "campaign" as const,
+    key: c.id,
+    name: c.name ?? "Campaign",
+    meta:
+      [c.lifecycle_status === "active" ? "Live" : "Wrapped", c.quarter, c.campaign_type]
+        .filter(Boolean)
+        .join(" · ") || null,
+    href: c.slug ? `/portal/campaigns/${c.slug}` : null,
+  }));
+
+  const athletes: SearchHit[] = ((athRes.data ?? []) as {
+    athlete_key: string;
+    name: string;
+    school: string | null;
+    sport: string | null;
+    followers: number | null;
+    last_campaign: string | null;
+  }[]).map((a) => ({
+    kind: "athlete" as const,
+    key: a.athlete_key,
+    name: a.name,
+    meta:
+      [
+        titleCaseSchool(a.school),
+        a.sport,
+        a.followers !== null ? `${compact(a.followers)} followers` : null,
+        a.last_campaign,
+      ]
+        .filter(Boolean)
+        .join(" · ") || null,
+    // The directory is one page with client-side filters, so there is no
+    // per-athlete route to link to. The row is the answer.
+    href: null,
+  }));
+
+  return { query: q, tooShort: false, campaigns, athletes };
 }

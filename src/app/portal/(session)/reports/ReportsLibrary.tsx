@@ -57,7 +57,13 @@ export default function ReportsLibrary({ groups }: { groups: ReportGroup[] }) {
                 ) : null}
                 <span className="pgd-card-body">
                   <span className="pgd-card-name">{c.name}</span>
-                  {c.quarter ? <span className="pgd-card-meta">{c.quarter}</span> : null}
+                  {/* The quarter is the heading this card sits under, so it
+                      is not repeated on the card. Shown only when the group
+                      was derived from delivery dates and the card carries a
+                      recorded quarter that could differ from it. */}
+                  {c.quarter && c.quarter !== g.label ? (
+                    <span className="pgd-card-meta">{c.quarter}</span>
+                  ) : null}
                   <span className="pgd-card-foot">
                     {c.figures.map((f) => (
                       <span className="pgd-stat" key={f.label}>
