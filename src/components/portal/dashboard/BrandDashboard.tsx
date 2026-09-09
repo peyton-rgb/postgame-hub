@@ -364,7 +364,10 @@ export default function BrandDashboard({
 
           {/* 8 · Campaigns. Live first, then wrapped. Fewer cards when there
                  are fewer campaigns — never padded. */}
-          <section className="pgd-tile pgd-camps" aria-labelledby="pgd-camps-h">
+          {/* Not a .pgd-tile: the strip is a labelled row of cards, and
+              wrapping it in a card put a border around a group of borders.
+              The heading sits above the row as plain text. */}
+          <section className="pgd-camps" aria-labelledby="pgd-camps-h">
             <h3 id="pgd-camps-h">
               Campaigns
               <small>

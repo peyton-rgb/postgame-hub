@@ -201,7 +201,12 @@
 .pgd-photo   { grid-column: 1 / 4;   grid-row: 1 / 4; padding: 0 }
 .pgd-roster  { grid-column: 4 / 10;  grid-row: 1 / 4 }
 .pgd-top     { grid-column: 10 / 13; grid-row: 1 / 4 }
-.pgd-camps   { grid-column: 1 / 13;  grid-row: 4 / 5; flex-direction: row; align-items: center; gap: 10px }
+.pgd-camps   { grid-column: 1 / 13;  grid-row: 4 / 5;
+               display: flex; flex-direction: column; gap: 6px; min-width: 0;
+               /* no tile background, border or padding — the cards inside carry
+                  their own edges, and a card around cards read as a double
+                  frame. */
+               background: none; border: 0; padding: 0 }
 
 /* The workflow strip: four tiles across row 5, each 3 columns wide. */
 .pgd-alert   { grid-column: 1 / 4;   grid-row: 5 / 6 }
@@ -372,11 +377,12 @@
 
 /* Campaigns strip */
 .pgd-camps h3 {
-  margin: 0; width: 110px; flex: 0 0 auto; flex-direction: column;
-  align-items: flex-start; gap: 4px;
+  margin: 0; width: auto; display: flex; align-items: baseline; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--ink-75);
+  text-transform: uppercase; letter-spacing: 0.06em;
 }
 .pgd-camps h3 small { font-weight: 400; color: var(--ink-50); font-size: 10px }
-.pgd-campgrid { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; min-width: 0 }
+.pgd-campgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; min-width: 0 }
 .pgd-camp {
   background: rgba(250, 248, 245, 0.04); border: 1px solid rgba(250, 248, 245, 0.07);
   border-radius: 10px; padding: 9px 10px; display: flex; flex-direction: column;
@@ -484,7 +490,6 @@
      rows collapse, so a 1:2 portrait grew to its own aspect ratio and filled
      the screen. A banner, not a poster. */
   .pgd-photo { height: 320px; min-height: 0 }
-  .pgd-camps { flex-direction: column; align-items: stretch }
   .pgd-camps h3 { width: auto; flex-direction: row; align-items: baseline; gap: 8px; margin-bottom: 8px }
   .pgd-campgrid { grid-template-columns: repeat(3, minmax(0, 1fr)) }
   .pgd-main { padding: 16px 20px 18px }

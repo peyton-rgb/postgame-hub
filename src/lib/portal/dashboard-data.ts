@@ -153,7 +153,9 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
       .select("athlete_id, athlete_name, school, campaign_name, views, post_url")
       .eq("brand_id", brandId)
       .order("views", { ascending: false })
-      .limit(3),
+      // 6, not 3: the reorder gave Top posts the full height of rows 1-3 and
+      // three rows left most of the column empty.
+      .limit(6),
   ]);
 
   const campaigns = ((campaignsRes.data ?? []) as CampaignRow[]).slice().sort(byNewest);
