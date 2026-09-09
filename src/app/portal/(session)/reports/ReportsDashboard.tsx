@@ -189,7 +189,6 @@ export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
           ))}
         </div>
       )}
-      {data.audienceNote ? <p className="pgd-figs-note">{data.audienceNote}</p> : null}
 
       <div className="pgd-report-split">
         {/* ---- grouped bar chart ---- */}

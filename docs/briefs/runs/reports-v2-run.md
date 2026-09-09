@@ -182,18 +182,20 @@ De-duplicated it is **14,614,989**, so the old figure overstated by 2.76M, or
 16%.
 
 Migration 060 de-duplicates it — one value per person, their MAX across
-appearances, then summed — and the tile is labelled "Total audience reached"
-with the sub-label "each athlete once".
+appearances, then summed — and the tile is labelled **"Combined following,
+de-duplicated"**.
 
 **Max, not latest:** `athletes` rows carry no reliable per-row capture date.
 Not min, because a count that grew is the one a brand's own reporting shows.
 
-**And the caveat is stated on the page, not just here.** Counting each athlete
-once is not the same as counting people: two athletes at one school share an
-audience, and this sum counts that audience twice. A footnote under the KPI row
-says exactly that — "It cannot know how many followers two athletes share, so
-it is an upper bound on reach" — because a figure called "audience reached"
-invites being read as unique people, which no data here supports.
+**The label carries the caveat, so there is no footnote.** I first shipped this
+as "Total audience reached" plus a footnote saying it could not know how many
+followers two athletes share. Peyton's call was the better one: name the figure
+for what it IS — a following, summed once per athlete — and the misreading
+never arises, so the footnote has nothing to correct. "Audience reached"
+invites being read as unique people; "combined following, de-duplicated" says
+exactly what was counted and how. Sub-label dropped too: the label already
+carries the dedupe.
 
 The row-wise column was dropped from the view rather than kept beside the new
 one: two similar figures in one view is how the wrong one gets picked. The

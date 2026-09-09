@@ -16,9 +16,10 @@
 --
 -- WHAT IT STILL IS NOT. This counts each ATHLETE once; it cannot know how
 -- many of their followers are the same people. Two athletes at one school
--- share an audience and this sum counts that audience twice. So it is an
--- upper bound on reach, and the UI says so rather than implying a
--- unique-people measurement nobody has.
+-- share an audience and this sum counts that audience twice. So it is not a
+-- unique-people measurement, which is why the UI calls it "Combined
+-- following, de-duplicated" — a following summed once per athlete — rather
+-- than "audience reached", which invites exactly that misreading.
 --
 -- `followers` (the row-wise sum) is DROPPED rather than kept alongside:
 -- leaving both invites the wrong one being picked, and this page was its only

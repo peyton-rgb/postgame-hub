@@ -1143,8 +1143,6 @@ export interface ReportsMetrics {
   periodLabel: string;
   options: ReportPeriodOption[];
   kpis: ReportKpi[];
-  /** Stated under the KPI row when the audience figure is shown. */
-  audienceNote: string | null;
   rows: ReportRow[];
   /** How many of `rows` carry posts — the table's default view. */
   rowsWithPosts: number;
@@ -1322,15 +1320,16 @@ export async function loadReportsMetrics(
     guarded(prior?.reel_views, prior?.reel_views_athletes)
   );
   push("Impressions", impressionsOf(row), impressionsOf(prior), "feed + stories");
-  // "Total audience reached", not "Combined followers", and only because the
-  // figure behind it is now de-duplicated — see migration 060. The sub-label
-  // states the dedupe; the footnote under the row states what it still cannot
-  // account for.
+  // "Combined following, de-duplicated" — Peyton's wording. It says what the
+  // figure IS rather than what it might be taken for: a following, summed
+  // once per athlete. "Audience reached" was the alternative and it invites
+  // being read as unique people, which nothing here measures — two athletes
+  // at one school share an audience and this sum counts it twice. The label
+  // carries the dedupe, so there is no sub-label and no footnote.
   push(
-    "Total audience reached",
+    "Combined following, de-duplicated",
     guarded(row?.audience, row?.audience_athletes),
-    guarded(prior?.audience, prior?.audience_athletes),
-    "each athlete once"
+    guarded(prior?.audience, prior?.audience_athletes)
   );
 
   // ---- which campaigns are in this period ------------------------------
@@ -1531,16 +1530,11 @@ export async function loadReportsMetrics(
     headshotUrl: headshots.get(a.athlete_id) ?? null,
   }));
 
-  const audienceNote = kpis.some((k) => k.label === "Total audience reached")
-    ? "Total audience reached counts each athlete once, at their largest recorded following. It cannot know how many followers two athletes share, so it is an upper bound on reach."
-    : null;
-
   return {
     period: chosen.key,
     periodLabel: chosen.label,
     options,
     kpis,
-    audienceNote,
     rows,
     rowsWithPosts,
     columns,
