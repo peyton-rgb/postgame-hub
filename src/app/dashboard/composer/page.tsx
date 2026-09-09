@@ -296,7 +296,7 @@ export default function ComposerPage() {
                     step.num === currentStep
                       ? 'bg-white text-black border-white'
                       : step.num < currentStep
-                      ? 'bg-status-ok/20 text-status-ok border-status-ok/30'
+                      ? 'bg-status-ok/20 text-status-ok-ink border-status-ok/30'
                       : 'bg-white/5 text-gray-600 border-white/10'
                   }`}
                 >
@@ -672,7 +672,7 @@ export default function ComposerPage() {
 
             {/* Success Toast */}
             {saveSuccess && (
-              <div className="mt-4 px-4 py-3 bg-status-ok/10 border border-status-ok/20 rounded-xl text-sm text-status-ok">
+              <div className="mt-4 px-4 py-3 bg-status-ok/10 border border-status-ok/20 rounded-xl text-sm text-status-ok-ink">
                 {saveSuccess}
               </div>
             )}

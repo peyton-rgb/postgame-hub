@@ -24,14 +24,14 @@ import type { EditJob, EditJobStatus } from '@/lib/types/editing';
 
 const STATUS_CONFIG: Record<EditJobStatus, { label: string; color: string; icon: string }> = {
   pending: { label: 'Queued', color: 'bg-gray-600/20 text-gray-300 border-gray-600/30', icon: '⏳' },
-  analyzing: { label: 'Analyzing', color: 'bg-blue-600/20 text-blue-300 border-blue-600/30', icon: '🔍' },
-  planning: { label: 'Planning', color: 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30', icon: '📋' },
-  confirming: { label: 'Awaiting Approval', color: 'bg-status-warn/20 text-status-warn border-status-warn/30', icon: '⚡' },
-  editing: { label: 'Editing', color: 'bg-purple-600/20 text-purple-300 border-purple-600/30', icon: '✂️' },
+  analyzing: { label: 'Analyzing', color: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30', icon: '🔍' },
+  planning: { label: 'Planning', color: 'bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border-indigo-600/30', icon: '📋' },
+  confirming: { label: 'Awaiting Approval', color: 'bg-status-warn/20 text-status-warn-ink border-status-warn/30', icon: '⚡' },
+  editing: { label: 'Editing', color: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30', icon: '✂️' },
   review: { label: 'Ready for Review', color: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30', icon: '👀' },
-  approved: { label: 'Approved', color: 'bg-status-ok/20 text-status-ok border-status-ok/30', icon: '✅' },
-  rejected: { label: 'Rejected', color: 'bg-status-bad/20 text-status-bad border-status-bad/30', icon: '❌' },
-  failed: { label: 'Failed', color: 'bg-status-bad/20 text-status-bad border-status-bad/30', icon: '⚠️' },
+  approved: { label: 'Approved', color: 'bg-status-ok/20 text-status-ok-ink border-status-ok/30', icon: '✅' },
+  rejected: { label: 'Rejected', color: 'bg-status-bad/20 text-status-bad-ink border-status-bad/30', icon: '❌' },
+  failed: { label: 'Failed', color: 'bg-status-bad/20 text-status-bad-ink border-status-bad/30', icon: '⚠️' },
 };
 
 export default function EditingDashboardPage() {
@@ -330,7 +330,7 @@ export default function EditingDashboardPage() {
                       {job.status === 'confirming' && (
                         <button
                           onClick={() => handleConfirm(job.id)}
-                          className="px-4 py-2 bg-status-ok/20 text-status-ok border border-status-ok/30 rounded-lg text-sm hover:bg-status-ok/30 transition"
+                          className="px-4 py-2 bg-status-ok/20 text-status-ok-ink border border-status-ok/30 rounded-lg text-sm hover:bg-status-ok/30 transition"
                         >
                           Confirm & Run
                         </button>
@@ -346,7 +346,7 @@ export default function EditingDashboardPage() {
                       {job.status === 'failed' && (
                         <button
                           onClick={() => handleRetry(job.id)}
-                          className="px-4 py-2 bg-status-bad/20 text-status-bad border border-status-bad/30 rounded-lg text-sm hover:bg-status-bad/30 transition"
+                          className="px-4 py-2 bg-status-bad/20 text-status-bad-ink border border-status-bad/30 rounded-lg text-sm hover:bg-status-bad/30 transition"
                         >
                           Retry
                         </button>

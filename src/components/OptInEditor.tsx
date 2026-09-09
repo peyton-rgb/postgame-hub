@@ -224,10 +224,10 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
 
   const statusPillClass =
     campaign.status === "live"
-      ? "bg-status-ok/30 text-status-ok"
+      ? "bg-status-ok/30 text-status-ok-ink"
       : campaign.status === "closed"
       ? "bg-gray-800 text-gray-400"
-      : "bg-status-warn/30 text-status-warn";
+      : "bg-status-warn/30 text-status-warn-ink";
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -304,7 +304,7 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 rounded-lg"
+              className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 rounded-lg"
               title="Delete"
             >
               <svg
@@ -325,7 +325,7 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
         </div>
         {saveError && (
           <div className="px-6 pb-3">
-            <div className="text-xs text-status-bad bg-status-bad/10 border border-status-bad/30 rounded px-3 py-2">
+            <div className="text-xs text-status-bad-ink bg-status-bad/10 border border-status-bad/30 rounded px-3 py-2">
               {saveError}
             </div>
           </div>
@@ -595,11 +595,11 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
                     </td>
                     <td className="px-4 py-3">
                       {o.forwarded_to_admin_at ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-status-ok/30 text-status-ok">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-status-ok/30 text-status-ok-ink">
                           Synced
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-status-warn/30 text-status-warn">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-status-warn/30 text-status-warn-ink">
                           Pending
                         </span>
                       )}

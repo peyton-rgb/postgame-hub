@@ -38,8 +38,8 @@ function getKitChecklist(b: Brand & Record<string, unknown>): boolean[] {
 
 function getKitLabel(score: number): { label: string; color: string; bg: string } {
   if (score === 0) return { label: "No Kit", color: "text-gray-500", bg: "bg-gray-800" };
-  if (score === 7) return { label: "Complete", color: "text-status-ok", bg: "bg-status-ok/30" };
-  return { label: "Partial", color: "text-status-warn", bg: "bg-status-warn/30" };
+  if (score === 7) return { label: "Complete", color: "text-status-ok-ink", bg: "bg-status-ok/30" };
+  return { label: "Partial", color: "text-status-warn-ink", bg: "bg-status-warn/30" };
 }
 
 function getInitials(name: string) {
@@ -233,7 +233,7 @@ export default function BrandKitList() {
                       key={item}
                       className={`text-[9px] font-bold text-center py-1 rounded ${
                         checklist[i]
-                          ? "bg-status-ok/30 text-status-ok"
+                          ? "bg-status-ok/30 text-status-ok-ink"
                           : "bg-gray-800/50 text-gray-700"
                       }`}
                     >

@@ -438,7 +438,7 @@ export default function OptInList() {
                             ? "bg-surface-card/30 text-ink-3"
                             : c.status === "closed"
                             ? "bg-surface-raised text-ink-3"
-                            : "bg-status-warn/30 text-status-warn"
+                            : "bg-status-warn/30 text-status-warn-ink"
                         }`}
                       >
                         {c.status === "live" ? "Live" : c.status === "closed" ? "Closed" : "Draft"}

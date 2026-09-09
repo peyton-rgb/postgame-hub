@@ -342,7 +342,7 @@ export default function NewFormModal({ onClose, onCreated }: { onClose: () => vo
               !selected.driveFolderId && (
                 // Only shown when this modal did the creating — a campaign that
                 // arrived with a folder needs no announcement.
-                <div className="text-xs text-status-ok bg-status-ok/10 border border-status-ok/25 rounded-lg px-3 py-2 leading-relaxed">
+                <div className="text-xs text-status-ok-ink bg-status-ok/10 border border-status-ok/25 rounded-lg px-3 py-2 leading-relaxed">
                   Folder ready — Content and Contracts/Drafts + Signed created.
                 </div>
               )

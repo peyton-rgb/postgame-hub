@@ -70,15 +70,15 @@ const STATUS_TABS: { key: StatusTab; label: string }[] = [
 ];
 
 const ASSET_TYPE_COLORS: Record<string, string> = {
-  video: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  photo: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  video: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30',
+  photo: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30',
   graphic: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  ready: 'bg-status-ok/20 text-status-ok border-status-ok/30',
-  delivered: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  posted: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  ready: 'bg-status-ok/20 text-status-ok-ink border-status-ok/30',
+  delivered: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30',
+  posted: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30',
   archived: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
 };
 

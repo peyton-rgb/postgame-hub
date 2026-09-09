@@ -1,5 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // The Hub's theme is per-user and lives on a data-theme attribute set by
+  // dashboard/layout.tsx — NOT on the OS preference. Without this, a dark:
+  // variant would follow the operating system and contradict the toggle.
+  // Nothing used dark: before this line was added, so it changes no existing
+  // styling; it exists so a fixed-hue pair can differ per theme.
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
@@ -75,6 +81,12 @@ module.exports = {
         "status-ok": "rgb(var(--status-ok-rgb) / <alpha-value>)",
         "status-warn": "rgb(var(--status-warn-rgb) / <alpha-value>)",
         "status-bad": "rgb(var(--status-bad-rgb) / <alpha-value>)",
+        // Badge ink — the role sitting on a tint OF ITSELF rather than on the
+        // ground. Same as the role in dark; a darker step in light, where the
+        // role-on-its-own-tint measured ~3.6:1. See globals.css.
+        "status-ok-ink": "rgb(var(--status-ok-ink-rgb) / <alpha-value>)",
+        "status-warn-ink": "rgb(var(--status-warn-ink-rgb) / <alpha-value>)",
+        "status-bad-ink": "rgb(var(--status-bad-ink-rgb) / <alpha-value>)",
       },
       fontSize: {
         "recap-body": ["24px", { lineHeight: "1.4" }],

@@ -254,14 +254,14 @@ export default function PressList() {
                   </span>
                   <div className="flex items-center gap-2">
                     {article.archived && (
-                      <span className="text-xs font-bold px-2 py-1 rounded bg-status-warn/30 text-status-warn">
+                      <span className="text-xs font-bold px-2 py-1 rounded bg-status-warn/30 text-status-warn-ink">
                         Archived
                       </span>
                     )}
                     <span
                       className={`text-xs font-bold px-2 py-1 rounded ${
                         article.published
-                          ? "bg-status-ok/30 text-status-ok"
+                          ? "bg-status-ok/30 text-status-ok-ink"
                           : "bg-gray-800 text-gray-500"
                       }`}
                     >
@@ -269,7 +269,7 @@ export default function PressList() {
                     </span>
                     <button
                       onClick={(e) => toggleArchive(article, e)}
-                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-warn hover:bg-status-warn/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-warn-ink hover:bg-status-warn/10 opacity-0 group-hover:opacity-100 transition-all"
                       title={article.archived ? "Unarchive" : "Archive"}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -284,7 +284,7 @@ export default function PressList() {
                         e.stopPropagation();
                         setConfirmDelete(article);
                       }}
-                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
                       title="Delete article"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -326,14 +326,14 @@ export default function PressList() {
                   <div className="flex items-center gap-3">
                     <h3 className="text-sm font-bold truncate">{article.title}</h3>
                     {article.archived && (
-                      <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded bg-status-warn/30 text-status-warn">
+                      <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded bg-status-warn/30 text-status-warn-ink">
                         Archived
                       </span>
                     )}
                     <span
                       className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${
                         article.published
-                          ? "bg-status-ok/30 text-status-ok"
+                          ? "bg-status-ok/30 text-status-ok-ink"
                           : "bg-gray-800 text-gray-500"
                       }`}
                     >
@@ -354,7 +354,7 @@ export default function PressList() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={(e) => toggleArchive(article, e)}
-                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-warn hover:bg-status-warn/10 opacity-0 group-hover:opacity-100 transition-all"
+                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-warn-ink hover:bg-status-warn/10 opacity-0 group-hover:opacity-100 transition-all"
                     title={article.archived ? "Unarchive" : "Archive"}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -369,7 +369,7 @@ export default function PressList() {
                       e.stopPropagation();
                       setConfirmDelete(article);
                     }}
-                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
+                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
                     title="Delete article"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

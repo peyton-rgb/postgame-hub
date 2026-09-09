@@ -65,10 +65,10 @@ const CHANNELS = [
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
   draft: { label: 'Draft', classes: 'bg-surface-raised text-ink-2 border-hairline' },
-  approved: { label: 'Approved', classes: 'bg-status-ok/20 text-status-ok border-status-ok/30' },
-  scheduled: { label: 'Scheduled', classes: 'bg-blue-600/20 text-blue-300 border-blue-600/30' },
-  published: { label: 'Published', classes: 'bg-purple-600/20 text-purple-300 border-purple-600/30' },
-  failed: { label: 'Failed', classes: 'bg-status-bad/20 text-status-bad border-status-bad/30' },
+  approved: { label: 'Approved', classes: 'bg-status-ok/20 text-status-ok-ink border-status-ok/30' },
+  scheduled: { label: 'Scheduled', classes: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30' },
+  published: { label: 'Published', classes: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30' },
+  failed: { label: 'Failed', classes: 'bg-status-bad/20 text-status-bad-ink border-status-bad/30' },
 };
 
 export default function CaptionsPage() {
@@ -442,7 +442,7 @@ export default function CaptionsPage() {
               </button>
 
               {generateError && (
-                <div className="p-3 bg-status-bad/10 border border-status-bad/30 rounded-lg text-status-bad text-sm">
+                <div className="p-3 bg-status-bad/10 border border-status-bad/30 rounded-lg text-status-bad-ink text-sm">
                   {generateError}
                 </div>
               )}
@@ -803,14 +803,14 @@ export default function CaptionsPage() {
                           {item.status === 'draft' && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleApproveItem(item.id); }}
-                              className="px-4 py-1.5 bg-status-ok/20 text-status-ok border border-status-ok/30 rounded-lg text-xs font-medium hover:bg-status-ok/30 transition"
+                              className="px-4 py-1.5 bg-status-ok/20 text-status-ok-ink border border-status-ok/30 rounded-lg text-xs font-medium hover:bg-status-ok/30 transition"
                             >
                               Approve
                             </button>
                           )}
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                            className="px-4 py-1.5 bg-status-bad/10 text-status-bad border border-status-bad/20 rounded-lg text-xs font-medium hover:bg-status-bad/20 transition"
+                            className="px-4 py-1.5 bg-status-bad/10 text-status-bad-ink border border-status-bad/20 rounded-lg text-xs font-medium hover:bg-status-bad/20 transition"
                           >
                             Delete
                           </button>

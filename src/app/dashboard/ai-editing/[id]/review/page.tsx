@@ -152,9 +152,9 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
               job.status === 'review'
                 ? 'bg-[#D73F09]/20 text-[#D73F09] border-[#D73F09]/30'
                 : job.status === 'approved'
-                ? 'bg-status-ok/20 text-status-ok border-status-ok/30'
+                ? 'bg-status-ok/20 text-status-ok-ink border-status-ok/30'
                 : job.status === 'rejected'
-                ? 'bg-status-bad/20 text-status-bad border-status-bad/30'
+                ? 'bg-status-bad/20 text-status-bad-ink border-status-bad/30'
                 : 'bg-gray-600/20 text-gray-400 border-gray-600/30'
             }`}
           >
@@ -261,21 +261,21 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
                 <button
                   onClick={() => handleApprove(false)}
                   disabled={actionLoading}
-                  className="px-5 py-2.5 bg-status-ok/20 text-status-ok border border-status-ok/30 hover:bg-status-ok/30 rounded-lg font-medium transition"
+                  className="px-5 py-2.5 bg-status-ok/20 text-status-ok-ink border border-status-ok/30 hover:bg-status-ok/30 rounded-lg font-medium transition"
                 >
                   Approve
                 </button>
                 <button
                   onClick={() => setShowChangesForm(true)}
                   disabled={actionLoading}
-                  className="px-5 py-2.5 bg-status-warn/20 text-status-warn border border-status-warn/30 hover:bg-status-warn/30 rounded-lg font-medium transition"
+                  className="px-5 py-2.5 bg-status-warn/20 text-status-warn-ink border border-status-warn/30 hover:bg-status-warn/30 rounded-lg font-medium transition"
                 >
                   Request Changes
                 </button>
                 <button
                   onClick={handleReject}
                   disabled={actionLoading}
-                  className="px-5 py-2.5 bg-status-bad/20 text-status-bad border border-status-bad/30 hover:bg-status-bad/30 rounded-lg font-medium transition ml-auto"
+                  className="px-5 py-2.5 bg-status-bad/20 text-status-bad-ink border border-status-bad/30 hover:bg-status-bad/30 rounded-lg font-medium transition ml-auto"
                 >
                   Reject
                 </button>
@@ -289,8 +289,8 @@ export default function EditReviewPage({ params }: { params: { id: string } }) {
           <div
             className={`rounded-xl p-4 mb-8 border ${
               job.status === 'approved'
-                ? 'bg-status-ok/10 border-status-ok/30 text-status-ok'
-                : 'bg-status-bad/10 border-status-bad/30 text-status-bad'
+                ? 'bg-status-ok/10 border-status-ok/30 text-status-ok-ink'
+                : 'bg-status-bad/10 border-status-bad/30 text-status-bad-ink'
             }`}
           >
             This edit was {job.status} {job.approved_by ? `by a team member` : ''}{' '}

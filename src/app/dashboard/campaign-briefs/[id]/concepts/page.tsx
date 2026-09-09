@@ -38,7 +38,7 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 const SCOPE_COLORS: Record<string, string> = {
-  ugc_only: 'bg-status-ok/50 text-status-ok',
+  ugc_only: 'bg-status-ok/50 text-status-ok-ink',
   hybrid: 'bg-blue-900/50 text-blue-300',
   full_production: 'bg-purple-900/50 text-purple-300',
 };
@@ -628,7 +628,7 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
         </div>
 
         {error && (
-          <div className="bg-status-bad/50 border border-status-bad text-status-bad px-4 py-3 rounded-lg mb-6">
+          <div className="bg-status-bad/50 border border-status-bad text-status-bad-ink px-4 py-3 rounded-lg mb-6">
             {error}
             <button onClick={() => setError(null)} className="ml-4 text-status-bad hover:text-status-bad">
               Dismiss

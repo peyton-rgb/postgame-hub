@@ -120,7 +120,7 @@ export default function Tier3Picker({
         <div className="flex-1 overflow-y-auto p-6">
           {/* Import error banner */}
           {importError && (
-            <div className="mb-4 px-4 py-2 bg-status-bad/10 border border-status-bad/20 rounded-lg text-sm text-status-bad">
+            <div className="mb-4 px-4 py-2 bg-status-bad/10 border border-status-bad/20 rounded-lg text-sm text-status-bad-ink">
               {importError}
             </div>
           )}

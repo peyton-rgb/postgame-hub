@@ -75,25 +75,25 @@ type ReviewStatus = 'pending_internal' | 'pending_brand' | 'approved' | 'revisio
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending_internal: {
     label: 'Pending Internal',
-    color: 'bg-status-warn/20 text-status-warn border-status-warn/30',
+    color: 'bg-status-warn/20 text-status-warn-ink border-status-warn/30',
   },
   pending_brand: {
     label: 'Pending Brand',
-    color: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
+    color: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30',
   },
   approved: {
     label: 'Approved',
-    color: 'bg-status-ok/20 text-status-ok border-status-ok/30',
+    color: 'bg-status-ok/20 text-status-ok-ink border-status-ok/30',
   },
   revision_requested: {
     label: 'Revisions',
-    color: 'bg-status-bad/20 text-status-bad border-status-bad/30',
+    color: 'bg-status-bad/20 text-status-bad-ink border-status-bad/30',
   },
 };
 
 const AUTHOR_COLORS: Record<string, string> = {
-  postgame: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
-  brand: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
+  postgame: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30',
+  brand: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30',
   agency: 'bg-cyan-600/20 text-cyan-300 border-cyan-600/30',
   editor: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
 };
@@ -504,7 +504,7 @@ export default function ReviewsDashboardPage() {
                           <button
                             onClick={() => setShowRejectForm(true)}
                             disabled={actionLoading}
-                            className="flex-1 px-4 py-2.5 bg-status-bad/20 hover:bg-status-bad/30 text-status-bad text-sm font-medium rounded-lg border border-status-bad/30 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 bg-status-bad/20 hover:bg-status-bad/30 text-status-bad-ink text-sm font-medium rounded-lg border border-status-bad/30 transition-colors disabled:opacity-50"
                           >
                             Request Changes
                           </button>

@@ -182,7 +182,7 @@ export default function CaseStudyList() {
                   <span
                     className={`text-xs font-bold px-2 py-1 rounded ${
                       study.published
-                        ? "bg-status-ok/30 text-status-ok"
+                        ? "bg-status-ok/30 text-status-ok-ink"
                         : "bg-gray-800 text-gray-500"
                     }`}
                   >
@@ -194,7 +194,7 @@ export default function CaseStudyList() {
                       e.stopPropagation();
                       setConfirmDelete(study);
                     }}
-                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
+                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
                     title="Delete case study"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

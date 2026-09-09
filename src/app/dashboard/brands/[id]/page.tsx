@@ -483,7 +483,7 @@ export default function BrandKitEditorPage() {
                       <span
                         className={`text-[10px] font-bold px-2 py-1 rounded ${
                           c.status === "active"
-                            ? "bg-status-ok/30 text-status-ok"
+                            ? "bg-status-ok/30 text-status-ok-ink"
                             : "bg-gray-800 text-gray-500"
                         }`}
                       >
@@ -544,7 +544,7 @@ export default function BrandKitEditorPage() {
                       <span
                         className={`text-[10px] font-bold px-2 py-1 rounded ${
                           r.published
-                            ? "bg-status-ok/30 text-status-ok"
+                            ? "bg-status-ok/30 text-status-ok-ink"
                             : "bg-gray-800 text-gray-500"
                         }`}
                       >

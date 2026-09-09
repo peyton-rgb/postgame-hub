@@ -79,6 +79,16 @@
   --status-ok-rgb:   63 185 80;    /* #3FB950 */
   --status-warn-rgb: 210 153 34;   /* #D29922 */
   --status-bad-rgb:  207 106 100;  /* #CF6A64 */
+
+  /* Badge ink. A status role is an ink for the GROUND — on the ground all three
+     clear 4.5:1 in both themes. Sitting the same colour on a 20% tint OF ITSELF
+     is a different problem, and in light mode all three fell to about 3.6:1: the
+     "Rejected" label went pale-on-pale while its icon stayed readable.
+     On a dark ground the tint darkens and the role still clears 4.5, so these
+     are simply the roles. Light overrides them below. */
+  --status-ok-ink-rgb:   var(--status-ok-rgb);
+  --status-warn-ink-rgb: var(--status-warn-rgb);
+  --status-bad-ink-rgb:  var(--status-bad-rgb);
 }
 
 /* ── 2b. Roles — LIGHT ──
@@ -112,6 +122,15 @@
   --status-ok-rgb:   26 127 55;    /* #1A7F37 */
   --status-warn-rgb: 154 103 0;    /* #9A6700 */
   --status-bad-rgb:  207 34 46;    /* #CF222E */
+
+  /* Badge ink, light. Primer's next step down in each hue. Measured against the
+     20% tint of the ROLE (which is what a badge fill is): ok 6.43:1,
+     warn 5.58:1, bad 5.38:1. Lowering the fill alpha instead does not work —
+     even at 8% none of the three reaches 4.5, because the role itself is only
+     ~4.6-5.0 against white and a paler fill barely moves that. */
+  --status-ok-ink-rgb:   1 86 36;     /* #015624 */
+  --status-warn-ink-rgb: 114 76 0;    /* #724C00 */
+  --status-bad-ink-rgb:  164 14 38;   /* #A40E26 */
 }
 
 /* ── 3. Derived — complete colours, built from the roles above.
@@ -149,6 +168,9 @@
   --status-bad:     rgb(var(--status-bad-rgb));
   --status-ok-dim:  rgb(var(--status-ok-rgb) / 0.15);
   --status-bad-dim: rgb(var(--status-bad-rgb) / 0.15);
+  --status-ok-ink:   rgb(var(--status-ok-ink-rgb));
+  --status-warn-ink: rgb(var(--status-warn-ink-rgb));
+  --status-bad-ink:  rgb(var(--status-bad-ink-rgb));
 
   /* Edge blends fade to the GROUND, never to hardcoded black — in light mode
      a black fade reopens the seam it was added to close. */

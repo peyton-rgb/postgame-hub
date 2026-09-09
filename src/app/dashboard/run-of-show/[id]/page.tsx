@@ -1056,7 +1056,7 @@ export default function RunOfShowEditor() {
                           {shoot.athlete || `${shoot.city}, ${shoot.state}`}
                         </h3>
                         {shoot.type_label && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-status-ok/30 text-status-ok px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-status-ok/30 text-status-ok-ink px-2 py-0.5 rounded-full">
                             {shoot.type_label}
                           </span>
                         )}
@@ -1100,7 +1100,7 @@ export default function RunOfShowEditor() {
                         </button>
                         <button
                           onClick={() => deleteShoot(shoot.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
                         >
                           <svg
                             width="14"

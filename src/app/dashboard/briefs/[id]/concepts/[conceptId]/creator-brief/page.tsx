@@ -499,7 +499,7 @@ export default function CreatorBriefEditorPage({
             <p className="text-gray-400 text-sm mt-1">{creatorBrief.title}</p>
             {creatorBrief.status === 'published' && (
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-status-ok text-xs font-medium px-2 py-0.5 bg-status-ok/50 rounded-full">
+                <span className="text-status-ok-ink text-xs font-medium px-2 py-0.5 bg-status-ok/50 rounded-full">
                   PUBLISHED
                 </span>
                 <button
@@ -538,7 +538,7 @@ export default function CreatorBriefEditorPage({
         </div>
 
         {error && (
-          <div className="bg-status-bad/50 border border-status-bad text-status-bad px-4 py-3 rounded-lg mb-6 text-sm">
+          <div className="bg-status-bad/50 border border-status-bad text-status-bad-ink px-4 py-3 rounded-lg mb-6 text-sm">
             {error}
             <button onClick={() => setError(null)} className="ml-3 text-status-bad">Dismiss</button>
           </div>

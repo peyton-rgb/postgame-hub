@@ -168,7 +168,7 @@ export default function PressEditor() {
         </div>
         <div className="flex items-center gap-3">
           {archived && (
-            <span className="text-xs font-bold px-2 py-1 rounded bg-status-warn/30 text-status-warn">
+            <span className="text-xs font-bold px-2 py-1 rounded bg-status-warn/30 text-status-warn-ink">
               Archived
             </span>
           )}

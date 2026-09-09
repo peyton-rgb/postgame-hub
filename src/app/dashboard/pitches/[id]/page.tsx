@@ -311,7 +311,7 @@ export default function PitchEditor() {
               onClick={toggleStatus}
               className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded transition-colors ${
                 status === "published"
-                  ? "bg-status-ok/10 text-status-ok hover:bg-status-ok/20"
+                  ? "bg-status-ok/10 text-status-ok-ink hover:bg-status-ok/20"
                   : "bg-gray-500/10 text-gray-400 hover:bg-gray-500/20"
               }`}
             >

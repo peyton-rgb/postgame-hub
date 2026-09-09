@@ -607,7 +607,7 @@ function Top50RosterEditor({
             {/* Remove */}
             <button
               onClick={() => removeAthlete(a.id)}
-              className="w-6 h-6 rounded flex items-center justify-center text-gray-600 hover:text-status-bad hover:bg-status-bad/10 transition-colors"
+              className="w-6 h-6 rounded flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 transition-colors"
               title="Remove athlete"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2760,7 +2760,7 @@ export default function CampaignEditor() {
               <span
                 className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${
                   campaign.published
-                    ? "border-status-ok/40 bg-status-ok/10 text-status-ok"
+                    ? "border-status-ok/40 bg-status-ok/10 text-status-ok-ink"
                     : "border-gray-700 bg-gray-900 text-gray-400"
                 }`}
               >
@@ -2788,7 +2788,7 @@ export default function CampaignEditor() {
             title={issuesTooltip}
             className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap ${
               issues.length === 0
-                ? "border-status-ok/40 bg-status-ok/10 text-status-ok"
+                ? "border-status-ok/40 bg-status-ok/10 text-status-ok-ink"
                 : "border-[#D73F09]/50 bg-[#D73F09]/10 text-[#D73F09]"
             }`}
           >
@@ -3498,7 +3498,7 @@ export default function CampaignEditor() {
                         <button
                           type="button"
                           onClick={() => setHiddenPlatformCards((prev) => prev.includes(card.key) ? prev.filter(k => k !== card.key) : [...prev, card.key])}
-                          className={`text-[10px] px-2 py-0.5 rounded border ${cardHidden ? "border-status-bad/50 text-status-bad bg-status-bad/20" : "border-gray-600 text-gray-400 hover:text-white"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded border ${cardHidden ? "border-status-bad/50 text-status-bad-ink bg-status-bad/20" : "border-gray-600 text-gray-400 hover:text-white"}`}
                         >
                           {cardHidden ? "Hidden" : "Visible"}
                         </button>
@@ -3591,7 +3591,7 @@ export default function CampaignEditor() {
                           </button>
                           {/* Remove from featured */}
                           <button
-                            className="text-xs text-status-bad hover:text-status-bad px-2 py-1 rounded bg-white/5 hover:bg-status-bad/10"
+                            className="text-xs text-status-bad-ink hover:text-status-bad-ink px-2 py-1 rounded bg-white/5 hover:bg-status-bad/10"
                             onClick={async () => {
                               await supabase.from("athletes").update({ is_featured: false, featured_order: 0 }).eq("id", a.id);
                               setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, is_featured: false, featured_order: 0 } : x));
@@ -3866,7 +3866,7 @@ export default function CampaignEditor() {
                       </div>
                       <div className="mt-2">
                         {c.coverSrc ? (
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-status-ok bg-status-ok/10 border border-status-ok/25 rounded-lg py-1.5 text-center">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-status-ok-ink bg-status-ok/10 border border-status-ok/25 rounded-lg py-1.5 text-center">
                             ✓ Cover set
                           </div>
                         ) : (

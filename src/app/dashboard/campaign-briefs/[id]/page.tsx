@@ -269,7 +269,7 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
                   </span>
                 ))}
                 {(brief.athlete_targeting.follower_tiers || []).map((t: string) => (
-                  <span key={t} className="px-3 py-1 bg-status-ok/50 text-status-ok rounded-full text-xs capitalize">
+                  <span key={t} className="px-3 py-1 bg-status-ok/50 text-status-ok-ink rounded-full text-xs capitalize">
                     {t}
                   </span>
                 ))}

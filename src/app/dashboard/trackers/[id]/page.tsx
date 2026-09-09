@@ -224,7 +224,7 @@ export default function TrackerEditor() {
               {hasAnyOverride && !editingOverrides && (
                 <span
                   title={`${stats.overriddenKeys.size} value(s) hand-edited`}
-                  className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-status-warn/40 text-status-warn"
+                  className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-status-warn/40 text-status-warn-ink"
                 >
                   {stats.overriddenKeys.size} edited
                 </span>
@@ -306,7 +306,7 @@ export default function TrackerEditor() {
                         setTracker({ ...tracker, settings: newSettings });
                         supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", tracker.id);
                       }}
-                      className={"text-[10px] px-1.5 py-0.5 rounded border transition-colors mb-1 " + ((tracker.settings?.hidden_heroes || []).includes(metric.key) ? "border-status-bad/50 text-status-bad bg-status-bad/20" : "border-gray-600 text-gray-400 hover:text-white")}
+                      className={"text-[10px] px-1.5 py-0.5 rounded border transition-colors mb-1 " + ((tracker.settings?.hidden_heroes || []).includes(metric.key) ? "border-status-bad/50 text-status-bad-ink bg-status-bad/20" : "border-gray-600 text-gray-400 hover:text-white")}
                       title={(tracker.settings?.hidden_heroes || []).includes(metric.key) ? "Hidden on recap — click to show" : "Visible on recap — click to hide"}
                     >
                       {(tracker.settings?.hidden_heroes || []).includes(metric.key) ? "Hidden" : "Visible"}

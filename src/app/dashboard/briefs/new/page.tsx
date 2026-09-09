@@ -347,7 +347,7 @@ export default function NewBriefPage() {
 
         {/* Error message */}
         {error && (
-          <div className="bg-status-bad/50 border border-status-bad text-status-bad px-4 py-3 rounded-lg mb-6">
+          <div className="bg-status-bad/50 border border-status-bad text-status-bad-ink px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
@@ -566,7 +566,7 @@ export default function NewBriefPage() {
 
                   {/* Parse error */}
                   {parseError && (
-                    <div className="bg-status-bad/50 border border-status-bad text-status-bad px-4 py-3 rounded-lg text-sm">
+                    <div className="bg-status-bad/50 border border-status-bad text-status-bad-ink px-4 py-3 rounded-lg text-sm">
                       {parseError}
                       <button onClick={() => setParseError(null)} className="ml-3 text-status-bad hover:text-status-bad">
                         Dismiss
@@ -587,7 +587,7 @@ export default function NewBriefPage() {
                         <div className="mb-3 space-y-1">
                           <span className="text-status-warn text-xs font-medium">Heads up — the AI flagged these:</span>
                           {(parsedBrief.confidence_flags as { field: string; reason: string }[]).map((flag, i) => (
-                            <div key={i} className="text-xs text-status-warn/70 bg-status-warn/20 rounded px-2 py-1">
+                            <div key={i} className="text-xs text-status-warn-ink/70 bg-status-warn/20 rounded px-2 py-1">
                               <span className="font-medium">{flag.field}:</span> {flag.reason}
                             </div>
                           ))}

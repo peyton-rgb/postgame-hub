@@ -70,11 +70,11 @@ interface Aggregates {
 // --- Tier badge config ---
 
 const TIER_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  S: { label: 'S', bg: 'bg-status-warn/20', text: 'text-status-warn', border: 'border-status-warn/30' },
-  A: { label: 'A', bg: 'bg-status-ok/20', text: 'text-status-ok', border: 'border-status-ok/30' },
+  S: { label: 'S', bg: 'bg-status-warn/20', text: 'text-status-warn-ink', border: 'border-status-warn/30' },
+  A: { label: 'A', bg: 'bg-status-ok/20', text: 'text-status-ok-ink', border: 'border-status-ok/30' },
   B: { label: 'B', bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30' },
-  C: { label: 'C', bg: 'bg-status-warn/20', text: 'text-status-warn', border: 'border-status-warn/30' },
-  D: { label: 'D', bg: 'bg-status-bad/20', text: 'text-status-bad', border: 'border-status-bad/30' },
+  C: { label: 'C', bg: 'bg-status-warn/20', text: 'text-status-warn-ink', border: 'border-status-warn/30' },
+  D: { label: 'D', bg: 'bg-status-bad/20', text: 'text-status-bad-ink', border: 'border-status-bad/30' },
 };
 
 const PLATFORMS = ['instagram', 'tiktok', 'youtube', 'linkedin', 'twitter'];
@@ -558,7 +558,7 @@ export default function PerformancePage() {
                           <button
                             onClick={() => handleScore(m.id)}
                             disabled={scoringId === m.id}
-                            className="px-3 py-1.5 bg-status-warn/20 text-status-warn border border-status-warn/30 rounded-lg text-xs font-medium hover:bg-status-warn/30 transition-colors disabled:opacity-50"
+                            className="px-3 py-1.5 bg-status-warn/20 text-status-warn-ink border border-status-warn/30 rounded-lg text-xs font-medium hover:bg-status-warn/30 transition-colors disabled:opacity-50"
                           >
                             {scoringId === m.id ? 'Scoring...' : 'AI Score'}
                           </button>
