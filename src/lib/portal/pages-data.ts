@@ -1,0 +1,621 @@
+// ============================================================
+// Data for the Phase 3b portal pages.
+//
+// Same rules as the dashboard: reads use the CALLER's client (no service role
+// under the portal), campaigns come from portal_campaigns (never
+// campaign_recaps), brand_id is passed explicitly into every query, and every
+// number shown comes from a query or is not shown.
+//
+// COUNTS AND DEDUPLICATION HAPPEN IN SQL. PostgREST caps a response at 1000
+// rows regardless of .limit(); `athletes` has 2,096 rows for CVS alone. The
+// directory reads portal_brand_athletes (migration 049) and campaign rosters
+// are fetched per-campaign, which keeps every query under the cap.
+// ============================================================
+
+import { createServerSupabase } from "@/lib/supabase-server";
+
+export const WRAPPED = ["delivered", "closed"] as const;
+const NO_MATCH = "00000000-0000-0000-0000-000000000000";
+
+function isWrapped(status: string | null): boolean {
+  return !!status && (WRAPPED as readonly string[]).includes(status);
+}
+
+/** 933000 -> "933K". Shared with the dashboard's formatter. */
+export function compact(n: number): string {
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return String(n);
+}
+
+/**
+ * A resized thumbnail URL for a Supabase Storage object.
+ *
+ * CLAUDE.md: "Supabase Storage thumbnails: use the /render/image/public/
+ * endpoint with ?width=N&quality=N". Not an optimisation — the Content gallery
+ * is 411 files and CVS images carry no thumbnail_url, so without this the page
+ * asks the browser for 411 full-resolution originals and renders a grid of
+ * blank tiles while they load. Observed exactly that before adding it.
+ *
+ * Anything that is not a public Storage object URL is returned untouched.
+ */
+export function thumb(url: string, width = 420): string {
+  const marker = "/storage/v1/object/public/";
+  if (!url.includes(marker)) return url;
+  return (
+    url.replace(marker, "/storage/v1/render/image/public/") +
+    (url.includes("?") ? "&" : "?") +
+    `width=${width}&quality=70`
+  );
+}
+
+export interface CampaignListItem {
+  id: string;
+  name: string;
+  slug: string | null;
+  live: boolean;
+  quarter: string | null;
+  campaignType: string | null;
+  athletes: number;
+  heroUrl: string | null;
+  figures: { label: string; value: string }[];
+}
+
+interface RawCampaign {
+  id: string;
+  name: string | null;
+  slug: string | null;
+  lifecycle_status: string | null;
+  admin_created_on: string | null;
+  quarter: string | null;
+  campaign_type: string | null;
+  platform: string | null;
+  description: string | null;
+  hero_image_url: string | null;
+  manager_name: string | null;
+  manager_email: string | null;
+  drive_content_folder_id: string | null;
+  kpi_targets: Record<string, unknown> | null;
+  key_takeaways: unknown;
+  public_sections: unknown;
+}
+
+const CAMPAIGN_COLS =
+  "id, name, slug, lifecycle_status, admin_created_on, quarter, campaign_type, platform, description, hero_image_url, manager_name, manager_email, drive_content_folder_id, kpi_targets, key_takeaways, public_sections";
+
+/** Newest first, live before wrapped. */
+function sortCampaigns(a: RawCampaign, b: RawCampaign): number {
+  const al = a.lifecycle_status === "active" ? 0 : 1;
+  const bl = b.lifecycle_status === "active" ? 0 : 1;
+  if (al !== bl) return al - bl;
+  const ad = a.admin_created_on ?? "";
+  const bd = b.admin_created_on ?? "";
+  if (ad === bd) return (a.name ?? "").localeCompare(b.name ?? "");
+  return ad < bd ? 1 : -1;
+}
+
+/**
+ * Figures from a recap's structured fields only. Absent keys are omitted, never
+ * zero-filled — which is why most CVS wrapped campaigns show no figures at all
+ * (44 of 46 carry an empty kpi_targets object).
+ */
+export function readFigures(raw: Record<string, unknown> | null, max = 3) {
+  if (!raw || typeof raw !== "object") return [];
+  const WANTED: [string, string][] = [
+    ["athletes", "Athletes"],
+    ["posts", "Posts"],
+    ["reach", "Reach"],
+    ["engagement", "Engagement"],
+  ];
+  const out: { label: string; value: string }[] = [];
+  for (const [k, label] of WANTED) {
+    const v = raw[k];
+    if (v === null || v === undefined || v === "") continue;
+    const text = String(v).trim();
+    if (text) out.push({ label, value: text });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+// ---- 1 · Campaigns list -----------------------------------------
+export async function loadCampaignList(brandId: string) {
+  const supabase = createServerSupabase();
+
+  const [campaignsRes, statsRes] = await Promise.all([
+    supabase.from("portal_campaigns").select(CAMPAIGN_COLS).eq("brand_id", brandId),
+    supabase
+      .from("portal_campaign_stats")
+      .select("campaign_id, athletes")
+      .eq("brand_id", brandId),
+  ]);
+
+  const campaigns = ((campaignsRes.data ?? []) as RawCampaign[]).slice().sort(sortCampaigns);
+  const counts = new Map<string, number>();
+  for (const s of (statsRes.data ?? []) as { campaign_id: string; athletes: number | null }[]) {
+    counts.set(s.campaign_id, s.athletes ?? 0);
+  }
+
+  // Hero thumbnails for wrapped cards. hero_image_url is null on every CVS row,
+  // so media.is_hero is the real source; both are checked.
+  const wrappedIds = campaigns.filter((c) => isWrapped(c.lifecycle_status)).map((c) => c.id);
+  const heroes = await loadHeroes(supabase, wrappedIds);
+
+  const items: CampaignListItem[] = campaigns.map((c) => ({
+    id: c.id,
+    name: c.name ?? "Campaign",
+    slug: c.slug,
+    live: c.lifecycle_status === "active",
+    quarter: c.quarter,
+    campaignType: c.campaign_type,
+    athletes: counts.get(c.id) ?? 0,
+    heroUrl: c.hero_image_url || heroes.get(c.id) || null,
+    figures: readFigures(c.kpi_targets),
+  }));
+
+  const quarters = Array.from(
+    new Set(items.map((i) => i.quarter).filter((q): q is string => !!q))
+  ).sort();
+
+  return {
+    items,
+    quarters,
+    liveCount: items.filter((i) => i.live).length,
+    wrappedCount: items.filter((i) => !i.live).length,
+  };
+}
+
+async function loadHeroes(
+  supabase: ReturnType<typeof createServerSupabase>,
+  campaignIds: string[],
+  width = 900,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (campaignIds.length === 0) return out;
+  const { data } = await supabase
+    .from("media")
+    .select("campaign_id, file_url, thumbnail_url, hero_order")
+    .in("campaign_id", campaignIds)
+    .eq("is_hero", true)
+    .order("hero_order", { ascending: true });
+  for (const m of (data ?? []) as {
+    campaign_id: string;
+    file_url: string | null;
+    thumbnail_url: string | null;
+  }[]) {
+    const url = m.thumbnail_url || m.file_url;
+    if (url && !out.has(m.campaign_id)) out.set(m.campaign_id, thumb(url, width));
+  }
+  return out;
+}
+
+// ---- 2 · Campaign detail ----------------------------------------
+export interface DetailAthlete {
+  id: string;
+  name: string;
+  school: string | null;
+  sport: string | null;
+  followers: number | null;
+  views: number | null;
+  headshotUrl: string | null;
+}
+
+export interface MediaItem {
+  id: string;
+  url: string;
+  thumbUrl: string;
+  isVideo: boolean;
+  athleteName: string | null;
+  campaignName: string | null;
+  createdAt: string | null;
+}
+
+export async function loadCampaignDetail(brandId: string, slug: string) {
+  const supabase = createServerSupabase();
+
+  const { data: row } = await supabase
+    .from("portal_campaigns")
+    .select(CAMPAIGN_COLS)
+    .eq("brand_id", brandId)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (!row) return null;
+  const c = row as RawCampaign;
+
+  const [athletesRes, mediaRes, statsRes] = await Promise.all([
+    // Rosters run to 418 on one CVS campaign — under the 1000 cap, so a single
+    // fetch is safe here.
+    supabase
+      .from("athletes")
+      .select("id, name, school, sport, ig_followers, metrics")
+      .eq("campaign_id", c.id)
+      .not("name", "is", null)
+      .order("ig_followers", { ascending: false, nullsFirst: false })
+      .limit(600),
+    supabase
+      .from("media")
+      .select("id, athlete_id, type, file_url, thumbnail_url, created_at")
+      .eq("campaign_id", c.id)
+      .order("created_at", { ascending: false })
+      .limit(400),
+    supabase
+      .from("portal_campaign_stats")
+      .select("athletes, schools")
+      .eq("campaign_id", c.id)
+      .maybeSingle(),
+  ]);
+
+  const rawAthletes = (athletesRes.data ?? []) as {
+    id: string;
+    name: string;
+    school: string | null;
+    sport: string | null;
+    ig_followers: number | null;
+    metrics: Record<string, any> | null;
+  }[];
+
+  const media = (mediaRes.data ?? []) as {
+    id: string;
+    athlete_id: string | null;
+    type: string | null;
+    file_url: string | null;
+    thumbnail_url: string | null;
+    created_at: string | null;
+  }[];
+
+  // Headshots from the campaign's own media, keyed by athlete. Not filtered to
+  // type='image': videos carry a thumbnail_url that is a fine still, and on
+  // this data some athletes have only video. Images sort first.
+  const headshots = new Map<string, string>();
+  for (const m of [...media].sort((a, b) => (a.type ?? "").localeCompare(b.type ?? ""))) {
+    const url = m.thumbnail_url || m.file_url;
+    if (m.athlete_id && url && !headshots.has(m.athlete_id)) headshots.set(m.athlete_id, thumb(url, 160));
+  }
+
+  const nameById = new Map(rawAthletes.map((a) => [a.id, a.name]));
+
+  const athletes: DetailAthlete[] = rawAthletes.map((a) => ({
+    id: a.id,
+    name: a.name,
+    school: a.school,
+    sport: a.sport,
+    followers: a.ig_followers,
+    views: reelViews(a.metrics),
+    headshotUrl: headshots.get(a.id) ?? null,
+  }));
+
+  const items: MediaItem[] = media
+    .map((m) => {
+      const url = m.file_url || m.thumbnail_url;
+      const thumbSrc = m.thumbnail_url || m.file_url;
+      if (!url || !thumbSrc) return null;
+      return {
+        id: m.id,
+        url,
+        thumbUrl: thumb(thumbSrc),
+        isVideo: m.type === "video",
+        athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
+        campaignName: c.name,
+        createdAt: m.created_at,
+      };
+    })
+    .filter((m): m is MediaItem => m !== null);
+
+  const stat = (statsRes.data ?? null) as { athletes: number | null; schools: number | null } | null;
+
+  return {
+    id: c.id,
+    name: c.name ?? "Campaign",
+    slug: c.slug,
+    live: c.lifecycle_status === "active",
+    quarter: c.quarter,
+    campaignType: c.campaign_type,
+    platform: c.platform,
+    description: c.description,
+    managerName: c.manager_name,
+    managerEmail: c.manager_email,
+    driveFolderId: c.drive_content_folder_id,
+    // 1600, not the 900 the cards use: this hero spans the full content
+    // column (1325px at 1440) and 900 visibly upscales.
+    heroUrl: c.hero_image_url || (await loadHeroes(supabase, [c.id], 1600)).get(c.id) || null,
+    figures: readFigures(c.kpi_targets, 4),
+    takeaways: readTakeaways(c.key_takeaways),
+    athletes,
+    media: items,
+    athleteCount: stat?.athletes ?? athletes.length,
+    schoolCount: stat?.schools ?? 0,
+  };
+}
+
+/** The guarded ranking metric, same rule as portal_top_posts. */
+function reelViews(metrics: Record<string, any> | null): number | null {
+  const raw = metrics?.ig_reel?.views;
+  if (raw === null || raw === undefined) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  // Exact multiples of 100,000 are campaign aggregates copied onto athlete
+  // rows, not per-post counts. Verified on "The Tournament".
+  if (n % 100000 === 0) return null;
+  return n;
+}
+
+/** key_takeaways may be an array or a newline string; anything else is ignored. */
+function readTakeaways(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map((t) => String(t).trim()).filter(Boolean).slice(0, 6);
+  if (typeof raw === "string") {
+    return raw.split(/\r?\n/).map((t) => t.trim()).filter(Boolean).slice(0, 6);
+  }
+  return [];
+}
+
+// ---- 3 · Content gallery ----------------------------------------
+export async function loadContentGallery(brandId: string) {
+  const supabase = createServerSupabase();
+
+  const { data: campaigns } = await supabase
+    .from("portal_campaigns")
+    .select("id, name")
+    .eq("brand_id", brandId);
+
+  const rows = (campaigns ?? []) as { id: string; name: string | null }[];
+  const nameByCampaign = new Map(rows.map((c) => [c.id, c.name ?? "Campaign"]));
+  const ids = rows.map((c) => c.id);
+
+  if (ids.length === 0) return { items: [] as MediaItem[], campaigns: [] as string[] };
+
+  // 460 CVS rows — one fetch is under the cap.
+  const { data: media } = await supabase
+    .from("media")
+    .select("id, athlete_id, campaign_id, type, file_url, thumbnail_url, created_at")
+    .in("campaign_id", ids)
+    .order("created_at", { ascending: false })
+    .limit(600);
+
+  const mediaRows = (media ?? []) as {
+    id: string;
+    athlete_id: string | null;
+    campaign_id: string | null;
+    type: string | null;
+    file_url: string | null;
+    thumbnail_url: string | null;
+    created_at: string | null;
+  }[];
+
+  // Athlete names for captions, only for the ids actually present.
+  const athleteIds = Array.from(
+    new Set(mediaRows.map((m) => m.athlete_id).filter((x): x is string => !!x))
+  ).slice(0, 900);
+  const nameById = new Map<string, string>();
+  if (athleteIds.length > 0) {
+    const { data: ath } = await supabase
+      .from("athletes")
+      .select("id, name")
+      .in("id", athleteIds);
+    for (const a of (ath ?? []) as { id: string; name: string | null }[]) {
+      if (a.name) nameById.set(a.id, a.name);
+    }
+  }
+
+  const items: MediaItem[] = mediaRows
+    .map((m) => {
+      const url = m.file_url || m.thumbnail_url;
+      const thumbSrc = m.thumbnail_url || m.file_url;
+      if (!url || !thumbSrc) return null;
+      return {
+        id: m.id,
+        url,
+        thumbUrl: thumb(thumbSrc),
+        isVideo: m.type === "video",
+        athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
+        campaignName: m.campaign_id ? nameByCampaign.get(m.campaign_id) ?? null : null,
+        createdAt: m.created_at,
+      };
+    })
+    .filter((m): m is MediaItem => m !== null);
+
+  const campaignNames = Array.from(
+    new Set(items.map((i) => i.campaignName).filter((n): n is string => !!n))
+  ).sort();
+
+  return { items, campaigns: campaignNames };
+}
+
+// ---- 4 · Reports ------------------------------------------------
+export async function loadReports(brandId: string) {
+  const supabase = createServerSupabase();
+  const { data } = await supabase
+    .from("portal_campaigns")
+    .select("id, name, slug, lifecycle_status, admin_created_on, quarter, hero_image_url, kpi_targets")
+    .eq("brand_id", brandId);
+
+  const wrapped = ((data ?? []) as RawCampaign[])
+    .filter((c) => isWrapped(c.lifecycle_status))
+    .sort(sortCampaigns);
+
+  const heroes = await loadHeroes(supabase, wrapped.map((c) => c.id));
+
+  const items = wrapped.map((c) => ({
+    id: c.id,
+    name: c.name ?? "Campaign",
+    slug: c.slug,
+    quarter: c.quarter,
+    heroUrl: c.hero_image_url || heroes.get(c.id) || null,
+    figures: readFigures(c.kpi_targets, 3),
+  }));
+
+  // Grouped by quarter. Campaigns with no quarter go in their own bucket rather
+  // than being assigned one. "No quarter on file" says what is actually true —
+  // 9 of CVS's 10 wrapped campaigns have a null quarter, and "Unscheduled"
+  // implied they were awaiting scheduling rather than simply unlabelled.
+  const NO_QUARTER = "No quarter on file";
+  const groups = new Map<string, typeof items>();
+  for (const i of items) {
+    const key = i.quarter || NO_QUARTER;
+    groups.set(key, [...(groups.get(key) ?? []), i]);
+  }
+
+  // Dated quarters newest-first, then the undated bucket last — a heading that
+  // names an absence should not open the page.
+  const ordered = Array.from(groups.entries()).sort((a, b) => {
+    if (a[0] === NO_QUARTER) return 1;
+    if (b[0] === NO_QUARTER) return -1;
+    return b[0].localeCompare(a[0]);
+  });
+
+  return { groups: ordered, total: items.length };
+}
+
+// ---- 5 · Athletes directory -------------------------------------
+export interface DirectoryAthlete {
+  key: string;
+  name: string;
+  school: string | null;
+  sport: string | null;
+  followers: number | null;
+  campaigns: number;
+  lastCampaign: string | null;
+  views: number | null;
+  headshotUrl: string | null;
+}
+
+export async function loadAthleteDirectory(brandId: string) {
+  const supabase = createServerSupabase();
+
+  // Deduplicated in SQL (migration 049) — 2,096 CVS rows collapse to ~1,501
+  // people, and PostgREST would cap a raw fetch at 1000.
+  const { data } = await supabase
+    .from("portal_brand_athletes")
+    .select("athlete_key, name, school, sport, followers, campaigns, last_campaign, top_reel_views, sample_athlete_id")
+    .eq("brand_id", brandId)
+    .order("followers", { ascending: false, nullsFirst: false })
+    .limit(600);
+
+  const rows = (data ?? []) as {
+    athlete_key: string;
+    name: string;
+    school: string | null;
+    sport: string | null;
+    followers: number | null;
+    campaigns: number;
+    last_campaign: string | null;
+    top_reel_views: number | null;
+    sample_athlete_id: string | null;
+  }[];
+
+  const sampleIds = rows
+    .map((r) => r.sample_athlete_id)
+    .filter((x): x is string => !!x)
+    .slice(0, 300);
+
+  const headshots = new Map<string, string>();
+  if (sampleIds.length > 0) {
+    const { data: media } = await supabase
+      .from("media")
+      .select("athlete_id, type, file_url, thumbnail_url")
+      .in("athlete_id", sampleIds)
+      .order("type", { ascending: true });
+    for (const m of (media ?? []) as {
+      athlete_id: string | null;
+      file_url: string | null;
+      thumbnail_url: string | null;
+    }[]) {
+      const url = m.thumbnail_url || m.file_url;
+      if (m.athlete_id && url && !headshots.has(m.athlete_id)) headshots.set(m.athlete_id, thumb(url, 160));
+    }
+  }
+
+  const athletes: DirectoryAthlete[] = rows.map((r) => ({
+    key: r.athlete_key,
+    name: r.name,
+    school: r.school,
+    sport: r.sport,
+    followers: r.followers,
+    campaigns: r.campaigns,
+    lastCampaign: r.last_campaign,
+    views: r.top_reel_views,
+    headshotUrl: r.sample_athlete_id ? headshots.get(r.sample_athlete_id) ?? null : null,
+  }));
+
+  const schools = Array.from(
+    new Set(athletes.map((a) => a.school).filter((s): s is string => !!s))
+  ).sort();
+  const sports = Array.from(
+    new Set(athletes.map((a) => a.sport).filter((s): s is string => !!s))
+  ).sort();
+
+  return { athletes, schools, sports };
+}
+
+// ---- 6 · Settings -----------------------------------------------
+export interface SettingsTeamMember {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string | null;
+  status: string;
+}
+
+export interface SettingsLogoRow {
+  variant: string | null;
+  kind: string | null;
+  url: string | null;
+  width: number | null;
+  height: number | null;
+}
+
+export interface SettingsData {
+  team: SettingsTeamMember[];
+  logos: SettingsLogoRow[];
+}
+
+export async function loadSettings(brandId: string): Promise<SettingsData> {
+  const supabase = createServerSupabase();
+
+  const [contactsRes, logosRes] = await Promise.all([
+    // brand_contacts is the brand's own team list. A brand user reading their
+    // own team is exactly what the Phase 2 brief adds a policy for; until then
+    // the app-layer brand_id filter is the fence.
+    supabase
+      .from("brand_contacts")
+      .select("id, role, status, invited_email, signup_email, contact_id")
+      .eq("brand_id", brandId),
+    supabase
+      .from("brand_logos")
+      .select("variant, kind, url, width, height")
+      .eq("brand_id", brandId),
+  ]);
+
+  const contactRows = (contactsRes.data ?? []) as {
+    id: string;
+    role: string | null;
+    status: string;
+    invited_email: string | null;
+    signup_email: string | null;
+    contact_id: string | null;
+  }[];
+
+  // Names live on the identity table, not the attachment.
+  const ids = contactRows.map((c) => c.contact_id).filter((x): x is string => !!x);
+  const names = new Map<string, string>();
+  if (ids.length > 0) {
+    const { data } = await supabase.from("postgame_contacts").select("id, name").in("id", ids);
+    for (const p of (data ?? []) as { id: string; name: string | null }[]) {
+      if (p.name) names.set(p.id, p.name);
+    }
+  }
+
+  return {
+    team: contactRows.map((c) => ({
+      id: c.id,
+      name: c.contact_id ? names.get(c.contact_id) ?? null : null,
+      email: c.signup_email || c.invited_email || null,
+      role: c.role,
+      status: c.status,
+    })),
+    logos: (logosRes.data ?? []) as SettingsLogoRow[],
+  };
+}
