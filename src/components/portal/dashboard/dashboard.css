@@ -746,44 +746,125 @@
 .pgd-state-live { color: var(--orange-soft) }
 .pgd-state-wrapped { color: var(--ink-50) }
 
-/* ---- Reports: chart, table -----------------------------------
-   The bar chart is CSS, not a charting library. Two series over at most a
-   handful of quarters is a list of widths; a library would be 80KB to draw
-   what a div does, and the design system's own colours are not any library's
-   defaults.
-
-   TWO SCALES, one per series, stated in the heading. Posts run in the
-   hundreds and reel views in the millions on the same data, so a shared
-   scale renders every posts bar as a hairline — the bars would be honest and
-   unreadable. Each bar carries its own value as text, so the number is never
-   inferred from the length.
+/* ---- Reports ------------------------------------------------
+   Period filter and export sit above everything, because they change
+   everything below them.
    ------------------------------------------------------------- */
-.pgd-chart-rows { display: flex; flex-direction: column; gap: 14px }
-.pgd-chart-row { display: flex; align-items: center; gap: 16px }
-.pgd-chart-label {
-  flex: 0 0 84px; font-size: 14px; color: var(--ink-60);
-  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
-  font-size: 20px; letter-spacing: 0.02em;
+.pgd-report-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
 }
-.pgd-chart-bars { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0 }
-/* The bar and its value, side by side. The value outside the bar is what lets
-   the bar be its true width. */
-.pgd-chart-line { display: flex; align-items: center; gap: 10px; min-width: 0 }
-.pgd-chart-track { flex: 1; min-width: 0; display: flex }
-.pgd-chart-line em {
-  font-style: normal; font-size: 14px; color: var(--ink-60);
-  white-space: nowrap; flex: 0 0 132px;
-}
-.pgd-chart-bar { height: 20px; border-radius: 4px; min-width: 3px }
-/* Ink for posts, orange for views — the accent marks the series a brand came
-   for, and it is a bar, not a background fill. */
-.pgd-chart-posts { background: rgba(250, 248, 245, 0.16); color: var(--ink-90) }
-.pgd-chart-views { background: var(--orange); color: #fff }
+.pgd-periods { display: flex; gap: 8px; flex-wrap: wrap }
+.pgd-periods .pgd-pill { text-decoration: none; display: inline-flex; align-items: center }
 
-.pgd-table-actions { display: flex; justify-content: flex-end; margin-bottom: 12px }
+/* SIX KPI TILES. auto-fit rather than a fixed six across: at 1440 they sit
+   six-up, at the tablet width three-up, and on a phone two-up, without three
+   separate rules — and a brand with fewer than six figures (no follower data,
+   say) gets a full row of what it does have instead of a gap. */
+.pgd-kpi-grid {
+  display: grid; gap: 12px; margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.pgd-kpi-tile { padding: 18px 20px; gap: 0 }
+.pgd-kpi-value {
+  font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
+  font-size: 40px; line-height: 1;
+}
+.pgd-kpi-label { font-size: 16px; color: var(--ink-75); margin-top: 6px }
+.pgd-kpi-sub { font-size: 14px; color: var(--ink-45) }
+/* The comparison line. Orange for up is wrong here — orange is the brand
+   accent, not a verdict — so direction is carried by the arrow and a quiet
+   ink/positive pair. */
+.pgd-kpi-cmp { font-size: 14px; margin-top: 10px; color: var(--ink-50) }
+.pgd-kpi-cmp.up { color: #7fd1a3 }
+.pgd-kpi-cmp.down { color: rgba(250, 248, 245, 0.55) }
+
+/* Chart beside the two side panels at desktop; stacked below it. */
+.pgd-report-split {
+  display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 12px; align-items: start; margin-bottom: 12px;
+}
+.pgd-report-side { display: flex; flex-direction: column; gap: 12px; min-width: 0 }
+@media (max-width: 1100px) {
+  .pgd-report-split { grid-template-columns: minmax(0, 1fr) }
+}
+
+.pgd-legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 10px }
+.pgd-legend-key { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-75) }
+.pgd-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block }
+.pgd-swatch-posts { background: rgba(250, 248, 245, 0.34) }
+.pgd-swatch-views { background: var(--orange) }
+.pgd-legend-note { font-size: 14px; color: var(--ink-45) }
+
+/* The hover readout. One line above the chart rather than a floating tooltip:
+   a tooltip that follows the pointer covers the bars it describes, and on a
+   touch screen it never appears at all. */
+.pgd-readout {
+  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  min-height: 24px; margin-bottom: 12px; font-size: 14px; color: var(--ink-75);
+}
+.pgd-readout b {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 20px; letter-spacing: 0.02em; color: var(--ink);
+}
+.pgd-readout-idle { color: var(--ink-45) }
+
+/* VERTICAL GROUPED BARS. A fixed 240px plot so every quarter's bars are
+   comparable by height, with the pair sharing a column and the label under
+   it. */
+.pgd-bars { display: flex; align-items: flex-end; gap: 10px; min-height: 0 }
+.pgd-bar-group {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+  align-items: center; gap: 8px; border-radius: 10px; padding: 6px 2px;
+  cursor: default;
+}
+.pgd-bar-group.on, .pgd-bar-group:focus-visible {
+  background: rgba(250, 248, 245, 0.05); outline: none;
+}
+.pgd-bar-pair {
+  display: flex; align-items: flex-end; justify-content: center; gap: 5px;
+  height: 240px; width: 100%;
+}
+.pgd-bar { width: 26px; max-width: 44%; border-radius: 4px 4px 0 0; display: block }
+.pgd-bar-posts { background: rgba(250, 248, 245, 0.34) }
+.pgd-bar-views { background: var(--orange) }
+.pgd-bar-label {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 16px; letter-spacing: 0.02em; color: var(--ink-60);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+
+/* Where the views came from. */
+.pgd-surfaces { display: flex; flex-direction: column; gap: 14px }
+.pgd-surface { display: flex; flex-direction: column; gap: 5px; min-width: 0 }
+.pgd-surface-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.pgd-surface-head b { font-size: 16px; font-weight: 700 }
+.pgd-surface-head em {
+  font-style: normal; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 22px;
+}
+.pgd-surface-track {
+  height: 10px; border-radius: 999px; background: rgba(250, 248, 245, 0.08);
+  overflow: hidden; display: block;
+}
+.pgd-surface-fill { height: 100%; display: block; background: var(--orange); border-radius: 999px }
+.pgd-surface-foot { font-size: 14px; color: var(--ink-45) }
+
+/* Best quarter. */
+.pgd-best-q {
+  display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 40px; line-height: 1; text-transform: uppercase;
+}
+.pgd-best-line { margin: 10px 0 0; font-size: 16px; line-height: 1.5; color: var(--ink-75) }
+
+/* Top athletes: the dashboard's row, with a headshot. */
+.pgd-tops .pgd-post img {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+}
+
 /* The table is wider than a phone and, with every column present, wider than
    the content column at 1440, so it scrolls in its own container.
-   max-width: 100% is what CONTAINS it: without it the table's 720px min-width
+   max-width: 100% is what CONTAINS it: without it the table's min-width
    propagated up through the panel and the page and laid the whole main column
    out at 760px — at 390 that pushed the header, the search field and every
    panel off the right edge, clipped by .pgd's overflow-x: hidden so the page
@@ -1182,12 +1263,21 @@
   .pgd-hero-photo::after {
     background: linear-gradient(0deg, rgba(7, 7, 10, 0.94) 0%, rgba(7, 7, 10, 0.45) 55%, rgba(7, 7, 10, 0.1) 100%);
   }
-  .pgd-chart-row { flex-direction: column; align-items: stretch; gap: 6px }
-  .pgd-chart-label { flex: none }
-  /* The value moves under its bar: a 132px reserved column beside a bar in a
-     350px panel left the bar 200px and the two fighting. */
-  .pgd-chart-line { flex-direction: column; align-items: stretch; gap: 2px }
-  .pgd-chart-line em { flex: none }
+  /* TWO-UP, not one. minmax(190px, 1fr) resolves to a single column in a
+     350px content width, which put six tiles down six screens before the
+     chart. Six figures in three rows is the whole summary in one glance. */
+  .pgd-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+  .pgd-kpi-tile { padding: 14px }
+  .pgd-kpi-label { font-size: 14px }
+  .pgd-kpi-cmp { margin-top: 8px }
+  /* The chart scrolls sideways rather than squeezing eleven quarters into
+     350px, which would leave each pair 12px wide and the labels unreadable. */
+  .pgd-bars { overflow-x: auto; padding-bottom: 6px }
+  .pgd-bar-group { flex: 0 0 62px }
+  .pgd-bar-pair { height: 180px }
+  .pgd-bar { width: 20px }
+  .pgd-kpi-value { font-size: 34px }
+  .pgd-best-q { font-size: 34px }
   .pgd-table { min-width: 640px }
   /* 56px Anton x5 is a whole phone screen of numbers before the first
      takeaway. The Results row drops to 38 and the panel rows to 32; both are

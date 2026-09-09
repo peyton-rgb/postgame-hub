@@ -1066,16 +1066,36 @@ export async function loadPortalSearch(brandId: string, rawQuery: string) {
 }
 
 // ---- 8 · Reports: the metrics dashboard -------------------------
-// The recap LIBRARY moved to /portal/recaps; this is what /portal/reports is
-// now — one page of numbers for every wrapped campaign.
+// The recap LIBRARY is /portal/recaps; this is what /portal/reports shows —
+// one page of numbers across a brand's wrapped campaigns, for a chosen period.
 //
 // SAME RULES AS EVERY OTHER SURFACE. Nothing is invented, nothing is
 // zero-filled, and a figure appears only where at least one athlete reported
-// it. The headline totals come from portal_brand_report_totals (migration
-// 058) because a distinct-person count cannot be summed from per-campaign
-// counts, and the per-campaign rows come from portal_campaign_post_metrics,
-// which is already the source the Results tab uses — so a campaign's row here
-// and its own Results tab cannot disagree.
+// it. Headline totals come from portal_brand_report_periods (migration 059),
+// which aggregates each period independently because `athletes` is a distinct
+// PERSON count and cannot be summed across windows. Per-campaign rows come
+// from portal_campaign_post_metrics — already the Results tab's source — so a
+// campaign's row here and its own Results tab are the same arithmetic.
+
+/** The periods the filter offers. `last4_prior` is never selectable: it exists
+    only as the comparison for `last4`. */
+export type ReportPeriodKey = "all" | "last4" | `y${number}`;
+
+export interface ReportPeriodOption {
+  key: string;
+  label: string;
+  /** Which period row this one is compared against, if any. */
+  compareKey: string | null;
+  compareLabel: string | null;
+}
+
+export interface ReportKpi {
+  label: string;
+  value: string;
+  sub?: string;
+  /** Absent when there is no prior period, or the prior period has no figure. */
+  compare?: { text: string; up: boolean; label: string };
+}
 
 export interface ReportRow {
   campaignId: string;
@@ -1097,62 +1117,212 @@ export interface ReportQuarter {
   reelViews: number;
 }
 
+export interface ReportSurface {
+  label: string;
+  /** "views" or "impressions" — these are NOT the same measurement. */
+  metric: string;
+  value: number;
+  display: string;
+  share: number;
+  athletes: number;
+}
+
 export interface TopAthlete {
   athleteId: string;
   name: string;
   school: string | null;
+  sport: string | null;
   campaignName: string | null;
   views: number;
   postUrl: string | null;
+  headshotUrl: string | null;
 }
 
 export interface ReportsMetrics {
-  totals: { label: string; value: string; sub?: string }[];
+  period: string;
+  periodLabel: string;
+  options: ReportPeriodOption[];
+  kpis: ReportKpi[];
   rows: ReportRow[];
-  /** Which optional columns any row actually has. A column nobody has is not
-      rendered — an empty column asserts a measurement that was never taken. */
-  columns: { athletes: boolean; posts: boolean; reelViews: boolean; impressions: boolean; followers: boolean };
+  columns: {
+    athletes: boolean;
+    posts: boolean;
+    reelViews: boolean;
+    impressions: boolean;
+    followers: boolean;
+  };
   quarters: ReportQuarter[];
+  surfaces: ReportSurface[];
+  bestQuarter: { label: string; reelViews: string; posts: string; share: number } | null;
   topAthletes: TopAthlete[];
 }
 
-/** PostgREST returns numeric as a string; bigint too. */
+interface PeriodRow {
+  period: string;
+  period_year: number | null;
+  campaigns: number | null;
+  athletes: number | null;
+  posts: number | null;
+  reel_views: number | string | null;
+  reel_views_athletes: number | null;
+  feed_impressions: number | string | null;
+  feed_impressions_athletes: number | null;
+  story_impressions: number | string | null;
+  story_impressions_athletes: number | null;
+  tiktok_views: number | string | null;
+  tiktok_views_athletes: number | null;
+  followers: number | string | null;
+  followers_athletes: number | null;
+}
+
+const PERIOD_COLS =
+  "period, period_year, campaigns, athletes, posts, reel_views, reel_views_athletes, " +
+  "feed_impressions, feed_impressions_athletes, story_impressions, story_impressions_athletes, " +
+  "tiktok_views, tiktok_views_athletes, followers, followers_athletes";
+
+/** PostgREST returns numeric and bigint as strings. */
 function num(v: unknown): number | null {
   if (v === null || v === undefined || v === "") return null;
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-export async function loadReportsMetrics(brandId: string): Promise<ReportsMetrics> {
+/**
+ * A change against the prior period, formatted so it stays readable at any
+ * magnitude.
+ *
+ * Percentages break down on this data: CVS's 2026 reel views against 2025's
+ * are +4,388%, which is a number nobody reads as "45 times". So anything at or
+ * above a 10x change is expressed as a multiple, and everything below it as a
+ * percentage. A prior period of zero yields NO comparison rather than an
+ * infinite one.
+ */
+function comparison(now: number | null, prior: number | null, label: string) {
+  if (now === null || prior === null || prior <= 0 || now < 0) return undefined;
+  const ratio = now / prior;
+  const up = now >= prior;
+  if (ratio >= 10) return { text: `${Math.round(ratio)}x`, up, label };
+  if (ratio > 0 && ratio <= 0.1) return { text: `${(1 / ratio).toFixed(0)}x lower`, up, label };
+  const pct = Math.round((ratio - 1) * 100);
+  if (pct === 0) return { text: "level", up: true, label };
+  return { text: `${pct > 0 ? "+" : ""}${pct}%`, up, label };
+}
+
+export async function loadReportsMetrics(
+  brandId: string,
+  requestedPeriod?: string
+): Promise<ReportsMetrics> {
   const supabase = createServerSupabase();
 
-  const [totalsRes, campRes, statsRes, topRes] = await Promise.all([
+  const [periodsRes, quartersRes, campRes, statsRes, topRes] = await Promise.all([
+    supabase.from("portal_brand_report_periods").select(PERIOD_COLS).eq("brand_id", brandId),
     supabase
-      .from("portal_brand_report_totals")
-      .select(
-        "campaigns, athletes, posts, reel_views, reel_views_athletes, impressions, impressions_athletes, followers, followers_athletes"
-      )
+      .from("portal_brand_report_quarters")
+      .select("quarter_start, quarter_label, quarter_year, posts, reel_views, reel_views_athletes")
       .eq("brand_id", brandId)
-      .maybeSingle(),
+      .order("quarter_start", { ascending: true }),
     supabase
       .from("portal_campaigns")
       .select("id, name, slug, lifecycle_status, admin_created_on, quarter")
       .eq("brand_id", brandId),
     supabase.from("portal_campaign_stats").select("campaign_id, athletes").eq("brand_id", brandId),
+    // 200, not 10: the list is filtered to the selected period below, and the
+    // top ten of a single year are not the top ten of all time.
     supabase
       .from("portal_top_posts")
-      .select("athlete_id, athlete_name, school, campaign_name, views, post_url")
+      .select("athlete_id, campaign_id, athlete_name, school, sport, campaign_name, views, post_url")
       .eq("brand_id", brandId)
       .order("views", { ascending: false })
-      .limit(10),
+      .limit(200),
   ]);
 
+  const periods = new Map<string, PeriodRow>();
+  for (const r of (periodsRes.data ?? []) as unknown as PeriodRow[]) periods.set(r.period, r);
+
+  // ---- what the filter can offer --------------------------------------
+  // Only periods that exist AND carry a campaign. An empty year in the
+  // dropdown is a dead end.
+  const years = Array.from(periods.values())
+    .filter((r) => r.period_year !== null && (r.campaigns ?? 0) > 0)
+    .map((r) => r.period_year as number)
+    .sort((a, b) => b - a);
+
+  const options: ReportPeriodOption[] = [
+    { key: "all", label: "All time", compareKey: null, compareLabel: null },
+  ];
+  if ((periods.get("last4")?.campaigns ?? 0) > 0) {
+    options.push({
+      key: "last4",
+      label: "Last 4 quarters",
+      // The four quarters before these — the same span a year earlier.
+      compareKey: (periods.get("last4_prior")?.campaigns ?? 0) > 0 ? "last4_prior" : null,
+      compareLabel: "the year before",
+    });
+  }
+  for (const y of years) {
+    options.push({
+      key: `y${y}`,
+      label: String(y),
+      compareKey: periods.has(`y${y - 1}`) ? `y${y - 1}` : null,
+      compareLabel: String(y - 1),
+    });
+  }
+
+  const chosen =
+    options.find((o) => o.key === requestedPeriod) ??
+    options.find((o) => o.key === "all") ??
+    options[0];
+  const row = periods.get(chosen.key) ?? null;
+  const prior = chosen.compareKey ? periods.get(chosen.compareKey) ?? null : null;
+  const cmpLabel = chosen.compareLabel ?? "";
+
+  // ---- six KPI tiles ---------------------------------------------------
+  const impressionsOf = (r: PeriodRow | null) => {
+    if (!r) return null;
+    const contributors =
+      (num(r.feed_impressions_athletes) ?? 0) + (num(r.story_impressions_athletes) ?? 0);
+    if (contributors < 1) return null;
+    return (num(r.feed_impressions) ?? 0) + (num(r.story_impressions) ?? 0);
+  };
+  const guarded = (v: unknown, contributors: unknown) =>
+    (num(contributors) ?? 0) < 1 ? null : num(v);
+
+  const kpis: ReportKpi[] = [];
+  const push = (
+    label: string,
+    value: number | null,
+    priorValue: number | null,
+    sub?: string
+  ) => {
+    if (value === null || value <= 0) return;
+    kpis.push({
+      label,
+      value: compact(value),
+      sub,
+      compare: prior ? comparison(value, priorValue, cmpLabel) : undefined,
+    });
+  };
+
+  push("Campaigns", num(row?.campaigns), num(prior?.campaigns));
+  push("Athletes", num(row?.athletes), num(prior?.athletes), "distinct people");
+  push("Posts", num(row?.posts), num(prior?.posts));
+  push(
+    "Reel views",
+    guarded(row?.reel_views, row?.reel_views_athletes),
+    guarded(prior?.reel_views, prior?.reel_views_athletes)
+  );
+  push("Impressions", impressionsOf(row), impressionsOf(prior), "feed + stories");
+  push(
+    "Combined followers",
+    guarded(row?.followers, row?.followers_athletes),
+    guarded(prior?.followers, prior?.followers_athletes)
+  );
+
+  // ---- which campaigns are in this period ------------------------------
   const wrapped = ((campRes.data ?? []) as RawCampaign[]).filter((c) =>
     isWrapped(c.lifecycle_status)
   );
 
-  // One request for the per-campaign metrics, scoped to the wrapped ids. 46
-  // for CVS, so far inside PostgREST's 1000-row ceiling.
   const metricsById = new Map<string, PostMetricsRow>();
   if (wrapped.length > 0) {
     const { data } = await supabase
@@ -1169,33 +1339,55 @@ export async function loadReportsMetrics(brandId: string): Promise<ReportsMetric
     if (r.athletes !== null) athletesById.set(r.campaign_id, r.athletes);
   }
 
-  const rows: ReportRow[] = wrapped
-    .map((c) => {
-      // Same quarter rule as the recap library: a STORED quarter wins, but
-      // only when it is a real value — 12 of CVS's 13 non-null quarters are
-      // the empty string, which is falsy.
-      const stored = c.quarter && c.quarter.trim() ? c.quarter.trim() : null;
-      const derived = c.admin_created_on ? quarterFromDate(c.admin_created_on) : null;
-      const m = metricsById.get(c.id);
-      // A figure is null, not 0, where nobody reported it — so the table can
-      // leave the cell blank instead of asserting a zero.
-      const has = (contributors: number | null | undefined) => (contributors ?? 0) > 0;
-      return {
-        campaignId: c.id,
-        name: c.name ?? "Campaign",
-        slug: c.slug,
-        quarter: stored || derived?.label || null,
-        quarterSort: derived?.sortKey ?? 0,
-        athletes: athletesById.get(c.id) ?? null,
-        posts: m && num(m.posts) ? num(m.posts) : null,
-        reelViews: has(m?.reel_views_athletes) ? num(m?.reel_views) : null,
-        impressions:
-          has(m?.feed_impressions_athletes) || has(m?.story_impressions_athletes)
-            ? (num(m?.feed_impressions) ?? 0) + (num(m?.story_impressions) ?? 0)
-            : null,
-        followers: has(m?.followers_athletes) ? num(m?.followers) : null,
-      };
-    })
+  const quarterRows = (quartersRes.data ?? []) as {
+    quarter_start: string;
+    quarter_label: string;
+    quarter_year: number;
+    posts: number | null;
+    reel_views: number | string | null;
+    reel_views_athletes: number | null;
+  }[];
+
+  // The period's quarter window, taken from the same view the chart uses so
+  // the table and the bars agree on what "this period" means.
+  const inPeriod = (year: number | null, sortKey: number): boolean => {
+    if (chosen.key === "all") return true;
+    if (chosen.key.startsWith("y")) return year === Number(chosen.key.slice(1));
+    // last4: the last four quarter labels present in the data.
+    const last4 = quarterRows.slice(-4).map((q) => q.quarter_start);
+    return last4.length === 0
+      ? false
+      : last4.some((qs) => quarterStartSort(qs) === sortKey);
+  };
+
+  const allRows: ReportRow[] = wrapped.map((c) => {
+    // Same quarter rule as the recap library and the SQL view: a STORED
+    // quarter wins, but only when it is a real value — 12 of CVS's 13
+    // non-null quarters are the empty string, which is falsy.
+    const stored = c.quarter && c.quarter.trim() ? c.quarter.trim() : null;
+    const derived = c.admin_created_on ? quarterFromDate(c.admin_created_on) : null;
+    const m = metricsById.get(c.id);
+    const has = (contributors: number | null | undefined) => (contributors ?? 0) > 0;
+    const label = stored || derived?.label || null;
+    return {
+      campaignId: c.id,
+      name: c.name ?? "Campaign",
+      slug: c.slug,
+      quarter: label,
+      quarterSort: derived?.sortKey ?? (label ? labelSort(label) : 0),
+      athletes: athletesById.get(c.id) ?? null,
+      posts: m && num(m.posts) ? num(m.posts) : null,
+      reelViews: has(m?.reel_views_athletes) ? num(m?.reel_views) : null,
+      impressions:
+        has(m?.feed_impressions_athletes) || has(m?.story_impressions_athletes)
+          ? (num(m?.feed_impressions) ?? 0) + (num(m?.story_impressions) ?? 0)
+          : null,
+      followers: has(m?.followers_athletes) ? num(m?.followers) : null,
+    };
+  });
+
+  const rows = allRows
+    .filter((r) => inPeriod(r.quarter ? yearOfLabel(r.quarter) : null, r.quarterSort))
     .sort((a, b) => b.quarterSort - a.quarterSort || a.name.localeCompare(b.name));
 
   const columns = {
@@ -1206,62 +1398,149 @@ export async function loadReportsMetrics(brandId: string): Promise<ReportsMetric
     followers: rows.some((r) => r.followers !== null),
   };
 
-  // ---- the quarter chart -------------------------------------------
-  // Grouped from the rows above rather than queried again, so the bars and the
-  // table are arithmetically the same numbers. Quarters with neither posts nor
-  // views are dropped: an empty bar pair says nothing a missing one doesn't.
-  const byQuarter = new Map<string, ReportQuarter>();
-  for (const r of rows) {
-    if (!r.quarter) continue;
-    const q = byQuarter.get(r.quarter) ?? {
-      label: r.quarter,
-      sortKey: r.quarterSort,
-      posts: 0,
-      reelViews: 0,
-    };
-    q.posts += r.posts ?? 0;
-    q.reelViews += r.reelViews ?? 0;
-    q.sortKey = Math.max(q.sortKey, r.quarterSort);
-    byQuarter.set(r.quarter, q);
-  }
-  // Array.from, not a spread: this file's tsconfig target predates iterable
-  // spread of a Map iterator.
-  const quarters = Array.from(byQuarter.values())
-    .filter((q) => q.posts > 0 || q.reelViews > 0)
-    .sort((a, b) => a.sortKey - b.sortKey);
+  // ---- the chart -------------------------------------------------------
+  // Straight from the per-quarter view, filtered to the period. Quarters with
+  // neither posts nor views are dropped: an empty pair of bars says nothing a
+  // missing one doesn't.
+  const quarters: ReportQuarter[] = quarterRows
+    .filter((q) => {
+      if (chosen.key === "all") return true;
+      if (chosen.key.startsWith("y")) return q.quarter_year === Number(chosen.key.slice(1));
+      return quarterRows.slice(-4).some((x) => x.quarter_start === q.quarter_start);
+    })
+    .map((q) => ({
+      label: q.quarter_label,
+      sortKey: quarterStartSort(q.quarter_start),
+      posts: num(q.posts) ?? 0,
+      reelViews: (num(q.reel_views_athletes) ?? 0) > 0 ? num(q.reel_views) ?? 0 : 0,
+    }))
+    .filter((q) => q.posts > 0 || q.reelViews > 0);
 
-  // ---- headline totals ---------------------------------------------
-  const t = (totalsRes.data ?? null) as Record<string, unknown> | null;
-  const totals: { label: string; value: string; sub?: string }[] = [];
-  const add = (label: string, value: unknown, contributors?: unknown, sub?: string) => {
-    const n = num(value);
-    if (n === null || n <= 0) return;
-    if (contributors !== undefined && (num(contributors) ?? 0) < 1) return;
-    totals.push({ label, value: compact(n), sub });
-  };
-  add("Campaigns", t?.campaigns);
-  add("Athletes", t?.athletes, undefined, "distinct people");
-  add("Posts", t?.posts);
-  add("Reel views", t?.reel_views, t?.reel_views_athletes);
-  add("Impressions", t?.impressions, t?.impressions_athletes, "feed + stories");
+  // ---- where the views came from ---------------------------------------
+  // FOUR SURFACES, NOT ONE NUMBER. Reels and TikTok report views; Feed and
+  // Stories report impressions. The view keeps them apart and so does this:
+  // each bar names its own metric, and the share is share-of-reported-reach
+  // across the four rather than a pretence that they are the same unit.
+  const surfaceDefs: [string, string, unknown, unknown][] = [
+    ["Instagram Reels", "views", row?.reel_views, row?.reel_views_athletes],
+    ["Instagram Feed", "impressions", row?.feed_impressions, row?.feed_impressions_athletes],
+    ["Instagram Stories", "impressions", row?.story_impressions, row?.story_impressions_athletes],
+    ["TikTok", "views", row?.tiktok_views, row?.tiktok_views_athletes],
+  ];
+  const present = surfaceDefs
+    .map(([label, metric, v, c]) => ({
+      label,
+      metric,
+      value: guarded(v, c) ?? 0,
+      athletes: num(c) ?? 0,
+    }))
+    .filter((s) => s.value > 0);
+  const surfaceTotal = present.reduce((t, s) => t + s.value, 0);
+  const surfaces: ReportSurface[] = present
+    .sort((a, b) => b.value - a.value)
+    .map((s) => ({
+      label: s.label,
+      metric: s.metric,
+      value: s.value,
+      display: compact(s.value),
+      share: surfaceTotal > 0 ? s.value / surfaceTotal : 0,
+      athletes: s.athletes,
+    }));
 
-  const topAthletes: TopAthlete[] = (
+  // ---- best quarter ----------------------------------------------------
+  // Ranked on reel views, which is the figure the chart's orange series and
+  // the headline both lead on. Only meaningful with more than one quarter to
+  // be "best" among.
+  const ranked = [...quarters].filter((q) => q.reelViews > 0).sort((a, b) => b.reelViews - a.reelViews);
+  const totalViews = quarters.reduce((t, q) => t + q.reelViews, 0);
+  const bestQuarter =
+    ranked.length > 1
+      ? {
+          label: ranked[0].label,
+          reelViews: compact(ranked[0].reelViews),
+          posts: compact(ranked[0].posts),
+          share: totalViews > 0 ? ranked[0].reelViews / totalViews : 0,
+        }
+      : null;
+
+  // ---- top athletes, with headshots ------------------------------------
+  const periodCampaignIds = new Set(rows.map((r) => r.campaignId));
+  const topRaw = (
     (topRes.data ?? []) as {
       athlete_id: string;
+      campaign_id: string | null;
       athlete_name: string | null;
       school: string | null;
+      sport: string | null;
       campaign_name: string | null;
       views: number;
       post_url: string | null;
     }[]
-  ).map((a) => ({
+  )
+    .filter((a) => chosen.key === "all" || (a.campaign_id && periodCampaignIds.has(a.campaign_id)))
+    .slice(0, 10);
+
+  // One media query for the ten, not ten queries. Same rule as the roster
+  // headshots: images sort first, and a row with no media keeps null so the
+  // UI draws initials rather than a stock face.
+  const headshots = new Map<string, string>();
+  const ids = topRaw.map((a) => a.athlete_id).filter(Boolean);
+  if (ids.length > 0) {
+    const { data } = await supabase
+      .from("media")
+      .select("athlete_id, type, file_url, thumbnail_url")
+      .in("athlete_id", ids)
+      .order("type", { ascending: true });
+    for (const m of (data ?? []) as {
+      athlete_id: string | null;
+      file_url: string | null;
+      thumbnail_url: string | null;
+    }[]) {
+      const url = m.thumbnail_url || m.file_url;
+      if (m.athlete_id && url && !headshots.has(m.athlete_id)) {
+        headshots.set(m.athlete_id, thumb(url, 120));
+      }
+    }
+  }
+
+  const topAthletes: TopAthlete[] = topRaw.map((a) => ({
     athleteId: a.athlete_id,
     name: a.athlete_name ?? "Athlete",
     school: titleCaseSchool(a.school),
+    sport: titleCaseSport(a.sport),
     campaignName: a.campaign_name,
     views: a.views,
     postUrl: a.post_url,
+    headshotUrl: headshots.get(a.athlete_id) ?? null,
   }));
 
-  return { totals, rows, columns, quarters, topAthletes };
+  return {
+    period: chosen.key,
+    periodLabel: chosen.label,
+    options,
+    kpis,
+    rows,
+    columns,
+    quarters,
+    surfaces,
+    bestQuarter,
+    topAthletes,
+  };
+}
+
+/** "2026-04-01" -> a sortable integer, matching quarterFromDate's sortKey. */
+function quarterStartSort(iso: string): number {
+  const d = new Date(iso);
+  return d.getUTCFullYear() * 10 + (Math.floor(d.getUTCMonth() / 3) + 1);
+}
+
+/** "Q2 2026" -> 20262. For the rows whose quarter is stored, not derived. */
+function labelSort(label: string): number {
+  const m = /^Q([1-4])\s+(\d{4})$/.exec(label.trim());
+  return m ? Number(m[2]) * 10 + Number(m[1]) : 0;
+}
+
+function yearOfLabel(label: string): number | null {
+  const m = /(\d{4})/.exec(label);
+  return m ? Number(m[1]) : null;
 }
