@@ -75,6 +75,13 @@ type DealRow = {
   focal_point: string | null;
   /** Postgres `numeric`, so this arrives as a string ("1.0"). */
   zoom_desktop: string | number | null;
+  /**
+   * The pre-migration Wix URL. It is the only way to tell whether two deals
+   * show the SAME PHOTOGRAPH: job A gave every deal its own storage path
+   * (photos/<slug>.jpg), so two deals that shared one Wix original now have
+   * two distinct image_urls pointing at two identical copies.
+   */
+  image_url_source: string | null;
 };
 
 type Ledger = {
@@ -108,7 +115,7 @@ const loadLedgerUncached = unstable_cache(
     const { data } = await supabase
       .from("deals")
       .select(
-        "id, slug, athlete_name, athlete_school, athlete_sport, brand_name, brand_id, image_url, date_announced, featured, sort_order, focal_point, zoom_desktop"
+        "id, slug, athlete_name, athlete_school, athlete_sport, brand_name, brand_id, image_url, image_url_source, date_announced, featured, sort_order, focal_point, zoom_desktop"
       )
       .eq("published", true)
       .neq("status", "archived");
@@ -149,6 +156,133 @@ const loadLedgerUncached = unstable_cache(
 );
 
 const loadLedger = cache(loadLedgerUncached);
+
+/**
+ * What makes two tiles the same picture.
+ *
+ * NOT image_url. Every live deal has a distinct image_url — job A uploaded
+ * each one to photos/<slug>.<ext> — so grouping by it finds zero duplicates
+ * while the page visibly repeats photographs. The pre-migration Wix URL is
+ * what two deals actually shared, and it survives in image_url_source.
+ */
+function photoKey(d: DealRow): string {
+  return d.image_url_source ?? d.image_url ?? d.id;
+}
+
+/** An athlete's name reduced to a comparison key. */
+function athleteKey(d: DealRow): string {
+  return (d.athlete_name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * The week number, as a seed.
+ *
+ * The wall is shuffled, but not per request: two people opening /deals a
+ * second apart should see the same wall, and it should change on its own
+ * every week. Seeding from the ISO week gives both without any stored state.
+ */
+function isoWeekSeed(now = new Date()): number {
+  const t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);          // the Thursday of this week
+  const jan1 = Date.UTC(t.getUTCFullYear(), 0, 1);
+  const week = Math.ceil(((t.getTime() - jan1) / 86400000 + 1) / 7);
+  return t.getUTCFullYear() * 100 + week;
+}
+
+/** mulberry32 — small, fast, and identical everywhere for a given seed. */
+function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled<T>(items: T[], next: () => number): T[] {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * Pick the wall.
+ *
+ * The old rule — the 60 newest — overlapped the grid's first page almost
+ * exactly, so the hero was a blurred preview of the rows immediately under
+ * it. This one deliberately looks elsewhere:
+ *
+ *   1. one deal per athlete, so no face appears twice;
+ *   2. nothing that is already a card on grid page 1;
+ *   3. spread across years rather than taken off the top, so 2021-2024 are
+ *      in the wall at all — every year with stock gets at least one tile and
+ *      the rest is allocated by largest remainder;
+ *   4. shuffled on a weekly seed, so the wall changes but not per request;
+ *   5. never the same photograph twice, by photoKey rather than by URL.
+ *
+ * If the eligible pool cannot fill 60, it falls back to the excluded deals —
+ * still never repeating a photograph.
+ */
+function buildWall(deals: DealRow[], count: number, seed: number): DealRow[] {
+  const withPhoto = deals.filter((d) => d.image_url && d.image_url.trim());
+  const onPage1 = new Set(withPhoto.slice(0, PER_PAGE).map((d) => d.id));
+
+  const firstPerAthlete = new Map<string, DealRow>();
+  for (const d of withPhoto) if (!firstPerAthlete.has(athleteKey(d))) firstPerAthlete.set(athleteKey(d), d);
+
+  const eligible = Array.from(firstPerAthlete.values()).filter((d) => !onPage1.has(d.id));
+
+  const byYear = new Map<number, DealRow[]>();
+  for (const d of eligible) {
+    const y = dealYear(d.date_announced) ?? 0;
+    (byYear.get(y) ?? byYear.set(y, []).get(y)!).push(d);
+  }
+
+  // Largest remainder, with a floor of one tile per year that has any stock.
+  const years = Array.from(byYear.keys()).sort();
+  const total = eligible.length;
+  const quota = new Map<number, number>();
+  let assigned = 0;
+  const remainders: { y: number; r: number }[] = [];
+  for (const y of years) {
+    const stock = byYear.get(y)!.length;
+    const ideal = (stock / total) * (count - years.length);
+    const base = Math.min(stock, 1 + Math.floor(ideal));
+    quota.set(y, base);
+    assigned += base;
+    remainders.push({ y, r: ideal - Math.floor(ideal) });
+  }
+  remainders.sort((a, b) => b.r - a.r);
+  let i = 0;
+  while (assigned < count && remainders.length) {
+    const { y } = remainders[i % remainders.length];
+    if (quota.get(y)! < byYear.get(y)!.length) { quota.set(y, quota.get(y)! + 1); assigned++; }
+    else if (remainders.every((x) => quota.get(x.y)! >= byYear.get(x.y)!.length)) break;
+    i++;
+  }
+
+  const next = rng(seed);
+  const seen = new Set<string>();
+  const picked: DealRow[] = [];
+  const take = (rows: DealRow[], n: number) => {
+    for (const d of rows) {
+      if (picked.length >= count || n <= 0) break;
+      const k = photoKey(d);
+      if (seen.has(k)) continue;
+      seen.add(k); picked.push(d); n--;
+    }
+  };
+  for (const y of years) take(shuffled(byYear.get(y)!, next), quota.get(y) ?? 0);
+  if (picked.length < count) take(shuffled(eligible, next), count - picked.length);
+  if (picked.length < count) take(shuffled(withPhoto, next), count - picked.length);
+
+  return shuffled(picked, next);
+}
 
 /** Reverse-chronological. Undated deals sink; `featured` only breaks ties. */
 function compareDeals(a: DealRow, b: DealRow): number {
@@ -393,10 +527,23 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
   const page = Math.min(readPage(searchParams), pages);
   const rows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  // The wall is built from the newest deals that have a photo. Suppressed on a
-  // filtered view: sixty unfiltered faces above a filtered grid would be
-  // showing deals the reader has just asked not to see.
-  const wall = hasFilters ? [] : deals.filter((d) => d.date_announced && d.image_url);
+  // Suppressed on a filtered view: sixty unfiltered faces above a filtered
+  // grid would be showing deals the reader has just asked not to see.
+  const wall = hasFilters ? [] : buildWall(deals, WALL_TILES, isoWeekSeed());
+
+  // Two deals can be the same photograph — 19 pairs are, almost all of them
+  // "-split" deals where one joint-campaign shot was divided between two
+  // athletes. The first card on a page keeps the photo; a later card showing
+  // the same photograph falls back to its brand-tinted initials tile rather
+  // than printing the picture twice. Per page, so paging never blanks a photo
+  // whose only other use is on a page you cannot see.
+  const shownPhotos = new Set<string>();
+  const rowsWithPhoto = rows.map((d) => {
+    const k = photoKey(d);
+    const repeat = shownPhotos.has(k);
+    shownPhotos.add(k);
+    return { deal: d, repeat };
+  });
 
   return (
     <div className="dl-page">
@@ -439,10 +586,11 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
             </div>
           ) : view === "grid" ? (
             <ol className="dl-grid">
-              {rows.map((d) => (
+              {rowsWithPhoto.map(({ deal: d, repeat }) => (
                 <DealCard
                   key={d.id}
                   deal={d}
+                  repeatPhoto={repeat}
                   tint={d.brand_id ? tintByBrand[d.brand_id] : undefined}
                 />
               ))}
@@ -459,10 +607,11 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
               </div>
 
               <ol className="dl-ledger">
-                {rows.map((d) => (
+                {rowsWithPhoto.map(({ deal: d, repeat }) => (
                   <LedgerRow
                     key={d.id}
                     deal={d}
+                    repeatPhoto={repeat}
                     logo={d.brand_id ? logoByBrand[d.brand_id] : undefined}
                     tint={d.brand_id ? tintByBrand[d.brand_id] : undefined}
                   />
@@ -556,10 +705,19 @@ function HeroWall({ deals }: { deals: DealRow[] }) {
  * and date. Nothing here is drawn to a canvas or filled in by script, so a
  * crawler reading /deals gets the same 50 deals a person sees.
  */
-function DealCard({ deal, tint }: { deal: DealRow; tint?: string }) {
+function DealCard({
+  deal,
+  tint,
+  repeatPhoto = false,
+}: {
+  deal: DealRow;
+  tint?: string;
+  /** This exact photograph is already on the page, on an earlier card. */
+  repeatPhoto?: boolean;
+}) {
   // 640 covers the widest card (about 280px) on a 2x screen. Fifty originals
   // would be roughly 90 MB; fifty of these are about 1 MB.
-  const src = thumbUrl(deal.image_url, 640);
+  const src = repeatPhoto ? null : thumbUrl(deal.image_url, 640);
   const focal = deal.focal_point || "50% 25%";
   const zoom = zoomScale(deal.zoom_desktop);
   const name = deal.athlete_name || "Team campaign";
@@ -656,12 +814,15 @@ function LedgerRow({
   deal,
   logo,
   tint,
+  repeatPhoto = false,
 }: {
   deal: DealRow;
   logo?: string;
   tint?: string;
+  /** Same photograph as an earlier row on this page. */
+  repeatPhoto?: boolean;
 }) {
-  const thumb = thumbUrl(deal.image_url);
+  const thumb = repeatPhoto ? null : thumbUrl(deal.image_url);
   const name = deal.athlete_name || "Team campaign";
   // On mobile the school/sport/date columns collapse into one line, so the
   // same facts are assembled here rather than duplicated in the markup.
