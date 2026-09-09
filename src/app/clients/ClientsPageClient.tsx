@@ -82,7 +82,7 @@ function SectionLabel({
   children: React.ReactNode;
   heading?: boolean;
 }) {
-  const cls = 'font-mono text-[10px] uppercase tracking-[0.3em] text-brand';
+  const cls = 'pg-eyebrow';
   return heading ? <h2 className={cls}>{children}</h2> : <p className={cls}>{children}</p>;
 }
 
@@ -254,10 +254,10 @@ export default function ClientsPageClient({
           <div className="mx-auto w-full max-w-[1400px] px-6 sm:px-10">
           <div className="flex flex-col gap-5 rounded-xl border border-ink/15 bg-surface/70 px-6 py-7 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
             <div className="min-w-0">
-              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ink/40">
+              <p className="pg-label">
                 Athletes
               </p>
-              <p className="mt-2 max-w-[52ch] text-[14px] leading-relaxed text-ink/60">
+              <p className="pg-body mt-2 max-w-[52ch]">
                 Download the app — an exclusive opportunity for current college athletes to earn
                 money by promoting Postgame throughout the year.
               </p>

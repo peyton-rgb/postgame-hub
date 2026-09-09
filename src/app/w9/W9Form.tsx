@@ -711,7 +711,7 @@ function Styles() {
      ".sf-send" / ".sf-zbtn" at (0,1,0), stripping the orange off the send
      button and the glass off the file button — the approved mockup has exactly
      that collision. The one genuinely bare button sets its own background. */
-  .sf button { font-family:Arial, Helvetica, sans-serif; cursor:pointer; border:none;
+  .sf button { font-family:var(--font-mono), ui-monospace, monospace; cursor:pointer; border:none;
                color:inherit; }
   .sf .d { font-family:var(--font-bebas), 'Bebas Neue', Impact, sans-serif; font-weight:400; }
 
@@ -745,7 +745,7 @@ function Styles() {
      the viewport on focus and the layout never comes back. */
   .sf-fi { width:100%; border:1px solid rgba(250,248,245,0.14); border-radius:9px;
            padding:12px 13px; font-size:16px; color:rgba(250,248,245,1);
-           font-family:Arial, Helvetica, sans-serif; background:rgba(0,0,0,.32); appearance:none; }
+           font-family:var(--font-arimo), Arimo, Arial, Helvetica, sans-serif; background:rgba(0,0,0,.32); appearance:none; }
   .sf-fi::placeholder { color:rgba(250,248,245,0.45); }
   .sf-fi:disabled { opacity:.6; }
   .sf-two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }

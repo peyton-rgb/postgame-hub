@@ -348,13 +348,13 @@ export default function HeroCarousel({ films }: { films: FeaturedFilm[] }) {
         <div className="absolute inset-0 flex items-center pt-[var(--nav-h)]">
           <div className="mx-auto flex w-full max-w-[1400px] items-center gap-8 px-6 pb-[20vh] sm:px-10">
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand">
+              <p className="pg-eyebrow">
                 Our Partners
               </p>
               <h1 className="mt-4 max-w-[16ch] font-display text-[clamp(38px,5.4vw,86px)] leading-[0.9] tracking-tight text-ink">
                 The brands behind the biggest campaigns
               </h1>
-              <p className="mt-5 max-w-[62ch] text-[15px] leading-relaxed text-ink/70">
+              <p className="pg-lead mt-5 max-w-[62ch]">
                 More than 60,000 college athletes have created content for our partners
                 since 2021.
                 <br />
@@ -416,11 +416,11 @@ export default function HeroCarousel({ films }: { films: FeaturedFilm[] }) {
         </div>
 
         <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-6 pt-5 sm:px-10">
-          <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink/35">
+          <span className="pg-label">
             {hero.name}
             {hero.campaignName ? ` · ${hero.campaignName}` : ''}
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink/35">
+          <span className="pg-label">
             {String(promotable.indexOf(heroIdx) + 1).padStart(2, '0')} /{' '}
             {String(promotable.length).padStart(2, '0')} films · {N} brands
           </span>
@@ -508,7 +508,7 @@ function CardSlot({
         <p className="font-display text-[21px] leading-none tracking-wide text-ink">
           {film.name}
         </p>
-        <p className="mt-2 line-clamp-1 font-mono text-[10.5px] uppercase leading-relaxed tracking-[0.16em] text-ink/75">
+        <p className="pg-label mt-2 line-clamp-1">
           {film.campaignName ??
             (film.campaignCount > 0
               ? `${film.campaignCount} campaign${film.campaignCount === 1 ? '' : 's'}`
