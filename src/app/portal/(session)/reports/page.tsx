@@ -23,7 +23,12 @@ export default async function Page({
   searchParams: Record<string, string | undefined>;
 }) {
   const { brand, preview } = await resolveSessionPortal(searchParams.brand);
-  const [icon, data] = await Promise.all([getPostgameIcon(), loadReportsMetrics(brand.id)]);
+  // ?period= drives the whole page, so a filtered view is a shareable URL and
+  // the back button steps through periods.
+  const [icon, data] = await Promise.all([
+    getPostgameIcon(),
+    loadReportsMetrics(brand.id, searchParams.period),
+  ]);
 
   return (
     <PortalShell
@@ -33,8 +38,10 @@ export default async function Page({
       title="Reports"
       subtitle={
         data.rows.length > 0
-          ? `${data.rows.length} wrapped ${data.rows.length === 1 ? "campaign" : "campaigns"}`
-          : null
+          ? `${data.periodLabel} · ${data.rows.length} wrapped ${
+              data.rows.length === 1 ? "campaign" : "campaigns"
+            }`
+          : data.periodLabel
       }
     >
       <ReportsDashboard data={data} />
