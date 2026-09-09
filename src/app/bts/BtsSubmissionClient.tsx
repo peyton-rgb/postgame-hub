@@ -218,7 +218,7 @@ export default function BtsSubmissionClient({
             <br />
             Submission
           </h1>
-          <p className="text-sm text-gray-400 mb-10">
+          <p className="pg-body text-gray-400 mb-10">
             Upload behind-the-scenes content for your campaign.
           </p>
           <button
@@ -390,7 +390,7 @@ export default function BtsSubmissionClient({
           </svg>
         </div>
         <h2 className="d text-5xl mb-3 leading-none">Submitted!</h2>
-        <p className="text-sm text-gray-400 mb-8">
+        <p className="pg-body text-gray-400 mb-8">
           Your video is in. The Postgame team will take it from here.
         </p>
 

@@ -137,7 +137,7 @@ function PhotosSection({ content }: { content: PhotosSectionContent }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.url} alt={img.caption || `Reference ${i + 1}`} className="w-full h-48 object-cover" />
               {img.caption && (
-                <p className="text-xs text-gray-500 p-2 text-center">{img.caption}</p>
+                <p className="pg-body text-gray-500 p-2 text-center">{img.caption}</p>
               )}
             </div>
           ))}
@@ -174,7 +174,7 @@ function DeliverablesSection({ content, color }: { content: DeliverablesSectionC
           <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>VIDEO</div>
           <div className="font-semibold text-gray-900">{content.video.title}</div>
           {content.video.count && <div className="text-sm text-gray-500 mt-1">{content.video.count}</div>}
-          <p className="text-sm text-gray-600 mt-2">{content.video.description}</p>
+          <p className="pg-body text-gray-600 mt-2">{content.video.description}</p>
           {content.video.orientation && (
             <div className="text-xs text-gray-500 mt-2">{content.video.orientation}</div>
           )}
@@ -185,7 +185,7 @@ function DeliverablesSection({ content, color }: { content: DeliverablesSectionC
           <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>PHOTOGRAPHY</div>
           <div className="font-semibold text-gray-900">{content.photography.title}</div>
           {content.photography.minimum && <div className="text-sm text-gray-500 mt-1">{content.photography.minimum}</div>}
-          {content.photography.style && <p className="text-sm text-gray-600 mt-2">{content.photography.style}</p>}
+          {content.photography.style && <p className="pg-body text-gray-600 mt-2">{content.photography.style}</p>}
         </div>
       )}
     </div>
@@ -251,7 +251,7 @@ function CreativeDirectionSection({ content, color }: { content: CreativeDirecti
       {content.lighting_notes && (
         <div>
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lighting Notes</div>
-          <p className="text-gray-600 text-sm">{content.lighting_notes}</p>
+          <p className="pg-body text-gray-600">{content.lighting_notes}</p>
         </div>
       )}
     </div>
@@ -284,7 +284,7 @@ function CameraSpecsSection({ content, color }: { content: CameraSpecsSectionCon
       {content.lens_recommendation && (
         <div className="sm:col-span-2">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lens Recommendation</div>
-          <p className="text-gray-700 text-sm">{content.lens_recommendation}</p>
+          <p className="pg-body text-gray-700">{content.lens_recommendation}</p>
         </div>
       )}
     </div>
@@ -304,7 +304,7 @@ function WorkflowSection({ content, color }: { content: WorkflowSectionContent; 
           </div>
           <div className="flex-1">
             <div className="font-semibold text-gray-900">{step.title}</div>
-            <p className="text-sm text-gray-600 mt-0.5">{step.description}</p>
+            <p className="pg-body text-gray-600 mt-0.5">{step.description}</p>
           </div>
         </div>
       ))}
@@ -367,13 +367,13 @@ function FileDeliverySection({ content, color }: { content: FileDeliverySectionC
       {content.delivery_method && (
         <div>
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Delivery Method</div>
-          <p className="text-gray-700 text-sm">{content.delivery_method}</p>
+          <p className="pg-body text-gray-700">{content.delivery_method}</p>
         </div>
       )}
       {content.deadline && (
         <div>
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Deadline</div>
-          <p className="text-gray-700 text-sm font-medium">{content.deadline}</p>
+          <p className="pg-body text-gray-700 font-medium">{content.deadline}</p>
         </div>
       )}
     </div>

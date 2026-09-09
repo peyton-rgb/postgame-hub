@@ -16,7 +16,7 @@ export default async function Page() {
         >
           OUR <span className="text-[#D73F09]">WORK</span>
         </h1>
-        <p className="text-[13px] text-white/60 mt-[10px] max-w-[560px] leading-relaxed">
+        <p className="pg-body mt-[10px] max-w-[560px]">
           Selected campaigns. Drag, scroll, or swipe through.
         </p>
       </section>

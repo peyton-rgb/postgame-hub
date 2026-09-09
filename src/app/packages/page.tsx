@@ -190,7 +190,7 @@ export default function PackagesIndexPage() {
                 <h1 style={{ ...BEBAS, fontSize: "46px", lineHeight: 0.95, letterSpacing: "1px" }}>
                   EDITOR ASSET PACKAGES
                 </h1>
-                <p className="mt-1 text-sm max-w-[620px]" style={{ color: "#9a9aa2" }}>
+                <p className="pg-body mt-1 max-w-[620px]" style={{ color: "#9a9aa2" }}>
                   Grab-and-go kits for videographers &amp; editors — logos, fonts, colors, and
                   searchable name tags. One per campaign, shareable by link.
                 </p>
@@ -234,11 +234,11 @@ export default function PackagesIndexPage() {
 
             {/* Grid */}
             {packages === null ? (
-              <p className="text-sm" style={{ color: "#9a9aa2" }}>
+              <p className="pg-body" style={{ color: "#9a9aa2" }}>
                 Loading…
               </p>
             ) : shown.length === 0 ? (
-              <p className="text-sm" style={{ color: "#9a9aa2" }}>
+              <p className="pg-body" style={{ color: "#9a9aa2" }}>
                 No packages yet. Create one with “New package”.
               </p>
             ) : (
