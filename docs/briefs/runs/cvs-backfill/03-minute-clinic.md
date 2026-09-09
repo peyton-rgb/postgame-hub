@@ -22,9 +22,21 @@ Tracker tab: Minute Clinic (gid 1452875744)
 
 Public recap `/recap/minute-clinic-cvs` verified 200 after the change.
 
-## Flagged, not changed
+## Aggregate value — nulled
 
-This campaign has **one** athlete row whose `ig_reel.views` is an exact
-multiple of 100,000 — the same shape as the eight corrected on The Tournament.
-The instruction was scoped to The Tournament's eight, so it was left alone
-rather than swept in. Migration 047's guard already keeps it out of Top posts.
+This campaign had **one** athlete row whose `ig_reel.views` was an exact
+multiple of 100,000, the same shape as the eight corrected on The Tournament.
+Flagged on the first pass because the instruction was scoped to The
+Tournament; nulled on Peyton's follow-up, the same way.
+
+| athlete | school | followers | ig_reel.views (removed) |
+|---|---|---|---|
+| Kamau Freeman | Georgia State University | 23,635 | 2,000,000 |
+
+Value recorded here before the write so it is recoverable. `post_url`
+preserved, verified in the `returning` clause. No total reach recorded: the
+Minute Clinic tab has no totals row and 0 filled metric cells, so there was
+nothing to match the figure against.
+
+After this, CVS has **0** athlete rows left with an aggregate-shaped
+`ig_reel.views`.
