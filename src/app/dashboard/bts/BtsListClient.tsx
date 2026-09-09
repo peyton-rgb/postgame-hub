@@ -145,13 +145,13 @@ export default function BtsListClient() {
   }, [submissions, search, brandFilter, holdFilter]);
 
   const inputCls =
-    "w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none text-sm";
+    "w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none text-sm";
   const selectCls = inputCls + " appearance-none cursor-pointer";
 
   // ── Loading / error shells ───────────────────────────────────────
   if (submissions === null) {
     return (
-      <div className="text-sm text-gray-500">Loading submissions…</div>
+      <div className="text-sm text-ink-4">Loading submissions…</div>
     );
   }
   if (loadError) {
@@ -197,12 +197,12 @@ export default function BtsListClient() {
         </select>
       </div>
 
-      <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
+      <div className="text-xs font-bold uppercase tracking-wider text-ink-4 mb-3">
         {filtered.length} {filtered.length === 1 ? "submission" : "submissions"}
       </div>
 
       {filtered.length === 0 ? (
-        <div className="border border-gray-800 rounded-xl p-10 text-center text-sm text-gray-500">
+        <div className="border border-hairline-soft rounded-xl p-10 text-center text-sm text-ink-4">
           No submissions match your filters.
         </div>
       ) : (
@@ -211,26 +211,26 @@ export default function BtsListClient() {
             <Link
               key={s.id}
               href={`/dashboard/bts/${s.id}`}
-              className="block bg-[#111] border border-gray-800 hover:border-gray-600 rounded-xl p-4 transition-colors"
+              className="block bg-surface-card border border-hairline-soft hover:border-hairline rounded-xl p-4 transition-colors"
             >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="min-w-0">
-                  <div className="text-base font-black text-white truncate">
+                  <div className="text-base font-black text-ink-1 truncate">
                     {s.athleteName || "Unnamed athlete"}
                   </div>
-                  <div className="text-xs text-gray-400 truncate">
+                  <div className="text-xs text-ink-3 truncate">
                     {s.brandName ?? "(unlinked brand)"} ·{" "}
                     {s.campaignName ?? "(unlinked campaign)"}
                   </div>
                 </div>
                 {s.holdPosting && (
-                  <span className="shrink-0 px-2 py-0.5 rounded bg-[#D73F09]/15 border border-[#D73F09]/40 text-[#D73F09] text-[10px] font-black uppercase tracking-wider">
+                  <span className="shrink-0 px-2 py-0.5 rounded bg-accent/15 border border-accent/40 text-accent text-[10px] font-black uppercase tracking-wider">
                     HOLD
                   </span>
                 )}
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-ink-4">
                   {formatDate(s.submittedAt)}
                 </span>
                 {s.sheetSyncError && (

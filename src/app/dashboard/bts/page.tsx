@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { PostgameLogo } from "@/components/PostgameLogo";
+import { useHubTheme } from "@/lib/use-hub-theme";
 import { createBrowserSupabase } from "@/lib/supabase";
 import BtsListClient from "./BtsListClient";
 
@@ -13,24 +14,25 @@ import BtsListClient from "./BtsListClient";
  * Supabase fetch in a useEffect. Auth is enforced by middleware.
  */
 export default function BtsAdminPage() {
+  const theme = useHubTheme();
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="border-b border-gray-800 px-8 py-5">
+      <div className="border-b border-hairline-soft px-8 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
-              <PostgameLogo size="md" />
+              <PostgameLogo size="md" ink={theme === "light" ? "dark" : "light"} />
             </Link>
-            <span className="text-gray-700">/</span>
+            <span className="text-ink-4">/</span>
             <Link
               href="/dashboard"
-              className="text-sm font-bold text-gray-500 hover:text-white transition-colors"
+              className="text-sm font-bold text-ink-4 hover:text-ink-1 transition-colors"
             >
               Dashboard
             </Link>
-            <span className="text-gray-700">/</span>
-            <h1 className="text-sm font-black text-white">BTS Submissions</h1>
+            <span className="text-ink-4">/</span>
+            <h1 className="text-sm font-black text-ink-1">BTS Submissions</h1>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -38,7 +40,7 @@ export default function BtsAdminPage() {
                 await createBrowserSupabase().auth.signOut();
                 window.location.href = "/login";
               }}
-              className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-white border border-gray-800 hover:border-gray-600 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-bold text-ink-4 hover:text-ink-1 border border-hairline-soft hover:border-hairline rounded-lg transition-colors"
             >
               Sign Out
             </button>

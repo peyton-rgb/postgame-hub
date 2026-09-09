@@ -15,7 +15,9 @@ import {
   pickBrandLogo,
   resolveBrandLogo,
   type BrandLogoRow,
+  type HubTheme,
 } from "@/lib/brand-logo";
+import { useHubTheme } from "@/lib/use-hub-theme";
 
 type Brand = {
   id: string;
@@ -28,17 +30,16 @@ type Brand = {
   archived: boolean | null;
 };
 
-// The cell is a 40x40 square on a #111 card — a dark surface, and square, so
-// this asks for a mark on_black and falls back through the chain from there.
-// The legacy columns stay underneath for brands with no brand_logos rows.
+// The cell is a 40x40 square on a surface-card tile, so this asks for a mark in
+// the tile's own variant and falls back through the chain from there. The legacy
+// columns stay underneath for brands with no brand_logos rows.
 //
-// SURFACE IS PINNED TO "dark" ON PURPOSE, and it is not an oversight that this
-// does not read the active theme: every card on this page is still hardcoded
-// dark (bg-[#111], text-white/*). The logo must match the ground it actually
-// sits on, not the ground the rest of the Hub is using — resolving a dark-ink
-// mark here because the user picked light mode would put dark ink on a #111
-// card and hide it. When this page's chrome moves onto the semantic tokens,
-// swap both of these for useHubTheme() together, in one change.
+// THE SURFACE FOLLOWS THE ACTIVE THEME, and it has to move in lockstep with the
+// card it sits on. Until this page's chrome was migrated, every card here was
+// hardcoded dark (bg-[#111]) and this was pinned to "dark" for that reason — a
+// logo resolved for light mode would have been dark ink on a black tile. Now the
+// tile is bg-surface-card, which follows the theme, so the logo must too. If
+// either one is ever pinned again, pin both.
 //
 // The legacy fallback used to be a hand-rolled chain:
 //   logo_primary_url || logo_dark_url || logo_light_url || logo_white_url
@@ -46,15 +47,14 @@ type Brand = {
 // dark card, and rendered it invisible. The column name describes the ink, not
 // the background. pickBrandLogo() encodes that inversion once and, by design,
 // never falls back to the opposite-ink variant at all.
-const PORTAL_CARD_SURFACE = "dark" as const;
-
-function brandLogo(b: Brand, logos?: BrandLogoRow[]): string | null {
-  const resolved = resolveBrandLogo(logos, { surface: PORTAL_CARD_SURFACE, prefer: "mark" });
+function brandLogo(b: Brand, logos: BrandLogoRow[] | undefined, theme: HubTheme): string | null {
+  const resolved = resolveBrandLogo(logos, { surface: theme, prefer: "mark" });
   if (resolved) return resolved.url;
-  return pickBrandLogo(b, PORTAL_CARD_SURFACE)?.url ?? b.logo_white_url ?? null;
+  return pickBrandLogo(b, theme)?.url ?? b.logo_white_url ?? null;
 }
 
 export default function BrandPortalsPage() {
+  const theme = useHubTheme();
   const [brands, setBrands] = useState<Brand[] | null>(null);
   const [logosByBrand, setLogosByBrand] = useState<Map<string, BrandLogoRow[]>>(new Map());
   const [search, setSearch] = useState("");
@@ -98,8 +98,8 @@ export default function BrandPortalsPage() {
 
   return (
     <DashboardContent>
-      <h1 className="text-2xl font-bold text-white mb-1">Brand Portals</h1>
-      <p className="text-sm text-white/40 mb-6">
+      <h1 className="text-2xl font-bold text-ink-1 mb-1">Brand Portals</h1>
+      <p className="text-sm text-ink-4 mb-6">
         Open a brand&rsquo;s private portal or copy its shareable link.
       </p>
 
@@ -108,34 +108,34 @@ export default function BrandPortalsPage() {
         placeholder="Search brands…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#D73F09]/50 transition-colors mb-4"
+        className="w-full bg-surface-card border border-hairline-soft rounded-lg px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-4 focus:outline-none focus:border-accent/50 transition-colors mb-4"
       />
 
       {brands === null ? (
-        <p className="text-sm text-white/30 py-10 text-center">Loading brands…</p>
+        <p className="text-sm text-ink-4 py-10 text-center">Loading brands…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-white/30 py-10 text-center">
+        <p className="text-sm text-ink-4 py-10 text-center">
           {brands.length === 0 ? "No brands found." : "No brands match your search."}
         </p>
       ) : (
         <>
-          <p className="text-xs text-white/30 mb-3">
+          <p className="text-xs text-ink-4 mb-3">
             {filtered.length} {filtered.length === 1 ? "brand" : "brands"}
           </p>
           <div className="flex flex-col gap-2">
             {filtered.map((b) => {
-              const logo = brandLogo(b, logosByBrand.get(b.id));
+              const logo = brandLogo(b, logosByBrand.get(b.id), theme);
               return (
                 <div
                   key={b.id}
-                  className="flex items-center gap-4 bg-[#111] border border-white/[0.06] rounded-xl px-4 py-3 hover:border-white/15 transition-colors"
+                  className="flex items-center gap-4 bg-surface-card border border-hairline-soft rounded-xl px-4 py-3 hover:border-hairline transition-colors"
                 >
                   {/* Logo */}
-                  <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-surface-card border border-hairline-soft flex items-center justify-center overflow-hidden shrink-0">
                     {logo ? (
                       <img src={logo} alt={b.name} className="w-full h-full object-contain p-1" />
                     ) : (
-                      <span className="text-xs font-bold text-white/30">
+                      <span className="text-xs font-bold text-ink-4">
                         {(b.name || "?").charAt(0).toUpperCase()}
                       </span>
                     )}
@@ -143,10 +143,10 @@ export default function BrandPortalsPage() {
 
                   {/* Name */}
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-white truncate flex items-center gap-2">
+                    <div className="text-sm font-medium text-ink-1 truncate flex items-center gap-2">
                       {b.name || "Untitled brand"}
                       {b.archived ? (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-white/30 border border-white/15 rounded px-1.5 py-0.5">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-ink-4 border border-hairline rounded px-1.5 py-0.5">
                           Archived
                         </span>
                       ) : null}
@@ -161,19 +161,19 @@ export default function BrandPortalsPage() {
                           href={`/portal/${b.portal_token}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs font-semibold bg-[#D73F09] hover:bg-[#c0380a] text-white rounded-lg px-3 py-2 transition-colors"
+                          className="text-xs font-semibold bg-accent hover:bg-brand-dark text-white rounded-lg px-3 py-2 transition-colors"
                         >
                           View portal
                         </a>
                         <button
                           onClick={() => copyLink(b)}
-                          className="text-xs font-semibold border border-white/15 text-white/70 hover:text-white hover:bg-white/5 rounded-lg px-3 py-2 transition-colors"
+                          className="text-xs font-semibold border border-hairline text-ink-3 hover:text-ink-1 hover:bg-surface-card rounded-lg px-3 py-2 transition-colors"
                         >
                           {copiedId === b.id ? "Copied!" : "Copy link"}
                         </button>
                       </>
                     ) : (
-                      <span className="text-xs text-white/30 italic px-3 py-2">No link yet</span>
+                      <span className="text-xs text-ink-4 italic px-3 py-2">No link yet</span>
                     )}
                   </div>
                 </div>

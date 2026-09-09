@@ -23,12 +23,12 @@ import type { EditJob, EditJobStatus } from '@/lib/types/editing';
 // --- Status display helpers ---
 
 const STATUS_CONFIG: Record<EditJobStatus, { label: string; color: string; icon: string }> = {
-  pending: { label: 'Queued', color: 'bg-gray-600/20 text-gray-300 border-gray-600/30', icon: '⏳' },
+  pending: { label: 'Queued', color: 'bg-surface-raised text-ink-2 border-hairline', icon: '⏳' },
   analyzing: { label: 'Analyzing', color: 'bg-blue-600/20 text-blue-300 border-blue-600/30', icon: '🔍' },
   planning: { label: 'Planning', color: 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30', icon: '📋' },
   confirming: { label: 'Awaiting Approval', color: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30', icon: '⚡' },
   editing: { label: 'Editing', color: 'bg-purple-600/20 text-purple-300 border-purple-600/30', icon: '✂️' },
-  review: { label: 'Ready for Review', color: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30', icon: '👀' },
+  review: { label: 'Ready for Review', color: 'bg-accent/20 text-accent border-accent/30', icon: '👀' },
   approved: { label: 'Approved', color: 'bg-green-600/20 text-green-300 border-green-600/30', icon: '✅' },
   rejected: { label: 'Rejected', color: 'bg-red-600/20 text-red-300 border-red-600/30', icon: '❌' },
   failed: { label: 'Failed', color: 'bg-red-600/20 text-red-300 border-red-600/30', icon: '⚠️' },
@@ -145,20 +145,20 @@ export default function EditingDashboardPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">AI Editing Studio</h1>
-            <p className="text-gray-400 mt-1">
+            <p className="text-ink-3 mt-1">
               Describe what you want changed — the AI handles the rest
             </p>
           </div>
           <div className="flex items-center gap-3">
             <a
               href="/dashboard/inspo"
-              className="px-4 py-2 text-sm text-gray-300 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
+              className="px-4 py-2 text-sm text-ink-2 border border-hairline rounded-lg hover:bg-surface-raised transition"
             >
               Inspo Library
             </a>
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-5 py-2.5 bg-[#D73F09] hover:bg-[#b33507] rounded-lg font-medium transition"
+              className="px-5 py-2.5 bg-accent hover:bg-brand-dark rounded-lg font-medium transition"
             >
               {showForm ? 'Cancel' : '+ New Edit'}
             </button>
@@ -167,14 +167,14 @@ export default function EditingDashboardPage() {
 
         {/* New Edit Form */}
         {showForm && (
-          <div className="bg-[#141414] border border-gray-800 rounded-xl p-6 mb-8">
+          <div className="bg-surface-card border border-hairline-soft rounded-xl p-6 mb-8">
             <h2 className="text-lg font-semibold mb-4">New Edit Job</h2>
 
             {/* Asset selection */}
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">Asset</label>
+              <label className="block text-sm text-ink-3 mb-2">Asset</label>
               {selectedAsset ? (
-                <div className="flex items-center gap-3 p-3 bg-[#1a1a1a] rounded-lg border border-gray-700">
+                <div className="flex items-center gap-3 p-3 bg-surface-raised rounded-lg border border-hairline">
                   {(selectedAsset.thumbnail_url || selectedAsset.file_url) && (
                     <img
                       src={selectedAsset.thumbnail_url || selectedAsset.file_url || ''}
@@ -186,11 +186,11 @@ export default function EditingDashboardPage() {
                     <p className="text-sm truncate">
                       {selectedAsset.visual_description || selectedAsset.content_type}
                     </p>
-                    <p className="text-xs text-gray-500">{selectedAsset.sport || 'No sport tagged'}</p>
+                    <p className="text-xs text-ink-4">{selectedAsset.sport || 'No sport tagged'}</p>
                   </div>
                   <button
                     onClick={() => setSelectedAsset(null)}
-                    className="text-gray-500 hover:text-white text-sm"
+                    className="text-ink-4 hover:text-ink-1 text-sm"
                   >
                     Change
                   </button>
@@ -198,7 +198,7 @@ export default function EditingDashboardPage() {
               ) : (
                 <button
                   onClick={() => setInspoPickerOpen(true)}
-                  className="w-full p-4 border-2 border-dashed border-gray-700 rounded-lg text-gray-400 hover:border-[#D73F09] hover:text-[#D73F09] transition text-center"
+                  className="w-full p-4 border-2 border-dashed border-hairline rounded-lg text-ink-3 hover:border-accent hover:text-accent transition text-center"
                 >
                   Click to select an asset from the inspo library
                 </button>
@@ -207,21 +207,21 @@ export default function EditingDashboardPage() {
 
             {/* Instruction */}
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="block text-sm text-ink-3 mb-2">
                 What do you want to change?
               </label>
               <textarea
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
                 placeholder="e.g., Remove all visible logos from the jersey, make it vertical for TikTok, add a cinematic color grade..."
-                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] resize-none"
+                className="w-full px-4 py-3 bg-surface-raised border border-hairline rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent resize-none"
                 rows={3}
               />
             </div>
 
             {/* Reference image (optional) */}
             <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="block text-sm text-ink-3 mb-2">
                 Reference image URL (optional — for style guidance)
               </label>
               <input
@@ -229,7 +229,7 @@ export default function EditingDashboardPage() {
                 value={referenceImageUrl}
                 onChange={(e) => setReferenceImageUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-4 py-2.5 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                className="w-full px-4 py-2.5 bg-surface-raised border border-hairline rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent"
               />
             </div>
 
@@ -237,7 +237,7 @@ export default function EditingDashboardPage() {
             <button
               onClick={handleSubmit}
               disabled={!selectedAsset || !instruction.trim() || submitting}
-              className="px-6 py-2.5 bg-[#D73F09] hover:bg-[#b33507] disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
+              className="px-6 py-2.5 bg-accent hover:bg-brand-dark disabled:bg-surface-raised disabled:text-ink-4 rounded-lg font-medium transition"
             >
               {submitting ? 'Submitting...' : 'Run Edit'}
             </button>
@@ -252,25 +252,25 @@ export default function EditingDashboardPage() {
               onClick={() => setStatusFilter(tab.key)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                 statusFilter === tab.key
-                  ? 'bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30'
-                  : 'text-gray-400 border border-gray-800 hover:bg-gray-800'
+                  ? 'bg-accent/20 text-accent border border-accent/30'
+                  : 'text-ink-3 border border-hairline-soft hover:bg-surface-raised'
               }`}
             >
               {tab.label}
             </button>
           ))}
-          <span className="ml-auto text-sm text-gray-500 self-center">
+          <span className="ml-auto text-sm text-ink-4 self-center">
             {totalJobs} job{totalJobs !== 1 ? 's' : ''}
           </span>
         </div>
 
         {/* Jobs list */}
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading jobs...</div>
+          <div className="text-center py-12 text-ink-4">Loading jobs...</div>
         ) : jobs.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-500 text-lg mb-2">No edit jobs yet</p>
-            <p className="text-gray-600 text-sm">
+            <p className="text-ink-4 text-lg mb-2">No edit jobs yet</p>
+            <p className="text-ink-4 text-sm">
               Click &quot;+ New Edit&quot; to submit your first AI editing job
             </p>
           </div>
@@ -282,11 +282,11 @@ export default function EditingDashboardPage() {
               return (
                 <div
                   key={job.id}
-                  className="bg-[#141414] border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition"
+                  className="bg-surface-card border border-hairline-soft rounded-xl p-5 hover:border-hairline transition"
                 >
                   <div className="flex items-start gap-4">
                     {/* Thumbnail */}
-                    <div className="w-20 h-20 bg-[#1a1a1a] rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-20 h-20 bg-surface-raised rounded-lg overflow-hidden flex-shrink-0">
                       {job.source_url && (
                         <img
                           src={job.source_url}
@@ -301,7 +301,7 @@ export default function EditingDashboardPage() {
 
                     {/* Job info */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate">
+                      <p className="text-ink-1 font-medium truncate">
                         &quot;{job.instruction}&quot;
                       </p>
                       <div className="flex items-center gap-3 mt-2">
@@ -311,15 +311,15 @@ export default function EditingDashboardPage() {
                           <span>{statusCfg.icon}</span>
                           {statusCfg.label}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-ink-4">
                           {job.content_type}
                         </span>
                         {job.estimated_cost_usd && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-ink-4">
                             ~${job.estimated_cost_usd.toFixed(2)}
                           </span>
                         )}
-                        <span className="text-xs text-gray-600">
+                        <span className="text-xs text-ink-4">
                           {new Date(job.created_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -338,7 +338,7 @@ export default function EditingDashboardPage() {
                       {job.status === 'review' && (
                         <a
                           href={`/dashboard/editing/${job.id}/review`}
-                          className="px-4 py-2 bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30 rounded-lg text-sm hover:bg-[#D73F09]/30 transition"
+                          className="px-4 py-2 bg-accent/20 text-accent border border-accent/30 rounded-lg text-sm hover:bg-accent/30 transition"
                         >
                           Review
                         </a>
@@ -362,15 +362,15 @@ export default function EditingDashboardPage() {
 
                   {/* Edit plan preview (when confirming) */}
                   {job.status === 'confirming' && job.edit_plan && (
-                    <div className="mt-4 p-4 bg-[#0a0a0a] rounded-lg border border-gray-800">
-                      <p className="text-sm text-gray-400 mb-2 font-medium">Edit Plan</p>
+                    <div className="mt-4 p-4 bg-ground rounded-lg border border-hairline-soft">
+                      <p className="text-sm text-ink-3 mb-2 font-medium">Edit Plan</p>
                       <div className="space-y-1.5">
                         {((job.edit_plan as unknown as { steps: Array<{ step_id: number; description: string; tool: string }> }).steps || []).map(
                           (step) => (
                             <div key={step.step_id} className="flex items-center gap-2 text-sm">
-                              <span className="text-gray-600 w-5">{step.step_id}.</span>
-                              <span className="text-gray-300">{step.description}</span>
-                              <span className="text-xs text-gray-600 ml-auto">
+                              <span className="text-ink-4 w-5">{step.step_id}.</span>
+                              <span className="text-ink-2">{step.description}</span>
+                              <span className="text-xs text-ink-4 ml-auto">
                                 {step.tool}
                               </span>
                             </div>
@@ -378,7 +378,7 @@ export default function EditingDashboardPage() {
                         )}
                       </div>
                       {job.estimated_cost_usd && (
-                        <p className="text-xs text-gray-500 mt-3">
+                        <p className="text-xs text-ink-4 mt-3">
                           Estimated cost: ${job.estimated_cost_usd.toFixed(2)} &middot;{' '}
                           {(job.edit_plan as unknown as { estimated_duration_minutes: number }).estimated_duration_minutes || '?'} min
                         </p>
