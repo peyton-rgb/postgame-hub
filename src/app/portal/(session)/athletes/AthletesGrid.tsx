@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { DirectoryAthlete } from "@/lib/portal/pages-data";
+import { initials } from "@/lib/portal/format";
 
 function compact(n: number): string {
   if (n >= 1_000_000) {
@@ -10,15 +11,6 @@ function compact(n: number): string {
   }
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
   return String(n);
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 export default function AthletesGrid({

@@ -196,16 +196,15 @@ export default function PortalShell({
                 </span>
               )}
 
-              {/* Visual only this phase — plain spans, not buttons, so a screen
-                  reader doesn't announce a control that does nothing. */}
+              {/* Visual only this phase — a plain span, not a button, so a
+                  screen reader doesn't announce a control that does nothing.
+                  The range selector and Notifications used to sit here and are
+                  gone until they do something: a control that ignores every
+                  click teaches people the whole toolbar is decorative. Search
+                  stays because it reads as the affordance the page is missing,
+                  and the avatar because it is the account anchor. */}
               <span className="pgd-t pgd-search" aria-hidden="true">
                 Search campaigns, athletes, posts
-              </span>
-              <span className="pgd-t" aria-hidden="true">
-                This quarter &#9662;
-              </span>
-              <span className="pgd-t" aria-hidden="true">
-                Notifications
               </span>
               <span className="pgd-av" role="img" aria-label="Your account">
                 <PersonIcon />

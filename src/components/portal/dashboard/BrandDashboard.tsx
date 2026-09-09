@@ -9,6 +9,7 @@ import PortalShell, {
   ImageIcon,
   PeopleIcon,
 } from "@/components/portal/PortalShell";
+import { initials } from "@/lib/portal/format";
 
 // ============================================================
 // The brand dashboard (Phase 3a) — /portal.
@@ -99,6 +100,7 @@ export default function BrandDashboard({
             <div className="pgd-kpi" key={k.label}>
               <b>{k.value}</b>
               <span>{k.label}</span>
+              {k.sub ? <small>{k.sub}</small> : null}
             </div>
           ))}
         </div>
@@ -254,7 +256,7 @@ export default function BrandDashboard({
                                 <img src={r.headshotUrl} alt="" />
                               ) : (
                                 // No photo on file -> empty circle. Never a stock image.
-                                <span className="pgd-noface" aria-hidden="true" />
+                                <span className="pgd-noface">{initials(r.name)}</span>
                               )}
                               <div>
                                 {r.name}
@@ -321,7 +323,7 @@ export default function BrandDashboard({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.thumbnailUrl} alt="" />
                     ) : (
-                      <span className="pgd-nothumb" aria-hidden="true" />
+                      <span className="pgd-nothumb">{initials(p.name)}</span>
                     )}
                     <div>
                       <b>{p.name}</b>
@@ -386,11 +388,24 @@ export default function BrandDashboard({
                         wrapped to three lines and pushed the card past its grid
                         row. Platform is dropped here — it is on the roster
                         subline already — leaving quarter and roster size. */}
-                    <div className="pgd-cm" title={c.platform ?? undefined}>
-                      {[c.quarter, c.athletes > 0 ? `${c.athletes} athletes` : null]
+                    {/* No meta line at all when there is nothing to put in it.
+                        A live campaign with no quarter and an empty roster used
+                        to render an em dash, which looks like a value that
+                        failed to load rather than a campaign that has not
+                        started. Absent says it better than a placeholder. */}
+                    {(() => {
+                      const meta = [
+                        c.quarter,
+                        c.athletes > 0 ? `${c.athletes} athletes` : null,
+                      ]
                         .filter(Boolean)
-                        .join(" · ") || "\u2014"}
-                    </div>
+                        .join(" · ");
+                      return meta ? (
+                        <div className="pgd-cm" title={c.platform ?? undefined}>
+                          {meta}
+                        </div>
+                      ) : null;
+                    })()}
                     {/* Chip only. The footer used to carry a label AND a chip
                         that said the same thing — "Recap delivered / Wrapped",
                         "Live / Live" — and in a card this narrow the label

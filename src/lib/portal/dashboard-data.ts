@@ -34,6 +34,7 @@
 // ============================================================
 
 import { createServerSupabase } from "@/lib/supabase-server";
+import { titleCaseSchool } from "@/lib/portal/format";
 
 /** delivered OR closed. Phase 3 brief §2: "delivered (and closed until backfilled)". */
 export const WRAPPED_STATUSES = ["delivered", "closed"] as const;
@@ -41,6 +42,8 @@ export const WRAPPED_STATUSES = ["delivered", "closed"] as const;
 export interface DashboardKpi {
   value: string;
   label: string;
+  /** Second line under the label, for qualifying a figure without a bare dot. */
+  sub?: string;
 }
 
 export interface RosterRow {
@@ -205,9 +208,13 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
 
   const kpis: DashboardKpi[] = [
     { value: String(live.length), label: "Live campaigns" },
+    // "Athletes / across all campaigns" rather than "Athletes · all time".
+    // The qualifier is what makes the number honest — it is every athlete the
+    // brand has ever run with, not a live count — so it gets its own line
+    // instead of being crammed after a dot.
     activeAthletes > 0
-      ? { value: String(activeAthletes), label: "Athletes active" }
-      : { value: String(allTimeAthletes), label: "Athletes · all time" },
+      ? { value: String(activeAthletes), label: "Athletes", sub: "on live campaigns" }
+      : { value: String(allTimeAthletes), label: "Athletes", sub: "across all campaigns" },
     // Reach · 14 days is HIDDEN, not zeroed: no verified reach field exists on
     // delivered recaps in a window. The brief says hide it, so it is absent
     // from this array rather than present and empty.
@@ -268,7 +275,11 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
       .eq("campaign_id", rosterCampaign.id)
       .not("name", "is", null)
       .order("ig_followers", { ascending: false, nullsFirst: false })
-      .limit(6);
+      // 12, not 6. The reorder gave the roster the full height of rows 1-3,
+      // and at 6 rows half the tile was empty. The tile scrolls internally, so
+      // over-fetching slightly is cheaper than a visible void — and "as many
+      // rows as fit" was the point of locking the grid to the viewport.
+      .limit(12);
 
     const rows = (rosterRows ?? []) as {
       id: string;
@@ -301,7 +312,9 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
       rows: rows.map((a) => ({
         athleteId: a.id,
         name: a.name,
-        school: a.school,
+        // Cased at the data layer, not at each render site, so the filters and
+    // the labels can never disagree about a school's spelling.
+    school: titleCaseSchool(a.school),
         sport: a.sport,
         headshotUrl: headshots.get(a.id) ?? null,
         followers: a.ig_followers,
@@ -323,7 +336,7 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
   const topPosts: TopPost[] = topRows.map((r) => ({
     athleteId: r.athlete_id,
     name: r.athlete_name,
-    school: r.school,
+    school: titleCaseSchool(r.school),
     campaignName: r.campaign_name,
     views: r.views,
     postUrl: r.post_url,
