@@ -110,10 +110,14 @@ async function notifyManager(
         : `→ ${siteUrl()}/dashboard/${campaign.id}`,
     ].join("\n");
 
+    // `supabase` is handed in so slack-dm can prefer profiles.slack_user_id over
+    // users.lookupByEmail — the lookup is the one step needing users:read.email,
+    // and the one that breaks when a manager's Slack email differs from Asana's.
     const result = await dmCampaignManager(
       campaign.manager_email,
       text,
       "⚠️ No campaign manager linked in Asana for this campaign — you're getting this as the fallback.",
+      supabase,
     );
 
     if (!result.ok) {

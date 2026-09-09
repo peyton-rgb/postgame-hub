@@ -52,7 +52,7 @@ export async function executeEditPlan(
   const { data: agentRun } = await supabase
     .from('agent_runs')
     .insert({
-      agent_name: 'editing-orchestrator',
+      agent_name: 'editing_orchestrator',
       triggered_by: userId,
       input_payload: { edit_job_id: jobId },
       model: 'orchestrator', // not an LLM — this is a routing agent

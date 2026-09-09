@@ -37,6 +37,8 @@ import type { IntakeTagResult } from '@/lib/types/intake';
 import { prepareImageForClaude, extractImageDimensions } from '@/lib/services/image-convert';
 import { generateEmbedding, buildEmbeddingInput } from '@/lib/services/embeddings';
 
+import { assertAgentBudget } from "@/lib/agents/budget";
+import { costUsd as modelCostUsd } from "@/lib/agents/pricing";
 // Initialize the Anthropic client (reads ANTHROPIC_API_KEY from env)
 const anthropic = new Anthropic();
 
@@ -231,6 +233,16 @@ export async function tagInspoItem(
     .eq('id', inspoItemId);
 
   // --- Step 3: Create agent_runs record (status: running) ---
+  // Spend cap. Checked before the run row is created, so a blocked call
+  // leaves no orphan 'running' row behind it.
+  const budget = await assertAgentBudget(supabase, 'intake', {
+    triggeredBy: userId,
+    context: {},
+  });
+  if (!budget.allowed) {
+    throw new Error(`intake skipped — ${budget.reason}`);
+  }
+
   const { data: agentRun, error: runError } = await supabase
     .from('agent_runs')
     .insert({
@@ -493,7 +505,7 @@ export async function tagInspoItem(
     const inputTokens = response.usage?.input_tokens || 0;
     const outputTokens = response.usage?.output_tokens || 0;
     // Claude Fable 5 pricing: $10 / MTok input, $50 / MTok output.
-    const costUsd = (inputTokens * 10 + outputTokens * 50) / 1_000_000;
+    const costUsd = modelCostUsd('claude-fable-5', inputTokens, outputTokens);
 
     // Mark settled BEFORE the write: if the update itself throws, the backstop
     // must not then stamp 'failed' over a job whose tags were saved fine.

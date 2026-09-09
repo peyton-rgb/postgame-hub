@@ -47,6 +47,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import { ReadinessCheckButton } from "@/components/ReadinessCheckButton";
 const SECTION_LABELS: { key: keyof VisibleSections; label: string }[] = [
   { key: "brief", label: "Campaign Overview" },
   { key: "key_takeaways", label: "Key Takeaways" },
@@ -2775,6 +2776,15 @@ export default function CampaignEditor() {
                 <span className="text-gray-300">{campaign.manager_name || campaign.manager_email}</span>
               </div>
             )}
+            {/* Recap-content readiness: does this campaign have anything to
+                build a recap FROM (Drive files / media rows)? Distinct from the
+                "Readiness" pill in the actions row, which counts publish
+                blockers on the recap page itself. Same check the daily
+                /api/cron/recap-readiness sweep runs, and it records the same
+                recap_readiness row. */}
+            <div className="mt-2">
+              <ReadinessCheckButton recapId={campaign.id} />
+            </div>
           </div>
         </div>
         {/* flex-wrap: this row was already overflowing its container on a phone
