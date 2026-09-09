@@ -339,12 +339,24 @@ that ceiling with ranged requests, and the grid pages 60 at a time. Verified
 authenticated: **"1501 athletes", "60 of 1501", "Load 60 more", "1441
 remaining"**, and clicking it goes to 120.
 
-**One number to reconcile:** this says 1,501 where the dashboard KPI says
-1,523. Both are "distinct athletes" but they dedupe differently —
-`portal_brand_athletes` keys on `lower(trim(name))`, `portal_brand_stats`
-counts its own way. The directory figure is the honest one for this page
-because it is the number of rows "Load more" can actually reach. They should be
-made to agree; that is a follow-up, not something to paper over.
+**1,501 vs 1,523 — since resolved, and my first explanation of it was wrong.**
+I said the two surfaces deduped differently. They did not: both already counted
+`distinct lower(trim(name))`. `portal_brand_stats` was simply including DRAFT
+campaigns, which `portal_brand_athletes` excludes, and accepting a
+whitespace-only name. 22 athletes appear only on CVS draft campaigns, which is
+the whole of the difference.
+
+Migration 052 aligns the stats view on the directory's filters. Both now read
+**1,501**, and across all 51 brands with rows in both views, zero disagree.
+
+The requested key — `distinct athlete id` — could not be used, and the numbers
+say why: `athletes.id` is the row PK, one row per athlete PER CAMPAIGN, so it
+counts 2,047 appearances rather than people; `person_id` is the real identity
+but is populated on 882 of 2,047 rows, so keying on it alone reports 731 and
+drops 770 people out of a directory a client reads. A coalesce of the two is
+worse than either (1,666), because anyone carrying `person_id` on one row and
+not another is counted twice. The name key stays until `person_id` is
+backfilled.
 
 ### Also found while doing the above, not fixed
 
@@ -354,10 +366,25 @@ made to agree; that is a follow-up, not something to paper over.
   0 forever and looked correct only because the table is empty. Fixed in its
   own commit on this branch. Found while auditing the same column for Phase 2,
   where the brief made the identical assumption.
-- **"NCAA Tourney" appears in a CVS key-takeaway** that the portal now renders
-  to the client. CLAUDE.md forbids NCAA trademark terms in brand-facing copy.
-  It is client-authored data in `campaign_recaps.settings`, so I have not
-  rewritten it — but the portal is what makes it brand-facing.
+- **CONTENT FLAG — NCAA trademark terms in CVS copy the portal now renders.**
+  CLAUDE.md forbids these in brand-facing copy. **The data is deliberately left
+  alone; Peyton is editing it in the admin.** I first flagged only one instance
+  — that was wrong. A full scan of CVS descriptions and takeaways finds three,
+  plus a fourth in a URL:
+
+  | Campaign | Field | Text |
+  |---|---|---|
+  | 26 Spring Epic Beauty | key takeaway | "Posting timeline leveraged the **NCAA Tourney** time frame…" |
+  | The Tournament | key takeaway | "…during the month of the **NCAA Tournament**." |
+  | The Tournament | description | "A multi-athlete **March Madness** activation with CVS…" |
+  | The Tournament | slug | `march-madness-mng47hvm`, which the portal renders as `/recap/march-madness-mng47hvm` on the "Open recap" link |
+
+  The description is the one to look at first: it is a literal forbidden term
+  and it renders on the campaign Overview tab. The campaign's own NAME is
+  already the sanctioned "The Tournament"; it is the description, the takeaway
+  and the slug that still carry the term. The slug cannot be edited in the
+  admin without breaking any recap link already sent out — worth a redirect
+  rather than a rename. No other CVS campaign matched the scan.
 - **Two Supabase advisors now flag my Phase 2 functions:** `is_brand_user()`
   and `my_brand_ids()` are `SECURITY DEFINER` and callable by `anon` via
   `/rest/v1/rpc/...`. Both return false/empty for anon so there is no leak, but
@@ -377,8 +404,13 @@ made to agree; that is a follow-up, not something to paper over.
    single hand-tuned percentage that suits today's photos, and the recap
    renderer still injects unsanitized client HTML on pages CVS can already
    open.
-3. **Reconcile 1,501 against 1,523.** Two "distinct athlete" counts on two
-   surfaces, from two different dedupe keys, both shown to the same client.
+3. **Decide when `person_id` gets backfilled.** The 1,501/1,523 split is
+   closed — migration 052 aligned the two surfaces and they now read 1,501
+   everywhere, verified across all 51 brands. But the identity key is still
+   `lower(trim(name))`, which collapses two different people who share a name.
+   `athletes.person_id` is the right key and is populated on only 882 of 2,047
+   CVS rows; switching to it today would drop 770 people from a client-facing
+   directory. The backfill is the unlock.
 
 One more worth a glance: the duplicate "Koa Peat" / "Koa Peat2" rows and the
 coach in the athlete directory are data problems the portal is now exposing to
