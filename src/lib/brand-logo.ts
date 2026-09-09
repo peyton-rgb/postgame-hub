@@ -139,3 +139,89 @@ export function groupLogosByBrand(rows: BrandLogoRow[] | null | undefined): Map<
   }
   return map;
 }
+
+// ============================================================
+// Theme-aware selection over the LEGACY brands.logo_* columns
+//
+// resolveBrandLogo() above works on the brand_logos table and is the right
+// path when a brand has rows there. Most Hub surfaces don't use it — they read
+// a single brands.logo_* column directly — so this is the equivalent for them.
+//
+// THE NAMING IS A TRAP, and it is the reason light mode shipped invisible:
+// the column name describes the INK, not the background.
+//   logo_light_url = light/white ink -> use on a DARK ground
+//   logo_dark_url  = dark ink        -> use on a LIGHT ground
+// So the theme and the column name are INVERTED. Reading logo_light_url in
+// light mode is the bug, not the fix.
+// ============================================================
+
+export type HubTheme = "dark" | "light";
+
+/** The brands.logo_* columns this picker knows about. */
+export type BrandLogoColumns = {
+  logo_light_url?: string | null;
+  logo_dark_url?: string | null;
+  logo_primary_url?: string | null;
+  logo_url?: string | null;
+};
+
+export type PickedBrandLogo = {
+  url: string;
+  /** Which column it came from — useful for auditing what actually rendered. */
+  source: "theme-correct" | "primary" | "legacy";
+  /**
+   * True when the theme-correct variant was MISSING and we fell through to a
+   * file whose ink is unverified for this ground.
+   *
+   * This is a sourcing signal, not a licence to render badly: the chain below
+   * never reaches for the opposite-ink variant, so a mark that is known to be
+   * wrong for the ground is not rendered at all.
+   */
+  inkMismatch: boolean;
+};
+
+/**
+ * Pick a logo file for the active theme, or null when nothing safe exists.
+ *
+ * Chain: theme-correct variant -> logo_primary_url -> legacy logo_url -> null.
+ *
+ * THE OPPOSITE-INK VARIANT IS DELIBERATELY NOT IN THE CHAIN. Falling back to it
+ * renders the exact failure this function exists to prevent — a light-ink mark
+ * on a light ground. resolveBrandLogo()'s header makes the same argument for
+ * the brand_logos table and names Raising Cane's as the case that proves it:
+ * fall back on KIND, never on VARIANT. A deliberate empty slot tells you a file
+ * is missing; an invisible mark just looks broken.
+ *
+ * `null` means "render the themed placeholder".
+ */
+export function pickBrandLogo(
+  brand: BrandLogoColumns | null | undefined,
+  theme: HubTheme
+): PickedBrandLogo | null {
+  if (!brand) return null;
+
+  // Inverted on purpose — see the naming note above.
+  const themeCorrect = theme === "light" ? brand.logo_dark_url : brand.logo_light_url;
+  if (themeCorrect) return { url: themeCorrect, source: "theme-correct", inkMismatch: false };
+
+  // No file is known-good for this ground. primary/legacy carry no ink metadata,
+  // so they are a gamble rather than a wrong answer — worth trying, and flagged.
+  if (brand.logo_primary_url) return { url: brand.logo_primary_url, source: "primary", inkMismatch: true };
+  if (brand.logo_url) return { url: brand.logo_url, source: "legacy", inkMismatch: true };
+  return null;
+}
+
+/**
+ * True when a brand has no file whose ink is known-correct for this theme.
+ *
+ * The sourcing question, separated from the rendering one: these brands either
+ * show an unverified file or the placeholder, and the fix is a logo file, not
+ * code.
+ */
+export function needsLogoVariant(
+  brand: BrandLogoColumns | null | undefined,
+  theme: HubTheme
+): boolean {
+  if (!brand) return false;
+  return !(theme === "light" ? brand.logo_dark_url : brand.logo_light_url);
+}

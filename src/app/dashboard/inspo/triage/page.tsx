@@ -36,8 +36,8 @@ const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
 
 const CONTENT_TYPE_COLORS: Record<ContentType, string> = {
   produced: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
-  athlete_ugc: 'bg-green-500/10 text-green-300 border-green-500/30',
-  bts: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30',
+  athlete_ugc: 'bg-status-ok/10 text-status-ok-ink border-status-ok/30',
+  bts: 'bg-status-warn/10 text-status-warn-ink border-status-warn/30',
   raw_footage: 'bg-[#D73F09]/10 text-[#e8663d] border-[#D73F09]/30',
   photography: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
   talking_head: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
@@ -486,11 +486,11 @@ export default function InspoTriagePage() {
 
       {/* Error Toast */}
       {errorToast && (
-        <div className="fixed top-20 right-4 z-50 bg-red-950/90 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-3">
+        <div className="fixed top-20 right-4 z-50 bg-status-bad/90 border border-status-bad/50 text-status-bad-ink px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-3">
           <span>⚠️ {errorToast}</span>
           <button
             onClick={() => setErrorToast(null)}
-            className="text-red-400 hover:text-white text-sm"
+            className="text-status-bad hover:text-white text-sm"
           >
             ✕
           </button>
@@ -662,7 +662,7 @@ export default function InspoTriagePage() {
           <div className="bg-[#0e0e14] border border-white/15 rounded-2xl w-full max-w-lg p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                <span className="text-red-400">✕</span> Reject Asset
+                <span className="text-status-bad">✕</span> Reject Asset
               </h3>
               <button
                 onClick={() => setShowRejectModal(false)}
@@ -685,7 +685,7 @@ export default function InspoTriagePage() {
                     setRejectReason(reason);
                     handleConfirmReject(reason);
                   }}
-                  className="text-xs font-mono px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-red-500/40 hover:bg-red-500/10 text-gray-300 hover:text-red-300 transition-colors text-left"
+                  className="text-xs font-mono px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-status-bad/40 hover:bg-status-bad/10 text-gray-300 hover:text-status-bad-ink transition-colors text-left"
                 >
                   {reason}
                 </button>
@@ -699,7 +699,7 @@ export default function InspoTriagePage() {
               placeholder="Or type a custom reason..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-black/50 border border-white/15 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-red-500/50 mb-4 font-sans"
+              className="w-full px-3.5 py-2.5 bg-black/50 border border-white/15 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-status-bad/50 mb-4 font-sans"
             />
 
             <div className="flex items-center justify-end gap-2">
@@ -711,7 +711,7 @@ export default function InspoTriagePage() {
               </button>
               <button
                 onClick={() => handleConfirmReject(rejectReason)}
-                className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-500/40 hover:bg-red-500/30 text-red-200 text-xs font-medium transition-colors"
+                className="px-4 py-2 rounded-xl bg-status-bad/20 border border-status-bad/40 hover:bg-status-bad/30 text-status-bad-ink text-xs font-medium transition-colors"
               >
                 Confirm Reject
               </button>
@@ -727,10 +727,10 @@ export default function InspoTriagePage() {
           <button
             onClick={handleOpenRejectModal}
             disabled={!currentItem}
-            className="flex-1 py-3.5 px-4 rounded-xl border border-red-500/30 bg-red-950/20 hover:bg-red-900/30 active:scale-95 text-red-300 font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-30 disabled:pointer-events-none"
+            className="flex-1 py-3.5 px-4 rounded-xl border border-status-bad/30 bg-status-bad/20 hover:bg-status-bad/30 active:scale-95 text-status-bad-ink font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-30 disabled:pointer-events-none"
           >
             <span>✕ Reject</span>
-            <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-red-900/40 text-[10px] font-mono text-red-200 border border-red-700/50">
+            <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-status-bad/40 text-[10px] font-mono text-status-bad-ink border border-status-bad/50">
               R
             </span>
           </button>

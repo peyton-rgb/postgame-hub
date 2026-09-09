@@ -75,7 +75,7 @@ export default function RosterEditor({ data, onChange }: Props) {
           <div key={i} className="border border-gray-800 rounded-lg p-3 mb-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-[#D73F09]">{a.number || `Athlete ${i + 1}`}</span>
-              <button onClick={() => removeAthlete(i)} className="text-xs text-gray-500 hover:text-red-400">&times; Remove</button>
+              <button onClick={() => removeAthlete(i)} className="text-xs text-gray-500 hover:text-status-bad">&times; Remove</button>
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <input value={a.number} onChange={(e) => updateAthlete(i, "number", e.target.value)} placeholder="No 01" className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none" />
@@ -104,7 +104,7 @@ export default function RosterEditor({ data, onChange }: Props) {
                 <div className="flex items-center gap-2 flex-1">
                   <img src={a.photoUrl} alt="" className="w-10 h-10 rounded object-cover border border-gray-700" />
                   <span className="text-xs text-gray-400 truncate flex-1">{a.photoUrl.split("/").pop()}</span>
-                  <button onClick={() => updateAthlete(i, "photoUrl", "")} className="text-xs text-gray-500 hover:text-red-400">&times;</button>
+                  <button onClick={() => updateAthlete(i, "photoUrl", "")} className="text-xs text-gray-500 hover:text-status-bad">&times;</button>
                 </div>
               ) : (
                 <button

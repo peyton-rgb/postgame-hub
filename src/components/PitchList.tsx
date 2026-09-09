@@ -481,7 +481,7 @@ export default function PitchList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500 text-sm">
+      <div className="flex items-center justify-center h-64 text-ink-4 text-sm">
         Loading pitch pages...
       </div>
     );
@@ -490,8 +490,8 @@ export default function PitchList() {
   const tabClass = (tab: CreateTab) =>
     `flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-colors ${
       createTab === tab
-        ? "bg-white/10 text-white"
-        : "text-gray-500 hover:text-gray-300"
+        ? "bg-surface-raised text-ink-1"
+        : "text-ink-4 hover:text-ink-3"
     }`;
 
   return (
@@ -499,8 +499,8 @@ export default function PitchList() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-black text-white">Pitch Pages</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-lg font-black text-ink-1">Pitch Pages</h2>
+          <p className="text-sm text-ink-4 mt-1">
             {filteredPitches.length === pitches.length
               ? `${pitches.length} pitch${pitches.length !== 1 ? "es" : ""}`
               : `${filteredPitches.length} of ${pitches.length} pitches`}
@@ -508,7 +508,7 @@ export default function PitchList() {
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407] transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--accent)] text-ink-1 text-sm font-bold rounded-lg hover:bg-[var(--accent)] transition-colors"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
@@ -518,7 +518,7 @@ export default function PitchList() {
       </div>
 
       {/* Filter tabs — All / Brand / Athlete */}
-      <div className="flex gap-0 mb-6 border-b border-gray-800">
+      <div className="flex gap-0 mb-6 border-b border-hairline">
         {(
           [
             { key: "all" as PitchFilter, label: "All", count: pitches.length },
@@ -533,14 +533,14 @@ export default function PitchList() {
               onClick={() => setFilter(key)}
               className={`px-5 py-2.5 text-sm font-bold transition-colors border-b-2 -mb-px ${
                 isActive
-                  ? "text-[#D73F09] border-[#D73F09]"
-                  : "text-gray-500 border-transparent hover:text-gray-300 hover:border-gray-600"
+                  ? "text-[var(--accent)] border-[var(--accent)]"
+                  : "text-ink-4 border-transparent hover:text-ink-3 hover:border-ink-4"
               }`}
             >
               {label}{" "}
               <span
                 className={`text-xs ml-0.5 ${
-                  isActive ? "text-[#D73F09]/70" : "text-gray-600"
+                  isActive ? "text-[var(--accent)]/70" : "text-ink-4"
                 }`}
               >
                 ({count})
@@ -552,7 +552,7 @@ export default function PitchList() {
 
       {/* Table */}
       {filteredPitches.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
+        <div className="text-center py-20 text-ink-4">
           <div className="text-4xl mb-4">&#9670;</div>
           <div className="text-sm">
             {pitches.length === 0
@@ -561,15 +561,15 @@ export default function PitchList() {
           </div>
         </div>
       ) : (
-        <div className="border border-gray-800 rounded-xl overflow-hidden">
+        <div className="border border-hairline rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800 bg-white/[0.02]">
-                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Title</th>
-                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Brand</th>
-                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Slug</th>
-                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Status</th>
-                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Updated</th>
+              <tr className="border-b border-hairline bg-surface-card/[0.02]">
+                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-ink-4">Title</th>
+                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-ink-4">Brand</th>
+                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-ink-4">Slug</th>
+                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-ink-4">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-ink-4">Updated</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -577,9 +577,9 @@ export default function PitchList() {
               {filteredPitches.map((pitch) => {
                 const brand = getBrandForPitch(pitch);
                 return (
-                  <tr key={pitch.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
+                  <tr key={pitch.id} className="border-b border-hairline/50 hover:bg-surface-card/[0.02] transition-colors">
                     <td className="px-5 py-4">
-                      <Link href={`/dashboard/pitches/${pitch.id}`} className="font-bold text-white hover:text-[#D73F09] transition-colors">
+                      <Link href={`/dashboard/pitches/${pitch.id}`} className="font-bold text-ink-1 hover:text-[var(--accent)] transition-colors">
                         {pitch.title || "Untitled"}
                       </Link>
                     </td>
@@ -589,29 +589,29 @@ export default function PitchList() {
                           {(brand.logo_primary_url || brand.logo_light_url) && (
                             <img src={brand.logo_light_url || brand.logo_primary_url || ""} alt="" className="w-5 h-5 object-contain rounded" />
                           )}
-                          <span className="text-gray-300">{brand.name}</span>
+                          <span className="text-ink-3">{brand.name}</span>
                         </div>
                       ) : (
-                        <span className="text-gray-600">&mdash;</span>
+                        <span className="text-ink-4">&mdash;</span>
                       )}
                     </td>
                     <td className="px-5 py-4">
-                      <code className="text-xs text-gray-400 bg-white/5 px-2 py-1 rounded">/pitch/{pitch.slug}</code>
+                      <code className="text-xs text-ink-3 bg-surface-card px-2 py-1 rounded">/pitch/{pitch.slug}</code>
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${pitch.status === "published" ? "bg-green-500/10 text-green-400" : "bg-gray-500/10 text-gray-400"}`}>
+                      <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${pitch.status === "published" ? "bg-surface-raised/10 text-ink-3" : "bg-surface-raised/10 text-ink-3"}`}>
                         {pitch.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-gray-500 text-xs">
+                    <td className="px-5 py-4 text-ink-4 text-xs">
                       {new Date(pitch.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center gap-2 justify-end">
-                        <Link href={`/pitch/${pitch.slug}`} target="_blank" className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-gray-500 transition-colors">
+                        <Link href={`/pitch/${pitch.slug}`} target="_blank" className="text-xs px-3 py-1.5 border border-hairline rounded-lg text-ink-3 hover:text-ink-1 hover:border-ink-4 transition-colors">
                           View
                         </Link>
-                        <button onClick={() => setConfirmDelete(pitch)} className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-500 hover:text-red-400 hover:border-red-500/30 transition-colors">
+                        <button onClick={() => setConfirmDelete(pitch)} className="text-xs px-3 py-1.5 border border-hairline rounded-lg text-ink-4 hover:text-accent hover:border-accent/30 transition-colors">
                           Delete
                         </button>
                       </div>
@@ -627,24 +627,24 @@ export default function PitchList() {
       {/* Create Modal */}
       {showCreate && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 bg-ground/70 backdrop-blur-sm flex items-center justify-center z-50"
           onClick={() => !generating && setShowCreate(false)}
         >
           <div
-            className="bg-[#111] border border-gray-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative"
+            className="bg-surface-card border border-hairline rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Progress overlay */}
             {generating && (
-              <div className="absolute inset-0 bg-[#111]/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-2xl">
-                <div className="w-10 h-10 border-2 border-[#D73F09] border-t-transparent rounded-full animate-spin mb-6" />
-                <div className="text-sm font-bold text-white mb-2">{PROGRESS_STEPS[progressStep]}</div>
+              <div className="absolute inset-0 bg-surface-card/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-2xl">
+                <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mb-6" />
+                <div className="text-sm font-bold text-ink-1 mb-2">{PROGRESS_STEPS[progressStep]}</div>
                 <div className="flex gap-1.5 mt-3">
                   {PROGRESS_STEPS.map((_, i) => (
                     <div
                       key={i}
                       className={`w-2 h-2 rounded-full transition-colors ${
-                        i <= progressStep ? "bg-[#D73F09]" : "bg-gray-700"
+                        i <= progressStep ? "bg-[var(--accent)]" : "bg-surface-raised"
                       }`}
                     />
                   ))}
@@ -653,7 +653,7 @@ export default function PitchList() {
             )}
 
             <div className="p-8">
-              <h3 className="text-lg font-black text-white mb-5">
+              <h3 className="text-lg font-black text-ink-1 mb-5">
                 New {pitchType === "brand" ? "Brand" : "Athlete"} Pitch
               </h3>
 
@@ -665,14 +665,14 @@ export default function PitchList() {
                   onClick={() => setPitchType("athlete")}
                   className={`px-4 py-3 rounded-xl border text-left transition-colors ${
                     pitchType === "athlete"
-                      ? "border-[#D73F09] bg-[#D73F09]/10"
-                      : "border-gray-800 bg-black hover:border-gray-700"
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                      : "border-hairline bg-ground hover:border-hairline"
                   }`}
                 >
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[var(--accent)]">
                     Athlete
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-ink-3 mt-1">
                     Pitching an athlete to sign with Postgame
                   </div>
                 </button>
@@ -681,21 +681,21 @@ export default function PitchList() {
                   onClick={() => setPitchType("brand")}
                   className={`px-4 py-3 rounded-xl border text-left transition-colors ${
                     pitchType === "brand"
-                      ? "border-[#D73F09] bg-[#D73F09]/10"
-                      : "border-gray-800 bg-black hover:border-gray-700"
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                      : "border-hairline bg-ground hover:border-hairline"
                   }`}
                 >
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#D73F09]">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[var(--accent)]">
                     Brand
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-ink-3 mt-1">
                     Pitching a brand on a campaign concept
                   </div>
                 </button>
               </div>
 
               {/* Tab switcher */}
-              <div className="flex gap-1 bg-white/5 rounded-lg p-1 mb-6">
+              <div className="flex gap-1 bg-surface-card rounded-lg p-1 mb-6">
                 <button onClick={() => setCreateTab("blank")} className={tabClass("blank")}>
                   Blank
                 </button>
@@ -710,39 +710,39 @@ export default function PitchList() {
                 {pitchType === "athlete" ? (
                   <>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                        Athlete Name <span className="text-[#D73F09]">*</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
+                        Athlete Name <span className="text-[var(--accent)]">*</span>
                       </label>
                       <input
                         type="text"
                         value={athleteName}
                         onChange={(e) => setAthleteName(e.target.value)}
                         placeholder="e.g. Nau'Jour Grainger"
-                        className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none placeholder-gray-600"
+                        className="w-full px-4 py-3 bg-ground border border-hairline rounded-xl text-ink-1 text-sm focus:border-[var(--accent)] outline-none placeholder-gray-600"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                        Nickname <span className="text-gray-600 normal-case font-normal">(optional)</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
+                        Nickname <span className="text-ink-4 normal-case font-normal">(optional)</span>
                       </label>
                       <input
                         type="text"
                         value={athleteNickname}
                         onChange={(e) => setAthleteNickname(e.target.value)}
                         placeholder="e.g. Toosii"
-                        className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none placeholder-gray-600"
+                        className="w-full px-4 py-3 bg-ground border border-hairline rounded-xl text-ink-1 text-sm focus:border-[var(--accent)] outline-none placeholder-gray-600"
                       />
                     </div>
                   </>
                 ) : (
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                      Brand {createTab === "ai" && <span className="text-[#D73F09]">*</span>}
+                    <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
+                      Brand {createTab === "ai" && <span className="text-[var(--accent)]">*</span>}
                     </label>
                     <select
                       value={selectedBrandId}
                       onChange={(e) => handleBrandChange(e.target.value)}
-                      className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none"
+                      className="w-full px-4 py-3 bg-ground border border-hairline rounded-xl text-ink-1 text-sm focus:border-[var(--accent)] outline-none"
                     >
                       <option value="">{createTab === "ai" ? "Select brand (required)" : "Select brand (optional)"}</option>
                       {brands.map((b) => (
@@ -754,37 +754,37 @@ export default function PitchList() {
 
                 {/* Shared: Title */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                    Title {createTab === "blank" && <span className="text-[#D73F09]">*</span>}
-                    {createTab === "ai" && <span className="text-gray-600 normal-case font-normal"> (auto from brand if blank)</span>}
+                  <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
+                    Title {createTab === "blank" && <span className="text-[var(--accent)]">*</span>}
+                    {createTab === "ai" && <span className="text-ink-4 normal-case font-normal"> (auto from brand if blank)</span>}
                   </label>
                   <input
                     type="text"
                     value={newTitle}
                     onChange={(e) => handleTitleChange(e.target.value)}
                     placeholder={createTab === "ai" ? "Auto-generated from brand" : "e.g. Postgame x Crocs"}
-                    className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none placeholder-gray-600"
+                    className="w-full px-4 py-3 bg-ground border border-hairline rounded-xl text-ink-1 text-sm focus:border-[var(--accent)] outline-none placeholder-gray-600"
                   />
                 </div>
 
                 {/* Shared: Slug */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                    Slug {createTab === "blank" && <span className="text-[#D73F09]">*</span>}
-                    {createTab === "ai" && <span className="text-gray-600 normal-case font-normal"> (auto from brand if blank)</span>}
+                  <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
+                    Slug {createTab === "blank" && <span className="text-[var(--accent)]">*</span>}
+                    {createTab === "ai" && <span className="text-ink-4 normal-case font-normal"> (auto from brand if blank)</span>}
                   </label>
                   <div className="flex items-center">
-                    <span className={`text-xs text-gray-500 bg-black border border-r-0 rounded-l-xl px-3 py-3 ${slugError ? "border-red-500/50" : "border-gray-700"}`}>/pitch/</span>
+                    <span className={`text-xs text-ink-4 bg-ground border border-r-0 rounded-l-xl px-3 py-3 ${slugError ? "border-accent/50" : "border-hairline"}`}>/pitch/</span>
                     <input
                       type="text"
                       value={newSlug}
                       onChange={(e) => handleSlugChange(e.target.value)}
                       placeholder={createTab === "ai" ? "auto" : "crocs"}
-                      className={`flex-1 px-4 py-3 bg-black border rounded-r-xl text-white text-sm outline-none placeholder-gray-600 ${slugError ? "border-red-500/50 focus:border-red-500" : "border-gray-700 focus:border-[#D73F09]"}`}
+                      className={`flex-1 px-4 py-3 bg-ground border rounded-r-xl text-ink-1 text-sm outline-none placeholder-gray-600 ${slugError ? "border-accent/50 focus:border-accent" : "border-hairline focus:border-[var(--accent)]"}`}
                     />
                   </div>
                   {slugError && (
-                    <div className="text-xs text-red-400 mt-1.5">{slugError}</div>
+                    <div className="text-xs text-accent mt-1.5">{slugError}</div>
                   )}
                 </div>
 
@@ -793,7 +793,7 @@ export default function PitchList() {
                   <>
                     {/* Voice selector */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
                         Voice
                       </label>
                       <div className="space-y-2">
@@ -802,10 +802,10 @@ export default function PitchList() {
                             key={voice.id}
                             className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
                               !voice.ready
-                                ? "opacity-40 cursor-not-allowed border-gray-800"
+                                ? "opacity-40 cursor-not-allowed border-hairline"
                                 : selectedVoiceId === voice.id
-                                ? "border-[#D73F09]/40 bg-[#D73F09]/5"
-                                : "border-gray-800 hover:border-gray-600"
+                                ? "border-[var(--accent)]/40 bg-[var(--accent)]/5"
+                                : "border-hairline hover:border-ink-4"
                             }`}
                           >
                             <input
@@ -815,11 +815,11 @@ export default function PitchList() {
                               checked={selectedVoiceId === voice.id}
                               disabled={!voice.ready}
                               onChange={() => setSelectedVoiceId(voice.id)}
-                              className="mt-0.5 accent-[#D73F09]"
+                              className="mt-0.5 accent-[var(--accent)]"
                             />
                             <div>
-                              <div className="text-sm font-bold text-white">{voice.name}</div>
-                              <div className="text-xs text-gray-400 mt-0.5">{voice.tagline}</div>
+                              <div className="text-sm font-bold text-ink-1">{voice.name}</div>
+                              <div className="text-xs text-ink-3 mt-0.5">{voice.tagline}</div>
                             </div>
                           </label>
                         ))}
@@ -828,7 +828,7 @@ export default function PitchList() {
 
                     {/* Prompt */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
                         Prompt
                       </label>
                       <textarea
@@ -836,14 +836,14 @@ export default function PitchList() {
                         onChange={(e) => setAiPrompt(e.target.value)}
                         rows={6}
                         placeholder="What's the angle? Who's the audience? What should this pitch lean into?"
-                        className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white text-sm focus:border-[#D73F09] outline-none placeholder-gray-600 resize-none"
+                        className="w-full px-4 py-3 bg-ground border border-hairline rounded-xl text-ink-1 text-sm focus:border-[var(--accent)] outline-none placeholder-gray-600 resize-none"
                       />
                     </div>
 
                     {/* File upload */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                        Assets <span className="text-gray-600 normal-case font-normal">(photos &amp; videos, max {MAX_FILES})</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-ink-3 mb-2">
+                        Assets <span className="text-ink-4 normal-case font-normal">(photos &amp; videos, max {MAX_FILES})</span>
                       </label>
 
                       <input
@@ -858,19 +858,19 @@ export default function PitchList() {
                       {/* Drop zone */}
                       <div
                         onClick={() => fileInputRef.current?.click()}
-                        onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-[#D73F09]"); }}
-                        onDragLeave={(e) => { e.currentTarget.classList.remove("border-[#D73F09]"); }}
+                        onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-[var(--accent)]"); }}
+                        onDragLeave={(e) => { e.currentTarget.classList.remove("border-[var(--accent)]"); }}
                         onDrop={(e) => {
                           e.preventDefault();
-                          e.currentTarget.classList.remove("border-[#D73F09]");
+                          e.currentTarget.classList.remove("border-[var(--accent)]");
                           handleFileSelect(e.dataTransfer.files);
                         }}
-                        className="border-2 border-dashed border-gray-700 rounded-xl p-6 text-center cursor-pointer hover:border-gray-500 transition-colors"
+                        className="border-2 border-dashed border-hairline rounded-xl p-6 text-center cursor-pointer hover:border-ink-4 transition-colors"
                       >
-                        <div className="text-gray-500 text-sm">
-                          Drop files here or <span className="text-[#D73F09] font-bold">browse</span>
+                        <div className="text-ink-4 text-sm">
+                          Drop files here or <span className="text-[var(--accent)] font-bold">browse</span>
                         </div>
-                        <div className="text-gray-600 text-xs mt-1">
+                        <div className="text-ink-4 text-xs mt-1">
                           Videos: max {MAX_VIDEO_DURATION_SEC}s, {MAX_VIDEO_SIZE_MB}MB each
                         </div>
                       </div>
@@ -879,22 +879,22 @@ export default function PitchList() {
                       {uploadedFiles.length > 0 && (
                         <div className="mt-3 space-y-2">
                           {uploadedFiles.map((uf, i) => (
-                            <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${uf.error ? "bg-red-500/10 border border-red-500/20" : "bg-white/5"}`}>
+                            <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${uf.error ? "bg-accent/10 border border-accent/20" : "bg-surface-card"}`}>
                               {uf.preview ? (
                                 <img src={uf.preview} alt="" className="w-8 h-8 rounded object-cover" />
                               ) : (
-                                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-xs text-gray-400">
+                                <div className="w-8 h-8 rounded bg-surface-raised flex items-center justify-center text-xs text-ink-3">
                                   {uf.file.type.startsWith("video/") ? "VID" : "IMG"}
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <div className="text-xs text-gray-300 truncate">{uf.file.name}</div>
+                                <div className="text-xs text-ink-3 truncate">{uf.file.name}</div>
                                 {uf.error && (
-                                  <div className="text-xs text-red-400 mt-0.5">{uf.error}</div>
+                                  <div className="text-xs text-accent mt-0.5">{uf.error}</div>
                                 )}
-                                <div className="text-xs text-gray-600">{(uf.file.size / 1024 / 1024).toFixed(1)}MB</div>
+                                <div className="text-xs text-ink-4">{(uf.file.size / 1024 / 1024).toFixed(1)}MB</div>
                               </div>
-                              <button onClick={() => removeFile(i)} className="text-gray-500 hover:text-red-400 text-sm flex-shrink-0">&times;</button>
+                              <button onClick={() => removeFile(i)} className="text-ink-4 hover:text-accent text-sm flex-shrink-0">&times;</button>
                             </div>
                           ))}
                         </div>
@@ -905,7 +905,7 @@ export default function PitchList() {
 
                 {/* Error display */}
                 {genError && (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
+                  <div className="bg-accent/10 border border-accent/20 rounded-xl px-4 py-3 text-sm text-accent">
                     {genError}
                   </div>
                 )}
@@ -916,7 +916,7 @@ export default function PitchList() {
                 <button
                   onClick={() => setShowCreate(false)}
                   disabled={generating}
-                  className="flex-1 px-4 py-3 border border-gray-700 rounded-xl text-gray-400 text-sm font-bold hover:text-white hover:border-gray-500 transition-colors disabled:opacity-40"
+                  className="flex-1 px-4 py-3 border border-hairline rounded-xl text-ink-3 text-sm font-bold hover:text-ink-1 hover:border-ink-4 transition-colors disabled:opacity-40"
                 >
                   Cancel
                 </button>
@@ -930,7 +930,7 @@ export default function PitchList() {
                       (pitchType === "athlete" && !athleteName.trim()) ||
                       creating
                     }
-                    className="flex-1 px-4 py-3 bg-[#D73F09] rounded-xl text-white text-sm font-bold hover:bg-[#B33407] disabled:opacity-40 transition-colors"
+                    className="flex-1 px-4 py-3 bg-[var(--accent)] rounded-xl text-ink-1 text-sm font-bold hover:bg-[var(--accent)] disabled:opacity-40 transition-colors"
                   >
                     {creating ? "Creating..." : "Create Pitch"}
                   </button>
@@ -938,7 +938,7 @@ export default function PitchList() {
                   <button
                     onClick={generatePitch}
                     disabled={!selectedBrandId || generating || uploadedFiles.some((f) => f.error)}
-                    className="flex-1 px-4 py-3 bg-[#D73F09] rounded-xl text-white text-sm font-bold hover:bg-[#B33407] disabled:opacity-40 transition-colors"
+                    className="flex-1 px-4 py-3 bg-[var(--accent)] rounded-xl text-ink-1 text-sm font-bold hover:bg-[var(--accent)] disabled:opacity-40 transition-colors"
                   >
                     {generating ? "Generating..." : "Generate Pitch"}
                   </button>
@@ -952,28 +952,28 @@ export default function PitchList() {
       {/* Delete Confirmation Modal */}
       {confirmDelete && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 bg-ground/70 backdrop-blur-sm flex items-center justify-center z-50"
           onClick={() => setConfirmDelete(null)}
         >
           <div
-            className="bg-[#111] border border-gray-800 rounded-2xl p-8 w-full max-w-sm text-center"
+            className="bg-surface-card border border-hairline rounded-2xl p-8 w-full max-w-sm text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-black text-white mb-3">Delete Pitch?</h3>
-            <p className="text-sm text-gray-400 mb-6">
+            <h3 className="text-lg font-black text-ink-1 mb-3">Delete Pitch?</h3>
+            <p className="text-sm text-ink-3 mb-6">
               &ldquo;{confirmDelete.title || "Untitled"}&rdquo; will be permanently deleted.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 px-4 py-3 border border-gray-700 rounded-xl text-gray-400 text-sm font-bold hover:text-white transition-colors"
+                className="flex-1 px-4 py-3 border border-hairline rounded-xl text-ink-3 text-sm font-bold hover:text-ink-1 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deletePitch(confirmDelete)}
                 disabled={deleting === confirmDelete.id}
-                className="flex-1 px-4 py-3 bg-red-600 rounded-xl text-white text-sm font-bold hover:bg-red-700 disabled:opacity-40 transition-colors"
+                className="flex-1 px-4 py-3 bg-accent rounded-xl text-ink-1 text-sm font-bold hover:bg-accent disabled:opacity-40 transition-colors"
               >
                 {deleting === confirmDelete.id ? "Deleting..." : "Delete"}
               </button>

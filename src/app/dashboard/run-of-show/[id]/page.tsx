@@ -489,7 +489,7 @@ function ShootModal({
                     />
                     <button
                       onClick={() => removeShotSection(sIdx)}
-                      className="text-gray-600 hover:text-red-400 text-xs ml-2"
+                      className="text-gray-600 hover:text-status-bad text-xs ml-2"
                     >
                       Remove
                     </button>
@@ -516,7 +516,7 @@ function ShootModal({
                           onClick={() =>
                             removeShotFromSection(sIdx, shotIdx)
                           }
-                          className="text-gray-700 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100"
+                          className="text-gray-700 hover:text-status-bad text-xs opacity-0 group-hover:opacity-100"
                         >
                           ×
                         </button>
@@ -638,7 +638,7 @@ function ShootModal({
                     </div>
                     <button
                       onClick={() => removeTimelineItem(idx)}
-                      className="text-gray-600 hover:text-red-400 text-xs mt-2"
+                      className="text-gray-600 hover:text-status-bad text-xs mt-2"
                     >
                       ×
                     </button>
@@ -995,7 +995,7 @@ export default function RunOfShowEditor() {
                   />
                   <button
                     onClick={() => removeContact(idx)}
-                    className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                    className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-status-bad opacity-0 group-hover:opacity-100"
                   >
                     ×
                   </button>
@@ -1056,7 +1056,7 @@ export default function RunOfShowEditor() {
                           {shoot.athlete || `${shoot.city}, ${shoot.state}`}
                         </h3>
                         {shoot.type_label && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-status-ok/30 text-status-ok-ink px-2 py-0.5 rounded-full">
                             {shoot.type_label}
                           </span>
                         )}
@@ -1100,7 +1100,7 @@ export default function RunOfShowEditor() {
                         </button>
                         <button
                           onClick={() => deleteShoot(shoot.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 opacity-0 group-hover:opacity-100 transition-all"
                         >
                           <svg
                             width="14"

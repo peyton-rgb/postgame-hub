@@ -55,11 +55,11 @@ export default function ReviewAssetViewer({
           darken a face. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/40 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-ground/40 to-transparent"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/40 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-ground/40 to-transparent"
       />
     </div>
   );

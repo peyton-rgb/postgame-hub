@@ -47,8 +47,8 @@ function newToken(): string {
 }
 
 const GLASS = {
-  background: "rgba(255,255,255,0.055)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  background: "var(--surface-card)",
+  border: "1px solid var(--hairline-soft)",
   backdropFilter: "blur(16px)",
   WebkitBackdropFilter: "blur(16px)",
 } as const;
@@ -173,14 +173,14 @@ export default function PackagesIndexPage() {
   };
 
   return (
-    <div style={{ background: "#07070a", minHeight: "100vh", color: "#FAF8F5" }}>
+    <div style={{ background: "var(--ground)", minHeight: "100vh", color: "var(--ink-1)" }}>
       <DashboardSidebar />
       <main className="nav:ml-[240px]">
         <div
           style={{
             minHeight: "100vh",
             background:
-              "radial-gradient(1200px 700px at 78% -8%, rgba(215,63,9,.16), transparent 60%), radial-gradient(900px 600px at 0% 110%, rgba(215,63,9,.08), transparent 55%), #07070a",
+              "radial-gradient(1200px 700px at 78% -8%, rgba(215,63,9,.16), transparent 60%), radial-gradient(900px 600px at 0% 110%, rgba(215,63,9,.08), transparent 55%), var(--ground)",
           }}
         >
           <div className="max-w-6xl mx-auto px-8 py-10">
@@ -190,7 +190,7 @@ export default function PackagesIndexPage() {
                 <h1 style={{ ...BEBAS, fontSize: "46px", lineHeight: 0.95, letterSpacing: "1px" }}>
                   EDITOR ASSET PACKAGES
                 </h1>
-                <p className="mt-1 text-sm max-w-[620px]" style={{ color: "#9a9aa2" }}>
+                <p className="mt-1 text-sm max-w-[620px]" style={{ color: "var(--ink-4)" }}>
                   Grab-and-go kits for videographers &amp; editors — logos, fonts, colors, and
                   searchable name tags. One per campaign, shareable by link.
                 </p>
@@ -214,11 +214,11 @@ export default function PackagesIndexPage() {
                   style={
                     filter === f
                       ? {
-                          color: "#FAF8F5",
+                          color: "var(--ink-1)",
                           border: "1px solid rgba(215,63,9,.5)",
                           background: "rgba(215,63,9,.12)",
                         }
-                      : { color: "#9a9aa2", border: "1px solid rgba(255,255,255,.10)", ...GLASS }
+                      : { color: "var(--ink-4)", border: "1px solid var(--hairline-soft)", ...GLASS }
                   }
                 >
                   {f}
@@ -227,18 +227,18 @@ export default function PackagesIndexPage() {
             </div>
 
             {err ? (
-              <div className="mb-4 text-[13px]" style={{ color: "#ff8a5c" }}>
+              <div className="mb-4 text-[13px]" style={{ color: "var(--accent)" }}>
                 {err}
               </div>
             ) : null}
 
             {/* Grid */}
             {packages === null ? (
-              <p className="text-sm" style={{ color: "#9a9aa2" }}>
+              <p className="text-sm" style={{ color: "var(--ink-4)" }}>
                 Loading…
               </p>
             ) : shown.length === 0 ? (
-              <p className="text-sm" style={{ color: "#9a9aa2" }}>
+              <p className="text-sm" style={{ color: "var(--ink-4)" }}>
                 No packages yet. Create one with “New package”.
               </p>
             ) : (
@@ -260,14 +260,14 @@ export default function PackagesIndexPage() {
                         style={
                           p.status === "live"
                             ? {
-                                background: "rgba(46,160,90,.16)",
-                                color: "#57d98a",
-                                border: "1px solid rgba(46,160,90,.3)",
+                                background: "var(--status-ok-dim)",
+                                color: "var(--status-ok)",
+                                border: "1px solid rgb(var(--status-ok-rgb) / .3)",
                               }
                             : {
-                                background: "rgba(255,255,255,.06)",
-                                color: "#b7b7bf",
-                                border: "1px solid rgba(255,255,255,.10)",
+                                background: "var(--surface-card)",
+                                color: "var(--ink-3)",
+                                border: "1px solid var(--hairline-soft)",
                               }
                         }
                       >
@@ -294,7 +294,7 @@ export default function PackagesIndexPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[12px] uppercase tracking-[1px]" style={{ color: "#9a9aa2" }}>
+                          <div className="text-[12px] uppercase tracking-[1px]" style={{ color: "var(--ink-4)" }}>
                             {p.brand?.name || "—"}
                           </div>
                           <div style={{ ...BEBAS, fontSize: "26px", lineHeight: 0.95, letterSpacing: ".5px" }}>
@@ -307,7 +307,7 @@ export default function PackagesIndexPage() {
                       <div className="flex gap-4 my-[6px] mb-4">
                         <div>
                           <div style={{ ...BEBAS, fontSize: "24px" }}>{p.talentCount}</div>
-                          <div className="text-[10px] uppercase tracking-[.7px] mt-[1px]" style={{ color: "#9a9aa2" }}>
+                          <div className="text-[10px] uppercase tracking-[.7px] mt-[1px]" style={{ color: "var(--ink-4)" }}>
                             {p.roster_label || "Names"}
                           </div>
                         </div>
@@ -316,11 +316,11 @@ export default function PackagesIndexPage() {
                       {/* share */}
                       <div
                         className="flex items-center gap-2 rounded-[10px] px-[11px] py-[9px] mb-3"
-                        style={{ background: "rgba(0,0,0,.28)", border: "1px solid rgba(255,255,255,.10)" }}
+                        style={{ background: "rgba(0,0,0,.28)", border: "1px solid var(--hairline-soft)" }}
                       >
                         <span
                           className="flex-1 text-[11px] whitespace-nowrap overflow-hidden text-ellipsis"
-                          style={{ fontFamily: "var(--font-mono), monospace", color: "#c9c9d2" }}
+                          style={{ fontFamily: "var(--font-mono), monospace", color: "var(--ink-2)" }}
                         >
                           /pkg/{p.share_token}
                         </span>
@@ -347,7 +347,7 @@ export default function PackagesIndexPage() {
                         <button
                           onClick={() => copyShare(p)}
                           className="flex-1 text-center rounded-[10px] py-[10px] text-[12px] font-bold uppercase tracking-[.4px]"
-                          style={{ color: "#FAF8F5", border: "1px solid rgba(255,255,255,.10)", ...GLASS }}
+                          style={{ color: "var(--ink-1)", border: "1px solid var(--hairline-soft)", ...GLASS }}
                         >
                           Share
                         </button>
@@ -370,11 +370,11 @@ export default function PackagesIndexPage() {
         >
           <div
             className="w-full max-w-[440px] rounded-[18px] p-6"
-            style={{ background: "#111116", border: "1px solid rgba(255,255,255,.12)" }}
+            style={{ background: "#111116", border: "1px solid var(--hairline-soft)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{ ...BEBAS, fontSize: "28px", letterSpacing: ".5px" }}>NEW PACKAGE</h2>
-            <label className="block mt-4 text-[11px] uppercase tracking-[1px]" style={{ color: "#9a9aa2" }}>
+            <label className="block mt-4 text-[11px] uppercase tracking-[1px]" style={{ color: "var(--ink-4)" }}>
               Campaign name
             </label>
             <input
@@ -382,16 +382,16 @@ export default function PackagesIndexPage() {
               onChange={(e) => setNpName(e.target.value)}
               placeholder="e.g. Silver Cleat"
               className="w-full mt-1 rounded-[10px] px-3 py-[10px] text-sm outline-none"
-              style={{ background: "#0a0a0e", border: "1px solid rgba(255,255,255,.14)", color: "#FAF8F5" }}
+              style={{ background: "var(--surface-card)", border: "1px solid var(--hairline)", color: "var(--ink-1)" }}
             />
-            <label className="block mt-4 text-[11px] uppercase tracking-[1px]" style={{ color: "#9a9aa2" }}>
+            <label className="block mt-4 text-[11px] uppercase tracking-[1px]" style={{ color: "var(--ink-4)" }}>
               Brand
             </label>
             <select
               value={npBrand}
               onChange={(e) => setNpBrand(e.target.value)}
               className="w-full mt-1 rounded-[10px] px-3 py-[10px] text-sm outline-none"
-              style={{ background: "#0a0a0e", border: "1px solid rgba(255,255,255,.14)", color: "#FAF8F5" }}
+              style={{ background: "var(--surface-card)", border: "1px solid var(--hairline)", color: "var(--ink-1)" }}
             >
               <option value="">Select a brand…</option>
               {brands.map((b) => (
@@ -400,14 +400,14 @@ export default function PackagesIndexPage() {
                 </option>
               ))}
             </select>
-            <label className="block mt-4 text-[11px] uppercase tracking-[1px]" style={{ color: "#9a9aa2" }}>
+            <label className="block mt-4 text-[11px] uppercase tracking-[1px]" style={{ color: "var(--ink-4)" }}>
               Roster label
             </label>
             <select
               value={npRoster}
               onChange={(e) => setNpRoster(e.target.value as "Names" | "Athletes")}
               className="w-full mt-1 rounded-[10px] px-3 py-[10px] text-sm outline-none"
-              style={{ background: "#0a0a0e", border: "1px solid rgba(255,255,255,.14)", color: "#FAF8F5" }}
+              style={{ background: "var(--surface-card)", border: "1px solid var(--hairline)", color: "var(--ink-1)" }}
             >
               <option value="Names">Names</option>
               <option value="Athletes">Athletes</option>
@@ -424,7 +424,7 @@ export default function PackagesIndexPage() {
               <button
                 onClick={() => setShowNew(false)}
                 className="rounded-[10px] px-4 py-[11px] text-[12px] font-bold uppercase tracking-[.4px]"
-                style={{ color: "#FAF8F5", border: "1px solid rgba(255,255,255,.12)" }}
+                style={{ color: "var(--ink-1)", border: "1px solid var(--hairline-soft)" }}
               >
                 Cancel
               </button>

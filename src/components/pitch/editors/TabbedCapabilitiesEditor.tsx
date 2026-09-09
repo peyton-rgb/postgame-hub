@@ -70,7 +70,7 @@ export default function TabbedCapabilitiesEditor({ data, onChange }: Props) {
               </span>
               <button
                 onClick={() => removeItem(i)}
-                className="text-xs text-gray-500 hover:text-red-400"
+                className="text-xs text-gray-500 hover:text-status-bad"
               >
                 &times; Remove
               </button>

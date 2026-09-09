@@ -608,7 +608,7 @@ function Top50RosterEditor({
             {/* Remove */}
             <button
               onClick={() => removeAthlete(a.id)}
-              className="w-6 h-6 rounded flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="w-6 h-6 rounded flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 transition-colors"
               title="Remove athlete"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2761,7 +2761,7 @@ export default function CampaignEditor() {
               <span
                 className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${
                   campaign.published
-                    ? "border-green-500/40 bg-green-500/10 text-green-400"
+                    ? "border-status-ok/40 bg-status-ok/10 text-status-ok-ink"
                     : "border-gray-700 bg-gray-900 text-gray-400"
                 }`}
               >
@@ -2798,7 +2798,7 @@ export default function CampaignEditor() {
             title={issuesTooltip}
             className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap ${
               issues.length === 0
-                ? "border-green-500/40 bg-green-500/10 text-green-400"
+                ? "border-status-ok/40 bg-status-ok/10 text-status-ok-ink"
                 : "border-[#D73F09]/50 bg-[#D73F09]/10 text-[#D73F09]"
             }`}
           >
@@ -2911,7 +2911,7 @@ export default function CampaignEditor() {
           const status =
             state === "untouched" ? "Not started" : stepIssues.length > 0 ? `${stepIssues.length} left` : "Done";
           const statusTone =
-            state === "untouched" ? "text-gray-600" : stepIssues.length > 0 ? "text-[#D73F09]" : "text-green-500";
+            state === "untouched" ? "text-gray-600" : stepIssues.length > 0 ? "text-[#D73F09]" : "text-status-ok";
           return (
             <div
               key={s.n}
@@ -3508,7 +3508,7 @@ export default function CampaignEditor() {
                         <button
                           type="button"
                           onClick={() => setHiddenPlatformCards((prev) => prev.includes(card.key) ? prev.filter(k => k !== card.key) : [...prev, card.key])}
-                          className={`text-[10px] px-2 py-0.5 rounded border ${cardHidden ? "border-red-500/50 text-red-400 bg-red-900/20" : "border-gray-600 text-gray-400 hover:text-white"}`}
+                          className={`text-[10px] px-2 py-0.5 rounded border ${cardHidden ? "border-status-bad/50 text-status-bad-ink bg-status-bad/20" : "border-gray-600 text-gray-400 hover:text-white"}`}
                         >
                           {cardHidden ? "Hidden" : "Visible"}
                         </button>
@@ -3601,7 +3601,7 @@ export default function CampaignEditor() {
                           </button>
                           {/* Remove from featured */}
                           <button
-                            className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-white/5 hover:bg-red-500/10"
+                            className="text-xs text-status-bad-ink hover:text-status-bad-ink px-2 py-1 rounded bg-white/5 hover:bg-status-bad/10"
                             onClick={async () => {
                               await supabase.from("athletes").update({ is_featured: false, featured_order: 0 }).eq("id", a.id);
                               setAthletes((p: any[]) => p.map((x) => x.id === a.id ? { ...x, is_featured: false, featured_order: 0 } : x));
@@ -3778,9 +3778,9 @@ export default function CampaignEditor() {
                     <div className="bg-[#D73F09] h-2 rounded-full transition-all" style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }} />
                   </div>
                   <div className="text-xs text-gray-500">
-                    <span className="text-green-400 font-bold">{bulkProgress.matched} matched</span>
+                    <span className="text-status-ok font-bold">{bulkProgress.matched} matched</span>
                     {bulkProgress.unmatched.length > 0 && (
-                      <span className="text-red-400 font-bold ml-3">{bulkProgress.unmatched.length} unmatched</span>
+                      <span className="text-status-bad font-bold ml-3">{bulkProgress.unmatched.length} unmatched</span>
                     )}
                   </div>
                 </div>
@@ -3788,12 +3788,12 @@ export default function CampaignEditor() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-center gap-2">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    <span className="text-sm font-bold text-green-400">
+                    <span className="text-sm font-bold text-status-ok">
                       {bulkProgress.matched} of {bulkProgress.total} photos matched to athletes
                     </span>
                   </div>
                   {bulkProgress.unmatched.length > 0 && (
-                    <div className="text-xs text-red-400/70">
+                    <div className="text-xs text-status-bad/70">
                       Unmatched: {bulkProgress.unmatched.slice(0, 5).join(", ")}{bulkProgress.unmatched.length > 5 ? ` +${bulkProgress.unmatched.length - 5} more` : ""}
                     </div>
                   )}
@@ -3867,7 +3867,7 @@ export default function CampaignEditor() {
                         )}
                         <span className="absolute top-2 left-2 text-[9px] font-black text-white bg-black/70 border border-white/20 rounded px-1.5 py-0.5">#{c.rank}</span>
                         <span className="absolute top-2 right-2 text-[10px] font-black text-white bg-[#D73F09]/90 rounded px-1.5 py-0.5">{c.metric}</span>
-                        <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-black/85 to-transparent">
+                        <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-ground/85 to-transparent">
                           <div className="text-xs font-black uppercase tracking-wide text-white truncate">{c.name}</div>
                           <div className="text-[8px] font-bold uppercase tracking-wider text-gray-300 truncate">
                             {c.sub}{c.isCollab ? " · Collab" : ""}
@@ -3876,7 +3876,7 @@ export default function CampaignEditor() {
                       </div>
                       <div className="mt-2">
                         {c.coverSrc ? (
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 border border-green-500/25 rounded-lg py-1.5 text-center">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-status-ok-ink bg-status-ok/10 border border-status-ok/25 rounded-lg py-1.5 text-center">
                             ✓ Cover set
                           </div>
                         ) : (
@@ -4363,10 +4363,10 @@ export default function CampaignEditor() {
         {/* Centre status — hidden on the narrowest screens so three buttons never overflow */}
         <div className="hidden sm:flex flex-1 min-w-0 items-center justify-center gap-2 overflow-hidden text-xs">
           {republishFlash ? (
-            <span className="text-green-400 font-bold whitespace-nowrap">Live page updated</span>
+            <span className="text-status-ok font-bold whitespace-nowrap">Live page updated</span>
           ) : isDirty ? (
-            <span className="flex items-center gap-1.5 text-amber-400 font-bold whitespace-nowrap">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Unsaved changes
+            <span className="flex items-center gap-1.5 text-status-warn font-bold whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-warn" />Unsaved changes
             </span>
           ) : savingInfo ? (
             <span className="text-gray-400 whitespace-nowrap">Saving…</span>

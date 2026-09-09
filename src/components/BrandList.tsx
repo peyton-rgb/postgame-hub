@@ -208,7 +208,7 @@ export default function BrandList() {
               {logoFile && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setLogoFile(null); setLogoPreview(null); }}
-                  className="ml-auto w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-red-400 hover:bg-red-400/10 flex items-center justify-center text-sm"
+                  className="ml-auto w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-status-bad-ink hover:bg-status-bad/10 flex items-center justify-center text-sm"
                 >
                   ×
                 </button>

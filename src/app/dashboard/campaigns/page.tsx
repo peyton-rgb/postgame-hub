@@ -24,9 +24,9 @@ function fmtDate(iso: string) {
 function DeadlineChip({ c }: { c: CampaignRollup }) {
   if (c.deadlineState === "none") return null;
   const map = {
-    overdue: { t: `Overdue · ${fmtDate(c.deadline!)}`, bg: "rgba(255,107,107,0.15)", col: "#ff6b6b" },
-    soon: { t: `Due ${fmtDate(c.deadline!)}`, bg: "rgba(215,63,9,0.18)", col: "#ff8a5c" },
-    ok: { t: `Due ${fmtDate(c.deadline!)}`, bg: "rgba(255,255,255,0.08)", col: "rgba(255,255,255,0.6)" },
+    overdue: { t: `Overdue · ${fmtDate(c.deadline!)}`, bg: "var(--accent-dim)", col: "var(--accent)" },
+    soon: { t: `Due ${fmtDate(c.deadline!)}`, bg: "var(--accent-dim)", col: "var(--accent)" },
+    ok: { t: `Due ${fmtDate(c.deadline!)}`, bg: "var(--surface-raised)", col: "var(--ink-3)" },
   } as const;
   const s = map[c.deadlineState as "overdue" | "soon" | "ok"];
   return <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 8px", background: s.bg, color: s.col }}>{s.t}</span>;
@@ -34,25 +34,25 @@ function DeadlineChip({ c }: { c: CampaignRollup }) {
 
 function Badge({ n, label, tone }: { n: number; label: string; tone: "due" | "flag" }) {
   if (n <= 0) return null;
-  const c = tone === "flag" ? { bg: "rgba(255,107,107,0.12)", col: "#ff6b6b" } : { bg: "rgba(215,63,9,0.18)", col: "#ff8a5c" };
+  const c = tone === "flag" ? { bg: "var(--accent-dim)", col: "var(--accent)" } : { bg: "var(--accent-dim)", col: "var(--accent)" };
   return <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "4px 10px", background: c.bg, color: c.col }}>{n} {label}</span>;
 }
 
 function Card({ c }: { c: CampaignRollup }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${c.deadlineState === "overdue" ? "rgba(255,107,107,0.35)" : "rgba(255,255,255,0.09)"}`, borderRadius: 14, padding: "16px 18px" }}>
+    <div style={{ background: "var(--surface-card)", border: `1px solid ${c.deadlineState === "overdue" ? "var(--accent)" : "var(--surface-raised)"}`, borderRadius: 14, padding: "16px 18px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
         {c.brandLogo && (
-          <div style={{ background: "rgba(255,255,255,0.94)", borderRadius: 7, padding: "5px 8px", display: "flex" }}>
+          <div style={{ background: "var(--ink-1)", borderRadius: 7, padding: "5px 8px", display: "flex" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={c.brandLogo} alt={c.brandName || "brand"} style={{ height: 14 }} />
           </div>
         )}
         <div style={{ flex: 1, minWidth: 140 }}>
-          <div style={{ fontSize: 15, color: "#fff" }}>{c.brandName ? `${c.brandName} · ` : ""}{c.title}</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{c.optinCount} opted in · {c.totalDeliverables} deliverables</div>
+          <div style={{ fontSize: 15, color: "var(--ink-1)" }}>{c.brandName ? `${c.brandName} · ` : ""}{c.title}</div>
+          <div style={{ fontSize: 12, color: "var(--ink-4)" }}>{c.optinCount} opted in · {c.totalDeliverables} deliverables</div>
         </div>
-        <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.5)" }}>{c.status}</span>
+        <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--ink-4)" }}>{c.status}</span>
         <DeadlineChip c={c} />
       </div>
 
@@ -70,15 +70,15 @@ function Card({ c }: { c: CampaignRollup }) {
         {FUNNEL_STAGES.map((s) => {
           const n = c.funnel[s.key] ?? 0;
           return (
-            <div key={s.key} style={{ flex: "1 1 70px", minWidth: 64, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 6px", textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: n > 0 ? "#fff" : "rgba(255,255,255,0.3)" }}>{n}</div>
-              <div style={{ fontSize: 10, color: s.needsAction && n > 0 ? "#ff8a5c" : "rgba(255,255,255,0.45)" }}>{s.label}</div>
+            <div key={s.key} style={{ flex: "1 1 70px", minWidth: 64, background: "var(--surface-card)", border: "1px solid var(--surface-raised)", borderRadius: 8, padding: "8px 6px", textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: n > 0 ? "var(--ink-1)" : "var(--ink-4)" }}>{n}</div>
+              <div style={{ fontSize: 10, color: s.needsAction && n > 0 ? "var(--accent)" : "var(--ink-4)" }}>{s.label}</div>
             </div>
           );
         })}
       </div>
 
-      <Link href={`/dashboard/athlete-deals?campaign=${c.id}`} style={{ fontSize: 12, color: "#9cc3ff", textDecoration: "none" }}>
+      <Link href={`/dashboard/athlete-deals?campaign=${c.id}`} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
         Open in review queue →
       </Link>
     </div>
@@ -87,9 +87,9 @@ function Card({ c }: { c: CampaignRollup }) {
 
 function Stat({ n, label, alert }: { n: number; label: string; alert?: boolean }) {
   return (
-    <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ fontSize: 28, fontWeight: 700, color: alert && n > 0 ? "#ff8a5c" : "#fff" }}>{n}</div>
-      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{label}</div>
+    <div style={{ flex: 1, background: "var(--surface-card)", border: "1px solid var(--surface-raised)", borderRadius: 12, padding: "14px 16px" }}>
+      <div style={{ fontSize: 28, fontWeight: 700, color: alert && n > 0 ? "var(--accent)" : "var(--ink-1)" }}>{n}</div>
+      <div style={{ fontSize: 12, color: "var(--ink-4)" }}>{label}</div>
     </div>
   );
 }
@@ -100,8 +100,8 @@ export default async function CampaignsOverviewPage() {
 
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "28px 20px 60px" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Opt-in pipeline</h1>
-      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 20 }}>Athlete opt-ins and their deliverables, at a glance.</p>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--ink-1)", marginBottom: 4 }}>Opt-in pipeline</h1>
+      <p style={{ fontSize: 13, color: "var(--ink-4)", marginBottom: 20 }}>Athlete opt-ins and their deliverables, at a glance.</p>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <Stat n={totals.activeCampaigns} label="Live opt-ins" />
@@ -110,7 +110,7 @@ export default async function CampaignsOverviewPage() {
       </div>
 
       {campaigns.length === 0 ? (
-        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: 24, fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
+        <div style={{ background: "var(--surface-card)", border: "1px solid var(--surface-raised)", borderRadius: 14, padding: 24, fontSize: 13, color: "var(--ink-4)" }}>
           No live opt-ins yet. Opt-in campaigns and their deliverables will show up here.
         </div>
       ) : (

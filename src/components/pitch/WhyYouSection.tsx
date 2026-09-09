@@ -55,7 +55,7 @@ export default function WhyYouSection({ data }: { data: WhyYouSectionData }) {
   const followerSum = sumFollowerCounts(data.socialHandles);
 
   // Background style for the hero banner — image when provided, otherwise
-  // the dark crimson-to-black gradient used in the mockup.
+  // the dark crimson-to-ground gradient used in the mockup.
   const bannerStyle: React.CSSProperties = data.bannerImageUrl
     ? {
         backgroundImage: `url(${data.bannerImageUrl})`,

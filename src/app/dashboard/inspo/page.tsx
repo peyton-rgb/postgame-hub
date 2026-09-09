@@ -34,11 +34,11 @@ const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
 };
 
 const CONTENT_TYPE_COLORS: Record<ContentType, string> = {
-  produced: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  athlete_ugc: 'bg-green-600/20 text-green-300 border-green-600/30',
-  bts: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30',
+  produced: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30',
+  athlete_ugc: 'bg-status-ok/20 text-status-ok-ink border-status-ok/30',
+  bts: 'bg-status-warn/20 text-status-warn-ink border-status-warn/30',
   raw_footage: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
-  photography: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  photography: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30',
   talking_head: 'bg-pink-600/20 text-pink-300 border-pink-600/30',
   inspo_external: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
 };
@@ -274,7 +274,7 @@ export default function InspoLibraryPage() {
             placeholder="Search assets — try a vibe, sport, athlete name, or description..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-ink/20 transition-all"
           />
         </div>
 
@@ -355,7 +355,7 @@ export default function InspoLibraryPage() {
                 setStatusFilter('ready');
                 setSortBy('newest');
               }}
-              className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
+              className="px-3 py-1.5 text-sm text-status-bad hover:text-status-bad transition-colors"
             >
               Clear Filters
             </button>
@@ -401,7 +401,7 @@ export default function InspoLibraryPage() {
                     onClick={() => setSelectedItem(item)}
                     className={`group relative rounded-lg overflow-hidden cursor-pointer border transition-all ${
                       selectedItem?.id === item.id
-                        ? 'border-white/40 ring-1 ring-white/20'
+                        ? 'border-white/40 ring-1 ring-ink/20'
                         : 'border-white/5 hover:border-white/20'
                     }`}
                   >
@@ -442,7 +442,7 @@ export default function InspoLibraryPage() {
 
                       {/* Hero star */}
                       {item.is_hero && (
-                        <span className="absolute top-1 right-1 text-yellow-400 text-sm">★</span>
+                        <span className="absolute top-1 right-1 text-status-warn text-sm">★</span>
                       )}
 
                       {/* Hover overlay */}
@@ -546,7 +546,7 @@ export default function InspoLibraryPage() {
                   onClick={() => handleToggleHero(selectedItem)}
                   className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
                     selectedItem.is_hero
-                      ? 'bg-yellow-600/20 text-yellow-300 border border-yellow-600/30 hover:bg-yellow-600/30'
+                      ? 'bg-status-warn/20 text-status-warn-ink border border-status-warn/30 hover:bg-status-warn/30'
                       : 'bg-white/10 hover:bg-white/20'
                   }`}
                 >
@@ -590,7 +590,7 @@ export default function InspoLibraryPage() {
                     {selectedItem.brief_fit.map((fit, i) => (
                       <span
                         key={i}
-                        className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-600/10 text-green-300 border border-green-600/20"
+                        className="inline-block px-2 py-0.5 text-xs rounded-full bg-status-ok/10 text-status-ok-ink border border-status-ok/20"
                       >
                         {fit.replace(/_/g, ' ')}
                       </span>

@@ -224,10 +224,10 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
 
   const statusPillClass =
     campaign.status === "live"
-      ? "bg-green-900/30 text-green-400"
+      ? "bg-status-ok/30 text-status-ok-ink"
       : campaign.status === "closed"
       ? "bg-gray-800 text-gray-400"
-      : "bg-amber-900/30 text-amber-400";
+      : "bg-status-warn/30 text-status-warn-ink";
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -264,11 +264,11 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
               <div className="text-[11px] text-gray-600 truncate">
                 /optin/{campaign.slug}
                 {savedAt && !isDirty && (
-                  <span className="ml-2 text-green-500">
+                  <span className="ml-2 text-status-ok">
                     Saved {savedAt.toLocaleTimeString()}
                   </span>
                 )}
-                {isDirty && <span className="ml-2 text-amber-400">Unsaved changes</span>}
+                {isDirty && <span className="ml-2 text-status-warn">Unsaved changes</span>}
               </div>
             </div>
           </div>
@@ -304,7 +304,7 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+              className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-status-bad-ink hover:bg-status-bad/10 rounded-lg"
               title="Delete"
             >
               <svg
@@ -325,7 +325,7 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
         </div>
         {saveError && (
           <div className="px-6 pb-3">
-            <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">
+            <div className="text-xs text-status-bad-ink bg-status-bad/10 border border-status-bad/30 rounded px-3 py-2">
               {saveError}
             </div>
           </div>
@@ -595,11 +595,11 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
                     </td>
                     <td className="px-4 py-3">
                       {o.forwarded_to_admin_at ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-900/30 text-green-400">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-status-ok/30 text-status-ok-ink">
                           Synced
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-900/30 text-amber-400">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-status-warn/30 text-status-warn-ink">
                           Pending
                         </span>
                       )}
@@ -627,7 +627,7 @@ export default function OptInEditor({ initialCampaign, brands }: Props) {
             <p className="text-sm text-gray-400 mb-1">
               Permanently delete <span className="text-white font-bold">{campaign.title}</span>?
             </p>
-            <p className="text-xs text-red-400/70 mb-6">
+            <p className="text-xs text-status-bad/70 mb-6">
               All submitted opt-ins for this page will also be deleted.
             </p>
             <div className="flex gap-3">

@@ -287,7 +287,7 @@ export default function ComposerPage() {
                   step.num === currentStep
                     ? 'text-white font-medium'
                     : step.num < currentStep
-                    ? 'text-green-400 cursor-pointer'
+                    ? 'text-status-ok cursor-pointer'
                     : 'text-gray-600'
                 }`}
               >
@@ -296,7 +296,7 @@ export default function ComposerPage() {
                     step.num === currentStep
                       ? 'bg-white text-black border-white'
                       : step.num < currentStep
-                      ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                      ? 'bg-status-ok/20 text-status-ok-ink border-status-ok/30'
                       : 'bg-white/5 text-gray-600 border-white/10'
                   }`}
                 >
@@ -305,7 +305,7 @@ export default function ComposerPage() {
                 <span className="hidden sm:inline">{step.label}</span>
               </button>
               {i < STEPS.length - 1 && (
-                <div className={`flex-1 h-px ${step.num < currentStep ? 'bg-green-500/30' : 'bg-white/10'}`} />
+                <div className={`flex-1 h-px ${step.num < currentStep ? 'bg-status-ok/30' : 'bg-white/10'}`} />
               )}
             </div>
           ))}
@@ -457,7 +457,7 @@ export default function ComposerPage() {
                 <span className="text-[10px] text-gray-600">
                   {CHANNELS.find((c) => c.value === channel)?.label || 'Selected channel'}
                 </span>
-                <span className={`text-xs ${isOverLimit ? 'text-red-400' : 'text-gray-500'}`}>
+                <span className={`text-xs ${isOverLimit ? 'text-status-bad' : 'text-gray-500'}`}>
                   {captionLength} / {charLimit}
                 </span>
               </div>
@@ -672,7 +672,7 @@ export default function ComposerPage() {
 
             {/* Success Toast */}
             {saveSuccess && (
-              <div className="mt-4 px-4 py-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400">
+              <div className="mt-4 px-4 py-3 bg-status-ok/10 border border-status-ok/20 rounded-xl text-sm text-status-ok-ink">
                 {saveSuccess}
               </div>
             )}

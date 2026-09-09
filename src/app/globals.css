@@ -4,75 +4,222 @@
 
 /* ═══════════════════════════════════════════════════════════
    POSTGAME DESIGN SYSTEM
-   iOS Liquid Glass Dark Theme
+   Liquid Glass — dark and light, chosen per user
    ─────────────────────────────────────────────────────────
-   Typography contract:
-   - Body:         Arial 24px / 1.4  (mobile: 14px / 1.4)
-   - Footer/legal: Arial 18px / 1.2  (mobile: 11px / 1.2)
-   - Display:      Bebas Neue
+   Two families, two files:
+   - Display:  Bebas Neue
+   - Body:     Arimo (Arial is the metric fallback)
+   - Label:    Arimo Bold, uppercase, letterspaced .16em
+   Anton and JetBrains Mono are removed. Body never below 16px.
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Tokens ── */
+/* ── Tokens ──────────────────────────────────────────────────
+   THREE LAYERS, in order. Read this before adding a colour.
+
+   1. CHANNEL PRIMITIVES  the three brand colours as raw RGB triplets.
+                          Fixed. Never themed, never referenced directly
+                          by a component.
+   2. ROLES               ground / ink / accent, plus the ladder and glass
+                          alphas. These swap per theme.
+   3. DERIVED + LEGACY    complete colours built from 1 and 2, including
+                          aliases for the older token names so existing
+                          call sites theme for free.
+
+   Components reference ROLES, never literals. Not #FAF8F5 but var(--ink)
+   or Tailwind's text-ink. A component that names a colour cannot be themed.
+
+   Theme is set by data-theme on <html>, from profiles.theme (server) with a
+   localStorage mirror so there is no flash. Dark is the default and is what
+   :root carries, so a document with no attribute is correct.
+
+   Spec: .claude/skills/postgame-design-system/SKILL.md
+   ─────────────────────────────────────────────────────────── */
+
+/* ── 1. Channel primitives — fixed, never themed ── */
 :root {
-  /* ── Channel primitives — raw RGB so Tailwind can generate alpha variants.
-     Every derived token below is numerically identical to the hex/rgba value
-     it replaced: this block adds capability, not colour.
-     The Postgame orange channel is --pg-orange-rgb. Do NOT name it after the
-     brand: --brand is already a per-campaign CLIENT colour, injected at runtime
-     as :root{--brand:<client hex>} by /campaign-instructions/[slug] and
-     /campaign-optin/[slug]. Nothing in this block should carry that prefix, or
-     the two get confused. For Postgame orange use --orange (the name already in
-     use, 177x) or Tailwind's bg-brand/text-brand. ── */
-  --surface-rgb:    7 7 10;        /* #07070A */
-  --surface-2-rgb:  10 10 10;      /* #0A0A0A */
-  --surface-3-rgb:  17 17 17;      /* #111111 */
-  --pg-orange-rgb:  215 63 9;      /* #D73F09 */
-  --white-rgb:      255 255 255;
-  --ink-rgb:        250 248 245;   /* #FAF8F5 — brand off-white, not yet in use */
+  --pg-black-rgb:      7 7 10;        /* #07070A */
+  --pg-off-white-rgb:  250 248 245;   /* #FAF8F5 */
+  --pg-orange-rgb:     215 63 9;      /* #D73F09 */
+}
 
-  --orange:       rgb(var(--pg-orange-rgb));
-  --orange-dim:   rgb(var(--pg-orange-rgb) / 0.15);
-  --orange-glow:  rgb(var(--pg-orange-rgb) / 0.25);
-  --bg:           rgb(var(--surface-rgb));
-  --bg-2:         rgb(var(--surface-2-rgb));
-  --bg-3:         rgb(var(--surface-3-rgb));
+/* ── 2. Roles — DARK (default) ──
+   Do NOT name anything here --brand: that prefix is a per-campaign CLIENT
+   colour injected at runtime as :root{--brand:<client hex>} by
+   /campaign-instructions/[slug] and /campaign-optin/[slug]. Postgame orange
+   is --accent (or Tailwind's bg-brand/text-brand, 52 call sites). ── */
+:root,
+[data-theme="dark"] {
+  --ground-rgb: var(--pg-black-rgb);
+  --ink-rgb:    var(--pg-off-white-rgb);
+  --accent-rgb: var(--pg-orange-rgb);
 
-  /* ── Alpha scale — bare scalars, NOT colours.
-     These are the three alphas that dominate the repo's white-alpha surfaces
-     (0.1 x70, 0.08 x66, 0.04 x28 measured). They exist so those surfaces can
-     name their alpha instead of repeating a literal. Use inside a colour
-     function — rgb(var(--white-rgb) / var(--alpha-2)) — or as Tailwind's
-     bg-glass-2 / border-glass-2 / text-glass-2.
-     Named --alpha-* and not --glass-* on purpose: --glass-bg and friends below
-     are complete colours, these are scalars, and one prefix spanning both
-     invites `color: var(--glass-2)` — invalid, and it fails silently. The
-     Tailwind keys stay glass-1/2/3 because there they resolve to colours. ── */
-  --alpha-1: 0.04;
-  --alpha-2: 0.08;
-  --alpha-3: 0.1;
+  /* Ladder — the four rungs. Tool contrast, raised from the original
+     100/90/68/50: a page read once tolerates 68% body, a tool used all day
+     does not. There is no rung below Label. */
+  --ink-display: 1;
+  --ink-lead:    0.95;
+  --ink-body:    0.84;
+  --ink-label:   0.70;
 
-  /* Glass */
-  --glass-bg:     rgb(var(--white-rgb) / 0.055);
-  --glass-bg-2:   rgb(var(--white-rgb) / 0.09);
-  --glass-border: rgb(var(--white-rgb) / 0.11);
-  --glass-shine:  rgb(var(--white-rgb) / 0.07);
-  --blur:         blur(24px);
-  --blur-sm:      blur(12px);
+  /* Glass alphas — ink channel over the ground. */
+  --raised-fill-a:   0.07;
+  --raised-line-a:   0.14;
+  --card-fill-a:     0.04;
+  --card-line-a:     0.10;
 
-  /* Text */
-  --text:         rgb(var(--white-rgb));
-  --text-2:       rgb(var(--white-rgb) / 0.72);
-  --text-3:       rgb(var(--white-rgb) / 0.45);
-  --text-4:       rgb(var(--white-rgb) / 0.28);
+  /* Status — the ONE sanctioned departure from the three-colour palette.
+     Done / partial / missing is information the palette cannot carry: accent
+     already means "attention" everywhere else, so reusing it for "missing"
+     made a readiness cross and a link icon the same colour.
 
-  /* Nav */
-  --nav-h:        64px;
+     These three are the values Readiness shipped with before the palette pass,
+     so DARK MODE IS UNCHANGED — every existing user sees exactly what they saw.
+     They are GitHub Primer's dark success/attention/danger, which is where the
+     originals came from. */
+  --status-ok-rgb:   63 185 80;    /* #3FB950 */
+  --status-warn-rgb: 210 153 34;   /* #D29922 */
+  --status-bad-rgb:  207 106 100;  /* #CF6A64 */
 
-  /* Radius */
+  /* Badge ink. A status role is an ink for the GROUND — on the ground all three
+     clear 4.5:1 in both themes. Sitting the same colour on a 20% tint OF ITSELF
+     is a different problem, and in light mode all three fell to about 3.6:1: the
+     "Rejected" label went pale-on-pale while its icon stayed readable.
+     On a dark ground the tint darkens and the role still clears 4.5, so these
+     are simply the roles. Light overrides them below. */
+  --status-ok-ink-rgb:   var(--status-ok-rgb);
+  --status-warn-ink-rgb: var(--status-warn-rgb);
+  --status-bad-ink-rgb:  var(--status-bad-rgb);
+}
+
+/* ── 2b. Roles — LIGHT ──
+   Ground and ink swap; accent does not. Every ladder rung sits slightly
+   higher than dark: light-on-dark blooms and reads heavier than its opacity,
+   dark-on-light does not. Glass alphas go the other way and drop, because
+   dark over light reads stronger than light over dark. ── */
+[data-theme="light"] {
+  --ground-rgb: var(--pg-off-white-rgb);
+  --ink-rgb:    var(--pg-black-rgb);
+  --accent-rgb: var(--pg-orange-rgb);
+
+  --ink-display: 1;
+  --ink-lead:    0.96;
+  --ink-body:    0.88;
+  --ink-label:   0.78;
+
+  --raised-fill-a:   0.05;
+  --raised-line-a:   0.12;
+  --card-fill-a:     0.035;
+  --card-line-a:     0.09;
+
+  /* Status, light. Same three hues, darkened for an off-white ground — Primer's
+     LIGHT success/attention/danger, so the pairing with the dark set above is a
+     tested one rather than three hand-picked hexes. All three clear 4.5:1 on
+     #FAF8F5, so they are legible as text and not merely as a 3:1 graphic.
+
+     Warn is deliberately the gold #9A6700 and not an amber: on a light ground
+     an amber sits close enough to brand orange #D73F09 to read as the accent,
+     which is the confusion this whole set exists to avoid. */
+  --status-ok-rgb:   26 127 55;    /* #1A7F37 */
+  --status-warn-rgb: 154 103 0;    /* #9A6700 */
+  --status-bad-rgb:  207 34 46;    /* #CF222E */
+
+  /* Badge ink, light. Primer's next step down in each hue. Measured against the
+     20% tint of the ROLE (which is what a badge fill is): ok 6.43:1,
+     warn 5.58:1, bad 5.38:1. Lowering the fill alpha instead does not work —
+     even at 8% none of the three reaches 4.5, because the role itself is only
+     ~4.6-5.0 against white and a paler fill barely moves that. */
+  --status-ok-ink-rgb:   1 86 36;     /* #015624 */
+  --status-warn-ink-rgb: 114 76 0;    /* #724C00 */
+  --status-bad-ink-rgb:  164 14 38;   /* #A40E26 */
+}
+
+/* ── 3. Derived — complete colours, built from the roles above.
+   THE SELECTOR MATTERS. A custom property is resolved where it is DECLARED, not
+   where it is used, and the computed value then inherits. Declaring these on
+   :root alone resolved every one of them against the dark roles and inherited
+   that result into the light subtree — so var(--ink-1) stayed off-white on an
+   off-white ground while Tailwind's bg-surface-card, which resolves at the
+   element, was correct. That split is why the bug looked partial.
+   Matching [data-theme] as well re-declares them inside each themed scope, so
+   they resolve against that scope's roles. ── */
+:root,
+[data-theme] {
+  --ground:         rgb(var(--ground-rgb));
+  --ink:            rgb(var(--ink-rgb));
+  --accent:         rgb(var(--accent-rgb));
+  --accent-dim:     rgb(var(--accent-rgb) / 0.15);
+  --accent-glow:    rgb(var(--accent-rgb) / 0.25);
+
+  --ink-1:          rgb(var(--ink-rgb) / var(--ink-display));
+  --ink-2:          rgb(var(--ink-rgb) / var(--ink-lead));
+  --ink-3:          rgb(var(--ink-rgb) / var(--ink-body));
+  --ink-4:          rgb(var(--ink-rgb) / var(--ink-label));
+
+  --surface-raised: rgb(var(--ink-rgb) / var(--raised-fill-a));
+  --surface-card:   rgb(var(--ink-rgb) / var(--card-fill-a));
+  --hairline:       rgb(var(--ink-rgb) / var(--raised-line-a));
+  --hairline-soft:  rgb(var(--ink-rgb) / var(--card-line-a));
+
+  /* Status, complete. Declared here with the rest so they resolve inside each
+     themed scope — see the note above this block; on :root alone they would
+     resolve once against the dark roles and inherit that into light. */
+  --status-ok:      rgb(var(--status-ok-rgb));
+  --status-warn:    rgb(var(--status-warn-rgb));
+  --status-bad:     rgb(var(--status-bad-rgb));
+  --status-ok-dim:  rgb(var(--status-ok-rgb) / 0.15);
+  --status-bad-dim: rgb(var(--status-bad-rgb) / 0.15);
+  --status-ok-ink:   rgb(var(--status-ok-ink-rgb));
+  --status-warn-ink: rgb(var(--status-warn-ink-rgb));
+  --status-bad-ink:  rgb(var(--status-bad-ink-rgb));
+
+  /* Edge blends fade to the GROUND, never to hardcoded black — in light mode
+     a black fade reopens the seam it was added to close. */
+  --edge-fade:      rgb(var(--ground-rgb));
+  --edge-fade-0:    rgb(var(--ground-rgb) / 0);
+
+  --blur:           blur(26px);
+  --blur-sm:        blur(12px);
+
+  /* Legacy font var: --font-mono is no longer loaded. Aliased to Arimo so the
+     166 existing font-mono call sites resolve correctly while they migrate. */
+  --font-mono:      var(--font-arimo);
+
+  --nav-h:  64px;
   --r-sm:   10px;
   --r-md:   16px;
   --r-lg:   24px;
   --r-xl:   32px;
+
+  /* ── Legacy aliases — DEPRECATED, do not use in new code ──
+     Repointed at the roles above so the ~400 existing call sites theme for
+     free instead of breaking. Migrate to the role names as each route is
+     touched, then delete this block. --text-4 is folded into the label rung
+     per decision 5: 28% was below the floor and 16 call sites is not a rung. */
+  --bg:             var(--ground);
+  --bg-2:           var(--ground);
+  --bg-3:           var(--ground);
+  --text:           var(--ink-1);
+  --text-2:         var(--ink-3);
+  --text-3:         var(--ink-4);
+  --text-4:         var(--ink-4);
+  --glass-bg:       var(--surface-card);
+  --glass-bg-2:     var(--surface-raised);
+  --glass-border:   var(--hairline);
+  --glass-shine:    var(--surface-raised);
+  --orange:         var(--accent);
+  --orange-dim:     var(--accent-dim);
+  --orange-glow:    var(--accent-glow);
+
+  /* Channel aliases kept for tailwind.config.js keys. --white-rgb is a
+     misnomer now: it is the ink channel, which is off-white in dark and
+     near-black in light. Kept so bg-glass-* keep resolving. */
+  --white-rgb:      var(--ink-rgb);
+  --surface-rgb:    var(--ground-rgb);
+  --surface-2-rgb:  var(--ground-rgb);
+  --surface-3-rgb:  var(--ground-rgb);
+  --alpha-1:        var(--card-fill-a);
+  --alpha-2:        var(--raised-fill-a);
+  --alpha-3:        var(--raised-line-a);
 }
 
 /* ── Reset & Base ── */

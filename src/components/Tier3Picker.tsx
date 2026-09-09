@@ -120,7 +120,7 @@ export default function Tier3Picker({
         <div className="flex-1 overflow-y-auto p-6">
           {/* Import error banner */}
           {importError && (
-            <div className="mb-4 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-300">
+            <div className="mb-4 px-4 py-2 bg-status-bad/10 border border-status-bad/20 rounded-lg text-sm text-status-bad-ink">
               {importError}
             </div>
           )}
@@ -160,7 +160,7 @@ export default function Tier3Picker({
             <div className="flex items-center justify-center py-20">
               <div className="text-center max-w-md">
                 <div className="text-4xl mb-3">⚠️</div>
-                <div className="text-sm font-bold text-red-400 mb-2">
+                <div className="text-sm font-bold text-status-bad mb-2">
                   Failed to load submissions
                 </div>
                 <div className="text-xs text-gray-500 mb-4">{error}</div>

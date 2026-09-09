@@ -70,15 +70,15 @@ const STATUS_TABS: { key: StatusTab; label: string }[] = [
 ];
 
 const ASSET_TYPE_COLORS: Record<string, string> = {
-  video: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  photo: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  video: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30',
+  photo: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30',
   graphic: 'bg-[#D73F09]/20 text-[#e8663d] border-[#D73F09]/30',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  ready: 'bg-green-600/20 text-green-300 border-green-600/30',
-  delivered: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-  posted: 'bg-purple-600/20 text-purple-300 border-purple-600/30',
+  ready: 'bg-status-ok/20 text-status-ok-ink border-status-ok/30',
+  delivered: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30',
+  posted: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30',
   archived: 'bg-gray-600/20 text-gray-300 border-gray-600/30',
 };
 
@@ -674,7 +674,7 @@ export default function FinalAssetsPage() {
                       </div>
                     )}
                     {relatedPackage.confirmed_at && (
-                      <div className="text-xs text-green-400">
+                      <div className="text-xs text-status-ok">
                         Confirmed: {formatDateTime(relatedPackage.confirmed_at)}
                       </div>
                     )}
@@ -849,12 +849,12 @@ export default function FinalAssetsPage() {
 
                 {/* Delivery Result */}
                 {deliveryResult && (
-                  <div className="rounded-xl border border-green-600/30 bg-green-600/10 p-4 space-y-3">
+                  <div className="rounded-xl border border-status-ok/30 bg-status-ok/10 p-4 space-y-3">
                     <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-5 h-5 text-status-ok" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span className="font-medium text-sm text-green-300">Delivery Package Created</span>
+                      <span className="font-medium text-sm text-status-ok">Delivery Package Created</span>
                     </div>
                     <button
                       onClick={() => handleCopyLink(deliveryResult.delivery_token)}

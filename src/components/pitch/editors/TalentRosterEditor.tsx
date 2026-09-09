@@ -104,7 +104,7 @@ export default function TalentRosterEditor({ data, onChange }: Props) {
               </span>
               <button
                 onClick={() => removeGroup(gi)}
-                className="text-xs text-gray-500 hover:text-red-400"
+                className="text-xs text-gray-500 hover:text-status-bad"
               >
                 &times; Remove sport
               </button>
@@ -136,7 +136,7 @@ export default function TalentRosterEditor({ data, onChange }: Props) {
                   />
                   <button
                     onClick={() => removeAthlete(gi, ai)}
-                    className="text-xs text-gray-500 hover:text-red-400"
+                    className="text-xs text-gray-500 hover:text-status-bad"
                   >
                     &times;
                   </button>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Campaign, Athlete, Media } from "@/lib/types";
-import { PostgameLogo } from "@/components/PostgameLogo";
+import { PostgameLogoAuto } from "@/components/PostgameLogoAuto";
 import DrivePicker from "@/components/DrivePicker";
 import { extractDriveFolderId } from "@/lib/drive-url";
 import Link from "next/link";
@@ -433,18 +433,18 @@ export default function MediaLibrary() {
         <button
           onClick={() => setView({ level: "brands" })}
           className={`font-bold transition-colors ${
-            view.level === "brands" ? "text-white" : "text-gray-500 hover:text-white"
+            view.level === "brands" ? "text-ink-1" : "text-ink-4 hover:text-ink-1"
           }`}
         >
           All Brands
         </button>
         {view.level !== "brands" && (
           <>
-            <span className="text-gray-600">/</span>
+            <span className="text-ink-4">/</span>
             <button
               onClick={() => openBrand(view.brand)}
               className={`font-bold transition-colors ${
-                view.level === "campaigns" ? "text-white" : "text-gray-500 hover:text-white"
+                view.level === "campaigns" ? "text-ink-1" : "text-ink-4 hover:text-ink-1"
               }`}
             >
               {view.brand}
@@ -453,11 +453,11 @@ export default function MediaLibrary() {
         )}
         {(view.level === "athletes" || view.level === "media") && (
           <>
-            <span className="text-gray-600">/</span>
+            <span className="text-ink-4">/</span>
             <button
               onClick={() => openCampaign(view.campaign, view.brand)}
               className={`font-bold transition-colors ${
-                view.level === "athletes" ? "text-white" : "text-gray-500 hover:text-white"
+                view.level === "athletes" ? "text-ink-1" : "text-ink-4 hover:text-ink-1"
               }`}
             >
               {view.campaign.name}
@@ -466,8 +466,8 @@ export default function MediaLibrary() {
         )}
         {view.level === "media" && (
           <>
-            <span className="text-gray-600">/</span>
-            <span className="font-bold text-white">{view.athlete.name}</span>
+            <span className="text-ink-4">/</span>
+            <span className="font-bold text-ink-1">{view.athlete.name}</span>
           </>
         )}
       </div>
@@ -479,7 +479,7 @@ export default function MediaLibrary() {
     return (
       <button
         onClick={goBack}
-        className="flex items-center gap-2 text-sm text-gray-500 hover:text-white font-bold mb-4 transition-colors"
+        className="flex items-center gap-2 text-sm text-ink-4 hover:text-ink-1 font-bold mb-4 transition-colors"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
@@ -494,15 +494,15 @@ export default function MediaLibrary() {
   const renderImportForm = (heading?: string, subtext?: string) => {
     if (flatInfo) {
       return (
-        <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
+        <div className="bg-surface-card border border-accent/30 rounded-xl p-6">
           <div className="flex items-start gap-3">
             <span className="text-2xl leading-none">⚠️</span>
             <div>
-              <h3 className="font-black text-white mb-2">No athlete subfolders found.</h3>
-              <p className="text-sm text-gray-400">
+              <h3 className="font-black text-ink-1 mb-2">No athlete subfolders found.</h3>
+              <p className="text-sm text-ink-3">
                 {flatInfo.fileCount > 0 ? (
                   <>
-                    This folder has <span className="font-bold text-white">{flatInfo.fileCount}</span> loose file{flatInfo.fileCount !== 1 ? "s" : ""}, but the Hub needs subfolders (one per athlete) to import. Add athletes to this campaign first in the recap editor, then come back.
+                    This folder has <span className="font-bold text-ink-1">{flatInfo.fileCount}</span> loose file{flatInfo.fileCount !== 1 ? "s" : ""}, but the Hub needs subfolders (one per athlete) to import. Add athletes to this campaign first in the recap editor, then come back.
                   </>
                 ) : (
                   <>This folder is empty. Add athlete subfolders in Drive, or add athletes to this campaign in the recap editor, then come back.</>
@@ -513,13 +513,13 @@ export default function MediaLibrary() {
                   href={`/dashboard/${view.level === "athletes" ? view.campaign.id : ""}`}
                   target="_blank"
                   rel="noopener"
-                  className="text-[#D73F09] font-bold text-sm hover:underline"
+                  className="text-accent font-bold text-sm hover:underline"
                 >
                   → Open campaign in recap editor
                 </a>
                 <button
                   onClick={() => { setFlatInfo(null); setUrlInput(""); setDiscoverError(null); }}
-                  className="text-gray-400 font-bold text-sm hover:text-white"
+                  className="text-ink-3 font-bold text-sm hover:text-ink-1"
                 >
                   ← Try a different URL
                 </button>
@@ -531,26 +531,26 @@ export default function MediaLibrary() {
     }
     if (confirmReplace) {
       return (
-        <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
-          <h3 className="font-black text-white mb-2">This campaign is already linked to a different Drive folder.</h3>
-          <p className="text-sm text-gray-400 mb-4">Continuing will link it to the new folder you pasted. Existing imported files stay; new athlete subfolders will be added.</p>
+        <div className="bg-surface-card border border-accent/30 rounded-xl p-6">
+          <h3 className="font-black text-ink-1 mb-2">This campaign is already linked to a different Drive folder.</h3>
+          <p className="text-sm text-ink-3 mb-4">Continuing will link it to the new folder you pasted. Existing imported files stay; new athlete subfolders will be added.</p>
           <div className="flex flex-wrap gap-3">
             <button
               disabled={discovering}
               onClick={() => handleContinue(true)}
-              className="bg-[#D73F09] hover:bg-[#ff5722] px-5 py-2.5 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 transition-colors"
+              className="bg-accent hover:bg-accent px-5 py-2.5 rounded-lg font-bold uppercase text-sm text-ink-1 disabled:opacity-50 transition-colors"
             >
               {discovering ? "Working…" : "Replace & continue"}
             </button>
-            <button onClick={() => setConfirmReplace(null)} className="text-gray-400 font-bold text-sm hover:text-white">Cancel</button>
+            <button onClick={() => setConfirmReplace(null)} className="text-ink-3 font-bold text-sm hover:text-ink-1">Cancel</button>
           </div>
         </div>
       );
     }
     return (
       <div className={heading ? "text-center" : "text-left"}>
-        {heading && <h2 className="text-xl font-black text-white mb-2">{heading}</h2>}
-        {subtext && <p className="text-sm text-gray-400 mb-6">{subtext}</p>}
+        {heading && <h2 className="text-xl font-black text-ink-1 mb-2">{heading}</h2>}
+        {subtext && <p className="text-sm text-ink-3 mb-6">{subtext}</p>}
         <div className="text-left">
           <input
             value={urlInput}
@@ -560,13 +560,13 @@ export default function MediaLibrary() {
             }}
             placeholder="https://drive.google.com/drive/folders/..."
             aria-label="Paste a Drive folder URL to import content"
-            className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
+            className="w-full bg-surface-card border border-hairline rounded-lg px-4 py-3 text-sm text-ink-1 outline-none focus:border-accent"
           />
-          {discoverError && <div className="text-sm text-red-400 mt-2">{discoverError}</div>}
+          {discoverError && <div className="text-sm text-accent mt-2">{discoverError}</div>}
           <button
             disabled={discovering || !extractDriveFolderId(urlInput)}
             onClick={() => handleContinue()}
-            className="w-full mt-4 bg-[#D73F09] hover:bg-[#ff5722] px-6 py-3 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full mt-4 bg-accent hover:bg-accent px-6 py-3 rounded-lg font-bold uppercase text-sm text-ink-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {discovering ? "Scanning folder…" : "Continue"}
           </button>
@@ -587,27 +587,27 @@ export default function MediaLibrary() {
         }}
         placeholder="Name (required)"
         aria-label="Athlete name"
-        className="w-full bg-[#0a0a0a] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09] mb-3"
+        className="w-full bg-ground border border-hairline rounded-lg px-4 py-3 text-sm text-ink-1 outline-none focus:border-accent mb-3"
       />
       <input
         value={newAthleteSchool}
         onChange={(e) => setNewAthleteSchool(e.target.value)}
         placeholder="School (optional)"
         aria-label="School"
-        className="w-full bg-[#0a0a0a] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09] mb-3"
+        className="w-full bg-ground border border-hairline rounded-lg px-4 py-3 text-sm text-ink-1 outline-none focus:border-accent mb-3"
       />
       <input
         value={newAthleteSport}
         onChange={(e) => setNewAthleteSport(e.target.value)}
         placeholder="Sport (optional)"
         aria-label="Sport"
-        className="w-full bg-[#0a0a0a] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
+        className="w-full bg-ground border border-hairline rounded-lg px-4 py-3 text-sm text-ink-1 outline-none focus:border-accent"
       />
-      {addAthleteError && <div className="text-sm text-red-400 mt-2">{addAthleteError}</div>}
+      {addAthleteError && <div className="text-sm text-accent mt-2">{addAthleteError}</div>}
       <button
         disabled={creatingAthlete || !newAthleteName.trim()}
         onClick={createAthlete}
-        className="w-full mt-4 bg-[#D73F09] hover:bg-[#ff5722] px-6 py-3 rounded-lg font-bold uppercase text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full mt-4 bg-accent hover:bg-accent px-6 py-3 rounded-lg font-bold uppercase text-sm text-ink-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {creatingAthlete ? "Creating…" : "Add athlete"}
       </button>
@@ -617,17 +617,17 @@ export default function MediaLibrary() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="border-b border-gray-800 px-8 py-5">
+      <div className="border-b border-hairline px-8 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
-              <PostgameLogo size="md" />
+              <PostgameLogoAuto size="md" />
             </Link>
             <h1 className="text-xl font-black">Media Library</h1>
           </div>
           <Link
             href="/dashboard"
-            className="text-sm text-gray-500 hover:text-white font-bold transition-colors"
+            className="text-sm text-ink-4 hover:text-ink-1 font-bold transition-colors"
           >
             Back to Dashboard
           </Link>
@@ -639,15 +639,15 @@ export default function MediaLibrary() {
         <Breadcrumb />
 
         {loading ? (
-          <div className="text-gray-500 text-center py-20">Loading...</div>
+          <div className="text-ink-4 text-center py-20">Loading...</div>
         ) : (
           <>
             {/* === BRANDS VIEW === */}
             {view.level === "brands" && (
               brands.length === 0 ? (
                 <div className="text-center py-20">
-                  <p className="text-gray-500 mb-2">No campaigns yet.</p>
-                  <Link href="/dashboard" className="text-[#D73F09] font-bold text-sm hover:underline">
+                  <p className="text-ink-4 mb-2">No campaigns yet.</p>
+                  <Link href="/dashboard" className="text-accent font-bold text-sm hover:underline">
                     Create a campaign to get started
                   </Link>
                 </div>
@@ -657,20 +657,20 @@ export default function MediaLibrary() {
                     <button
                       key={b.name}
                       onClick={() => openBrand(b.name)}
-                      className="text-left p-5 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-all group"
+                      className="text-left p-5 bg-surface-card border border-hairline rounded-xl hover:border-ink-4 transition-all group"
                     >
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <div className="w-10 h-10 rounded-lg bg-surface-card border border-hairline flex items-center justify-center flex-shrink-0">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
                             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                           </svg>
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-black text-sm truncate group-hover:text-white">{b.name}</h3>
+                          <h3 className="font-black text-sm truncate group-hover:text-ink-1">{b.name}</h3>
                         </div>
                       </div>
-                      <div className="flex gap-4 text-xs text-gray-600">
+                      <div className="flex gap-4 text-xs text-ink-4">
                         <span>{b.campaigns.length} campaign{b.campaigns.length !== 1 ? "s" : ""}</span>
                         <span>{b.totalMedia} files</span>
                       </div>
@@ -688,7 +688,7 @@ export default function MediaLibrary() {
                   const brandCampaigns = getBrandCampaigns(view.brand);
                   return brandCampaigns.length === 0 ? (
                     <div className="text-center py-20">
-                      <p className="text-gray-500 mb-2">No campaigns for this brand.</p>
+                      <p className="text-ink-4 mb-2">No campaigns for this brand.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -696,19 +696,19 @@ export default function MediaLibrary() {
                         <button
                           key={c.id}
                           onClick={() => openCampaign(c, view.brand)}
-                          className="text-left p-5 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-all group"
+                          className="text-left p-5 bg-surface-card border border-hairline rounded-xl hover:border-ink-4 transition-all group"
                         >
                           <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-lg bg-[#D73F09]/10 border border-[#D73F09]/20 flex items-center justify-center flex-shrink-0">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D73F09" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 text-accent flex items-center justify-center flex-shrink-0">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                               </svg>
                             </div>
                             <div className="min-w-0">
-                              <h3 className="font-black text-sm truncate group-hover:text-white">{c.name}</h3>
+                              <h3 className="font-black text-sm truncate group-hover:text-ink-1">{c.name}</h3>
                             </div>
                           </div>
-                          <div className="flex gap-4 text-xs text-gray-600">
+                          <div className="flex gap-4 text-xs text-ink-4">
                             <span>{campaignCounts[c.id]?.athletes || 0} athletes</span>
                             <span>{campaignCounts[c.id]?.media || 0} files</span>
                           </div>
@@ -731,13 +731,13 @@ export default function MediaLibrary() {
                       "Paste a Google Drive folder URL to import content for each athlete"
                     )}
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-px bg-gray-800" />
-                      <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Or</span>
-                      <div className="flex-1 h-px bg-gray-800" />
+                      <div className="flex-1 h-px bg-surface-raised" />
+                      <span className="text-xs font-black text-ink-4 uppercase tracking-wider">Or</span>
+                      <div className="flex-1 h-px bg-surface-raised" />
                     </div>
-                    <div className="bg-[#111] border border-gray-800 rounded-xl p-6">
-                      <h3 className="font-black text-white mb-2">Add an athlete manually</h3>
-                      <p className="text-sm text-gray-400 mb-4">Create an athlete now and drop files directly into their folder.</p>
+                    <div className="bg-surface-card border border-hairline rounded-xl p-6">
+                      <h3 className="font-black text-ink-1 mb-2">Add an athlete manually</h3>
+                      <p className="text-sm text-ink-3 mb-4">Create an athlete now and drop files directly into their folder.</p>
                       {renderAddAthleteForm()}
                     </div>
                   </div>
@@ -749,7 +749,7 @@ export default function MediaLibrary() {
                         {!importMoreOpen && (
                           <button
                             onClick={() => { resetImportUI(); setImportMoreOpen(true); }}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#111] border border-gray-800 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-600 transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-card border border-hairline rounded-lg text-sm font-bold text-ink-3 hover:text-ink-1 hover:border-ink-4 transition-colors"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -760,7 +760,7 @@ export default function MediaLibrary() {
                         {!addAthleteOpen && (
                           <button
                             onClick={() => { setAddAthleteError(null); setAddAthleteOpen(true); }}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#111] border border-gray-800 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:border-gray-600 transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-card border border-hairline rounded-lg text-sm font-bold text-ink-3 hover:text-ink-1 hover:border-ink-4 transition-colors"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -772,13 +772,13 @@ export default function MediaLibrary() {
                         )}
                       </div>
                       {importMoreOpen && (
-                        <div className="max-w-lg bg-[#111] border border-gray-800 rounded-xl p-5">
+                        <div className="max-w-lg bg-surface-card border border-hairline rounded-xl p-5">
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-black text-white">Import more from Drive</h3>
+                            <h3 className="font-black text-ink-1">Import more from Drive</h3>
                             <button
                               onClick={() => { setImportMoreOpen(false); resetImportUI(); }}
                               aria-label="Close"
-                              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                              className="w-8 h-8 rounded-full bg-ink/[.06] hover:bg-ink/[.12] flex items-center justify-center text-ink-3 hover:text-ink-1 transition-colors"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -792,20 +792,20 @@ export default function MediaLibrary() {
                         </div>
                       )}
                       {addAthleteOpen && (
-                        <div className="max-w-lg bg-[#111] border border-gray-800 rounded-xl p-5">
+                        <div className="max-w-lg bg-surface-card border border-hairline rounded-xl p-5">
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-black text-white">Add athlete</h3>
+                            <h3 className="font-black text-ink-1">Add athlete</h3>
                             <button
                               onClick={() => { setAddAthleteOpen(false); setAddAthleteError(null); }}
                               aria-label="Close"
-                              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                              className="w-8 h-8 rounded-full bg-ink/[.06] hover:bg-ink/[.12] flex items-center justify-center text-ink-3 hover:text-ink-1 transition-colors"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                               </svg>
                             </button>
                           </div>
-                          <p className="text-sm text-gray-400 mb-4">Once created, you'll land in their media view to drop files in.</p>
+                          <p className="text-sm text-ink-3 mb-4">Once created, you'll land in their media view to drop files in.</p>
                           {renderAddAthleteForm()}
                         </div>
                       )}
@@ -816,23 +816,23 @@ export default function MediaLibrary() {
                       <button
                         key={a.id}
                         onClick={() => openAthlete(a)}
-                        className="text-left p-5 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-all group"
+                        className="text-left p-5 bg-surface-card border border-hairline rounded-xl hover:border-ink-4 transition-all group"
                       >
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <div className="w-10 h-10 rounded-lg bg-surface-card border border-hairline flex items-center justify-center flex-shrink-0">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                               <circle cx="12" cy="7" r="4" />
                             </svg>
                           </div>
                           <div className="min-w-0">
-                            <h3 className="font-black text-sm truncate group-hover:text-white">{a.name}</h3>
-                            <p className="text-xs text-gray-500">
+                            <h3 className="font-black text-sm truncate group-hover:text-ink-1">{a.name}</h3>
+                            <p className="text-xs text-ink-4">
                               {[a.sport, a.school].filter(Boolean).join(" · ")}
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-4 text-xs text-gray-600">
+                        <div className="flex gap-4 text-xs text-ink-4">
                           <span>{athleteMediaCounts[a.id] || 0} files</span>
                           {a.ig_handle && <span>@{a.ig_handle}</span>}
                         </div>
@@ -860,7 +860,7 @@ export default function MediaLibrary() {
                     if (fs.length) uploadFiles(fs);
                   }}
                   className={`mb-5 rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
-                    dragOver ? "border-[#D73F09] bg-[#D73F09]/5" : "border-gray-700 hover:border-gray-500"
+                    dragOver ? "border-accent bg-accent/5" : "border-hairline hover:border-ink-4"
                   }`}
                 >
                   <input
@@ -875,20 +875,20 @@ export default function MediaLibrary() {
                       e.target.value = "";
                     }}
                   />
-                  <p className="text-sm font-bold text-gray-300">Drag and drop files here, or click to browse</p>
-                  <p className="text-xs text-gray-500 mt-1">Images &amp; videos · up to 100 MB each</p>
+                  <p className="text-sm font-bold text-ink-3">Drag and drop files here, or click to browse</p>
+                  <p className="text-xs text-ink-4 mt-1">Images &amp; videos · up to 100 MB each</p>
                 </div>
 
                 {uploads.length > 0 && (
                   <div className="mb-6 space-y-1.5">
                     {uploads.map((u, i) => (
-                      <div key={i} className="flex items-center justify-between gap-3 text-xs bg-[#111] border border-gray-800 rounded-lg px-3 py-2">
-                        <span className="truncate text-gray-300">{u.name}</span>
+                      <div key={i} className="flex items-center justify-between gap-3 text-xs bg-surface-card border border-hairline rounded-lg px-3 py-2">
+                        <span className="truncate text-ink-3">{u.name}</span>
                         <span
                           className={
-                            u.status === "done" ? "text-green-400 flex-shrink-0"
-                            : u.status === "failed" ? "text-red-400 flex-shrink-0"
-                            : "text-gray-400 flex-shrink-0"
+                            u.status === "done" ? "text-ink-3 flex-shrink-0"
+                            : u.status === "failed" ? "text-accent flex-shrink-0"
+                            : "text-ink-3 flex-shrink-0"
                           }
                         >
                           {u.status === "uploading" ? "Uploading…"
@@ -902,10 +902,10 @@ export default function MediaLibrary() {
                 )}
                 {media.length === 0 ? (
                   <div className="text-center py-20">
-                    <p className="text-gray-500 mb-2">No media uploaded for this athlete.</p>
+                    <p className="text-ink-4 mb-2">No media uploaded for this athlete.</p>
                     <Link
                       href={`/dashboard/${view.campaign.id}`}
-                      className="text-[#D73F09] font-bold text-sm hover:underline"
+                      className="text-accent font-bold text-sm hover:underline"
                     >
                       Upload content in the campaign editor
                     </Link>
@@ -916,7 +916,7 @@ export default function MediaLibrary() {
                       <button
                         key={m.id}
                         onClick={() => setLightbox(m)}
-                        className="relative aspect-square bg-[#111] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all group"
+                        className="relative aspect-square bg-surface-card border border-hairline rounded-xl overflow-hidden hover:border-ink-4 transition-all group"
                       >
                         {m.type === "video" ? (
                           <>
@@ -934,7 +934,7 @@ export default function MediaLibrary() {
                                 preload="metadata"
                               />
                             )}
-                            <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm rounded-md px-2 py-1 text-[10px] font-bold text-white flex items-center gap-1">
+                            <div className="absolute top-2 right-2 bg-ground/70 backdrop-blur-sm rounded-md px-2 py-1 text-[10px] font-bold text-ink-1 flex items-center gap-1">
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                                 <polygon points="5 3 19 12 5 21 5 3" />
                               </svg>
@@ -948,7 +948,7 @@ export default function MediaLibrary() {
                             className="w-full h-full object-cover"
                           />
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                        <div className="absolute inset-0 bg-ground/0 group-hover:bg-ground/30 transition-colors flex items-center justify-center">
                           <svg
                             width="24"
                             height="24"
@@ -1003,12 +1003,12 @@ export default function MediaLibrary() {
       {/* Lightbox */}
       {lightbox && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-8"
+          className="fixed inset-0 z-50 bg-ground/90 backdrop-blur-sm flex items-center justify-center p-8"
           onClick={() => setLightbox(null)}
         >
           <button
             onClick={() => setLightbox(null)}
-            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-ink/[.12] hover:bg-ink/[.2] flex items-center justify-center text-ink-1 transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />

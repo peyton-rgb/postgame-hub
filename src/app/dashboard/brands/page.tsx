@@ -14,6 +14,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import DashboardContent from '@/components/DashboardContent';
 import { createBrowserSupabase } from '@/lib/supabase';
+import { pickBrandLogo } from "@/lib/brand-logo";
+import { useHubTheme } from "@/lib/use-hub-theme";
 
 // ---- Types ----
 
@@ -33,6 +35,11 @@ interface Brand {
   campaign_count?: number;
   // Brand kit fields
   logo_primary_url: string | null;
+  // Ink variants. The name describes the INK, not the background:
+  // logo_light_url is light ink (for dark grounds), logo_dark_url is dark ink
+  // (for light grounds). See pickBrandLogo().
+  logo_light_url: string | null;
+  logo_dark_url: string | null;
   brand_guidelines_url: string | null;
   font_primary: string | null;
 }
@@ -46,7 +53,12 @@ function BrandCard({
   brand: Brand;
   campaignCount: number;
 }) {
-  const color = brand.primary_color || '#D73F09';
+  const theme = useHubTheme();
+  // Inverted against the column names on purpose — logo_light_url is light INK,
+  // which belongs on a dark ground. Reading it in light mode is what made client
+  // marks invisible.
+  const picked = pickBrandLogo(brand, theme);
+  const color = brand.primary_color || 'var(--accent)';
   const initials = brand.name
     .split(' ')
     .map((w) => w[0])
@@ -64,23 +76,31 @@ function BrandCard({
   ].filter(Boolean).length;
 
   return (
-    <div className="group bg-[#111] border border-white/[0.06] rounded-xl p-4 hover:border-white/15 transition-all duration-300 cursor-default">
+    <div className="group bg-surface-card border border-hairline-soft rounded-xl p-4 hover:border-hairline transition-all duration-300 cursor-default">
       <div className="flex items-start gap-3">
-        {/* Logo */}
+        {/* Logo. The tint, the initials fallback and the swatch below all take
+            their colour from brands.primary_color — CLIENT colours, deliberately
+            off-palette. Each carries data-brand-color so the design collector
+            skips it: the exemption lives in the markup and cannot drift into a
+            route-wide rule that would hide a real violation. */}
         <div
-          className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-white/[0.06] group-hover:border-white/10 transition-colors"
+          className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-hairline-soft group-hover:border-hairline transition-colors"
           style={{ backgroundColor: `${color}10` }}
+          data-brand-color
         >
-          {brand.logo_url ? (
+          {picked ? (
             <img
-              src={brand.logo_url}
+              src={picked.url}
               alt={brand.name}
               className="w-10 h-10 object-contain"
             />
           ) : (
+            // Themed empty slot — initials on the brand tint. Always legible in
+            // both themes, and reads as deliberate rather than broken.
             <span
               className="text-sm font-bold"
               style={{ color: `${color}80` }}
+              data-brand-color
             >
               {initials}
             </span>
@@ -90,32 +110,32 @@ function BrandCard({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="text-sm font-semibold text-white truncate">
+            <h3 className="text-sm font-semibold text-ink-1 truncate">
               {brand.name}
             </h3>
             {brand.show_on_clients_page && (
-              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#D73F09]/10 text-[#D73F09] flex-shrink-0">
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] flex-shrink-0">
                 Public
               </span>
             )}
           </div>
           {brand.industry && (
-            <div className="text-[11px] text-white/30 mb-2">{brand.industry}</div>
+            <div className="text-[11px] text-ink-4 mb-2">{brand.industry}</div>
           )}
           {brand.tagline && (
-            <div className="text-[10px] text-white/20 italic mb-2 line-clamp-1">
+            <div className="text-[10px] text-ink-4 italic mb-2 line-clamp-1">
               {brand.tagline}
             </div>
           )}
 
           {/* Stats row */}
-          <div className="flex items-center gap-4 text-[10px] text-white/25">
+          <div className="flex items-center gap-4 text-[10px] text-ink-4">
             <span>
-              <span className="text-white/50 font-semibold">{campaignCount}</span>{' '}
+              <span className="text-ink-4 font-semibold">{campaignCount}</span>{' '}
               {campaignCount === 1 ? 'campaign' : 'campaigns'}
             </span>
             <span>
-              <span className="text-white/50 font-semibold">{kitItems}/5</span>{' '}
+              <span className="text-ink-4 font-semibold">{kitItems}/5</span>{' '}
               kit items
             </span>
             {brand.website && (
@@ -123,7 +143,7 @@ function BrandCard({
                 href={brand.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#D73F09]/50 hover:text-[#D73F09] transition-colors"
+                className="text-[var(--accent)]/50 hover:text-[var(--accent)] transition-colors"
               >
                 Website
               </a>
@@ -134,9 +154,10 @@ function BrandCard({
         {/* Color swatch */}
         {brand.primary_color && (
           <div
-            className="w-6 h-6 rounded-full border border-white/10 flex-shrink-0"
+            className="w-6 h-6 rounded-full border border-hairline flex-shrink-0"
             style={{ backgroundColor: brand.primary_color }}
             title={brand.primary_color}
+            data-brand-color
           />
         )}
       </div>
@@ -217,11 +238,11 @@ export default function BrandsPage() {
     <DashboardContent>
       {/* Page header */}
       <div className="mb-8">
-        <div className="text-[10px] font-bold tracking-[0.2em] text-[#D73F09] uppercase mb-1">
+        <div className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent)] uppercase mb-1">
           Brand Management
         </div>
-        <h1 className="text-2xl font-bold text-white mb-1">Brands</h1>
-        <p className="text-sm text-white/40">
+        <h1 className="text-2xl font-bold text-ink-1 mb-1">Brands</h1>
+        <p className="text-sm text-ink-4">
           All brand partners and their campaign history
         </p>
       </div>
@@ -240,10 +261,10 @@ export default function BrandsPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="bg-[#111] border border-white/[0.06] rounded-lg p-3 text-center"
+              className="bg-surface-card border border-hairline-soft rounded-lg p-3 text-center"
             >
-              <div className="text-xl font-bold text-white">{stat.value}</div>
-              <div className="text-[10px] text-white/30 uppercase tracking-wider">
+              <div className="text-xl font-bold text-ink-1">{stat.value}</div>
+              <div className="text-[10px] text-ink-4 uppercase tracking-wider">
                 {stat.label}
               </div>
             </div>
@@ -258,14 +279,14 @@ export default function BrandsPage() {
           placeholder="Search brands..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#D73F09]/50 transition-colors"
+          className="flex-1 bg-surface-card border border-hairline rounded-lg px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-4 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
         />
-        <label className="flex items-center gap-2 text-xs text-white/40 cursor-pointer">
+        <label className="flex items-center gap-2 text-xs text-ink-4 cursor-pointer">
           <input
             type="checkbox"
             checked={showArchived}
             onChange={(e) => setShowArchived(e.target.checked)}
-            className="rounded border-white/20 bg-white/5"
+            className="rounded border-hairline bg-surface-card"
           />
           Show archived
         </label>
@@ -273,7 +294,7 @@ export default function BrandsPage() {
 
       {/* Results count */}
       {!loading && (
-        <div className="text-[11px] text-white/20 mb-4">
+        <div className="text-[11px] text-ink-4 mb-4">
           Showing {filtered.length} of {brands.length} brands
         </div>
       )}
@@ -284,13 +305,13 @@ export default function BrandsPage() {
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
-              className="bg-[#111] border border-white/[0.06] rounded-xl p-4 animate-pulse"
+              className="bg-surface-card border border-hairline-soft rounded-xl p-4 animate-pulse"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/5 rounded-lg" />
+                <div className="w-12 h-12 bg-surface-card rounded-lg" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-white/5 rounded w-1/2" />
-                  <div className="h-3 bg-white/5 rounded w-1/3" />
+                  <div className="h-4 bg-surface-card rounded w-1/2" />
+                  <div className="h-3 bg-surface-card rounded w-1/3" />
                 </div>
               </div>
             </div>
@@ -314,10 +335,10 @@ export default function BrandsPage() {
       {/* Empty state */}
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
-          <div className="text-white/20 text-lg font-semibold mb-2">
+          <div className="text-ink-4 text-lg font-semibold mb-2">
             No matching brands
           </div>
-          <p className="text-sm text-white/15">
+          <p className="text-sm text-ink-4">
             Try adjusting your search terms
           </p>
         </div>

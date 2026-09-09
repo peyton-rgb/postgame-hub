@@ -52,11 +52,11 @@ function Bars({ s }: { s: Evl["scores"] }) {
         const v = Math.max(0, Math.min(100, Number(s[c.key] ?? 0)));
         return (
           <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 10, width: 78, color: "rgba(255,255,255,0.5)" }}>{c.label}</span>
-            <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ width: `${v}%`, height: "100%", background: v >= 70 ? "#34C759" : v >= 45 ? "#ff8a5c" : "#ff6b6b" }} />
+            <span style={{ fontSize: 10, width: 78, color: "var(--ink-4)" }}>{c.label}</span>
+            <div style={{ flex: 1, height: 4, background: "var(--hairline)", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ width: `${v}%`, height: "100%", background: v >= 70 ? "var(--ink-3)" : v >= 45 ? "var(--accent)" : "var(--accent)" }} />
             </div>
-            <span style={{ fontSize: 10, width: 22, textAlign: "right", color: "rgba(255,255,255,0.6)" }}>{v}</span>
+            <span style={{ fontSize: 10, width: 22, textAlign: "right", color: "var(--ink-3)" }}>{v}</span>
           </div>
         );
       })}
@@ -67,16 +67,16 @@ function Bars({ s }: { s: Evl["scores"] }) {
 function Flags({ flags }: { flags: string[] }) {
   if (!flags?.length) return null;
   return (
-    <div style={{ marginTop: 8, background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#ff6b6b", marginBottom: 4 }}>⚠ Compliance — must fix</div>
+    <div style={{ marginTop: 8, background: "var(--accent-dim)", border: "1px solid var(--accent-dim)", borderRadius: 8, padding: "8px 10px" }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", marginBottom: 4 }}>⚠ Compliance — must fix</div>
       {flags.map((f, i) => (
-        <div key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.8)" }}>• {f}</div>
+        <div key={i} style={{ fontSize: 12, color: "var(--ink-2)" }}>• {f}</div>
       ))}
     </div>
   );
 }
 
-const SEV_COLOR: Record<string, string> = { required: "#ff6b6b", recommended: "#ff8a5c", info: "rgba(255,255,255,0.55)" };
+const SEV_COLOR: Record<string, string> = { required: "var(--accent)", recommended: "var(--accent)", info: "var(--ink-4)" };
 
 function SuggestionsBlock({ e }: { e: Evl }) {
   const router = useRouter();
@@ -104,29 +104,29 @@ function SuggestionsBlock({ e }: { e: Evl }) {
 
   const visible = e.suggestions.filter((s) => s.status !== "dismissed");
   return (
-    <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 10 }}>
+    <div style={{ marginTop: 10, borderTop: "1px solid var(--surface-card)", paddingTop: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Edit suggestions</span>
-        <button onClick={suggest} disabled={!!busy} style={{ marginLeft: "auto", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", borderRadius: 7, padding: "5px 10px", fontSize: 11, color: "rgba(255,255,255,0.85)", cursor: "pointer" }}>
+        <span style={{ fontSize: 11, color: "var(--ink-4)" }}>Edit suggestions</span>
+        <button onClick={suggest} disabled={!!busy} style={{ marginLeft: "auto", border: "1px solid var(--hairline)", background: "transparent", borderRadius: 7, padding: "5px 10px", fontSize: 11, color: "var(--ink-2)", cursor: "pointer" }}>
           {busy === "gen" ? "Thinking…" : visible.length ? "Re-suggest" : "Suggest edits"}
         </button>
       </div>
-      {err && <div style={{ fontSize: 11, color: "#ff6b6b", marginTop: 6 }}>{err}</div>}
+      {err && <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6 }}>{err}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
         {visible.map((s) => (
-          <div key={s.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 10px" }}>
+          <div key={s.id} style={{ background: "var(--surface-card)", border: "1px solid var(--surface-raised)", borderRadius: 8, padding: "8px 10px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: SEV_COLOR[s.severity] }}>{s.severity}</span>
-              <span style={{ fontSize: 12, color: "#fff" }}>{s.summary}</span>
-              {s.status === "approved" && <span style={{ fontSize: 10, color: "#34C759", marginLeft: "auto" }}>✓ queued</span>}
+              <span style={{ fontSize: 12, color: "var(--ink-1)" }}>{s.summary}</span>
+              {s.status === "approved" && <span style={{ fontSize: 10, color: "var(--ink-3)", marginLeft: "auto" }}>✓ queued</span>}
             </div>
-            {s.detail && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 3 }}>{s.detail}</div>}
+            {s.detail && <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 3 }}>{s.detail}</div>}
             {s.status === "proposed" && (
               <div style={{ display: "flex", gap: 8, marginTop: 7 }}>
-                <button onClick={() => act(s.id, "approve")} disabled={!!busy} style={{ background: "#D73F09", border: "none", borderRadius: 7, padding: "5px 11px", fontSize: 11, color: "#fff", fontWeight: 700, cursor: "pointer" }}>
+                <button onClick={() => act(s.id, "approve")} disabled={!!busy} style={{ background: "var(--accent)", border: "none", borderRadius: 7, padding: "5px 11px", fontSize: 11, color: "var(--ink-1)", fontWeight: 700, cursor: "pointer" }}>
                   {busy === s.id + "approve" ? "…" : "Approve & auto-edit"}
                 </button>
-                <button onClick={() => act(s.id, "dismiss")} disabled={!!busy} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 7, padding: "5px 11px", fontSize: 11, color: "rgba(255,255,255,0.7)", cursor: "pointer" }}>
+                <button onClick={() => act(s.id, "dismiss")} disabled={!!busy} style={{ background: "transparent", border: "1px solid var(--hairline)", borderRadius: 7, padding: "5px 11px", fontSize: 11, color: "var(--ink-3)", cursor: "pointer" }}>
                   {busy === s.id + "dismiss" ? "…" : "Dismiss"}
                 </button>
               </div>
@@ -137,7 +137,7 @@ function SuggestionsBlock({ e }: { e: Evl }) {
       {e.jobs.length > 0 && (
         <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
           {e.jobs.map((j) => (
-            <span key={j.id} style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.06)", borderRadius: 6, padding: "3px 8px" }}>
+            <span key={j.id} style={{ fontSize: 10, color: "var(--ink-3)", background: "var(--surface-card)", borderRadius: 6, padding: "3px 8px" }}>
               {j.type} · {j.status === "queued" ? "queued for the Edit Engine" : j.status}
             </span>
           ))}
@@ -150,24 +150,24 @@ function SuggestionsBlock({ e }: { e: Evl }) {
 function Card({ e }: { e: Evl }) {
   const isVideo = e.media_type === "video";
   return (
-    <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${e.is_top_pick ? "rgba(52,199,89,0.35)" : "rgba(255,255,255,0.09)"}`, borderRadius: 10, padding: 12, display: "flex", gap: 12 }}>
-      <div style={{ width: 56, height: 56, borderRadius: 8, overflow: "hidden", flex: "none", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ background: "var(--surface-card)", border: `1px solid ${e.is_top_pick ? "var(--surface-raised)" : "var(--surface-raised)"}`, borderRadius: 10, padding: 12, display: "flex", gap: 12 }}>
+      <div style={{ width: 56, height: 56, borderRadius: 8, overflow: "hidden", flex: "none", background: "var(--surface-raised)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {e.file_url && !isVideo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={e.file_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, fill: "#fff" }}><path d="M8 5v14l11-7z" /></svg>
+          <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, fill: "var(--ink-1)" }}><path d="M8 5v14l11-7z" /></svg>
         )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, color: "#fff", textTransform: "capitalize" }}>{e.slot}</span>
-          {e.is_top_pick && <span style={{ fontSize: 10, fontWeight: 700, color: "#34C759", background: "rgba(52,199,89,0.15)", borderRadius: 6, padding: "2px 7px" }}>TOP PICK{e.rank ? ` #${e.rank}` : ""}</span>}
-          {e.is_preliminary && <span style={{ fontSize: 10, color: "#ff8a5c", background: "rgba(215,63,9,0.15)", borderRadius: 6, padding: "2px 7px" }}>PRELIMINARY · video</span>}
-          {!e.compliance_pass && <span style={{ fontSize: 10, fontWeight: 700, color: "#ff6b6b", background: "rgba(255,107,107,0.12)", borderRadius: 6, padding: "2px 7px" }}>BLOCKED</span>}
-          <span style={{ marginLeft: "auto", fontSize: 16, fontWeight: 700, color: "#fff" }}>{e.overall_score ?? "—"}</span>
+          <span style={{ fontSize: 13, color: "var(--ink-1)", textTransform: "capitalize" }}>{e.slot}</span>
+          {e.is_top_pick && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ink-3)", background: "var(--surface-raised)", borderRadius: 6, padding: "2px 7px" }}>TOP PICK{e.rank ? ` #${e.rank}` : ""}</span>}
+          {e.is_preliminary && <span style={{ fontSize: 10, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 6, padding: "2px 7px" }}>PRELIMINARY · video</span>}
+          {!e.compliance_pass && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 6, padding: "2px 7px" }}>BLOCKED</span>}
+          <span style={{ marginLeft: "auto", fontSize: 16, fontWeight: 700, color: "var(--ink-1)" }}>{e.overall_score ?? "—"}</span>
         </div>
-        {e.rationale && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>{e.rationale}</div>}
+        {e.rationale && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 4 }}>{e.rationale}</div>}
         <Bars s={e.scores} />
         <Flags flags={e.compliance_flags} />
         {(e.is_top_pick || !e.compliance_pass || e.suggestions.length > 0) && <SuggestionsBlock e={e} />}
@@ -216,28 +216,28 @@ export default function AutoEditorPanel({
   const others = initial.filter((e) => !e.is_top_pick);
 
   return (
-    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 10, paddingTop: 12 }}>
+    <div style={{ borderTop: "1px solid var(--surface-card)", marginTop: 10, paddingTop: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>Auto editor</div>
+        <div style={{ fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--ink-4)" }}>Auto editor</div>
         <button onClick={run} disabled={loading}
-          style={{ marginLeft: "auto", background: "#D73F09", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#fff", fontWeight: 700, cursor: "pointer" }}>
+          style={{ marginLeft: "auto", background: "var(--accent)", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "var(--ink-1)", fontWeight: 700, cursor: "pointer" }}>
           {loading ? "Scoring…" : initial.length ? "Re-run auto editor" : "Run auto editor"}
         </button>
       </div>
-      {note && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 6 }}>{note}</div>}
-      {error && <div style={{ fontSize: 11, color: "#ff6b6b", marginTop: 6 }}>{error}</div>}
+      {note && <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 6 }}>{note}</div>}
+      {error && <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6 }}>{error}</div>}
 
       {initial.length > 0 && (
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           {topPicks.length > 0 && (
             <>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Top picks</div>
+              <div style={{ fontSize: 11, color: "var(--ink-4)" }}>Top picks</div>
               {topPicks.map((e) => <Card key={e.deliverable_id} e={e} />)}
             </>
           )}
           {others.length > 0 && (
             <>
-              <button onClick={() => setShowOthers((v) => !v)} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 12, textAlign: "left", cursor: "pointer", padding: "2px 0" }}>
+              <button onClick={() => setShowOthers((v) => !v)} style={{ background: "transparent", border: "none", color: "var(--ink-3)", fontSize: 12, textAlign: "left", cursor: "pointer", padding: "2px 0" }}>
                 {showOthers ? "▾" : "▸"} Others ({others.length})
               </button>
               {showOthers && others.map((e) => <Card key={e.deliverable_id} e={e} />)}

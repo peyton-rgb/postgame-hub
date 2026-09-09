@@ -338,7 +338,7 @@ export default function WhyYouEditor({ data, onChange }: Props) {
           />
         </Field>
         {uploadError ? (
-          <div className="text-xs text-red-400">{uploadError}</div>
+          <div className="text-xs text-status-bad">{uploadError}</div>
         ) : null}
       </Section>
 
@@ -387,7 +387,7 @@ export default function WhyYouEditor({ data, onChange }: Props) {
               </span>
               <button
                 onClick={() => removeHandle(i)}
-                className="text-xs text-gray-500 hover:text-red-400"
+                className="text-xs text-gray-500 hover:text-status-bad"
               >
                 &times; Remove
               </button>
@@ -451,7 +451,7 @@ export default function WhyYouEditor({ data, onChange }: Props) {
                 Auto-calculated combined followers
               </span>
               {sum.unparseableCount > 0 ? (
-                <span className="ml-auto text-[10px] text-yellow-400">
+                <span className="ml-auto text-[10px] text-status-warn">
                   {sum.unparseableCount} entr
                   {sum.unparseableCount === 1 ? "y" : "ies"} couldn&apos;t
                   parse
@@ -483,7 +483,7 @@ export default function WhyYouEditor({ data, onChange }: Props) {
             />
             <button
               onClick={() => removeStat(i)}
-              className="text-xs text-gray-500 hover:text-red-400"
+              className="text-xs text-gray-500 hover:text-status-bad"
             >
               &times;
             </button>
@@ -513,7 +513,7 @@ export default function WhyYouEditor({ data, onChange }: Props) {
             />
             <button
               onClick={() => removeHighlight(i)}
-              className="text-xs text-gray-500 hover:text-red-400 mt-2"
+              className="text-xs text-gray-500 hover:text-status-bad mt-2"
             >
               &times;
             </button>
@@ -557,7 +557,7 @@ export default function WhyYouEditor({ data, onChange }: Props) {
                 </span>
                 <button
                   onClick={() => removeCampaign(i)}
-                  className="text-xs text-gray-500 hover:text-red-400"
+                  className="text-xs text-gray-500 hover:text-status-bad"
                 >
                   &times; Remove
                 </button>
@@ -697,7 +697,7 @@ function PhotoSlot({
         </span>
         <button
           onClick={onClear}
-          className="text-xs text-gray-500 hover:text-red-400"
+          className="text-xs text-gray-500 hover:text-status-bad"
         >
           &times;
         </button>

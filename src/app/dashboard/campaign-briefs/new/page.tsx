@@ -273,7 +273,7 @@ export default function NewCampaignBriefPage() {
         </div>
 
         {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-status-bad/50 border border-status-bad text-status-bad-ink px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}

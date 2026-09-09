@@ -36,7 +36,7 @@ const plural = (n: number, word: string) => `${word}${n === 1 ? "" : "s"}`;
 // so its row is dead rather than warned about.
 type FolderState = "ready" | "pending" | "blocked";
 const FOLDER_META: Record<FolderState, { cls: string; tip: string }> = {
-  ready: { cls: "text-emerald-400", tip: "Folder ready" },
+  ready: { cls: "text-status-ok", tip: "Folder ready" },
   pending: { cls: "text-[#D73F09]", tip: "Folder will be created" },
   blocked: { cls: "text-white/20", tip: "This brand has no Drive folder yet" },
 };
@@ -209,7 +209,7 @@ export default function NewFormModal({ onClose, onCreated }: { onClose: () => vo
               {loading ? (
                 <div className="text-white/40 text-sm py-8 text-center">Loading brands…</div>
               ) : err ? (
-                <div className="text-red-400 text-sm py-8 text-center">{err}</div>
+                <div className="text-status-bad text-sm py-8 text-center">{err}</div>
               ) : (
                 <div className="flex flex-col gap-1">
                   {shownBrands.map((b) => (
@@ -336,13 +336,13 @@ export default function NewFormModal({ onClose, onCreated }: { onClose: () => vo
                 >
                   {provisioning ? "Creating…" : "Create folder"}
                 </button>
-                {folderErr && <div className="text-red-400 mt-2">{folderErr}</div>}
+                {folderErr && <div className="text-status-bad mt-2">{folderErr}</div>}
               </div>
             ) : (
               !selected.driveFolderId && (
                 // Only shown when this modal did the creating — a campaign that
                 // arrived with a folder needs no announcement.
-                <div className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-3 py-2 leading-relaxed">
+                <div className="text-xs text-status-ok-ink bg-status-ok/10 border border-status-ok/25 rounded-lg px-3 py-2 leading-relaxed">
                   Folder ready — Content and Contracts/Drafts + Signed created.
                 </div>
               )
@@ -379,7 +379,7 @@ export default function NewFormModal({ onClose, onCreated }: { onClose: () => vo
               {preview}
             </div>
 
-            {err && <div className="text-red-400 text-xs">{err}</div>}
+            {err && <div className="text-status-bad text-xs">{err}</div>}
 
             <button
               onClick={create}
