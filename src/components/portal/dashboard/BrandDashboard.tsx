@@ -104,14 +104,6 @@ const RAIL = [
   { key: "calendar", href: null, label: "Calendar", icon: <CalendarIcon /> },
 ] as const;
 
-const PILLS = [
-  { label: "Home", href: "/portal", on: true },
-  { label: "Campaigns", href: "/portal/campaigns", on: false },
-  { label: "Athletes", href: null, on: false },
-  { label: "Content", href: "/portal/library", on: false },
-  { label: "Reports", href: "/portal/reports", on: false },
-] as const;
-
 export default function BrandDashboard({
   brand,
   postgameIcon,
@@ -140,6 +132,11 @@ export default function BrandDashboard({
           <img src={postgameIcon} alt="Postgame" />
         ) : null}
 
+        {/* The rail IS the navigation now — the pill nav row is gone — so each
+            icon carries a hover/focus tooltip with its section name. The
+            aria-label is what a screen reader announces; the tooltip is the
+            visual equivalent, and it is aria-hidden so the name isn't read
+            twice. */}
         {RAIL.map((item) =>
           item.href ? (
             <a
@@ -148,13 +145,16 @@ export default function BrandDashboard({
               className={item.key === "home" ? "on" : undefined}
               aria-label={item.label}
               aria-current={item.key === "home" ? "page" : undefined}
-              title={item.label}
             >
               {item.icon}
+              <span className="pgd-tip" aria-hidden="true">
+                {item.label}
+              </span>
             </a>
           ) : (
-            <span key={item.key} className="pgd-icon" aria-hidden="true" title={`${item.label} — coming soon`}>
+            <span key={item.key} className="pgd-icon" aria-hidden="true">
               {item.icon}
+              <span className="pgd-tip">{item.label} — coming soon</span>
             </span>
           )
         )}
@@ -164,82 +164,44 @@ export default function BrandDashboard({
       </nav>
 
       <div className="pgd-main">
-        {/* ---- admin preview banner --------------------------
-            Same banner as every other portal surface. Rendered only when
-            resolveSessionPortal() populated `preview`, which the brand branch
-            never does. */}
-        {preview && (
-          <div
-            style={{
-              borderTop: "2px solid #D73F09",
-              background: "rgba(250,248,245,.07)",
-              borderRadius: 12,
-              padding: "10px 14px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-              fontSize: 13,
-            }}
-          >
-            <strong style={{ color: "#D73F09", fontWeight: 700 }}>Admin preview</strong>
-            <span style={{ color: "rgba(250,248,245,.24)" }} aria-hidden="true">
-              ·
-            </span>
-            <span style={{ color: "rgba(250,248,245,.9)" }}>Viewing as {preview.brandName}</span>
-            <span style={{ marginLeft: "auto", display: "flex", gap: 16 }}>
-              <a href={preview.switchHref} style={{ color: "rgba(250,248,245,.68)" }}>
-                Switch brand
-              </a>
-              <a href={preview.exitHref} style={{ color: "rgba(250,248,245,.68)" }}>
-                Exit preview
-              </a>
-            </span>
-          </div>
-        )}
+        {/* ---- header ----------------------------------------
+            The pill nav row is gone: the rail is the navigation, so the
+            greeting has risen into the space it occupied. Tools sit
+            top-right with the KPIs stacked directly beneath them.
 
-        {/* ---- top bar ---------------------------------------
-            Search and Notifications are VISUAL ONLY this phase. Rendered as
-            plain spans, not buttons — announcing a control that does nothing
-            is worse than not announcing it. */}
-        <div className="pgd-topbar">
-          <div className="pgd-pills">
-            {PILLS.map((p) =>
-              p.href ? (
-                <a key={p.label} href={p.href} className={p.on ? "on" : undefined} aria-current={p.on ? "page" : undefined}>
-                  {p.label}
-                </a>
-              ) : (
-                <span key={p.label}>{p.label}</span>
-              )
-            )}
-          </div>
-          <div className="pgd-tools">
-            <span className="pgd-t pgd-search" aria-hidden="true">
-              Search campaigns, athletes, posts
-            </span>
-            <span className="pgd-t" aria-hidden="true">
-              Notifications
-            </span>
-            <span className="pgd-av" role="img" aria-label="Your account">
-              <PersonIcon />
-            </span>
-          </div>
-        </div>
-
-        {/* ---- header + KPIs --------------------------------- */}
+            Search, the range selector and Notifications are VISUAL ONLY this
+            phase. Rendered as plain spans, not buttons — announcing a control
+            that does nothing is worse than not announcing it. */}
         <header className="pgd-head">
           <div>
             <h1 className="pgd-h1">Welcome back</h1>
             <p className="pgd-sub">{today}</p>
           </div>
-          <div className="pgd-kpis">
-            {data.kpis.map((k) => (
-              <div className="pgd-kpi" key={k.label}>
-                <b>{k.value}</b>
-                <span>{k.label}</span>
-              </div>
-            ))}
+
+          <div className="pgd-headright">
+            <div className="pgd-tools">
+              <span className="pgd-t pgd-search" aria-hidden="true">
+                Search campaigns, athletes, posts
+              </span>
+              <span className="pgd-t" aria-hidden="true">
+                This quarter &#9662;
+              </span>
+              <span className="pgd-t" aria-hidden="true">
+                Notifications
+              </span>
+              <span className="pgd-av" role="img" aria-label="Your account">
+                <PersonIcon />
+              </span>
+            </div>
+
+            <div className="pgd-kpis">
+              {data.kpis.map((k) => (
+                <div className="pgd-kpi" key={k.label}>
+                  <b>{k.value}</b>
+                  <span>{k.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </header>
 
@@ -518,6 +480,24 @@ export default function BrandDashboard({
           </section>
         </div>
       </div>
+
+      {/* ---- admin preview chip -------------------------------
+          Replaces the old full-width banner, which read as a website nav bar
+          and pushed the page down. Fixed, so it occupies no layout and moves
+          nothing; parked bottom-left above the rail's avatar.
+
+          Same gating as before — `preview` is populated by exactly one branch
+          of resolveSessionPortal(), the admin/exec one, so a brand session
+          cannot reach this markup. Switch and Exit point at the same routes
+          as before: /portal/choose and /portal/preview?exit=1. */}
+      {preview && (
+        <aside className="pgd-chip" aria-label="Admin preview">
+          <span className="pgd-dot" aria-hidden="true" />
+          <span className="pgd-chip-label">Previewing {preview.brandName}</span>
+          <a href={preview.switchHref}>Switch</a>
+          <a href={preview.exitHref}>Exit</a>
+        </aside>
+      )}
 
       {/* ---- phone bottom tab bar -----------------------------
           Design system: mobile nav is a bottom tab bar, never a hamburger,

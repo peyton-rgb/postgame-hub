@@ -46,6 +46,10 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  /* Above the tile grid. The rail is positioned, so it forms a stacking
+     context; without a z-index the tiles paint over it and the tooltips
+     appear BEHIND the first tile — which is exactly what happened. */
+  z-index: 90;
 }
 .pgd-rail img { width: 32px; height: 32px; margin-bottom: 14px; object-fit: contain; }
 .pgd-rail a,
@@ -53,9 +57,30 @@
   width: 40px; height: 40px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
   color: var(--ink-45); text-decoration: none; flex: 0 0 auto;
+  position: relative;
 }
 .pgd-rail a:hover { color: var(--ink); background: rgba(250, 248, 245, 0.06); }
 .pgd-rail a.on { background: rgba(250, 248, 245, 0.1); color: var(--ink); }
+
+/* ---- rail tooltips -------------------------------------------
+   The rail is the navigation and its icons are unlabelled, so the name has
+   to be reachable. This is the visual affordance; the aria-label on each
+   control is what a screen reader gets, so the two never disagree.
+   Shown on focus as well as hover — a keyboard user needs it too.
+   ------------------------------------------------------------- */
+.pgd-tip {
+  position: absolute; left: 48px; top: 50%; transform: translateY(-50%);
+  background: rgba(7, 7, 10, 0.94);
+  border: 1px solid rgba(250, 248, 245, 0.14);
+  backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+  color: var(--ink-90); font-size: 12px; line-height: 1;
+  padding: 7px 10px; border-radius: 8px; white-space: nowrap;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 0.12s ease; z-index: 70;
+}
+.pgd-rail a:hover .pgd-tip,
+.pgd-rail a:focus-visible .pgd-tip,
+.pgd-rail span.pgd-icon:hover .pgd-tip { opacity: 1; visibility: visible }
 .pgd-rail svg {
   width: 18px; height: 18px; fill: none; stroke: currentColor;
   stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
@@ -72,25 +97,18 @@
 .pgd-main {
   padding: 16px 22px 18px;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  /* Two rows now, not three: the pill nav row is gone (the rail IS the
+     navigation) and the greeting has risen into the space it freed. */
+  grid-template-rows: auto 1fr;
   gap: 12px;
   min-height: 100vh;
   min-width: 0;
 }
 
-.pgd-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.pgd-pills {
-  display: flex; gap: 4px; background: var(--tile);
-  border: 1px solid var(--hair); border-radius: 999px; padding: 4px;
-  flex-wrap: wrap;
-}
-.pgd-pills a, .pgd-pills span {
-  padding: 7px 14px; border-radius: 999px; color: var(--ink-60);
-  text-decoration: none; white-space: nowrap;
-}
-.pgd-pills a:hover { color: var(--ink) }
-.pgd-pills .on { background: var(--ink); color: #07070A; font-weight: 700 }
-.pgd-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Tools sit top-right with the KPIs stacked directly beneath them, so the
+   greeting owns the freed height on the left. */
+.pgd-headright { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.pgd-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .pgd-t {
   height: 36px; padding: 0 14px; border-radius: 999px;
   background: var(--tile); border: 1px solid var(--hair);
@@ -107,7 +125,7 @@
   stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
 }
 
-.pgd-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.pgd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .pgd-h1 {
   font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
   font-weight: 400; font-size: 38px; line-height: 0.92;
@@ -283,6 +301,50 @@
 .pgd-camp .pgd-cf b { color: rgba(250, 248, 245, 0.7) }
 .pgd-camp.pgd-live .pgd-cf b { color: var(--orange-soft) }
 
+/* ---- admin preview chip --------------------------------------
+   Was a full-width banner across the top, which read as a website nav bar
+   and pushed the page down. Now a compact floating chip: fixed, so it never
+   occupies layout and never moves the content; parked bottom-left above the
+   rail's avatar. It overhangs the 72px rail into the content column on
+   purpose — it floats over, it does not reserve space.
+
+   Still admin/exec only. `preview` is populated by exactly one branch of
+   resolveSessionPortal(), so a brand session cannot render this markup.
+   ------------------------------------------------------------- */
+.pgd-chip {
+  position: fixed;
+  left: 12px;
+  bottom: 66px; /* clears the rail's 34px avatar + its 18px padding */
+  z-index: 100; /* above the rail's 90, so the rail never covers it */
+  max-width: 260px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(7, 7, 10, 0.86);
+  border: 1px solid rgba(250, 248, 245, 0.14);
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.pgd-chip .pgd-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--orange); flex: 0 0 auto;
+}
+.pgd-chip .pgd-chip-label {
+  color: var(--ink-90); overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.pgd-chip a {
+  color: var(--ink-60); text-decoration: none; flex: 0 0 auto;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.24); padding-bottom: 1px;
+}
+.pgd-chip a:hover { color: var(--ink) }
+
 /* bottom tab bar, phone only */
 .pgd-tabbar { display: none }
 
@@ -314,10 +376,15 @@
   }
   .pgd-campgrid { grid-template-columns: repeat(2, 1fr) }
   .pgd-h1 { font-size: 40px }
-  .pgd-pills { display: none }
   .pgd-t.pgd-search { width: 100%; flex: 1 }
   .pgd-kpis { gap: 18px }
   .pgd-kpi { text-align: left }
+  /* the rail is gone on phones, so the header stacks and the tools/KPIs
+     left-align with everything else */
+  .pgd-headright { align-items: flex-start; width: 100% }
+  .pgd-tools { justify-content: flex-start; width: 100% }
+  /* clear the bottom tab bar rather than sit on top of it */
+  .pgd-chip { bottom: calc(78px + env(safe-area-inset-bottom)); left: 20px }
 
   .pgd-tabbar {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
