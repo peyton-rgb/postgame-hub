@@ -106,6 +106,93 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ------------------------------------------------------------
+  // Brand portal SESSION surfaces.
+  //
+  // An ALLOWLIST of exact paths, not `/portal/*`, for two reasons.
+  //
+  // 1. /portal/[token] is a PUBLIC client-facing door with its own
+  //    share-token gate. A blanket /portal/* rule would demand a session
+  //    on it and break every brand portal link already sent out. So would
+  //    /portal/signup (an invited client has no session yet by
+  //    definition), /portal/login and /portal/auth/callback.
+  // 2. Naming the session surfaces means an unknown /portal/<something>
+  //    is a token, which is the correct default — while a denylist of
+  //    exemptions would silently start gating the token door the moment
+  //    anyone added a route.
+  //
+  // These paths are also gated a second time inside
+  // resolveSessionPortal(), which owns the brand-scope decision. This is
+  // the cheap outer fence: it keeps a wrong-role session off the surface
+  // without the page having to render first.
+  //
+  // The matcher below lists exactly these paths, so the public token door
+  // never pays for the profiles read.
+  // ------------------------------------------------------------
+  const PORTAL_SESSION_PATHS = new Set([
+    "/portal",
+    "/portal/campaigns",
+    "/portal/library",
+    "/portal/review",
+    "/portal/reports",
+    "/portal/choose",
+    // Phase 3b surfaces. They were gated in-page by resolveSessionPortal and
+    // left out of here, which held the door shut but sent a signed-out brand
+    // user to /login — the STAFF sign-in — instead of /portal/login. A CVS
+    // contact following a link to /portal/athletes landed on a form they
+    // cannot use. The gate was never the problem; the destination was.
+    "/portal/athletes",
+    "/portal/content",
+    "/portal/settings",
+  ]);
+
+  // Campaign detail lives under an allowlisted parent, so it is a prefix
+  // rather than another literal. Deliberately the ONLY prefix here: a blanket
+  // /portal/* would swallow /portal/[token], /portal/login,
+  // /portal/auth/callback and /portal/signup, which must stay out of
+  // middleware entirely. A token would have to be literally "campaigns" to
+  // collide, and that path is already a session surface.
+  const isPortalSessionPath =
+    PORTAL_SESSION_PATHS.has(path) || path.startsWith("/portal/campaigns/");
+
+  if (isPortalSessionPath) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/portal/login";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    const { data: portalProfile } = await supabase
+      .from("profiles")
+      .select("access_level")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const level = portalProfile?.access_level;
+
+    // Clients live here; admin and exec may preview. Everyone else is sent
+    // to their own home rather than a denial they can do nothing about.
+    // exec is included deliberately — it OUTRANKS admin on the ladder, and
+    // peyton@pstgm.com is exec, so an admin-only test would lock the
+    // preview's main user out of it.
+    const PORTAL_LEVELS = new Set(["brand", "admin", "exec"]);
+    if (typeof level !== "string" || !PORTAL_LEVELS.has(level)) {
+      const url = request.nextUrl.clone();
+      url.search = "";
+      url.pathname =
+        level === "athlete"
+          ? "/athlete"
+          : level === "staff"
+            ? "/dashboard/readiness"
+            : // No profiles row, or a level nobody has taught this file
+              // about. Fail closed to the public site, same as the staff
+              // guard above.
+              "/";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // If logged in and hitting /login, redirect to dashboard
   if (user && path === "/login") {
     const url = request.nextUrl.clone();
@@ -143,5 +230,28 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/packages/:path*", "/packages", "/board/:path*", "/board", "/login", "/athlete/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/packages/:path*",
+    "/packages",
+    "/board/:path*",
+    "/board",
+    "/login",
+    "/athlete/:path*",
+    // Portal SESSION surfaces only — listed one by one so /portal/[token],
+    // /portal/login, /portal/auth/callback and /portal/signup stay out of
+    // middleware entirely. See PORTAL_SESSION_PATHS above.
+    "/portal",
+    "/portal/campaigns",
+    // :path* so the campaign detail pages reach the guard above; the bare
+    // entry above still covers the list page itself.
+    "/portal/campaigns/:path*",
+    "/portal/library",
+    "/portal/review",
+    "/portal/reports",
+    "/portal/choose",
+    "/portal/athletes",
+    "/portal/content",
+    "/portal/settings",
+  ],
 };

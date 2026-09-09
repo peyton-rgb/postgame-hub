@@ -19,6 +19,7 @@ import {
 type Brand = {
   id: string;
   name: string;
+  slug: string | null;
   portal_token: string | null;
   logo_primary_url: string | null;
   logo_dark_url: string | null;
@@ -56,7 +57,7 @@ export default function BrandPortalsPage() {
       const [{ data }, { data: logoRows }] = await Promise.all([
         supabase
           .from("brands")
-          .select("id, name, portal_token, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, archived")
+          .select("id, name, slug, portal_token, logo_primary_url, logo_dark_url, logo_light_url, logo_white_url, archived")
           .order("name"),
         supabase.from("brand_logos").select(BRAND_LOGO_COLUMNS).limit(5000),
       ]);
@@ -143,6 +144,16 @@ export default function BrandPortalsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
+                    {/* Signed-in preview. Needs no portal_token — it opens the
+                        SESSION door as an admin, whereas "View portal" below
+                        opens the shareable TOKEN door. Shown for every brand
+                        for that reason, including ones with no link yet. */}
+                    <a
+                      href={`/portal/preview?brand=${encodeURIComponent(b.slug || b.id)}`}
+                      className="text-xs font-semibold border border-white/15 text-white/70 hover:text-white hover:bg-white/5 rounded-lg px-3 py-2 transition-colors"
+                    >
+                      View as brand
+                    </a>
                     {b.portal_token ? (
                       <>
                         <a

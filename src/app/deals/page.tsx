@@ -1,623 +1,1016 @@
-"use client";
+// ============================================================
+// /deals — the NIL deal ledger.
+//
+// Audience is the public, the press and search. Everything on this page is
+// rendered on the server, including the filters and the pagination, so that:
+//
+//   - a crawler receives all 395 deals as text, not an empty shell that
+//     fetches them later;
+//   - every filtered view (?brand=cvs&sport=football) is a real URL a
+//     reporter can paste into a story and a search engine can index;
+//   - the page works with JavaScript off. There is no client component on
+//     this route at all any more — the filters are links and a <details>
+//     disclosure, the pager is links.
+//
+// WHAT WAS HERE BEFORE: a client component that fetched in the browser, with
+// an auto-advancing hero carousel over a full-bleed photo, a second
+// "Headliner Deals" carousel that showed the same deals as the grid below it,
+// its own fixed nav stacked on top of the layout's fixed nav, its own copy of
+// the footer, and every line of type set with inline font-family strings —
+// including 'Bebas Neue', which next/font renames to a hash, so those lines
+// were rendering in Arial. All of that is gone.
+//
+// `featured` survives as a sort tiebreak only, per the brief.
+// ============================================================
 
-import { useEffect, useState, useMemo, useRef } from "react";
-import { ATHLETES, BRAND_PARTNERS, CAMPAIGNS } from "@/lib/site-stats";
-import { createBrowserSupabase } from "@/lib/supabase";
-import type { Deal } from "@/lib/types";
+import "./deals.css";
+
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { PostgameLogo } from "@/components/PostgameLogo";
-import "@/styles/motion.css";
+import { createClient } from "@supabase/supabase-js";
+import SiteFooter from "@/components/SiteFooter";
 import {
   BRAND_LOGO_COLUMNS,
   groupLogosByBrand,
   resolveBrandLogo,
   type BrandLogoRow,
 } from "@/lib/brand-logo";
+import {
+  brandTint,
+  dealDate,
+  dealDateISO,
+  dealYear,
+  facetSlug,
+  initialsOf,
+  thumbUrl,
+  zoomScale,
+} from "@/lib/deal-format";
+import { canonicalSchool } from "@/lib/school-names";
 
-/* ── Extended deal with joined fields ─────────────────────────── */
-type DealRow = Deal & {
-  focal_point?: string | null;
-  focal_point_tablet?: string | null;
-  focal_point_mobile?: string | null;
-  zoom_desktop?: number | null;
-  zoom_tablet?: number | null;
-  zoom_mobile?: number | null;
-  brand_id?: string | null;
-  source_campaign_id?: string | null;
-  campaign_recaps?: { name: string } | null;
-  brands?: { logo_primary_url: string | null; logo_white_url?: string | null } | null;
+// The ledger changes when a deal is added, not per request.
+export const revalidate = 300;
+
+const PER_PAGE = 50;
+
+/** The hero lead and the meta description. One string, so they cannot drift. */
+const HERO_LEAD =
+  "Every brand deal Postgame has run with a college athlete, on the record.";
+
+/* ── Data ─────────────────────────────────────────────────────── */
+
+type DealRow = {
+  id: string;
+  slug: string;
+  athlete_name: string | null;
+  athlete_school: string | null;
+  athlete_sport: string | null;
+  brand_name: string;
+  brand_id: string | null;
+  image_url: string | null;
+  date_announced: string | null;
+  featured: boolean;
+  sort_order: number;
+  focal_point: string | null;
+  /** Postgres `numeric`, so this arrives as a string ("1.0"). */
+  zoom_desktop: string | number | null;
+  /**
+   * The pre-migration Wix URL. It is the only way to tell whether two deals
+   * show the SAME PHOTOGRAPH: job A gave every deal its own storage path
+   * (photos/<slug>.jpg), so two deals that shared one Wix original now have
+   * two distinct image_urls pointing at two identical copies.
+   */
+  image_url_source: string | null;
 };
 
-/* ── Stats ────────────────────────────────────────────────────── */
-const STATS = [
-  { num: CAMPAIGNS, label: "Campaigns Run" },
-  { num: BRAND_PARTNERS, label: "Brand Partners" },
-  { num: ATHLETES, label: "Athletes Activated" },
-  { num: "4K", label: "Production Standard" },
-];
+type Ledger = {
+  deals: DealRow[];
+  /** brand_id -> on_black logo url. Resolved once here, not per row. */
+  logoByBrand: Record<string, string>;
+  /** brand_id -> the brand's own colour, dimmed, for placeholder tiles. */
+  tintByBrand: Record<string, string>;
+};
 
-/* ── Nav links ────────────────────────────────────────────────── */
-const NAV_LINKS: [string, string][] = [
-  ["Deal Tracker", "/deals"],
-  ["Clients", "/clients"],
-  ["Campaigns", "/campaigns"],
-  ["Services", "/services/elevated"],
-  ["About", "/about/team"],
-  ["Press", "/press"],
-];
-
-export default function DealsPage() {
-  const supabase = createBrowserSupabase();
-  const [deals, setDeals] = useState<DealRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sportFilter, setSportFilter] = useState("");
-  const [collegeFilter, setCollegeFilter] = useState("");
-  const [brandFilter, setBrandFilter] = useState("");
-
-  /* ── Hero carousel ────────────────────────────────────────── */
-  const featured = useMemo(() => deals.filter(d => d.featured && d.image_url), [deals]);
-  const [heroIdx, setHeroIdx] = useState(0);
-  const [heroFade, setHeroFade] = useState(true);
-  const heroTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  /* ── Featured athletes carousel ───────────────────────────── */
-  const [carIdx, setCarIdx] = useState(0);
-  const carTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  /* ── Focal maps (per device) ───────────────────────────────── */
-  const [focalMap, setFocalMap] = useState<Record<string, string>>({});
-  const [tabletFocalMap, setTabletFocalMap] = useState<Record<string, string>>({});
-  const [mobileFocalMap, setMobileFocalMap] = useState<Record<string, string>>({});
-
-  /* ── Zoom maps (per device) ──────────────────────────────── */
-  const [zoomMap, setZoomMap] = useState<Record<string, number>>({});
-  const [tabletZoomMap, setTabletZoomMap] = useState<Record<string, number>>({});
-  const [mobileZoomMap, setMobileZoomMap] = useState<Record<string, number>>({});
-
-  /* ── Responsive ───────────────────────────────────────────── */
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  useEffect(() => {
-    const check = () => { setIsMobile(window.innerWidth < 640); setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024); };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  const isCompact = isMobile || isTablet;
-
-  // Resolved dark-surface logo per brand. The deal hero is #000 with a black
-  // gradient over the art, so these ask for on_black.
-  const [resolvedLogos, setResolvedLogos] = useState<Map<string, string>>(new Map());
-
-  /* ── Load deals ───────────────────────────────────────────── */
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("deals")
-        .select("*, campaign_recaps(name), brands(logo_primary_url, logo_white_url)")
-        .eq("published", true)
-        .order("featured", { ascending: false })
-        .order("sort_order", { ascending: true });
-      const rows = (data || []) as DealRow[];
-      setDeals(rows);
-
-      // One bulk read for every brand in the set — not per card.
-      const brandIds = Array.from(
-        new Set(rows.map((r: any) => r.brand_id).filter(Boolean))
-      );
-      if (brandIds.length) {
-        const { data: logoRows } = await supabase
-          .from("brand_logos")
-          .select(BRAND_LOGO_COLUMNS)
-          .in("brand_id", brandIds);
-        const byBrand = groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]);
-        const m = new Map<string, string>();
-        for (const id of brandIds) {
-          const r = resolveBrandLogo(byBrand.get(String(id)), { surface: "dark", prefer: "lockup" });
-          if (r) m.set(String(id), r.url);
-        }
-        setResolvedLogos(m);
-      }
-      const fm: Record<string, string> = {};
-      const tfm: Record<string, string> = {};
-      const mfm: Record<string, string> = {};
-      const zm: Record<string, number> = {};
-      const tzm: Record<string, number> = {};
-      const mzm: Record<string, number> = {};
-      rows.forEach(d => {
-        if (d.focal_point) fm[d.id] = d.focal_point;
-        if (d.focal_point_tablet) tfm[d.id] = d.focal_point_tablet;
-        if (d.focal_point_mobile) mfm[d.id] = d.focal_point_mobile;
-        if (d.zoom_desktop != null) zm[d.id] = d.zoom_desktop;
-        if (d.zoom_tablet != null) tzm[d.id] = d.zoom_tablet;
-        if (d.zoom_mobile != null) mzm[d.id] = d.zoom_mobile;
-      });
-      setFocalMap(fm);
-      setTabletFocalMap(tfm);
-      setMobileFocalMap(mfm);
-      setZoomMap(zm);
-      setTabletZoomMap(tzm);
-      setMobileZoomMap(mzm);
-      setLoading(false);
-    })();
-  }, []);
-
-  /* ── Hero auto-advance (5s) ───────────────────────────────── */
-  useEffect(() => {
-    if (featured.length <= 1) return;
-    heroTimer.current = setInterval(() => {
-      setHeroFade(false);
-      setTimeout(() => {
-        setHeroIdx(i => (i + 1) % featured.length);
-        setHeroFade(true);
-      }, 400);
-    }, 5000);
-    return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
-  }, [featured.length]);
-
-  /* ── Featured carousel auto-advance (4s) ──────────────────── */
-  const carPages = Math.max(1, Math.ceil(featured.length / 4));
-  useEffect(() => {
-    if (carPages <= 1) return;
-    carTimer.current = setInterval(() => setCarIdx(i => (i + 1) % carPages), 4000);
-    return () => { if (carTimer.current) clearInterval(carTimer.current); };
-  }, [carPages]);
-
-  /* ── Helpers ──────────────────────────────────────────────── */
-  const curDeal = featured[heroIdx] || null;
-  // Per-device focal: use dedicated column if set, else fall back to desktop, else default
-  const getFocal = (dealId: string) => {
-    if (isMobile) return mobileFocalMap[dealId] || "50% 20%";
-    if (isTablet) return tabletFocalMap[dealId] || focalMap[dealId] || "50% 20%";
-    return focalMap[dealId] || "50% 25%";
-  };
-  const getZoom = (dealId: string): number => {
-    if (isMobile) return mobileZoomMap[dealId] ?? 1;
-    if (isTablet) return tabletZoomMap[dealId] ?? 1;
-    return zoomMap[dealId] ?? 1;
-  };
-  const heroFocalPos = curDeal ? getFocal(curDeal.id) : "50% 25%";
-  const heroZoom = curDeal ? getZoom(curDeal.id) : 1;
-
-  const sports = useMemo(() => [...new Set(deals.map(d => d.athlete_sport).filter(Boolean))].sort() as string[], [deals]);
-  const colleges = useMemo(() => [...new Set(deals.map(d => d.athlete_school).filter(Boolean))].sort() as string[], [deals]);
-  const brandNames = useMemo(() => [...new Set(deals.map(d => d.brand_name).filter(Boolean))].sort(), [deals]);
-
-  const filtered = useMemo(() => {
-    return deals.filter(d => {
-      if (sportFilter && d.athlete_sport !== sportFilter) return false;
-      if (collegeFilter && d.athlete_school !== collegeFilter) return false;
-      if (brandFilter && d.brand_name !== brandFilter) return false;
-      return true;
-    });
-  }, [deals, sportFilter, collegeFilter, brandFilter]);
-
-  const hasFilters = sportFilter || collegeFilter || brandFilter;
-  function resetFilters() { setSportFilter(""); setCollegeFilter(""); setBrandFilter(""); }
-
-  const goHero = (i: number) => { setHeroFade(false); setTimeout(() => { setHeroIdx(i); setHeroFade(true); }, 300); };
-
-  /* ── Stats count-up on mount ──────────────────────────────── */
-  const [campaignsCount, setCampaignsCount] = useState(0);
-  const [brandsCount, setBrandsCount] = useState(0);
-  const [athletesCount, setAthletesCount] = useState(0);
-  useEffect(() => {
-    const startTime = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min((now - startTime) / 1400, 1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      setCampaignsCount(Math.round(ease * 394));
-      setBrandsCount(Math.round(ease * 100));
-      setAthletesCount(Math.round(ease * 10000));
-      if (p < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, []);
-
-  // Was clamp(900px,115vh,1100px) — TALLER than the viewport, so the hero's
-  // bottom-anchored heading sat below the fold on any normal laptop and the
-  // page opened on image alone. Fit it to the viewport instead.
-  const heroHeight = isMobile ? "100svh" : isTablet ? "min(100svh, 900px)" : "min(100svh, 940px)";
-  const carCardW = isMobile ? "clamp(150px,42vw,200px)" : isTablet ? "clamp(160px,28vw,220px)" : "248px";
-  const carCardH = isMobile ? "clamp(220px,62vw,300px)" : isTablet ? "clamp(240px,42vw,330px)" : "380px";
-  const gridCols = isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(4,1fr)";
-
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)", fontFamily: "Arial,sans-serif", fontSize: 16 }}>
-        Loading deals...
-      </div>
+// Two layers of caching, doing two different jobs.
+//
+// unstable_cache holds the query result across REQUESTS for 300s. Reading
+// searchParams makes this route dynamic, so `export const revalidate` cannot
+// cache the rendered page — without this every single request, filtered or
+// not, would pull all 395 rows plus the brand tables.
+//
+// react's cache() then dedupes within ONE render, so generateMetadata and the
+// page body share a single call instead of asking twice.
+const loadLedgerUncached = unstable_cache(
+  async (): Promise<Ledger> => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false } }
     );
+
+    // Archived deals are published:true but retired. They are excluded here
+    // for the same reason they are excluded from the sitemap: listing one is a
+    // claim that it is current.
+    const { data } = await supabase
+      .from("deals")
+      .select(
+        "id, slug, athlete_name, athlete_school, athlete_sport, brand_name, brand_id, image_url, image_url_source, date_announced, featured, sort_order, focal_point, zoom_desktop"
+      )
+      .eq("published", true)
+      .neq("status", "archived");
+
+    const deals = ((data ?? []) as DealRow[]).sort(compareDeals);
+
+    const brandIds = Array.from(
+      new Set(deals.map((d) => d.brand_id).filter(Boolean) as string[])
+    );
+
+    const logoByBrand: Record<string, string> = {};
+    const tintByBrand: Record<string, string> = {};
+
+    if (brandIds.length) {
+      const [{ data: logoRows }, { data: brandRows }] = await Promise.all([
+        supabase.from("brand_logos").select(BRAND_LOGO_COLUMNS).in("brand_id", brandIds),
+        supabase.from("brands").select("id, primary_color").in("id", brandIds),
+      ]);
+
+      // The rows sit on the black ground, so this asks for on_black. Asking
+      // for the wrong variant is not a cosmetic slip: an on_white file carries
+      // dark ink and disappears entirely here.
+      const byBrand = groupLogosByBrand((logoRows ?? []) as BrandLogoRow[]);
+      for (const id of brandIds) {
+        const hit = resolveBrandLogo(byBrand.get(id), { surface: "dark", prefer: "mark" });
+        if (hit) logoByBrand[id] = hit.url;
+      }
+
+      for (const b of (brandRows ?? []) as { id: string; primary_color: string | null }[]) {
+        tintByBrand[b.id] = brandTint(b.primary_color);
+      }
+    }
+
+    return { deals, logoByBrand, tintByBrand };
+  },
+  ["deals-ledger"],
+  { revalidate, tags: ["deals"] }
+);
+
+const loadLedger = cache(loadLedgerUncached);
+
+/**
+ * What makes two tiles the same picture.
+ *
+ * NOT image_url. Every live deal has a distinct image_url — job A uploaded
+ * each one to photos/<slug>.<ext> — so grouping by it finds zero duplicates
+ * while the page visibly repeats photographs. The pre-migration Wix URL is
+ * what two deals actually shared, and it survives in image_url_source.
+ */
+function photoKey(d: DealRow): string {
+  return d.image_url_source ?? d.image_url ?? d.id;
+}
+
+/** An athlete's name reduced to a comparison key. */
+function athleteKey(d: DealRow): string {
+  return (d.athlete_name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * The week number, as a seed.
+ *
+ * The wall is shuffled, but not per request: two people opening /deals a
+ * second apart should see the same wall, and it should change on its own
+ * every week. Seeding from the ISO week gives both without any stored state.
+ */
+function isoWeekSeed(now = new Date()): number {
+  const t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);          // the Thursday of this week
+  const jan1 = Date.UTC(t.getUTCFullYear(), 0, 1);
+  const week = Math.ceil(((t.getTime() - jan1) / 86400000 + 1) / 7);
+  return t.getUTCFullYear() * 100 + week;
+}
+
+/** mulberry32 — small, fast, and identical everywhere for a given seed. */
+function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled<T>(items: T[], next: () => number): T[] {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * Pick the wall.
+ *
+ * The old rule — the 60 newest — overlapped the grid's first page almost
+ * exactly, so the hero was a blurred preview of the rows immediately under
+ * it. This one deliberately looks elsewhere:
+ *
+ *   1. one deal per athlete, so no face appears twice;
+ *   2. nothing that is already a card on grid page 1;
+ *   3. spread across years rather than taken off the top, so 2021-2024 are
+ *      in the wall at all — every year with stock gets at least one tile and
+ *      the rest is allocated by largest remainder;
+ *   4. shuffled on a weekly seed, so the wall changes but not per request;
+ *   5. never the same photograph twice, by photoKey rather than by URL.
+ *
+ * If the eligible pool cannot fill 60, it falls back to the excluded deals —
+ * still never repeating a photograph.
+ */
+function buildWall(deals: DealRow[], count: number, seed: number): DealRow[] {
+  const withPhoto = deals.filter((d) => d.image_url && d.image_url.trim());
+  const onPage1 = new Set(withPhoto.slice(0, PER_PAGE).map((d) => d.id));
+
+  const firstPerAthlete = new Map<string, DealRow>();
+  for (const d of withPhoto) if (!firstPerAthlete.has(athleteKey(d))) firstPerAthlete.set(athleteKey(d), d);
+
+  const eligible = Array.from(firstPerAthlete.values()).filter((d) => !onPage1.has(d.id));
+
+  const byYear = new Map<number, DealRow[]>();
+  for (const d of eligible) {
+    const y = dealYear(d.date_announced) ?? 0;
+    (byYear.get(y) ?? byYear.set(y, []).get(y)!).push(d);
   }
 
+  // Largest remainder, with a floor of one tile per year that has any stock.
+  const years = Array.from(byYear.keys()).sort();
+  const total = eligible.length;
+  const quota = new Map<number, number>();
+  let assigned = 0;
+  const remainders: { y: number; r: number }[] = [];
+  for (const y of years) {
+    const stock = byYear.get(y)!.length;
+    const ideal = (stock / total) * (count - years.length);
+    const base = Math.min(stock, 1 + Math.floor(ideal));
+    quota.set(y, base);
+    assigned += base;
+    remainders.push({ y, r: ideal - Math.floor(ideal) });
+  }
+  remainders.sort((a, b) => b.r - a.r);
+  let i = 0;
+  while (assigned < count && remainders.length) {
+    const { y } = remainders[i % remainders.length];
+    if (quota.get(y)! < byYear.get(y)!.length) { quota.set(y, quota.get(y)! + 1); assigned++; }
+    else if (remainders.every((x) => quota.get(x.y)! >= byYear.get(x.y)!.length)) break;
+    i++;
+  }
+
+  const next = rng(seed);
+  const seen = new Set<string>();
+  const picked: DealRow[] = [];
+  const take = (rows: DealRow[], n: number) => {
+    for (const d of rows) {
+      if (picked.length >= count || n <= 0) break;
+      const k = photoKey(d);
+      if (seen.has(k)) continue;
+      seen.add(k); picked.push(d); n--;
+    }
+  };
+  for (const y of years) take(shuffled(byYear.get(y)!, next), quota.get(y) ?? 0);
+  if (picked.length < count) take(shuffled(eligible, next), count - picked.length);
+  if (picked.length < count) take(shuffled(withPhoto, next), count - picked.length);
+
+  return shuffled(picked, next);
+}
+
+/** Reverse-chronological. Undated deals sink; `featured` only breaks ties. */
+function compareDeals(a: DealRow, b: DealRow): number {
+  const ad = a.date_announced ?? "";
+  const bd = b.date_announced ?? "";
+  if (ad !== bd) return bd.localeCompare(ad);
+  if (a.featured !== b.featured) return a.featured ? -1 : 1;
+  return a.sort_order - b.sort_order;
+}
+
+/* ── Facets ───────────────────────────────────────────────────── */
+
+const FACETS = ["sport", "school", "brand", "year"] as const;
+type Facet = (typeof FACETS)[number];
+
+const FACET_LABEL: Record<Facet, string> = {
+  sport: "Sport",
+  school: "School",
+  brand: "Brand",
+  year: "Year",
+};
+
+type Active = Partial<Record<Facet, string>>;
+
+function valueOf(d: DealRow, f: Facet): string | null {
+  if (f === "sport") return d.athlete_sport;
+  // The column is already normalised in the database, so this is the guard for
+  // what arrives AFTER: an import spelt "University of Texas" would otherwise
+  // open a second Texas facet holding a third of the Texas deals, with nothing
+  // on the page saying the rest existed.
+  if (f === "school") return canonicalSchool(d.athlete_school);
+  if (f === "brand") return d.brand_name;
+  const y = dealYear(d.date_announced);
+  return y === null ? null : String(y);
+}
+
+/**
+ * Does this deal survive the active filters?
+ *
+ * `except` skips one facet, which is what makes the option counts honest: the
+ * Brand list is counted against everything EXCEPT the brand filter, so the
+ * numbers next to each brand are what you would actually get by clicking it.
+ * Counting against the fully filtered set would show 0 beside every brand but
+ * the selected one.
+ */
+function matches(d: DealRow, active: Active, except?: Facet): boolean {
+  for (const f of FACETS) {
+    if (f === except) continue;
+    const want = active[f];
+    if (!want) continue;
+    const v = valueOf(d, f);
+    if (!v || facetSlug(v) !== want) return false;
+  }
+  return true;
+}
+
+type Option = { slug: string; label: string; count: number };
+
+function optionsFor(deals: DealRow[], active: Active, f: Facet): Option[] {
+  const byslug = new Map<string, Option>();
+  for (const d of deals) {
+    if (!matches(d, active, f)) continue;
+    const v = valueOf(d, f);
+    if (!v) continue;
+    const slug = facetSlug(v);
+    const hit = byslug.get(slug);
+    if (hit) hit.count += 1;
+    else byslug.set(slug, { slug, label: v, count: 1 });
+  }
+  const list = Array.from(byslug.values());
+  // Years read newest-first; everything else reads by weight, then name.
+  if (f === "year") return list.sort((a, b) => b.label.localeCompare(a.label));
+  return list.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+/** The human label for an active slug, or the slug itself if nothing matches. */
+function labelFor(deals: DealRow[], f: Facet, slug: string): string {
+  for (const d of deals) {
+    const v = valueOf(d, f);
+    if (v && facetSlug(v) === slug) return v;
+  }
+  return slug;
+}
+
+/* ── URLs ─────────────────────────────────────────────────────── */
+
+type Search = { [K in Facet]?: string | string[] } & {
+  page?: string | string[];
+  view?: string | string[];
+};
+
+/**
+ * Grid or list.
+ *
+ * The grid is the ledger and the default: this page is a photo feed for press
+ * and search, and a table of 400 rows reads as a spreadsheet. The list is the
+ * same records in the compact row layout, kept because scanning 50 deals for
+ * a date is genuinely faster in rows than in cards.
+ */
+type View = "grid" | "list";
+
+function readView(sp: Search): View {
+  const raw = Array.isArray(sp.view) ? sp.view[0] : sp.view;
+  return raw === "list" ? "list" : "grid";
+}
+
+function readActive(sp: Search): Active {
+  const active: Active = {};
+  for (const f of FACETS) {
+    const raw = sp[f];
+    const v = Array.isArray(raw) ? raw[0] : raw;
+    // Normalised on the way in, so ?brand=CVS and ?brand=Raising%20Cane's
+    // resolve the same as the links this page generates.
+    if (v) active[f] = facetSlug(v);
+  }
+  return active;
+}
+
+/**
+ * A URL with one facet changed. `page` is deliberately dropped: page 7 of an
+ * unfiltered ledger is not page 7 of a filtered one, and silently landing on
+ * an out-of-range page is worse than starting over.
+ */
+function hrefWith(active: Active, view: View, f: Facet, value: string | null): string {
+  const p = new URLSearchParams();
+  for (const g of FACETS) {
+    const v = g === f ? value : active[g];
+    if (v) p.set(g, v);
+  }
+  // The view survives a filter change; "grid" is the default so it is never
+  // written into the URL, which keeps the shareable links clean.
+  if (view === "list") p.set("view", "list");
+  const qs = p.toString();
+  return qs ? `/deals?${qs}` : "/deals";
+}
+
+/** The same filters and page, in the other view. */
+function hrefView(active: Active, view: View, page: number): string {
+  const p = new URLSearchParams();
+  for (const g of FACETS) if (active[g]) p.set(g, active[g]!);
+  if (page > 1) p.set("page", String(page));
+  if (view === "list") p.set("view", "list");
+  const qs = p.toString();
+  return qs ? `/deals?${qs}` : "/deals";
+}
+
+/**
+ * Same URL, anchored at the ledger. Used for the links only, never for the
+ * canonical: a fragment has no place in a canonical URL, and without it a
+ * reader who clicks "page 3" lands back at the top of a full-screen hero
+ * they have already scrolled past.
+ */
+function atLedger(href: string): string {
+  return `${href}#ledger`;
+}
+
+function hrefPage(active: Active, view: View, page: number): string {
+  return hrefView(active, view, page);
+}
+
+/* ── Metadata ─────────────────────────────────────────────────── */
+
+/**
+ * A filtered view describes itself. "?brand=cvs" is a page about CVS's NIL
+ * deals and its title should say so, otherwise every filter combination
+ * competes for the same query with the same title.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Search;
+}): Promise<Metadata> {
+  const { deals } = await loadLedger();
+  const active = readActive(searchParams);
+
+  const bits: string[] = [];
+  for (const f of FACETS) {
+    const slug = active[f];
+    if (slug) bits.push(labelFor(deals, f, slug));
+  }
+
+  // Clamped the same way the page body clamps it, so an out-of-range ?page
+  // does not declare itself canonical at a URL that shows something else.
+  const total = deals.filter((d) => matches(d, active)).length;
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const page = Math.min(readPage(searchParams), pages);
+  // The canonical ignores the view. Grid and list are the same records in two
+  // presentations, so ?view=list is a duplicate of the page it points at and
+  // should not compete with it in search.
+  const canonical = hrefPage(active, "grid", page);
+
+  if (!bits.length) {
+    return {
+      title: "NIL Deal Tracker — every college athlete brand deal | Postgame",
+      // The hero's own lead, verbatim.
+      description: HERO_LEAD,
+      alternates: { canonical },
+      openGraph: {
+        title: "NIL Deal Tracker | Postgame",
+        description: HERO_LEAD,
+        type: "website",
+      },
+    };
+  }
+
+  const subject = bits.join(" · ");
+  const count = total;
+  return {
+    title: `${subject} NIL deals | Postgame Deal Tracker`,
+    description: `${count} NIL ${count === 1 ? "deal" : "deals"} Postgame has run — ${subject}. Athlete, brand and date for every partnership.`,
+    alternates: { canonical },
+    // A filter that matches nothing is still a valid URL — ?brand=nope
+    // renders an empty ledger rather than a 404, which is right for a human
+    // who mistyped. It is not worth indexing, though, and without this any
+    // junk query string would become a thin page offering itself to search.
+    ...(count === 0 ? { robots: { index: false, follow: true } } : {}),
+    openGraph: {
+      title: `${subject} NIL deals | Postgame`,
+      description: `${count} Postgame NIL ${count === 1 ? "deal" : "deals"} — ${subject}.`,
+      type: "website",
+    },
+  };
+}
+
+function readPage(sp: Search): number {
+  const raw = Array.isArray(sp.page) ? sp.page[0] : sp.page;
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 1 ? n : 1;
+}
+
+/* ── Page ─────────────────────────────────────────────────────── */
+
+export default async function DealsPage({ searchParams }: { searchParams: Search }) {
+  const { deals, logoByBrand, tintByBrand } = await loadLedger();
+
+  const active = readActive(searchParams);
+  const view = readView(searchParams);
+  const hasFilters = FACETS.some((f) => active[f]);
+  const filtered = deals.filter((d) => matches(d, active));
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const page = Math.min(readPage(searchParams), pages);
+  const rows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  // Suppressed on a filtered view: sixty unfiltered faces above a filtered
+  // grid would be showing deals the reader has just asked not to see.
+  const wall = hasFilters ? [] : buildWall(deals, WALL_TILES, isoWeekSeed());
+
+  // Two deals can be the same photograph — 19 pairs are, almost all of them
+  // "-split" deals where one joint-campaign shot was divided between two
+  // athletes. The first card on a page keeps the photo; a later card showing
+  // the same photograph falls back to its brand-tinted initials tile rather
+  // than printing the picture twice. Per page, so paging never blanks a photo
+  // whose only other use is on a page you cannot see.
+  const shownPhotos = new Set<string>();
+  const rowsWithPhoto = rows.map((d) => {
+    const k = photoKey(d);
+    const repeat = shownPhotos.has(k);
+    shownPhotos.add(k);
+    return { deal: d, repeat };
+  });
+
   return (
-    <div style={{ minHeight: "100vh", background: "#000", color: "#fff", fontFamily: "var(--font-arimo),Arimo,Arial,Helvetica,sans-serif" }}>
+    <div className="dl-page">
+      {wall.length > 0 && <HeroWall deals={wall} />}
 
-      {/* ── Nav ─────────────────────────────────────────────── */}
-      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isCompact ? "12px 16px" : "16px 48px", background: isMobile ? "#000" : "rgba(10,10,10,0.92)", backdropFilter: isMobile ? undefined : "blur(16px)", boxShadow: isMobile ? "none" : "0 1px 0 rgba(255,255,255,0.08)" }}>
-        <a href="/homepage" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}><PostgameLogo size="md" /></a>
-        {!isCompact ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-            {NAV_LINKS.map(([l, h]) => (
-              <a key={l} href={h} style={{ color: h === "/deals" ? "#fff" : "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 700, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em" }}>{l}</a>
-            ))}
-            <a href="/contact" style={{ padding: "8px 20px", border: "1.5px solid #D73F09", borderRadius: 8, color: "#D73F09", fontSize: 12, fontWeight: 800, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.06em" }}>Contact</a>
-          </div>
-        ) : (
-          <button onClick={() => setMenuOpen(o => !o)} style={{ width: 36, height: 36, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", borderRadius: 8, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: 0 }}>
-            <span style={{ width: 16, height: 1.5, background: "#fff", borderRadius: 2, transition: "transform 0.25s", transform: menuOpen ? "translateY(6.5px) rotate(45deg)" : "none" }} />
-            <span style={{ width: 16, height: 1.5, background: "#fff", borderRadius: 2, transition: "opacity 0.2s", opacity: menuOpen ? 0 : 1 }} />
-            <span style={{ width: 16, height: 1.5, background: "#fff", borderRadius: 2, transition: "transform 0.25s", transform: menuOpen ? "translateY(-6.5px) rotate(-45deg)" : "none" }} />
-          </button>
-        )}
-      </nav>
+      {/* A filtered view has no hero, so it needs its own page heading —
+          without one the reader lands on a bare row of filter chips. */}
+      {wall.length === 0 && (
+        <header className="dl-band dl-hero-fallback">
+          <div className="pg-eyebrow">NIL Deal Tracker</div>
+          <h1 className="pg-h1">Every deal we&rsquo;ve done</h1>
+        </header>
+      )}
 
-      {/* ── Slide-out menu (tablet + mobile) ───────────────── */}
-      {isCompact && (
-        <>
-          {/* Overlay */}
-          <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 40, opacity: menuOpen ? 1 : 0, pointerEvents: menuOpen ? "auto" : "none", transition: "opacity 0.3s" }} />
-          {/* Panel */}
-          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 260, background: "rgba(8,8,8,0.98)", borderLeft: "1px solid rgba(255,255,255,0.08)", zIndex: 50, transform: menuOpen ? "translateX(0)" : "translateX(100%)", transition: "transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94)", display: "flex", flexDirection: "column" }}>
-            {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <PostgameLogo size="sm" />
-              <button onClick={() => setMenuOpen(false)} style={{ width: 32, height: 32, border: "none", background: "none", color: "rgba(255,255,255,0.5)", fontSize: 20, cursor: "pointer", padding: 0 }}>✕</button>
+      {/* ── Ledger ─────────────────────────────────────────── */}
+      <section className="dl-ledger-section" id="ledger">
+        <div className="dl-band">
+          <div className="dl-section-head">
+            <h2 className="pg-h2">{wall.length ? "Every deal" : "The ledger"}</h2>
+            <div className="dl-section-tools">
+              <span className="pg-label dl-result-count">
+                {filtered.length.toLocaleString("en-US")}
+                {hasFilters ? ` of ${deals.length.toLocaleString("en-US")}` : ""} deals
+                {pages > 1 ? ` · page ${page} of ${pages}` : ""}
+              </span>
+              <ViewToggle active={active} view={view} page={page} />
             </div>
-            {/* Links */}
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              {NAV_LINKS.map(([l, h]) => (
-                <a key={l} href={h} onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: h === "/deals" ? "#D73F09" : "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
-                  {l}<span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>→</span>
-                </a>
+          </div>
+
+          <Filters deals={deals} active={active} view={view} hasFilters={hasFilters} />
+
+          {rows.length === 0 ? (
+            <div className="dl-empty">
+              <p className="pg-lead">No deals match that combination.</p>
+              <p style={{ marginTop: 16 }}>
+                <Link href={hrefView({}, view, 1)} className="pg-btn dl-chip-clear">
+                  Clear filters
+                </Link>
+              </p>
+            </div>
+          ) : view === "grid" ? (
+            <ol className="dl-grid">
+              {rowsWithPhoto.map(({ deal: d, repeat }) => (
+                <DealCard
+                  key={d.id}
+                  deal={d}
+                  repeatPhoto={repeat}
+                  tint={d.brand_id ? tintByBrand[d.brand_id] : undefined}
+                />
               ))}
-            </div>
-            {/* CTA */}
-            <div style={{ padding: "14px" }}>
-              <a href="/contact" style={{ display: "block", textAlign: "center", padding: "12px 0", background: "#D73F09", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 800, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.06em" }}>Start a Campaign</a>
-            </div>
-            {/* Socials */}
-            <div style={{ padding: "0 14px 20px" }}>
-              <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Follow Postgame</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {/* Instagram */}
-                <a href="#instagram" style={{ width: 36, height: 36, border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="rgba(255,255,255,0.5)" stroke="none"/></svg>
-                </a>
-                {/* TikTok */}
-                <a href="#tiktok" style={{ width: 36, height: 36, border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V9.27a8.16 8.16 0 004.76 1.52v-3.4a4.85 4.85 0 01-1-.7z"/></svg>
-                </a>
-                {/* X / Twitter */}
-                <a href="#twitter" style={{ width: 36, height: 36, border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                </a>
-                {/* LinkedIn */}
-                <a href="#linkedin" style={{ width: 36, height: 36, border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ── Immersive Hero ──────────────────────────────────── */}
-      {featured.length > 0 && curDeal && (
-        <div style={{ position: "relative", height: heroHeight, overflow: "hidden" }}>
-          {/* Background image with crossfade */}
-          <div style={{ position: "absolute", inset: 0, transition: "opacity 0.6s ease", opacity: heroFade ? 1 : 0 }}>
-            <img
-              key={heroIdx + "-" + curDeal.id}
-              className={heroIdx % 2 === 0 ? "ken-burns-a" : "ken-burns-b"}
-              src={curDeal.image_url!}
-              alt={curDeal.athlete_name || ""}
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: heroFocalPos, transform: heroZoom !== 1 ? `scale(${heroZoom})` : undefined, transformOrigin: heroFocalPos }}
-            />
-          </div>
-
-          {/* Top black fade — stronger on mobile for title readability */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: isMobile ? 280 : 120, background: isMobile
-            ? "linear-gradient(to bottom, #000000 0%, #000000 30%, rgba(0,0,0,0.85) 55%, rgba(0,0,0,0.4) 75%, transparent 100%)"
-            : "linear-gradient(to bottom, #000 0%, transparent 100%)", zIndex: 7, pointerEvents: "none" }} />
-          {/* Bottom-heavy gradient — long fade so photo is visible through stats/featured */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 15%, transparent 45%, rgba(0,0,0,0.7) 65%, rgba(0,0,0,0.92) 80%, #000 100%)" }} />
-          {/* Subtle left gradient for nav */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, rgba(0,0,0,0.25) 0%, transparent 50%)" }} />
-
-          {/* ── MOBILE hero content ──────────────────────────── */}
-          {isMobile && (
+            </ol>
+          ) : (
             <>
-              {/* Title area — top */}
-              <div style={{ position: "absolute", top: 58, left: 14, right: 14, zIndex: 10, pointerEvents: "none" }}>
-                <div className="pg-h1 animate-hero-title" style={{ fontSize: "clamp(34px,9vw,44px)", lineHeight: 0.92, letterSpacing: -1, marginBottom: 12 }}>
-                  NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
-                </div>
+              <div className="dl-cols dl-head" aria-hidden="true">
+                <span className="pg-label" />
+                <span className="pg-label">Athlete</span>
+                <span className="pg-label">School</span>
+                <span className="pg-label">Sport</span>
+                <span className="pg-label">Brand</span>
+                <span className="pg-label">Announced</span>
               </div>
-              {/* Deep bottom gradient for cinematic nameplate */}
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 260, background: "linear-gradient(to top, #000000 0%, rgba(0,0,0,0.95) 25%, rgba(0,0,0,0.6) 55%, transparent 100%)", zIndex: 4, pointerEvents: "none" }} />
-              {/* Mobile nameplate — logo tab + glass card */}
-              <div className="animate-hero-np" style={{ position: "absolute", bottom: 14, left: 14, zIndex: 10 }}>
-                {/* Floating logo */}
-                {(() => {
-                  // A resolved on_black file is already light-ink, so the
-                  // whitening filter must NOT be applied to it — inverting a
-                  // white logo would turn it black and lose it on this ground.
-                  const resolved = resolvedLogos.get(String((curDeal as any).brand_id));
-                  const src = resolved || curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url;
-                  if (!src) return null;
-                  const whiten = !resolved && !curDeal.brands?.logo_white_url;
-                  return (
-                    <div style={{ marginLeft: 12, marginBottom: 6, height: 32, display: "flex", alignItems: "flex-end" }}>
-                      <img src={src} alt="" style={{ maxHeight: 32, maxWidth: 80, objectFit: "contain", ...(whiten ? { filter: "brightness(0) invert(1)" } : {}) }} />
-                    </div>
-                  );
-                })()}
-                {/* Glass card */}
-                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 12px 10px", minWidth: 140 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "6px 0" }} />
-                  <div style={{ fontSize: 15, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{curDeal.athlete_name}</div>
-                  {(curDeal.athlete_school || curDeal.athlete_sport) && (curDeal.athlete_name?.length || 0) <= 18 && (
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
-                  )}
-                </div>
-                {/* Dots */}
-                {featured.length > 1 && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    {featured.map((_, i) => (
-                      <button key={i} onClick={() => goHero(i)} style={{ width: i === heroIdx ? 28 : 8, height: 8, borderRadius: 4, background: i === heroIdx ? "#D73F09" : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
-                    ))}
-                  </div>
-                )}
-              </div>
+
+              <ol className="dl-ledger">
+                {rowsWithPhoto.map(({ deal: d, repeat }) => (
+                  <LedgerRow
+                    key={d.id}
+                    deal={d}
+                    repeatPhoto={repeat}
+                    logo={d.brand_id ? logoByBrand[d.brand_id] : undefined}
+                    tint={d.brand_id ? tintByBrand[d.brand_id] : undefined}
+                  />
+                ))}
+              </ol>
             </>
           )}
 
-          {/* ── TABLET hero content ─────────────────────────── */}
-          {isTablet && (
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "0 32px 32px", gap: 20, zIndex: 10, pointerEvents: "none" }}>
-              {/* Left — description */}
-              <div style={{ maxWidth: 420 }}>
-                <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 8 }}>Postgame NIL</div>
-                <div className="pg-h1 animate-hero-title" style={{ fontSize: 38, lineHeight: 0.92, letterSpacing: -1, marginBottom: 12 }}>
-                  NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
-                </div>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.52)", lineHeight: 1.7, maxWidth: 380, marginBottom: 8, marginTop: 0 }}>
-                  Postgame has executed NIL partnerships for thousands of college athletes across every sport and conference — from national fast food chains to global apparel labels.
-                </p>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)" }}>Filter by sport, school, or brand to explore the network.</div>
-                {featured.length > 1 && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 14, pointerEvents: "all" }}>
-                    {featured.map((_, i) => (
-                      <button key={i} onClick={() => goHero(i)} style={{ width: i === heroIdx ? 28 : 8, height: 8, borderRadius: 4, background: i === heroIdx ? "#D73F09" : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* Right — logo tab + glass nameplate */}
-              <div className="animate-hero-np" style={{ flexShrink: 0 }}>
-                {(() => {
-                  const resolved = resolvedLogos.get(String((curDeal as any).brand_id));
-                  const src = resolved || curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url;
-                  if (!src) return null;
-                  const whiten = !resolved && !curDeal.brands?.logo_white_url;
-                  return (
-                    <div style={{ marginLeft: 12, marginBottom: 6, height: 36, display: "flex", alignItems: "flex-end" }}>
-                      <img src={src} alt="" style={{ maxHeight: 36, maxWidth: 90, objectFit: "contain", ...(whiten ? { filter: "brightness(0) invert(1)" } : {}) }} />
-                    </div>
-                  );
-                })()}
-                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px 12px", minWidth: 190 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
-                  <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{curDeal.athlete_name}</div>
-                  {(curDeal.athlete_school || curDeal.athlete_sport) && (
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── DESKTOP hero content ────────────────────────── */}
-          {!isMobile && !isTablet && (
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "0 48px 36px", gap: 24, zIndex: 10, pointerEvents: "none" }}>
-              {/* Left — description */}
-              <div style={{ maxWidth: 520 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 10 }}>Postgame NIL</div>
-                <div className="pg-h1 animate-hero-title" style={{ fontSize: 52, lineHeight: 0.92, letterSpacing: -1, marginBottom: 14 }}>
-                  NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
-                </div>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.52)", lineHeight: 1.7, maxWidth: 440, marginBottom: 10, marginTop: 0 }}>
-                  Postgame has executed NIL partnerships for thousands of college athletes across every sport and conference — from national fast food chains to global apparel labels.
-                </p>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>Filter by sport, school, or brand to explore the network.</div>
-                {featured.length > 1 && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 18, pointerEvents: "all" }}>
-                    {featured.map((_, i) => (
-                      <button key={i} onClick={() => goHero(i)} style={{ width: i === heroIdx ? 28 : 8, height: 8, borderRadius: 4, background: i === heroIdx ? "#D73F09" : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* Right — logo tab + glass nameplate */}
-              <div className="animate-hero-np" style={{ position: "absolute", bottom: 20, right: 24, zIndex: 10 }}>
-                {/* Floating logo */}
-                {(curDeal.brands?.logo_white_url || curDeal.brands?.logo_primary_url) && (
-                  <div style={{ marginLeft: 12, marginBottom: 6, height: 38, display: "flex", alignItems: "flex-end" }}>
-                    <img src={curDeal.brands.logo_white_url || curDeal.brands.logo_primary_url!} alt="" style={{ maxHeight: 38, maxWidth: 100, objectFit: "contain", ...(!curDeal.brands.logo_white_url ? { filter: "brightness(0) invert(1)" } : {}) }} />
-                  </div>
-                )}
-                {/* Glass card */}
-                <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 16px 14px", minWidth: 220 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "#D73F09" }}>{curDeal.brand_name}</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{curDeal.campaign_recaps?.name || curDeal.brand_name}</div>
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
-                  <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{curDeal.athlete_name}</div>
-                  {(curDeal.athlete_school || curDeal.athlete_sport) && (
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{[curDeal.athlete_school, curDeal.athlete_sport].filter(Boolean).join(" · ")}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          {pages > 1 && <Pager active={active} view={view} page={page} pages={pages} />}
         </div>
-      )}
+      </section>
 
-      {/* ── Stats Bar ──────────────────────────────────────── */}
-      <div style={{ position: "relative", zIndex: 2, background: "transparent", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
-          {[
-            { num: CAMPAIGNS, label: "Campaigns Run" },
-            { num: BRAND_PARTNERS, label: "Brand Partners" },
-            { num: ATHLETES, label: "Athletes Activated" },
-            { num: "4K", label: "Production Standard" },
-          ].map(s => (
-            <div key={s.label} style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", fontSize: "clamp(24px,3.5vw,40px)", lineHeight: 1, color: "#D73F09" }}>{s.num}</div>
-              <div style={{ fontSize: "clamp(10px,1vw,12px)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginTop: "clamp(4px,0.6vw,6px)" }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Featured Athletes Carousel ─────────────────────── */}
-      {featured.length > 0 && (
-        <div style={{ position: "relative", zIndex: 2, background: "transparent", padding: "clamp(28px,4vw,48px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-            <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
-            <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
-            <div style={{ overflow: "hidden" }}>
-              <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
-                {featured.map(d => (
-                  <Link key={d.id} href={`/deals/${d.id}`} style={{ flex: `0 0 ${carCardW}`, width: carCardW, height: carCardH, borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", position: "relative", textDecoration: "none", color: "#fff", display: "block" }}>
-                    <img src={d.image_url!} alt={d.athlete_name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(d.id), transform: getZoom(d.id) !== 1 ? `scale(${getZoom(d.id)})` : undefined, transformOrigin: getFocal(d.id) }} />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)" }} />
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "clamp(14px,2vw,20px) clamp(12px,1.5vw,18px)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                      <div style={{ fontSize: "clamp(9px,0.9vw,10px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D73F09", marginBottom: 2 }}>{d.brand_name}</div>
-                      <div style={{ fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", fontSize: "clamp(18px,2vw,22px)", lineHeight: 1.05 }}>{d.athlete_name}</div>
-                      {(d.athlete_school || d.athlete_sport) && (
-                        <div style={{ fontSize: "clamp(10px,1vw,11px)", color: "rgba(255,255,255,0.45)", marginTop: 3 }}>{[d.athlete_school, d.athlete_sport].filter(Boolean).join(" · ")}</div>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-            {carPages > 1 && (
-              <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: "clamp(16px,2vw,24px)" }}>
-                {Array.from({ length: carPages }).map((_, i) => (
-                  <button key={i} onClick={() => setCarIdx(i)} style={{ width: i === carIdx ? 24 : 8, height: 8, borderRadius: 4, background: i === carIdx ? "#D73F09" : "rgba(255,255,255,0.2)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Filter Row ─────────────────────────────────────── */}
-      <div style={{ position: "relative", zIndex: 2, background: "#000", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(14px,2vw,20px) clamp(20px,4vw,48px)", display: "flex", alignItems: "center", gap: "clamp(8px,1.2vw,12px)", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginRight: 4 }}>Filter</span>
-          <PillSelect label="Sport" value={sportFilter} onChange={setSportFilter} options={sports} />
-          <PillSelect label="College" value={collegeFilter} onChange={setCollegeFilter} options={colleges} />
-          <PillSelect label="Brand" value={brandFilter} onChange={setBrandFilter} options={brandNames} />
-          {hasFilters && (
-            <>
-              <button onClick={resetFilters} style={{ padding: "clamp(6px,0.8vw,8px) clamp(12px,1.5vw,18px)", borderRadius: 20, border: "1px solid #D73F09", background: "none", color: "#D73F09", fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 700, cursor: "pointer" }}>Reset</button>
-              <span style={{ fontSize: "clamp(10px,1.1vw,12px)", color: "rgba(255,255,255,0.35)" }}>{filtered.length} of {deals.length}</span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── Deal Grid ──────────────────────────────────────── */}
-      <div style={{ position: "relative", zIndex: 2, background: "#000", maxWidth: 1200, margin: "0 auto", padding: "clamp(32px,5vw,48px) clamp(20px,4vw,48px) clamp(48px,7vw,80px)" }}>
-        {filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "clamp(48px,8vw,80px) 0", color: "rgba(255,255,255,0.35)", fontSize: "clamp(14px,2vw,18px)" }}>
-            No deals match your filters.
-            {hasFilters && <div><button onClick={resetFilters} style={{ marginTop: 16, background: "none", border: "none", color: "#D73F09", fontSize: "clamp(12px,1.3vw,14px)", fontWeight: 700, cursor: "pointer" }}>Reset filters</button></div>}
-          </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: "clamp(12px,1.5vw,20px)" }}>
-            {filtered.map(deal => (
-              <Link key={deal.id} href={`/deals/${deal.id}`} className="hover-lift" style={{ borderRadius: "clamp(10px,1.3vw,16px)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#111", textDecoration: "none", color: "#fff", display: "block" }}>
-                {deal.image_url && (
-                  <div style={{ aspectRatio: "4/5", overflow: "hidden" }}>
-                    <img src={deal.image_url} alt={deal.athlete_name || deal.brand_name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: getFocal(deal.id), transform: getZoom(deal.id) !== 1 ? `scale(${getZoom(deal.id)})` : undefined, transformOrigin: getFocal(deal.id), transition: "transform 0.4s" }} />
-                  </div>
-                )}
-                <div style={{ padding: "clamp(12px,1.5vw,16px) clamp(14px,1.8vw,20px) clamp(14px,1.8vw,20px)" }}>
-                  <div style={{ fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", fontSize: "clamp(16px,1.8vw,24px)", lineHeight: 1.05, marginBottom: "clamp(2px,0.4vw,4px)" }}>{deal.athlete_name || "Team Campaign"}</div>
-                  <div style={{ fontSize: "clamp(11px,1.2vw,13px)", fontWeight: 700, color: "#D73F09", marginBottom: "clamp(4px,0.6vw,6px)" }}>{deal.brand_name}</div>
-                  {(deal.athlete_school || deal.athlete_sport) && (
-                    <div style={{ fontSize: "clamp(10px,1.1vw,12px)", color: "rgba(255,255,255,0.4)" }}>{[deal.athlete_school, deal.athlete_sport].filter(Boolean).join(" · ")}</div>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Footer ─────────────────────────────────────────── */}
-      <footer>
-        <div className="pg-footer">
-          <div>
-            <a href="/homepage"><img src="/postgame-logo.png" alt="Postgame" style={{ height: 28, width: "auto" }} /></a>
-            <p className="pg-footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p>
-          </div>
-          <div>
-            <div className="pg-footer-col-title">Company</div>
-            <ul className="pg-footer-links"><li><a href="/about/team">About</a></li><li><a href="/services/elevated">Services</a></li><li><a href="/contact">Contact</a></li></ul>
-          </div>
-          <div>
-            <div className="pg-footer-col-title">Network</div>
-            <ul className="pg-footer-links"><li><a href="/clients">Clients</a></li><li><a href="/campaigns">Campaigns</a></li><li><a href="/deals">Deal Tracker</a></li></ul>
-          </div>
-          <div>
-            <div className="pg-footer-col-title">Connect</div>
-            <ul className="pg-footer-links"><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li><li><a href="#">Twitter / X</a></li><li><a href="#">LinkedIn</a></li></ul>
-          </div>
-        </div>
-        <div className="pg-footer-bottom">
-          <div className="pg-footer-copy">&copy; {new Date().getFullYear()} Postgame. All rights reserved.</div>
-          <div className="pg-footer-socials"><a href="#">Privacy</a><a href="#">Terms</a><a href="/contact">Contact</a></div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
 
-/* ── Pill-style filter select ─────────────────────────────────── */
-function PillSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+/* ── Hero ─────────────────────────────────────────────────────── */
+
+/** How many deal photos build the wall. Twelve columns x five rows fills a
+ *  760px hero at 1568; the rest run off the bottom edge. */
+const WALL_TILES = 60;
+/** The first two rows are the fold. Everything after them can wait. */
+const WALL_EAGER = 24;
+
+/**
+ * The wall.
+ *
+ * A single deal photo was the wrong picture for a page that claims to be the
+ * tracker — it made 395 partnerships look like one athlete's page. The hero is
+ * now sixty of them at once, as texture rather than as content: no names, no
+ * numbers, nothing to read and nothing to click. The only thing to read is the
+ * headline.
+ *
+ * The tiles are decorative, so they carry empty alt text and are hidden from
+ * assistive tech. Every deal in them is also a real, labelled card in the grid
+ * below, so nothing is lost by not announcing them here.
+ */
+function HeroWall({ deals }: { deals: DealRow[] }) {
+  const tiles = deals.slice(0, WALL_TILES);
+
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{
-        padding: "clamp(6px,0.8vw,8px) clamp(24px,3vw,32px) clamp(6px,0.8vw,8px) clamp(12px,1.5vw,16px)",
-        borderRadius: 20,
-        border: value ? "1px solid #D73F09" : "1px solid rgba(255,255,255,0.15)",
-        background: value ? "rgba(215,63,9,0.1)" : "rgba(255,255,255,0.04)",
-        color: value ? "#D73F09" : "rgba(255,255,255,0.5)",
-        fontSize: "clamp(10px,1.1vw,12px)",
-        fontWeight: 700,
-        fontFamily: "Arial,sans-serif",
-        cursor: "pointer",
-        appearance: "none" as const,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "right 12px center",
-      }}
-    >
-      <option value="">{label}</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <header className="dl-hero">
+      <div className="dl-wall" aria-hidden="true">
+        {tiles.map((d, i) => (
+          <div key={d.id} className="dl-wall-tile">
+            {/* 192px wide is ample: at twelve columns a tile is ~127 CSS px,
+                and it sits at 55% opacity under a scrim. Sixty of these cost
+                less than the single 1800px hero photo they replaced. */}
+            <img
+              src={thumbUrl(d.image_url, 192, 60) ?? ""}
+              alt=""
+              width={192}
+              height={240}
+              // The wall IS the fold, so the first two rows cannot be lazy.
+              loading={i < WALL_EAGER ? "eager" : "lazy"}
+              fetchPriority={i < WALL_EAGER ? "high" : "low"}
+              decoding="async"
+              style={{
+                objectPosition: d.focal_point || "50% 25%",
+                transform: zoomScale(d.zoom_desktop) ? `scale(${zoomScale(d.zoom_desktop)})` : undefined,
+                transformOrigin: d.focal_point || "50% 25%",
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Left-to-right, so the copy column is the darkest part of the frame,
+          plus a fade into the page ground so the grid below starts clean. */}
+      <div className="dl-wall-scrim" aria-hidden="true" />
+      <div className="dl-wall-scrim-bottom" aria-hidden="true" />
+
+      <div className="dl-hero-body dl-band">
+        <div className="dl-hero-text">
+          <div className="pg-eyebrow">NIL Deal Tracker</div>
+          <h1 className="pg-h1 dl-hero-title">The #1 college athlete deal tracker</h1>
+          <p className="pg-lead dl-hero-meta">{HERO_LEAD}</p>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* ── Card ─────────────────────────────────────────────────────── */
+
+/**
+ * One deal as a 4:5 photo card — the default ledger.
+ *
+ * Every fact is real text in the server HTML: athlete, brand, school, sport
+ * and date. Nothing here is drawn to a canvas or filled in by script, so a
+ * crawler reading /deals gets the same 50 deals a person sees.
+ */
+function DealCard({
+  deal,
+  tint,
+  repeatPhoto = false,
+}: {
+  deal: DealRow;
+  tint?: string;
+  /** This exact photograph is already on the page, on an earlier card. */
+  repeatPhoto?: boolean;
+}) {
+  // 640 covers the widest card (about 280px) on a 2x screen. Fifty originals
+  // would be roughly 90 MB; fifty of these are about 1 MB.
+  const src = repeatPhoto ? null : thumbUrl(deal.image_url, 640);
+  const focal = deal.focal_point || "50% 25%";
+  const zoom = zoomScale(deal.zoom_desktop);
+  const name = deal.athlete_name || "Team campaign";
+  const school = canonicalSchool(deal.athlete_school);
+  const meta = [school, deal.athlete_sport].filter(Boolean).join(" · ");
+
+  return (
+    <li className="dl-card">
+      <Link href={`/deals/${deal.slug}`} className="dl-card-link">
+        <div className="dl-card-photo">
+          {src ? (
+            <img
+              src={src}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              style={{
+                objectPosition: focal,
+                transform: zoom ? `scale(${zoom})` : undefined,
+                transformOrigin: focal,
+              }}
+            />
+          ) : (
+            <div
+              className="dl-thumb-empty"
+              style={{ background: tint ?? "rgba(250,248,245,0.05)" }}
+              aria-hidden="true"
+            >
+              <span className="pg-h3 dl-card-initials">{initialsOf(deal.athlete_name)}</span>
+            </div>
+          )}
+          {/* Design system rule 4: the flat bottom edge dissolves into the
+              black ground. It sits under the caption, on the empty part of
+              the crop, so it never darkens a face. */}
+          <div className="dl-card-scrim" aria-hidden="true" />
+
+          <div className="dl-card-caption">
+            <div className="pg-eyebrow dl-card-brand">{deal.brand_name}</div>
+            <div className="pg-h3 dl-card-name">{name}</div>
+            {meta && <div className="pg-label dl-card-meta">{meta}</div>}
+            <time className="pg-label dl-card-date" dateTime={dealDateISO(deal.date_announced)}>
+              {dealDate(deal.date_announced)}
+            </time>
+          </div>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+/* ── View toggle ──────────────────────────────────────────────── */
+
+/**
+ * Two links, not a control. Both views are real URLs, so the toggle works
+ * with JavaScript off and either state can be shared.
+ */
+function ViewToggle({ active, view, page }: { active: Active; view: View; page: number }) {
+  return (
+    <div className="dl-view-toggle" role="group" aria-label="Layout">
+      <Link
+        href={atLedger(hrefView(active, "grid", page))}
+        className="dl-view-btn"
+        aria-current={view === "grid" ? "true" : undefined}
+        aria-label="Photo grid"
+        title="Photo grid"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+        </svg>
+      </Link>
+      <Link
+        href={atLedger(hrefView(active, "list", page))}
+        className="dl-view-btn"
+        aria-current={view === "list" ? "true" : undefined}
+        aria-label="Compact list"
+        title="Compact list"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="4.5" width="18" height="2.5" rx="1.25" />
+          <rect x="3" y="10.75" width="18" height="2.5" rx="1.25" />
+          <rect x="3" y="17" width="18" height="2.5" rx="1.25" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
+/* ── Row ──────────────────────────────────────────────────────── */
+
+function LedgerRow({
+  deal,
+  logo,
+  tint,
+  repeatPhoto = false,
+}: {
+  deal: DealRow;
+  logo?: string;
+  tint?: string;
+  /** Same photograph as an earlier row on this page. */
+  repeatPhoto?: boolean;
+}) {
+  const thumb = repeatPhoto ? null : thumbUrl(deal.image_url);
+  const name = deal.athlete_name || "Team campaign";
+  // On mobile the school/sport/date columns collapse into one line, so the
+  // same facts are assembled here rather than duplicated in the markup.
+  const school = canonicalSchool(deal.athlete_school);
+  const mobileMeta = [school, deal.athlete_sport, dealDate(deal.date_announced)]
+    .filter((s) => s && s !== "—")
+    .join(" · ");
+
+  return (
+    <li className="dl-row">
+      <Link href={`/deals/${deal.slug}`} className="dl-cols">
+        <div className="dl-thumb">
+          {thumb ? (
+            <img
+              src={thumb}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              style={{ objectPosition: deal.focal_point || "50% 25%" }}
+            />
+          ) : (
+            <div
+              className="dl-thumb-empty"
+              style={{ background: tint ?? "rgba(250,248,245,0.05)" }}
+              aria-hidden="true"
+            >
+              <span className="pg-h3">{initialsOf(deal.athlete_name)}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="dl-row-lines">
+          <div className="pg-h3 dl-athlete">{name}</div>
+          {/* Line two on mobile only — on desktop the brand has its own
+              column and these facts have their own cells. */}
+          <div className="dl-brand dl-brand-in-lines">
+            {logo && <img src={logo} alt="" loading="lazy" decoding="async" />}
+            <span className="pg-label dl-brand-name">{deal.brand_name}</span>
+          </div>
+          <div className="pg-label dl-mobile-line">{mobileMeta || "Date not on file"}</div>
+        </div>
+
+        <span className="pg-body dl-cell-muted dl-cell-school">{school || "—"}</span>
+        <span className="pg-body dl-cell-muted dl-cell-sport">{deal.athlete_sport || "—"}</span>
+        <span className="dl-brand dl-cell-brand">
+          {logo && <img src={logo} alt="" loading="lazy" decoding="async" />}
+          <span className="pg-label dl-brand-name">{deal.brand_name}</span>
+        </span>
+        <time
+          className="pg-label dl-cell-muted dl-cell-date"
+          dateTime={dealDateISO(deal.date_announced)}
+        >
+          {dealDate(deal.date_announced)}
+        </time>
+      </Link>
+    </li>
+  );
+}
+
+/* ── Filters ──────────────────────────────────────────────────── */
+
+function Filters({
+  deals,
+  active,
+  view,
+  hasFilters,
+}: {
+  deals: DealRow[];
+  active: Active;
+  view: View;
+  hasFilters: boolean;
+}) {
+  return (
+    <div className="dl-filters">
+      <div className="dl-facets">
+        {FACETS.map((f) => {
+          const options = optionsFor(deals, active, f);
+          if (!options.length) return null;
+          const current = active[f];
+          return (
+            <details key={f} className="dl-facet">
+              <summary className="pg-btn">
+                {FACET_LABEL[f]}
+                <span className="dl-facet-caret" aria-hidden="true">
+                  ▾
+                </span>
+              </summary>
+              <div className="dl-facet-menu">
+                {options.map((o) => (
+                  <Link
+                    key={o.slug}
+                    href={atLedger(hrefWith(active, view, f, o.slug === current ? null : o.slug))}
+                    aria-current={o.slug === current ? "true" : undefined}
+                    className="pg-body"
+                  >
+                    <span>{o.label}</span>
+                    <span className="pg-label dl-facet-count">{o.count}</span>
+                  </Link>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+
+      {hasFilters && (
+        <div className="dl-chips">
+          {FACETS.map((f) => {
+            const slug = active[f];
+            if (!slug) return null;
+            return (
+              <span key={f} className="dl-chip pg-btn">
+                {labelFor(deals, f, slug)}
+                <Link
+                  href={atLedger(hrefWith(active, view, f, null))}
+                  className="dl-chip-x"
+                  aria-label={`Remove the ${FACET_LABEL[f].toLowerCase()} filter`}
+                >
+                  ×
+                </Link>
+              </span>
+            );
+          })}
+          <Link href={atLedger(hrefView({}, view, 1))} className="pg-btn dl-chip-clear">
+            Clear all
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Pager ────────────────────────────────────────────────────── */
+
+/** First, last, and a window around the current page. */
+function pageWindow(page: number, pages: number): (number | "gap")[] {
+  const want = new Set<number>([1, pages, page - 1, page, page + 1]);
+  const list = Array.from(want)
+    .filter((n) => n >= 1 && n <= pages)
+    .sort((a, b) => a - b);
+  const out: (number | "gap")[] = [];
+  let prev = 0;
+  for (const n of list) {
+    if (prev && n - prev > 1) out.push("gap");
+    out.push(n);
+    prev = n;
+  }
+  return out;
+}
+
+function Pager({ active, view, page, pages }: { active: Active; view: View; page: number; pages: number }) {
+  return (
+    <nav className="dl-pager" aria-label="Ledger pages">
+      {page > 1 ? (
+        <Link href={atLedger(hrefPage(active, view, page - 1))} className="pg-btn" rel="prev">
+          Previous
+        </Link>
+      ) : (
+        <span className="pg-btn" style={{ opacity: 0.35 }}>
+          Previous
+        </span>
+      )}
+
+      {pageWindow(page, pages).map((n, i) =>
+        n === "gap" ? (
+          <span key={`gap-${i}`} className="pg-btn dl-pager-gap">
+            …
+          </span>
+        ) : n === page ? (
+          <span key={n} className="pg-btn dl-pager-now" aria-current="page">
+            {n}
+          </span>
+        ) : (
+          <Link key={n} href={atLedger(hrefPage(active, view, n))} className="pg-btn">
+            {n}
+          </Link>
+        )
+      )}
+
+      {page < pages ? (
+        <Link href={atLedger(hrefPage(active, view, page + 1))} className="pg-btn" rel="next">
+          Next
+        </Link>
+      ) : (
+        <span className="pg-btn" style={{ opacity: 0.35 }}>
+          Next
+        </span>
+      )}
+    </nav>
   );
 }
