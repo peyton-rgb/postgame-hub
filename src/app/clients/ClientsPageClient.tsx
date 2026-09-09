@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ATHLETES } from "@/lib/site-stats";
 import Link from 'next/link';
 import Lenis from 'lenis';
@@ -86,6 +86,11 @@ function SectionLabel({
 }
 
 // ---- 3. Client directory: small, quiet, all of them ---------------------
+
+// How many tiles the directory shows on a phone before "Show all". Six rows at
+// two-up — enough to read as a directory rather than a teaser, short enough
+// that the rest of the page is reachable.
+const MOBILE_TILE_PREVIEW = 18;
 
 function BrandTile({ brand, eager }: { brand: ClientBrand; eager: boolean }) {
   const { hostRef, logoRef } = useLogoHover<HTMLAnchorElement>();
@@ -173,6 +178,15 @@ export default function ClientsPageClient({
   films: FeaturedFilm[];
   tiles: ClientBrand[];
 }) {
+  // The directory is 88 tiles two-up on a phone — 44 rows, roughly nine
+  // screens of scrolling before anything else on the page. Collapsed to the
+  // first MOBILE_TILE_PREVIEW below 750px, with everything one tap away.
+  //
+  // The hiding is CSS-only (max-[750px]:hidden), so the DESKTOP GRID IS
+  // UNTOUCHED and every tile stays in the DOM: the full list is still there for
+  // search engines and for anyone landing with a wider viewport, and there is
+  // no layout shift when the breakpoint changes.
+  const [showAllBrands, setShowAllBrands] = useState(false);
   // Lenis only. Nothing on this page is bound to scroll position any more, so
   // there is no ScrollTrigger, no shear and no velocity setter to drive.
   useEffect(() => {
@@ -240,9 +254,25 @@ export default function ClientsPageClient({
             <div className="mt-[3vh] rounded-2xl border border-ink/12 bg-surface-3 p-4 sm:p-6">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {tiles.map((brand, i) => (
-                  <BrandTile key={brand.slug} brand={brand} eager={i < 12} />
+                  <div
+                    key={brand.slug}
+                    className={
+                      !showAllBrands && i >= MOBILE_TILE_PREVIEW ? 'max-[750px]:hidden' : undefined
+                    }
+                  >
+                    <BrandTile brand={brand} eager={i < 12} />
+                  </div>
                 ))}
               </div>
+              {!showAllBrands && tiles.length > MOBILE_TILE_PREVIEW && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllBrands(true)}
+                  className="pg-btn mt-4 hidden w-full rounded-lg border border-ink/25 py-3 text-center transition-colors hover:border-ink/40 max-[750px]:block"
+                >
+                  Show all {tiles.length} brands
+                </button>
+              )}
             </div>
           </div>
         </section>

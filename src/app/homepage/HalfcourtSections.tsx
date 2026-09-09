@@ -45,7 +45,11 @@ export default function HalfcourtSections() {
             }
           });
         },
-        { threshold: 0.16 }
+        // 10% visible, and a positive bottom rootMargin so the reveal starts
+        // just BEFORE the element scrolls in — with a 300ms transition it has
+        // finished by the time it is actually in view, instead of the reader
+        // arriving at a blank block and waiting for it.
+        { threshold: 0.1, rootMargin: "0px 0px 15% 0px" }
       );
       revealEls.forEach((el) => rio.observe(el));
       observers.push(rio);
