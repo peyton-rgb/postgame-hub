@@ -70,18 +70,35 @@ export function thumb(url: string, width = 420): string {
 }
 
 /**
- * The thumbnail source for a media tile: whatever `thumbnail_url` holds, else
- * the plain object URL. No transform, so a gallery costs zero transform
- * calls. For CVS, 411 of 460 rows carry a thumbnail_url (every one of the 104
- * videos does, and none of them points at the mp4 — checked); the remaining
- * 49 are images that fall back to their original, which pagination keeps to a
- * sane number per page.
+ * Formats a browser will actually paint. Anything outside this list has to go
+ * through the transform endpoint or it renders as nothing.
+ */
+const WEB_SAFE = /\.(jpe?g|png|gif|webp)($|\?)/i;
+
+/**
+ * The thumbnail source for a media tile: `thumbnail_url` if present, else the
+ * plain object URL — WITH ONE EXCEPTION.
+ *
+ * THE EXCEPTION IS LOAD-BEARING. 7 of CVS's 460 media rows are `.HEIC`, and
+ * no browser paints HEIC. Serving those raw is what made Bella Bonnett's tile
+ * a black box: `content-type: image/heif`, 2.2MB, and nothing on screen. The
+ * transform endpoint transcodes them (`image/jpeg`, 200KB), so for those rows
+ * it is not an optimisation, it is the only way the picture exists. Two more
+ * rows carry an extension I cannot identify, and they take the same path on
+ * the same reasoning.
+ *
+ * So: 451 of 460 tiles are served direct and cost no transform call; 9 are
+ * transcoded. That keeps a full gallery at ~9 metered calls instead of 411,
+ * without trading a slow tile for an empty one.
  */
 export function mediaThumb(
   thumbnailUrl: string | null,
   fileUrl: string | null
 ): string | null {
-  return thumbnailUrl || fileUrl || null;
+  const url = thumbnailUrl || fileUrl;
+  if (!url) return null;
+  if (WEB_SAFE.test(url)) return url;
+  return thumb(url, 420);
 }
 
 export interface CampaignListItem {
@@ -325,7 +342,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
   const items: MediaItem[] = media
     .map((m) => {
       const url = m.file_url || m.thumbnail_url;
-      const thumbSrc = m.thumbnail_url || m.file_url;
+      const thumbSrc = mediaThumb(m.thumbnail_url, m.file_url);
       if (!url || !thumbSrc) return null;
       return {
         id: m.id,
@@ -452,7 +469,7 @@ export async function loadContentGallery(brandId: string) {
   const items: MediaItem[] = mediaRows
     .map((m) => {
       const url = m.file_url || m.thumbnail_url;
-      const thumbSrc = m.thumbnail_url || m.file_url;
+      const thumbSrc = mediaThumb(m.thumbnail_url, m.file_url);
       if (!url || !thumbSrc) return null;
       return {
         id: m.id,

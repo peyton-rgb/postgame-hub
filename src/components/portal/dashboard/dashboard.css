@@ -621,22 +621,24 @@
 /* detail hero */
 .pgd-hero {
   position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 14px;
-  /* 240, not 190: at 1325px wide a 190px band is a 7:1 slot, and cover-cropping
-     a portrait athlete photo into 7:1 magnifies a sliver of the frame until it
-     reads as blur. 240 keeps the crop recognisable as a photograph. */
-  min-height: 240px; background: var(--tile); border: 1px solid var(--tile-edge);
+  /* 330. The height is the actual fix here, not the focal point. At 240 the
+     band showed ~9% of a 1:2 portrait's height, which is less than a face
+     occupies — so NO object-position could frame one: 28% landed in the hair,
+     34% cut the forehead, 45% cut at the mouth. 330 shows enough of the frame
+     that the whole face fits, and then the focal point only has to place it. */
+  min-height: 330px; background: var(--tile); border: 1px solid var(--tile-edge);
   display: flex; align-items: flex-end;
 }
-/* 45%. These are 1:2 portrait photos in a ~5.5:1 band, so cover scales by
-   width and the band shows barely 9% of the frame's height — the position
-   picks which 9%. 18% landed on the out-of-focus fence above the subject's
-   head and read as a broken image; 34% still cut SPF's face off at the top of
-   the band. 45% clears the crown.
-   A focal_y column on the media row is the real fix and is logged as a
-   follow-up in the run log: one number cannot frame every photograph, and
-   every value here is a guess that happens to suit the current hero set. */
+/* 30%, paired with the 330px band above. Measured, not guessed: a LARGER
+   percentage moves the visible window DOWN the photo, so 45% — asked for to
+   stop the face being cut at the top — moved the crop from the eyes to the
+   mouth and made that symptom worse. Rendered at 22 / 28 / 34 / 45 to check
+   the direction before settling.
+   A focal_y column on the media row is still the real fix and is logged as a
+   follow-up in the run log: one number cannot frame every photograph, and 30%
+   is only known to suit the current hero set. */
 .pgd-hero > img { position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center 45% }
+  object-fit: cover; object-position: center 30% }
 .pgd-hero::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(0deg, rgba(7, 7, 10, 0.92), rgba(7, 7, 10, 0.15));
@@ -677,6 +679,10 @@
 .pgd-prose > :last-child { margin-bottom: 0 }
 .pgd-prose p { margin: 0 0 10px }
 .pgd-prose ul, .pgd-prose ol { margin: 0 0 10px; padding-left: 20px }
+/* The app's base stylesheet strips list markers, so takeaways rendered as
+   unmarked indented paragraphs. Restated here rather than globally. */
+.pgd-prose ul { list-style: disc outside }
+.pgd-prose ol { list-style: decimal outside }
 .pgd-prose li { margin: 0 0 6px }
 .pgd-prose li > p { margin: 0 }
 .pgd-prose strong, .pgd-prose b { color: var(--ink-90); font-weight: 700 }
