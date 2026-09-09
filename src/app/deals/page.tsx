@@ -48,14 +48,12 @@ import {
   thumbUrl,
   zoomScale,
 } from "@/lib/deal-format";
-import DealStrip from "./DealStrip";
 import { canonicalSchool } from "@/lib/school-names";
 
 // The ledger changes when a deal is added, not per request.
 export const revalidate = 300;
 
 const PER_PAGE = 50;
-const STRIP_COUNT = 8;
 
 /* ── Data ─────────────────────────────────────────────────────── */
 
@@ -234,7 +232,25 @@ function labelFor(deals: DealRow[], f: Facet, slug: string): string {
 
 /* ── URLs ─────────────────────────────────────────────────────── */
 
-type Search = { [K in Facet]?: string | string[] } & { page?: string | string[] };
+type Search = { [K in Facet]?: string | string[] } & {
+  page?: string | string[];
+  view?: string | string[];
+};
+
+/**
+ * Grid or list.
+ *
+ * The grid is the ledger and the default: this page is a photo feed for press
+ * and search, and a table of 400 rows reads as a spreadsheet. The list is the
+ * same records in the compact row layout, kept because scanning 50 deals for
+ * a date is genuinely faster in rows than in cards.
+ */
+type View = "grid" | "list";
+
+function readView(sp: Search): View {
+  const raw = Array.isArray(sp.view) ? sp.view[0] : sp.view;
+  return raw === "list" ? "list" : "grid";
+}
 
 function readActive(sp: Search): Active {
   const active: Active = {};
@@ -253,12 +269,25 @@ function readActive(sp: Search): Active {
  * unfiltered ledger is not page 7 of a filtered one, and silently landing on
  * an out-of-range page is worse than starting over.
  */
-function hrefWith(active: Active, f: Facet, value: string | null): string {
+function hrefWith(active: Active, view: View, f: Facet, value: string | null): string {
   const p = new URLSearchParams();
   for (const g of FACETS) {
     const v = g === f ? value : active[g];
     if (v) p.set(g, v);
   }
+  // The view survives a filter change; "grid" is the default so it is never
+  // written into the URL, which keeps the shareable links clean.
+  if (view === "list") p.set("view", "list");
+  const qs = p.toString();
+  return qs ? `/deals?${qs}` : "/deals";
+}
+
+/** The same filters and page, in the other view. */
+function hrefView(active: Active, view: View, page: number): string {
+  const p = new URLSearchParams();
+  for (const g of FACETS) if (active[g]) p.set(g, active[g]!);
+  if (page > 1) p.set("page", String(page));
+  if (view === "list") p.set("view", "list");
   const qs = p.toString();
   return qs ? `/deals?${qs}` : "/deals";
 }
@@ -273,12 +302,8 @@ function atLedger(href: string): string {
   return `${href}#ledger`;
 }
 
-function hrefPage(active: Active, page: number): string {
-  const p = new URLSearchParams();
-  for (const g of FACETS) if (active[g]) p.set(g, active[g]!);
-  if (page > 1) p.set("page", String(page));
-  const qs = p.toString();
-  return qs ? `/deals?${qs}` : "/deals";
+function hrefPage(active: Active, view: View, page: number): string {
+  return hrefView(active, view, page);
 }
 
 /* ── Metadata ─────────────────────────────────────────────────── */
@@ -307,7 +332,10 @@ export async function generateMetadata({
   const total = deals.filter((d) => matches(d, active)).length;
   const pages = Math.max(1, Math.ceil(total / PER_PAGE));
   const page = Math.min(readPage(searchParams), pages);
-  const canonical = hrefPage(active, page);
+  // The canonical ignores the view. Grid and list are the same records in two
+  // presentations, so ?view=list is a duplicate of the page it points at and
+  // should not compete with it in search.
+  const canonical = hrefPage(active, "grid", page);
 
   if (!bits.length) {
     return {
@@ -354,6 +382,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
   const { deals, logoByBrand, tintByBrand } = await loadLedger();
 
   const active = readActive(searchParams);
+  const view = readView(searchParams);
   const hasFilters = FACETS.some((f) => active[f]);
   const filtered = deals.filter((d) => matches(d, active));
 
@@ -367,13 +396,16 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
   const athletes = new Set(deals.map((d) => d.athlete_name).filter(Boolean)).size;
   const brands = new Set(deals.map((d) => d.brand_name).filter(Boolean)).size;
 
-  // Deal 1 is the hero, deals 2-9 are the strip. Both are suppressed on a
-  // filtered view: they would show deals that contradict the filter directly
-  // above rows that obey it, and the ledger is already reverse-chronological,
-  // so its first rows ARE the latest matching deals.
-  const dated = deals.filter((d) => d.date_announced && d.image_url);
-  const hero = hasFilters ? null : dated[0] ?? null;
-  const strip = hasFilters ? [] : dated.slice(1, 1 + STRIP_COUNT);
+  // The newest deal with a photo becomes the hero. Suppressed on a filtered
+  // view, where it would show a deal that contradicts the filter directly
+  // above cards that obey it.
+  //
+  // The "Latest" photo strip that used to sit under the hero is gone: the
+  // grid below is itself a photo feed in the same order, so the strip was
+  // showing the same eight deals twice.
+  const hero = hasFilters
+    ? null
+    : deals.find((d) => d.date_announced && d.image_url) ?? null;
 
   return (
     <div className="dl-page">
@@ -397,31 +429,42 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
         </header>
       )}
 
-      <DealStrip deals={strip} tintByBrand={tintByBrand} />
-
       {/* ── Ledger ─────────────────────────────────────────── */}
       <section className="dl-ledger-section" id="ledger">
         <div className="dl-band">
           <div className="dl-section-head">
             <h2 className="pg-h2">{hero ? "Every deal" : "The ledger"}</h2>
-            <span className="pg-label dl-result-count">
-              {filtered.length.toLocaleString("en-US")}
-              {hasFilters ? ` of ${deals.length.toLocaleString("en-US")}` : ""} deals
-              {pages > 1 ? ` · page ${page} of ${pages}` : ""}
-            </span>
+            <div className="dl-section-tools">
+              <span className="pg-label dl-result-count">
+                {filtered.length.toLocaleString("en-US")}
+                {hasFilters ? ` of ${deals.length.toLocaleString("en-US")}` : ""} deals
+                {pages > 1 ? ` · page ${page} of ${pages}` : ""}
+              </span>
+              <ViewToggle active={active} view={view} page={page} />
+            </div>
           </div>
 
-          <Filters deals={deals} active={active} hasFilters={hasFilters} />
+          <Filters deals={deals} active={active} view={view} hasFilters={hasFilters} />
 
           {rows.length === 0 ? (
             <div className="dl-empty">
               <p className="pg-lead">No deals match that combination.</p>
               <p style={{ marginTop: 16 }}>
-                <Link href="/deals" className="pg-btn dl-chip-clear">
+                <Link href={hrefView({}, view, 1)} className="pg-btn dl-chip-clear">
                   Clear filters
                 </Link>
               </p>
             </div>
+          ) : view === "grid" ? (
+            <ol className="dl-grid">
+              {rows.map((d) => (
+                <DealCard
+                  key={d.id}
+                  deal={d}
+                  tint={d.brand_id ? tintByBrand[d.brand_id] : undefined}
+                />
+              ))}
+            </ol>
           ) : (
             <>
               <div className="dl-cols dl-head" aria-hidden="true">
@@ -446,7 +489,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
             </>
           )}
 
-          {pages > 1 && <Pager active={active} page={page} pages={pages} />}
+          {pages > 1 && <Pager active={active} view={view} page={page} pages={pages} />}
         </div>
       </section>
 
@@ -529,6 +572,109 @@ function HeroDeal({
   );
 }
 
+/* ── Card ─────────────────────────────────────────────────────── */
+
+/**
+ * One deal as a 4:5 photo card — the default ledger.
+ *
+ * Every fact is real text in the server HTML: athlete, brand, school, sport
+ * and date. Nothing here is drawn to a canvas or filled in by script, so a
+ * crawler reading /deals gets the same 50 deals a person sees.
+ */
+function DealCard({ deal, tint }: { deal: DealRow; tint?: string }) {
+  // 640 covers the widest card (about 280px) on a 2x screen. Fifty originals
+  // would be roughly 90 MB; fifty of these are about 1 MB.
+  const src = thumbUrl(deal.image_url, 640);
+  const focal = deal.focal_point || "50% 25%";
+  const zoom = zoomScale(deal.zoom_desktop);
+  const name = deal.athlete_name || "Team campaign";
+  const school = canonicalSchool(deal.athlete_school);
+  const meta = [school, deal.athlete_sport].filter(Boolean).join(" · ");
+
+  return (
+    <li className="dl-card">
+      <Link href={`/deals/${deal.slug}`} className="dl-card-link">
+        <div className="dl-card-photo">
+          {src ? (
+            <img
+              src={src}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              style={{
+                objectPosition: focal,
+                transform: zoom ? `scale(${zoom})` : undefined,
+                transformOrigin: focal,
+              }}
+            />
+          ) : (
+            <div
+              className="dl-thumb-empty"
+              style={{ background: tint ?? "rgba(250,248,245,0.05)" }}
+              aria-hidden="true"
+            >
+              <span className="pg-h3 dl-card-initials">{initialsOf(deal.athlete_name)}</span>
+            </div>
+          )}
+          {/* Design system rule 4: the flat bottom edge dissolves into the
+              black ground. It sits under the caption, on the empty part of
+              the crop, so it never darkens a face. */}
+          <div className="dl-card-scrim" aria-hidden="true" />
+
+          <div className="dl-card-caption">
+            <div className="pg-eyebrow dl-card-brand">{deal.brand_name}</div>
+            <div className="pg-h3 dl-card-name">{name}</div>
+            {meta && <div className="pg-label dl-card-meta">{meta}</div>}
+            <time className="pg-label dl-card-date" dateTime={dealDateISO(deal.date_announced)}>
+              {dealDate(deal.date_announced)}
+            </time>
+          </div>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+/* ── View toggle ──────────────────────────────────────────────── */
+
+/**
+ * Two links, not a control. Both views are real URLs, so the toggle works
+ * with JavaScript off and either state can be shared.
+ */
+function ViewToggle({ active, view, page }: { active: Active; view: View; page: number }) {
+  return (
+    <div className="dl-view-toggle" role="group" aria-label="Layout">
+      <Link
+        href={atLedger(hrefView(active, "grid", page))}
+        className="dl-view-btn"
+        aria-current={view === "grid" ? "true" : undefined}
+        aria-label="Photo grid"
+        title="Photo grid"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+        </svg>
+      </Link>
+      <Link
+        href={atLedger(hrefView(active, "list", page))}
+        className="dl-view-btn"
+        aria-current={view === "list" ? "true" : undefined}
+        aria-label="Compact list"
+        title="Compact list"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="4.5" width="18" height="2.5" rx="1.25" />
+          <rect x="3" y="10.75" width="18" height="2.5" rx="1.25" />
+          <rect x="3" y="17" width="18" height="2.5" rx="1.25" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
 /* ── Row ──────────────────────────────────────────────────────── */
 
 function LedgerRow({
@@ -605,10 +751,12 @@ function LedgerRow({
 function Filters({
   deals,
   active,
+  view,
   hasFilters,
 }: {
   deals: DealRow[];
   active: Active;
+  view: View;
   hasFilters: boolean;
 }) {
   return (
@@ -630,7 +778,7 @@ function Filters({
                 {options.map((o) => (
                   <Link
                     key={o.slug}
-                    href={atLedger(hrefWith(active, f, o.slug === current ? null : o.slug))}
+                    href={atLedger(hrefWith(active, view, f, o.slug === current ? null : o.slug))}
                     aria-current={o.slug === current ? "true" : undefined}
                     className="pg-body"
                   >
@@ -653,7 +801,7 @@ function Filters({
               <span key={f} className="dl-chip pg-btn">
                 {labelFor(deals, f, slug)}
                 <Link
-                  href={atLedger(hrefWith(active, f, null))}
+                  href={atLedger(hrefWith(active, view, f, null))}
                   className="dl-chip-x"
                   aria-label={`Remove the ${FACET_LABEL[f].toLowerCase()} filter`}
                 >
@@ -662,7 +810,7 @@ function Filters({
               </span>
             );
           })}
-          <Link href="/deals#ledger" className="pg-btn dl-chip-clear">
+          <Link href={atLedger(hrefView({}, view, 1))} className="pg-btn dl-chip-clear">
             Clear all
           </Link>
         </div>
@@ -689,11 +837,11 @@ function pageWindow(page: number, pages: number): (number | "gap")[] {
   return out;
 }
 
-function Pager({ active, page, pages }: { active: Active; page: number; pages: number }) {
+function Pager({ active, view, page, pages }: { active: Active; view: View; page: number; pages: number }) {
   return (
     <nav className="dl-pager" aria-label="Ledger pages">
       {page > 1 ? (
-        <Link href={atLedger(hrefPage(active, page - 1))} className="pg-btn" rel="prev">
+        <Link href={atLedger(hrefPage(active, view, page - 1))} className="pg-btn" rel="prev">
           Previous
         </Link>
       ) : (
@@ -712,14 +860,14 @@ function Pager({ active, page, pages }: { active: Active; page: number; pages: n
             {n}
           </span>
         ) : (
-          <Link key={n} href={atLedger(hrefPage(active, n))} className="pg-btn">
+          <Link key={n} href={atLedger(hrefPage(active, view, n))} className="pg-btn">
             {n}
           </Link>
         )
       )}
 
       {page < pages ? (
-        <Link href={atLedger(hrefPage(active, page + 1))} className="pg-btn" rel="next">
+        <Link href={atLedger(hrefPage(active, view, page + 1))} className="pg-btn" rel="next">
           Next
         </Link>
       ) : (

@@ -105,95 +105,6 @@
 /* A filtered view has no hero photo, so it gets a plain heading band. */
 .dl-hero-fallback { padding-top: clamp(28px, 5vw, 56px); padding-bottom: clamp(16px, 2vw, 24px); }
 
-/* ── Latest strip ──────────────────────────────────────────── */
-.dl-strip-section { padding: clamp(28px, 4vw, 44px) 0 clamp(20px, 3vw, 32px); }
-.dl-strip-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: clamp(14px, 2vw, 20px);
-}
-.dl-strip-controls { display: flex; align-items: center; gap: 10px; }
-.dl-strip-seeall {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-}
-.dl-strip-seeall:hover { background: rgba(255, 255, 255, 0.12); }
-
-.dl-strip-arrow {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(250, 248, 245, 0.9);
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
-}
-.dl-strip-arrow svg { width: 18px; height: 18px; }
-.dl-strip-arrow:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
-.dl-strip-arrow:disabled { opacity: 0.3; cursor: default; }
-/* Touch scrolls the rail directly, so the arrows are desktop-only rather than
-   two dead controls taking up a phone's width. */
-@media (max-width: 750px) { .dl-strip-arrow { display: none; } }
-
-.dl-strip-rail {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  /* The gutters are on .dl-band, so the rail can run to the container edge
-     and the last card still stops where the text above it does. */
-  padding-bottom: 4px;
-}
-.dl-strip-rail::-webkit-scrollbar { display: none; }
-
-.dl-strip-card {
-  flex: 0 0 auto;
-  width: calc((100% - 5 * 16px) / 5.4);
-  min-width: 150px;
-  scroll-snap-align: start;
-}
-@media (max-width: 1000px) {
-  .dl-strip-card { width: calc((100% - 3 * 16px) / 3.4); }
-}
-.dl-strip-photo {
-  position: relative;
-  aspect-ratio: 4 / 5;
-  border-radius: 16px;
-  overflow: hidden;
-  background: rgba(250, 248, 245, 0.04);
-  border: 1px solid rgba(250, 248, 245, 0.1);
-}
-.dl-strip-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s ease;
-}
-.dl-strip-card:hover .dl-strip-photo img { transform: scale(1.04); }
-/* Deep enough that the orange brand line clears the photo underneath it —
-   at 0.45 the eyebrow was washing out over a bright frame. */
-.dl-strip-scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(7, 7, 10, 0.95) 0%, rgba(7, 7, 10, 0.78) 26%, rgba(7, 7, 10, 0.3) 52%, transparent 76%);
-}
-.dl-strip-caption { position: absolute; inset: auto 0 0 0; padding: 14px 14px 16px; }
-.dl-strip-brand { margin-bottom: 4px; }
-.dl-strip-date { margin-top: 5px; }
-
 /* ── Filters ───────────────────────────────────────────────── */
 .dl-filters { display: flex; flex-direction: column; gap: 12px; }
 .dl-facets { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -280,6 +191,93 @@
    which browsers disagree about. The columns are the same either way and
    every cell is real text in the server HTML. */
 .dl-ledger-section { padding: clamp(28px, 4vw, 44px) 0 0; border-top: 1px solid var(--glass-border); }
+.dl-section-tools { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+/* Two links styled as one control. Both views are real URLs, so this keeps
+   working with JavaScript off and either state can be shared. */
+.dl-view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+.dl-view-btn {
+  display: grid;
+  place-items: center;
+  /* 36px + the toggle's 4px padding each side clears 44px on the group, and
+     the links sit side by side rather than stacked, so each is comfortably
+     tappable. */
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: rgba(250, 248, 245, 0.5);
+  transition: background 0.15s, color 0.15s;
+}
+.dl-view-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.dl-view-btn:hover { color: rgba(250, 248, 245, 1); background: rgba(255, 255, 255, 0.08); }
+.dl-view-btn[aria-current="true"] { color: var(--orange); background: var(--orange-dim); }
+
+/* ── The grid — this IS the ledger ─────────────────────────────
+   Five across at the full band, stepping down to two on a phone. The card is
+   a 4:5 photo with the facts on a scrim over it; nothing is hidden behind
+   hover, so the same information is on screen on a touch device. */
+.dl-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+/* The brief's counts are inclusive at each width — 5 at 1400, 4 at 1200,
+   3 at 900 — so each query stops one pixel short of the width it names. */
+@media (max-width: 1399px) { .dl-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1199px) { .dl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 899px)  { .dl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.dl-card-link {
+  display: block;
+  transition: transform 0.2s ease;
+}
+.dl-card-link:hover { transform: translateY(-4px); }
+
+.dl-card-photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(250, 248, 245, 0.04);
+  border: 1px solid rgba(250, 248, 245, 0.1);
+}
+.dl-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+.dl-card-link:hover .dl-card-photo img { transform: scale(1.03); }
+
+.dl-card-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(7, 7, 10, 0.95) 0%,
+    rgba(7, 7, 10, 0.8) 28%,
+    rgba(7, 7, 10, 0.3) 55%,
+    transparent 78%
+  );
+  transition: opacity 0.2s ease;
+}
+.dl-card-link:hover .dl-card-scrim { opacity: 0.86; }
+
+.dl-card-caption { position: absolute; inset: auto 0 0 0; padding: 14px 14px 16px; }
+.dl-card-brand { margin-bottom: 5px; }
+.dl-card-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-card-meta { margin-top: 5px; color: rgba(250, 248, 245, 0.68); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-card-date { display: block; margin-top: 3px; }
+.dl-card-initials { font-size: clamp(28px, 4vw, 40px); }
+
 .dl-section-head {
   display: flex;
   align-items: baseline;
@@ -405,8 +403,15 @@
   .dl-hero-counts { text-align: left; gap: 22px; width: 100%; }
   .dl-hero-counts .pg-stat { font-size: 34px; }
 
-  /* 1.3 cards visible, so the row visibly continues past the edge. */
-  .dl-strip-card { width: calc((100% - 16px) / 1.3); min-width: 0; }
+  /* Two across with tighter gutters — a third column at 390 would put the
+     athlete name below the readable floor. */
+  .dl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .dl-card-photo { border-radius: 12px; }
+  .dl-card-caption { padding: 10px 10px 12px; }
+  /* At a 165px card "St. John's · Basketball" does not fit on one line, and
+     an ellipsis there hides half the fact. It wraps instead — the caption
+     grows upward over the scrim, which has room for it. */
+  .dl-card-meta { white-space: normal; }
 
   .dl-head { display: none; }
 
