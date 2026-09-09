@@ -96,8 +96,8 @@ export default function MediaGrid({
 
       {shown.length === 0 ? (
         <div className="pgd-panel">
-          <b style={{ fontSize: 13 }}>Nothing here yet</b>
-          <p className="pgd-card-meta" style={{ marginTop: 6 }}>
+          <b className="pgd-empty-h">Nothing here yet</b>
+          <p className="pgd-card-meta" style={{ marginTop: 8 }}>
             Content lands here as it&rsquo;s delivered.
           </p>
         </div>

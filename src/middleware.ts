@@ -144,6 +144,8 @@ export async function middleware(request: NextRequest) {
     "/portal/athletes",
     "/portal/content",
     "/portal/settings",
+    // The toolbar search box's results page.
+    "/portal/search",
   ]);
 
   // Campaign detail lives under an allowlisted parent, so it is a prefix
@@ -253,5 +255,6 @@ export const config = {
     "/portal/athletes",
     "/portal/content",
     "/portal/settings",
+    "/portal/search",
   ],
 };

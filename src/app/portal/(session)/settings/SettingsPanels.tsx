@@ -42,8 +42,10 @@ export default function SettingsPanels({ data }: { data: SettingsData }) {
                   <b>{t.name || t.email || "Invited"}</b>
                   {t.name && t.email ? <span>{t.email}</span> : null}
                 </span>
-                {t.role ? <span className="pgd-tagchip">{t.role}</span> : null}
-                <span className="pgd-tagchip">{t.status}</span>
+                {/* Role and status as plain words, not pills. Two chips per
+                    row on a five-row list was ten boxes saying two things. */}
+                {t.role ? <span className="pgd-row-note">{t.role}</span> : null}
+                <span className="pgd-row-note">{t.status}</span>
               </div>
             ))}
           </div>
@@ -80,7 +82,7 @@ export default function SettingsPanels({ data }: { data: SettingsData }) {
               <span className="pgd-row-main">
                 <b style={{ fontWeight: 400, color: "rgba(250,248,245,.68)" }}>{label}</b>
               </span>
-              <span className="pgd-tagchip">Coming soon</span>
+              <span className="pgd-row-note">Coming soon</span>
               <input type="checkbox" disabled aria-label={label} />
             </div>
           ))}

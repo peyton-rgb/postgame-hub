@@ -120,6 +120,7 @@ export default function PortalShell({
   title,
   subtitle,
   aside,
+  searchValue,
   children,
 }: {
   active: PortalSection;
@@ -128,6 +129,8 @@ export default function PortalShell({
   title: string;
   subtitle?: string | null;
   aside?: React.ReactNode;
+  /** Prefills the toolbar box, so the search page shows the term it answered. */
+  searchValue?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -196,16 +199,28 @@ export default function PortalShell({
                 </span>
               )}
 
-              {/* Visual only this phase — a plain span, not a button, so a
-                  screen reader doesn't announce a control that does nothing.
-                  The range selector and Notifications used to sit here and are
-                  gone until they do something: a control that ignores every
-                  click teaches people the whole toolbar is decorative. Search
-                  stays because it reads as the affordance the page is missing,
-                  and the avatar because it is the account anchor. */}
-              <span className="pgd-t pgd-search" aria-hidden="true">
-                Search campaigns, athletes, posts
-              </span>
+              {/* Search WORKS now. It was a decorative span through 3b, and
+                  a box that ignores every keystroke teaches people the whole
+                  toolbar is furniture. A plain GET form to /portal/search: no
+                  client state, the query lives in the URL, and it is the only
+                  control up here — the range selector and Notifications are
+                  still gone until they do something.
+
+                  No brand is carried in the query: an admin's previewed brand
+                  lives in the pg_portal_preview_brand cookie, which
+                  resolveSessionPortal() reads on the results page exactly as
+                  it does here. Putting the brand id in the URL would also put
+                  it in the address bar of every search. */}
+              <form className="pgd-search-form" action="/portal/search" method="get" role="search">
+                <input
+                  className="pgd-t pgd-search"
+                  type="search"
+                  name="q"
+                  defaultValue={searchValue ?? ""}
+                  placeholder="Search campaigns and athletes"
+                  aria-label="Search campaigns and athletes"
+                />
+              </form>
               <span className="pgd-av" role="img" aria-label="Your account">
                 <PersonIcon />
               </span>

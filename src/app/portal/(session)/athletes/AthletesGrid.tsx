@@ -2,16 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { DirectoryAthlete } from "@/lib/portal/pages-data";
-import { initials } from "@/lib/portal/format";
-
-function compact(n: number): string {
-  if (n >= 1_000_000) {
-    const m = n / 1_000_000;
-    return `${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}M`;
-  }
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(n);
-}
+import { compact, initials } from "@/lib/portal/format";
 
 export default function AthletesGrid({
   athletes,
@@ -99,8 +90,8 @@ export default function AthletesGrid({
 
       {matched.length === 0 ? (
         <div className="pgd-panel">
-          <b style={{ fontSize: 13 }}>No athletes match that</b>
-          <p className="pgd-card-meta" style={{ marginTop: 6 }}>
+          <b className="pgd-empty-h">No athletes match that</b>
+          <p className="pgd-card-meta" style={{ marginTop: 8 }}>
             Clear the filters to see everyone.
           </p>
         </div>
@@ -117,24 +108,40 @@ export default function AthletesGrid({
                   {initials(a.name)}
                 </span>
               )}
+              {/* Two lines, neither truncated: name, then school · sport and
+                  which campaigns they were on. The figures are their own
+                  right-hand column, so a long school name and a follower
+                  count are no longer competing for the same width. */}
               <span className="pgd-person-body">
                 <span className="pgd-person-name">{a.name}</span>
                 {/* Only the facts we have; no separator for absent fields. */}
-                {[a.school, a.sport].filter(Boolean).length > 0 ? (
+                {[
+                  a.school,
+                  a.sport,
+                  a.campaigns > 1 ? `${a.campaigns} campaigns` : a.lastCampaign,
+                ].filter(Boolean).length > 0 ? (
                   <span className="pgd-person-meta">
-                    {[a.school, a.sport].filter(Boolean).join(" · ")}
+                    {[
+                      a.school,
+                      a.sport,
+                      a.campaigns > 1 ? `${a.campaigns} campaigns` : a.lastCampaign,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
                 ) : null}
-                <span className="pgd-person-num">
-                  {[
-                    a.followers !== null ? `${compact(a.followers)} followers` : null,
-                    a.views !== null ? `${compact(a.views)} views` : null,
-                    a.campaigns > 1 ? `${a.campaigns} campaigns` : a.lastCampaign,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
               </span>
+              {(a.followers !== null || a.views !== null) && (
+                <span className="pgd-person-nums">
+                  {a.followers !== null && (
+                    <span>
+                      <b>{compact(a.followers)}</b>
+                      followers
+                    </span>
+                  )}
+                  {a.views !== null && <span>{compact(a.views)} views</span>}
+                </span>
+              )}
             </div>
           ))}
         </div>

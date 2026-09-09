@@ -3,22 +3,21 @@ import { anton, arimo } from "@/components/portal/fonts";
 import { compactNumber, type DashboardData } from "@/lib/portal/dashboard-data";
 import type { PortalBrand } from "@/lib/portal-data";
 import type { PortalPreviewChrome } from "@/components/portal/PortalFrame";
-import PortalShell, {
-  TileEmpty,
-  Stroke,
-  ImageIcon,
-  PeopleIcon,
-} from "@/components/portal/PortalShell";
+import PortalShell from "@/components/portal/PortalShell";
 import { initials } from "@/lib/portal/format";
 
 // ============================================================
 // The brand dashboard (Phase 3a) — /portal.
 //
-// Built to docs/briefs/reference/brand-dashboard-desktop-1440x900.html, tile
-// for tile. Layout, spacing, type and colour match the reference; CONTENT does
-// not, because the reference's figures are illustrative by its own admission
-// and this page shows only what a query returned. Six tiles carry real data,
-// one shows a photo without figures, and four render a designed empty state.
+// FIVE MODULES, and every one of them has something in it: the latest
+// wrapped recap, the roster, top posts, the campaigns row, and one Activity
+// strip. It was nine tiles, four of which said "nothing yet" — those four
+// are now four lines in the strip, because four cards saying nothing is four
+// times the furniture for the same nothing.
+//
+// Built from docs/briefs/reference/brand-dashboard-desktop-1440x900.html, but
+// CONTENT never follows the reference: its figures are illustrative by its own
+// admission and this page shows only what a query returned.
 //
 // WHY THIS PAGE HAS ITS OWN CHROME. The reference specifies a 72px icon rail
 // and a pill nav; PortalFrame provides a utility strip and a sticky lockup
@@ -33,42 +32,6 @@ import { initials } from "@/lib/portal/format";
 // there — campaign names, the roster subline. The greeting is "Welcome back",
 // never "Welcome back, CVS".
 // ============================================================
-
-/* ---- icons ---------------------------------------------------
-   Inline, from the reference. Every icon-only control carries an
-   aria-label; decorative icons are aria-hidden so a screen reader reads the
-   label once and not twice.
-   ------------------------------------------------------------- */
-const ICON = {
-  home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
-  list: "M4 6h16M4 12h16M4 18h10",
-  chart: "M4 20V10M10 20V4M16 20v-7M22 20H2",
-  bars: "M4 20V10M10 20V4M16 20v-7",
-  check: "M20 6 9 17l-5-5",
-  trend: "M3 17l6-6 4 4 8-8",
-} as const;
-
-/* CalendarIcon and AlertIcon stay local: they are tile-header icons for This
-   week and Waiting on you, not rail icons, so the shell has no use for them.
-   Stroke, ImageIcon, PeopleIcon and TileEmpty are imported from the shell —
-   one definition each, shared with the six Phase 3b pages. */
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 10h18M8 3v4M16 3v4" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 9v4M12 17h0" />
-      <path d="M10.3 3.9 2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-    </svg>
-  );
-}
 
 export default function BrandDashboard({
   brand,
@@ -108,73 +71,7 @@ export default function BrandDashboard({
     >
       <div className="pgd-grid">
 
-          {/* 1 · Waiting on you. Stays orange when empty, per the brief. */}
-          {/* The orange surface is conditional, and that is deliberate on two
-              counts. Brand rule: orange is an accent, never a background fill —
-              it earns a full panel only when it is genuinely calling for
-              attention. And semantically, a card that shouts in alarm orange
-              while reading "nothing waiting on you" contradicts itself. With an
-              empty queue the tile is glass like its three neighbours; the
-              moment a review lands it lights up and carries a count. */}
-          <section
-            className={`pgd-tile pgd-alert${data.waitingCount > 0 ? " pgd-alert-on" : ""}`}
-            aria-labelledby="pgd-waiting"
-          >
-            <h3 id="pgd-waiting">
-              <span className="pgd-ic">
-                <AlertIcon />
-              </span>
-              Waiting on you
-            </h3>
-            {data.waitingCount > 0 ? (
-              <>
-                <span className="pgd-count">{data.waitingCount}</span>
-                <p className="pgd-empty-body">
-                  {data.waitingCount === 1
-                    ? "1 review is ready for your decision."
-                    : `${data.waitingCount} reviews are ready for your decision.`}
-                </p>
-              </>
-            ) : (
-              <TileEmpty
-                line="Nothing waiting on you"
-                note="We'll flag reviews here when content is ready."
-              />
-            )}
-          </section>
-
-          {/* 2 · Posts going live. No source: athlete_deliverables carries no
-                 posted date on any row. Axis with an explanation, not a chart
-                 of zeroes. */}
-          <section className="pgd-tile pgd-chart" aria-labelledby="pgd-going-live">
-            <h3 id="pgd-going-live">
-              <span className="pgd-ic">
-                <Stroke d={ICON.bars} />
-              </span>
-              Posts going live
-            </h3>
-            <TileEmpty
-              line="No posts scheduled this week"
-              note="Scheduled and posted content will chart here."
-            />
-          </section>
-
-          {/* 3 · Deliverables. Ring at 0%, platform split hidden — there is no
-                 platform field on the deliverable to split by. */}
-          <section className="pgd-tile pgd-ring" aria-labelledby="pgd-deliverables">
-            <h3 id="pgd-deliverables">
-              <span className="pgd-ic">
-                <Stroke d={ICON.check} />
-              </span>
-              Deliverables
-            </h3>
-            <TileEmpty
-              line="Nothing delivered yet"
-              note="Progress appears as athletes upload and you approve."
-            />
-          </section>
-
-          {/* 4 · Latest wrapped. Photo from the campaign's hero media; figures
+          {/* 1 · Latest wrapped. Photo from the campaign's hero media; figures
                  from that recap's structured fields, or — when it has none —
                  summed from what its athletes posted, and then labelled as
                  such. An absent figure is omitted, never zero-filled. */}
@@ -183,9 +80,11 @@ export default function BrandDashboard({
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={data.latestWrapped.heroUrl} alt="" />
-                <span className="pgd-tag">Latest wrapped</span>
+                {/* No "Latest wrapped" chip and no "Recap delivered" line.
+                    Both were captions on a tile whose title is the campaign
+                    name — the Campaigns row two modules down says which
+                    campaigns are wrapped, and this one is the newest. */}
                 <div className="pgd-over">
-                  <small>Recap delivered</small>
                   <h2 id="pgd-wrapped">{data.latestWrapped.name}</h2>
                   {data.latestWrapped.figures.length > 0 && (
                     <>
@@ -197,8 +96,10 @@ export default function BrandDashboard({
                           </div>
                         ))}
                       </div>
+                      {/* One footnote for the whole row, not a caption on
+                          each figure. */}
                       {data.latestWrapped.figuresSource && (
-                        <span className="pgd-stats-src">
+                        <span className="pgd-figs-note">
                           {data.latestWrapped.figuresSource}
                         </span>
                       )}
@@ -207,13 +108,8 @@ export default function BrandDashboard({
                 </div>
               </>
             ) : (
-              <div style={{ padding: 14, display: "flex", flexDirection: "column", height: "100%" }}>
-                <h3 id="pgd-wrapped">
-                  <span className="pgd-ic">
-                    <ImageIcon />
-                  </span>
-                  Latest wrapped
-                </h3>
+              <div style={{ padding: 20, display: "flex", flexDirection: "column", height: "100%" }}>
+                <h3 id="pgd-wrapped">Latest wrapped</h3>
                 <p className="pgd-empty-body">
                   Your first recap will appear here once a campaign wraps.
                 </p>
@@ -221,7 +117,7 @@ export default function BrandDashboard({
             )}
           </section>
 
-          {/* 5 · Roster.
+          {/* 2 · Roster.
                  Columns are only the ones with data behind them. Deliverables,
                  Progress, Status and Next all read athlete_deliverables, which
                  is empty — four blank columns would look broken and assert
@@ -232,11 +128,8 @@ export default function BrandDashboard({
             {data.roster ? (
               <>
                 <h3 id="pgd-roster-h">
-                  <span className="pgd-ic">
-                    <PeopleIcon />
-                  </span>
                   {data.roster.title} · {data.roster.campaignName}
-                  <span className="pgd-muted" style={{ fontWeight: 400, marginLeft: 6 }}>
+                  <span className="pgd-muted" style={{ fontWeight: 400 }}>
                     {data.roster.subline}
                   </span>
                 </h3>
@@ -282,12 +175,7 @@ export default function BrandDashboard({
               </>
             ) : (
               <>
-                <h3 id="pgd-roster-h">
-                  <span className="pgd-ic">
-                    <PeopleIcon />
-                  </span>
-                  Live campaign
-                </h3>
+                <h3 id="pgd-roster-h">Live campaign</h3>
                 <p className="pgd-empty-body">
                   No live campaign yet. <a href="/portal/campaigns" style={{ color: "#FF6A3D" }}>See all campaigns</a>
                 </p>
@@ -295,32 +183,14 @@ export default function BrandDashboard({
             )}
           </section>
 
-          {/* 6 · This week. No source: no scheduled-date column exists. */}
-          <section className="pgd-tile pgd-sched" aria-labelledby="pgd-week">
-            <h3 id="pgd-week">
-              <span className="pgd-ic">
-                <CalendarIcon />
-              </span>
-              This week
-            </h3>
-            <TileEmpty
-              line="Nothing scheduled"
-              note="Post dates, review deadlines and recap deliveries land here."
-            />
-          </section>
-
-          {/* 7 · Top posts. No period in the title on purpose: `athletes` has
+          {/* 3 · Top posts. No period in the title on purpose: `athletes` has
                  no post date, so a "30 days" window cannot be computed and
                  claiming one would assert something the data can't support. */}
           <section className="pgd-tile pgd-top" aria-labelledby="pgd-top-h">
-            <h3 id="pgd-top-h">
-              <span className="pgd-ic">
-                <Stroke d={ICON.trend} />
-              </span>
-              Top posts
-            </h3>
+            <h3 id="pgd-top-h">Top posts</h3>
             {data.topPosts.length > 0 ? (
-              data.topPosts.map((p, i) => {
+              <div className="pgd-scroll">
+              {data.topPosts.map((p, i) => {
                 const Row = (
                   <>
                     <span className="pgd-r" aria-hidden="true">
@@ -363,15 +233,20 @@ export default function BrandDashboard({
                     {Row}
                   </div>
                 );
-              })
+              })}
+              </div>
             ) : (
               <p className="pgd-empty-body">Results appear here once posts are verified.</p>
             )}
           </section>
 
-          {/* 8 · Campaigns. Live first, then wrapped. Fewer cards when there
-                 are fewer campaigns — never padded. */}
-          <section className="pgd-tile pgd-camps" aria-labelledby="pgd-camps-h">
+          {/* 4 · Campaigns. Live first, then wrapped. Fewer cards when there
+                 are fewer campaigns — never padded.
+
+                 NOT a tile: a plain heading with the row of cards under it.
+                 Wrapped in a card it was a box holding boxes, and the outer
+                 one carried nothing the heading didn't already say. */}
+          <section className="pgd-camps" aria-labelledby="pgd-camps-h">
             <h3 id="pgd-camps-h">
               Campaigns
               <small>
@@ -413,12 +288,9 @@ export default function BrandDashboard({
                         </div>
                       ) : null;
                     })()}
-                    {/* Chip only. The footer used to carry a label AND a chip
-                        that said the same thing — "Recap delivered / Wrapped",
-                        "Live / Live" — and in a card this narrow the label
-                        ellipsised to "Recap deliv…". The reference's label was a
-                        posted count, which we have no source for, so the
-                        duplicate goes rather than being padded out. */}
+                    {/* State as a coloured word — orange live, quiet ink
+                        wrapped. It was a pill, which is a box drawn around one
+                        word that the colour already says. */}
                     <div className="pgd-cf">
                       <b>{c.live ? "Live" : "Wrapped"}</b>
                     </div>
@@ -430,6 +302,42 @@ export default function BrandDashboard({
                 Your Postgame contact will add your first campaign here.
               </p>
             )}
+          </section>
+
+          {/* 5 · Activity. One strip carrying the four workflow states that
+                 used to be four tiles: Waiting on you, Posts going live,
+                 Deliverables, This week. All four are empty for every brand
+                 today — review_sessions is empty database-wide and
+                 athlete_deliverables carries no dates — so they are four
+                 lines rather than four cards.
+
+                 Waiting on you is the one that can change today, and when it
+                 does it says so in orange in the same place. No fake figures
+                 in any of them: each line states the absence plainly. */}
+          <section className="pgd-tile pgd-activity" aria-labelledby="pgd-activity-h">
+            <h3 id="pgd-activity-h">Activity</h3>
+            <div className="pgd-acts">
+              <span className={`pgd-act${data.waitingCount > 0 ? " pgd-act-on" : ""}`}>
+                <b>Waiting on you</b>
+                {data.waitingCount > 0
+                  ? data.waitingCount === 1
+                    ? "1 review ready for your decision"
+                    : `${data.waitingCount} reviews ready for your decision`
+                  : "Nothing waiting"}
+              </span>
+              <span className="pgd-act">
+                <b>Posts going live</b>
+                Nothing scheduled this week
+              </span>
+              <span className="pgd-act">
+                <b>Deliverables</b>
+                Nothing delivered yet
+              </span>
+              <span className="pgd-act">
+                <b>This week</b>
+                Nothing scheduled
+              </span>
+            </div>
           </section>
         </div>
     </PortalShell>

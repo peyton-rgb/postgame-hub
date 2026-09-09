@@ -3,29 +3,33 @@
 import { useMemo, useState } from "react";
 import MediaGrid from "@/components/portal/pages/MediaGrid";
 import { TileEmpty } from "@/components/portal/PortalShell";
+import { compact, initials } from "@/lib/portal/format";
 import type { loadCampaignDetail } from "@/lib/portal/pages-data";
 
 type Campaign = NonNullable<Awaited<ReturnType<typeof loadCampaignDetail>>>;
 
-function compact(n: number): string {
-  if (n >= 1_000_000) {
-    const m = n / 1_000_000;
-    return `${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}M`;
-  }
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(n);
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
-}
-
-export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) {
+export default function CampaignDetail({
+  campaign: c,
+  initialTab,
+}: {
+  campaign: Campaign;
+  /** From ?tab= on the URL. Anything unrecognised falls back to overview. */
+  initialTab?: string;
+}) {
   // Tab set depends on state: live gets Approvals, wrapped gets Results.
   const tabs = c.live
     ? (["overview", "athletes", "content", "approvals"] as const)
     : (["overview", "athletes", "content", "results"] as const);
-  const [tab, setTab] = useState<(typeof tabs)[number]>("overview");
+  // ?tab= is honoured on load, so /portal/campaigns/spf-cvs-2026?tab=results
+  // opens on Results. It is validated against THIS campaign's tab set — a
+  // live campaign has no results tab, and ?tab=results on one would otherwise
+  // select a tab with no button to get back from.
+  const [tab, setTab] = useState<(typeof tabs)[number]>(() => {
+    const want = (initialTab ?? "").toLowerCase();
+    return (tabs as readonly string[]).includes(want)
+      ? (want as (typeof tabs)[number])
+      : "overview";
+  });
   const [school, setSchool] = useState("");
 
   const schools = useMemo(
@@ -46,13 +50,11 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
           // eslint-disable-next-line @next/next/no-img-element
           <img src={c.heroUrl} alt="" />
         ) : null}
+        {/* NAME ONLY. The quarter · type · platform line that used to sit
+            under it is in the page header 40px above, so it was printed
+            twice on every campaign. */}
         <div className="pgd-hero-in">
           <h2>{c.name}</h2>
-          {[c.quarter, c.campaignType, c.platform].filter(Boolean).length > 0 && (
-            <p className="pgd-card-meta">
-              {[c.quarter, c.campaignType, c.platform].filter(Boolean).join(" · ")}
-            </p>
-          )}
         </div>
       </div>
 
@@ -80,22 +82,22 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
           {(c.athleteCount > 0 || c.schoolCount > 0 || c.media.length > 0) && (
             <section className="pgd-panel">
               <h3>At a glance</h3>
-              <div style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>
+              <div className="pgd-figs">
                 {c.athleteCount > 0 && (
                   <span className="pgd-stat">
-                    <b style={{ fontSize: 24 }}>{c.athleteCount}</b>
+                    <b>{c.athleteCount}</b>
                     <span>Athletes</span>
                   </span>
                 )}
                 {c.schoolCount > 0 && (
                   <span className="pgd-stat">
-                    <b style={{ fontSize: 24 }}>{c.schoolCount}</b>
+                    <b>{c.schoolCount}</b>
                     <span>Schools</span>
                   </span>
                 )}
                 {c.media.length > 0 && (
                   <span className="pgd-stat">
-                    <b style={{ fontSize: 24 }}>{c.media.length}</b>
+                    <b>{c.media.length}</b>
                     <span>Files</span>
                   </span>
                 )}
@@ -203,6 +205,10 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
                         {initials(a.name)}
                       </span>
                     )}
+                    {/* TWO LINES: name, then school · sport. Neither is
+                        ellipsised any more — they wrap. The numbers moved to
+                        their own right-hand column rather than being a third
+                        line squeezed into the same width. */}
                     <span className="pgd-person-body">
                       <span className="pgd-person-name">{a.name}</span>
                       {[a.school, a.sport].filter(Boolean).length > 0 && (
@@ -210,17 +216,18 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
                           {[a.school, a.sport].filter(Boolean).join(" · ")}
                         </span>
                       )}
-                      {(a.followers !== null || a.views !== null) && (
-                        <span className="pgd-person-num">
-                          {[
-                            a.followers !== null ? `${compact(a.followers)} followers` : null,
-                            a.views !== null ? `${compact(a.views)} views` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      )}
                     </span>
+                    {(a.followers !== null || a.views !== null) && (
+                      <span className="pgd-person-nums">
+                        {a.followers !== null && (
+                          <span>
+                            <b>{compact(a.followers)}</b>
+                            followers
+                          </span>
+                        )}
+                        {a.views !== null && <span>{compact(a.views)} views</span>}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -266,7 +273,7 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
 
       {tab === "results" && (
         <>
-          {c.figures.length === 0 && !c.takeawaysHtml ? (
+          {c.figures.length === 0 && !c.takeawaysHtml && c.topContent.length === 0 ? (
             <div className="pgd-panel">
               {/* Spec: if the recap has no structured content, say results are
                   being prepared and show the hero and athlete count. Never
@@ -284,23 +291,74 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
             <>
               {c.figures.length > 0 && (
                 <section className="pgd-panel">
-                  <h3>
-                    Results
-                    {/* Named when the numbers were summed from what the
-                        athletes posted rather than set as recap targets, so
-                        nobody reads a derived total as an agreed one. */}
-                    {c.figuresSource && (
-                      <span className="pgd-group-note">{c.figuresSource}</span>
-                    )}
-                  </h3>
-                  <div style={{ display: "flex", gap: 26, flexWrap: "wrap" }}>
+                  <h3>Results</h3>
+                  <div className="pgd-figs pgd-figs-lg">
                     {c.figures.map((f) => (
                       <span className="pgd-stat" key={f.label}>
-                        <b style={{ fontSize: 28 }}>{f.value}</b>
+                        <b>{f.value}</b>
                         <span>{f.label}</span>
                       </span>
                     ))}
                   </div>
+                  {/* ONE footnote for the row, where it used to be a marker in
+                      the heading: these numbers were summed from what the
+                      athletes posted rather than set as recap targets, and a
+                      brand should not read a derived total as an agreed one. */}
+                  {c.figuresSource && (
+                    <span className="pgd-figs-note">{c.figuresSource}</span>
+                  )}
+                </section>
+              )}
+              {/* Top content: the six highest-viewed posts on this campaign,
+                  directly under the figures those posts add up to. Same rows
+                  as the dashboard's Top posts tile. */}
+              {c.topContent.length > 0 && (
+                <section className="pgd-panel">
+                  <h3>Top content</h3>
+                  {c.topContent.map((p, i) => {
+                    const Row = (
+                      <>
+                        <span className="pgd-r" aria-hidden="true">
+                          {i + 1}
+                        </span>
+                        {p.thumbUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.thumbUrl} alt="" />
+                        ) : (
+                          <span className="pgd-nothumb">{initials(p.name)}</span>
+                        )}
+                        <div>
+                          <b>{p.name}</b>
+                          <small>IG Reel{p.school ? ` · ${p.school}` : ""}</small>
+                        </div>
+                        {/* Inline, not stacked like the dashboard tile's:
+                            this panel is the full content width, and a label
+                            on its own line under the number left the two
+                            stranded at the far right. */}
+                        <div className="pgd-v pgd-v-inline">
+                          <b>{compact(p.views ?? 0)}</b> views
+                        </div>
+                      </>
+                    );
+                    // Prefer the live post — it is the thing the figure
+                    // describes. Without one the row still stands; it just
+                    // isn't a link.
+                    return p.postUrl ? (
+                      <a
+                        className="pgd-post"
+                        key={p.id}
+                        href={p.postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {Row}
+                      </a>
+                    ) : (
+                      <div className="pgd-post" key={p.id}>
+                        {Row}
+                      </div>
+                    );
+                  })}
                 </section>
               )}
               {c.takeawaysHtml && (

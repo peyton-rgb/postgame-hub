@@ -41,7 +41,7 @@ export default async function Page({
         [campaign.quarter, campaign.campaignType].filter(Boolean).join(" · ") || null
       }
     >
-      <CampaignDetail campaign={campaign} />
+      <CampaignDetail campaign={campaign} initialTab={searchParams.tab} />
     </PortalShell>
   );
 }
