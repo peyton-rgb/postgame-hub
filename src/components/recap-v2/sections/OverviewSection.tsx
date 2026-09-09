@@ -1,6 +1,7 @@
 // #overview — prose column plus spec table. Either half can be missing; the
 // section only renders when at least one of them has something (see guards).
 import { SECTION_HEADING, hasRichText, specRows } from "@/lib/recap-v2/guards";
+import { sanitizeRichHtml } from "@/lib/rich-text";
 import type { Campaign } from "@/lib/types";
 
 export function OverviewSection({ campaign }: { campaign: Campaign }) {
@@ -12,7 +13,10 @@ export function OverviewSection({ campaign }: { campaign: Campaign }) {
       <p data-slot="kicker">{h.kicker}</p>
       <h2>{h.title}</h2>
       {hasRichText(s.description) ? (
-        <div data-slot="prose" dangerouslySetInnerHTML={{ __html: s.description as string }} />
+        <div
+          data-slot="prose"
+          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(s.description as string) }}
+        />
       ) : null}
       {rows.length > 0 ? (
         <dl data-slot="spec" data-rows={rows.length}>
