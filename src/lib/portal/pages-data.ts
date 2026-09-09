@@ -14,6 +14,7 @@
 
 import { createServerSupabase } from "@/lib/supabase-server";
 import { richText } from "@/lib/rich-text";
+import { titleCaseSchool } from "@/lib/portal/format";
 
 export const WRAPPED = ["delivered", "closed"] as const;
 const NO_MATCH = "00000000-0000-0000-0000-000000000000";
@@ -332,7 +333,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
   const athletes: DetailAthlete[] = rawAthletes.map((a) => ({
     id: a.id,
     name: a.name,
-    school: a.school,
+    school: titleCaseSchool(a.school),
     sport: a.sport,
     followers: a.ig_followers,
     views: reelViews(a.metrics),
@@ -461,7 +462,7 @@ export async function loadContentGallery(brandId: string) {
       .in("id", athleteIds);
     for (const a of (ath ?? []) as { id: string; name: string | null; school: string | null }[]) {
       if (a.name) nameById.set(a.id, a.name);
-      const school = a.school?.trim();
+      const school = titleCaseSchool(a.school);
       if (school) schoolById.set(a.id, school);
     }
   }
@@ -694,7 +695,7 @@ export async function loadAthleteDirectory(brandId: string) {
   const athletes: DirectoryAthlete[] = rows.map((r) => ({
     key: r.athlete_key,
     name: r.name,
-    school: r.school,
+    school: titleCaseSchool(r.school),
     sport: r.sport,
     followers: r.followers,
     campaigns: r.campaigns,

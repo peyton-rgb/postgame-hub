@@ -146,6 +146,7 @@
   font-weight: 400; font-size: 26px; line-height: 1;
 }
 .pgd-kpi span { font-size: 11px; color: var(--ink-50) }
+.pgd-kpi small { display: block; font-size: 9px; color: var(--ink-45); margin-top: 1px; white-space: nowrap }
 
 /* ---- the tile grid ------------------------------------------- */
 .pgd-grid {
@@ -153,7 +154,10 @@
   /* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so one wide
      child (the roster table) can push the whole grid past the viewport. */
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: repeat(6, minmax(0, 1fr));
+  /* Three flexible content rows, an auto campaigns strip, then a fixed 120px
+     workflow strip. The empty tiles get a fixed budget; everything left over
+     goes to the tiles with data in them. */
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto 120px;
   gap: 10px;
   min-height: 0;
 }
@@ -184,26 +188,67 @@
 .pgd-num { font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400 }
 
 /* reference spans */
-.pgd-alert   { grid-column: 1 / 4;  grid-row: 1 / 3 }
-.pgd-chart   { grid-column: 4 / 8;  grid-row: 1 / 3 }
-.pgd-ring    { grid-column: 8 / 10; grid-row: 1 / 3 }
-.pgd-photo   { grid-column: 10 / 13; grid-row: 1 / 4; padding: 0 }
-.pgd-roster  { grid-column: 1 / 8;  grid-row: 3 / 6 }
-.pgd-sched   { grid-column: 8 / 10; grid-row: 3 / 6 }
-.pgd-top     { grid-column: 10 / 13; grid-row: 4 / 7 }
-.pgd-camps   { grid-column: 1 / 10; grid-row: 6 / 7; flex-direction: row; align-items: center; gap: 10px }
+/* ---- placement -------------------------------------------------
+   Ordered by how much a brand actually has to look at. Rows 1-3 are the
+   three tiles carrying real CVS data — the wrapped hero, the roster, the
+   top posts. Row 4 is the campaigns strip. Row 5 is the four workflow
+   tiles, which are empty for every brand today, compacted into one short
+   strip instead of occupying prime space individually.
+
+   Row template is 3fr 3fr 3fr / auto / 120px: the content rows share the
+   space and the workflow strip is a fixed 120, so the empty tiles cannot
+   grow into the room the real ones need. */
+.pgd-photo   { grid-column: 1 / 4;   grid-row: 1 / 4; padding: 0 }
+.pgd-roster  { grid-column: 4 / 10;  grid-row: 1 / 4 }
+.pgd-top     { grid-column: 10 / 13; grid-row: 1 / 4 }
+.pgd-camps   { grid-column: 1 / 13;  grid-row: 4 / 5; flex-direction: row; align-items: center; gap: 10px }
+
+/* The workflow strip: four tiles across row 5, each 3 columns wide. */
+.pgd-alert   { grid-column: 1 / 4;   grid-row: 5 / 6 }
+.pgd-chart   { grid-column: 4 / 7;   grid-row: 5 / 6 }
+.pgd-ring    { grid-column: 7 / 10;  grid-row: 5 / 6 }
+.pgd-sched   { grid-column: 10 / 13; grid-row: 5 / 6 }
+
+/* At 120px there is room for the heading and one line, so the shared empty
+   state drops its second line and its icon sits inline with the heading
+   rather than above it. */
+.pgd-alert, .pgd-chart, .pgd-ring, .pgd-sched { padding: 12px 14px; overflow: hidden }
+.pgd-alert h3, .pgd-chart h3, .pgd-ring h3, .pgd-sched h3 { margin-bottom: 8px }
+.pgd-alert .pgd-blank,
+.pgd-chart .pgd-blank,
+.pgd-ring  .pgd-blank,
+.pgd-sched .pgd-blank { margin: 0; gap: 4px }
+.pgd-alert .pgd-blank .pgd-blank-ic,
+.pgd-chart .pgd-blank .pgd-blank-ic,
+.pgd-ring  .pgd-blank .pgd-blank-ic,
+.pgd-sched .pgd-blank .pgd-blank-ic { display: none }
+.pgd-alert .pgd-blank b,
+.pgd-chart .pgd-blank b,
+.pgd-ring  .pgd-blank b,
+.pgd-sched .pgd-blank b { font-size: 12px }
+.pgd-alert .pgd-blank span,
+.pgd-chart .pgd-blank span,
+.pgd-ring  .pgd-blank span,
+.pgd-sched .pgd-blank span {
+  font-size: 11px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* Waiting on you — the ONE place orange is a surface, sanctioned by the brief,
    and only while the queue is non-empty (.pgd-alert-on). Empty, it stays glass:
    orange is an accent, and an alarm-coloured panel reading "nothing waiting on
    you" argues with itself. */
-.pgd-alert-on {
+/* Orange whether or not there is a queue — Peyton's call, so the tile keeps a
+   fixed identity in the workflow strip rather than changing colour underneath
+   people. .pgd-alert-on is kept for the count badge state. */
+.pgd-alert, .pgd-alert-on {
   background: var(--orange); border-color: var(--orange); color: #fff;
 }
-.pgd-alert-on h3 { color: #fff }
-.pgd-alert-on .pgd-ic { background: #fff }
-.pgd-alert-on .pgd-ic svg { stroke: var(--orange) }
-.pgd-alert-on .pgd-empty-body { color: rgba(255, 255, 255, 0.88) }
+.pgd-alert h3, .pgd-alert-on h3 { color: #fff }
+.pgd-alert .pgd-ic, .pgd-alert-on .pgd-ic { background: #fff }
+.pgd-alert .pgd-ic svg, .pgd-alert-on .pgd-ic svg { stroke: var(--orange) }
+.pgd-alert .pgd-empty-body, .pgd-alert-on .pgd-empty-body { color: rgba(255, 255, 255, 0.88) }
 .pgd-alert-on .pgd-count {
   position: absolute; top: 12px; right: 12px; background: #fff;
   color: var(--orange); font-weight: 700; font-size: 11px;
@@ -236,12 +281,12 @@
 /* On the orange card the ink inverts — same pattern, legible ground. Only
    reachable via .pgd-alert-on, i.e. when there IS a queue; kept because the
    count state can still fall back to the empty block. */
-.pgd-alert-on .pgd-blank .pgd-blank-ic {
+.pgd-alert .pgd-blank .pgd-blank-ic, .pgd-alert-on .pgd-blank .pgd-blank-ic {
   background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.24);
 }
-.pgd-alert-on .pgd-blank .pgd-blank-ic svg { stroke: #fff }
-.pgd-alert-on .pgd-blank b { color: #fff }
-.pgd-alert-on .pgd-blank span { color: rgba(255, 255, 255, 0.82) }
+.pgd-alert .pgd-blank .pgd-blank-ic svg, .pgd-alert-on .pgd-blank .pgd-blank-ic svg { stroke: #fff }
+.pgd-alert .pgd-blank b, .pgd-alert-on .pgd-blank b { color: #fff }
+.pgd-alert .pgd-blank span, .pgd-alert-on .pgd-blank span { color: rgba(255, 255, 255, 0.86) }
 
 /* legacy single-line helpers, still used by the roster's no-campaign state */
 .pgd-empty-body {
@@ -291,11 +336,15 @@
 .pgd-roster tr:last-child td { border-bottom: 0 }
 .pgd-who { display: flex; align-items: center; gap: 8px }
 .pgd-who img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: 0 0 auto }
-/* no photo on file -> empty circle, never a stock image */
+/* No photo on file -> initials on a dark disc, never a stock image. Same
+   treatment as the athletes directory, just smaller. An empty circle read as
+   a broken image; initials read as a person we have no photo of. */
 .pgd-who .pgd-noface {
   width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
   background: rgba(250, 248, 245, 0.06);
   border: 1px solid rgba(250, 248, 245, 0.14);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: var(--ink-50); letter-spacing: 0.02em;
 }
 .pgd-who small { display: block; font-size: 10px; color: var(--ink-50) }
 
@@ -306,9 +355,14 @@
 }
 .pgd-post:last-child { border-bottom: 0 }
 .pgd-post img { width: 34px; height: 42px; border-radius: 7px; object-fit: cover; flex: 0 0 auto }
+/* A disc, not the 34x42 rounded rectangle the photo uses: with no image the
+   rectangle was a grey slab. Initials in a circle match the roster and the
+   directory, so the no-photo state looks the same everywhere. */
 .pgd-post .pgd-nothumb {
-  width: 34px; height: 42px; border-radius: 7px; flex: 0 0 auto;
-  background: rgba(250, 248, 245, 0.06); border: 1px solid rgba(250, 248, 245, 0.12);
+  width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.06); border: 1px solid rgba(250, 248, 245, 0.14);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--ink-50);
 }
 .pgd-post .pgd-r { font-family: var(--font-anton), Anton, Impact, sans-serif; color: rgba(250, 248, 245, 0.4); width: 14px; flex: 0 0 auto }
 .pgd-post b { display: block; font-size: 12px }
@@ -414,9 +468,22 @@
   .pgd-roster, .pgd-sched, .pgd-top, .pgd-camps {
     grid-column: auto / span 6; grid-row: auto;
   }
-  .pgd-alert, .pgd-ring, .pgd-sched { grid-column: auto / span 3 }
-  .pgd-chart { grid-column: auto / span 6 }
-  .pgd-photo { min-height: 320px }
+  /* Same priority as the desktop grid, expressed with `order` because the
+     rows collapse: real content first, workflow tiles last. */
+  .pgd-photo  { order: 1 }
+  .pgd-roster { order: 2 }
+  .pgd-top    { order: 3 }
+  .pgd-camps  { order: 4 }
+  .pgd-alert  { order: 5; grid-column: auto / span 3 }
+  .pgd-chart  { order: 6; grid-column: auto / span 3 }
+  .pgd-ring   { order: 7; grid-column: auto / span 3 }
+  .pgd-sched  { order: 8; grid-column: auto / span 3 }
+  /* Two-up rather than four-up at this width, so the strip stays readable. */
+  .pgd-alert, .pgd-chart, .pgd-ring, .pgd-sched { min-height: 110px }
+  /* height, not just min-height: the tile has no grid row to size it once the
+     rows collapse, so a 1:2 portrait grew to its own aspect ratio and filled
+     the screen. A banner, not a poster. */
+  .pgd-photo { height: 320px; min-height: 0 }
   .pgd-camps { flex-direction: column; align-items: stretch }
   .pgd-camps h3 { width: auto; flex-direction: row; align-items: baseline; gap: 8px; margin-bottom: 8px }
   .pgd-campgrid { grid-template-columns: repeat(3, minmax(0, 1fr)) }
@@ -433,6 +500,31 @@
   .pgd-roster, .pgd-sched, .pgd-top, .pgd-camps {
     grid-column: auto; grid-row: auto;
   }
+  /* Phone keeps the same running order as desktop — the wrapped photo, the
+     roster and the top posts before anything that is empty. The four workflow
+     tiles pair up two-across at the bottom rather than eating four full-width
+     rows a thumb has to scroll past. */
+  .pgd-photo  { order: 1 }
+  .pgd-roster { order: 2 }
+  .pgd-top    { order: 3 }
+  .pgd-camps  { order: 4 }
+  .pgd-alert  { order: 5 }
+  .pgd-chart  { order: 6 }
+  .pgd-ring   { order: 7 }
+  .pgd-sched  { order: 8 }
+  .pgd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .pgd-photo, .pgd-roster, .pgd-top, .pgd-camps { grid-column: 1 / -1 }
+  .pgd-alert, .pgd-chart, .pgd-ring, .pgd-sched { grid-column: auto; min-height: 118px }
+
+  /* 240 on a phone: the hero was taking the whole first screen, so nothing
+     below it existed until you scrolled. */
+  .pgd-photo { height: 240px }
+
+  /* The roster heading and its meta line were fighting over one row and both
+     wrapped — "Latest roster · SPF" broke across three lines. Stack them. */
+  .pgd-roster h3 { flex-wrap: wrap; row-gap: 2px }
+  .pgd-roster h3 .pgd-muted { flex-basis: 100%; margin-left: 26px; font-size: 10px }
+  .pgd-roster h3 .pgd-more { margin-left: auto }
   .pgd-campgrid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .pgd-h1 { font-size: 40px }
   /* Search, the range selector and Notifications are decorative this phase —
