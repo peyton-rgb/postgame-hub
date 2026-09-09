@@ -49,6 +49,7 @@ import {
   zoomScale,
 } from "@/lib/deal-format";
 import DealStrip from "./DealStrip";
+import { canonicalSchool } from "@/lib/school-names";
 
 // The ledger changes when a deal is added, not per request.
 export const revalidate = 300;
@@ -173,7 +174,11 @@ type Active = Partial<Record<Facet, string>>;
 
 function valueOf(d: DealRow, f: Facet): string | null {
   if (f === "sport") return d.athlete_sport;
-  if (f === "school") return d.athlete_school;
+  // The column is already normalised in the database, so this is the guard for
+  // what arrives AFTER: an import spelt "University of Texas" would otherwise
+  // open a second Texas facet holding a third of the Texas deals, with nothing
+  // on the page saying the rest existed.
+  if (f === "school") return canonicalSchool(d.athlete_school);
   if (f === "brand") return d.brand_name;
   const y = dealYear(d.date_announced);
   return y === null ? null : String(y);
@@ -471,7 +476,7 @@ function HeroDeal({
   const focal = deal.focal_point || "50% 25%";
   const zoom = zoomScale(deal.zoom_desktop);
   const name = deal.athlete_name || "Team campaign";
-  const meta = [deal.athlete_school, deal.athlete_sport, dealDate(deal.date_announced)]
+  const meta = [canonicalSchool(deal.athlete_school), deal.athlete_sport, dealDate(deal.date_announced)]
     .filter((s) => s && s !== "—")
     .join(" · ");
 
@@ -539,7 +544,8 @@ function LedgerRow({
   const name = deal.athlete_name || "Team campaign";
   // On mobile the school/sport/date columns collapse into one line, so the
   // same facts are assembled here rather than duplicated in the markup.
-  const mobileMeta = [deal.athlete_school, deal.athlete_sport, dealDate(deal.date_announced)]
+  const school = canonicalSchool(deal.athlete_school);
+  const mobileMeta = [school, deal.athlete_sport, dealDate(deal.date_announced)]
     .filter((s) => s && s !== "—")
     .join(" · ");
 
@@ -577,7 +583,7 @@ function LedgerRow({
           <div className="pg-label dl-mobile-line">{mobileMeta || "Date not on file"}</div>
         </div>
 
-        <span className="pg-body dl-cell-muted dl-cell-school">{deal.athlete_school || "—"}</span>
+        <span className="pg-body dl-cell-muted dl-cell-school">{school || "—"}</span>
         <span className="pg-body dl-cell-muted dl-cell-sport">{deal.athlete_sport || "—"}</span>
         <span className="dl-brand dl-cell-brand">
           {logo && <img src={logo} alt="" loading="lazy" decoding="async" />}
