@@ -41,6 +41,7 @@ import {
   brandTint,
   dealDate,
   dealDateISO,
+  dealDateShort,
   dealYear,
   facetSlug,
   heroUrl,
@@ -146,6 +147,28 @@ const loadLedgerUncached = unstable_cache(
 );
 
 const loadLedger = cache(loadLedgerUncached);
+
+/**
+ * The three headline figures, derived from the ledger itself.
+ *
+ * The page body and generateMetadata both need them and they must agree —
+ * a lead paragraph claiming a different number from the counter two inches
+ * to its right is the kind of thing that ends up quoted in a press piece.
+ * So neither one counts for itself, and nothing here is typed by hand.
+ */
+function ledgerCounts(deals: DealRow[]) {
+  return {
+    deals: deals.length,
+    athletes: new Set(deals.map((d) => d.athlete_name).filter(Boolean)).size,
+    brands: new Set(deals.map((d) => d.brand_name).filter(Boolean)).size,
+  };
+}
+
+/** The lead sentence, and the meta description. One source, so they match. */
+function ledgerSentence(c: { deals: number; athletes: number }): string {
+  const n = (x: number) => x.toLocaleString("en-US");
+  return `${n(c.deals)} brand deals with ${n(c.athletes)} college athletes, on the record — updated with every campaign Postgame runs.`;
+}
 
 /** Reverse-chronological. Undated deals sink; `featured` only breaks ties. */
 function compareDeals(a: DealRow, b: DealRow): number {
@@ -338,14 +361,16 @@ export async function generateMetadata({
   const canonical = hrefPage(active, "grid", page);
 
   if (!bits.length) {
+    // Same sentence as the hero lead, from the same counts, so the search
+    // result and the page agree on the numbers.
+    const description = ledgerSentence(ledgerCounts(deals));
     return {
-      title: "NIL Deal Tracker — every Postgame athlete partnership | Postgame",
-      description:
-        "Every NIL partnership Postgame has run, by athlete, brand and year. The deal ledger for the #1 NIL agency in college sports.",
+      title: "NIL Deal Tracker — every college athlete brand deal | Postgame",
+      description,
       alternates: { canonical },
       openGraph: {
         title: "NIL Deal Tracker | Postgame",
-        description: "Every NIL partnership Postgame has run, by athlete, brand and year.",
+        description,
         type: "website",
       },
     };
@@ -393,8 +418,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
   // The counters describe the whole ledger, not the filtered view — they are
   // the headline claim about the agency, and they should not move when a
   // reader narrows to one brand.
-  const athletes = new Set(deals.map((d) => d.athlete_name).filter(Boolean)).size;
-  const brands = new Set(deals.map((d) => d.brand_name).filter(Boolean)).size;
+  const counts = ledgerCounts(deals);
 
   // The newest deal with a photo becomes the hero. Suppressed on a filtered
   // view, where it would show a deal that contradicts the filter directly
@@ -412,10 +436,11 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
       {hero && (
         <HeroDeal
           deal={hero}
+          lead={ledgerSentence(counts)}
           counts={[
-            { n: deals.length, label: "Deals on file" },
-            { n: athletes, label: "Athletes" },
-            { n: brands, label: "Brands" },
+            { n: counts.deals, label: "Deals on file" },
+            { n: counts.athletes, label: "Athletes" },
+            { n: counts.brands, label: "Brands" },
           ]}
         />
       )}
@@ -501,73 +526,104 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
 /* ── Hero ─────────────────────────────────────────────────────── */
 
 /**
- * The newest deal, full bleed.
+ * The masthead. It is about the TRACKER, not about one athlete.
  *
- * The whole thing is one link, so it is an <a> wrapping the photo, the
- * headline and the counters. The counters sit on the scrim with no card
- * behind them — a grey panel here is what made the old page read as a
- * spreadsheet header rather than a magazine cover.
+ * The H1 used to be the newest deal's name, which made a page listing 395
+ * partnerships read as a page about Darian Mensah. The newest deal is still
+ * the photograph and still gets named — as the caption underneath, which is
+ * the only thing here that links anywhere. The H1 links nowhere, because a
+ * headline that says "the deal tracker" pointing at one deal is a lie about
+ * where it goes.
+ *
+ * That is also why the hero is no longer one big <a>: a link cannot contain
+ * another link, and the caption has to be the link.
+ *
+ * "College athlete" is the phrase — never a term on the design system's
+ * trademark blocklist (rule 3).
  */
 function HeroDeal({
   deal,
+  lead,
   counts,
 }: {
   deal: DealRow;
+  lead: string;
   counts: { n: number; label: string }[];
 }) {
   const src = heroUrl(deal.image_url);
   const focal = deal.focal_point || "50% 25%";
   const zoom = zoomScale(deal.zoom_desktop);
   const name = deal.athlete_name || "Team campaign";
-  const meta = [canonicalSchool(deal.athlete_school), deal.athlete_sport, dealDate(deal.date_announced)]
-    .filter((s) => s && s !== "—")
-    .join(" · ");
+  const school = canonicalSchool(deal.athlete_school);
 
   return (
     <header className="dl-hero">
-      <Link href={`/deals/${deal.slug}`} className="dl-hero-link">
-        <div className="dl-hero-photo">
-          {src && (
-            <img
-              src={src}
-              alt={`${name} x ${deal.brand_name}`}
-              // The hero is the largest paint on the page and is above the
-              // fold, so it is the one image on /deals that is not lazy.
-              fetchPriority="high"
-              decoding="async"
-              style={{
-                objectPosition: focal,
-                transform: zoom ? `scale(${zoom})` : undefined,
-                transformOrigin: focal,
-              }}
-            />
-          )}
-        </div>
-        {/* Two scrims, not one. The bottom gradient carries the headline; the
-            top one only has to keep the fixed nav legible over a bright
-            photo, so it is much shallower. */}
-        <div className="dl-hero-scrim" aria-hidden="true" />
-        <div className="dl-hero-scrim-top" aria-hidden="true" />
+      <div className="dl-hero-photo">
+        {src && (
+          <img
+            src={src}
+            alt={`${name} x ${deal.brand_name}`}
+            // The hero is the largest paint on the page and is above the
+            // fold, so it is the one image on /deals that is not lazy.
+            fetchPriority="high"
+            decoding="async"
+            style={{
+              objectPosition: focal,
+              transform: zoom ? `scale(${zoom})` : undefined,
+              transformOrigin: focal,
+            }}
+          />
+        )}
+      </div>
+      {/* Two scrims, not one. The bottom gradient carries the headline; the
+          top one only has to keep the fixed nav legible over a bright
+          photo, so it is much shallower. */}
+      <div className="dl-hero-scrim" aria-hidden="true" />
+      <div className="dl-hero-scrim-top" aria-hidden="true" />
+      {/* A third wash, along the left edge where the copy sits. Measured
+          against the composited photo, the orange eyebrow was 1.08:1 on a
+          phone and 1.95:1 on desktop — WCAG asks 4.5:1 for text this size.
+          The bottom scrim cannot fix it without flattening the whole frame,
+          because the eyebrow sits high; this darkens only the column the
+          text is in and leaves the subject alone. */}
+      <div className="dl-hero-scrim-left" aria-hidden="true" />
 
-        <div className="dl-hero-body dl-band">
-          <div className="dl-hero-text">
-            <div className="pg-eyebrow">NIL Deal Tracker · Latest</div>
-            <h1 className="pg-h1 dl-hero-title">
+      <div className="dl-hero-body dl-band">
+        <div className="dl-hero-text">
+          <div className="pg-eyebrow">NIL Deal Tracker</div>
+          <h1 className="pg-h1 dl-hero-title">The #1 college athlete deal tracker</h1>
+          <p className="pg-lead dl-hero-meta">{lead}</p>
+
+          {/* The photograph needs a credit, and the newest deal is the news.
+              Small, Mono, and the only link in the hero. */}
+          <Link href={`/deals/${deal.slug}`} className="pg-label dl-hero-caption">
+            <span className="dl-hero-caption-key">Latest</span>
+            <span className="dl-hero-caption-sep">·</span>
+            <span className="dl-hero-caption-name">
               {name} <span className="dl-hero-x">&times;</span> {deal.brand_name}
-            </h1>
-            {meta && <p className="pg-lead dl-hero-meta">{meta}</p>}
-          </div>
-
-          <div className="dl-hero-counts">
-            {counts.map((c) => (
-              <div key={c.label}>
-                <div className="pg-stat">{c.n.toLocaleString("en-US")}</div>
-                <div className="pg-label dl-counter-label">{c.label}</div>
-              </div>
-            ))}
-          </div>
+            </span>
+            {school && (
+              <>
+                <span className="dl-hero-caption-sep">·</span>
+                <span>{school}</span>
+              </>
+            )}
+            <span className="dl-hero-caption-sep">·</span>
+            <time dateTime={dealDateISO(deal.date_announced)}>
+              {dealDateShort(deal.date_announced)}
+            </time>
+          </Link>
         </div>
-      </Link>
+
+        <div className="dl-hero-counts">
+          {counts.map((c) => (
+            <div key={c.label}>
+              <div className="pg-stat">{c.n.toLocaleString("en-US")}</div>
+              <div className="pg-label dl-counter-label">{c.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </header>
   );
 }

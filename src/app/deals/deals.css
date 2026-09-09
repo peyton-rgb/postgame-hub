@@ -43,16 +43,8 @@
   overflow: hidden;
   background: var(--bg-2);
 }
-.dl-hero-link { display: block; width: 100%; height: 100%; position: relative; }
-
 .dl-hero-photo { position: absolute; inset: 0; }
-.dl-hero-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.6s ease;
-}
-.dl-hero-link:hover .dl-hero-photo img { transform: scale(1.02); }
+.dl-hero-photo img { width: 100%; height: 100%; object-fit: cover; }
 
 /* Design system rule 4: the flat bottom edge dissolves into the black ground
    rather than stopping. Long and bottom-weighted so it carries the headline
@@ -69,6 +61,22 @@
     transparent 100%
   );
 }
+/* The copy column. See the note in HeroDeal: the eyebrow measured 1.08:1 on
+   the composited photo without it. Ends well before centre so the subject
+   keeps their light. */
+.dl-hero-scrim-left {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 72%;
+  background: linear-gradient(
+    to right,
+    rgb(var(--surface-rgb) / 0.8) 0%,
+    rgb(var(--surface-rgb) / 0.58) 36%,
+    rgb(var(--surface-rgb) / 0.18) 70%,
+    transparent 100%
+  );
+}
+
 /* Only deep enough to keep the fixed nav legible over a bright photo. */
 .dl-hero-scrim-top {
   position: absolute;
@@ -90,6 +98,25 @@
    three ways and orphaned the x onto its own line. The cap is now a share of
    the band, leaving the counters their column on the right. */
 .dl-hero-text { min-width: 0; max-width: min(62%, 820px); }
+
+/* The credit line. Small, Mono, and the only link in the hero — the H1 is a
+   claim about the whole tracker and must not point at one deal. */
+.dl-hero-caption {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  /* 44px of tap target on a 10px label, without a visible box. */
+  min-height: 44px;
+  align-content: center;
+  margin-top: clamp(12px, 1.6vw, 18px);
+  color: rgba(250, 248, 245, 0.68);
+  transition: color 0.15s;
+}
+.dl-hero-caption:hover { color: rgba(250, 248, 245, 1); }
+.dl-hero-caption-key { color: var(--orange); }
+.dl-hero-caption-name { color: rgba(250, 248, 245, 1); }
+.dl-hero-caption-sep { color: rgba(250, 248, 245, 0.28); }
 .dl-hero-title { margin-top: clamp(8px, 1.2vw, 14px); }
 .dl-hero-x { color: var(--orange); }
 .dl-hero-meta { margin-top: clamp(10px, 1.4vw, 16px); }
@@ -400,6 +427,30 @@
     padding-bottom: 24px;
   }
   .dl-hero-text { max-width: none; }
+  /* Full width here, because the copy is. */
+  .dl-hero-scrim-left {
+    width: 100%;
+    background: linear-gradient(
+      to right,
+      rgb(var(--surface-rgb) / 0.86) 0%,
+      rgb(var(--surface-rgb) / 0.76) 55%,
+      rgb(var(--surface-rgb) / 0.54) 100%
+    );
+  }
+  /* The text block is taller here — two headline lines, a three-line lead
+     and the caption — so it reaches further up the photo than the desktop
+     scrim was built for. The stops move with it; without this the eyebrow
+     lands on the bright part of the shirt. */
+  .dl-hero-scrim {
+    background: linear-gradient(
+      to top,
+      rgb(var(--surface-rgb)) 0%,
+      rgb(var(--surface-rgb) / 0.94) 22%,
+      rgb(var(--surface-rgb) / 0.72) 46%,
+      rgb(var(--surface-rgb) / 0.22) 72%,
+      transparent 100%
+    );
+  }
   .dl-hero-counts { text-align: left; gap: 22px; width: 100%; }
   .dl-hero-counts .pg-stat { font-size: 34px; }
 
