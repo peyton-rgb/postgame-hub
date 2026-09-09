@@ -156,6 +156,20 @@
 }
 .pgd-t.pgd-search::placeholder { color: rgba(250, 248, 245, 0.42) }
 .pgd-t.pgd-search:focus-visible { box-shadow: inset 0 0 0 1px rgba(250, 248, 245, 0.3) }
+/* Sits inside the field's pill, on its right edge. */
+.pgd-search-form { position: relative }
+.pgd-t.pgd-search { padding-right: 42px }
+.pgd-search-go {
+  position: absolute; right: 4px; top: 4px; width: 32px; height: 32px;
+  border: 0; border-radius: 999px; background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  color: var(--ink-50);
+}
+.pgd-search-go:hover { color: var(--ink); background: rgba(250, 248, 245, 0.08) }
+.pgd-search-go svg {
+  width: 17px; height: 17px; fill: none; stroke: currentColor;
+  stroke-width: 1.9; stroke-linecap: round;
+}
 .pgd-av {
   width: 40px; height: 40px; border-radius: 50%; background: var(--orange);
   display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
@@ -172,6 +186,9 @@
   margin: 0; letter-spacing: 0.01em;
 }
 .pgd-sub { color: rgba(250, 248, 245, 0.55); margin: 6px 0 0; font-size: 16px }
+/* The header's only line, on a page that names itself in its body. Sits on
+   the h1's baseline rather than 6px below where the h1 would have been. */
+.pgd-sub.pgd-sub-lead { margin: 0; padding-top: 6px }
 .pgd-kpis { display: flex; gap: 26px; flex-wrap: wrap }
 .pgd-kpi { text-align: right }
 .pgd-kpi b {
@@ -341,7 +358,16 @@
    header keeps 120px clear on the right for the link. */
 .pgd-roster h3 { display: block; padding-right: 120px; margin-bottom: 10px }
 .pgd-roster h3 .pgd-muted { display: block; font-weight: 400; margin-top: 3px }
-.pgd-roster .pgd-scroll { overflow: auto; margin-top: 6px; flex: 1; min-height: 0 }
+.pgd-roster .pgd-scroll {
+  overflow: auto; margin-top: 6px; flex: 1; min-height: 0;
+  /* Snap so a row is never left half-hidden behind the sticky header. The
+     header is 34px of the box that never scrolls, so scroll-margin-top on the
+     rows is what makes "aligned to the start" mean "aligned under the
+     header". proximity, not mandatory: a deliberate small scroll should still
+     be possible. */
+  scroll-snap-type: y proximity;
+}
+.pgd-roster tbody tr { scroll-snap-align: start; scroll-margin-top: 34px }
 /* Both scrolling tile bodies fade out at the bottom edge. Without it the last
    visible row is sliced through the middle of its type, which reads as a
    layout bug rather than as "there is more below". */
@@ -349,8 +375,18 @@
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent 100%);
   mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent 100%);
 }
-.pgd-roster thead th { position: sticky; top: 0; background: var(--tile); z-index: 1 }
-.pgd-roster table { width: 100%; border-collapse: collapse; min-width: 560px }
+.pgd-roster thead th { position: sticky; top: 0; background: var(--tile); z-index: 2 }
+/* SEPARATE, not collapse. The sticky header was opaque (#111114), positioned,
+   and above the rows by z-index — elementFromPoint at its centre returned the
+   th — and the rows STILL showed through it. Collapsed borders are why: with
+   border-collapse: collapse a cell's background is painted in the table's
+   own background layer, below the in-flow content of other rows, so no
+   z-index on the cell can lift it. border-spacing: 0 keeps the layout
+   identical, and nothing here needs merged borders — th and td each set only
+   their own bottom edge. */
+.pgd-roster table {
+  width: 100%; border-collapse: separate; border-spacing: 0; min-width: 560px;
+}
 .pgd-roster th {
   text-align: left; font-weight: 400; font-size: 14px; color: var(--ink-45);
   padding: 6px 8px; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
@@ -827,37 +863,50 @@
 
 /* detail hero */
 /* ---- campaign detail hero -----------------------------------
-   220px. It was 330 to give a 1:2 portrait enough band to frame a face, but
-   at 330 the hero plus the tab row was the entire first screen and the tab
-   you came to read started below the fold. 220 is a banner: the name sits on
-   it and the content starts inside the first screen.
+   A SPLIT, not a full-bleed band, and the reason is arithmetic. SPF's hero is
+   2400x3200. In a 1325x220 full-bleed band, object-fit: cover scales it to
+   1325x1767 and shows 220 of those 1767px — 12.5% of the image height. A head
+   in a close-up portrait occupies far more than 12.5%, so NO object-position
+   could ever frame one: every crop point was a slice of a face, which is why
+   SPF came out eyes-only. Measured across CVS's six heroes the band showed
+   11-25% of the frame.
 
-   The meta line that used to sit under the name here is gone — the shell's
-   subtitle already carries quarter · type, so it was printed twice, 40px
-   apart. NAME ONLY. */
+   Giving the photo 46% of the width instead drops the scale to 0.25, so the
+   same 220px shows 27% of the image and a whole face fits. The name sits on
+   the dark half, which is also exactly the state a live campaign with no hero
+   media needs, so both use one component.
+
+   FOLLOW-UP, still open: media.focal_y exists (it is NOT missing, as an
+   earlier run-log note claimed) but is populated on 2 of 63 hero rows. Where
+   it is set, it is used, via the --hero-focal custom property. Populating it
+   is the real fix for the remaining crops; 26% is the default and suits a
+   portrait, where faces sit in the upper third. */
 .pgd-hero {
   position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 16px;
-  height: 220px; background: var(--tile); border: 0;
-  display: flex; align-items: flex-end;
+  height: 220px; border: 0; display: flex; align-items: stretch;
+  background: linear-gradient(115deg, #23232a 0%, #14141a 46%, #0a0a0e 100%);
 }
-/* 30%, paired with the 330px band above. Measured, not guessed: a LARGER
-   percentage moves the visible window DOWN the photo, so 45% — asked for to
-   stop the face being cut at the top — moved the crop from the eyes to the
-   mouth and made that symptom worse. Rendered at 22 / 28 / 34 / 45 to check
-   the direction before settling.
-   A focal_y column on the media row is still the real fix and is logged as a
-   follow-up in the run log: one number cannot frame every photograph, and 30%
-   is only known to suit the current hero set. */
-.pgd-hero > img { position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center 30% }
-.pgd-hero::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(0deg, rgba(7, 7, 10, 0.92), rgba(7, 7, 10, 0.15));
+.pgd-hero-in {
+  position: relative; z-index: 2; padding: 20px 24px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  flex: 1 1 auto; min-width: 0;
 }
-.pgd-hero-in { position: relative; z-index: 1; padding: 20px 24px }
-.pgd-hero-in h2 {
+.pgd-hero-in h1, .pgd-hero-in h2 {
   font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
   text-transform: uppercase; font-size: 40px; line-height: 0.94; margin: 0;
+  overflow-wrap: break-word;
+}
+/* One line under the name, for the state where that is all there is to say. */
+.pgd-hero-in .pgd-hero-note { margin: 10px 0 0; font-size: 16px; color: var(--ink-60); max-width: 62ch }
+.pgd-hero-photo { position: relative; flex: 0 0 46%; overflow: hidden }
+.pgd-hero-photo img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  object-position: center var(--hero-focal, 26%);
+}
+/* Feathered into the dark half so the split is not a hard vertical seam. */
+.pgd-hero-photo::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, #14141a 0%, rgba(20, 20, 26, 0.45) 34%, rgba(20, 20, 26, 0) 72%);
 }
 
 /* Campaign Overview tab. gap does the spacing, so the panels inside drop
@@ -978,9 +1027,17 @@
   .pgd-media { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .pgd-cards, .pgd-people { grid-template-columns: minmax(0, 1fr) }
   .pgd-count { margin-left: 0 }
-  /* The hero loses 40px on a phone but keeps the name legible on it. */
-  .pgd-hero { height: 180px }
-  .pgd-hero-in h2 { font-size: 32px }
+  /* At 390 the split would leave the name 180px. The photo goes full-bleed
+     behind the name instead, and it can: a 390x180 box scales SPF's 2400x3200
+     by 0.16, showing 32% of the frame — MORE than the desktop split. The
+     geometry that forced the split at 1325 wide does not exist here. */
+  .pgd-hero { height: 180px; display: block }
+  .pgd-hero-in { position: absolute; inset: 0; z-index: 2; justify-content: flex-end }
+  .pgd-hero-in h1, .pgd-hero-in h2 { font-size: 32px }
+  .pgd-hero-photo { position: absolute; inset: 0; flex: none }
+  .pgd-hero-photo::after {
+    background: linear-gradient(0deg, rgba(7, 7, 10, 0.94) 0%, rgba(7, 7, 10, 0.45) 55%, rgba(7, 7, 10, 0.1) 100%);
+  }
   /* 56px Anton x5 is a whole phone screen of numbers before the first
      takeaway. The Results row drops to 38 and the panel rows to 32; both are
      still the largest type on the page. */

@@ -126,7 +126,12 @@ export default function PortalShell({
   active: PortalSection;
   postgameIcon: string | null;
   preview?: PortalPreviewChrome | null;
-  title: string;
+  /**
+   * The page's h1. Pass null when the page names itself in its own body —
+   * campaign detail puts the name in the hero, and printing it here as well
+   * put the same words on screen twice, 40px apart.
+   */
+  title: string | null;
   subtitle?: string | null;
   aside?: React.ReactNode;
   /** Prefills the toolbar box, so the search page shows the term it answered. */
@@ -180,8 +185,12 @@ export default function PortalShell({
       <div className="pgd-main">
         <header className="pgd-head">
           <div>
-            <h1 className="pgd-h1">{title}</h1>
-            {subtitle ? <p className="pgd-sub">{subtitle}</p> : null}
+            {title !== null ? <h1 className="pgd-h1">{title}</h1> : null}
+            {/* With no title the subtitle is the header's only line, so it
+                leads rather than sits under something. */}
+            {subtitle ? (
+              <p className={`pgd-sub${title === null ? " pgd-sub-lead" : ""}`}>{subtitle}</p>
+            ) : null}
           </div>
 
           <div className="pgd-headright">
@@ -220,6 +229,18 @@ export default function PortalShell({
                   placeholder="Search campaigns and athletes"
                   aria-label="Search campaigns and athletes"
                 />
+                {/* A real submit control beside the field. Enter already
+                    submitted — verified in a browser: the input is
+                    hit-testable, the form's action resolves, and Enter
+                    navigates to /portal/search — but a lone unadorned box
+                    gives no sign it is a control at all, and the only way to
+                    find out was to guess that Enter did something. */}
+                <button className="pgd-search-go" type="submit" aria-label="Search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M20 20l-4.2-4.2" />
+                  </svg>
+                </button>
               </form>
               <span className="pgd-av" role="img" aria-label="Your account">
                 <PersonIcon />

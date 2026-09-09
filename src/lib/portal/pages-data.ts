@@ -201,7 +201,7 @@ export async function loadCampaignList(brandId: string) {
     quarter: c.quarter,
     campaignType: c.campaign_type,
     athletes: counts.get(c.id) ?? 0,
-    heroUrl: c.hero_image_url || heroes.get(c.id) || null,
+    heroUrl: c.hero_image_url || heroes.get(c.id)?.url || null,
     figures: readFigures(c.kpi_targets),
   }));
 
@@ -217,16 +217,29 @@ export async function loadCampaignList(brandId: string) {
   };
 }
 
+interface Hero {
+  url: string;
+  /**
+   * media.focal_y as a percentage, or null.
+   *
+   * The column EXISTS — an earlier note in the run log said it did not — but
+   * it is populated on 2 of 63 hero rows, so nearly every campaign falls back
+   * to the CSS default. Read here rather than guessed so the two rows that
+   * have one are honoured, and so populating the rest needs no code change.
+   */
+  focalY: number | null;
+}
+
 async function loadHeroes(
   supabase: ReturnType<typeof createServerSupabase>,
   campaignIds: string[],
   width = 900,
-): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
+): Promise<Map<string, Hero>> {
+  const out = new Map<string, Hero>();
   if (campaignIds.length === 0) return out;
   const { data } = await supabase
     .from("media")
-    .select("campaign_id, file_url, thumbnail_url, hero_order")
+    .select("campaign_id, file_url, thumbnail_url, hero_order, focal_y")
     .in("campaign_id", campaignIds)
     .eq("is_hero", true)
     .order("hero_order", { ascending: true });
@@ -234,9 +247,17 @@ async function loadHeroes(
     campaign_id: string;
     file_url: string | null;
     thumbnail_url: string | null;
+    focal_y: number | null;
   }[]) {
     const url = m.thumbnail_url || m.file_url;
-    if (url && !out.has(m.campaign_id)) out.set(m.campaign_id, thumb(url, width));
+    if (!url || out.has(m.campaign_id)) continue;
+    // focal_y is stored 0-1 on the rows that have it; anything outside that
+    // is ignored rather than clamped, because a value out of range means the
+    // column was written with a different convention and guessing which
+    // would move every crop.
+    const f = m.focal_y;
+    const focalY = typeof f === "number" && f >= 0 && f <= 1 ? Math.round(f * 100) : null;
+    out.set(m.campaign_id, { url: thumb(url, width), focalY });
   }
   return out;
 }
@@ -426,7 +447,13 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     driveFolderId: c.drive_content_folder_id,
     // 1600, not the 900 the cards use: this hero spans the full content
     // column (1325px at 1440) and 900 visibly upscales.
-    heroUrl: c.hero_image_url || (await loadHeroes(supabase, [c.id], 1600)).get(c.id) || null,
+    ...(await (async () => {
+      // hero_image_url is a bare column with no focal point of its own, so a
+      // campaign using it gets the CSS default.
+      if (c.hero_image_url) return { heroUrl: c.hero_image_url, heroFocalY: null };
+      const hero = (await loadHeroes(supabase, [c.id], 1600)).get(c.id);
+      return { heroUrl: hero?.url ?? null, heroFocalY: hero?.focalY ?? null };
+    })()),
     // 5, not the 4 the tiles use: kpi_targets only ever holds four keys, but
     // the derived set is five (posts, reel views, feed and story impressions,
     // followers) and the Results tab is the one surface with room for all of
@@ -645,7 +672,7 @@ export async function loadReports(
       slug: c.slug,
       quarter: stored || derived?.label || null,
       quarterDerived: !stored && !!derived,
-      heroUrl: c.hero_image_url || heroes.get(c.id) || null,
+      heroUrl: c.hero_image_url || heroes.get(c.id)?.url || null,
       figures: readFigures(c.kpi_targets, 3),
     };
   });

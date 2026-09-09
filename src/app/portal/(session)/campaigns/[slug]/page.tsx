@@ -36,7 +36,9 @@ export default async function Page({
       active="campaigns"
       postgameIcon={icon}
       preview={preview}
-      title={campaign.name}
+      /* The campaign is named in the hero, which is its h1. The header
+         carried the same words directly above it. */
+      title={null}
       subtitle={
         [campaign.quarter, campaign.campaignType].filter(Boolean).join(" · ") || null
       }
