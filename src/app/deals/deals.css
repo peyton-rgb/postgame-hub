@@ -32,57 +32,58 @@
   .dl-band { padding-left: 40px; padding-right: 40px; }
 }
 
-/* ── Hero — the newest deal, full bleed ────────────────────────
-   No card, no panel. The counters sit directly on the scrim: a grey box
-   around them is what made the previous version read as a spreadsheet
-   header rather than the top of a magazine page. */
+/* ── Hero — the wall ───────────────────────────────────────────
+   Sixty deal photos as one texture. It is the fold, so nothing here is
+   allowed to reflow: every tile has intrinsic width/height and the grid is
+   a fixed column count per breakpoint. */
 .dl-hero {
   position: relative;
   width: 100%;
-  height: min(85svh, 820px);
+  height: min(78svh, 760px);
   overflow: hidden;
   background: var(--bg-2);
 }
-.dl-hero-photo { position: absolute; inset: 0; }
-.dl-hero-photo img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Design system rule 4: the flat bottom edge dissolves into the black ground
-   rather than stopping. Long and bottom-weighted so it carries the headline
-   without darkening the subject's face. */
-.dl-hero-scrim {
+.dl-wall {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 4px;
+  /* Start, not stretch: the rows keep their 4:5 shape and the last one runs
+     off the bottom edge, which is what makes it read as a wall rather than
+     as a panel that happens to end. */
+  align-content: start;
+  /* Texture, not content. The faces stay visible; the type stays the thing
+     you read. */
+  opacity: 0.55;
+}
+.dl-wall-tile { position: relative; aspect-ratio: 4 / 5; overflow: hidden; }
+.dl-wall-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+@media (max-width: 1399px) { .dl-wall { grid-template-columns: repeat(10, minmax(0, 1fr)); } }
+@media (max-width: 1199px) { .dl-wall { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+@media (max-width: 899px)  { .dl-wall { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 750px)  { .dl-wall { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+/* Darkest where the copy is, opening up to the right so the wall survives. */
+.dl-wall-scrim {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    to top,
-    rgb(var(--surface-rgb)) 0%,
-    rgb(var(--surface-rgb) / 0.92) 14%,
-    rgb(var(--surface-rgb) / 0.55) 38%,
-    rgb(var(--surface-rgb) / 0.08) 66%,
-    transparent 100%
-  );
-}
-/* The copy column. See the note in HeroDeal: the eyebrow measured 1.08:1 on
-   the composited photo without it. Ends well before centre so the subject
-   keeps their light. */
-.dl-hero-scrim-left {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 72%;
-  background: linear-gradient(
     to right,
-    rgb(var(--surface-rgb) / 0.8) 0%,
-    rgb(var(--surface-rgb) / 0.58) 36%,
-    rgb(var(--surface-rgb) / 0.18) 70%,
-    transparent 100%
+    rgba(7, 7, 10, 0.94) 0%,
+    rgba(7, 7, 10, 0.62) 45%,
+    rgba(7, 7, 10, 0.28) 100%
   );
 }
-
-/* Only deep enough to keep the fixed nav legible over a bright photo. */
-.dl-hero-scrim-top {
+/* And a fade into the page ground, so the grid section below starts clean
+   instead of butting against a hard edge of photographs. */
+.dl-wall-scrim-bottom {
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 120px;
-  background: linear-gradient(to bottom, rgb(var(--surface-rgb) / 0.55), transparent);
+  inset: auto 0 0 0;
+  height: 34%;
+  background: linear-gradient(to top, rgb(var(--surface-rgb)) 0%, rgb(var(--surface-rgb) / 0.6) 45%, transparent 100%);
 }
 
 .dl-hero-body {
@@ -94,40 +95,9 @@
   gap: clamp(24px, 5vw, 64px);
   padding-bottom: clamp(28px, 5vh, 56px);
 }
-/* 22ch was too tight for a 92px Bebas line: "DARIAN MENSAH x CVS" broke
-   three ways and orphaned the x onto its own line. The cap is now a share of
-   the band, leaving the counters their column on the right. */
 .dl-hero-text { min-width: 0; max-width: min(62%, 820px); }
-
-/* The credit line. Small, Mono, and the only link in the hero — the H1 is a
-   claim about the whole tracker and must not point at one deal. */
-.dl-hero-caption {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-  /* 44px of tap target on a 10px label, without a visible box. */
-  min-height: 44px;
-  align-content: center;
-  margin-top: clamp(12px, 1.6vw, 18px);
-  color: rgba(250, 248, 245, 0.68);
-  transition: color 0.15s;
-}
-.dl-hero-caption:hover { color: rgba(250, 248, 245, 1); }
-.dl-hero-caption-key { color: var(--orange); }
-.dl-hero-caption-name { color: rgba(250, 248, 245, 1); }
-.dl-hero-caption-sep { color: rgba(250, 248, 245, 0.28); }
 .dl-hero-title { margin-top: clamp(8px, 1.2vw, 14px); }
-.dl-hero-x { color: var(--orange); }
 .dl-hero-meta { margin-top: clamp(10px, 1.4vw, 16px); }
-
-.dl-hero-counts {
-  display: flex;
-  gap: clamp(20px, 3vw, 48px);
-  flex: 0 0 auto;
-  text-align: right;
-}
-.dl-counter-label { margin-top: 6px; }
 
 /* A filtered view has no hero photo, so it gets a plain heading band. */
 .dl-hero-fallback { padding-top: clamp(28px, 5vw, 56px); padding-bottom: clamp(16px, 2vw, 24px); }
@@ -417,9 +387,7 @@
    thumb + athlete/brand, then school · sport · date. Nothing is hidden
    behind hover, and the tap target is the whole row. */
 @media (max-width: 750px) {
-  /* The hero keeps its shape but gives back height, and the counters move
-     under the headline instead of competing with it for the same line. */
-  .dl-hero { height: min(70svh, 560px); }
+  .dl-hero { height: min(62svh, 520px); }
   .dl-hero-body {
     flex-direction: column;
     align-items: flex-start;
@@ -427,32 +395,17 @@
     padding-bottom: 24px;
   }
   .dl-hero-text { max-width: none; }
-  /* Full width here, because the copy is. */
-  .dl-hero-scrim-left {
-    width: 100%;
+  /* The copy runs the full width here, so the scrim has to as well — a
+     left-weighted gradient would leave the end of every line on bare photo. */
+  .dl-wall-scrim {
     background: linear-gradient(
       to right,
-      rgb(var(--surface-rgb) / 0.86) 0%,
-      rgb(var(--surface-rgb) / 0.76) 55%,
-      rgb(var(--surface-rgb) / 0.54) 100%
+      rgba(7, 7, 10, 0.94) 0%,
+      rgba(7, 7, 10, 0.86) 55%,
+      rgba(7, 7, 10, 0.74) 100%
     );
   }
-  /* The text block is taller here — two headline lines, a three-line lead
-     and the caption — so it reaches further up the photo than the desktop
-     scrim was built for. The stops move with it; without this the eyebrow
-     lands on the bright part of the shirt. */
-  .dl-hero-scrim {
-    background: linear-gradient(
-      to top,
-      rgb(var(--surface-rgb)) 0%,
-      rgb(var(--surface-rgb) / 0.94) 22%,
-      rgb(var(--surface-rgb) / 0.72) 46%,
-      rgb(var(--surface-rgb) / 0.22) 72%,
-      transparent 100%
-    );
-  }
-  .dl-hero-counts { text-align: left; gap: 22px; width: 100%; }
-  .dl-hero-counts .pg-stat { font-size: 34px; }
+  .dl-wall-scrim-bottom { height: 46%; }
 
   /* Two across with tighter gutters — a third column at 390 would put the
      athlete name below the readable floor. */

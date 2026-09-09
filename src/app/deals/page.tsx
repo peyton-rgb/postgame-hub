@@ -41,10 +41,8 @@ import {
   brandTint,
   dealDate,
   dealDateISO,
-  dealDateShort,
   dealYear,
   facetSlug,
-  heroUrl,
   initialsOf,
   thumbUrl,
   zoomScale,
@@ -55,6 +53,10 @@ import { canonicalSchool } from "@/lib/school-names";
 export const revalidate = 300;
 
 const PER_PAGE = 50;
+
+/** The hero lead and the meta description. One string, so they cannot drift. */
+const HERO_LEAD =
+  "Every brand deal Postgame has run with a college athlete, on the record.";
 
 /* ── Data ─────────────────────────────────────────────────────── */
 
@@ -147,28 +149,6 @@ const loadLedgerUncached = unstable_cache(
 );
 
 const loadLedger = cache(loadLedgerUncached);
-
-/**
- * The three headline figures, derived from the ledger itself.
- *
- * The page body and generateMetadata both need them and they must agree —
- * a lead paragraph claiming a different number from the counter two inches
- * to its right is the kind of thing that ends up quoted in a press piece.
- * So neither one counts for itself, and nothing here is typed by hand.
- */
-function ledgerCounts(deals: DealRow[]) {
-  return {
-    deals: deals.length,
-    athletes: new Set(deals.map((d) => d.athlete_name).filter(Boolean)).size,
-    brands: new Set(deals.map((d) => d.brand_name).filter(Boolean)).size,
-  };
-}
-
-/** The lead sentence, and the meta description. One source, so they match. */
-function ledgerSentence(c: { deals: number; athletes: number }): string {
-  const n = (x: number) => x.toLocaleString("en-US");
-  return `${n(c.deals)} brand deals with ${n(c.athletes)} college athletes, on the record — updated with every campaign Postgame runs.`;
-}
 
 /** Reverse-chronological. Undated deals sink; `featured` only breaks ties. */
 function compareDeals(a: DealRow, b: DealRow): number {
@@ -361,16 +341,14 @@ export async function generateMetadata({
   const canonical = hrefPage(active, "grid", page);
 
   if (!bits.length) {
-    // Same sentence as the hero lead, from the same counts, so the search
-    // result and the page agree on the numbers.
-    const description = ledgerSentence(ledgerCounts(deals));
     return {
       title: "NIL Deal Tracker — every college athlete brand deal | Postgame",
-      description,
+      // The hero's own lead, verbatim.
+      description: HERO_LEAD,
       alternates: { canonical },
       openGraph: {
         title: "NIL Deal Tracker | Postgame",
-        description,
+        description: HERO_LEAD,
         type: "website",
       },
     };
@@ -415,39 +393,18 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
   const page = Math.min(readPage(searchParams), pages);
   const rows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  // The counters describe the whole ledger, not the filtered view — they are
-  // the headline claim about the agency, and they should not move when a
-  // reader narrows to one brand.
-  const counts = ledgerCounts(deals);
-
-  // The newest deal with a photo becomes the hero. Suppressed on a filtered
-  // view, where it would show a deal that contradicts the filter directly
-  // above cards that obey it.
-  //
-  // The "Latest" photo strip that used to sit under the hero is gone: the
-  // grid below is itself a photo feed in the same order, so the strip was
-  // showing the same eight deals twice.
-  const hero = hasFilters
-    ? null
-    : deals.find((d) => d.date_announced && d.image_url) ?? null;
+  // The wall is built from the newest deals that have a photo. Suppressed on a
+  // filtered view: sixty unfiltered faces above a filtered grid would be
+  // showing deals the reader has just asked not to see.
+  const wall = hasFilters ? [] : deals.filter((d) => d.date_announced && d.image_url);
 
   return (
     <div className="dl-page">
-      {hero && (
-        <HeroDeal
-          deal={hero}
-          lead={ledgerSentence(counts)}
-          counts={[
-            { n: counts.deals, label: "Deals on file" },
-            { n: counts.athletes, label: "Athletes" },
-            { n: counts.brands, label: "Brands" },
-          ]}
-        />
-      )}
+      {wall.length > 0 && <HeroWall deals={wall} />}
 
       {/* A filtered view has no hero, so it needs its own page heading —
           without one the reader lands on a bare row of filter chips. */}
-      {!hero && (
+      {wall.length === 0 && (
         <header className="dl-band dl-hero-fallback">
           <div className="pg-eyebrow">NIL Deal Tracker</div>
           <h1 className="pg-h1">Every deal we&rsquo;ve done</h1>
@@ -458,7 +415,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
       <section className="dl-ledger-section" id="ledger">
         <div className="dl-band">
           <div className="dl-section-head">
-            <h2 className="pg-h2">{hero ? "Every deal" : "The ledger"}</h2>
+            <h2 className="pg-h2">{wall.length ? "Every deal" : "The ledger"}</h2>
             <div className="dl-section-tools">
               <span className="pg-label dl-result-count">
                 {filtered.length.toLocaleString("en-US")}
@@ -525,103 +482,65 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
 
 /* ── Hero ─────────────────────────────────────────────────────── */
 
+/** How many deal photos build the wall. Twelve columns x five rows fills a
+ *  760px hero at 1568; the rest run off the bottom edge. */
+const WALL_TILES = 60;
+/** The first two rows are the fold. Everything after them can wait. */
+const WALL_EAGER = 24;
+
 /**
- * The masthead. It is about the TRACKER, not about one athlete.
+ * The wall.
  *
- * The H1 used to be the newest deal's name, which made a page listing 395
- * partnerships read as a page about Darian Mensah. The newest deal is still
- * the photograph and still gets named — as the caption underneath, which is
- * the only thing here that links anywhere. The H1 links nowhere, because a
- * headline that says "the deal tracker" pointing at one deal is a lie about
- * where it goes.
+ * A single deal photo was the wrong picture for a page that claims to be the
+ * tracker — it made 395 partnerships look like one athlete's page. The hero is
+ * now sixty of them at once, as texture rather than as content: no names, no
+ * numbers, nothing to read and nothing to click. The only thing to read is the
+ * headline.
  *
- * That is also why the hero is no longer one big <a>: a link cannot contain
- * another link, and the caption has to be the link.
- *
- * "College athlete" is the phrase — never a term on the design system's
- * trademark blocklist (rule 3).
+ * The tiles are decorative, so they carry empty alt text and are hidden from
+ * assistive tech. Every deal in them is also a real, labelled card in the grid
+ * below, so nothing is lost by not announcing them here.
  */
-function HeroDeal({
-  deal,
-  lead,
-  counts,
-}: {
-  deal: DealRow;
-  lead: string;
-  counts: { n: number; label: string }[];
-}) {
-  const src = heroUrl(deal.image_url);
-  const focal = deal.focal_point || "50% 25%";
-  const zoom = zoomScale(deal.zoom_desktop);
-  const name = deal.athlete_name || "Team campaign";
-  const school = canonicalSchool(deal.athlete_school);
+function HeroWall({ deals }: { deals: DealRow[] }) {
+  const tiles = deals.slice(0, WALL_TILES);
 
   return (
     <header className="dl-hero">
-      <div className="dl-hero-photo">
-        {src && (
-          <img
-            src={src}
-            alt={`${name} x ${deal.brand_name}`}
-            // The hero is the largest paint on the page and is above the
-            // fold, so it is the one image on /deals that is not lazy.
-            fetchPriority="high"
-            decoding="async"
-            style={{
-              objectPosition: focal,
-              transform: zoom ? `scale(${zoom})` : undefined,
-              transformOrigin: focal,
-            }}
-          />
-        )}
+      <div className="dl-wall" aria-hidden="true">
+        {tiles.map((d, i) => (
+          <div key={d.id} className="dl-wall-tile">
+            {/* 192px wide is ample: at twelve columns a tile is ~127 CSS px,
+                and it sits at 55% opacity under a scrim. Sixty of these cost
+                less than the single 1800px hero photo they replaced. */}
+            <img
+              src={thumbUrl(d.image_url, 192, 60) ?? ""}
+              alt=""
+              width={192}
+              height={240}
+              // The wall IS the fold, so the first two rows cannot be lazy.
+              loading={i < WALL_EAGER ? "eager" : "lazy"}
+              fetchPriority={i < WALL_EAGER ? "high" : "low"}
+              decoding="async"
+              style={{
+                objectPosition: d.focal_point || "50% 25%",
+                transform: zoomScale(d.zoom_desktop) ? `scale(${zoomScale(d.zoom_desktop)})` : undefined,
+                transformOrigin: d.focal_point || "50% 25%",
+              }}
+            />
+          </div>
+        ))}
       </div>
-      {/* Two scrims, not one. The bottom gradient carries the headline; the
-          top one only has to keep the fixed nav legible over a bright
-          photo, so it is much shallower. */}
-      <div className="dl-hero-scrim" aria-hidden="true" />
-      <div className="dl-hero-scrim-top" aria-hidden="true" />
-      {/* A third wash, along the left edge where the copy sits. Measured
-          against the composited photo, the orange eyebrow was 1.08:1 on a
-          phone and 1.95:1 on desktop — WCAG asks 4.5:1 for text this size.
-          The bottom scrim cannot fix it without flattening the whole frame,
-          because the eyebrow sits high; this darkens only the column the
-          text is in and leaves the subject alone. */}
-      <div className="dl-hero-scrim-left" aria-hidden="true" />
+
+      {/* Left-to-right, so the copy column is the darkest part of the frame,
+          plus a fade into the page ground so the grid below starts clean. */}
+      <div className="dl-wall-scrim" aria-hidden="true" />
+      <div className="dl-wall-scrim-bottom" aria-hidden="true" />
 
       <div className="dl-hero-body dl-band">
         <div className="dl-hero-text">
           <div className="pg-eyebrow">NIL Deal Tracker</div>
           <h1 className="pg-h1 dl-hero-title">The #1 college athlete deal tracker</h1>
-          <p className="pg-lead dl-hero-meta">{lead}</p>
-
-          {/* The photograph needs a credit, and the newest deal is the news.
-              Small, Mono, and the only link in the hero. */}
-          <Link href={`/deals/${deal.slug}`} className="pg-label dl-hero-caption">
-            <span className="dl-hero-caption-key">Latest</span>
-            <span className="dl-hero-caption-sep">·</span>
-            <span className="dl-hero-caption-name">
-              {name} <span className="dl-hero-x">&times;</span> {deal.brand_name}
-            </span>
-            {school && (
-              <>
-                <span className="dl-hero-caption-sep">·</span>
-                <span>{school}</span>
-              </>
-            )}
-            <span className="dl-hero-caption-sep">·</span>
-            <time dateTime={dealDateISO(deal.date_announced)}>
-              {dealDateShort(deal.date_announced)}
-            </time>
-          </Link>
-        </div>
-
-        <div className="dl-hero-counts">
-          {counts.map((c) => (
-            <div key={c.label}>
-              <div className="pg-stat">{c.n.toLocaleString("en-US")}</div>
-              <div className="pg-label dl-counter-label">{c.label}</div>
-            </div>
-          ))}
+          <p className="pg-lead dl-hero-meta">{HERO_LEAD}</p>
         </div>
       </div>
     </header>
