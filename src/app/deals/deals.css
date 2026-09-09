@@ -12,52 +12,102 @@
 .dl-page {
   background: var(--bg);
   min-height: 100vh;
-  /* Clears the shared fixed .pg-nav from the root layout. This page used to
-     render its own second fixed nav on top of that one. */
+  /* Clears the shared fixed .pg-nav from the root layout. The hero photo is
+     full-bleed horizontally but starts BELOW the nav, because SiteNav renders
+     .solid on every route except the homepage — sliding the photo under an
+     opaque bar would just crop it. */
   padding-top: var(--nav-h);
 }
 
-.dl-wrap {
-  max-width: 1248px;              /* design system: 1440 canvas, 96 margins */
+/* The site's content band: same 1400px and same 24/40px gutters as the
+   /clients hero card row, so the ledger lines up with the rest of the site
+   instead of sitting in its own narrow column. */
+.dl-band {
+  max-width: 1400px;
   margin: 0 auto;
-  padding-left: clamp(20px, 4vw, 48px);
-  padding-right: clamp(20px, 4vw, 48px);
+  padding-left: 24px;
+  padding-right: 24px;
+}
+@media (min-width: 640px) {
+  .dl-band { padding-left: 40px; padding-right: 40px; }
 }
 
-/* ── Hero ──────────────────────────────────────────────────────
-   Compact by instruction: it has to fit one viewport with the latest
-   strip visible under it, so there is no full-bleed photo and the
-   vertical rhythm is tight. */
-/* Block padding only. The shorthand form (padding: X 0 Y) also set the
-   inline padding to 0, and .dl-hero sits on the same element as .dl-wrap —
-   so it silently cancelled the wrap's side gutters. Invisible above 1248px,
-   where the max-width centres the content anyway; at 390px every line ran
-   into the edge of the screen. */
-.dl-hero { padding-top: clamp(28px, 5vw, 56px); padding-bottom: clamp(20px, 3vw, 28px); }
-.dl-hero-eyebrow { margin-bottom: clamp(10px, 1.4vw, 14px); }
-.dl-hero-lead { max-width: 62ch; margin-top: clamp(12px, 1.6vw, 18px); }
+/* ── Hero — the newest deal, full bleed ────────────────────────
+   No card, no panel. The counters sit directly on the scrim: a grey box
+   around them is what made the previous version read as a spreadsheet
+   header rather than the top of a magazine page. */
+.dl-hero {
+  position: relative;
+  width: 100%;
+  height: min(85svh, 820px);
+  overflow: hidden;
+  background: var(--bg-2);
+}
+.dl-hero-link { display: block; width: 100%; height: 100%; position: relative; }
 
-.dl-counters {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(12px, 2vw, 28px);
-  margin-top: clamp(20px, 3vw, 32px);
-  padding: clamp(16px, 2vw, 22px) clamp(16px, 2.4vw, 28px);
-  background: rgba(250, 248, 245, 0.07);
-  border: 1px solid rgba(250, 248, 245, 0.14);
-  border-radius: 20px;
-  backdrop-filter: blur(26px);
-  -webkit-backdrop-filter: blur(26px);
+.dl-hero-photo { position: absolute; inset: 0; }
+.dl-hero-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+.dl-hero-link:hover .dl-hero-photo img { transform: scale(1.02); }
+
+/* Design system rule 4: the flat bottom edge dissolves into the black ground
+   rather than stopping. Long and bottom-weighted so it carries the headline
+   without darkening the subject's face. */
+.dl-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgb(var(--surface-rgb)) 0%,
+    rgb(var(--surface-rgb) / 0.92) 14%,
+    rgb(var(--surface-rgb) / 0.55) 38%,
+    rgb(var(--surface-rgb) / 0.08) 66%,
+    transparent 100%
+  );
+}
+/* Only deep enough to keep the fixed nav legible over a bright photo. */
+.dl-hero-scrim-top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 120px;
+  background: linear-gradient(to bottom, rgb(var(--surface-rgb) / 0.55), transparent);
+}
+
+.dl-hero-body {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: clamp(24px, 5vw, 64px);
+  padding-bottom: clamp(28px, 5vh, 56px);
+}
+/* 22ch was too tight for a 92px Bebas line: "DARIAN MENSAH x CVS" broke
+   three ways and orphaned the x onto its own line. The cap is now a share of
+   the band, leaving the counters their column on the right. */
+.dl-hero-text { min-width: 0; max-width: min(62%, 820px); }
+.dl-hero-title { margin-top: clamp(8px, 1.2vw, 14px); }
+.dl-hero-x { color: var(--orange); }
+.dl-hero-meta { margin-top: clamp(10px, 1.4vw, 16px); }
+
+.dl-hero-counts {
+  display: flex;
+  gap: clamp(20px, 3vw, 48px);
+  flex: 0 0 auto;
+  text-align: right;
 }
 .dl-counter-label { margin-top: 6px; }
 
+/* A filtered view has no hero photo, so it gets a plain heading band. */
+.dl-hero-fallback { padding-top: clamp(28px, 5vw, 56px); padding-bottom: clamp(16px, 2vw, 24px); }
+
 /* ── Latest strip ──────────────────────────────────────────── */
-.dl-section {
-  padding-top: clamp(28px, 4vw, 44px);
-  padding-bottom: clamp(28px, 4vw, 44px);
-  border-top: 1px solid var(--glass-border);
-}
-.dl-section-head {
+.dl-strip-section { padding: clamp(28px, 4vw, 44px) 0 clamp(20px, 3vw, 32px); }
+.dl-strip-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -65,25 +115,84 @@
   flex-wrap: wrap;
   margin-bottom: clamp(14px, 2vw, 20px);
 }
-
-.dl-latest { list-style: none; }
-.dl-latest li { border-bottom: 1px solid rgba(250, 248, 245, 0.07); }
-.dl-latest li:last-child { border-bottom: 0; }
-.dl-latest a {
-  display: flex;
-  align-items: baseline;
-  gap: clamp(8px, 1.2vw, 14px);
-  flex-wrap: wrap;
-  /* 44px minimum touch target, on every device — not only mobile. */
+.dl-strip-controls { display: flex; align-items: center; gap: 10px; }
+.dl-strip-seeall {
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
-  padding: 11px 4px;
-  transition: background 0.15s;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
 }
-.dl-latest a:hover { background: rgba(250, 248, 245, 0.04); }
-.dl-latest-date { flex: 0 0 auto; min-width: 62px; }
-.dl-latest-sep { color: rgba(250, 248, 245, 0.28); }
-.dl-latest-brand { color: var(--orange); }
-.dl-latest-meta { color: rgba(250, 248, 245, 0.5); }
+.dl-strip-seeall:hover { background: rgba(255, 255, 255, 0.12); }
+
+.dl-strip-arrow {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(250, 248, 245, 0.9);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.dl-strip-arrow svg { width: 18px; height: 18px; }
+.dl-strip-arrow:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+.dl-strip-arrow:disabled { opacity: 0.3; cursor: default; }
+/* Touch scrolls the rail directly, so the arrows are desktop-only rather than
+   two dead controls taking up a phone's width. */
+@media (max-width: 750px) { .dl-strip-arrow { display: none; } }
+
+.dl-strip-rail {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* The gutters are on .dl-band, so the rail can run to the container edge
+     and the last card still stops where the text above it does. */
+  padding-bottom: 4px;
+}
+.dl-strip-rail::-webkit-scrollbar { display: none; }
+
+.dl-strip-card {
+  flex: 0 0 auto;
+  width: calc((100% - 5 * 16px) / 5.4);
+  min-width: 150px;
+  scroll-snap-align: start;
+}
+@media (max-width: 1000px) {
+  .dl-strip-card { width: calc((100% - 3 * 16px) / 3.4); }
+}
+.dl-strip-photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(250, 248, 245, 0.04);
+  border: 1px solid rgba(250, 248, 245, 0.1);
+}
+.dl-strip-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.dl-strip-card:hover .dl-strip-photo img { transform: scale(1.04); }
+/* Deep enough that the orange brand line clears the photo underneath it —
+   at 0.45 the eyebrow was washing out over a bright frame. */
+.dl-strip-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(7, 7, 10, 0.95) 0%, rgba(7, 7, 10, 0.78) 26%, rgba(7, 7, 10, 0.3) 52%, transparent 76%);
+}
+.dl-strip-caption { position: absolute; inset: auto 0 0 0; padding: 14px 14px 16px; }
+.dl-strip-brand { margin-bottom: 4px; }
+.dl-strip-date { margin-top: 5px; }
 
 /* ── Filters ───────────────────────────────────────────────── */
 .dl-filters { display: flex; flex-direction: column; gap: 12px; }
@@ -170,38 +279,53 @@
    <tr>; the alternative is a stretched pseudo-element over a table row,
    which browsers disagree about. The columns are the same either way and
    every cell is real text in the server HTML. */
+.dl-ledger-section { padding: clamp(28px, 4vw, 44px) 0 0; border-top: 1px solid var(--glass-border); }
+.dl-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: clamp(14px, 2vw, 20px);
+}
+
 .dl-ledger { list-style: none; border-top: 1px solid var(--glass-border); }
 
 .dl-cols {
   display: grid;
-  /* Sport gets a fixed 120px because "Figure Skating" is the longest value
-     in the set and 96px clipped it to "Figure Ska…". */
-  grid-template-columns: 48px minmax(160px, 1.6fr) minmax(120px, 1.3fr) 120px minmax(128px, 1fr) 112px;
-  gap: clamp(10px, 1.4vw, 18px);
+  /* Sport gets a fixed 132px because "Figure Skating" is the longest value
+     in the set and a narrower track clipped it to "Figure Ska…". */
+  grid-template-columns: 77px minmax(200px, 1.7fr) minmax(140px, 1.3fr) 132px minmax(150px, 1fr) 124px;
+  gap: clamp(14px, 1.6vw, 24px);
   align-items: center;
 }
 
 .dl-head {
-  padding: 10px 4px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--glass-border);
 }
 .dl-head > span { color: rgba(250, 248, 245, 0.5); }
 
-.dl-row { border-bottom: 1px solid rgba(250, 248, 245, 0.07); }
+/* Alternating surfaces rather than a hairline between every row. A rule on
+   400 rows is what reads as a spreadsheet; two grounds a shade apart give the
+   eye the same tracking without drawing a grid. */
 .dl-row > a {
   min-height: 44px;
-  padding: 9px 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
   transition: background 0.15s;
 }
-.dl-row > a:hover { background: rgba(250, 248, 245, 0.04); }
+.dl-row:nth-child(odd) > a { background: var(--bg); }
+.dl-row:nth-child(even) > a { background: var(--bg-3); }
+.dl-row > a:hover { background: rgba(250, 248, 245, 0.09); }
 
 /* The 4:5 frame is fixed, so a portrait and a landscape photo occupy the
-   same slot and the column never jitters. */
+   same slot and the column never jitters. 77px wide is ~96px tall. */
 .dl-thumb {
   position: relative;
-  width: 48px;
+  width: 77px;
   aspect-ratio: 4 / 5;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   background: rgba(250, 248, 245, 0.04);
   border: 1px solid rgba(250, 248, 245, 0.1);
@@ -221,7 +345,7 @@
 }
 
 .dl-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.dl-brand img { width: 20px; height: 20px; object-fit: contain; flex: 0 0 auto; }
+.dl-brand img { width: 24px; height: 24px; object-fit: contain; flex: 0 0 auto; }
 .dl-brand-name { color: var(--orange); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* School and sport are data, so they sit on the body rung of the opacity
@@ -268,7 +392,22 @@
    thumb + athlete/brand, then school · sport · date. Nothing is hidden
    behind hover, and the tap target is the whole row. */
 @media (max-width: 750px) {
-  .dl-counters { padding: 14px 12px; gap: 8px; }
+  /* The hero keeps its shape but gives back height, and the counters move
+     under the headline instead of competing with it for the same line. */
+  .dl-hero { height: min(70svh, 560px); }
+  .dl-hero-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+    padding-bottom: 24px;
+  }
+  .dl-hero-text { max-width: none; }
+  .dl-hero-counts { text-align: left; gap: 22px; width: 100%; }
+  .dl-hero-counts .pg-stat { font-size: 34px; }
+
+  /* 1.3 cards visible, so the row visibly continues past the edge. */
+  .dl-strip-card { width: calc((100% - 16px) / 1.3); min-width: 0; }
+
   .dl-head { display: none; }
 
   .dl-row > a {
@@ -276,7 +415,7 @@
     grid-template-columns: 56px minmax(0, 1fr);
     gap: 12px;
     align-items: center;
-    padding: 12px 4px;
+    padding: 12px;
   }
   .dl-thumb { width: 56px; }
   .dl-cell-school, .dl-cell-sport, .dl-cell-date, .dl-cell-brand { display: none; }
@@ -295,12 +434,5 @@
   .dl-brand-in-lines { display: flex; }
   .dl-mobile-line { display: block; flex: 0 0 100%; color: rgba(250, 248, 245, 0.5); }
 
-  .dl-latest a { padding: 12px 4px; }
-  /* The school drops to its own line rather than wrapping mid-entry, and its
-     separator goes with it — otherwise line one ends on a dangling "·". */
-  /* 70px = the date column (62) plus the flex gap (8), so line two starts
-     under the entry rather than under the date. */
-  .dl-latest-meta { flex: 0 0 100%; margin-left: 70px; }
-  .dl-latest-sep-school { display: none; }
   .dl-facet-menu { min-width: min(280px, calc(100vw - 48px)); }
 }

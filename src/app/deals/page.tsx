@@ -41,18 +41,20 @@ import {
   brandTint,
   dealDate,
   dealDateISO,
-  dealDateShort,
   dealYear,
   facetSlug,
+  heroUrl,
   initialsOf,
   thumbUrl,
+  zoomScale,
 } from "@/lib/deal-format";
+import DealStrip from "./DealStrip";
 
 // The ledger changes when a deal is added, not per request.
 export const revalidate = 300;
 
 const PER_PAGE = 50;
-const LATEST_COUNT = 10;
+const STRIP_COUNT = 8;
 
 /* ── Data ─────────────────────────────────────────────────────── */
 
@@ -69,6 +71,8 @@ type DealRow = {
   featured: boolean;
   sort_order: number;
   focal_point: string | null;
+  /** Postgres `numeric`, so this arrives as a string ("1.0"). */
+  zoom_desktop: string | number | null;
 };
 
 type Ledger = {
@@ -102,7 +106,7 @@ const loadLedgerUncached = unstable_cache(
     const { data } = await supabase
       .from("deals")
       .select(
-        "id, slug, athlete_name, athlete_school, athlete_sport, brand_name, brand_id, image_url, date_announced, featured, sort_order, focal_point"
+        "id, slug, athlete_name, athlete_school, athlete_sport, brand_name, brand_id, image_url, date_announced, featured, sort_order, focal_point, zoom_desktop"
       )
       .eq("published", true)
       .neq("status", "archived");
@@ -254,6 +258,16 @@ function hrefWith(active: Active, f: Facet, value: string | null): string {
   return qs ? `/deals?${qs}` : "/deals";
 }
 
+/**
+ * Same URL, anchored at the ledger. Used for the links only, never for the
+ * canonical: a fragment has no place in a canonical URL, and without it a
+ * reader who clicks "page 3" lands back at the top of a full-screen hero
+ * they have already scrolled past.
+ */
+function atLedger(href: string): string {
+  return `${href}#ledger`;
+}
+
 function hrefPage(active: Active, page: number): string {
   const p = new URLSearchParams();
   for (const g of FACETS) if (active[g]) p.set(g, active[g]!);
@@ -342,125 +356,171 @@ export default async function DealsPage({ searchParams }: { searchParams: Search
   const page = Math.min(readPage(searchParams), pages);
   const rows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  // The hero counts the whole ledger, not the filtered view — it is the
-  // headline claim about the agency, and it should not move when a reader
-  // narrows to one brand.
+  // The counters describe the whole ledger, not the filtered view — they are
+  // the headline claim about the agency, and they should not move when a
+  // reader narrows to one brand.
   const athletes = new Set(deals.map((d) => d.athlete_name).filter(Boolean)).size;
   const brands = new Set(deals.map((d) => d.brand_name).filter(Boolean)).size;
 
-  // Only on the unfiltered ledger. On a filtered view the strip would show
-  // deals that contradict the filter directly above rows that obey it — and
-  // the ledger is already reverse-chronological, so its first rows are the
-  // latest matching deals anyway.
-  const latest = hasFilters ? [] : deals.filter((d) => d.date_announced).slice(0, LATEST_COUNT);
+  // Deal 1 is the hero, deals 2-9 are the strip. Both are suppressed on a
+  // filtered view: they would show deals that contradict the filter directly
+  // above rows that obey it, and the ledger is already reverse-chronological,
+  // so its first rows ARE the latest matching deals.
+  const dated = deals.filter((d) => d.date_announced && d.image_url);
+  const hero = hasFilters ? null : dated[0] ?? null;
+  const strip = hasFilters ? [] : dated.slice(1, 1 + STRIP_COUNT);
 
   return (
     <div className="dl-page">
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <header className="dl-wrap dl-hero">
-        <div className="pg-eyebrow dl-hero-eyebrow">NIL Deal Tracker</div>
-        <h1 className="pg-h1">Every deal we&rsquo;ve done</h1>
-        <p className="pg-lead dl-hero-lead">
-          Every NIL partnership Postgame has run, on the record — athlete, brand and
-          date. Newest first.
-        </p>
-
-        <div className="dl-counters">
-          {[
+      {hero && (
+        <HeroDeal
+          deal={hero}
+          counts={[
             { n: deals.length, label: "Deals on file" },
             { n: athletes, label: "Athletes" },
             { n: brands, label: "Brands" },
-          ].map((c) => (
-            <div key={c.label}>
-              <div className="pg-stat">{c.n.toLocaleString("en-US")}</div>
-              <div className="pg-label dl-counter-label">{c.label}</div>
-            </div>
-          ))}
-        </div>
-      </header>
-
-      {/* ── Latest ─────────────────────────────────────────── */}
-      {latest.length > 0 && (
-        <section className="dl-wrap dl-section">
-          <div className="dl-section-head">
-            <h2 className="pg-h2">Latest</h2>
-            <span className="pg-label">The {latest.length} most recent</span>
-          </div>
-          <ol className="dl-latest">
-            {latest.map((d) => (
-              <li key={d.id}>
-                <Link href={`/deals/${d.slug}`}>
-                  <time className="pg-label dl-latest-date" dateTime={dealDateISO(d.date_announced)}>
-                    {dealDateShort(d.date_announced)}
-                  </time>
-                  <span className="dl-latest-sep">·</span>
-                  <span className="pg-h3">{d.athlete_name || "Team campaign"}</span>
-                  <span className="dl-latest-sep">×</span>
-                  <span className="pg-h3 dl-latest-brand">{d.brand_name}</span>
-                  {d.athlete_school && (
-                    <>
-                      <span className="dl-latest-sep dl-latest-sep-school">·</span>
-                      <span className="pg-label dl-latest-meta">{d.athlete_school}</span>
-                    </>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </section>
+          ]}
+        />
       )}
 
+      {/* A filtered view has no hero, so it needs its own page heading —
+          without one the reader lands on a bare row of filter chips. */}
+      {!hero && (
+        <header className="dl-band dl-hero-fallback">
+          <div className="pg-eyebrow">NIL Deal Tracker</div>
+          <h1 className="pg-h1">Every deal we&rsquo;ve done</h1>
+        </header>
+      )}
+
+      <DealStrip deals={strip} tintByBrand={tintByBrand} />
+
       {/* ── Ledger ─────────────────────────────────────────── */}
-      <section className="dl-wrap dl-section" id="ledger">
-        <div className="dl-section-head">
-          <h2 className="pg-h2">The ledger</h2>
-          <span className="pg-label dl-result-count">
-            {filtered.length.toLocaleString("en-US")}
-            {hasFilters ? ` of ${deals.length.toLocaleString("en-US")}` : ""} deals
-            {pages > 1 ? ` · page ${page} of ${pages}` : ""}
-          </span>
-        </div>
-
-        <Filters deals={deals} active={active} hasFilters={hasFilters} />
-
-        {rows.length === 0 ? (
-          <div className="dl-empty">
-            <p className="pg-lead">No deals match that combination.</p>
-            <p style={{ marginTop: 16 }}>
-              <Link href="/deals" className="pg-btn dl-chip-clear">
-                Clear filters
-              </Link>
-            </p>
+      <section className="dl-ledger-section" id="ledger">
+        <div className="dl-band">
+          <div className="dl-section-head">
+            <h2 className="pg-h2">{hero ? "Every deal" : "The ledger"}</h2>
+            <span className="pg-label dl-result-count">
+              {filtered.length.toLocaleString("en-US")}
+              {hasFilters ? ` of ${deals.length.toLocaleString("en-US")}` : ""} deals
+              {pages > 1 ? ` · page ${page} of ${pages}` : ""}
+            </span>
           </div>
-        ) : (
-          <>
-            <div className="dl-cols dl-head" aria-hidden="true">
-              <span className="pg-label" />
-              <span className="pg-label">Athlete</span>
-              <span className="pg-label">School</span>
-              <span className="pg-label">Sport</span>
-              <span className="pg-label">Brand</span>
-              <span className="pg-label">Announced</span>
+
+          <Filters deals={deals} active={active} hasFilters={hasFilters} />
+
+          {rows.length === 0 ? (
+            <div className="dl-empty">
+              <p className="pg-lead">No deals match that combination.</p>
+              <p style={{ marginTop: 16 }}>
+                <Link href="/deals" className="pg-btn dl-chip-clear">
+                  Clear filters
+                </Link>
+              </p>
             </div>
+          ) : (
+            <>
+              <div className="dl-cols dl-head" aria-hidden="true">
+                <span className="pg-label" />
+                <span className="pg-label">Athlete</span>
+                <span className="pg-label">School</span>
+                <span className="pg-label">Sport</span>
+                <span className="pg-label">Brand</span>
+                <span className="pg-label">Announced</span>
+              </div>
 
-            <ol className="dl-ledger">
-              {rows.map((d) => (
-                <LedgerRow
-                  key={d.id}
-                  deal={d}
-                  logo={d.brand_id ? logoByBrand[d.brand_id] : undefined}
-                  tint={d.brand_id ? tintByBrand[d.brand_id] : undefined}
-                />
-              ))}
-            </ol>
-          </>
-        )}
+              <ol className="dl-ledger">
+                {rows.map((d) => (
+                  <LedgerRow
+                    key={d.id}
+                    deal={d}
+                    logo={d.brand_id ? logoByBrand[d.brand_id] : undefined}
+                    tint={d.brand_id ? tintByBrand[d.brand_id] : undefined}
+                  />
+                ))}
+              </ol>
+            </>
+          )}
 
-        {pages > 1 && <Pager active={active} page={page} pages={pages} />}
+          {pages > 1 && <Pager active={active} page={page} pages={pages} />}
+        </div>
       </section>
 
       <SiteFooter />
     </div>
+  );
+}
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+
+/**
+ * The newest deal, full bleed.
+ *
+ * The whole thing is one link, so it is an <a> wrapping the photo, the
+ * headline and the counters. The counters sit on the scrim with no card
+ * behind them — a grey panel here is what made the old page read as a
+ * spreadsheet header rather than a magazine cover.
+ */
+function HeroDeal({
+  deal,
+  counts,
+}: {
+  deal: DealRow;
+  counts: { n: number; label: string }[];
+}) {
+  const src = heroUrl(deal.image_url);
+  const focal = deal.focal_point || "50% 25%";
+  const zoom = zoomScale(deal.zoom_desktop);
+  const name = deal.athlete_name || "Team campaign";
+  const meta = [deal.athlete_school, deal.athlete_sport, dealDate(deal.date_announced)]
+    .filter((s) => s && s !== "—")
+    .join(" · ");
+
+  return (
+    <header className="dl-hero">
+      <Link href={`/deals/${deal.slug}`} className="dl-hero-link">
+        <div className="dl-hero-photo">
+          {src && (
+            <img
+              src={src}
+              alt={`${name} x ${deal.brand_name}`}
+              // The hero is the largest paint on the page and is above the
+              // fold, so it is the one image on /deals that is not lazy.
+              fetchPriority="high"
+              decoding="async"
+              style={{
+                objectPosition: focal,
+                transform: zoom ? `scale(${zoom})` : undefined,
+                transformOrigin: focal,
+              }}
+            />
+          )}
+        </div>
+        {/* Two scrims, not one. The bottom gradient carries the headline; the
+            top one only has to keep the fixed nav legible over a bright
+            photo, so it is much shallower. */}
+        <div className="dl-hero-scrim" aria-hidden="true" />
+        <div className="dl-hero-scrim-top" aria-hidden="true" />
+
+        <div className="dl-hero-body dl-band">
+          <div className="dl-hero-text">
+            <div className="pg-eyebrow">NIL Deal Tracker · Latest</div>
+            <h1 className="pg-h1 dl-hero-title">
+              {name} <span className="dl-hero-x">&times;</span> {deal.brand_name}
+            </h1>
+            {meta && <p className="pg-lead dl-hero-meta">{meta}</p>}
+          </div>
+
+          <div className="dl-hero-counts">
+            {counts.map((c) => (
+              <div key={c.label}>
+                <div className="pg-stat">{c.n.toLocaleString("en-US")}</div>
+                <div className="pg-label dl-counter-label">{c.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Link>
+    </header>
   );
 }
 
@@ -564,7 +624,7 @@ function Filters({
                 {options.map((o) => (
                   <Link
                     key={o.slug}
-                    href={hrefWith(active, f, o.slug === current ? null : o.slug)}
+                    href={atLedger(hrefWith(active, f, o.slug === current ? null : o.slug))}
                     aria-current={o.slug === current ? "true" : undefined}
                     className="pg-body"
                   >
@@ -587,7 +647,7 @@ function Filters({
               <span key={f} className="dl-chip pg-btn">
                 {labelFor(deals, f, slug)}
                 <Link
-                  href={hrefWith(active, f, null)}
+                  href={atLedger(hrefWith(active, f, null))}
                   className="dl-chip-x"
                   aria-label={`Remove the ${FACET_LABEL[f].toLowerCase()} filter`}
                 >
@@ -596,7 +656,7 @@ function Filters({
               </span>
             );
           })}
-          <Link href="/deals" className="pg-btn dl-chip-clear">
+          <Link href="/deals#ledger" className="pg-btn dl-chip-clear">
             Clear all
           </Link>
         </div>
@@ -627,7 +687,7 @@ function Pager({ active, page, pages }: { active: Active; page: number; pages: n
   return (
     <nav className="dl-pager" aria-label="Ledger pages">
       {page > 1 ? (
-        <Link href={hrefPage(active, page - 1)} className="pg-btn" rel="prev">
+        <Link href={atLedger(hrefPage(active, page - 1))} className="pg-btn" rel="prev">
           Previous
         </Link>
       ) : (
@@ -646,14 +706,14 @@ function Pager({ active, page, pages }: { active: Active; page: number; pages: n
             {n}
           </span>
         ) : (
-          <Link key={n} href={hrefPage(active, n)} className="pg-btn">
+          <Link key={n} href={atLedger(hrefPage(active, n))} className="pg-btn">
             {n}
           </Link>
         )
       )}
 
       {page < pages ? (
-        <Link href={hrefPage(active, page + 1)} className="pg-btn" rel="next">
+        <Link href={atLedger(hrefPage(active, page + 1))} className="pg-btn" rel="next">
           Next
         </Link>
       ) : (

@@ -90,11 +90,31 @@ export function initialsOf(name: string | null | undefined): string {
  *
  * Anything not on Supabase Storage is returned untouched.
  */
-export function thumbUrl(url: string | null | undefined, box = 320): string | null {
+export function thumbUrl(url: string | null | undefined, box = 320, quality = 72): string | null {
   if (!url) return null;
   if (!url.includes("/storage/v1/object/public/")) return url;
   const base = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-  return `${base}?width=${box}&height=${box}&resize=contain&quality=72`;
+  return `${base}?width=${box}&height=${box}&resize=contain&quality=${quality}`;
+}
+
+/**
+ * The full-bleed hero photo. Same transform, a much bigger box and a higher
+ * quality, because this one fills the screen: the newest deal's original is
+ * 2000x2000 and 3.2 MB, and at 1800/q80 it is 381 KB for a frame that is at
+ * most 1400px tall.
+ */
+export function heroUrl(url: string | null | undefined): string | null {
+  return thumbUrl(url, 1800, 80);
+}
+
+/**
+ * A deal's stored zoom arrives from Postgres `numeric` as a string ("1.0").
+ * Anything that is not a usable number above 1 means "no zoom", and returning
+ * undefined rather than 1 lets the caller drop the transform entirely.
+ */
+export function zoomScale(value: unknown): number | undefined {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) && n > 1 ? n : undefined;
 }
 
 /**
