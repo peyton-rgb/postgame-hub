@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
         <div className="text-center">
           <img src="/postgame-logo-white.png" className="h-8 object-contain mx-auto mb-6" alt="Postgame" />
           <div className="text-green-500 font-bold text-lg mb-2">Password updated!</div>
-          <p className="text-gray-500 text-sm">Redirecting to dashboard...</p>
+          <p className="pg-body text-gray-500">Redirecting to dashboard...</p>
         </div>
       </div>
     );
@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-10">
           <img src="/postgame-logo-white.png" className="h-8 object-contain mb-3" alt="Postgame" />
-          <p className="text-sm text-gray-500">Set your new password</p>
+          <p className="pg-body text-gray-500">Set your new password</p>
         </div>
 
         <form onSubmit={handleReset} className="space-y-4">

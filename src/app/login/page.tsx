@@ -38,7 +38,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <img src="/postgame-logo-white.png" className="h-8 object-contain mb-3" alt="Postgame" />
-          <p className="text-sm text-gray-500">Sign in to your dashboard</p>
+          <p className="pg-body text-gray-500">Sign in to your dashboard</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">

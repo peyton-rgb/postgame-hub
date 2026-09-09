@@ -185,13 +185,13 @@ function CaseStudyCard({ study }: { study: CaseStudy }) {
           </div>
 
           {/* Title */}
-          <h3 className="text-base font-bold text-white mb-2 group-hover:text-[#D73F09] transition-colors">
+          <h3 className="pg-h3 mb-2 group-hover:text-[#D73F09] transition-colors">
             {study.title}
           </h3>
 
           {/* Overview */}
           {study.overview && (
-            <p className="text-[12px] text-white/35 line-clamp-2 leading-relaxed">
+            <p className="pg-body line-clamp-2">
               {study.overview}
             </p>
           )}
@@ -263,11 +263,11 @@ export default function CaseStudiesPage() {
             <div className="h-px w-8 bg-[#D73F09]/40" />
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-black leading-[1.1] mb-4">
+          <h1 className="pg-h1 leading-[1.1] mb-4">
             Case Studies
           </h1>
 
-          <p className="text-sm text-white/40 max-w-md mx-auto leading-relaxed">
+          <p className="pg-body max-w-md mx-auto">
             How we&apos;ve helped brands connect with college athletes to create
             campaigns that move culture.
           </p>
@@ -348,10 +348,10 @@ export default function CaseStudiesPage() {
           }}
         />
         <div className="relative">
-          <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">
+          <h2 className="pg-h2 mb-3">
             Want results like these?
           </h2>
-          <p className="text-sm text-white/80 mb-8 max-w-md mx-auto">
+          <p className="pg-body mb-8 max-w-md mx-auto">
             Let&apos;s build your next athlete influencer campaign together.
           </p>
           <a

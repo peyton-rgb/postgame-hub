@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Inter, JetBrains_Mono } from "next/font/google";
+import { Anton, Arimo, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/motion.css";
 import SiteNav from "@/components/SiteNav";
@@ -12,13 +12,29 @@ const bebasNeue = Bebas_Neue({
   display: "swap",
 });
 
-// Inter for body copy on editorial campaign pages; JetBrains Mono for
-// uppercase labels/kickers ("THE WORK", stat captions). Loaded once here so
-// every page can opt-in via the --font-inter / --font-mono CSS variables.
-const inter = Inter({
-  weight: ["400", "500", "700"],
+// The design system is FOUR fonts and this is where all four are loaded, so a
+// page never has to reach for a fifth or re-import one it already has.
+//
+//   Bebas Neue     display — hero lines, H1/H2, athlete names, card titles
+//   Anton          heavy — campaign titles and stat figures ONLY
+//   Arimo          body — everything read at length (Arial is its metric twin
+//                  and the correct fallback, which is why body looked "fine"
+//                  while Arimo was never actually loaded)
+//   JetBrains Mono label — eyebrows, stat labels, captions, nav, buttons, tags
+//
+// Inter used to sit here as a fifth face, loaded on every public page in three
+// weights and used on exactly one. It is gone; its single consumer now takes
+// the body font.
+const anton = Anton({
+  weight: "400",            // Anton ships one weight only.
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-anton",
+  display: "swap",
+});
+const arimo = Arimo({
+  weight: ["400", "700"],   // 700 is the pull-quote cut.
+  subsets: ["latin"],
+  variable: "--font-arimo",
   display: "swap",
 });
 const mono = JetBrains_Mono({
@@ -68,7 +84,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${bebasNeue.variable} ${inter.variable} ${mono.variable}`}>
+    <html lang="en" className={`${bebasNeue.variable} ${anton.variable} ${arimo.variable} ${mono.variable}`}>
       <body>
         <PageWrapper>
           {/* SiteNav hides itself on /dashboard, /login, /recap, /pitch, etc.

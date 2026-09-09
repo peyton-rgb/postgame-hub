@@ -84,23 +84,20 @@ export default function DealDetailPage() {
         .deal-hero-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0.2) 40%,transparent 100%);}
         .deal-hero-content{position:absolute;bottom:0;left:0;right:0;padding:48px;}
         .deal-body{max-width:800px;margin:0 auto;padding:48px 48px 80px;}
-        .deal-tag{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);margin-bottom:8px;}
+        .deal-tag{display:inline-block;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);margin-bottom:8px;}
         .deal-brand-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
         .deal-brand-logo{height:28px;max-width:100px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.85;}
-        .deal-brand-name{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.6);}
-        .deal-name{font-size:clamp(36px,6vw,64px);line-height:0.95;margin:0 0 12px;font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif;letter-spacing:0.02em;}
-        .deal-meta{font-size:18px;line-height:1.2;color:rgba(255,255,255,0.55);display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+        .deal-brand-name{color:rgba(255,255,255,0.6);}
+        .deal-name{margin:0 0 12px;}
+        .deal-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
         .deal-tags{display:flex;flex-wrap:wrap;gap:8px;margin:28px 0;}
-        .deal-tag-pill{font-size:13px;padding:7px 16px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.03);}
-        .deal-section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.18em;color:rgba(255,255,255,0.35);margin-bottom:12px;}
-        .deal-desc{font-size:24px;line-height:1.4;color:rgba(255,255,255,0.72);}
+        .deal-tag-pill{padding:7px 16px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.03);}
+        .deal-section-title{color:rgba(255,255,255,0.35);margin-bottom:12px;}
         .deal-divider{border:none;border-top:1px solid rgba(255,255,255,0.08);margin:36px 0;}
         .deal-cta-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:48px;}
         @media(max-width:600px){
           .deal-hero-content{padding:24px;}
           .deal-body{padding:32px 20px 60px;}
-          .deal-desc{font-size:14px;}
-          .deal-meta{font-size:14px;}
         }
       ` }} />
 
@@ -137,11 +134,11 @@ export default function DealDetailPage() {
             <div className="deal-brand-row">
               {brandLogo
                 ? <img src={brandLogo} alt={deal.brand_name} className="deal-brand-logo" style={heroLogoStyle} />
-                : <span className="deal-brand-name">{deal.brand_name}</span>
+                : <span className="pg-eyebrow deal-brand-name">{deal.brand_name}</span>
               }
             </div>
-            <h1 className="deal-name">{deal.athlete_name || "Team Campaign"}</h1>
-            <div className="deal-meta">
+            <h1 className="pg-h1 deal-name">{deal.athlete_name || "Team Campaign"}</h1>
+            <div className="pg-lead deal-meta">
               {deal.athlete_school && <span>{deal.athlete_school}</span>}
               {deal.athlete_sport && <span style={{ color:"rgba(255,255,255,0.35)" }}>·</span>}
               {deal.athlete_sport && <span>{deal.athlete_sport}</span>}
@@ -158,11 +155,11 @@ export default function DealDetailPage() {
             <div className="deal-brand-row">
               {brandLogo
                 ? <img src={brandLogo} alt={deal.brand_name} className="deal-brand-logo" style={{ filter:"none", opacity:1 }} />
-                : <span className="deal-brand-name">{deal.brand_name}</span>
+                : <span className="pg-eyebrow deal-brand-name">{deal.brand_name}</span>
               }
             </div>
-            <h1 className="deal-name">{deal.athlete_name || "Team Campaign"}</h1>
-            <div className="deal-meta">
+            <h1 className="pg-h1 deal-name">{deal.athlete_name || "Team Campaign"}</h1>
+            <div className="pg-lead deal-meta">
               {deal.athlete_school && <span>{deal.athlete_school}</span>}
               {deal.athlete_sport && <><span style={{ color:"rgba(255,255,255,0.35)" }}>·</span><span>{deal.athlete_sport}</span></>}
             </div>
@@ -173,10 +170,10 @@ export default function DealDetailPage() {
         {deal.deal_type && (
           <div className="deal-tags">
             {deal.deal_type.split(",").map((t: string) => (
-              <span key={t.trim()} className="deal-tag-pill">{t.trim()}</span>
+              <span key={t.trim()} className="pg-label deal-tag-pill">{t.trim()}</span>
             ))}
             {deal.date_announced && (
-              <span className="deal-tag-pill" style={{ color:"rgba(255,255,255,0.35)" }}>
+              <span className="pg-label deal-tag-pill" style={{ color:"rgba(255,255,255,0.35)" }}>
                 {new Date(deal.date_announced + "T00:00:00").toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })}
               </span>
             )}
@@ -188,8 +185,8 @@ export default function DealDetailPage() {
         {/* Campaign write-up */}
         {deal.description && (
           <>
-            <div className="deal-section-title">About This Campaign</div>
-            <div className="deal-desc">
+            <div className="pg-eyebrow deal-section-title">About This Campaign</div>
+            <div className="pg-lead deal-desc">
               {deal.description.split("\n").map((para: string, i: number) => (
                 <p key={i} style={{ marginBottom:16 }}>{para}</p>
               ))}
@@ -201,8 +198,8 @@ export default function DealDetailPage() {
         {(deal as any).bio && (
           <>
             <hr className="deal-divider" />
-            <div className="deal-section-title">About the Athlete</div>
-            <div className="deal-desc">
+            <div className="pg-eyebrow deal-section-title">About the Athlete</div>
+            <div className="pg-lead deal-desc">
               {String((deal as any).bio).split("\n").map((para: string, i: number) => (
                 <p key={i} style={{ marginBottom:16 }}>{para}</p>
               ))}

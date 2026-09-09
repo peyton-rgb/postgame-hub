@@ -185,7 +185,7 @@ const SUCCESS = "#7ee2a8";
  *  hairline value is this colour stepped down, never a grey hex. */
 const ink = (a: number) => `rgba(250,248,245,${a})`;
 const MONO = "var(--font-mono), ui-monospace, monospace";
-const BODY = "Arial, Helvetica, sans-serif";
+const BODY = "var(--font-arimo), Arimo, Arial, Helvetica, sans-serif";
 
 type Phase = "form" | "uploading" | "partial" | "done";
 

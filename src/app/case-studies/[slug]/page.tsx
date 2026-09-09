@@ -345,7 +345,7 @@ function RelatedCard({ study }: { study: RelatedStudy }) {
         )}
         <span className="text-xs text-white/40">{study.brand_name}</span>
       </div>
-      <h3 className="text-sm font-bold text-white mb-2 group-hover:text-white/80 transition-colors line-clamp-2">
+      <h3 className="pg-h3 mb-2 group-hover:/80 transition-colors line-clamp-2">
         {study.title}
       </h3>
       {study.hero_stat && (
@@ -515,10 +515,10 @@ export default function CaseStudyDetailPage() {
       <div className="min-h-screen bg-[#0a0a0a] text-white">
         <PublicNav variant="dark" />
         <div className="pt-28 text-center px-6">
-          <h1 className="text-2xl font-bold text-white mb-4">
+          <h1 className="pg-h1 mb-4">
             Case Study Not Found
           </h1>
-          <p className="text-sm text-white/40 mb-8">
+          <p className="pg-body mb-8">
             This case study may not be published yet.
           </p>
           <Link
@@ -624,7 +624,7 @@ export default function CaseStudyDetailPage() {
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-8 leading-[1.05] max-w-4xl">
+          <h1 className="pg-h1 mb-8 leading-[1.05] max-w-4xl">
             {study.title}
           </h1>
 
@@ -722,7 +722,7 @@ export default function CaseStudyDetailPage() {
                 The Challenge
               </div>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
+            <h2 className="pg-h2 mb-4">
               What they needed
             </h2>
             <div className="text-sm sm:text-base text-white/45 leading-relaxed">
@@ -748,7 +748,7 @@ export default function CaseStudyDetailPage() {
                 The Solution
               </div>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
+            <h2 className="pg-h2 mb-4">
               How we delivered
             </h2>
             <div className="text-sm sm:text-base text-white/45 leading-relaxed">
@@ -779,7 +779,7 @@ export default function CaseStudyDetailPage() {
                 The Results
               </div>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
+            <h2 className="pg-h2 mb-4">
               What happened
             </h2>
             <div className="text-sm sm:text-base text-white/45 leading-relaxed">
@@ -979,10 +979,10 @@ export default function CaseStudyDetailPage() {
           }}
         />
         <div className="relative max-w-lg mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">
+          <h2 className="pg-h2 mb-4">
             Want results like {study.brand_name}?
           </h2>
-          <p className="text-sm text-white/80 mb-10 leading-relaxed">
+          <p className="pg-body mb-10">
             Let&apos;s build your next athlete influencer campaign together.
           </p>
           <a

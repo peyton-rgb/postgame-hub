@@ -499,7 +499,7 @@ export default function MediaLibrary() {
             <span className="text-2xl leading-none">⚠️</span>
             <div>
               <h3 className="font-black text-white mb-2">No athlete subfolders found.</h3>
-              <p className="text-sm text-gray-400">
+              <p className="pg-body text-gray-400">
                 {flatInfo.fileCount > 0 ? (
                   <>
                     This folder has <span className="font-bold text-white">{flatInfo.fileCount}</span> loose file{flatInfo.fileCount !== 1 ? "s" : ""}, but the Hub needs subfolders (one per athlete) to import. Add athletes to this campaign first in the recap editor, then come back.
@@ -533,7 +533,7 @@ export default function MediaLibrary() {
       return (
         <div className="bg-[#111] border border-yellow-500/30 rounded-xl p-6">
           <h3 className="font-black text-white mb-2">This campaign is already linked to a different Drive folder.</h3>
-          <p className="text-sm text-gray-400 mb-4">Continuing will link it to the new folder you pasted. Existing imported files stay; new athlete subfolders will be added.</p>
+          <p className="pg-body text-gray-400 mb-4">Continuing will link it to the new folder you pasted. Existing imported files stay; new athlete subfolders will be added.</p>
           <div className="flex flex-wrap gap-3">
             <button
               disabled={discovering}
@@ -550,7 +550,7 @@ export default function MediaLibrary() {
     return (
       <div className={heading ? "text-center" : "text-left"}>
         {heading && <h2 className="text-xl font-black text-white mb-2">{heading}</h2>}
-        {subtext && <p className="text-sm text-gray-400 mb-6">{subtext}</p>}
+        {subtext && <p className="pg-body text-gray-400 mb-6">{subtext}</p>}
         <div className="text-left">
           <input
             value={urlInput}
@@ -737,7 +737,7 @@ export default function MediaLibrary() {
                     </div>
                     <div className="bg-[#111] border border-gray-800 rounded-xl p-6">
                       <h3 className="font-black text-white mb-2">Add an athlete manually</h3>
-                      <p className="text-sm text-gray-400 mb-4">Create an athlete now and drop files directly into their folder.</p>
+                      <p className="pg-body text-gray-400 mb-4">Create an athlete now and drop files directly into their folder.</p>
                       {renderAddAthleteForm()}
                     </div>
                   </div>
@@ -805,7 +805,7 @@ export default function MediaLibrary() {
                               </svg>
                             </button>
                           </div>
-                          <p className="text-sm text-gray-400 mb-4">Once created, you'll land in their media view to drop files in.</p>
+                          <p className="pg-body text-gray-400 mb-4">Once created, you'll land in their media view to drop files in.</p>
                           {renderAddAthleteForm()}
                         </div>
                       )}
@@ -827,7 +827,7 @@ export default function MediaLibrary() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="font-black text-sm truncate group-hover:text-white">{a.name}</h3>
-                            <p className="text-xs text-gray-500">
+                            <p className="pg-body text-gray-500">
                               {[a.sport, a.school].filter(Boolean).join(" · ")}
                             </p>
                           </div>
@@ -875,8 +875,8 @@ export default function MediaLibrary() {
                       e.target.value = "";
                     }}
                   />
-                  <p className="text-sm font-bold text-gray-300">Drag and drop files here, or click to browse</p>
-                  <p className="text-xs text-gray-500 mt-1">Images &amp; videos · up to 100 MB each</p>
+                  <p className="pg-body font-bold text-gray-300">Drag and drop files here, or click to browse</p>
+                  <p className="pg-body text-gray-500 mt-1">Images &amp; videos · up to 100 MB each</p>
                 </div>
 
                 {uploads.length > 0 && (

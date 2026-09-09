@@ -135,7 +135,7 @@ export default function AuthorizePage() {
           --dim: rgba(250, 248, 245, .32);
           background: var(--black);
           color: var(--off);
-          font-family: Arial, Helvetica, sans-serif;
+          font-family: var(--font-arimo), Arimo, Arial, Helvetica, sans-serif;
           -webkit-font-smoothing: antialiased;
           min-height: 100dvh;
         }
@@ -212,7 +212,7 @@ export default function AuthorizePage() {
           align-items: center;
           justify-content: center;
           gap: 11px;
-          font-family: Arial, Helvetica, sans-serif;
+          font-family: var(--font-arimo), Arimo, Arial, Helvetica, sans-serif;
           font-size: 15px;
           font-weight: bold;
           transition: filter .16s, transform .1s;

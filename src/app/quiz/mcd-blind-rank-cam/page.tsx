@@ -23,14 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Arimo } from "next/font/google";
 
-const arimo = Arimo({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-arimo",
-  display: "swap",
-});
 
 /* ─────────────────────────── brand tokens ─────────────────────────── */
 
@@ -922,7 +915,7 @@ export default function BlindRankCamPage() {
 
   return (
     <main
-      className={`${arimo.variable} mcdq-app flex min-h-[100dvh] flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
+      className={`mcdq-app flex min-h-[100dvh] flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
       style={{
         fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif",
         // viewport-fit=cover lets the page paint under the notch and home
@@ -974,12 +967,12 @@ export default function BlindRankCamPage() {
             {starting ? "Starting…" : cardsReady ? "Allow camera to start" : "Loading cards…"}
           </button>
           {errorNote && (
-            <p className="mt-4 text-[14px] text-[#FAF8F5]/60">{errorNote}</p>
+            <p className="pg-body mt-4">{errorNote}</p>
           )}
 
           {showInstallHint && (
             <div className="mt-8 flex items-start gap-3 rounded-xl border border-[#FAF8F5]/10 px-4 py-3">
-              <p className="flex-1 text-[13px] leading-[1.5] text-[#FAF8F5]/55">
+              <p className="pg-body flex-1">
                 Best experience: Share → Add to Home Screen, then open from
                 there.
               </p>
@@ -1187,11 +1180,11 @@ export default function BlindRankCamPage() {
               style={{ aspectRatio: "9 / 16", background: "#000" }}
             />
           ) : errorNote ? (
-            <p className={`${GLASS} mt-4 px-5 py-4 text-[15px] leading-[1.5] text-[#FAF8F5]/75`}>
+            <p className={`pg-body ${GLASS} mt-4 px-5 py-4`}>
               {errorNote}
             </p>
           ) : (
-            <p className="mt-4 text-[15px] text-[#FAF8F5]/60">Wrapping up the recording…</p>
+            <p className="pg-body mt-4">Wrapping up the recording…</p>
           )}
 
           <div className="mt-6 flex flex-col gap-3">
@@ -1216,7 +1209,7 @@ export default function BlindRankCamPage() {
 
           {videoUrl && (
             <div className={`${GLASS} mt-6 px-5 py-4 text-center`}>
-              <p className="text-[14px] leading-[1.5] text-[#FAF8F5]/[0.68]">
+              <p className="pg-body">
                 Saved as .{videoExt} — nothing was uploaded. Order using the{" "}
                 <span style={{ color: GOLD }}>McDonald&rsquo;s App</span> or
                 in-store digital kiosk.

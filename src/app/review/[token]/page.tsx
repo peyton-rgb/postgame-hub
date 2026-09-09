@@ -333,7 +333,7 @@ export default function PublicReviewPage() {
         <div className="text-center max-w-md mx-auto px-6">
           <div className="text-6xl mb-6">🔒</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">Review Not Found</h1>
-          <p className="text-gray-500 text-sm leading-relaxed">
+          <p className="pg-body text-gray-500">
             This review link may have expired or is invalid.
             Please contact the Postgame team for an updated link.
           </p>
@@ -389,7 +389,7 @@ export default function PublicReviewPage() {
                 : 'bg-amber-50 border-amber-200 text-amber-800'
             }`}
           >
-            <p className="text-sm font-medium">
+            <p className="pg-body font-medium">
               {actionSuccess === 'approved'
                 ? 'Thank you! This asset has been approved and the team will proceed with delivery.'
                 : 'Your feedback has been submitted. The team will make the requested changes.'}
@@ -437,7 +437,7 @@ export default function PublicReviewPage() {
                 <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
                   Notes
                 </h4>
-                <p className="text-sm text-gray-600 leading-relaxed">{review.notes}</p>
+                <p className="pg-body text-gray-600">{review.notes}</p>
               </div>
             )}
           </div>
@@ -505,7 +505,7 @@ export default function PublicReviewPage() {
           </h3>
 
           {comments.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">
+            <p className="pg-body text-gray-400 text-center py-6">
               No comments yet. Add your feedback below.
             </p>
           ) : (
@@ -541,7 +541,7 @@ export default function PublicReviewPage() {
                       {formatDate(comment.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">
+                  <p className="pg-body text-gray-700">
                     {comment.body}
                   </p>
                 </div>
@@ -577,7 +577,7 @@ export default function PublicReviewPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 mb-4">
-          <p className="text-xs text-gray-400">
+          <p className="pg-body text-gray-400">
             Powered by Postgame
           </p>
         </div>
