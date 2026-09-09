@@ -3,6 +3,12 @@ import { anton, arimo } from "@/components/portal/fonts";
 import { compactNumber, type DashboardData } from "@/lib/portal/dashboard-data";
 import type { PortalBrand } from "@/lib/portal-data";
 import type { PortalPreviewChrome } from "@/components/portal/PortalFrame";
+import PortalShell, {
+  TileEmpty,
+  Stroke,
+  ImageIcon,
+  PeopleIcon,
+} from "@/components/portal/PortalShell";
 
 // ============================================================
 // The brand dashboard (Phase 3a) — /portal.
@@ -41,37 +47,15 @@ const ICON = {
   trend: "M3 17l6-6 4 4 8-8",
 } as const;
 
-function Stroke({ d, label }: { d: string; label?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
-      <path d={d} />
-    </svg>
-  );
-}
-
-function ImageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="M3 15l5-5 4 4 3-3 6 6" />
-    </svg>
-  );
-}
-
+/* CalendarIcon and AlertIcon stay local: they are tile-header icons for This
+   week and Waiting on you, not rail icons, so the shell has no use for them.
+   Stroke, ImageIcon, PeopleIcon and TileEmpty are imported from the shell —
+   one definition each, shared with the six Phase 3b pages. */
 function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
-    </svg>
-  );
-}
-
-function PeopleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0 0-6M21.5 20a5.5 5.5 0 0 0-4-5.3" />
     </svg>
   );
 }
@@ -84,54 +68,6 @@ function AlertIcon() {
     </svg>
   );
 }
-
-function PersonIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
-    </svg>
-  );
-}
-
-/**
- * The one empty state, used by all four data-less tiles.
- *
- * Small glyph, one line naming what is absent, a quieter line saying when it
- * will appear. Identical shape in each tile so an empty dashboard still reads
- * as designed rather than broken — and so no tile is ever tempted into a
- * plausible-looking zero.
- *
- * The glyph is a single shared "none" mark, NOT the tile's own topic icon.
- * Repeating the header's icon directly beneath itself read as a rendering
- * mistake — two alert triangles on Waiting on you, two bar charts on Posts
- * going live. One neutral mark across all four says "this is an empty state"
- * instead.
- */
-function TileEmpty({ line, note }: { line: string; note: string }) {
-  return (
-    <div className="pgd-blank">
-      <span className="pgd-blank-ic" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M8 12h8" />
-        </svg>
-      </span>
-      <b>{line}</b>
-      <span>{note}</span>
-    </div>
-  );
-}
-
-/* Routes that exist today. Phase 3b adds the rest; until then an item with no
-   route renders as plain text rather than a link to a 404. */
-const RAIL = [
-  { key: "home", href: "/portal", label: "Home", icon: <Stroke d={ICON.home} /> },
-  { key: "campaigns", href: "/portal/campaigns", label: "Campaigns", icon: <Stroke d={ICON.list} /> },
-  { key: "content", href: "/portal/library", label: "Content", icon: <ImageIcon /> },
-  { key: "reports", href: "/portal/reports", label: "Reports", icon: <Stroke d={ICON.chart} /> },
-  { key: "calendar", href: null, label: "Calendar", icon: <CalendarIcon /> },
-] as const;
 
 export default function BrandDashboard({
   brand,
@@ -151,122 +87,58 @@ export default function BrandDashboard({
   });
 
   return (
-    <div className={`pgd ${anton.variable} ${arimo.variable}`} style={{ fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif" }}>
-      {/* ---- left rail ---------------------------------------- */}
-      <nav className="pgd-rail" aria-label="Portal sections">
-        {/* Hard rule 1: the Postgame mark is a FILE. This slot is square, so it
-            takes the ICON, not the ~5:1 wordmark. No file, nothing rendered. */}
-        {postgameIcon ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={postgameIcon} alt="Postgame" />
-        ) : null}
-
-        {/* The rail IS the navigation now — the pill nav row is gone — so each
-            icon carries a hover/focus tooltip with its section name. The
-            aria-label is what a screen reader announces; the tooltip is the
-            visual equivalent, and it is aria-hidden so the name isn't read
-            twice. */}
-        {RAIL.map((item) =>
-          item.href ? (
-            <a
-              key={item.key}
-              href={item.href}
-              className={item.key === "home" ? "on" : undefined}
-              aria-label={item.label}
-              aria-current={item.key === "home" ? "page" : undefined}
-            >
-              {item.icon}
-              <span className="pgd-tip" aria-hidden="true">
-                {item.label}
-              </span>
-            </a>
-          ) : (
-            <span key={item.key} className="pgd-icon" aria-hidden="true">
-              {item.icon}
-              <span className="pgd-tip">{item.label} — coming soon</span>
-            </span>
-          )
-        )}
-
-        <span className="pgd-spacer" />
-        <span className="pgd-ava" aria-hidden="true" />
-      </nav>
-
-      <div className="pgd-main">
-        {/* ---- header ----------------------------------------
-            The pill nav row is gone: the rail is the navigation, so the
-            greeting has risen into the space it occupied. Tools sit
-            top-right with the KPIs stacked directly beneath them.
-
-            Search, the range selector and Notifications are VISUAL ONLY this
-            phase. Rendered as plain spans, not buttons — announcing a control
-            that does nothing is worse than not announcing it. */}
-        <header className="pgd-head">
-          <div>
-            <h1 className="pgd-h1">Welcome back</h1>
-            <p className="pgd-sub">{today}</p>
-          </div>
-
-          <div className="pgd-headright">
-            <div className="pgd-tools">
-              {/* Admin preview pill — first in the toolbar, so it sits left of
-                  search. In the toolbar rather than floating: a viewport-fixed
-                  element on a full-bleed grid covered something in every corner
-                  it was tried (an athlete row, the 895K in Top posts, a roster
-                  cell). Here it occupies real layout and covers nothing.
-
-                  Same gating as always: `preview` comes from exactly one branch
-                  of resolveSessionPortal(), the admin/exec one, so a brand
-                  session cannot render it. Switch and Exit point at the same
-                  routes — /portal/choose and /portal/preview?exit=1. */}
-              {preview && (
-                <span className="pgd-chip" role="status" aria-label="Admin preview">
-                  <span className="pgd-dot" aria-hidden="true" />
-                  <span className="pgd-chip-label">Previewing {preview.brandName}</span>
-                  <a href={preview.switchHref}>Switch</a>
-                  <a href={preview.exitHref}>Exit</a>
-                </span>
-              )}
-
-              <span className="pgd-t pgd-search" aria-hidden="true">
-                Search campaigns, athletes, posts
-              </span>
-              <span className="pgd-t" aria-hidden="true">
-                This quarter &#9662;
-              </span>
-              <span className="pgd-t" aria-hidden="true">
-                Notifications
-              </span>
-              <span className="pgd-av" role="img" aria-label="Your account">
-                <PersonIcon />
-              </span>
+    <PortalShell
+      active="home"
+      postgameIcon={postgameIcon}
+      preview={preview}
+      title="Welcome back"
+      subtitle={today}
+      aside={
+        <div className="pgd-kpis">
+          {data.kpis.map((k) => (
+            <div className="pgd-kpi" key={k.label}>
+              <b>{k.value}</b>
+              <span>{k.label}</span>
             </div>
+          ))}
+        </div>
+      }
+    >
+      <div className="pgd-grid">
 
-            <div className="pgd-kpis">
-              {data.kpis.map((k) => (
-                <div className="pgd-kpi" key={k.label}>
-                  <b>{k.value}</b>
-                  <span>{k.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </header>
-
-        {/* ---- tiles ----------------------------------------- */}
-        <div className="pgd-grid">
           {/* 1 · Waiting on you. Stays orange when empty, per the brief. */}
-          <section className="pgd-tile pgd-alert" aria-labelledby="pgd-waiting">
+          {/* The orange surface is conditional, and that is deliberate on two
+              counts. Brand rule: orange is an accent, never a background fill —
+              it earns a full panel only when it is genuinely calling for
+              attention. And semantically, a card that shouts in alarm orange
+              while reading "nothing waiting on you" contradicts itself. With an
+              empty queue the tile is glass like its three neighbours; the
+              moment a review lands it lights up and carries a count. */}
+          <section
+            className={`pgd-tile pgd-alert${data.waitingCount > 0 ? " pgd-alert-on" : ""}`}
+            aria-labelledby="pgd-waiting"
+          >
             <h3 id="pgd-waiting">
               <span className="pgd-ic">
                 <AlertIcon />
               </span>
               Waiting on you
             </h3>
-            <TileEmpty
-              line="Nothing waiting on you"
-              note="We'll flag reviews here when content is ready."
-            />
+            {data.waitingCount > 0 ? (
+              <>
+                <span className="pgd-count">{data.waitingCount}</span>
+                <p className="pgd-empty-body">
+                  {data.waitingCount === 1
+                    ? "1 review is ready for your decision."
+                    : `${data.waitingCount} reviews are ready for your decision.`}
+                </p>
+              </>
+            ) : (
+              <TileEmpty
+                line="Nothing waiting on you"
+                note="We'll flag reviews here when content is ready."
+              />
+            )}
           </section>
 
           {/* 2 · Posts going live. No source: athlete_deliverables carries no
@@ -359,7 +231,7 @@ export default function BrandDashboard({
                     {data.roster.subline}
                   </span>
                 </h3>
-                <a className="pgd-more" href="/portal/campaigns">
+                <a className="pgd-more" href="/portal/athletes">
                   All athletes &rsaquo;
                 </a>
                 <div className="pgd-scroll">
@@ -464,6 +336,9 @@ export default function BrandDashboard({
                     </div>
                   </>
                 );
+                // Prefer the live post; it is the thing the figure describes.
+                // Without one, fall back to the athlete's row on the campaign
+                // roster rather than a dead card.
                 return p.postUrl ? (
                   <a
                     className="pgd-post"
@@ -500,7 +375,7 @@ export default function BrandDashboard({
                   <a
                     className={`pgd-camp${c.live ? " pgd-live" : ""}`}
                     key={c.id}
-                    href="/portal/campaigns"
+                    href={c.slug ? `/portal/campaigns/${c.slug}` : "/portal/campaigns"}
                   >
                     <div className="pgd-cn" title={c.name}>
                       {c.name}
@@ -535,29 +410,6 @@ export default function BrandDashboard({
             )}
           </section>
         </div>
-      </div>
-
-      {/* ---- phone bottom tab bar -----------------------------
-          Design system: mobile nav is a bottom tab bar, never a hamburger,
-          never a top nav. */}
-      <nav className="pgd-tabbar" aria-label="Portal sections">
-        <a href="/portal" className="on" aria-current="page">
-          <Stroke d={ICON.home} />
-          Home
-        </a>
-        <a href="/portal/campaigns">
-          <Stroke d={ICON.list} />
-          Campaigns
-        </a>
-        <a href="/portal/library">
-          <ImageIcon />
-          Content
-        </a>
-        <a href="/portal/reports">
-          <Stroke d={ICON.chart} />
-          Reports
-        </a>
-      </nav>
-    </div>
+    </PortalShell>
   );
 }

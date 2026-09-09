@@ -2,18 +2,17 @@ import type { Metadata } from "next";
 import PortalShell from "@/components/portal/PortalShell";
 import { resolveSessionPortal } from "@/lib/portal/session-portal";
 import { getPostgameIcon } from "@/lib/portal-data";
-import { loadCampaignList } from "@/lib/portal/pages-data";
-import CampaignsGrid from "./CampaignsGrid";
+import { loadSettings } from "@/lib/portal/pages-data";
+import SettingsPanels from "./SettingsPanels";
 
-// Campaigns list (Phase 3b). Replaces the SessionPortalShell body that used to
-// render here, so it shares the dashboard's rail and toolbar.
-//
-// Gating is unchanged: resolveSessionPortal() still decides who may see this
-// and which brand they get.
+// Settings (Phase 3b). Read-only this phase: team, logo, and three
+// notification toggles rendered disabled. Sign out posts to the existing
+// route rather than reimplementing sign-out. The body lives in
+// SettingsPanels so the render harness cannot drift from it.
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const metadata: Metadata = {
-  title: "Campaigns — Postgame Brand Portal",
+  title: "Settings — Postgame Brand Portal",
   robots: { index: false, follow: false },
 };
 
@@ -23,17 +22,17 @@ export default async function Page({
   searchParams: Record<string, string | undefined>;
 }) {
   const { brand, preview } = await resolveSessionPortal(searchParams.brand);
-  const [icon, data] = await Promise.all([getPostgameIcon(), loadCampaignList(brand.id)]);
+  const [icon, data] = await Promise.all([getPostgameIcon(), loadSettings(brand.id)]);
 
   return (
     <PortalShell
-      active="campaigns"
+      active="settings"
       postgameIcon={icon}
       preview={preview}
-      title="Campaigns"
-      subtitle={`${data.liveCount} live · ${data.wrappedCount} wrapped`}
+      title="Settings"
+      subtitle="Read-only for now"
     >
-      <CampaignsGrid items={data.items} quarters={data.quarters} />
+      <SettingsPanels data={data} />
     </PortalShell>
   );
 }

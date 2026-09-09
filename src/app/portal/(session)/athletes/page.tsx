@@ -2,18 +2,15 @@ import type { Metadata } from "next";
 import PortalShell from "@/components/portal/PortalShell";
 import { resolveSessionPortal } from "@/lib/portal/session-portal";
 import { getPostgameIcon } from "@/lib/portal-data";
-import { loadCampaignList } from "@/lib/portal/pages-data";
-import CampaignsGrid from "./CampaignsGrid";
+import { loadAthleteDirectory } from "@/lib/portal/pages-data";
+import AthletesGrid from "./AthletesGrid";
 
-// Campaigns list (Phase 3b). Replaces the SessionPortalShell body that used to
-// render here, so it shares the dashboard's rail and toolbar.
-//
-// Gating is unchanged: resolveSessionPortal() still decides who may see this
-// and which brand they get.
+// Athletes directory (Phase 3b): every athlete who has appeared on any of the
+// brand's campaigns, deduplicated in SQL (migration 049).
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const metadata: Metadata = {
-  title: "Campaigns — Postgame Brand Portal",
+  title: "Athletes — Postgame Brand Portal",
   robots: { index: false, follow: false },
 };
 
@@ -23,17 +20,17 @@ export default async function Page({
   searchParams: Record<string, string | undefined>;
 }) {
   const { brand, preview } = await resolveSessionPortal(searchParams.brand);
-  const [icon, data] = await Promise.all([getPostgameIcon(), loadCampaignList(brand.id)]);
+  const [icon, data] = await Promise.all([getPostgameIcon(), loadAthleteDirectory(brand.id)]);
 
   return (
     <PortalShell
-      active="campaigns"
+      active="athletes"
       postgameIcon={icon}
       preview={preview}
-      title="Campaigns"
-      subtitle={`${data.liveCount} live · ${data.wrappedCount} wrapped`}
+      title="Athletes"
+      subtitle={data.total > 0 ? `${data.total} athletes` : null}
     >
-      <CampaignsGrid items={data.items} quarters={data.quarters} />
+      <AthletesGrid athletes={data.athletes} schools={data.schools} sports={data.sports} />
     </PortalShell>
   );
 }
