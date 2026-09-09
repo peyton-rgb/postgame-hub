@@ -301,41 +301,35 @@
 .pgd-camp .pgd-cf b { color: rgba(250, 248, 245, 0.7) }
 .pgd-camp.pgd-live .pgd-cf b { color: var(--orange-soft) }
 
-/* ---- admin preview chip --------------------------------------
-   Was a full-width banner across the top, which read as a website nav bar
-   and pushed the page down. Now a compact floating chip: fixed, so it never
-   occupies layout and never moves the content; parked bottom-left above the
-   rail's avatar. It overhangs the 72px rail into the content column on
-   purpose — it floats over, it does not reserve space.
+/* ---- admin preview pill -------------------------------------
+   Lives IN the top-right toolbar, left of search. It was a full-width banner
+   (read as a website nav bar, pushed the page down), then a floating chip in
+   three different corners — and a viewport-fixed element on a full-bleed grid
+   covers something in every one of them: an athlete row bottom-left, the 895K
+   figure in Top posts bottom-right, a roster cell bottom-centre. In the
+   toolbar it occupies real layout, so it covers nothing and moves nothing.
+
+   Sized to match the sibling .pgd-t controls (36px, same fill and border) so
+   it reads as part of the toolbar; the orange dot is what distinguishes it.
 
    Still admin/exec only. `preview` is populated by exactly one branch of
    resolveSessionPortal(), so a brand session cannot render this markup.
    ------------------------------------------------------------- */
 .pgd-chip {
-  position: fixed;
-  /* Bottom-CENTRE. Bottom-left overhung the rail into the roster and covered
-     an athlete row; bottom-right covered a figure in Top posts. Centre is
-     measured on the CONTENT column, not the viewport — the 72px rail would
-     otherwise pull the chip visibly left of the tiles it floats over. */
-  left: calc(50% + 36px);
-  transform: translateX(-50%);
-  bottom: 16px;
-  z-index: 100; /* above the rail's 90, so the rail never covers it */
-  max-width: 260px;
   height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(7, 7, 10, 0.86);
-  border: 1px solid rgba(250, 248, 245, 0.14);
-  backdrop-filter: blur(26px);
-  -webkit-backdrop-filter: blur(26px);
+  background: var(--tile);
+  border: 1px solid var(--hair);
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
+  max-width: 280px;
   overflow: hidden;
+  flex: 0 0 auto;
 }
 .pgd-chip .pgd-dot {
   width: 6px; height: 6px; border-radius: 50%;
@@ -388,8 +382,6 @@
      left-align with everything else */
   .pgd-headright { align-items: flex-start; width: 100% }
   .pgd-tools { justify-content: flex-start; width: 100% }
-  /* clear the bottom tab bar rather than sit on top of it */
-  .pgd-chip { bottom: calc(78px + env(safe-area-inset-bottom)); left: 50%; right: auto }
 
   .pgd-tabbar {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;

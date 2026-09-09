@@ -180,6 +180,25 @@ export default function BrandDashboard({
 
           <div className="pgd-headright">
             <div className="pgd-tools">
+              {/* Admin preview pill — first in the toolbar, so it sits left of
+                  search. In the toolbar rather than floating: a viewport-fixed
+                  element on a full-bleed grid covered something in every corner
+                  it was tried (an athlete row, the 895K in Top posts, a roster
+                  cell). Here it occupies real layout and covers nothing.
+
+                  Same gating as always: `preview` comes from exactly one branch
+                  of resolveSessionPortal(), the admin/exec one, so a brand
+                  session cannot render it. Switch and Exit point at the same
+                  routes — /portal/choose and /portal/preview?exit=1. */}
+              {preview && (
+                <span className="pgd-chip" role="status" aria-label="Admin preview">
+                  <span className="pgd-dot" aria-hidden="true" />
+                  <span className="pgd-chip-label">Previewing {preview.brandName}</span>
+                  <a href={preview.switchHref}>Switch</a>
+                  <a href={preview.exitHref}>Exit</a>
+                </span>
+              )}
+
               <span className="pgd-t pgd-search" aria-hidden="true">
                 Search campaigns, athletes, posts
               </span>
@@ -480,24 +499,6 @@ export default function BrandDashboard({
           </section>
         </div>
       </div>
-
-      {/* ---- admin preview chip -------------------------------
-          Replaces the old full-width banner, which read as a website nav bar
-          and pushed the page down. Fixed, so it occupies no layout and moves
-          nothing; parked bottom-left above the rail's avatar.
-
-          Same gating as before — `preview` is populated by exactly one branch
-          of resolveSessionPortal(), the admin/exec one, so a brand session
-          cannot reach this markup. Switch and Exit point at the same routes
-          as before: /portal/choose and /portal/preview?exit=1. */}
-      {preview && (
-        <aside className="pgd-chip" aria-label="Admin preview">
-          <span className="pgd-dot" aria-hidden="true" />
-          <span className="pgd-chip-label">Previewing {preview.brandName}</span>
-          <a href={preview.switchHref}>Switch</a>
-          <a href={preview.exitHref}>Exit</a>
-        </aside>
-      )}
 
       {/* ---- phone bottom tab bar -----------------------------
           Design system: mobile nav is a bottom tab bar, never a hamburger,
