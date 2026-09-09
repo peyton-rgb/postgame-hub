@@ -131,6 +131,47 @@ function parseScores(text: string): ScoreResult {
   return JSON.parse(cleaned) as ScoreResult;
 }
 
+/**
+ * Fetch the Drive thumbnail, retrying while it is merely NOT READY YET.
+ *
+ * Google Drive generates video poster frames ASYNCHRONOUSLY. Scoring fires
+ * seconds after upload, so for a video the thumbnail URL frequently 404s at
+ * first and then starts working a minute or two later. Measured across the five
+ * video submissions that failed this way, scoring ran 2s, 2s, 25s, 35s and 64s
+ * after upload — the URL was fine, it just did not exist yet.
+ *
+ * ONLY 404 is retried. 401/403/410 mean permissions or deletion: those are real
+ * and must fail fast rather than burn 17 seconds pretending otherwise.
+ *
+ * Images are ready immediately, so only video mime types pay the wait.
+ *
+ * The budget here is deliberately short (~17s). This runs inside the request
+ * that the athlete's upload is waiting on, so it cannot sleep for minutes. Rows
+ * that outlast it are picked up by the hourly sweeper at
+ * /api/cron/tier3-rescore instead.
+ */
+const THUMB_RETRY_DELAYS_MS = [2_000, 5_000, 10_000];
+
+export type ThumbFetch = { res: Response; attempts: number };
+
+export async function fetchThumbnailWithRetry(
+  url: string,
+  isVideo: boolean,
+): Promise<ThumbFetch> {
+  const delays = isVideo ? THUMB_RETRY_DELAYS_MS : [];
+  let attempts = 0;
+  let res = await fetch(url);
+  attempts++;
+
+  for (const wait of delays) {
+    if (res.status !== 404) break; // success, or a failure worth surfacing now
+    await new Promise((r) => setTimeout(r, wait));
+    res = await fetch(url);
+    attempts++;
+  }
+  return { res, attempts };
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { submission_id } = body as { submission_id: string };
@@ -188,9 +229,16 @@ export async function POST(req: NextRequest) {
       throw new Error("submission has no drive_thumbnail_url");
     }
 
-    const thumb = await fetch(submission.drive_thumbnail_url);
+    const { res: thumb, attempts } = await fetchThumbnailWithRetry(
+      submission.drive_thumbnail_url,
+      isVideo,
+    );
     if (!thumb.ok) {
-      throw new Error(`thumbnail fetch failed: HTTP ${thumb.status}`);
+      // Record the attempt count so the next reader can tell a race that ran out
+      // of budget from a URL that was never going to work.
+      throw new Error(
+        `thumbnail fetch failed: HTTP ${thumb.status} after ${attempts} attempt${attempts === 1 ? "" : "s"}`,
+      );
     }
     const mediaType = (thumb.headers.get("content-type") ?? "")
       .split(";")[0]
