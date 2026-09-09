@@ -40,7 +40,13 @@ export default async function Page({
             />
           </div>
         ) : (
-          <MediaGrid items={data.items} showCampaign />
+          <MediaGrid
+            items={data.items}
+            showCampaign
+            campaigns={data.campaigns}
+            athletes={data.athletes}
+            schools={data.schools}
+          />
         )}
       </div>
     </PortalShell>

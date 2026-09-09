@@ -209,6 +209,8 @@ export interface MediaItem {
   thumbUrl: string;
   isVideo: boolean;
   athleteName: string | null;
+  /** From athletes.school via media.athlete_id — the gallery's school filter. */
+  school: string | null;
   campaignName: string | null;
   createdAt: string | null;
 }
@@ -299,6 +301,12 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
         thumbUrl: thumb(thumbSrc),
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
+        // The detail page's Content tab is already scoped to one campaign,
+        // where a school dropdown adds nothing — the roster tab has school
+        // chips. Left null rather than fetched for a filter that isn't shown.
+        // Annotated because a bare `null` narrows to the null type and then
+        // fails the MediaItem[] assignment.
+        school: null as string | null,
         campaignName: c.name,
         createdAt: m.created_at,
       };
@@ -390,13 +398,16 @@ export async function loadContentGallery(brandId: string) {
     new Set(mediaRows.map((m) => m.athlete_id).filter((x): x is string => !!x))
   ).slice(0, 900);
   const nameById = new Map<string, string>();
+  const schoolById = new Map<string, string>();
   if (athleteIds.length > 0) {
     const { data: ath } = await supabase
       .from("athletes")
-      .select("id, name")
+      .select("id, name, school")
       .in("id", athleteIds);
-    for (const a of (ath ?? []) as { id: string; name: string | null }[]) {
+    for (const a of (ath ?? []) as { id: string; name: string | null; school: string | null }[]) {
       if (a.name) nameById.set(a.id, a.name);
+      const school = a.school?.trim();
+      if (school) schoolById.set(a.id, school);
     }
   }
 
@@ -411,21 +422,44 @@ export async function loadContentGallery(brandId: string) {
         thumbUrl: thumb(thumbSrc),
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
+        school: m.athlete_id ? schoolById.get(m.athlete_id) ?? null : null,
         campaignName: m.campaign_id ? nameByCampaign.get(m.campaign_id) ?? null : null,
         createdAt: m.created_at,
       };
     })
     .filter((m): m is MediaItem => m !== null);
 
-  const campaignNames = Array.from(
-    new Set(items.map((i) => i.campaignName).filter((n): n is string => !!n))
-  ).sort();
+  // Only values that actually occur in the fetched rows become options — a
+  // dropdown offering a campaign with no media in it is a dead end.
+  const uniq = (xs: (string | null)[]) =>
+    Array.from(new Set(xs.filter((x): x is string => !!x))).sort((a, b) =>
+      a.localeCompare(b)
+    );
 
-  return { items, campaigns: campaignNames };
+  return {
+    items,
+    campaigns: uniq(items.map((i) => i.campaignName)),
+    athletes: uniq(items.map((i) => i.athleteName)),
+    schools: uniq(items.map((i) => i.school)),
+  };
 }
 
 // ---- 4 · Reports ------------------------------------------------
-export async function loadReports(brandId: string) {
+export interface ReportCard {
+  id: string;
+  name: string;
+  slug: string | null;
+  quarter: string | null;
+  heroUrl: string | null;
+  figures: { value: string; label: string }[];
+}
+
+/** [quarter heading, its campaigns] — named so the client half can type it. */
+export type ReportGroup = [string, ReportCard[]];
+
+export async function loadReports(
+  brandId: string
+): Promise<{ groups: ReportGroup[]; total: number }> {
   const supabase = createServerSupabase();
   const { data } = await supabase
     .from("portal_campaigns")
@@ -438,7 +472,7 @@ export async function loadReports(brandId: string) {
 
   const heroes = await loadHeroes(supabase, wrapped.map((c) => c.id));
 
-  const items = wrapped.map((c) => ({
+  const items: ReportCard[] = wrapped.map((c) => ({
     id: c.id,
     name: c.name ?? "Campaign",
     slug: c.slug,
@@ -452,7 +486,7 @@ export async function loadReports(brandId: string) {
   // 9 of CVS's 10 wrapped campaigns have a null quarter, and "Unscheduled"
   // implied they were awaiting scheduling rather than simply unlabelled.
   const NO_QUARTER = "No quarter on file";
-  const groups = new Map<string, typeof items>();
+  const groups = new Map<string, ReportCard[]>();
   for (const i of items) {
     const key = i.quarter || NO_QUARTER;
     groups.set(key, [...(groups.get(key) ?? []), i]);

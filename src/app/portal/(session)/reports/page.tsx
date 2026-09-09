@@ -3,6 +3,7 @@ import PortalShell, { TileEmpty } from "@/components/portal/PortalShell";
 import { resolveSessionPortal } from "@/lib/portal/session-portal";
 import { getPostgameIcon } from "@/lib/portal-data";
 import { loadReports } from "@/lib/portal/pages-data";
+import ReportsLibrary from "./ReportsLibrary";
 
 // Reports (Phase 3b): the recap library, grouped by quarter.
 export const dynamic = "force-dynamic";
@@ -37,48 +38,7 @@ export default async function Page({
             />
           </div>
         ) : (
-          data.groups.map(([quarter, items]) => (
-            <section key={quarter}>
-              <h2 className="pgd-group-h">{quarter}</h2>
-              <div className="pgd-cards">
-                {items.map((c) => (
-                  <div className="pgd-card" key={c.id}>
-                    {c.heroUrl ? (
-                      <span className="pgd-card-thumb">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={c.heroUrl} alt="" />
-                      </span>
-                    ) : null}
-                    <span className="pgd-card-body">
-                      <span className="pgd-card-name">{c.name}</span>
-                      {c.quarter ? <span className="pgd-card-meta">{c.quarter}</span> : null}
-                      <span className="pgd-card-foot">
-                        {c.figures.map((f) => (
-                          <span className="pgd-stat" key={f.label}>
-                            <b>{f.value}</b>
-                            <span>{f.label}</span>
-                          </span>
-                        ))}
-                        {/* "Open recap" only where a slug exists to open. The
-                            public recap route is /recap/[slug]. */}
-                        {c.slug ? (
-                          <a
-                            className="pgd-btn"
-                            href={`/recap/${c.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ marginLeft: "auto" }}
-                          >
-                            Open recap
-                          </a>
-                        ) : null}
-                      </span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))
+          <ReportsLibrary groups={data.groups} />
         )}
       </div>
     </PortalShell>

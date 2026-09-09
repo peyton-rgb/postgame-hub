@@ -15,17 +15,32 @@ export default function MediaGrid({
   items,
   columns = "auto",
   showCampaign = false,
+  campaigns,
+  athletes,
+  schools,
 }: {
   items: MediaItem[];
   columns?: "auto" | "wide";
   showCampaign?: boolean;
+  /** Option lists for the gallery's dropdowns. Omitted on campaign detail,
+      which is already scoped to one campaign, so the selects don't render. */
+  campaigns?: string[];
+  athletes?: string[];
+  schools?: string[];
 }) {
   const [kind, setKind] = useState<"all" | "photo" | "video">("all");
+  const [campaign, setCampaign] = useState("");
+  const [athlete, setAthlete] = useState("");
+  const [school, setSchool] = useState("");
   const [open, setOpen] = useState<MediaItem | null>(null);
 
-  const shown = items.filter((m) =>
-    kind === "all" ? true : kind === "video" ? m.isVideo : !m.isVideo
-  );
+  const shown = items.filter((m) => {
+    if (kind !== "all" && (kind === "video") !== m.isVideo) return false;
+    if (campaign && m.campaignName !== campaign) return false;
+    if (athlete && m.athleteName !== athlete) return false;
+    if (school && m.school !== school) return false;
+    return true;
+  });
 
   const fresh = (iso: string | null) => {
     if (!iso) return false;
@@ -45,6 +60,13 @@ export default function MediaGrid({
             {k === "all" ? "All" : k === "photo" ? "Photos" : "Video"}
           </button>
         ))}
+        {/* One <select> per dimension, rendered only when the page supplied
+            options for it. Campaign, athlete and school are all real columns;
+            each option is a value that actually occurs in these rows. */}
+        <Picker label="All campaigns" value={campaign} set={setCampaign} options={campaigns} />
+        <Picker label="All athletes" value={athlete} set={setAthlete} options={athletes} />
+        <Picker label="All schools" value={school} set={setSchool} options={schools} />
+
         <span className="pgd-count">
           {shown.length} of {items.length}
         </span>
@@ -120,5 +142,36 @@ export default function MediaGrid({
         </div>
       )}
     </>
+  );
+}
+
+/** A filter select that renders nothing when the page has no options for it. */
+function Picker({
+  label,
+  value,
+  set,
+  options,
+}: {
+  label: string;
+  value: string;
+  set: (v: string) => void;
+  options?: string[];
+}) {
+  // 1 option filters nothing, so it is a control with no purpose.
+  if (!options || options.length < 2) return null;
+  return (
+    <select
+      className="pgd-select"
+      value={value}
+      onChange={(e) => set(e.target.value)}
+      aria-label={label}
+    >
+      <option value="">{label}</option>
+      {options.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
   );
 }
