@@ -1,0 +1,306 @@
+/* ============================================================
+   /deals — the deal ledger.
+
+   LAYOUT ONLY. Every piece of type on this page wears a pg-* class from
+   globals.css; there is no font-family, font-size or letter-spacing in this
+   file. The page this replaced set 'Bebas Neue' by literal name in inline
+   styles, which matches nothing — next/font emits a hashed family
+   (__Bebas_Neue_d758cf) — so every "Bebas" line on the old ledger was
+   silently rendering in Arial.
+   ============================================================ */
+
+.dl-page {
+  background: var(--bg);
+  min-height: 100vh;
+  /* Clears the shared fixed .pg-nav from the root layout. This page used to
+     render its own second fixed nav on top of that one. */
+  padding-top: var(--nav-h);
+}
+
+.dl-wrap {
+  max-width: 1248px;              /* design system: 1440 canvas, 96 margins */
+  margin: 0 auto;
+  padding-left: clamp(20px, 4vw, 48px);
+  padding-right: clamp(20px, 4vw, 48px);
+}
+
+/* ── Hero ──────────────────────────────────────────────────────
+   Compact by instruction: it has to fit one viewport with the latest
+   strip visible under it, so there is no full-bleed photo and the
+   vertical rhythm is tight. */
+/* Block padding only. The shorthand form (padding: X 0 Y) also set the
+   inline padding to 0, and .dl-hero sits on the same element as .dl-wrap —
+   so it silently cancelled the wrap's side gutters. Invisible above 1248px,
+   where the max-width centres the content anyway; at 390px every line ran
+   into the edge of the screen. */
+.dl-hero { padding-top: clamp(28px, 5vw, 56px); padding-bottom: clamp(20px, 3vw, 28px); }
+.dl-hero-eyebrow { margin-bottom: clamp(10px, 1.4vw, 14px); }
+.dl-hero-lead { max-width: 62ch; margin-top: clamp(12px, 1.6vw, 18px); }
+
+.dl-counters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 2vw, 28px);
+  margin-top: clamp(20px, 3vw, 32px);
+  padding: clamp(16px, 2vw, 22px) clamp(16px, 2.4vw, 28px);
+  background: rgba(250, 248, 245, 0.07);
+  border: 1px solid rgba(250, 248, 245, 0.14);
+  border-radius: 20px;
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
+}
+.dl-counter-label { margin-top: 6px; }
+
+/* ── Latest strip ──────────────────────────────────────────── */
+.dl-section {
+  padding-top: clamp(28px, 4vw, 44px);
+  padding-bottom: clamp(28px, 4vw, 44px);
+  border-top: 1px solid var(--glass-border);
+}
+.dl-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: clamp(14px, 2vw, 20px);
+}
+
+.dl-latest { list-style: none; }
+.dl-latest li { border-bottom: 1px solid rgba(250, 248, 245, 0.07); }
+.dl-latest li:last-child { border-bottom: 0; }
+.dl-latest a {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(8px, 1.2vw, 14px);
+  flex-wrap: wrap;
+  /* 44px minimum touch target, on every device — not only mobile. */
+  min-height: 44px;
+  padding: 11px 4px;
+  transition: background 0.15s;
+}
+.dl-latest a:hover { background: rgba(250, 248, 245, 0.04); }
+.dl-latest-date { flex: 0 0 auto; min-width: 62px; }
+.dl-latest-sep { color: rgba(250, 248, 245, 0.28); }
+.dl-latest-brand { color: var(--orange); }
+.dl-latest-meta { color: rgba(250, 248, 245, 0.5); }
+
+/* ── Filters ───────────────────────────────────────────────── */
+.dl-filters { display: flex; flex-direction: column; gap: 12px; }
+.dl-facets { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* <details> rather than a dropdown: it needs no JavaScript, so the whole
+   facet list is in the server HTML and a crawler follows every option. */
+.dl-facet { position: relative; }
+.dl-facet > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 0.15s, border-color 0.15s;
+}
+.dl-facet > summary::-webkit-details-marker { display: none; }
+.dl-facet > summary:hover { background: rgba(255, 255, 255, 0.1); }
+.dl-facet[open] > summary { border-color: var(--orange); }
+.dl-facet-caret { opacity: 0.5; }
+
+.dl-facet-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 6px;
+  background: rgba(10, 10, 10, 0.96);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.dl-facet-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: rgba(250, 248, 245, 0.72);
+}
+.dl-facet-menu a:hover { background: rgba(255, 255, 255, 0.08); color: rgba(250, 248, 245, 1); }
+.dl-facet-menu a[aria-current="true"] { color: var(--orange); }
+.dl-facet-count { color: rgba(250, 248, 245, 0.4); }
+
+.dl-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.dl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--orange);
+  background: var(--orange-dim);
+  color: var(--orange);
+}
+.dl-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.dl-chip-x:hover { background: rgba(255, 255, 255, 0.18); }
+.dl-chip-clear { color: rgba(250, 248, 245, 0.5); text-decoration: underline; }
+.dl-chip-clear:hover { color: rgba(250, 248, 245, 1); }
+.dl-result-count { color: rgba(250, 248, 245, 0.5); }
+
+/* ── The ledger ────────────────────────────────────────────────
+   Grid, not <table>. The whole row is one link and a link cannot wrap a
+   <tr>; the alternative is a stretched pseudo-element over a table row,
+   which browsers disagree about. The columns are the same either way and
+   every cell is real text in the server HTML. */
+.dl-ledger { list-style: none; border-top: 1px solid var(--glass-border); }
+
+.dl-cols {
+  display: grid;
+  /* Sport gets a fixed 120px because "Figure Skating" is the longest value
+     in the set and 96px clipped it to "Figure Ska…". */
+  grid-template-columns: 48px minmax(160px, 1.6fr) minmax(120px, 1.3fr) 120px minmax(128px, 1fr) 112px;
+  gap: clamp(10px, 1.4vw, 18px);
+  align-items: center;
+}
+
+.dl-head {
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.dl-head > span { color: rgba(250, 248, 245, 0.5); }
+
+.dl-row { border-bottom: 1px solid rgba(250, 248, 245, 0.07); }
+.dl-row > a {
+  min-height: 44px;
+  padding: 9px 4px;
+  transition: background 0.15s;
+}
+.dl-row > a:hover { background: rgba(250, 248, 245, 0.04); }
+
+/* The 4:5 frame is fixed, so a portrait and a landscape photo occupy the
+   same slot and the column never jitters. */
+.dl-thumb {
+  position: relative;
+  width: 48px;
+  aspect-ratio: 4 / 5;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(250, 248, 245, 0.04);
+  border: 1px solid rgba(250, 248, 245, 0.1);
+  flex: 0 0 auto;
+}
+.dl-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* A deal with no usable photo gets its brand's colour and the athlete's
+   initials — never a broken image icon, and never a blank grey box that
+   reads as a loading state. */
+.dl-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.dl-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dl-brand img { width: 20px; height: 20px; object-fit: contain; flex: 0 0 auto; }
+.dl-brand-name { color: var(--orange); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* School and sport are data, so they sit on the body rung of the opacity
+   ladder (68%), not the label rung. The date cell is already pg-label and
+   keeps its own 50% — overriding it here would push it off the ladder. */
+.dl-cell-muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-cell-school, .dl-cell-sport { color: rgba(250, 248, 245, 0.68); }
+.dl-athlete { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The brand appears twice in the markup and exactly once on screen: in its
+   own column on desktop, folded into line one of the row on mobile. Text is
+   duplicated in the HTML rather than moved by CSS because a grid item cannot
+   change which line it belongs to across breakpoints. */
+.dl-brand-in-lines, .dl-mobile-line { display: none; }
+
+.dl-empty { padding: clamp(48px, 8vw, 80px) 0; text-align: center; }
+
+/* ── Pagination ────────────────────────────────────────────── */
+.dl-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: clamp(28px, 4vw, 40px) 0 clamp(48px, 7vw, 72px);
+}
+.dl-pager a, .dl-pager span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+.dl-pager a:hover { background: rgba(255, 255, 255, 0.12); }
+.dl-pager .dl-pager-now { border-color: var(--orange); background: var(--orange-dim); color: var(--orange); }
+.dl-pager .dl-pager-gap { border: 0; background: none; color: rgba(250, 248, 245, 0.4); min-width: 20px; padding: 0; }
+
+/* ── Mobile: <=750px ───────────────────────────────────────────
+   The ledger stops being six columns and becomes two lines per row:
+   thumb + athlete/brand, then school · sport · date. Nothing is hidden
+   behind hover, and the tap target is the whole row. */
+@media (max-width: 750px) {
+  .dl-counters { padding: 14px 12px; gap: 8px; }
+  .dl-head { display: none; }
+
+  .dl-row > a {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    padding: 12px 4px;
+  }
+  .dl-thumb { width: 56px; }
+  .dl-cell-school, .dl-cell-sport, .dl-cell-date, .dl-cell-brand { display: none; }
+
+  /* Two lines, per the brief: athlete and brand share line one, and the
+     meta line is forced onto line two by a full-width basis rather than by
+     a second wrapper element. */
+  .dl-row-lines {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
+    row-gap: 3px;
+  }
+  .dl-brand-in-lines { display: flex; }
+  .dl-mobile-line { display: block; flex: 0 0 100%; color: rgba(250, 248, 245, 0.5); }
+
+  .dl-latest a { padding: 12px 4px; }
+  /* The school drops to its own line rather than wrapping mid-entry, and its
+     separator goes with it — otherwise line one ends on a dangling "·". */
+  /* 70px = the date column (62) plus the flex gap (8), so line two starts
+     under the entry rather than under the date. */
+  .dl-latest-meta { flex: 0 0 100%; margin-left: 70px; }
+  .dl-latest-sep-school { display: none; }
+  .dl-facet-menu { min-width: min(280px, calc(100vw - 48px)); }
+}

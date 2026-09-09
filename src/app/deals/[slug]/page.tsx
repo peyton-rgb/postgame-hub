@@ -1,4 +1,3 @@
-import { PostgameLogo } from "@/components/PostgameLogo";
 import { createClient } from "@supabase/supabase-js";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -9,16 +8,16 @@ const styles = `
   :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,0.08);--text:#fff;--text-muted:rgba(255,255,255,0.55);--text-dim:rgba(255,255,255,0.35);}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
-  .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border);}
-  .nav-logo{display:flex;align-items:center;text-decoration:none;}
-  .nav-links{display:flex;align-items:center;gap:32px;}
-  .nav-links a{color:var(--text-muted);font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.05em;transition:color 0.2s;}
-  .nav-links a:hover{color:var(--text);}
   .btn-outline{padding:8px 20px;border:1.5px solid var(--orange);border-radius:8px;color:var(--orange);text-decoration:none;transition:all 0.2s;}
   .btn-outline:hover{background:var(--orange);color:#fff;}
   .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;text-decoration:none;cursor:pointer;transition:background 0.2s;}
   .btn-solid:hover{background:#c43808;}
 
+  /* 80px clears the shared fixed .pg-nav (64px) from the root layout. This
+     page used to draw a SECOND fixed nav on top of that one: it was written
+     for /athletes/[slug], and SiteNav's HIDDEN_ROUTES starts-with entry
+     "/athlete" suppressed the shared nav there. Moving the page to
+     /deals/[slug] left the prefix behind and both navs rendered. */
   .hero{padding-top:80px;min-height:60vh;display:grid;grid-template-columns:1fr 1fr;align-items:end;}
   .hero-content{padding:80px 48px 80px;background:radial-gradient(ellipse at 0% 50%,rgba(215,63,9,0.1) 0%,transparent 60%);}
   .back-link{display:inline-flex;align-items:center;gap:8px;color:var(--text-muted);text-decoration:none;margin-bottom:32px;transition:color 0.2s;}
@@ -66,7 +65,6 @@ const styles = `
   .footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;} .footer-socials a:hover{color:var(--text);}
 
   @media(max-width:900px){
-    .nav{padding:14px 24px;} .nav-links{display:none;}
     .hero{grid-template-columns:1fr;}
     .hero-content{padding:100px 24px 48px;}
     .hero-photo{min-height:300px;}
@@ -174,15 +172,6 @@ export default async function DealPage({ params }: { params: { slug: string } })
   return (
     <div style={{ background: "#0A0A0A", minHeight: "100vh" }}>
       <style dangerouslySetInnerHTML={{ __html: styles }} />
-
-      <nav className="nav">
-        <a href="/homepage" className="nav-logo"><PostgameLogo size="md" /></a>
-        <div className="nav-links">
-          <a href="/clients">Clients</a><a href="/campaigns">Campaigns</a><a href="/about/team">About</a>
-          <a href="/contact" className="pg-btn btn-outline">Contact</a>
-          <a href="/deals" className="pg-btn btn-solid">Deal Tracker</a>
-        </div>
-      </nav>
 
       <div className="hero">
         <div className="hero-content">
