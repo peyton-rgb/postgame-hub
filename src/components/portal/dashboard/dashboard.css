@@ -1,0 +1,342 @@
+/* ============================================================
+   Brand dashboard (Phase 3a).
+
+   Values are taken from docs/briefs/reference/brand-dashboard-desktop-1440x900.html
+   so a 1440x900 screenshot matches it tile for tile: #111114 tile fill,
+   rgba(250,248,245,.08) border, radius 14, 10px grid gap, 72px rail.
+
+   The reference is a fixed 1440x900 frame. This is the responsive version of
+   the same layout:
+     >= 1100px   12 columns x 6 rows, the reference's exact spans
+     <  1100px   6 columns, tiles stack in the brief's order
+     <  640px    one column, bottom tab bar (design system: mobile nav is a
+                 bottom tab bar, never a hamburger, never a top nav)
+   ============================================================ */
+
+.pgd {
+  --ink: #FAF8F5;
+  --ink-90: rgba(250, 248, 245, 0.9);
+  --ink-75: rgba(250, 248, 245, 0.75);
+  --ink-60: rgba(250, 248, 245, 0.6);
+  --ink-50: rgba(250, 248, 245, 0.5);
+  --ink-45: rgba(250, 248, 245, 0.45);
+  --hair: rgba(250, 248, 245, 0.09);
+  --tile: #111114;
+  --tile-edge: rgba(250, 248, 245, 0.08);
+  --orange: #D73F09;
+  --orange-soft: #FF6A3D;
+
+  background: #07070A;
+  color: var(--ink);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  font-size: 13px;
+}
+
+/* ---- left icon rail ------------------------------------------ */
+.pgd-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0;
+  gap: 6px;
+  border-right: 1px solid var(--hair);
+  background: #0A0A0D;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.pgd-rail img { width: 32px; height: 32px; margin-bottom: 14px; object-fit: contain; }
+.pgd-rail a,
+.pgd-rail span.pgd-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-45); text-decoration: none; flex: 0 0 auto;
+}
+.pgd-rail a:hover { color: var(--ink); background: rgba(250, 248, 245, 0.06); }
+.pgd-rail a.on { background: rgba(250, 248, 245, 0.1); color: var(--ink); }
+.pgd-rail svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.pgd-rail .pgd-spacer { flex: 1 }
+.pgd-rail .pgd-ava {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(250, 248, 245, 0.14);
+  border: 2px solid rgba(250, 248, 245, 0.2);
+  flex: 0 0 auto;
+}
+
+/* ---- main column --------------------------------------------- */
+.pgd-main {
+  padding: 16px 22px 18px;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 12px;
+  min-height: 100vh;
+  min-width: 0;
+}
+
+.pgd-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pgd-pills {
+  display: flex; gap: 4px; background: var(--tile);
+  border: 1px solid var(--hair); border-radius: 999px; padding: 4px;
+  flex-wrap: wrap;
+}
+.pgd-pills a, .pgd-pills span {
+  padding: 7px 14px; border-radius: 999px; color: var(--ink-60);
+  text-decoration: none; white-space: nowrap;
+}
+.pgd-pills a:hover { color: var(--ink) }
+.pgd-pills .on { background: var(--ink); color: #07070A; font-weight: 700 }
+.pgd-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pgd-t {
+  height: 36px; padding: 0 14px; border-radius: 999px;
+  background: var(--tile); border: 1px solid var(--hair);
+  display: flex; align-items: center; gap: 8px; color: var(--ink-75);
+  white-space: nowrap;
+}
+.pgd-t.pgd-search { width: 220px; color: rgba(250, 248, 245, 0.4) }
+.pgd-av {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--orange);
+  display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+.pgd-av svg {
+  width: 18px; height: 18px; fill: none; stroke: #fff;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.pgd-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.pgd-h1 {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-weight: 400; font-size: 38px; line-height: 0.92;
+  margin: 0; letter-spacing: 0.01em;
+}
+.pgd-sub { color: rgba(250, 248, 245, 0.55); margin: 4px 0 0 }
+.pgd-kpis { display: flex; gap: 26px; flex-wrap: wrap }
+.pgd-kpi { text-align: right }
+.pgd-kpi b {
+  display: block;
+  font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 26px; line-height: 1;
+}
+.pgd-kpi span { font-size: 11px; color: var(--ink-50) }
+
+/* ---- the tile grid ------------------------------------------- */
+.pgd-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(6, minmax(96px, 1fr));
+  gap: 10px;
+  min-height: 0;
+}
+.pgd-tile {
+  background: var(--tile); border: 1px solid var(--tile-edge);
+  border-radius: 14px; padding: 14px; position: relative;
+  overflow: hidden; min-height: 0; display: flex; flex-direction: column;
+}
+.pgd-tile h3 {
+  margin: 0 0 6px; font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.pgd-ic {
+  width: 18px; height: 18px; border-radius: 5px;
+  background: rgba(250, 248, 245, 0.08);
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+.pgd-ic svg {
+  width: 11px; height: 11px; stroke: var(--ink-75); fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.pgd-more {
+  position: absolute; top: 13px; right: 13px; font-size: 11px;
+  color: var(--ink-50); text-decoration: none;
+}
+.pgd-more:hover { color: var(--ink) }
+.pgd-muted { color: var(--ink-50); font-size: 11px }
+.pgd-num { font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400 }
+
+/* reference spans */
+.pgd-alert   { grid-column: 1 / 4;  grid-row: 1 / 3 }
+.pgd-chart   { grid-column: 4 / 8;  grid-row: 1 / 3 }
+.pgd-ring    { grid-column: 8 / 10; grid-row: 1 / 3 }
+.pgd-photo   { grid-column: 10 / 13; grid-row: 1 / 4; padding: 0 }
+.pgd-roster  { grid-column: 1 / 8;  grid-row: 3 / 6 }
+.pgd-sched   { grid-column: 8 / 10; grid-row: 3 / 6 }
+.pgd-top     { grid-column: 10 / 13; grid-row: 4 / 7 }
+.pgd-camps   { grid-column: 1 / 10; grid-row: 6 / 7; flex-direction: row; align-items: center; gap: 10px }
+
+/* Waiting on you — the ONE place orange is a surface, sanctioned by the brief */
+.pgd-alert {
+  background: var(--orange); border-color: var(--orange); color: #fff;
+}
+.pgd-alert h3 { color: #fff }
+.pgd-alert .pgd-ic { background: #fff }
+.pgd-alert .pgd-ic svg { stroke: var(--orange) }
+.pgd-alert .pgd-count {
+  position: absolute; top: 12px; right: 12px; background: #fff;
+  color: var(--orange); font-weight: 700; font-size: 11px;
+  padding: 3px 8px; border-radius: 999px;
+}
+.pgd-alert .pgd-empty { color: rgba(255, 255, 255, 0.92); font-size: 13px; line-height: 1.5; margin: 4px 0 0 }
+
+/* empty states — a designed absence, not a broken tile */
+.pgd-empty-body {
+  margin: auto 0; color: var(--ink-50); font-size: 12px; line-height: 1.55;
+}
+.pgd-axis {
+  flex: 1; min-height: 40px; margin-top: 8px;
+  border-bottom: 1px solid var(--tile-edge); border-left: 1px solid var(--tile-edge);
+}
+
+/* Deliverables ring */
+.pgd-ringwrap { display: flex; align-items: center; gap: 12px; margin-top: 4px }
+.pgd-ringwrap svg { width: 82px; height: 82px; flex: 0 0 auto }
+.pgd-ringwrap .pgd-n { font-size: 26px; line-height: 1 }
+
+/* Latest wrapped photo tile */
+.pgd-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 15%; display: block }
+.pgd-over {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 70px 16px 14px;
+  background: linear-gradient(0deg, rgba(7, 7, 10, 0.94), rgba(7, 7, 10, 0));
+}
+.pgd-over small { display: block; font-size: 11px; color: rgba(250, 248, 245, 0.7); margin-bottom: 4px }
+.pgd-over h2 {
+  font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; text-transform: uppercase; font-size: 28px;
+  line-height: 0.92; margin: 0 0 8px;
+}
+.pgd-over .pgd-stats { display: flex; gap: 14px; font-size: 11px; color: var(--ink-75); flex-wrap: wrap }
+.pgd-over .pgd-stats b {
+  display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 18px; color: var(--ink);
+}
+.pgd-tag {
+  position: absolute; top: 12px; left: 12px; background: rgba(7, 7, 10, 0.6);
+  border: 1px solid rgba(250, 248, 245, 0.2); padding: 4px 9px;
+  border-radius: 999px; font-size: 11px;
+}
+
+/* roster table */
+.pgd-roster .pgd-scroll { overflow-x: auto; margin-top: 6px }
+.pgd-roster table { width: 100%; border-collapse: collapse; min-width: 520px }
+.pgd-roster th {
+  text-align: left; font-weight: 400; font-size: 10px; color: var(--ink-45);
+  padding: 4px 6px; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
+}
+.pgd-roster td {
+  padding: 6px; border-bottom: 1px solid rgba(250, 248, 245, 0.06);
+  font-size: 12px; vertical-align: middle;
+}
+.pgd-roster tr:last-child td { border-bottom: 0 }
+.pgd-who { display: flex; align-items: center; gap: 8px }
+.pgd-who img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: 0 0 auto }
+/* no photo on file -> empty circle, never a stock image */
+.pgd-who .pgd-noface {
+  width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.06);
+  border: 1px solid rgba(250, 248, 245, 0.14);
+}
+.pgd-who small { display: block; font-size: 10px; color: var(--ink-50) }
+
+/* Top posts */
+.pgd-post {
+  display: flex; align-items: center; gap: 9px; padding: 5px 0;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.06); text-decoration: none; color: inherit;
+}
+.pgd-post:last-child { border-bottom: 0 }
+.pgd-post img { width: 34px; height: 42px; border-radius: 7px; object-fit: cover; flex: 0 0 auto }
+.pgd-post .pgd-nothumb {
+  width: 34px; height: 42px; border-radius: 7px; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.06); border: 1px solid rgba(250, 248, 245, 0.12);
+}
+.pgd-post .pgd-r { font-family: var(--font-anton), Anton, Impact, sans-serif; color: rgba(250, 248, 245, 0.4); width: 14px; flex: 0 0 auto }
+.pgd-post b { display: block; font-size: 12px }
+.pgd-post small { font-size: 10px; color: var(--ink-50) }
+.pgd-post .pgd-v { margin-left: auto; text-align: right; font-size: 11px; flex: 0 0 auto }
+.pgd-post .pgd-v b { font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400; font-size: 15px }
+
+/* Campaigns strip */
+.pgd-camps h3 {
+  margin: 0; width: 110px; flex: 0 0 auto; flex-direction: column;
+  align-items: flex-start; gap: 4px;
+}
+.pgd-camps h3 small { font-weight: 400; color: var(--ink-50); font-size: 10px }
+.pgd-campgrid { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; min-width: 0 }
+.pgd-camp {
+  background: rgba(250, 248, 245, 0.04); border: 1px solid rgba(250, 248, 245, 0.07);
+  border-radius: 10px; padding: 9px 10px; display: flex; flex-direction: column;
+  gap: 4px; min-width: 0; text-decoration: none; color: inherit;
+}
+.pgd-camp:hover { border-color: rgba(250, 248, 245, 0.16) }
+.pgd-camp .pgd-cn {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 16px; letter-spacing: 0.01em; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.pgd-camp .pgd-cm { font-size: 10px; color: var(--ink-50) }
+.pgd-camp .pgd-cf {
+  display: flex; justify-content: space-between; gap: 6px;
+  font-size: 10px; color: rgba(250, 248, 245, 0.55); margin-top: auto;
+}
+.pgd-camp .pgd-cf b { color: rgba(250, 248, 245, 0.7) }
+.pgd-camp.pgd-live .pgd-cf b { color: var(--orange-soft) }
+
+/* bottom tab bar, phone only */
+.pgd-tabbar { display: none }
+
+/* ---- tablet: 6 columns, tiles stack in the brief's order ----- */
+@media (max-width: 1100px) {
+  .pgd-grid { grid-template-columns: repeat(6, 1fr); grid-template-rows: none }
+  .pgd-alert, .pgd-chart, .pgd-ring, .pgd-photo,
+  .pgd-roster, .pgd-sched, .pgd-top, .pgd-camps {
+    grid-column: auto / span 6; grid-row: auto;
+  }
+  .pgd-alert, .pgd-ring, .pgd-sched { grid-column: auto / span 3 }
+  .pgd-chart { grid-column: auto / span 6 }
+  .pgd-photo { min-height: 320px }
+  .pgd-camps { flex-direction: column; align-items: stretch }
+  .pgd-camps h3 { width: auto; flex-direction: row; align-items: baseline; gap: 8px; margin-bottom: 8px }
+  .pgd-campgrid { grid-template-columns: repeat(3, 1fr) }
+  .pgd-main { padding: 16px 20px 18px }
+}
+
+/* ---- phone: one column + bottom tab bar --------------------- */
+@media (max-width: 640px) {
+  .pgd { grid-template-columns: 1fr }
+  .pgd-rail { display: none }
+  .pgd-main { padding: 16px 20px 84px }
+  .pgd-grid { grid-template-columns: 1fr }
+  .pgd-alert, .pgd-chart, .pgd-ring, .pgd-photo,
+  .pgd-roster, .pgd-sched, .pgd-top, .pgd-camps {
+    grid-column: auto; grid-row: auto;
+  }
+  .pgd-campgrid { grid-template-columns: repeat(2, 1fr) }
+  .pgd-h1 { font-size: 40px }
+  .pgd-pills { display: none }
+  .pgd-t.pgd-search { width: 100%; flex: 1 }
+  .pgd-kpis { gap: 18px }
+  .pgd-kpi { text-align: left }
+
+  .pgd-tabbar {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    background: rgba(7, 7, 10, 0.94);
+    backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+    border-top: 1px solid var(--hair);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  .pgd-tabbar a, .pgd-tabbar span {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--ink-50); text-decoration: none; font-size: 10px; padding: 4px 0;
+  }
+  .pgd-tabbar .on { color: var(--ink) }
+  .pgd-tabbar svg {
+    width: 20px; height: 20px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgd * { transition: none !important; animation: none !important }
+}

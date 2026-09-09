@@ -92,6 +92,24 @@ export async function getPendingReviewCount(brandId: string): Promise<number> {
   return count ?? 0;
 }
 
+// Postgame's ICON file, for a square slot — the dashboard's 72px rail.
+//
+// Deliberately not getPostgameMark(): that returns the ~5:1 wordmark, and the
+// design system's self-check calls out "the wide wordmark crammed into a
+// square slot" as off-brand, because that is the icon's job. SVG first, the
+// 1024px transparent PNG as fallback. Null rather than a substitute.
+export async function getPostgameIcon(): Promise<string | null> {
+  const supabase = createServiceSupabase();
+  const { data } = await supabase
+    .from("brands")
+    .select("logo_icon_svg_url, logo_icon_url")
+    .eq("id", POSTGAME_BRAND_ID)
+    .single();
+
+  if (!data) return null;
+  return data.logo_icon_svg_url || data.logo_icon_url || null;
+}
+
 // Postgame's wordmark file for the header lockup. Light logo on the dark
 // ground. Returns null rather than substituting anything — rule 2 says a
 // missing logo is a labelled empty slot, never an approximation.
