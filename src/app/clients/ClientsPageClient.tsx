@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { ATHLETES } from "@/lib/site-stats";
 import Link from 'next/link';
 import Lenis from 'lenis';
 import gsap from 'gsap';
@@ -58,9 +59,7 @@ function useLogoHover<T extends HTMLElement>() {
 // marked as a draft. Nothing here is a paraphrase that strengthens a claim the
 // source does not make, and no result or statistic is invented.
 //
-// Athlete count: the live site carries THREE different figures — 60,000
-// (homepage, "created content for our partners"), 75,000+ (/about, network
-// reach) and 50,000+ (the old copy on this page). 60,000 is the chosen one.
+// Athlete count comes from src/lib/site-stats.ts — the one source of truth.
 
 const APP_LINKS = [
   { label: 'App Store', href: 'https://apps.apple.com/us/app/postgame-app/id1541500365' },
@@ -220,7 +219,7 @@ export default function ClientsPageClient({
             </p>
             <p className="max-w-[58ch] text-[16px] leading-relaxed text-ink/70">
               Since 2021 we&rsquo;ve been at the forefront — setting the standard, breaking
-              records, and proving what&rsquo;s possible in NIL. More than 60,000 college
+              records, and proving what&rsquo;s possible in NIL. {ATHLETES} college
               athletes have created content for our partners, powering every one of the largest
               NIL campaigns in college sports history.
             </p>

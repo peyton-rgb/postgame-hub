@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ATHLETES } from "@/lib/site-stats";
 import Link from 'next/link';
 import gsap from 'gsap';
 import type { FeaturedFilm } from '@/lib/data/clients-page';
@@ -355,7 +356,7 @@ export default function HeroCarousel({ films }: { films: FeaturedFilm[] }) {
                 The brands behind the biggest campaigns
               </h1>
               <p className="pg-lead mt-5 max-w-[62ch]">
-                More than 60,000 college athletes have created content for our partners
+                {ATHLETES} college athletes have created content for our partners
                 since 2021.
                 <br />
                 We build campaigns end to end — casting the athletes, producing the

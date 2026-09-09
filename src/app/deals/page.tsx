@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
+import { ATHLETES, BRAND_PARTNERS, CAMPAIGNS } from "@/lib/site-stats";
 import { createBrowserSupabase } from "@/lib/supabase";
 import type { Deal } from "@/lib/types";
 import Link from "next/link";
@@ -29,10 +30,10 @@ type DealRow = Deal & {
 
 /* ── Stats ────────────────────────────────────────────────────── */
 const STATS = [
-  { num: "394+", label: "Campaigns Run" },
-  { num: "100+", label: "Brand Partners" },
-  { num: "10K+", label: "Athletes Activated" },
-  { num: "4K",   label: "Production Standard" },
+  { num: CAMPAIGNS, label: "Campaigns Run" },
+  { num: BRAND_PARTNERS, label: "Brand Partners" },
+  { num: ATHLETES, label: "Athletes Activated" },
+  { num: "4K", label: "Production Standard" },
 ];
 
 /* ── Nav links ────────────────────────────────────────────────── */
@@ -215,7 +216,10 @@ export default function DealsPage() {
     requestAnimationFrame(tick);
   }, []);
 
-  const heroHeight = isMobile ? "100svh" : isTablet ? "clamp(800px,110vh,1000px)" : "clamp(900px,115vh,1100px)";
+  // Was clamp(900px,115vh,1100px) — TALLER than the viewport, so the hero's
+  // bottom-anchored heading sat below the fold on any normal laptop and the
+  // page opened on image alone. Fit it to the viewport instead.
+  const heroHeight = isMobile ? "100svh" : isTablet ? "min(100svh, 900px)" : "min(100svh, 940px)";
   const carCardW = isMobile ? "clamp(150px,42vw,200px)" : isTablet ? "clamp(160px,28vw,220px)" : "248px";
   const carCardH = isMobile ? "clamp(220px,62vw,300px)" : isTablet ? "clamp(240px,42vw,330px)" : "380px";
   const gridCols = isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(4,1fr)";
@@ -229,7 +233,7 @@ export default function DealsPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#000", color: "#fff", fontFamily: "Arial,Helvetica,sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#000", color: "#fff", fontFamily: "var(--font-arimo),Arimo,Arial,Helvetica,sans-serif" }}>
 
       {/* ── Nav ─────────────────────────────────────────────── */}
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isCompact ? "12px 16px" : "16px 48px", background: isMobile ? "#000" : "rgba(10,10,10,0.92)", backdropFilter: isMobile ? undefined : "blur(16px)", boxShadow: isMobile ? "none" : "0 1px 0 rgba(255,255,255,0.08)" }}>
@@ -328,7 +332,7 @@ export default function DealsPage() {
             <>
               {/* Title area — top */}
               <div style={{ position: "absolute", top: 58, left: 14, right: 14, zIndex: 10, pointerEvents: "none" }}>
-                <div className="animate-hero-title" style={{ fontSize: "clamp(34px,9vw,44px)", fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 12 }}>
+                <div className="pg-h1 animate-hero-title" style={{ fontSize: "clamp(34px,9vw,44px)", lineHeight: 0.92, letterSpacing: -1, marginBottom: 12 }}>
                   NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
                 </div>
               </div>
@@ -379,7 +383,7 @@ export default function DealsPage() {
               {/* Left — description */}
               <div style={{ maxWidth: 420 }}>
                 <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 8 }}>Postgame NIL</div>
-                <div className="animate-hero-title" style={{ fontSize: 38, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 12 }}>
+                <div className="pg-h1 animate-hero-title" style={{ fontSize: 38, lineHeight: 0.92, letterSpacing: -1, marginBottom: 12 }}>
                   NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
                 </div>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.52)", lineHeight: 1.7, maxWidth: 380, marginBottom: 8, marginTop: 0 }}>
@@ -426,7 +430,7 @@ export default function DealsPage() {
               {/* Left — description */}
               <div style={{ maxWidth: 520 }}>
                 <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.22em", color: "#D73F09", marginBottom: 10 }}>Postgame NIL</div>
-                <div className="animate-hero-title" style={{ fontSize: 52, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1, textTransform: "uppercase", marginBottom: 14 }}>
+                <div className="pg-h1 animate-hero-title" style={{ fontSize: 52, lineHeight: 0.92, letterSpacing: -1, marginBottom: 14 }}>
                   NIL<br /><span style={{ color: "#D73F09" }}>Deal Tracker</span>
                 </div>
                 <p style={{ fontSize: 13, color: "rgba(255,255,255,0.52)", lineHeight: 1.7, maxWidth: 440, marginBottom: 10, marginTop: 0 }}>
@@ -469,13 +473,13 @@ export default function DealsPage() {
       <div style={{ position: "relative", zIndex: 2, background: "transparent", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "clamp(24px,4vw,32px) clamp(20px,4vw,48px)" }}>
           {[
-            { num: campaignsCount + "+", label: "Campaigns Run" },
-            { num: brandsCount + "+", label: "Brand Partners" },
-            { num: athletesCount >= 10000 ? "10K+" : athletesCount + "+", label: "Athletes Activated" },
+            { num: CAMPAIGNS, label: "Campaigns Run" },
+            { num: BRAND_PARTNERS, label: "Brand Partners" },
+            { num: ATHLETES, label: "Athletes Activated" },
             { num: "4K", label: "Production Standard" },
           ].map(s => (
             <div key={s.label} style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(24px,3.5vw,40px)", lineHeight: 1, color: "#D73F09" }}>{s.num}</div>
+              <div style={{ fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", fontSize: "clamp(24px,3.5vw,40px)", lineHeight: 1, color: "#D73F09" }}>{s.num}</div>
               <div style={{ fontSize: "clamp(10px,1vw,12px)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", marginTop: "clamp(4px,0.6vw,6px)" }}>{s.label}</div>
             </div>
           ))}
@@ -487,7 +491,7 @@ export default function DealsPage() {
         <div style={{ position: "relative", zIndex: 2, background: "transparent", padding: "clamp(28px,4vw,48px) clamp(20px,4vw,48px) clamp(32px,5vw,48px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto" }}>
             <div style={{ fontSize: "clamp(10px,1.1vw,12px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.2em", color: "#D73F09", marginBottom: "clamp(8px,1.2vw,12px)" }}>Featured Athletes</div>
-            <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
+            <div style={{ fontSize: "clamp(24px,3.5vw,42px)", fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", lineHeight: 1, marginBottom: "clamp(20px,3vw,32px)" }}>Headliner Deals</div>
             <div style={{ overflow: "hidden" }}>
               <div style={{ display: "flex", gap: "clamp(12px,1.5vw,20px)", transition: "transform 0.5s ease", transform: `translateX(-${carIdx * (248 + 20) * 4}px)` }}>
                 {featured.map(d => (
@@ -496,7 +500,7 @@ export default function DealsPage() {
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "clamp(14px,2vw,20px) clamp(12px,1.5vw,18px)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                       <div style={{ fontSize: "clamp(9px,0.9vw,10px)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D73F09", marginBottom: 2 }}>{d.brand_name}</div>
-                      <div style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(18px,2vw,22px)", lineHeight: 1.05 }}>{d.athlete_name}</div>
+                      <div style={{ fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", fontSize: "clamp(18px,2vw,22px)", lineHeight: 1.05 }}>{d.athlete_name}</div>
                       {(d.athlete_school || d.athlete_sport) && (
                         <div style={{ fontSize: "clamp(10px,1vw,11px)", color: "rgba(255,255,255,0.45)", marginTop: 3 }}>{[d.athlete_school, d.athlete_sport].filter(Boolean).join(" · ")}</div>
                       )}
@@ -549,7 +553,7 @@ export default function DealsPage() {
                   </div>
                 )}
                 <div style={{ padding: "clamp(12px,1.5vw,16px) clamp(14px,1.8vw,20px) clamp(14px,1.8vw,20px)" }}>
-                  <div style={{ fontFamily: "'Bebas Neue',Arial,sans-serif", fontSize: "clamp(16px,1.8vw,24px)", lineHeight: 1.05, marginBottom: "clamp(2px,0.4vw,4px)" }}>{deal.athlete_name || "Team Campaign"}</div>
+                  <div style={{ fontFamily: "var(--font-bebas),'Bebas Neue',Arial,sans-serif", fontSize: "clamp(16px,1.8vw,24px)", lineHeight: 1.05, marginBottom: "clamp(2px,0.4vw,4px)" }}>{deal.athlete_name || "Team Campaign"}</div>
                   <div style={{ fontSize: "clamp(11px,1.2vw,13px)", fontWeight: 700, color: "#D73F09", marginBottom: "clamp(4px,0.6vw,6px)" }}>{deal.brand_name}</div>
                   {(deal.athlete_school || deal.athlete_sport) && (
                     <div style={{ fontSize: "clamp(10px,1.1vw,12px)", color: "rgba(255,255,255,0.4)" }}>{[deal.athlete_school, deal.athlete_sport].filter(Boolean).join(" · ")}</div>

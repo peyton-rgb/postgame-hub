@@ -12,7 +12,7 @@ export const revalidate = 120;
 
 type Props = { params: Promise<{ slug: string }> };
 
-/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Supabase helper ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+/* ── Supabase helper ─────────────────────────────────── */
 function sb() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,7 +20,7 @@ function sb() {
   );
 }
 
-/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ SEO metadata ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+/* ── SEO metadata ────────────────────────────────────── */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const { data: c } = await sb()
@@ -31,12 +31,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .single();
   if (!c) return { title: "Not Found" };
   return {
-    title: `${c.name} ÃÂ¢ÃÂÃÂ ${c.client_name} | Postgame`,
+    title: `${c.name} — ${c.client_name} | Postgame`,
     description: c.description || `${c.name} campaign by ${c.client_name}`,
   };
 }
 
-/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ styles ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+/* ── styles ──────────────────────────────────────────── */
 const css = `
 :root{--orange:#D73F09;--bg:#0A0A0A;--surface:#141414;--border:rgba(255,255,255,.08);--text:#fff;--muted:rgba(255,255,255,.55);--dim:rgba(255,255,255,.35);}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -143,12 +143,12 @@ body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
 }
 `;
 
-/* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ page component ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+/* ── page component ──────────────────────────────────── */
 export default async function CampaignShowcasePage({ params }: Props) {
   const { slug } = await params;
   const supabase = sb();
 
-  // Fetch campaign (public fields only ÃÂ¢ÃÂÃÂ no metrics)
+  // Fetch campaign (public fields only — no metrics)
   const { data: campaign } = await supabase
     .from("campaign_recaps")
     .select("id, name, slug, description, hero_image_url, client_name, brand_id, settings, tags, public_sections")
@@ -176,7 +176,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
     prefer: "lockup",
   });
 
-  // Fetch athletes ÃÂ¢ÃÂÃÂ only name, school, sport (NO metrics, NO follower counts)
+  // Fetch athletes — only name, school, sport (NO metrics, NO follower counts)
   const { data: allAthletes } = await supabase
     .from("athletes")
     .select("id, name, school, sport, is_featured, featured_order")
@@ -237,7 +237,7 @@ export default async function CampaignShowcasePage({ params }: Props) {
         {description && <p className="pg-lead c-hero-desc">{description}</p>}
       </section>
 
-      {/* Stats ÃÂ¢ÃÂÃÂ safe numbers only: athlete count, schools, sports */}
+      {/* Stats — safe numbers only: athlete count, schools, sports */}
       <section className="c-stats">
         <div className="c-stat">
           <div className="pg-stat c-stat-val">{athleteCount}</div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ATHLETES, BRAND_PARTNERS, CAMPAIGNS, splitStat } from "@/lib/site-stats";
 import styles from "./halfcourt-sections.module.css";
 
 /**
@@ -54,9 +55,12 @@ export default function HalfcourtSections() {
     const statEls = Array.from(
       root.querySelectorAll<HTMLElement>(`.${styles.statnum}`)
     );
+    // data-n may carry thousands separators ("60,000"), which Number() reads as
+    // NaN — strip them to count, and put them back to display.
+    const target = (el: HTMLElement) => Number((el.dataset.n || "0").replace(/,/g, ""));
+    const fmt = (v: number) => v.toLocaleString("en-US");
     const setFinal = (el: HTMLElement) => {
-      const n = Number(el.dataset.n || 0);
-      el.textContent = `${n}${el.dataset.suf || ""}`;
+      el.textContent = `${fmt(target(el))}${el.dataset.suf || ""}`;
     };
     if (reduce) {
       statEls.forEach(setFinal);
@@ -68,13 +72,13 @@ export default function HalfcourtSections() {
             const el = e.target as HTMLElement;
             if (!e.isIntersecting || el.dataset.done) return;
             el.dataset.done = "1";
-            const n = Number(el.dataset.n || 0);
+            const n = target(el);
             const suf = el.dataset.suf || "";
             const t0 = performance.now();
             const D = 1500;
             const tick = (now: number) => {
               const p = Math.min(1, (now - t0) / D);
-              el.textContent = `${Math.round(n * ease(p))}${suf}`;
+              el.textContent = `${fmt(Math.round(n * ease(p)))}${suf}`;
               if (p < 1) requestAnimationFrame(tick);
             };
             requestAnimationFrame(tick);
@@ -152,30 +156,30 @@ export default function HalfcourtSections() {
               <div className={styles.statKicker}>Athletes paid</div>
               <div
                 className={`${styles.title} ${styles.statnum} ${styles.statNum}`}
-                data-n="70"
-                data-suf="K+"
+                data-n={splitStat(ATHLETES).n}
+                data-suf={splitStat(ATHLETES).suffix}
               >
-                0K+
+                0
               </div>
             </div>
             <div className={styles.statCell}>
               <div className={styles.statKicker}>Brand partners</div>
               <div
                 className={`${styles.title} ${styles.statnum} ${styles.statNum}`}
-                data-n="100"
-                data-suf="+"
+                data-n={splitStat(BRAND_PARTNERS).n}
+                data-suf={splitStat(BRAND_PARTNERS).suffix}
               >
-                0+
+                0
               </div>
             </div>
             <div className={styles.statCell}>
               <div className={styles.statKicker}>NIL campaigns</div>
               <div
                 className={`${styles.title} ${styles.statnum} ${styles.statNum}`}
-                data-n="300"
-                data-suf="+"
+                data-n={splitStat(CAMPAIGNS).n}
+                data-suf={splitStat(CAMPAIGNS).suffix}
               >
-                0+
+                0
               </div>
             </div>
           </div>
