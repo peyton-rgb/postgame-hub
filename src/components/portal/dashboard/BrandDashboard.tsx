@@ -94,6 +94,35 @@ function PersonIcon() {
   );
 }
 
+/**
+ * The one empty state, used by all four data-less tiles.
+ *
+ * Small glyph, one line naming what is absent, a quieter line saying when it
+ * will appear. Identical shape in each tile so an empty dashboard still reads
+ * as designed rather than broken — and so no tile is ever tempted into a
+ * plausible-looking zero.
+ *
+ * The glyph is a single shared "none" mark, NOT the tile's own topic icon.
+ * Repeating the header's icon directly beneath itself read as a rendering
+ * mistake — two alert triangles on Waiting on you, two bar charts on Posts
+ * going live. One neutral mark across all four says "this is an empty state"
+ * instead.
+ */
+function TileEmpty({ line, note }: { line: string; note: string }) {
+  return (
+    <div className="pgd-blank">
+      <span className="pgd-blank-ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8 12h8" />
+        </svg>
+      </span>
+      <b>{line}</b>
+      <span>{note}</span>
+    </div>
+  );
+}
+
 /* Routes that exist today. Phase 3b adds the rest; until then an item with no
    route renders as plain text rather than a link to a 404. */
 const RAIL = [
@@ -234,9 +263,10 @@ export default function BrandDashboard({
               </span>
               Waiting on you
             </h3>
-            <p className="pgd-empty">
-              Nothing waiting on you — we&rsquo;ll flag reviews here when content is ready.
-            </p>
+            <TileEmpty
+              line="Nothing waiting on you"
+              note="We'll flag reviews here when content is ready."
+            />
           </section>
 
           {/* 2 · Posts going live. No source: athlete_deliverables carries no
@@ -249,10 +279,10 @@ export default function BrandDashboard({
               </span>
               Posts going live
             </h3>
-            <div className="pgd-axis" aria-hidden="true" />
-            <p className="pgd-muted" style={{ marginTop: 8 }}>
-              No posts scheduled this week.
-            </p>
+            <TileEmpty
+              line="No posts scheduled this week"
+              note="Scheduled and posted content will chart here."
+            />
           </section>
 
           {/* 3 · Deliverables. Ring at 0%, platform split hidden — there is no
@@ -264,17 +294,10 @@ export default function BrandDashboard({
               </span>
               Deliverables
             </h3>
-            <div className="pgd-ringwrap">
-              <svg viewBox="0 0 100 100" aria-hidden="true">
-                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(250,248,245,.1)" strokeWidth="10" />
-              </svg>
-              <div>
-                <div className="pgd-num pgd-n">0%</div>
-                <div className="pgd-muted" style={{ marginTop: 3 }}>
-                  Nothing delivered yet
-                </div>
-              </div>
-            </div>
+            <TileEmpty
+              line="Nothing delivered yet"
+              note="Progress appears as athletes upload and you approve."
+            />
           </section>
 
           {/* 4 · Latest wrapped. Photo from the campaign's hero media; figures
@@ -399,7 +422,10 @@ export default function BrandDashboard({
               </span>
               This week
             </h3>
-            <p className="pgd-empty-body">Nothing scheduled.</p>
+            <TileEmpty
+              line="Nothing scheduled"
+              note="Post dates, review deadlines and recap deliveries land here."
+            />
           </section>
 
           {/* 7 · Top posts. No period in the title on purpose: `athletes` has
@@ -479,13 +505,24 @@ export default function BrandDashboard({
                     <div className="pgd-cn" title={c.name}>
                       {c.name}
                     </div>
-                    <div className="pgd-cm">
-                      {[c.quarter, c.platform, c.athletes > 0 ? `${c.athletes} athletes` : null]
+                    {/* One line, ellipsised. The reference's meta strings were
+                        short ("IG + TikTok"); ours come from settings and run to
+                        "Instagram (Feed + Reels + Stories) + TikTok", which
+                        wrapped to three lines and pushed the card past its grid
+                        row. Platform is dropped here — it is on the roster
+                        subline already — leaving quarter and roster size. */}
+                    <div className="pgd-cm" title={c.platform ?? undefined}>
+                      {[c.quarter, c.athletes > 0 ? `${c.athletes} athletes` : null]
                         .filter(Boolean)
-                        .join(" · ")}
+                        .join(" · ") || "\u2014"}
                     </div>
+                    {/* Chip only. The footer used to carry a label AND a chip
+                        that said the same thing — "Recap delivered / Wrapped",
+                        "Live / Live" — and in a card this narrow the label
+                        ellipsised to "Recap deliv…". The reference's label was a
+                        posted count, which we have no source for, so the
+                        duplicate goes rather than being padded out. */}
                     <div className="pgd-cf">
-                      <span>{c.live ? "Live" : "Recap delivered"}</span>
                       <b>{c.live ? "Live" : "Wrapped"}</b>
                     </div>
                   </a>

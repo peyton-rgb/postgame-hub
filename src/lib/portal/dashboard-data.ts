@@ -303,9 +303,15 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
   }));
 
   // ---- Campaign cards ---------------------------------------------
-  // Live first, then wrapped, six total. Fewer cards when there are fewer
-  // campaigns — never padded with placeholders.
-  const cards: CampaignCard[] = [...live, ...wrapped].slice(0, 6).map((c) => ({
+  // Three live, then the three most recent wrapped. Taking the first six of
+  // [live, ...wrapped] filled the whole row with live campaigns whenever a
+  // brand had six or more — CVS has six, so the row showed no wrapped work at
+  // all. A fixed 3+3 keeps both halves of the story visible.
+  //
+  // Short-changed either way: if a brand has fewer than three live, the
+  // wrapped side is NOT topped up to fill the row. Fewer cards is honest;
+  // padding would imply a campaign mix the brand does not have.
+  const cards: CampaignCard[] = [...live.slice(0, 3), ...wrapped.slice(0, 3)].map((c) => ({
     id: c.id,
     name: c.name ?? "Campaign",
     slug: c.slug,
@@ -355,11 +361,22 @@ function readFigures(raw: Record<string, unknown> | null): { label: string; valu
 }
 
 /**
- * First photo per athlete, for headshots.
+ * A picture of each athlete, for headshots and Top posts thumbnails.
  *
  * `athletes` has no headshot column (Phase 3 brief §6 says as much), so this
- * takes the athlete's first image on the campaign. A missing photo returns
- * nothing and the UI draws an empty circle — never a stock image.
+ * takes the athlete's own media. A missing picture returns nothing and the UI
+ * draws an empty circle — never a stock image.
+ *
+ * DOES NOT FILTER ON type='image', which it used to. That filter is why Top
+ * posts rendered three grey squares: all three of CVS's top athletes have
+ * media linked to them, and NONE of it is an image — it is video, which
+ * carries a thumbnail_url that is a perfectly good still of that athlete.
+ * Checked across every CVS athlete-linked row: videos always have a
+ * thumbnail_url, images have file_url and no thumbnail. So the URL is
+ * `thumbnail_url || file_url` and both types are eligible.
+ *
+ * Ordered by type ascending so 'image' sorts before 'video' and the
+ * first-wins map below prefers a real photo over a video frame.
  */
 async function loadHeadshots(
   supabase: ReturnType<typeof createServerSupabase>,
@@ -371,14 +388,15 @@ async function loadHeadshots(
 
   let q = supabase
     .from("media")
-    .select("athlete_id, file_url, thumbnail_url")
+    .select("athlete_id, type, file_url, thumbnail_url")
     .in("athlete_id", athleteIds)
-    .eq("type", "image");
+    .order("type", { ascending: true });
   if (campaignId) q = q.eq("campaign_id", campaignId);
 
   const { data } = await q;
   for (const m of (data ?? []) as {
     athlete_id: string | null;
+    type: string | null;
     file_url: string | null;
     thumbnail_url: string | null;
   }[]) {

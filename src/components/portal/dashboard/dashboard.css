@@ -28,10 +28,15 @@
 
   background: #07070A;
   color: var(--ink);
-  min-height: 100vh;
   display: grid;
   grid-template-columns: 72px 1fr;
   font-size: 13px;
+  /* Locked to the viewport like the reference's fixed 1440x900 frame: the
+     whole dashboard fits, nothing stretches, and the PAGE never scrolls.
+     Tiles that hold more than fits scroll inside themselves instead.
+     Unlocked below 1100px, where stacking and page scroll are correct. */
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ---- left icon rail ------------------------------------------ */
@@ -101,7 +106,8 @@
      navigation) and the greeting has risen into the space it freed. */
   grid-template-rows: auto 1fr;
   gap: 12px;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -145,7 +151,7 @@
 .pgd-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: repeat(6, minmax(96px, 1fr));
+  grid-template-rows: repeat(6, 1fr);
   gap: 10px;
   min-height: 0;
 }
@@ -197,21 +203,43 @@
   color: var(--orange); font-weight: 700; font-size: 11px;
   padding: 3px 8px; border-radius: 999px;
 }
-.pgd-alert .pgd-empty { color: rgba(255, 255, 255, 0.92); font-size: 13px; line-height: 1.5; margin: 4px 0 0 }
 
-/* empty states — a designed absence, not a broken tile */
+/* ---- shared empty state -------------------------------------
+   One pattern for all four data-less tiles (Waiting on you, Posts going
+   live, Deliverables, This week): a small icon, one line saying what is
+   absent, and a quieter second line saying when it will appear. A designed
+   absence, not a broken tile — and never a fake figure.
+   ------------------------------------------------------------- */
+.pgd-blank {
+  margin: auto 0; display: flex; flex-direction: column; gap: 8px;
+  align-items: flex-start; min-width: 0;
+}
+.pgd-blank .pgd-blank-ic {
+  width: 28px; height: 28px; border-radius: 9px; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.06);
+  border: 1px solid rgba(250, 248, 245, 0.1);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pgd-blank .pgd-blank-ic svg {
+  width: 14px; height: 14px; fill: none; stroke: var(--ink-50);
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.pgd-blank b { font-weight: 700; font-size: 13px; color: var(--ink-90); display: block }
+.pgd-blank span { font-size: 11px; line-height: 1.5; color: var(--ink-50); display: block }
+
+/* On the orange card the ink inverts — same pattern, legible ground. */
+.pgd-alert .pgd-blank .pgd-blank-ic {
+  background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.24);
+}
+.pgd-alert .pgd-blank .pgd-blank-ic svg { stroke: #fff }
+.pgd-alert .pgd-blank b { color: #fff }
+.pgd-alert .pgd-blank span { color: rgba(255, 255, 255, 0.82) }
+
+/* legacy single-line helpers, still used by the roster's no-campaign state */
 .pgd-empty-body {
   margin: auto 0; color: var(--ink-50); font-size: 12px; line-height: 1.55;
 }
-.pgd-axis {
-  flex: 1; min-height: 40px; margin-top: 8px;
-  border-bottom: 1px solid var(--tile-edge); border-left: 1px solid var(--tile-edge);
-}
 
-/* Deliverables ring */
-.pgd-ringwrap { display: flex; align-items: center; gap: 12px; margin-top: 4px }
-.pgd-ringwrap svg { width: 82px; height: 82px; flex: 0 0 auto }
-.pgd-ringwrap .pgd-n { font-size: 26px; line-height: 1 }
 
 /* Latest wrapped photo tile */
 .pgd-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 15%; display: block }
@@ -237,7 +265,12 @@
 }
 
 /* roster table */
-.pgd-roster .pgd-scroll { overflow-x: auto; margin-top: 6px }
+/* The roster holds more rows than the tile is tall, so its body scrolls
+   inside the tile. That is what keeps the page itself from scrolling while
+   still showing as many rows as fit. min-height:0 is required or the flex
+   child refuses to shrink and pushes the tile past its grid row. */
+.pgd-roster .pgd-scroll { overflow: auto; margin-top: 6px; flex: 1; min-height: 0 }
+.pgd-roster thead th { position: sticky; top: 0; background: var(--tile); z-index: 1 }
 .pgd-roster table { width: 100%; border-collapse: collapse; min-width: 520px }
 .pgd-roster th {
   text-align: left; font-weight: 400; font-size: 10px; color: var(--ink-45);
@@ -293,11 +326,18 @@
   font-size: 16px; letter-spacing: 0.01em; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
-.pgd-camp .pgd-cm { font-size: 10px; color: var(--ink-50) }
+.pgd-camp .pgd-cm { font-size: 10px; color: var(--ink-50);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .pgd-camp .pgd-cf {
-  display: flex; justify-content: space-between; gap: 6px;
+  display: flex; justify-content: flex-end; gap: 6px; align-items: baseline;
   font-size: 10px; color: rgba(250, 248, 245, 0.55); margin-top: auto;
 }
+/* "Recap delivered" wrapped to two lines in a narrow card and made the footer
+   two rows tall. One line, ellipsised, with the state chip never shrinking. */
+.pgd-camp .pgd-cf span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.pgd-camp .pgd-cf b { white-space: nowrap; flex: 0 0 auto }
 .pgd-camp .pgd-cf b { color: rgba(250, 248, 245, 0.7) }
 .pgd-camp.pgd-live .pgd-cf b { color: var(--orange-soft) }
 
@@ -349,6 +389,12 @@
 
 /* ---- tablet: 6 columns, tiles stack in the brief's order ----- */
 @media (max-width: 1100px) {
+  /* Unlock: below the reference width the dashboard stacks and the page is
+     meant to scroll. */
+  .pgd { height: auto; min-height: 100vh; overflow: visible }
+  .pgd-main { height: auto }
+  .pgd-rail { height: auto; min-height: 100vh }
+  .pgd-roster .pgd-scroll { overflow: visible; flex: none }
   .pgd-grid { grid-template-columns: repeat(6, 1fr); grid-template-rows: none }
   .pgd-alert, .pgd-chart, .pgd-ring, .pgd-photo,
   .pgd-roster, .pgd-sched, .pgd-top, .pgd-camps {
