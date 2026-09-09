@@ -313,10 +313,12 @@
    ------------------------------------------------------------- */
 .pgd-chip {
   position: fixed;
-  /* Bottom-RIGHT: at bottom-left the chip overhung the 72px rail into the
-     roster tile and covered an athlete row. On the right it sits over the
-     This week tile's empty lower half, clipping nothing. */
-  right: 16px;
+  /* Bottom-CENTRE. Bottom-left overhung the rail into the roster and covered
+     an athlete row; bottom-right covered a figure in Top posts. Centre is
+     measured on the CONTENT column, not the viewport — the 72px rail would
+     otherwise pull the chip visibly left of the tiles it floats over. */
+  left: calc(50% + 36px);
+  transform: translateX(-50%);
   bottom: 16px;
   z-index: 100; /* above the rail's 90, so the rail never covers it */
   max-width: 260px;
@@ -387,7 +389,7 @@
   .pgd-headright { align-items: flex-start; width: 100% }
   .pgd-tools { justify-content: flex-start; width: 100% }
   /* clear the bottom tab bar rather than sit on top of it */
-  .pgd-chip { bottom: calc(78px + env(safe-area-inset-bottom)); right: 20px }
+  .pgd-chip { bottom: calc(78px + env(safe-area-inset-bottom)); left: 50%; right: auto }
 
   .pgd-tabbar {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
