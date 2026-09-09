@@ -1143,7 +1143,11 @@ export interface ReportsMetrics {
   periodLabel: string;
   options: ReportPeriodOption[];
   kpis: ReportKpi[];
+  /** Stated under the KPI row when the audience figure is shown. */
+  audienceNote: string | null;
   rows: ReportRow[];
+  /** How many of `rows` carry posts — the table's default view. */
+  rowsWithPosts: number;
   columns: {
     athletes: boolean;
     posts: boolean;
@@ -1171,14 +1175,20 @@ interface PeriodRow {
   story_impressions_athletes: number | null;
   tiktok_views: number | string | null;
   tiktok_views_athletes: number | null;
-  followers: number | string | null;
-  followers_athletes: number | null;
+  /**
+   * The DE-DUPLICATED following: each athlete counted once, at their largest
+   * recorded count. Replaces a row-wise `followers` sum that counted anyone
+   * on more than one campaign twice — 17,371,557 against a true 14,614,989
+   * for CVS, a 16% overstatement.
+   */
+  audience: number | string | null;
+  audience_athletes: number | null;
 }
 
 const PERIOD_COLS =
   "period, period_year, campaigns, athletes, posts, reel_views, reel_views_athletes, " +
   "feed_impressions, feed_impressions_athletes, story_impressions, story_impressions_athletes, " +
-  "tiktok_views, tiktok_views_athletes, followers, followers_athletes";
+  "tiktok_views, tiktok_views_athletes, audience, audience_athletes";
 
 /** PostgREST returns numeric and bigint as strings. */
 function num(v: unknown): number | null {
@@ -1312,10 +1322,15 @@ export async function loadReportsMetrics(
     guarded(prior?.reel_views, prior?.reel_views_athletes)
   );
   push("Impressions", impressionsOf(row), impressionsOf(prior), "feed + stories");
+  // "Total audience reached", not "Combined followers", and only because the
+  // figure behind it is now de-duplicated — see migration 060. The sub-label
+  // states the dedupe; the footnote under the row states what it still cannot
+  // account for.
   push(
-    "Combined followers",
-    guarded(row?.followers, row?.followers_athletes),
-    guarded(prior?.followers, prior?.followers_athletes)
+    "Total audience reached",
+    guarded(row?.audience, row?.audience_athletes),
+    guarded(prior?.audience, prior?.audience_athletes),
+    "each athlete once"
   );
 
   // ---- which campaigns are in this period ------------------------------
@@ -1389,6 +1404,8 @@ export async function loadReportsMetrics(
   const rows = allRows
     .filter((r) => inPeriod(r.quarter ? yearOfLabel(r.quarter) : null, r.quarterSort))
     .sort((a, b) => b.quarterSort - a.quarterSort || a.name.localeCompare(b.name));
+
+  const rowsWithPosts = rows.filter((r) => (r.posts ?? 0) > 0).length;
 
   const columns = {
     athletes: rows.some((r) => r.athletes !== null),
@@ -1514,12 +1531,18 @@ export async function loadReportsMetrics(
     headshotUrl: headshots.get(a.athlete_id) ?? null,
   }));
 
+  const audienceNote = kpis.some((k) => k.label === "Total audience reached")
+    ? "Total audience reached counts each athlete once, at their largest recorded following. It cannot know how many followers two athletes share, so it is an upper bound on reach."
+    : null;
+
   return {
     period: chosen.key,
     periodLabel: chosen.label,
     options,
     kpis,
+    audienceNote,
     rows,
+    rowsWithPosts,
     columns,
     quarters,
     surfaces,
