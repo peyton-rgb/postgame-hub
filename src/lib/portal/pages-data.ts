@@ -13,7 +13,7 @@
 // ============================================================
 
 import { createServerSupabase } from "@/lib/supabase-server";
-import { richText } from "@/lib/portal/rich-text";
+import { richText } from "@/lib/rich-text";
 
 export const WRAPPED = ["delivered", "closed"] as const;
 const NO_MATCH = "00000000-0000-0000-0000-000000000000";
