@@ -97,6 +97,8 @@ export interface DashboardData {
   campaigns: CampaignCard[];
   liveCount: number;
   wrappedCount: number;
+  /** Open review sessions on this brand's campaigns. 0 brand-wide today. */
+  waitingCount: number;
 }
 
 interface CampaignRow {
@@ -156,6 +158,18 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
   const stats = new Map<string, StatRow>();
   for (const s of (statsRes.data ?? []) as StatRow[]) stats.set(s.campaign_id, s);
   const athleteCount = (id: string) => stats.get(id)?.athletes ?? 0;
+
+  // ---- Waiting on you ---------------------------------------------
+  // Kept wired to review_sessions per the brief, brand-scoped through
+  // campaign_id because review_sessions carries no brand_id. head+count so
+  // the count comes from SQL and no rows cross the wire. The table has 0 rows
+  // database-wide today, so this is a real 0, not a placeholder.
+  const waitingRes = await supabase
+    .from("review_sessions")
+    .select("id", { count: "exact", head: true })
+    .in("campaign_id", campaigns.length ? campaigns.map((c) => c.id) : [NO_MATCH])
+    .is("brand_decision", null);
+  const waitingCount = waitingRes.count ?? 0;
 
   const live = campaigns.filter((c) => c.lifecycle_status === "active");
   const wrapped = campaigns.filter(
@@ -329,6 +343,7 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
     campaigns: cards,
     liveCount: live.length,
     wrappedCount: wrapped.length,
+    waitingCount,
   };
 }
 

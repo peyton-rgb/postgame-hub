@@ -150,8 +150,10 @@
 /* ---- the tile grid ------------------------------------------- */
 .pgd-grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: repeat(6, 1fr);
+  /* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so one wide
+     child (the roster table) can push the whole grid past the viewport. */
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
   gap: 10px;
   min-height: 0;
 }
@@ -191,14 +193,18 @@
 .pgd-top     { grid-column: 10 / 13; grid-row: 4 / 7 }
 .pgd-camps   { grid-column: 1 / 10; grid-row: 6 / 7; flex-direction: row; align-items: center; gap: 10px }
 
-/* Waiting on you — the ONE place orange is a surface, sanctioned by the brief */
-.pgd-alert {
+/* Waiting on you — the ONE place orange is a surface, sanctioned by the brief,
+   and only while the queue is non-empty (.pgd-alert-on). Empty, it stays glass:
+   orange is an accent, and an alarm-coloured panel reading "nothing waiting on
+   you" argues with itself. */
+.pgd-alert-on {
   background: var(--orange); border-color: var(--orange); color: #fff;
 }
-.pgd-alert h3 { color: #fff }
-.pgd-alert .pgd-ic { background: #fff }
-.pgd-alert .pgd-ic svg { stroke: var(--orange) }
-.pgd-alert .pgd-count {
+.pgd-alert-on h3 { color: #fff }
+.pgd-alert-on .pgd-ic { background: #fff }
+.pgd-alert-on .pgd-ic svg { stroke: var(--orange) }
+.pgd-alert-on .pgd-empty-body { color: rgba(255, 255, 255, 0.88) }
+.pgd-alert-on .pgd-count {
   position: absolute; top: 12px; right: 12px; background: #fff;
   color: var(--orange); font-weight: 700; font-size: 11px;
   padding: 3px 8px; border-radius: 999px;
@@ -227,13 +233,15 @@
 .pgd-blank b { font-weight: 700; font-size: 13px; color: var(--ink-90); display: block }
 .pgd-blank span { font-size: 11px; line-height: 1.5; color: var(--ink-50); display: block }
 
-/* On the orange card the ink inverts — same pattern, legible ground. */
-.pgd-alert .pgd-blank .pgd-blank-ic {
+/* On the orange card the ink inverts — same pattern, legible ground. Only
+   reachable via .pgd-alert-on, i.e. when there IS a queue; kept because the
+   count state can still fall back to the empty block. */
+.pgd-alert-on .pgd-blank .pgd-blank-ic {
   background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.24);
 }
-.pgd-alert .pgd-blank .pgd-blank-ic svg { stroke: #fff }
-.pgd-alert .pgd-blank b { color: #fff }
-.pgd-alert .pgd-blank span { color: rgba(255, 255, 255, 0.82) }
+.pgd-alert-on .pgd-blank .pgd-blank-ic svg { stroke: #fff }
+.pgd-alert-on .pgd-blank b { color: #fff }
+.pgd-alert-on .pgd-blank span { color: rgba(255, 255, 255, 0.82) }
 
 /* legacy single-line helpers, still used by the roster's no-campaign state */
 .pgd-empty-body {
@@ -394,8 +402,14 @@
   .pgd { height: auto; min-height: 100vh; overflow: visible }
   .pgd-main { height: auto }
   .pgd-rail { height: auto; min-height: 100vh }
-  .pgd-roster .pgd-scroll { overflow: visible; flex: none }
-  .pgd-grid { grid-template-columns: repeat(6, 1fr); grid-template-rows: none }
+  /* overflow-x stays auto — the roster table has min-width: 520px so its
+     columns stay readable, and below ~600px that width has to scroll INSIDE
+     the tile. Setting overflow:visible here let the 520px leak out and made
+     the whole page 520px wide at a 390px viewport: every tile ran off the
+     right edge and the tab bar lost its fifth item. Only the vertical clamp
+     is released. */
+  .pgd-roster .pgd-scroll { overflow-x: auto; overflow-y: visible; flex: none }
+  .pgd-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: none }
   .pgd-alert, .pgd-chart, .pgd-ring, .pgd-photo,
   .pgd-roster, .pgd-sched, .pgd-top, .pgd-camps {
     grid-column: auto / span 6; grid-row: auto;
@@ -405,23 +419,29 @@
   .pgd-photo { min-height: 320px }
   .pgd-camps { flex-direction: column; align-items: stretch }
   .pgd-camps h3 { width: auto; flex-direction: row; align-items: baseline; gap: 8px; margin-bottom: 8px }
-  .pgd-campgrid { grid-template-columns: repeat(3, 1fr) }
+  .pgd-campgrid { grid-template-columns: repeat(3, minmax(0, 1fr)) }
   .pgd-main { padding: 16px 20px 18px }
 }
 
 /* ---- phone: one column + bottom tab bar --------------------- */
 @media (max-width: 640px) {
-  .pgd { grid-template-columns: 1fr }
+  .pgd { grid-template-columns: minmax(0, 1fr); overflow-x: hidden }
   .pgd-rail { display: none }
   .pgd-main { padding: 16px 20px 84px }
-  .pgd-grid { grid-template-columns: 1fr }
+  .pgd-grid { grid-template-columns: minmax(0, 1fr) }
   .pgd-alert, .pgd-chart, .pgd-ring, .pgd-photo,
   .pgd-roster, .pgd-sched, .pgd-top, .pgd-camps {
     grid-column: auto; grid-row: auto;
   }
-  .pgd-campgrid { grid-template-columns: repeat(2, 1fr) }
+  .pgd-campgrid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .pgd-h1 { font-size: 40px }
-  .pgd-t.pgd-search { width: 100%; flex: 1 }
+  /* Search, the range selector and Notifications are decorative this phase —
+     they render as plain spans and do nothing. On a 390px screen they cost
+     three stacked rows, roughly the top third of the first view, before any
+     real content appears. Hidden here; the preview chip and the avatar stay
+     because the chip's Switch/Exit links work. They come back at >640px,
+     where they cost one row in space that was empty anyway. */
+  .pgd-t { display: none }
   .pgd-kpis { gap: 18px }
   .pgd-kpi { text-align: left }
   /* the rail is gone on phones, so the header stacks and the tools/KPIs
@@ -449,4 +469,235 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pgd * { transition: none !important; animation: none !important }
+}
+
+/* ============================================================
+   Phase 3b page primitives.
+
+   Shared by Campaigns, Campaign detail, Athletes, Content, Reports and
+   Settings so the six pages are one visual system rather than six. Same
+   tokens as the dashboard: #111114 card on #07070A, radius 14, Bebas
+   headings, Anton figures, Arimo body, orange as accent only.
+
+   Pages SCROLL (unlike the dashboard, which is locked to the viewport):
+   a gallery of 460 items and a directory of 1,501 athletes are lists, and
+   a list that cannot scroll is a list you cannot read.
+   ============================================================ */
+.pgd-page { overflow-y: auto; min-height: 0; padding-bottom: 24px }
+.pgd.pgd-scrolls { height: 100vh }
+.pgd.pgd-scrolls .pgd-main { height: 100vh; overflow: hidden }
+
+/* filter row */
+.pgd-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px }
+.pgd-pill {
+  padding: 7px 14px; border-radius: 999px; font-size: 12px;
+  background: var(--tile); border: 1px solid var(--hair);
+  color: var(--ink-60); cursor: pointer; white-space: nowrap;
+}
+.pgd-pill:hover { color: var(--ink) }
+.pgd-pill.on { background: var(--ink); color: #07070A; font-weight: 700; border-color: var(--ink) }
+.pgd-input {
+  height: 34px; padding: 0 12px; border-radius: 999px; font-size: 13px;
+  background: var(--tile); border: 1px solid var(--hair); color: var(--ink);
+  outline: none; min-width: 180px;
+}
+.pgd-select {
+  height: 34px; padding: 0 10px; border-radius: 999px; font-size: 12px;
+  background: var(--tile); border: 1px solid var(--hair); color: var(--ink-90);
+  outline: none;
+}
+.pgd-count { font-size: 11px; color: var(--ink-50); margin-left: auto }
+
+/* generic card grid */
+.pgd-cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) }
+.pgd-card {
+  background: var(--tile); border: 1px solid var(--tile-edge); border-radius: 14px;
+  overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: inherit;
+}
+.pgd-card:hover { border-color: rgba(250, 248, 245, 0.18) }
+/* Fixed height, not aspect-ratio. Two reasons: this is a <span>, so it needs
+   display:block for any box sizing at all; and aspect-ratio on a flex item
+   whose child is height:100% did not resolve to a stable height — cards came
+   out 600px tall in a 280px column. An explicit height is predictable and
+   makes every card in the grid the same size, which is the point. */
+.pgd-card-thumb { display: block; position: relative; height: 170px; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.04) }
+.pgd-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
+/* Hard rule 4: a flat image edge on the black ground gets an edge-blend. */
+.pgd-card-thumb::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 46%;
+  background: linear-gradient(0deg, rgba(17, 17, 20, 0.92), rgba(17, 17, 20, 0));
+}
+.pgd-card-body { padding: 12px 13px; display: flex; flex-direction: column; gap: 5px; flex: 1 }
+.pgd-card-name {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 20px; line-height: 1.05; letter-spacing: 0.01em;
+}
+.pgd-card-meta { font-size: 11px; color: var(--ink-50) }
+.pgd-card-foot { margin-top: auto; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.pgd-stat b {
+  display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 17px; line-height: 1;
+}
+.pgd-stat span { font-size: 10px; color: var(--ink-50) }
+.pgd-chip-live, .pgd-chip-wrapped {
+  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+}
+.pgd-chip-live { background: rgba(215, 63, 9, 0.18); color: var(--orange-soft) }
+.pgd-chip-wrapped { background: rgba(250, 248, 245, 0.08); color: var(--ink-60) }
+
+/* athlete cards */
+.pgd-people { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) }
+.pgd-person {
+  background: var(--tile); border: 1px solid var(--tile-edge); border-radius: 14px;
+  padding: 13px; display: flex; gap: 11px; align-items: center; min-width: 0;
+}
+.pgd-person img, .pgd-person .pgd-noface {
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+}
+.pgd-person .pgd-noface {
+  background: rgba(250, 248, 245, 0.06); border: 1px solid rgba(250, 248, 245, 0.14);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--ink-50); font-weight: 700;
+}
+.pgd-person-body { min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.pgd-person-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.pgd-person-meta { font-size: 11px; color: var(--ink-50); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.pgd-person-num { font-size: 11px; color: var(--ink-60) }
+
+/* media grid + lightbox */
+.pgd-media { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) }
+.pgd-media.pgd-media-2 { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) }
+.pgd-shot {
+  position: relative; aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden;
+  background: rgba(250, 248, 245, 0.04); border: 1px solid var(--tile-edge);
+  cursor: pointer; padding: 0; display: block; width: 100%;
+}
+.pgd-shot img { width: 100%; height: 100%; object-fit: cover; display: block }
+.pgd-shot::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 42%;
+  background: linear-gradient(0deg, rgba(7, 7, 10, 0.9), rgba(7, 7, 10, 0));
+}
+.pgd-shot figcaption {
+  position: absolute; left: 8px; right: 8px; bottom: 7px; z-index: 1;
+  font-size: 10px; color: rgba(250, 248, 245, 0.85); text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pgd-shot .pgd-play {
+  position: absolute; top: 8px; left: 8px; z-index: 1; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--orange); display: flex;
+  align-items: center; justify-content: center;
+}
+.pgd-shot .pgd-play svg { width: 10px; height: 10px; fill: #fff }
+.pgd-shot .pgd-new {
+  position: absolute; top: 8px; right: 8px; z-index: 1; font-size: 9px; font-weight: 700;
+  background: var(--ink); color: #07070A; padding: 2px 6px; border-radius: 999px;
+}
+.pgd-shot.pgd-picked { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange) }
+
+.pgd-lightbox {
+  position: fixed; inset: 0; z-index: 200; background: rgba(7, 7, 10, 0.94);
+  display: flex; align-items: center; justify-content: center; padding: 32px;
+}
+.pgd-lightbox img, .pgd-lightbox video { max-width: 100%; max-height: 100%; border-radius: 12px }
+.pgd-lightbox .pgd-close {
+  position: absolute; top: 18px; right: 18px; background: var(--tile);
+  border: 1px solid var(--raised-edge); color: var(--ink); border-radius: 999px;
+  padding: 8px 14px; font-size: 12px; cursor: pointer;
+}
+
+/* tabs */
+.pgd-tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--tile-edge); margin-bottom: 14px }
+.pgd-tabs button {
+  background: none; border: 0; padding: 9px 0; font-size: 13px; cursor: pointer;
+  color: var(--ink-50); border-bottom: 2px solid transparent; font-family: inherit;
+}
+.pgd-tabs button.on { color: var(--ink); border-bottom-color: var(--orange); font-weight: 700 }
+
+/* detail hero */
+.pgd-hero {
+  position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 14px;
+  /* 240, not 190: at 1325px wide a 190px band is a 7:1 slot, and cover-cropping
+     a portrait athlete photo into 7:1 magnifies a sliver of the frame until it
+     reads as blur. 240 keeps the crop recognisable as a photograph. */
+  min-height: 240px; background: var(--tile); border: 1px solid var(--tile-edge);
+  display: flex; align-items: flex-end;
+}
+/* 34%, arrived at by measurement rather than taste. These are 1:2 portrait
+   photos in a ~5.5:1 band, so cover scales by width and the band shows barely
+   9% of the frame's height — the position picks which 9%. At 18% that landed
+   on the out-of-focus fence and bokeh above the subject's head, which read as
+   a broken low-resolution image; the faces in these shots sit at 33-42%.
+   A per-image focal point on the media row is the real fix — noted for later,
+   because one number cannot frame every photo. */
+.pgd-hero > img { position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 34% }
+.pgd-hero::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(0deg, rgba(7, 7, 10, 0.92), rgba(7, 7, 10, 0.15));
+}
+.pgd-hero-in { position: relative; z-index: 1; padding: 18px 20px }
+.pgd-hero-in h2 {
+  font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
+  text-transform: uppercase; font-size: 32px; line-height: 0.94; margin: 0 0 6px;
+}
+
+/* Campaign Overview tab. gap does the spacing, so the panels inside drop
+   their own bottom margin. align-items:start keeps the short right-hand column
+   at its content height instead of stretching to match Objective. */
+.pgd-overview { display: flex; flex-direction: column; gap: 10px }
+.pgd-overview .pgd-panel { margin-bottom: 0 }
+.pgd-overview-split {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 10px; align-items: start;
+}
+.pgd-overview-side { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+@media (max-width: 900px) {
+  .pgd-overview-split { grid-template-columns: minmax(0, 1fr) }
+}
+
+/* simple panels + table for Settings / Results */
+.pgd-panel {
+  background: var(--tile); border: 1px solid var(--tile-edge); border-radius: 14px;
+  padding: 16px; margin-bottom: 10px;
+}
+.pgd-panel h3 { margin: 0 0 10px; font-size: 13px; font-weight: 700 }
+.pgd-rows { display: flex; flex-direction: column }
+.pgd-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 9px 0; border-bottom: 1px solid rgba(250, 248, 245, 0.06); font-size: 12px;
+}
+.pgd-row:last-child { border-bottom: 0 }
+.pgd-row .pgd-row-main { min-width: 0; flex: 1 }
+.pgd-row .pgd-row-main b { display: block; font-size: 13px }
+.pgd-row .pgd-row-main span { font-size: 11px; color: var(--ink-50) }
+.pgd-tagchip {
+  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+  background: rgba(250, 248, 245, 0.08); color: var(--ink-60); white-space: nowrap;
+}
+.pgd-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px;
+  border-radius: 12px; font-size: 12px; text-decoration: none;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--ink-90); cursor: pointer; font-family: inherit;
+}
+.pgd-btn:hover { border-color: rgba(255, 255, 255, 0.26) }
+.pgd-btn[disabled] { opacity: 0.45; cursor: default }
+.pgd-sticky-bar {
+  position: sticky; bottom: 0; margin-top: 12px; padding: 10px 0;
+  background: linear-gradient(0deg, #07070A 60%, rgba(7, 7, 10, 0));
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.pgd-group-h {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 22px; letter-spacing: 0.02em; margin: 18px 0 8px;
+}
+.pgd-group-h:first-child { margin-top: 0 }
+
+@media (max-width: 640px) {
+  .pgd.pgd-scrolls, .pgd.pgd-scrolls .pgd-main { height: auto; overflow: visible }
+  .pgd-page { overflow: visible }
+  .pgd-media { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .pgd-cards, .pgd-people { grid-template-columns: minmax(0, 1fr) }
+  .pgd-count { margin-left: 0 }
 }
