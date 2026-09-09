@@ -26,13 +26,13 @@ const STATUS_COLS = new Set<ColumnKey>(["kit", "recap"]);
 
 // ── glyphs (verbatim from v25 — 21px, 1.75px stroke) ─────────────────────────
 const Check = () => (
-  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.6l4.2 4.2L19 7" /></svg></span>
+  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="var(--status-ok)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.6l4.2 4.2L19 7" /></svg></span>
 );
 const Half = () => (
-  <span className="st"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.2" stroke="var(--ink-2)" strokeWidth="1.75" /><path d="M12 4.8a7.2 7.2 0 0 1 0 14.4z" fill="var(--ink-2)" /></svg></span>
+  <span className="st"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.2" stroke="var(--status-warn)" strokeWidth="1.75" /><path d="M12 4.8a7.2 7.2 0 0 1 0 14.4z" fill="var(--status-warn)" /></svg></span>
 );
 const Cross = () => (
-  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round"><path d="M7.4 7.4l9.2 9.2M16.6 7.4l-9.2 9.2" /></svg></span>
+  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="var(--status-bad)" strokeWidth="1.75" strokeLinecap="round"><path d="M7.4 7.4l9.2 9.2M16.6 7.4l-9.2 9.2" /></svg></span>
 );
 const Chain = () => (
   <span className="lk"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13.5a4.2 4.2 0 0 0 6.3.45l2.5-2.5a4.2 4.2 0 0 0-5.94-5.94l-1.43 1.42" /><path d="M14 10.5a4.2 4.2 0 0 0-6.3-.45l-2.5 2.5a4.2 4.2 0 0 0 5.94 5.94l1.42-1.42" /></svg></span>
@@ -154,9 +154,9 @@ export default function ReadinessClient({
             {summary.map((s) => (
               <div className="scol" key={s.col} title={`${LABELS[s.col]}: ${s.g} done · ${s.y} partial · ${s.r} missing`}>
                 <div className="sbar">
-                  <i style={{ width: `${s.gp}%`, background: "var(--ink-4)" }} />
-                  <i style={{ width: `${s.yp}%`, background: "var(--ink-2)" }} />
-                  <i style={{ width: `${s.rp}%`, background: "var(--accent)" }} />
+                  <i style={{ width: `${s.gp}%`, background: "var(--status-ok)" }} />
+                  <i style={{ width: `${s.yp}%`, background: "var(--status-warn)" }} />
+                  <i style={{ width: `${s.rp}%`, background: "var(--status-bad)" }} />
                 </div>
                 <span className="slab">{LABELS[s.col]}</span>
               </div>
@@ -447,7 +447,7 @@ const CSS = `
 .rdy thead th.prog,.rdy tbody td.prog{width:132px}
 .rdy .score{display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center}
 .rdy .track{width:74px;height:6px;border-radius:99px;background:var(--hairline);overflow:hidden}
-.rdy .track i{display:block;height:100%;background:var(--ink-3)}
+.rdy .track i{display:block;height:100%;background:var(--status-ok)}
 .rdy .snum{font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;letter-spacing:.02em}
 /* the anchor fills the whole cell so hover covers the full column width */
 .rdy a.cell{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;width:100%;

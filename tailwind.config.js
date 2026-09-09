@@ -68,6 +68,13 @@ module.exports = {
         "surface-card": "rgb(var(--ink-rgb) / var(--card-fill-a))",
         hairline: "rgb(var(--ink-rgb) / var(--raised-line-a))",
         "hairline-soft": "rgb(var(--ink-rgb) / var(--card-line-a))",
+
+        // Status — done / partial / missing. The one sanctioned departure from
+        // the three-colour palette; see globals.css and CLAUDE.md. Alpha-capable,
+        // so bg-status-ok/15 works for a tint.
+        "status-ok": "rgb(var(--status-ok-rgb) / <alpha-value>)",
+        "status-warn": "rgb(var(--status-warn-rgb) / <alpha-value>)",
+        "status-bad": "rgb(var(--status-bad-rgb) / <alpha-value>)",
       },
       fontSize: {
         "recap-body": ["24px", { lineHeight: "1.4" }],

@@ -36,7 +36,7 @@ const S = {
   btnOrange:{padding:"9px 20px",background:C.orange,border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:800,cursor:"pointer",textTransform:"uppercase" as const,letterSpacing:"0.06em"},
   btnGhost:{padding:"8px 16px",border:`1px solid ${C.border2}`,borderRadius:8,background:"none",color:C.text2,fontSize:12,fontWeight:700,cursor:"pointer",textDecoration:"none" as const},
   btnAdd:{padding:"7px 14px",borderRadius:8,border:`1px dashed ${C.border2}`,background:"none",color:C.text3,fontSize:12,fontWeight:700,cursor:"pointer",width:"100%",marginTop:8},
-  btnDanger:{padding:"5px 10px",borderRadius:6,border:"1px solid rgba(255,80,80,0.25)",background:"none",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer"},
+  btnDanger:{padding:"5px 10px",borderRadius:6,border:"1px solid var(--status-bad-dim)",background:"none",color:"var(--status-bad)",fontSize:11,fontWeight:700,cursor:"pointer"},
   listItem:(active:boolean)=>({padding:"10px 12px",borderRadius:8,cursor:"pointer",background:active?"rgba(215,63,9,0.1)":"transparent",border:`1px solid ${active?"rgba(215,63,9,0.25)":"transparent"}`,marginBottom:4}),
   tabs:{display:"flex",gap:4,marginBottom:20},
   tab:(on:boolean)=>({padding:"8px 18px",borderRadius:20,border:"none",background:on?C.orange:C.surface2,color:on?"#fff":C.text2,fontSize:13,fontWeight:700,cursor:"pointer"}),
@@ -140,7 +140,7 @@ function SectionEditor({ section, onChange, label }: {
       <div style={S.card}>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
           <div>
-            <div style={{ ...S.cardTitle, color:"#4ade80" }}>✅ DO</div>
+            <div style={{ ...S.cardTitle, color:"var(--status-ok)" }}>✅ DO</div>
             {section.dos_donts.dos.map((d,i) => (
               <div key={i} style={{ display:"flex", gap:8, marginBottom:6 }}>
                 <input style={{ ...S.input, flex:1 }} value={d} onChange={e=>updDo(i,e.target.value)} placeholder="Do this..." />
@@ -150,7 +150,7 @@ function SectionEditor({ section, onChange, label }: {
             <button style={S.btnAdd} onClick={addDo}>+ Add</button>
           </div>
           <div>
-            <div style={{ ...S.cardTitle, color:"#f87171" }}>❌ DON'T</div>
+            <div style={{ ...S.cardTitle, color:"var(--status-bad)" }}>❌ DON'T</div>
             {section.dos_donts.donts.map((d,i) => (
               <div key={i} style={{ display:"flex", gap:8, marginBottom:6 }}>
                 <input style={{ ...S.input, flex:1 }} value={d} onChange={e=>updDont(i,e.target.value)} placeholder="Don't do this..." />

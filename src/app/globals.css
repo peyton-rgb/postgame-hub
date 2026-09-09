@@ -66,6 +66,19 @@
   --raised-line-a:   0.14;
   --card-fill-a:     0.04;
   --card-line-a:     0.10;
+
+  /* Status — the ONE sanctioned departure from the three-colour palette.
+     Done / partial / missing is information the palette cannot carry: accent
+     already means "attention" everywhere else, so reusing it for "missing"
+     made a readiness cross and a link icon the same colour.
+
+     These three are the values Readiness shipped with before the palette pass,
+     so DARK MODE IS UNCHANGED — every existing user sees exactly what they saw.
+     They are GitHub Primer's dark success/attention/danger, which is where the
+     originals came from. */
+  --status-ok-rgb:   63 185 80;    /* #3FB950 */
+  --status-warn-rgb: 210 153 34;   /* #D29922 */
+  --status-bad-rgb:  207 106 100;  /* #CF6A64 */
 }
 
 /* ── 2b. Roles — LIGHT ──
@@ -87,6 +100,18 @@
   --raised-line-a:   0.12;
   --card-fill-a:     0.035;
   --card-line-a:     0.09;
+
+  /* Status, light. Same three hues, darkened for an off-white ground — Primer's
+     LIGHT success/attention/danger, so the pairing with the dark set above is a
+     tested one rather than three hand-picked hexes. All three clear 4.5:1 on
+     #FAF8F5, so they are legible as text and not merely as a 3:1 graphic.
+
+     Warn is deliberately the gold #9A6700 and not an amber: on a light ground
+     an amber sits close enough to brand orange #D73F09 to read as the accent,
+     which is the confusion this whole set exists to avoid. */
+  --status-ok-rgb:   26 127 55;    /* #1A7F37 */
+  --status-warn-rgb: 154 103 0;    /* #9A6700 */
+  --status-bad-rgb:  207 34 46;    /* #CF222E */
 }
 
 /* ── 3. Derived — complete colours, built from the roles above.
@@ -115,6 +140,15 @@
   --surface-card:   rgb(var(--ink-rgb) / var(--card-fill-a));
   --hairline:       rgb(var(--ink-rgb) / var(--raised-line-a));
   --hairline-soft:  rgb(var(--ink-rgb) / var(--card-line-a));
+
+  /* Status, complete. Declared here with the rest so they resolve inside each
+     themed scope — see the note above this block; on :root alone they would
+     resolve once against the dark roles and inherit that into light. */
+  --status-ok:      rgb(var(--status-ok-rgb));
+  --status-warn:    rgb(var(--status-warn-rgb));
+  --status-bad:     rgb(var(--status-bad-rgb));
+  --status-ok-dim:  rgb(var(--status-ok-rgb) / 0.15);
+  --status-bad-dim: rgb(var(--status-bad-rgb) / 0.15);
 
   /* Edge blends fade to the GROUND, never to hardcoded black — in light mode
      a black fade reopens the seam it was added to close. */

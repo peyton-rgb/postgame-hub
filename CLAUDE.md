@@ -92,6 +92,13 @@ active, stop and ask. Parallel sessions cause branch drift. Use a git worktree f
 - Video-review surfaces (inspo triage) are always dark. They pin `data-theme="dark"`
   on a route layout rather than following the user's theme — judging a clip's
   exposure and colour against bright chrome judges it against the wrong reference.
+- **Status semantics are the one permitted departure from the three-colour palette.**
+  Done / partial / missing carries information black, off-white and orange cannot:
+  accent already means "attention" everywhere else, so reusing it for "missing" made
+  a readiness cross and a link icon the same colour. Use the `--status-ok` /
+  `--status-warn` / `--status-bad` roles (or `text-status-ok` etc.), never a raw
+  green/amber/red hex — they carry a value for each theme. Nothing else earns a
+  fourth hue; approved 2026-09-09.
 - Every surface gets checked mobile-first through desktop before it's considered done.
 
 ---

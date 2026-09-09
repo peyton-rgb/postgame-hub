@@ -260,9 +260,9 @@ export default function PackagesIndexPage() {
                         style={
                           p.status === "live"
                             ? {
-                                background: "rgba(46,160,90,.16)",
-                                color: "#57d98a",
-                                border: "1px solid rgba(46,160,90,.3)",
+                                background: "var(--status-ok-dim)",
+                                color: "var(--status-ok)",
+                                border: "1px solid rgb(var(--status-ok-rgb) / .3)",
                               }
                             : {
                                 background: "var(--surface-card)",
