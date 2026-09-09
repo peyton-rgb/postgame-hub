@@ -276,12 +276,17 @@ export default function BrandDashboard({
                         failed to load rather than a campaign that has not
                         started. Absent says it better than a placeholder. */}
                     {(() => {
-                      const meta = [
-                        c.quarter,
-                        c.athletes > 0 ? `${c.athletes} athletes` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ");
+                      // A LIVE card says what kind of campaign it is; a
+                      // wrapped one says how big the roster was. Both are the
+                      // fact that matters at that stage: nothing has been
+                      // delivered on a live campaign yet, so a roster count
+                      // is the least interesting thing about it, and a
+                      // wrapped campaign's type is already in its recap.
+                      const meta = c.live
+                        ? [c.quarter, c.campaignType].filter(Boolean).join(" · ")
+                        : [c.quarter, c.athletes > 0 ? `${c.athletes} athletes` : null]
+                            .filter(Boolean)
+                            .join(" · ");
                       return meta ? (
                         <div className="pgd-cm" title={c.platform ?? undefined}>
                           {meta}

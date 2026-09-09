@@ -132,3 +132,92 @@ URL is still shareable, which is what the round trip would have bought.
 Verified in a browser: clicking Athletes → Content → Results pushes each, and
 three back presses walk `content` → `athletes` → Overview, with the URL and
 the active tab agreeing at every step.
+
+---
+
+## Visual
+
+### 6 · The dashboard hero tile's block moved to the top-left
+
+The block is the tile's heading — campaign name, figures, provenance — and a
+heading belongs where the eye starts. At the bottom it also had to fight the
+photograph: these are portraits, so the face sits high and the busiest part of
+the frame is low. Paired with moving the photo's focal point from 15% to 42%,
+because a face framed at 15% now sits behind the name.
+
+### 7 · "Posts this month" hidden, on Reach's rule
+
+It read `athlete_deliverables.posted_at`, which is null on every row in that
+table. So "0" was not a measurement — it was the absence of one wearing a
+figure's clothes, and a brand reading *0 posts this month* beside a live
+campaign concludes their athletes have stopped posting. Hidden until
+`posted_at` carries dates, which is the only thing that would make it true.
+Same rule as Reach · 14 days, which has been absent since 3a.
+
+### 8 · Sports title-cased
+
+`athletes.sport` holds both shapes, often for the same sport: 369 rows say
+"TRACK & FIELD" and 123 say "Track & Field"; 209 say "FOOTBALL" and 64 say
+"Football". Shouting at a brand in one row and not the next is the tell that
+nobody formatted the column.
+
+`titleCaseSport()` shares the school caser's engine and its conditional rule —
+a value that already contains a lowercase letter is returned untouched, so
+"WBB Coach" and "Football / Baseball" are left exactly as typed. Applied in
+the loaders, not at render sites, so the Athletes page's sport filter dedupes
+too: "FOOTBALL" and "Football" used to be two separate options in that
+dropdown and are now one.
+
+### 10 · Live campaign cards carry quarter · type
+
+A live card says what kind of campaign it is; a wrapped one still says how big
+the roster was. That is the fact that matters at each stage — nothing has been
+delivered on a live campaign, so a roster count is the least interesting thing
+about it, and a wrapped campaign's type is already in its recap.
+
+### 11 · Content thumbnails — the measurement changed the rule
+
+Asked for: the render endpoint at width 600 where `thumbnail_url` is empty,
+with the original as an onerror fallback. Measured on the Content page's first
+40 tiles, fetching every URL for real:
+
+| rule | requests through the transform | total |
+|---|---|---|
+| before (thumbnail_url direct, transform only for non-web-safe) | 3 | **78.21 MB** |
+| as asked (transform only where thumbnail_url is empty) | 9 | 75.70 MB (−3%) |
+| **every tile through the transform at 600** | 40 | **9.69 MB (−88%)** |
+
+**Judgement call: I widened the rule to every tile**, because the measurement
+says the asked-for version fixes 6 rows and leaves 78 MB on the page.
+`thumbnail_url` is not a thumbnail on this data — of those 40 rows it is
+**byte-identical to `file_url` on 21** and empty on 6, so on 27 of 40 "serving
+the thumbnail" means serving the original: mean 2.0 MB, largest 7.4 MB, into a
+240px tile. The 13 rows where it genuinely differs are video poster frames,
+and they are cheaper through the transform too. All 40 transform calls
+returned 200; wall clock for the set was 2.8s.
+
+Non-web-safe rows get no fallback: the fallback would be the very file that
+paints as nothing (7 `.HEIC` rows, which is what made Bella Bonnett's tile a
+black box in pass 1).
+
+### 12 · Recap cards: photo, name, button
+
+The figures that sat between the name and the button are gone — they are what
+made these cards tall and ragged, and Reports is now a whole page of numbers.
+The generic `.pgd-card` also stretches to its row's tallest sibling and pushes
+its footer down with `margin-top: auto`, which is right for a footer of
+figures and wrong for a single button: it left a band of dead tile under every
+name. Recap cards size to their own content.
+
+### 13 · The athlete card's figures got a real column
+
+They were right-aligned but free-floating, so each card put its number
+wherever its own text happened to end and a grid of them read as ragged. Now a
+fixed 92px column with a hairline separating it from the name and meta, so the
+figures line up down the grid.
+
+### 14 · "Read-only for now" removed from Settings
+
+It described the build, not the page. A brand reading it learns their settings
+are broken rather than that these are the details Postgame holds for them, and
+every panel already says who maintains it.

@@ -14,7 +14,7 @@
 
 import { createServerSupabase } from "@/lib/supabase-server";
 import { richText } from "@/lib/rich-text";
-import { compact, titleCaseSchool } from "@/lib/portal/format";
+import { compact, titleCaseSchool, titleCaseSport } from "@/lib/portal/format";
 import {
   figuresFromPostMetrics,
   POST_METRICS_SELECT,
@@ -76,29 +76,55 @@ export function thumb(url: string, width = 420): string {
 const WEB_SAFE = /\.(jpe?g|png|gif|webp)($|\?)/i;
 
 /**
- * The thumbnail source for a media tile: `thumbnail_url` if present, else the
- * plain object URL — WITH ONE EXCEPTION.
+ * The thumbnail source for a media tile, and what to fall back to.
  *
- * THE EXCEPTION IS LOAD-BEARING. 7 of CVS's 460 media rows are `.HEIC`, and
- * no browser paints HEIC. Serving those raw is what made Bella Bonnett's tile
- * a black box: `content-type: image/heif`, 2.2MB, and nothing on screen. The
- * transform endpoint transcodes them (`image/jpeg`, 200KB), so for those rows
- * it is not an optimisation, it is the only way the picture exists. Two more
- * rows carry an extension I cannot identify, and they take the same path on
- * the same reasoning.
+ * EVERY TILE GOES THROUGH THE RENDER ENDPOINT AT 600, with the original as an
+ * onerror fallback. The brief asked for that only where `thumbnail_url` is
+ * empty; measuring the Content page's first 40 tiles is what widened it, and
+ * the numbers are the argument:
  *
- * So: 451 of 460 tiles are served direct and cost no transform call; 9 are
- * transcoded. That keeps a full gallery at ~9 metered calls instead of 411,
- * without trading a slow tile for an empty one.
+ *   thumbnail_url direct, transform only when empty   75.70 MB   (-3%)
+ *   every tile through the transform at 600            9.69 MB   (-88%)
+ *
+ * `thumbnail_url` IS NOT A THUMBNAIL on this data. Of those 40 rows it is
+ * byte-identical to `file_url` on 21 and empty on 6 — so on 27 of 40, serving
+ * "the thumbnail" means serving the original: a mean of 2.0 MB, up to 7.4 MB,
+ * into a 240px tile. Honouring only the empty ones fixed 6 rows and left 78
+ * MB a page. The 13 rows where it genuinely differs are video poster frames,
+ * and they are cheaper through the transform too.
+ *
+ * NON-WEB-SAFE ROWS STILL HAVE NO CHOICE. 7 of CVS's 460 rows are `.HEIC`,
+ * which no browser paints; serving those raw is what made Bella Bonnett's tile
+ * a black box (`content-type: image/heif`, 2.2MB, nothing on screen). For
+ * those the transform is not an optimisation, it is the only way the picture
+ * exists — so they get no fallback, because falling back to the original would
+ * restore the black box.
+ *
+ * WHY A FALLBACK AT ALL. The transform is a separate service from object
+ * storage and can fail on an object storage will still serve — an unsupported
+ * colour profile, a size limit, a bad day. Without a fallback that tile is
+ * permanently blank; with one it costs a wasted request and shows the picture.
+ * The fallback is only ever the same object served unresized, so it can never
+ * show the wrong image.
+ *
+ * 600, not 420: the Content tiles reach 300px wide, which is 600 device
+ * pixels on a 2x screen.
  */
 export function mediaThumb(
   thumbnailUrl: string | null,
   fileUrl: string | null
-): string | null {
-  const url = thumbnailUrl || fileUrl;
+): { src: string; fallback: string | null } | null {
+  const stored = thumbnailUrl && thumbnailUrl.trim() ? thumbnailUrl.trim() : null;
+  const original = fileUrl && fileUrl.trim() ? fileUrl.trim() : null;
+  const url = stored || original;
   if (!url) return null;
-  if (WEB_SAFE.test(url)) return url;
-  return thumb(url, 420);
+  const transformed = thumb(url, 600);
+  // No fallback for a format the browser cannot paint: the "fallback" would be
+  // the very file that renders as nothing.
+  if (!WEB_SAFE.test(url)) return { src: transformed, fallback: null };
+  // Nothing to fall back to if the transform is a no-op (a URL outside object
+  // storage comes back unchanged).
+  return { src: transformed, fallback: transformed === url ? null : url };
 }
 
 export interface CampaignListItem {
@@ -277,6 +303,8 @@ export interface MediaItem {
   id: string;
   url: string;
   thumbUrl: string;
+  /** Serve if thumbUrl fails. Only set where thumbUrl is a transform call. */
+  thumbFallbackUrl: string | null;
   isVideo: boolean;
   athleteName: string | null;
   /** From athletes.school via media.athlete_id — the gallery's school filter. */
@@ -373,7 +401,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     id: a.id,
     name: a.name,
     school: titleCaseSchool(a.school),
-    sport: a.sport,
+    sport: titleCaseSport(a.sport),
     followers: a.ig_followers,
     views: reelViews(a.metrics),
     headshotUrl: headshots.get(a.id) ?? null,
@@ -413,7 +441,8 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
       return {
         id: m.id,
         url,
-        thumbUrl: thumbSrc,
+        thumbUrl: thumbSrc.src,
+        thumbFallbackUrl: thumbSrc.fallback,
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
         // The detail page's Content tab is already scoped to one campaign,
@@ -575,7 +604,8 @@ export async function loadContentGallery(brandId: string) {
       return {
         id: m.id,
         url,
-        thumbUrl: thumbSrc,
+        thumbUrl: thumbSrc.src,
+        thumbFallbackUrl: thumbSrc.fallback,
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
         school: m.athlete_id ? schoolById.get(m.athlete_id) ?? null : null,
@@ -796,7 +826,7 @@ export async function loadAthleteDirectory(brandId: string) {
     key: r.athlete_key,
     name: r.name,
     school: titleCaseSchool(r.school),
-    sport: r.sport,
+    sport: titleCaseSport(r.sport),
     followers: r.followers,
     campaigns: r.campaigns,
     lastCampaign: r.last_campaign,
@@ -968,7 +998,7 @@ export async function loadPortalSearch(brandId: string, rawQuery: string) {
     meta:
       [
         titleCaseSchool(a.school),
-        a.sport,
+        titleCaseSport(a.sport),
         a.followers !== null ? `${compact(a.followers)} followers` : null,
         a.last_campaign,
       ]

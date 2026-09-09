@@ -30,7 +30,11 @@ export default async function Page({
       postgameIcon={icon}
       preview={preview}
       title="Settings"
-      subtitle="Read-only for now"
+      /* No "Read-only for now". It described the build, not the page: a brand
+         reading it learns their settings are broken rather than that these are
+         the details Postgame holds for them. Every panel already says who
+         maintains it. */
+      subtitle={null}
     >
       <SettingsPanels data={data} />
     </PortalShell>

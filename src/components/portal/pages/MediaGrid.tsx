@@ -111,7 +111,21 @@ export default function MediaGrid({
               aria-label={`Open ${m.athleteName ?? "media"}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.thumbUrl} alt="" loading="lazy" />
+              <img
+                src={m.thumbUrl}
+                alt=""
+                loading="lazy"
+                // The transform endpoint is a separate service from object
+                // storage and can fail on an object storage will still serve.
+                // One retry with the original, guarded by a flag so a broken
+                // original cannot loop.
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (!m.thumbFallbackUrl || el.dataset.fellBack) return;
+                  el.dataset.fellBack = "1";
+                  el.src = m.thumbFallbackUrl;
+                }}
+              />
               {m.isVideo && (
                 <span className="pgd-play" aria-hidden="true">
                   <svg viewBox="0 0 24 24">

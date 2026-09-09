@@ -325,14 +325,22 @@
 
 
 /* Latest wrapped photo tile */
-.pgd-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 15%; display: block }
+/* 42%, moved down from 15%. The overlay now sits over the top of the tile,
+   so a face framed at 15% ends up behind the campaign name. */
+.pgd-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; display: block }
+/* TOP-LEFT, not bottom. The block is the tile's heading — campaign name, the
+   figures, then where they came from — and a heading belongs where the eye
+   starts. At the bottom it also had to fight the photograph: these are
+   portraits, so the subject's face is usually in the upper half and the lower
+   half is the busiest part of the frame.
+
+   Three gradient stops, not two: the block holds a name, a row of 40px
+   figures and a footnote, and against a linear fade its far end sat on the
+   bright part of a poolside photograph. Near-solid ink behind the text,
+   fading only past it. */
 .pgd-over {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 92px 20px 18px;
-  /* Three stops, not two. The overlay now holds a name, a row of 40px
-     figures and a footnote, and against a linear fade the top of that block
-     sat on the bright part of a poolside photograph. This holds near-solid
-     ink behind the text and only fades above it. */
-  background: linear-gradient(0deg,
+  position: absolute; left: 0; right: 0; top: 0; padding: 20px 20px 92px;
+  background: linear-gradient(180deg,
     rgba(7, 7, 10, 0.96) 0%, rgba(7, 7, 10, 0.86) 46%, rgba(7, 7, 10, 0) 100%);
 }
 .pgd-over h2 {
@@ -736,6 +744,34 @@
 .pgd-state-live { color: var(--orange-soft) }
 .pgd-state-wrapped { color: var(--ink-50) }
 
+/* ---- recap cards -------------------------------------------
+   Photo, name, button, tight. The generic .pgd-card stretches to its row's
+   tallest sibling and pushes its footer down with margin-top: auto, which is
+   right for a card whose footer is a row of figures and wrong for one whose
+   last element is a single button — it left a band of dead tile under every
+   name. These size to their own content.
+   ------------------------------------------------------------- */
+.pgd-recaps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) }
+.pgd-recap {
+  background: var(--tile); border: 0; border-radius: 14px; overflow: hidden;
+  display: flex; flex-direction: column; align-self: start;
+}
+.pgd-recap:hover { background: #16161a }
+.pgd-recap-thumb {
+  display: block; position: relative; height: 150px; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.04);
+}
+.pgd-recap-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
+/* Hard rule 4: a flat image edge on the black ground gets an edge-blend. */
+.pgd-recap-thumb::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 40%;
+  background: linear-gradient(0deg, rgba(17, 17, 20, 0.92), rgba(17, 17, 20, 0));
+}
+.pgd-recap-body {
+  padding: 14px 16px 16px; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 10px;
+}
+
 /* athlete cards */
 /* 400px, measured rather than guessed. At 1440 the grid is 1304px wide, and
    the widest school+sport in CVS's roster — "University of North Carolina at
@@ -767,9 +803,14 @@
 .pgd-person-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; flex: 1 }
 .pgd-person-name { font-size: 16px; font-weight: 700; line-height: 1.3; overflow-wrap: break-word }
 .pgd-person-meta { font-size: 14px; color: var(--ink-50); line-height: 1.4; overflow-wrap: break-word }
+/* A COLUMN, not just a right-aligned blob: a fixed 92px so the figures line
+   up from one card to the next down the grid, with a hairline separating them
+   from the name and meta. Without the fixed width each card put its number
+   wherever its own text ended, and a grid of them read as ragged. */
 .pgd-person-nums {
-  flex: 0 0 auto; text-align: right; display: flex; flex-direction: column; gap: 2px;
+  flex: 0 0 92px; text-align: right; display: flex; flex-direction: column; gap: 2px;
   font-size: 14px; color: var(--ink-50);
+  padding-left: 14px; border-left: 1px solid rgba(250, 248, 245, 0.08);
 }
 .pgd-person-nums b {
   font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
