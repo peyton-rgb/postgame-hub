@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { BG, OFFWHITE, HAIR, MONO, BEBAS, ORANGE, CARD, CARD_B } from "@/lib/portal";
 import { arimo } from "@/components/portal/fonts";
 import { getPostgameMark } from "@/lib/portal-data";
-import { startPortalOAuth } from "./actions";
 
 // ============================================================
 // The brand portal's front door.
@@ -142,43 +141,46 @@ export default async function PortalLoginPage({
             either breaks their branding rules. Orange stays off these
             entirely: a full-colour G on an orange fill is not allowed, and
             equal weight is the point. */}
+        {/* Plain links, not a form posting to a server action. A server
+            action's redirect is an instruction to the CLIENT ROUTER, which
+            refuses to navigate to another origin — so redirecting to the
+            provider from one silently did nothing. /portal/login/start
+            issues a real 307 the browser follows. */}
         <div style={{ marginTop: 30, display: "flex", flexDirection: "column", gap: 12 }}>
           {PROVIDERS.map((p) => (
-            <form key={p.id} action={startPortalOAuth}>
-              <input type="hidden" name="provider" value={p.id} />
-              <button
-                type="submit"
-                style={{
-                  ...MONO,
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 12,
-                  padding: "14px 16px",
-                  borderRadius: 12,
-                  background: "rgba(255,255,255,.06)",
-                  border: "1px solid rgba(255,255,255,.14)",
-                  color: "rgba(250,248,245,.90)",
-                  fontSize: 10,
-                  lineHeight: 1.4,
-                  cursor: "pointer",
-                }}
-              >
-                {/* Official provider marks, full colour, fixed size, never
-                    recoloured or stretched. Provenance in public/sso/README.md. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={p.mark}
-                  alt=""
-                  aria-hidden="true"
-                  width={20}
-                  height={20}
-                  style={{ width: 20, height: 20, flex: "0 0 auto", display: "block" }}
-                />
-                {p.label}
-              </button>
-            </form>
+            <a
+              key={p.id}
+              href={`/portal/login/start?provider=${p.id}`}
+              style={{
+                ...MONO,
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                padding: "14px 16px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,.06)",
+                border: "1px solid rgba(255,255,255,.14)",
+                color: "rgba(250,248,245,.90)",
+                fontSize: 10,
+                lineHeight: 1.4,
+                textDecoration: "none",
+              }}
+            >
+              {/* Official provider marks, full colour, fixed size, never
+                  recoloured or stretched. Provenance in public/sso/README.md. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.mark}
+                alt=""
+                aria-hidden="true"
+                width={20}
+                height={20}
+                style={{ width: 20, height: 20, flex: "0 0 auto", display: "block" }}
+              />
+              {p.label}
+            </a>
           ))}
         </div>
 
