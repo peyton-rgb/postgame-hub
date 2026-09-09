@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { BrandInlineLogo } from "@/components/BrandInlineLogo";
+import { useHubTheme } from "@/lib/use-hub-theme";
 import Link from "next/link";
 
 /**
@@ -33,7 +35,11 @@ type OptInCampaign = {
   brands?: {
     id: string;
     name: string;
+    // The name describes the INK, not the background: logo_light_url is light
+    // ink (dark grounds), logo_dark_url is dark ink (light grounds).
     logo_light_url: string | null;
+    logo_dark_url: string | null;
+    logo_primary_url: string | null;
     logo_url: string | null;
     primary_color: string | null;
   } | null;
@@ -43,6 +49,8 @@ type Brand = {
   id: string;
   name: string;
   logo_light_url: string | null;
+  logo_dark_url: string | null;
+  logo_primary_url: string | null;
   logo_url: string | null;
   primary_color: string | null;
 };
@@ -52,6 +60,9 @@ type OptInCounts = Record<string, number>;
 export default function OptInList() {
   const router = useRouter();
   const supabase = createBrowserSupabase();
+  // Which logo file to render is a JS decision, not a CSS one — you cannot
+  // choose between two image URLs without downloading both.
+  const theme = useHubTheme();
 
   const [campaigns, setCampaigns] = useState<OptInCampaign[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -86,7 +97,9 @@ export default function OptInList() {
   async function loadCampaigns() {
     const { data, error } = await supabase
       .from("optin_campaigns")
-      .select("*, brands(id, name, logo_light_url, logo_url, primary_color)")
+      .select(
+        "*, brands(id, name, logo_light_url, logo_dark_url, logo_primary_url, logo_url, primary_color)"
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -120,7 +133,7 @@ export default function OptInList() {
   async function loadBrands() {
     const { data } = await supabase
       .from("brands")
-      .select("id, name, logo_light_url, logo_url, primary_color")
+      .select("id, name, logo_light_url, logo_dark_url, logo_primary_url, logo_url, primary_color")
       .eq("archived", false)
       .order("name");
     setBrands((data || []) as Brand[]);
@@ -408,7 +421,6 @@ export default function OptInList() {
           <div className="flex flex-col gap-2">
             {filteredCampaigns.map((c) => {
               const count = optInCounts[c.id] || 0;
-              const brandLogo = c.brands?.logo_light_url || c.brands?.logo_url || null;
               const brandName = c.brands?.name || "—";
               return (
                 <div
@@ -438,13 +450,7 @@ export default function OptInList() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1">
-                      {brandLogo ? (
-                        <img
-                          src={brandLogo}
-                          alt={brandName}
-                          className="h-[16px] max-w-[60px] object-contain flex-shrink-0"
-                        />
-                      ) : null}
+                      <BrandInlineLogo brand={c.brands} name={brandName} theme={theme} />
                       <span className="text-xs text-ink-4">{brandName}</span>
                       <span className="text-[10px] text-ink-4">
                         {new Date(c.created_at).toLocaleDateString()}

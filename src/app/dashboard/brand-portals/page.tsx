@@ -12,6 +12,7 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import {
   BRAND_LOGO_COLUMNS,
   groupLogosByBrand,
+  pickBrandLogo,
   resolveBrandLogo,
   type BrandLogoRow,
 } from "@/lib/brand-logo";
@@ -30,16 +31,27 @@ type Brand = {
 // The cell is a 40x40 square on a #111 card — a dark surface, and square, so
 // this asks for a mark on_black and falls back through the chain from there.
 // The legacy columns stay underneath for brands with no brand_logos rows.
+//
+// SURFACE IS PINNED TO "dark" ON PURPOSE, and it is not an oversight that this
+// does not read the active theme: every card on this page is still hardcoded
+// dark (bg-[#111], text-white/*). The logo must match the ground it actually
+// sits on, not the ground the rest of the Hub is using — resolving a dark-ink
+// mark here because the user picked light mode would put dark ink on a #111
+// card and hide it. When this page's chrome moves onto the semantic tokens,
+// swap both of these for useHubTheme() together, in one change.
+//
+// The legacy fallback used to be a hand-rolled chain:
+//   logo_primary_url || logo_dark_url || logo_light_url || logo_white_url
+// which reached for logo_dark_url — DARK ink — ahead of logo_light_url on a
+// dark card, and rendered it invisible. The column name describes the ink, not
+// the background. pickBrandLogo() encodes that inversion once and, by design,
+// never falls back to the opposite-ink variant at all.
+const PORTAL_CARD_SURFACE = "dark" as const;
+
 function brandLogo(b: Brand, logos?: BrandLogoRow[]): string | null {
-  const resolved = resolveBrandLogo(logos, { surface: "dark", prefer: "mark" });
-  return (
-    resolved?.url ||
-    b.logo_primary_url ||
-    b.logo_dark_url ||
-    b.logo_light_url ||
-    b.logo_white_url ||
-    null
-  );
+  const resolved = resolveBrandLogo(logos, { surface: PORTAL_CARD_SURFACE, prefer: "mark" });
+  if (resolved) return resolved.url;
+  return pickBrandLogo(b, PORTAL_CARD_SURFACE)?.url ?? b.logo_white_url ?? null;
 }
 
 export default function BrandPortalsPage() {
