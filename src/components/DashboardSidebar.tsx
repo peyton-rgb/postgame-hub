@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
 import { pickBrandLogo, type BrandLogoColumns } from '@/lib/brand-logo';
-import { useHubTheme } from '@/lib/use-hub-theme';
+import { useHubTheme, setHubTheme } from '@/lib/use-hub-theme';
 import {
   DASHBOARD_NAV,
   resolveActiveHref,
@@ -297,6 +297,58 @@ const BrowserIcon = () => (
     <line x1="9" y1="3" x2="9" y2="9" />
   </Icon>
 );
+
+
+// ---- Theme toggle ----
+//
+// Dark is the default and stays the default: profiles.theme defaults to 'dark'
+// and dashboard/layout.tsx falls back to dark on every path, so a user who never
+// touches this sees no change. This is the opt-in.
+//
+// It reads useHubTheme rather than holding its own state, so it reflects the
+// server-rendered value on first paint and cannot drift from what is actually on
+// screen. setHubTheme flips the attribute first and persists after, so the whole
+// dashboard repaints immediately rather than waiting on the round-trip.
+function ThemeToggle() {
+  const theme = useHubTheme();
+  const [failed, setFailed] = useState(false);
+  const next: 'dark' | 'light' = theme === 'light' ? 'dark' : 'light';
+
+  return (
+    <button
+      onClick={async () => {
+        const res = await setHubTheme(next);
+        setFailed(!res.ok);
+      }}
+      // aria-pressed rather than a switch role: this is a two-state button, and
+      // the label already names the state it will move to.
+      aria-pressed={theme === 'light'}
+      title={failed ? "Couldn't save your theme — it will revert on reload" : undefined}
+      className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-ink-4 hover:text-ink-3 hover:bg-surface-card transition-colors w-full"
+    >
+      {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+      {next === 'light' ? 'Light mode' : 'Dark mode'}
+      {failed ? <span className="ml-auto text-[10px] text-accent">not saved</span> : null}
+    </button>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    </svg>
+  );
+}
 
 // Sign Out
 const LogOutIcon = () => (
@@ -691,8 +743,9 @@ export default function DashboardSidebar() {
         {DASHBOARD_NAV.map((section, idx) => renderSection(section, idx))}
       </nav>
 
-      {/* Sign Out — fixed at bottom */}
+      {/* Theme + Sign Out — fixed at bottom */}
       <div className="px-3 py-3 border-t border-hairline-soft">
+        <ThemeToggle />
         <button
           onClick={handleSignOut}
           className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-ink-4 hover:text-ink-3 hover:bg-surface-card transition-colors w-full"
