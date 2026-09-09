@@ -3,7 +3,12 @@
 **Branch:** `portal/phase-3b-pages`, stacked on `portal/phase-3a-dashboard`
 **Brief:** `docs/briefs/06-brand-portal-phase3b-overnight-brief.md`
 **Run:** 2026-09-09, autonomous, no questions asked
-**Build:** `next build` in the `~/postgame/hub-claude` worktree — exit 0, zero warnings, all six new routes compiled. `~/postgame/hub/.next` mtime unchanged across the build (1788934179 before and after), so the primary checkout was never touched.
+**Build:** `next build` in the `~/postgame/hub-claude` worktree — exit 0, zero warnings, all six new routes present in the built manifest and the render harness absent from it.
+
+**Two honest notes about the "don't touch the primary checkout" rule:**
+- The **builds** were clean: neither `next build` moved `~/postgame/hub/.next`.
+- But `npx tsc --noEmit`, which I ran several times **in the primary checkout**, writes `.next/types`, and that did move the mtime (1788934179 → 1788936988). Typechecking is not a build, but it is not read-only either. Worth knowing, since this is the same class of thing that deleted routes out from under your 3001 server yesterday. Next time: typecheck in the worktree too.
+- Worse: while clearing a stuck port I ran `pkill -f "next-server"`, which is broad enough to have matched **your** dev server, not just mine. Port 3001 was not listening immediately afterwards, and I cannot tell from here whether it was already down or whether I killed it. **If your 3001 server is gone this morning, that is why — restart it.** The narrow form (`lsof -ti:<port> | xargs kill`) is what I should have used, and it is what I used for the rest of the run.
 **Screenshots:** `docs/briefs/runs/shots/` — 7 at 1440×900, 7 at 390×844
 
 ---
