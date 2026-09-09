@@ -214,13 +214,17 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
 
   const kpis: DashboardKpi[] = [
     { value: String(live.length), label: "Live campaigns" },
-    // "Athletes / across all campaigns" rather than "Athletes · all time".
-    // The qualifier is what makes the number honest — it is every athlete the
+    // "Athletes / all campaigns" rather than "Athletes · all time". The
+    // qualifier is what makes the number honest — it is every athlete the
     // brand has ever run with, not a live count — so it gets its own line
     // instead of being crammed after a dot.
+    //
+    // "all campaigns", not "across all campaigns": at 14px the longer phrase
+    // is wider than the figure above it and wrapped to three lines under the
+    // KPI. Both sub-labels stay on ONE line (see .pgd-kpi small).
     activeAthletes > 0
-      ? { value: String(activeAthletes), label: "Athletes", sub: "on live campaigns" }
-      : { value: String(allTimeAthletes), label: "Athletes", sub: "across all campaigns" },
+      ? { value: String(activeAthletes), label: "Athletes", sub: "live campaigns" }
+      : { value: String(allTimeAthletes), label: "Athletes", sub: "all campaigns" },
     // Reach · 14 days is HIDDEN, not zeroed: no verified reach field exists on
     // delivered recaps in a window. The brief says hide it, so it is absent
     // from this array rather than present and empty.
