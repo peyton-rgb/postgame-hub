@@ -15,7 +15,7 @@
   --bp-orange: #D73F09;
   background: #000;
   color: var(--bp-ink);
-  font-family: Inter, Arial, system-ui, sans-serif;
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }

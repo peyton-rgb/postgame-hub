@@ -23,7 +23,7 @@ export default async function CampaignInstructionsPublicPage({ params }: Props) 
         .ci-hero-overlay { position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 60%, transparent 100%); }
         .ci-hero-content { position:relative; z-index:1; padding:48px; width:100%; }
         .ci-brand { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.18em; color:var(--brand); margin-bottom:12px; }
-        .ci-title { font-family:'Bebas Neue',Arial,sans-serif; font-size:clamp(40px,7vw,80px); line-height:0.95; margin:0 0 12px; }
+        .ci-title { font-family:var(--font-bebas),'Bebas Neue',Arial,sans-serif; font-size:clamp(40px,7vw,80px); line-height:0.95; margin:0 0 12px; }
         .ci-date { font-size:16px; color:rgba(255,255,255,0.55); }
         .ci-body { max-width:860px; margin:0 auto; padding:48px 48px 80px; }
         .ci-tabs { display:flex; gap:4; margin-bottom:40px; border-bottom:1px solid rgba(255,255,255,0.08); }

@@ -165,7 +165,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
   return (
     <div
       className="min-h-screen bg-black text-white"
-      style={{ fontFamily: 'var(--font-inter), Arial, system-ui, sans-serif' }}
+      style={{ fontFamily: 'var(--font-arimo), Arimo, Arial, sans-serif' }}
     >
       {!campaign.published && (
         <div

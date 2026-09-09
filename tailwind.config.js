@@ -11,11 +11,19 @@ module.exports = {
         nav: "900px",
       },
       fontFamily: {
-        sans: ["Arial", "Helvetica Neue", "Helvetica", "sans-serif"],
-        // Bebas Neue and JetBrains Mono are loaded by next/font in
-        // src/app/layout.tsx, which exposes them as CSS variables on <html>.
-        // These entries must reference those variables — not the family names —
-        // or the utilities resolve to nothing.
+        // All four faces are loaded by next/font in src/app/layout.tsx, which
+        // exposes them as CSS variables on <html>. THESE ENTRIES MUST REFERENCE
+        // THOSE VARIABLES, never the family names — next/font emits a hashed
+        // family (__Bebas_Neue_d758cf), so a literal "Bebas Neue" matches
+        // nothing and silently falls through to the next item in the stack.
+        // That is exactly how ten public pages ended up importing Bebas a
+        // second time from Google to make their headings render.
+        //
+        // sans === body: Arimo is the body face and Arial is its metric twin,
+        // so the fallback is invisible rather than a reflow.
+        sans: ["var(--font-arimo)", "Arimo", "Arial", "Helvetica", "sans-serif"],
+        body: ["var(--font-arimo)", "Arimo", "Arial", "Helvetica", "sans-serif"],
+        heavy: ["var(--font-anton)", "Anton", "Arial", "sans-serif"],
         display: ["var(--font-bebas)", "Bebas Neue", "sans-serif"],
         mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },

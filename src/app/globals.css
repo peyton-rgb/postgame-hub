@@ -83,7 +83,10 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  /* Arimo is the body face; Arial is its metric twin, so the fallback swaps
+     without reflow. Arial was the PRIMARY here until now, which meant Arimo
+     never rendered on a public page. */
+  font-family: var(--font-arimo), Arimo, Arial, "Helvetica Neue", Helvetica, sans-serif;
   font-size: 24px;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
@@ -95,7 +98,113 @@ a { color: inherit; text-decoration: none; }
 img, video { display: block; max-width: 100%; }
 
 /* ── Display font ── */
-.d { font-family: var(--font-bebas), var(--font-bebas), 'Bebas Neue', Arial, sans-serif; letter-spacing: 0.02em; }
+.d { font-family: var(--font-bebas), 'Bebas Neue', Arial, sans-serif; letter-spacing: 0.02em; }
+
+/* ════════════════════════════════════════════════════════════
+   TYPE SCALE  —  the eleven roles, and the only ones
+   ════════════════════════════════════════════════════════════
+
+   Four fonts, four jobs. If type does not fit one of these roles, the role is
+   wrong, not the font list.
+
+     .pg-h1        Bebas   hero lines
+     .pg-h2        Bebas   section headings
+     .pg-h3        Bebas   card titles, athlete names
+     .pg-stat      Anton   stat figures ONLY
+     .pg-campaign  Anton   campaign titles ONLY
+     .pg-quote     Arimo Bold   pull quotes
+     .pg-lead      Arimo   lead paragraphs
+     .pg-body      Arimo   body copy — 16px is a FLOOR, never smaller
+     .pg-eyebrow   Mono    eyebrows/kickers
+     .pg-label     Mono    stat labels, captions, meta, tags
+     .pg-btn       Mono    buttons and nav
+
+   Anton is deliberately confined to two roles. It ships in one weight and
+   cannot do anything needing a lighter cut, which is why pull quotes are
+   Arimo Bold rather than Anton.
+
+   Colour is the off-white at four fixed opacities and nothing between them:
+   100% display and headlines, 90% lead, 68% body, 50% labels. Sizes clamp
+   between the mobile and desktop figures in the design system, so there are no
+   breakpoint copies to keep in step. Display shrinks hard; body does not.
+
+   These are the shared classes. A page that needs a heading uses .pg-h2 — it
+   does not grow its own .section-title in a local style block. That habit is
+   what produced eighteen private type systems and .hero-title meaning two
+   different sizes on two different pages.
+   ════════════════════════════════════════════════════════════ */
+
+.pg-h1, .pg-h2, .pg-h3 {
+  font-family: var(--font-bebas), 'Bebas Neue', Arial, sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 245, 1);
+  margin: 0;
+}
+.pg-h1 { font-size: clamp(40px, 6vw, 92px); line-height: 0.90; }
+.pg-h2 { font-size: clamp(30px, 4.5vw, 58px); line-height: 0.98; }
+.pg-h3 { font-size: clamp(20px, 2vw, 26px); line-height: 1.05; }
+
+.pg-stat, .pg-campaign {
+  font-family: var(--font-anton), Anton, Arial, sans-serif;
+  text-transform: uppercase;
+  line-height: 0.92;
+  color: rgba(250, 248, 245, 1);
+  margin: 0;
+}
+.pg-stat { font-size: clamp(40px, 6vw, 68px); }
+.pg-campaign { font-size: clamp(34px, 5vw, 68px); }
+
+.pg-quote {
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(26px, 3vw, 46px);
+  line-height: 1.2;
+  color: rgba(250, 248, 245, 1);
+  margin: 0;
+}
+
+.pg-lead {
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
+  font-size: clamp(18px, 1.6vw, 21px);
+  line-height: 1.5;
+  color: rgba(250, 248, 245, 0.90);
+  margin: 0;
+}
+
+/* 16px is the floor. Body shrinking below it is the single most common
+   violation on this site, and it is never a fix for a layout problem. */
+.pg-body {
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.76;
+  color: rgba(250, 248, 245, 0.68);
+  margin: 0;
+}
+@media (max-width: 640px) { .pg-body { line-height: 1.7; } }
+
+.pg-eyebrow, .pg-label, .pg-btn {
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+/* Orange is the eyebrow's usual colour, but it is an accent, so a page that
+   already leans on orange can drop this to the display ink instead. */
+.pg-eyebrow {
+  font-size: clamp(11px, 1vw, 13px);
+  letter-spacing: 0.2em;
+  color: var(--orange);
+}
+.pg-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(250, 248, 245, 0.50);
+}
+.pg-btn {
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  color: rgba(250, 248, 245, 1);
+}
 
 /* ════════════════════════════════════════════════════════════
    NAV  —  never override these with per-page styles
@@ -154,7 +263,7 @@ img, video { display: block; max-width: 100%; }
   color: var(--text-2);
   font-size: 13px;
   font-weight: 700;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   cursor: pointer;
   padding: 8px 14px;
   border-radius: var(--r-sm);
@@ -208,7 +317,7 @@ img, video { display: block; max-width: 100%; }
   padding: 9px 14px;
   font-size: 13px;
   font-weight: 600;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   color: var(--text-2) !important;
   border-radius: 8px;
   transition: color 0.12s, background 0.12s;
@@ -228,7 +337,7 @@ img, video { display: block; max-width: 100%; }
   color: var(--text-2) !important;
   font-size: 12px;
   font-weight: 800;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   background: var(--glass-bg);
@@ -252,7 +361,7 @@ img, video { display: block; max-width: 100%; }
   color: #fff !important;
   font-size: 12px;
   font-weight: 800;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   transition: background 0.15s;
@@ -293,14 +402,14 @@ img, video { display: block; max-width: 100%; }
   letter-spacing: 0.18em;
   color: var(--text-4);
   padding: 18px 14px 6px;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
 }
 .pg-mobile-link {
   display: block;
   padding: 13px 14px;
   font-size: 14px;
   font-weight: 700;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   color: var(--text-2) !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -359,7 +468,7 @@ img, video { display: block; max-width: 100%; }
   text-transform: uppercase;
   letter-spacing: 0.22em;
   color: var(--orange);
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
 }
 
 .pg-section {
@@ -396,7 +505,7 @@ img, video { display: block; max-width: 100%; }
   color: #fff !important;
   font-size: 13px;
   font-weight: 800;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -418,7 +527,7 @@ img, video { display: block; max-width: 100%; }
   color: var(--text-2) !important;
   font-size: 13px;
   font-weight: 800;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -460,7 +569,7 @@ img, video { display: block; max-width: 100%; }
   color: var(--text-3);
   max-width: 260px;
   margin-top: 16px;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
 }
 .pg-footer-col-title {
   font-size: 11px;
@@ -469,7 +578,7 @@ img, video { display: block; max-width: 100%; }
   letter-spacing: 0.18em;
   color: var(--orange);
   margin-bottom: 20px;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
 }
 .pg-footer-links {
   list-style: none;
@@ -481,7 +590,7 @@ img, video { display: block; max-width: 100%; }
   font-size: 18px;
   line-height: 1.2;
   color: var(--text-2);
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   transition: color 0.15s;
 }
 .pg-footer-links a:hover { color: var(--text); }
@@ -496,7 +605,7 @@ img, video { display: block; max-width: 100%; }
   font-size: 18px;
   line-height: 1.2;
   color: var(--text-4);
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
 }
 .pg-footer-legal {
   display: flex;
@@ -506,7 +615,7 @@ img, video { display: block; max-width: 100%; }
   font-size: 18px;
   line-height: 1.2;
   color: var(--text-4);
-  font-family: Arial, sans-serif;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace;
   transition: color 0.15s;
 }
 .pg-footer-legal a:hover { color: var(--text-2); }
