@@ -215,11 +215,170 @@ changes went in alongside:
 
 ---
 
+## Round two — walkthrough fixes (2026-09-09)
+
+Seven items from Peyton's walkthrough of #252, fixed in the order given. All
+seventeen screenshots in `shots/` were re-rendered afterwards; the two Results
+variants are new (`08-results-html-1440.png`, `09-results-plaintext-1440.png`).
+
+### 1 · Content was black everywhere → paging, and the transform kept only where it is load-bearing
+
+**The stated cause was wrong, and it is worth recording why.** The brief said
+the transform URLs "never finish loading". They load fine. Verified four ways:
+the endpoint returns 200 on every URL shape in this bucket including filenames
+carrying `%20` and parentheses; a 30-request burst came back clean; there are
+no video files being pushed through an image transform (all 104 CVS videos
+have a real `thumbnail_url`, none pointing at the mp4); and twelve real tile
+URLs loaded **in Peyton's own browser in 3-7ms at naturalWidth 420**.
+
+I also spent a measurement on a dead end worth flagging: the page appeared to
+issue *zero* image requests, 411 images stuck "pending". That was an artefact —
+the MCP tab was backgrounded (`visibilityState: "hidden"`) and Chrome defers
+lazy images entirely while a tab is hidden. Second time this run that a
+measurement harness produced a fake symptom; see the headless window-clamp note
+below.
+
+So the real problem was volume: 411 `<img>` on one page, each 80-180KB, on a
+placeholder tint that reads as black on this ground. Fixes:
+
+- `MediaGrid` pages **40 at a time** with "Load more", and any filter change
+  restarts the count.
+- Tiles take `thumbnail_url` as stored, or the plain object URL — **except** for
+  formats a browser cannot paint.
+
+**The exception is load-bearing and it deviates from the instruction.** 7 of
+CVS's 460 rows are `.HEIC`. Serving those raw is what made Bella Bonnett's tile
+black: `content-type: image/heif`, 2.2MB, nothing on screen. The transform
+transcodes them to JPEG. Two more rows carry an extension I cannot identify and
+take the same path. So 451 tiles go direct and 9 are transcoded.
+
+**On the usage badge:** I cannot read the billing dashboard from here, so I
+cannot confirm what is driving it — check Storage → Usage. What I can say is
+that the portal's transform calls drop from **411 per gallery page view to 3**
+(measured on the live page: 37 of the first 40 tiles come from
+`/object/public`, 3 from `/render/image`), and about 9 for the whole gallery.
+Headshots still use a 160px transform, and with the athletes page now paging at
+60 that is at most 60 per view instead of 600.
+
+### 2 · Results tab printed raw HTML → sanitized rich text
+
+`readTakeaways()` split the field on newlines. Right for the plain-text rows,
+wrong for the HTML ones: `<ul><li><p>...` contains no newlines, so the whole
+blob became one array entry and rendered as visible tags.
+
+**There was no existing sanitizer to reuse.** The instruction said "same
+sanitizer the recap pages use" — the recap pages don't sanitize. `CampaignRecap
+.tsx` and `recap-v2/sections/*` pass these same two fields straight into
+`dangerouslySetInnerHTML`; `dompurify` is in `package.json` but nothing in that
+path calls it. Copying that pattern into a client-facing portal would have
+carried the gap forward, so `src/lib/portal/rich-text.ts` is new: a strict
+**default-deny allowlist** — every attribute dropped except a validated `href`,
+`script`/`style`/`iframe` removed with their content, comments stripped. No
+dependency, runs server-side (DOMPurify would need jsdom in the server bundle
+for two fields).
+
+It also handles **both formats**, because the column holds both: HTML on
+Chicago Activation, Minute Clinic, Mother's Day, SPF, W/CWS; plain text with
+`- ` bullets on 26 Spring Epic Beauty and The Tournament; and empty strings
+elsewhere. Checked against 14 inputs including `onerror`, `onclick`,
+`javascript:` hrefs, `svg/onload`, `<style>`, and comment-hidden markup.
+
+**This is worth a decision:** the recap pages are still unsanitized, and they
+render the same fields to the same clients. Not in scope here, not fixed.
+
+### 3 · Reports grouped 45 of 46 under "No quarter on file" → derived quarters
+
+The cause was not missing data. Of the 13 rows whose `quarter` is not null,
+**12 are the empty string** and exactly one holds a real `"Q1 2026"`. Empty
+string is falsy in JS, so they fell in with the true nulls — 45 of 46.
+
+Now: a stored quarter wins if non-empty, otherwise it is derived from
+`admin_created_on` as a **calendar** quarter, and groups sort newest first.
+Derived groups carry a quiet "by delivery date" marker so a reader does not
+mistake the heading for a field somebody set; a group mixing stored and derived
+is not marked. There is no "no quarter" group. Every CVS campaign resolves —
+13 stored, 33 derived, zero with neither. `Undated` remains in the code as a
+last resort for a brand that has a campaign with no quarter *and* no date; it
+cannot be reached with CVS's data, and the only alternative would be inventing
+a date.
+
+If Postgame's reporting year does not start in January these labels will be a
+quarter off — the fix for that is a stored quarter, not a different guess.
+
+### 4 · Image-less cards were tall empty boxes → compact
+
+The grid's default `align-items: stretch` was giving a card with no thumbnail
+the height of one that had a 170px thumb. `.pgd-card-noimg` takes
+`align-self: start`. Verified in the authenticated session, where the full set
+is visible: Strategic Markets, Injured Athlete, Bloomington and 26 Spring Epic
+Beauty went from 262-278px to **72px**; 42 of 52 cards are affected.
+
+### 5 · Campaign hero crop → height, not focal point
+
+**The requested 45% made the reported symptom worse.** A larger
+`object-position` moves the visible window *down* the photo, so 45% moved SPF's
+crop from the forehead to the mouth. Rendered the band at 22 / 28 / 34 / 45 to
+confirm the direction: 28% is hair, 34% eyes, 45% mouth.
+
+The real constraint was the band height. At 240px it showed about 9% of a 1:2
+portrait, which is less than a face occupies — **no** focal point could frame
+one. The hero is now **330px at 30%**, which shows the whole face with nothing
+cut.
+
+**Follow-up, as requested: a `focal_y` column on `media`.** One number cannot
+frame every photograph; 30% is only known to suit the current hero set, and any
+new hero is a fresh coin toss. A per-image focal point set once at upload — or
+derived from a face-detection pass — is the durable fix, and it would also let
+the card thumbnails stop cropping torsos.
+
+### 6 · "600 of 600" → the real total, with paging
+
+The 600 was a cap I chose to stay under PostgREST's hard 1000-row response
+ceiling, and it printed as though it were a total. The directory now walks past
+that ceiling with ranged requests, and the grid pages 60 at a time. Verified
+authenticated: **"1501 athletes", "60 of 1501", "Load 60 more", "1441
+remaining"**, and clicking it goes to 120.
+
+**One number to reconcile:** this says 1,501 where the dashboard KPI says
+1,523. Both are "distinct athletes" but they dedupe differently —
+`portal_brand_athletes` keys on `lower(trim(name))`, `portal_brand_stats`
+counts its own way. The directory figure is the honest one for this page
+because it is the number of rows "Load more" can actually reach. They should be
+made to agree; that is a follow-up, not something to paper over.
+
+### Also found while doing the above, not fixed
+
+- **`review_sessions.campaign_id` references `brand_campaigns`, not
+  `campaign_recaps`.** The dashboard's waiting-on-you count was comparing
+  `campaign_recaps` ids against it, which can never match — it would have read
+  0 forever and looked correct only because the table is empty. Fixed in its
+  own commit on this branch. Found while auditing the same column for Phase 2,
+  where the brief made the identical assumption.
+- **"NCAA Tourney" appears in a CVS key-takeaway** that the portal now renders
+  to the client. CLAUDE.md forbids NCAA trademark terms in brand-facing copy.
+  It is client-authored data in `campaign_recaps.settings`, so I have not
+  rewritten it — but the portal is what makes it brand-facing.
+- **Two Supabase advisors now flag my Phase 2 functions:** `is_brand_user()`
+  and `my_brand_ids()` are `SECURITY DEFINER` and callable by `anon` via
+  `/rest/v1/rpc/...`. Both return false/empty for anon so there is no leak, but
+  the `EXECUTE` grant to `PUBLIC` should be revoked. Phase 2's PR (#254), not
+  this one.
+
 ## The three things to look at first tomorrow
 
-1. **Sign in as a real brand user and re-read every number.** The screenshots are the `anon` view: 0 live / 10 wrapped / 751 athletes. Signed in it should be **6 live / 46 wrapped / 1,523 athletes**. That is the one thing I could not verify end to end, and it is the difference between "these pages work" and "these pages work on the real dataset."
-2. **The campaign detail hero crop.** It is sharp and it is a face, but it is a tight one, and it will be tight differently on every campaign. Decide whether a `focal_y` column on `media` is worth adding, or whether the hero should be a shorter band with the photo contained rather than covering.
-3. **The athletes directory at 600 of 1,501.** Decide whether it needs pagination, infinite scroll, or just a higher cap — 1,501 cards is a lot of DOM, and the answer changes what the page should look like.
+1. **Sign in and re-read every number.** Still the top item: the harness
+   screenshots are the `anon` view (0 live / 10 wrapped / 751 athletes) and a
+   signed-in brand user sees **6 live / 46 wrapped / 1,501 in the directory**.
+   Round two's fixes were verified against the authenticated session for
+   campaigns, athletes and content specifically, so those three are known good
+   on real data; the rest of the screenshots are still anon.
+2. **Decide on `focal_y`, and on the recap pages' missing sanitizer.** Both are
+   things this round worked around rather than solved: the hero is framed by a
+   single hand-tuned percentage that suits today's photos, and the recap
+   renderer still injects unsanitized client HTML on pages CVS can already
+   open.
+3. **Reconcile 1,501 against 1,523.** Two "distinct athlete" counts on two
+   surfaces, from two different dedupe keys, both shown to the same client.
 
 One more worth a glance: the duplicate "Koa Peat" / "Koa Peat2" rows and the
 coach in the athlete directory are data problems the portal is now exposing to
