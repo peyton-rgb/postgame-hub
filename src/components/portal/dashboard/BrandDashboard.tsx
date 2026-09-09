@@ -175,9 +175,9 @@ export default function BrandDashboard({
           </section>
 
           {/* 4 · Latest wrapped. Photo from the campaign's hero media; figures
-                 ONLY from that recap's structured fields. An absent figure is
-                 omitted, never zero-filled — which is why most wrapped
-                 campaigns show a name and no numbers. */}
+                 from that recap's structured fields, or — when it has none —
+                 summed from what its athletes posted, and then labelled as
+                 such. An absent figure is omitted, never zero-filled. */}
           <section className="pgd-tile pgd-photo" aria-labelledby="pgd-wrapped">
             {data.latestWrapped?.heroUrl ? (
               <>
@@ -188,14 +188,21 @@ export default function BrandDashboard({
                   <small>Recap delivered</small>
                   <h2 id="pgd-wrapped">{data.latestWrapped.name}</h2>
                   {data.latestWrapped.figures.length > 0 && (
-                    <div className="pgd-stats">
-                      {data.latestWrapped.figures.map((f) => (
-                        <div key={f.label}>
-                          <b>{f.value}</b>
-                          {f.label}
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      <div className="pgd-stats">
+                        {data.latestWrapped.figures.map((f) => (
+                          <div key={f.label}>
+                            <b>{f.value}</b>
+                            {f.label}
+                          </div>
+                        ))}
+                      </div>
+                      {data.latestWrapped.figuresSource && (
+                        <span className="pgd-stats-src">
+                          {data.latestWrapped.figuresSource}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </>
