@@ -515,6 +515,10 @@
   overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: inherit;
 }
 .pgd-card:hover { border-color: rgba(250, 248, 245, 0.18) }
+/* align-self overrides the grid's stretch for this card only, so an image-less
+   card is as tall as its own text and the cards that DO have images still line
+   up with each other. */
+.pgd-card-noimg { align-self: start }
 /* Fixed height, not aspect-ratio. Two reasons: this is a <span>, so it needs
    display:block for any box sizing at all; and aspect-ratio on a flex item
    whose child is height:100% did not resolve to a stable height — cards came
@@ -623,15 +627,16 @@
   min-height: 240px; background: var(--tile); border: 1px solid var(--tile-edge);
   display: flex; align-items: flex-end;
 }
-/* 34%, arrived at by measurement rather than taste. These are 1:2 portrait
-   photos in a ~5.5:1 band, so cover scales by width and the band shows barely
-   9% of the frame's height — the position picks which 9%. At 18% that landed
-   on the out-of-focus fence and bokeh above the subject's head, which read as
-   a broken low-resolution image; the faces in these shots sit at 33-42%.
-   A per-image focal point on the media row is the real fix — noted for later,
-   because one number cannot frame every photo. */
+/* 45%. These are 1:2 portrait photos in a ~5.5:1 band, so cover scales by
+   width and the band shows barely 9% of the frame's height — the position
+   picks which 9%. 18% landed on the out-of-focus fence above the subject's
+   head and read as a broken image; 34% still cut SPF's face off at the top of
+   the band. 45% clears the crown.
+   A focal_y column on the media row is the real fix and is logged as a
+   follow-up in the run log: one number cannot frame every photograph, and
+   every value here is a guess that happens to suit the current hero set. */
 .pgd-hero > img { position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center 34% }
+  object-fit: cover; object-position: center 45% }
 .pgd-hero::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(0deg, rgba(7, 7, 10, 0.92), rgba(7, 7, 10, 0.15));
@@ -654,6 +659,40 @@
 .pgd-overview-side { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
 @media (max-width: 900px) {
   .pgd-overview-split { grid-template-columns: minmax(0, 1fr) }
+}
+
+/* "by delivery date" marker beside a derived quarter heading. */
+.pgd-group-note {
+  margin-left: 10px; font-family: var(--font-arimo), Arimo, Arial, sans-serif;
+  font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  color: var(--ink-45);
+}
+
+/* Rich text from campaign_recaps.description / settings.key_takeaways, after
+   sanitising. Styled here rather than inline because the markup is arbitrary
+   within the allowlist — lists, paragraphs, headings — and it all has to sit
+   on the portal's ink ladder. Arimo, never below 16px equivalent for body. */
+.pgd-prose { font-size: 14px; line-height: 1.7; color: var(--ink-75) }
+.pgd-prose > :first-child { margin-top: 0 }
+.pgd-prose > :last-child { margin-bottom: 0 }
+.pgd-prose p { margin: 0 0 10px }
+.pgd-prose ul, .pgd-prose ol { margin: 0 0 10px; padding-left: 20px }
+.pgd-prose li { margin: 0 0 6px }
+.pgd-prose li > p { margin: 0 }
+.pgd-prose strong, .pgd-prose b { color: var(--ink-90); font-weight: 700 }
+.pgd-prose h3, .pgd-prose h4, .pgd-prose h5 {
+  font-size: 13px; font-weight: 700; color: var(--ink-90); margin: 12px 0 6px;
+}
+.pgd-prose blockquote {
+  margin: 0 0 10px; padding-left: 12px;
+  border-left: 2px solid rgba(215, 63, 9, 0.5); color: var(--ink-60);
+}
+.pgd-prose a { color: var(--orange-soft) }
+
+/* "Load more" row, under a paginated grid. */
+.pgd-more-row {
+  display: flex; align-items: center; gap: 12px;
+  justify-content: center; padding: 18px 0 6px;
 }
 
 /* simple panels + table for Settings / Results */

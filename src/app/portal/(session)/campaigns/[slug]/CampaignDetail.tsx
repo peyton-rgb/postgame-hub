@@ -106,10 +106,11 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
           <div className="pgd-overview-split">
             <section className="pgd-panel">
               <h3>Objective</h3>
-              {c.description ? (
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(250,248,245,.68)" }}>
-                  {c.description}
-                </p>
+              {c.descriptionHtml ? (
+                <div
+                  className="pgd-prose"
+                  dangerouslySetInnerHTML={{ __html: c.descriptionHtml }}
+                />
               ) : (
                 <TileEmpty
                   line="No brief on file"
@@ -265,7 +266,7 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
 
       {tab === "results" && (
         <>
-          {c.figures.length === 0 && c.takeaways.length === 0 ? (
+          {c.figures.length === 0 && !c.takeawaysHtml ? (
             <div className="pgd-panel">
               {/* Spec: if the recap has no structured content, say results are
                   being prepared and show the hero and athlete count. Never
@@ -294,14 +295,15 @@ export default function CampaignDetail({ campaign: c }: { campaign: Campaign }) 
                   </div>
                 </section>
               )}
-              {c.takeaways.length > 0 && (
+              {c.takeawaysHtml && (
                 <section className="pgd-panel">
                   <h3>Key takeaways</h3>
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.7, color: "rgba(250,248,245,.68)" }}>
-                    {c.takeaways.map((t, i) => (
-                      <li key={i}>{t}</li>
-                    ))}
-                  </ul>
+                  {/* Sanitized upstream by richText(): strict tag allowlist,
+                      every attribute dropped except a validated href. */}
+                  <div
+                    className="pgd-prose"
+                    dangerouslySetInnerHTML={{ __html: c.takeawaysHtml }}
+                  />
                 </section>
               )}
             </>

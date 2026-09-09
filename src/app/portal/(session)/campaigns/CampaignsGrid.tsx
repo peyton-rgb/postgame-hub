@@ -81,7 +81,16 @@ export default function CampaignsGrid({
             const href = c.slug ? `/portal/campaigns/${c.slug}` : undefined;
             const Tag = href ? "a" : "div";
             return (
-              <Tag key={c.id} className="pgd-card" {...(href ? { href } : {})}>
+              <Tag
+                key={c.id}
+                // A card with no image must not be stretched to the height of
+                // a card that has one. The grid's default align-items:stretch
+                // was giving Strategic Markets, Injured Athlete, Bloomington
+                // and 26 Spring Epic Beauty a 170px void where the thumbnail
+                // would be.
+                className={`pgd-card${!c.live && c.heroUrl ? "" : " pgd-card-noimg"}`}
+                {...(href ? { href } : {})}
+              >
                 {/* Wrapped cards carry the hero thumbnail. Live campaigns have no
                     hero media on this data, so they get no image slot at all
                     rather than an empty grey rectangle. */}

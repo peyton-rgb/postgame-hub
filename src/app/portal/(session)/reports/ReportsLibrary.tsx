@@ -8,7 +8,7 @@ import type { ReportGroup } from "@/lib/portal/pages-data";
 // round trip per selection would be slower than filtering in place.
 export default function ReportsLibrary({ groups }: { groups: ReportGroup[] }) {
   const [quarter, setQuarter] = useState("");
-  const shown = quarter ? groups.filter(([q]) => q === quarter) : groups;
+  const shown = quarter ? groups.filter((g) => g.label === quarter) : groups;
 
   return (
     <>
@@ -22,25 +22,33 @@ export default function ReportsLibrary({ groups }: { groups: ReportGroup[] }) {
             aria-label="Filter by quarter"
           >
             <option value="">All quarters</option>
-            {groups.map(([q]) => (
-              <option key={q} value={q}>
-                {q}
+            {groups.map((g) => (
+              <option key={g.label} value={g.label}>
+                {g.label}
               </option>
             ))}
           </select>
           <span className="pgd-count">
-            {shown.reduce((n, [, items]) => n + items.length, 0)} of{" "}
-            {groups.reduce((n, [, items]) => n + items.length, 0)}
+            {shown.reduce((n, g) => n + g.items.length, 0)} of{" "}
+            {groups.reduce((n, g) => n + g.items.length, 0)}
           </span>
         </div>
       )}
 
-      {shown.map(([q, items]) => (
-        <section key={q}>
-          <h2 className="pgd-group-h">{q}</h2>
+      {shown.map((g) => (
+        <section key={g.label}>
+          <h2 className="pgd-group-h">
+            {g.label}
+            {/* Say so when the heading came from a delivery date rather than a
+                recorded quarter, so nobody reads it as a field someone set. */}
+            {g.derived && <span className="pgd-group-note">by delivery date</span>}
+          </h2>
           <div className="pgd-cards">
-            {items.map((c) => (
-              <div className="pgd-card" key={c.id}>
+            {g.items.map((c) => (
+              <div
+                className={`pgd-card${c.heroUrl ? "" : " pgd-card-noimg"}`}
+                key={c.id}
+              >
                 {c.heroUrl ? (
                   <span className="pgd-card-thumb">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

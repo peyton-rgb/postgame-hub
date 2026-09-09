@@ -34,7 +34,22 @@ export default function AthletesGrid({
   const [school, setSchool] = useState("");
   const [sport, setSport] = useState("");
 
-  const shown = useMemo(() => {
+  // 60 is ten rows at the desktop column count. Rendering all 1,501 cards at
+  // once is a lot of DOM and, for the leading 300 that have one, 300 headshot
+  // requests on first paint.
+  const PAGE_SIZE = 60;
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  // A filter change restarts the count — otherwise a deep limit carried into a
+  // narrow filter defeats the paging.
+  const withReset =
+    <T,>(set: (v: T) => void) =>
+    (v: T) => {
+      set(v);
+      setLimit(PAGE_SIZE);
+    };
+
+  const matched = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return athletes.filter((a) => {
       if (school && a.school !== school) return false;
@@ -44,6 +59,9 @@ export default function AthletesGrid({
     });
   }, [athletes, q, school, sport]);
 
+  const shown = matched.slice(0, limit);
+  const more = matched.length - shown.length;
+
   return (
     <div className="pgd-page">
       <div className="pgd-filters">
@@ -51,14 +69,14 @@ export default function AthletesGrid({
           className="pgd-input"
           type="search"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => withReset(setQ)(e.target.value)}
           placeholder="Search athletes…"
           aria-label="Search athletes by name"
         />
         <select
           className="pgd-select"
           value={school}
-          onChange={(e) => setSchool(e.target.value)}
+          onChange={(e) => withReset(setSchool)(e.target.value)}
           aria-label="Filter by school"
         >
           <option value="">All schools</option>
@@ -71,7 +89,7 @@ export default function AthletesGrid({
         <select
           className="pgd-select"
           value={sport}
-          onChange={(e) => setSport(e.target.value)}
+          onChange={(e) => withReset(setSport)(e.target.value)}
           aria-label="Filter by sport"
         >
           <option value="">All sports</option>
@@ -82,11 +100,12 @@ export default function AthletesGrid({
           ))}
         </select>
         <span className="pgd-count">
-          {shown.length} of {athletes.length}
+          {shown.length} of {matched.length}
+          {matched.length !== athletes.length ? ` (${athletes.length} total)` : ""}
         </span>
       </div>
 
-      {shown.length === 0 ? (
+      {matched.length === 0 ? (
         <div className="pgd-panel">
           <b style={{ fontSize: 13 }}>No athletes match that</b>
           <p className="pgd-card-meta" style={{ marginTop: 6 }}>
@@ -126,6 +145,19 @@ export default function AthletesGrid({
               </span>
             </div>
           ))}
+        </div>
+      )}
+
+      {more > 0 && (
+        <div className="pgd-more-row">
+          <button
+            type="button"
+            className="pgd-btn"
+            onClick={() => setLimit((n) => n + PAGE_SIZE)}
+          >
+            Load {Math.min(more, PAGE_SIZE)} more
+          </button>
+          <span className="pgd-card-meta">{more} remaining</span>
         </div>
       )}
     </div>

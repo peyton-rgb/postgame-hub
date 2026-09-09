@@ -34,13 +34,34 @@ export default function MediaGrid({
   const [school, setSchool] = useState("");
   const [open, setOpen] = useState<MediaItem | null>(null);
 
-  const shown = items.filter((m) => {
+  // PAGE_SIZE exists because rendering the whole gallery at once means 411
+  // <img> tags for CVS. Even lazily loaded that is 411 originals the browser
+  // will eventually ask for, and the tiles sit on the placeholder tint until
+  // it does — which on this ground reads as a grid of black boxes. 40 is about
+  // three screens at the desktop column count, so "Load more" is a deliberate
+  // act rather than something you hit immediately.
+  const PAGE_SIZE = 40;
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  const matched = items.filter((m) => {
     if (kind !== "all" && (kind === "video") !== m.isVideo) return false;
     if (campaign && m.campaignName !== campaign) return false;
     if (athlete && m.athleteName !== athlete) return false;
     if (school && m.school !== school) return false;
     return true;
   });
+
+  const shown = matched.slice(0, limit);
+  const more = matched.length - shown.length;
+
+  // Any filter change starts the count again — carrying a 400-deep limit into
+  // a 6-result filter would silently defeat the paging.
+  const withReset =
+    <T,>(set: (v: T) => void) =>
+    (v: T) => {
+      set(v);
+      setLimit(PAGE_SIZE);
+    };
 
   const fresh = (iso: string | null) => {
     if (!iso) return false;
@@ -54,7 +75,7 @@ export default function MediaGrid({
           <button
             key={k}
             className={`pgd-pill${kind === k ? " on" : ""}`}
-            onClick={() => setKind(k)}
+            onClick={() => withReset(setKind)(k)}
             aria-pressed={kind === k}
           >
             {k === "all" ? "All" : k === "photo" ? "Photos" : "Video"}
@@ -63,12 +84,13 @@ export default function MediaGrid({
         {/* One <select> per dimension, rendered only when the page supplied
             options for it. Campaign, athlete and school are all real columns;
             each option is a value that actually occurs in these rows. */}
-        <Picker label="All campaigns" value={campaign} set={setCampaign} options={campaigns} />
-        <Picker label="All athletes" value={athlete} set={setAthlete} options={athletes} />
-        <Picker label="All schools" value={school} set={setSchool} options={schools} />
+        <Picker label="All campaigns" value={campaign} set={withReset(setCampaign)} options={campaigns} />
+        <Picker label="All athletes" value={athlete} set={withReset(setAthlete)} options={athletes} />
+        <Picker label="All schools" value={school} set={withReset(setSchool)} options={schools} />
 
         <span className="pgd-count">
-          {shown.length} of {items.length}
+          {shown.length} of {matched.length}
+          {matched.length !== items.length ? ` (${items.length} total)` : ""}
         </span>
       </div>
 
@@ -107,6 +129,19 @@ export default function MediaGrid({
               )}
             </button>
           ))}
+        </div>
+      )}
+
+      {more > 0 && (
+        <div className="pgd-more-row">
+          <button
+            type="button"
+            className="pgd-btn"
+            onClick={() => setLimit((n) => n + PAGE_SIZE)}
+          >
+            Load {Math.min(more, PAGE_SIZE)} more
+          </button>
+          <span className="pgd-card-meta">{more} remaining</span>
         </div>
       )}
 

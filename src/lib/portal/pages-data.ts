@@ -13,6 +13,7 @@
 // ============================================================
 
 import { createServerSupabase } from "@/lib/supabase-server";
+import { richText } from "@/lib/portal/rich-text";
 
 export const WRAPPED = ["delivered", "closed"] as const;
 const NO_MATCH = "00000000-0000-0000-0000-000000000000";
@@ -42,6 +43,22 @@ export function compact(n: number): string {
  *
  * Anything that is not a public Storage object URL is returned untouched.
  */
+/**
+ * Rewrite a Storage object URL onto the image-transform endpoint.
+ *
+ * USE THIS SPARINGLY. Transforms are a metered Supabase feature, and one
+ * call per rendered tile adds up fast: the content gallery alone was issuing
+ * 411 of them per page view. Media tiles no longer use it at all — they take
+ * `thumbnail_url` as stored, falling back to the plain object URL (see
+ * mediaThumb below). It is kept for the small fixed-size headshots, where a
+ * 160px transform is genuinely smaller than a 1.4MB original.
+ *
+ * Not the cause of the black gallery tiles, incidentally: the endpoint was
+ * verified healthy on every URL shape in this bucket, including names
+ * carrying %20 and parentheses, and 12 real tile URLs loaded in-browser in
+ * 3-7ms at naturalWidth 420. The gallery's problem was volume, not the
+ * endpoint.
+ */
 export function thumb(url: string, width = 420): string {
   const marker = "/storage/v1/object/public/";
   if (!url.includes(marker)) return url;
@@ -50,6 +67,21 @@ export function thumb(url: string, width = 420): string {
     (url.includes("?") ? "&" : "?") +
     `width=${width}&quality=70`
   );
+}
+
+/**
+ * The thumbnail source for a media tile: whatever `thumbnail_url` holds, else
+ * the plain object URL. No transform, so a gallery costs zero transform
+ * calls. For CVS, 411 of 460 rows carry a thumbnail_url (every one of the 104
+ * videos does, and none of them points at the mp4 — checked); the remaining
+ * 49 are images that fall back to their original, which pagination keeps to a
+ * sane number per page.
+ */
+export function mediaThumb(
+  thumbnailUrl: string | null,
+  fileUrl: string | null
+): string | null {
+  return thumbnailUrl || fileUrl || null;
 }
 
 export interface CampaignListItem {
@@ -298,7 +330,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
       return {
         id: m.id,
         url,
-        thumbUrl: thumb(thumbSrc),
+        thumbUrl: thumbSrc,
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
         // The detail page's Content tab is already scoped to one campaign,
@@ -323,7 +355,10 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     quarter: c.quarter,
     campaignType: c.campaign_type,
     platform: c.platform,
-    description: c.description,
+    // Sanitized HTML, not a raw string. Both fields hold a mix of real
+    // markup and plain text across CVS's rows; richText() handles either
+    // and returns null when there is nothing but empty tags.
+    descriptionHtml: richText(c.description),
     managerName: c.manager_name,
     managerEmail: c.manager_email,
     driveFolderId: c.drive_content_folder_id,
@@ -331,7 +366,13 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     // column (1325px at 1440) and 900 visibly upscales.
     heroUrl: c.hero_image_url || (await loadHeroes(supabase, [c.id], 1600)).get(c.id) || null,
     figures: readFigures(c.kpi_targets, 4),
-    takeaways: readTakeaways(c.key_takeaways),
+    takeawaysHtml: richText(
+      typeof c.key_takeaways === "string"
+        ? c.key_takeaways
+        : Array.isArray(c.key_takeaways)
+          ? c.key_takeaways.map((t) => `- ${String(t)}`).join("\n")
+          : null
+    ),
     athletes,
     media: items,
     athleteCount: stat?.athletes ?? athletes.length,
@@ -351,14 +392,11 @@ function reelViews(metrics: Record<string, any> | null): number | null {
   return n;
 }
 
-/** key_takeaways may be an array or a newline string; anything else is ignored. */
-function readTakeaways(raw: unknown): string[] {
-  if (Array.isArray(raw)) return raw.map((t) => String(t).trim()).filter(Boolean).slice(0, 6);
-  if (typeof raw === "string") {
-    return raw.split(/\r?\n/).map((t) => t.trim()).filter(Boolean).slice(0, 6);
-  }
-  return [];
-}
+// readTakeaways() is gone. It split the field on newlines, which is right for
+// the plain-text rows and completely wrong for the HTML ones: "<ul><li><p>..."
+// contains no newlines, so the whole blob became a single array entry and
+// rendered as visible tags on the Results tab. richText() in rich-text.ts
+// decides per value which format it is looking at.
 
 // ---- 3 · Content gallery ----------------------------------------
 export async function loadContentGallery(brandId: string) {
@@ -419,7 +457,7 @@ export async function loadContentGallery(brandId: string) {
       return {
         id: m.id,
         url,
-        thumbUrl: thumb(thumbSrc),
+        thumbUrl: thumbSrc,
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
         school: m.athlete_id ? schoolById.get(m.athlete_id) ?? null : null,
@@ -450,12 +488,40 @@ export interface ReportCard {
   name: string;
   slug: string | null;
   quarter: string | null;
+  /** True when `quarter` was derived from admin_created_on, not stored. */
+  quarterDerived: boolean;
   heroUrl: string | null;
   figures: { value: string; label: string }[];
 }
 
-/** [quarter heading, its campaigns] — named so the client half can type it. */
-export type ReportGroup = [string, ReportCard[]];
+export interface ReportGroup {
+  label: string;
+  /** Every campaign in the group got its quarter from a date, not a field. */
+  derived: boolean;
+  /** year * 4 + quarter, so Q1 2026 sorts above Q4 2025. */
+  sortKey: number;
+  items: ReportCard[];
+}
+
+/**
+ * Calendar quarter from a date. CALENDAR, not fiscal — if Postgame's reporting
+ * year does not start in January these labels will be a quarter off, and the
+ * fix is a stored quarter rather than a different guess here.
+ */
+export function quarterFromDate(iso: string): { label: string; sortKey: number } | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const y = d.getUTCFullYear();
+  const q = Math.floor(d.getUTCMonth() / 3) + 1;
+  return { label: `Q${q} ${y}`, sortKey: y * 4 + q };
+}
+
+/** Parse a stored "Q1 2026" back into a sort key so both kinds interleave. */
+function quarterSortKey(label: string): number {
+  const m = /^Q([1-4])\s+(\d{4})$/.exec(label.trim());
+  if (!m) return -1;
+  return Number(m[2]) * 4 + Number(m[1]);
+}
 
 export async function loadReports(
   brandId: string
@@ -472,33 +538,54 @@ export async function loadReports(
 
   const heroes = await loadHeroes(supabase, wrapped.map((c) => c.id));
 
-  const items: ReportCard[] = wrapped.map((c) => ({
-    id: c.id,
-    name: c.name ?? "Campaign",
-    slug: c.slug,
-    quarter: c.quarter,
-    heroUrl: c.hero_image_url || heroes.get(c.id) || null,
-    figures: readFigures(c.kpi_targets, 3),
-  }));
+  const items: ReportCard[] = wrapped.map((c) => {
+    // A STORED quarter wins, but only if it is a real value. 12 of CVS's 13
+    // non-null quarters are the EMPTY STRING, which is why an earlier cut of
+    // this grouped 45 of 46 campaigns under one "no quarter" heading: "" is
+    // falsy, so it fell into the fallback bucket alongside the true nulls.
+    // Only one row carries an actual quarter ("Q1 2026"), and that row has no
+    // admin_created_on — so both sources are needed and neither is optional.
+    const stored = (c.quarter ?? "").trim();
+    const derived = c.admin_created_on ? quarterFromDate(c.admin_created_on) : null;
 
-  // Grouped by quarter. Campaigns with no quarter go in their own bucket rather
-  // than being assigned one. "No quarter on file" says what is actually true —
-  // 9 of CVS's 10 wrapped campaigns have a null quarter, and "Unscheduled"
-  // implied they were awaiting scheduling rather than simply unlabelled.
-  const NO_QUARTER = "No quarter on file";
-  const groups = new Map<string, ReportCard[]>();
+    return {
+      id: c.id,
+      name: c.name ?? "Campaign",
+      slug: c.slug,
+      quarter: stored || derived?.label || null,
+      quarterDerived: !stored && !!derived,
+      heroUrl: c.hero_image_url || heroes.get(c.id) || null,
+      figures: readFigures(c.kpi_targets, 3),
+    };
+  });
+
+  // Grouped by quarter, and there is deliberately NO "no quarter" group: a
+  // heading that names an absence tells a brand nothing about their own work.
+  // Every CVS campaign resolves — 13 from a stored value, 33 from
+  // admin_created_on, and zero rows have neither.
+  //
+  // UNDATED is the honest last resort for a brand where a campaign has no
+  // quarter AND no date. It cannot be reached with CVS's data today; the only
+  // alternative would be inventing a date, so it stays rather than being
+  // pretended away.
+  const UNDATED = "Undated";
+  const byLabel = new Map<string, ReportCard[]>();
   for (const i of items) {
-    const key = i.quarter || NO_QUARTER;
-    groups.set(key, [...(groups.get(key) ?? []), i]);
+    const key = i.quarter ?? UNDATED;
+    byLabel.set(key, [...(byLabel.get(key) ?? []), i]);
   }
 
-  // Dated quarters newest-first, then the undated bucket last — a heading that
-  // names an absence should not open the page.
-  const ordered = Array.from(groups.entries()).sort((a, b) => {
-    if (a[0] === NO_QUARTER) return 1;
-    if (b[0] === NO_QUARTER) return -1;
-    return b[0].localeCompare(a[0]);
-  });
+  const ordered: ReportGroup[] = Array.from(byLabel.entries())
+    .map(([label, groupItems]) => ({
+      label,
+      // Marked derived only when EVERY campaign in it came from a date, so a
+      // group mixing a stored quarter with derived ones is not mislabelled.
+      derived: groupItems.every((i) => i.quarterDerived),
+      sortKey: label === UNDATED ? -1 : quarterSortKey(label),
+      items: groupItems,
+    }))
+    // Newest quarter first; anything unparseable or undated sinks to the end.
+    .sort((a, b) => b.sortKey - a.sortKey);
 
   return { groups: ordered, total: items.length };
 }
@@ -516,30 +603,55 @@ export interface DirectoryAthlete {
   headshotUrl: string | null;
 }
 
+interface DirectoryRow {
+  athlete_key: string;
+  name: string;
+  school: string | null;
+  sport: string | null;
+  followers: number | null;
+  campaigns: number;
+  last_campaign: string | null;
+  top_reel_views: number | null;
+  sample_athlete_id: string | null;
+}
+
+const DIRECTORY_COLUMNS =
+  "athlete_key, name, school, sport, followers, campaigns, last_campaign, top_reel_views, sample_athlete_id";
+
+/** PostgREST refuses to return more than this in one response, whatever .limit says. */
+const PAGE = 500;
+
 export async function loadAthleteDirectory(brandId: string) {
   const supabase = createServerSupabase();
 
-  // Deduplicated in SQL (migration 049) — 2,096 CVS rows collapse to ~1,501
-  // people, and PostgREST would cap a raw fetch at 1000.
-  const { data } = await supabase
-    .from("portal_brand_athletes")
-    .select("athlete_key, name, school, sport, followers, campaigns, last_campaign, top_reel_views, sample_athlete_id")
-    .eq("brand_id", brandId)
-    .order("followers", { ascending: false, nullsFirst: false })
-    .limit(600);
+  // Deduplicated in SQL (migration 049) — 2,096 CVS rows collapse to 1,501
+  // people.
+  //
+  // FETCHED IN CHUNKS, not with .limit(600). The 600 was a cap I chose to stay
+  // under PostgREST's hard 1000-row response ceiling, and it made the page
+  // claim "600 of 600" while the brand actually has 1,501 — a number that
+  // looked like a total and was really a truncation. Ranged requests walk past
+  // the ceiling, so the directory is now complete and the count is honest.
+  const rows: DirectoryRow[] = [];
+  for (let from = 0; from < 4000; from += PAGE) {
+    const { data, error } = await supabase
+      .from("portal_brand_athletes")
+      .select(DIRECTORY_COLUMNS)
+      .eq("brand_id", brandId)
+      .order("followers", { ascending: false, nullsFirst: false })
+      .order("athlete_key", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) break;
+    const chunk = (data ?? []) as DirectoryRow[];
+    rows.push(...chunk);
+    if (chunk.length < PAGE) break;
+  }
 
-  const rows = (data ?? []) as {
-    athlete_key: string;
-    name: string;
-    school: string | null;
-    sport: string | null;
-    followers: number | null;
-    campaigns: number;
-    last_campaign: string | null;
-    top_reel_views: number | null;
-    sample_athlete_id: string | null;
-  }[];
-
+  // Headshots only for the leading slice. Rows are ordered by followers, so
+  // these are the ones the first pages of the grid show; everything past it
+  // falls back to initials, which is already the no-media state. Deliberately
+  // NOT one lookup per athlete — 1,501 of those is both a PostgREST ceiling
+  // problem and 1,501 image requests.
   const sampleIds = rows
     .map((r) => r.sample_athlete_id)
     .filter((x): x is string => !!x)
@@ -581,7 +693,7 @@ export async function loadAthleteDirectory(brandId: string) {
     new Set(athletes.map((a) => a.sport).filter((s): s is string => !!s))
   ).sort();
 
-  return { athletes, schools, sports };
+  return { athletes, schools, sports, total: athletes.length };
 }
 
 // ---- 6 · Settings -----------------------------------------------

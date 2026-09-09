@@ -28,7 +28,7 @@ export default async function Page({
       postgameIcon={icon}
       preview={preview}
       title="Athletes"
-      subtitle={data.athletes.length > 0 ? `${data.athletes.length} shown` : null}
+      subtitle={data.total > 0 ? `${data.total} athletes` : null}
     >
       <AthletesGrid athletes={data.athletes} schools={data.schools} sports={data.sports} />
     </PortalShell>
