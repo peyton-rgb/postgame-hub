@@ -133,7 +133,20 @@ export default function BrandDashboard({
                     {data.roster.subline}
                   </span>
                 </h3>
-                <a className="pgd-more" href="/portal/athletes">
+                {/* THIS CAMPAIGN'S roster, not the 1,501-person directory.
+                    The tile is showing 12 of one campaign's athletes, so
+                    "All athletes" meant "the rest of these" — and it was
+                    landing people in a filterless list of everyone the brand
+                    has ever worked with. Falls back to the directory only
+                    when the campaign has no slug to link to. */}
+                <a
+                  className="pgd-more"
+                  href={
+                    data.roster.campaignSlug
+                      ? `/portal/campaigns/${data.roster.campaignSlug}?tab=athletes`
+                      : "/portal/athletes"
+                  }
+                >
                   All athletes &rsaquo;
                 </a>
                 <div className="pgd-scroll">
@@ -276,12 +289,17 @@ export default function BrandDashboard({
                         failed to load rather than a campaign that has not
                         started. Absent says it better than a placeholder. */}
                     {(() => {
-                      const meta = [
-                        c.quarter,
-                        c.athletes > 0 ? `${c.athletes} athletes` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ");
+                      // A LIVE card says what kind of campaign it is; a
+                      // wrapped one says how big the roster was. Both are the
+                      // fact that matters at that stage: nothing has been
+                      // delivered on a live campaign yet, so a roster count
+                      // is the least interesting thing about it, and a
+                      // wrapped campaign's type is already in its recap.
+                      const meta = c.live
+                        ? [c.quarter, c.campaignType].filter(Boolean).join(" · ")
+                        : [c.quarter, c.athletes > 0 ? `${c.athletes} athletes` : null]
+                            .filter(Boolean)
+                            .join(" · ");
                       return meta ? (
                         <div className="pgd-cm" title={c.platform ?? undefined}>
                           {meta}

@@ -24,10 +24,10 @@ const SPECIAL: Record<string, string> = {
 /** Lowercase inside a name, never at the start. */
 const SMALL = new Set(["of", "the", "at", "and", "in", "for", "on", "an"]);
 
-function titleWord(w: string): string {
+function titleWord(w: string, acronyms: Set<string> = ACRONYMS): string {
   if (w.length === 0) return w;
   const upper = w.toUpperCase();
-  if (ACRONYMS.has(upper)) return upper;
+  if (acronyms.has(upper)) return upper;
   // Single letters are initials — "A & M", "J. Smith".
   if (/^[A-Za-z]\.?$/.test(w)) return w.toUpperCase();
   // Ordinals and anything with a digit keep their shape.
@@ -38,18 +38,50 @@ function titleWord(w: string): string {
 /**
  * Title-case a school name for display, leaving acronyms alone.
  *
- * WHY THIS IS CONDITIONAL. The column holds three shapes, all real:
+ * Hyphens, ampersands and "A & M" survive because the split keeps its
+ * separators and single letters stay uppercase.
+ */
+export function titleCaseSchool(raw: string | null | undefined): string | null {
+  return titleCaseName(raw, ACRONYMS, SPECIAL);
+}
+
+/**
+ * Sports whose names ARE initials. "WBB Coach" already carries a lowercase
+ * letter and so never reaches the caser, but the set is what makes an
+ * all-caps "WBB" safe too.
+ */
+const SPORT_ACRONYMS = new Set(["WBB", "MBB", "XC", "T&F", "MMA"]);
+
+/**
+ * Title-case a sport for display. Same conditional rule as a school name, and
+ * for the same reason: `athletes.sport` holds both shapes, often for the same
+ * sport — 369 rows say "TRACK & FIELD" and 123 say "Track & Field", 209 say
+ * "FOOTBALL" and 64 say "Football". Shouting at a brand in one row and not
+ * the next is the tell that nobody formatted this column.
+ *
+ * The ampersand survives: it is its own space-separated part, and the
+ * small-word rule only applies to parts longer than one character.
+ */
+export function titleCaseSport(raw: string | null | undefined): string | null {
+  return titleCaseName(raw, SPORT_ACRONYMS, {});
+}
+
+/**
+ * The shared caser.
+ *
+ * WHY THIS IS CONDITIONAL. Both columns hold three shapes, all real:
  *   "MICHIGAN STATE UNIVERSITY"   shouting, needs casing
  *   "LSU" / "UCLA" / "UCONN"      initials, must not be touched
  *   "Alabama" / "Texas Tech"      already correct, must not be re-cased
  * So a value that ALREADY contains a lowercase letter is returned untouched —
  * re-casing it can only do damage, and someone typed it deliberately. Only
  * all-caps values are converted.
- *
- * Hyphens, ampersands and "A & M" survive because the split keeps its
- * separators and single letters stay uppercase.
  */
-export function titleCaseSchool(raw: string | null | undefined): string | null {
+function titleCaseName(
+  raw: string | null | undefined,
+  acronyms: Set<string>,
+  special: Record<string, string>
+): string | null {
   if (!raw) return null;
   const value = raw.trim().replace(/\s+/g, " ");
   if (value === "") return null;
@@ -57,9 +89,9 @@ export function titleCaseSchool(raw: string | null | undefined): string | null {
   // Already mixed case — someone formatted it; leave it be.
   if (/[a-z]/.test(value)) return value;
 
-  const special = SPECIAL[value.toUpperCase()];
-  if (special) return special;
-  if (ACRONYMS.has(value.toUpperCase())) return value.toUpperCase();
+  const exact = special[value.toUpperCase()];
+  if (exact) return exact;
+  if (acronyms.has(value.toUpperCase())) return value.toUpperCase();
 
   // Split on spaces but keep separators so "BETHUNE - COOKMAN" and
   // "A & M" come back with their punctuation intact.
@@ -73,8 +105,8 @@ export function titleCaseSchool(raw: string | null | undefined): string | null {
       // word here is at least two characters.
       if (i > 0 && lower.length > 1 && SMALL.has(lower)) return lower;
       // Hyphenated compounds get each half cased: "WINSTON-SALEM".
-      if (part.includes("-")) return part.split("-").map(titleWord).join("-");
-      return titleWord(part);
+      if (part.includes("-")) return part.split("-").map((w) => titleWord(w, acronyms)).join("-");
+      return titleWord(part, acronyms);
     })
     .join(" ");
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MediaItem } from "@/lib/portal/pages-data";
 
 // Shared media grid + lightbox for the Content gallery and the campaign
@@ -32,7 +32,16 @@ export default function MediaGrid({
   const [campaign, setCampaign] = useState("");
   const [athlete, setAthlete] = useState("");
   const [school, setSchool] = useState("");
-  const [open, setOpen] = useState<MediaItem | null>(null);
+  // KEYWORD TERMS, as removable chips that stack with the dropdown filters.
+  // Chips rather than one free-text box because they compose: "cvs" + "bag"
+  // narrows, and either can be dropped without retyping the other. Terms are
+  // ANDed, and each is matched against the row's whole haystack — athlete,
+  // school, campaign and filename.
+  const [terms, setTerms] = useState<string[]>([]);
+  const [draft, setDraft] = useState("");
+  // The lightbox holds an INDEX, not the item: next/previous need to know
+  // where they are in the list, and an item alone cannot say.
+  const [openAt, setOpenAt] = useState<number | null>(null);
 
   // PAGE_SIZE exists because rendering the whole gallery at once means 411
   // <img> tags for CVS. Even lazily loaded that is 411 originals the browser
@@ -43,13 +52,18 @@ export default function MediaGrid({
   const PAGE_SIZE = 40;
   const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const matched = items.filter((m) => {
-    if (kind !== "all" && (kind === "video") !== m.isVideo) return false;
-    if (campaign && m.campaignName !== campaign) return false;
-    if (athlete && m.athleteName !== athlete) return false;
-    if (school && m.school !== school) return false;
-    return true;
-  });
+  const matched = useMemo(
+    () =>
+      items.filter((m) => {
+        if (kind !== "all" && (kind === "video") !== m.isVideo) return false;
+        if (campaign && m.campaignName !== campaign) return false;
+        if (athlete && m.athleteName !== athlete) return false;
+        if (school && m.school !== school) return false;
+        for (const t of terms) if (!m.haystack.includes(t)) return false;
+        return true;
+      }),
+    [items, kind, campaign, athlete, school, terms]
+  );
 
   const shown = matched.slice(0, limit);
   const more = matched.length - shown.length;
@@ -62,6 +76,48 @@ export default function MediaGrid({
       set(v);
       setLimit(PAGE_SIZE);
     };
+
+  const addTerm = () => {
+    const t = draft.trim().toLowerCase();
+    setDraft("");
+    if (!t || terms.includes(t)) return;
+    setTerms((prev) => [...prev, t]);
+    setLimit(PAGE_SIZE);
+  };
+  const dropTerm = (t: string) => {
+    setTerms((prev) => prev.filter((x) => x !== t));
+    setLimit(PAGE_SIZE);
+  };
+
+  const open = openAt === null ? null : shown[openAt] ?? null;
+  const step = useCallback(
+    (delta: number) => {
+      setOpenAt((at) => {
+        if (at === null) return at;
+        const next = at + delta;
+        // Stops at the ends rather than wrapping: wrapping from the last item
+        // back to the first reads as a bug when you are paging through a
+        // gallery to see what is there.
+        return next < 0 || next >= shown.length ? at : next;
+      });
+    },
+    [shown.length]
+  );
+
+  // Esc closes, arrows step. Bound while the lightbox is open only, so the
+  // grid's own keyboard behaviour is untouched the rest of the time.
+  useEffect(() => {
+    if (openAt === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenAt(null);
+      else if (e.key === "ArrowRight") step(1);
+      else if (e.key === "ArrowLeft") step(-1);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openAt, step]);
 
   const fresh = (iso: string | null) => {
     if (!iso) return false;
@@ -88,11 +144,60 @@ export default function MediaGrid({
         <Picker label="All athletes" value={athlete} set={withReset(setAthlete)} options={athletes} />
         <Picker label="All schools" value={school} set={withReset(setSchool)} options={schools} />
 
+        {/* Keyword search, beside the toggles. Enter (or a comma) turns the
+            text into a chip; the chips stack with the dropdowns above. */}
+        <input
+          className="pgd-input"
+          type="search"
+          value={draft}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.endsWith(",")) {
+              setDraft(v.slice(0, -1));
+              // Defer so the state above lands before addTerm reads it.
+              setTimeout(addTerm, 0);
+            } else setDraft(v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addTerm();
+            } else if (e.key === "Backspace" && draft === "" && terms.length > 0) {
+              dropTerm(terms[terms.length - 1]);
+            }
+          }}
+          onBlur={addTerm}
+          placeholder="Search athlete, school, campaign, filename…"
+          aria-label="Search content by keyword"
+        />
+
         <span className="pgd-count">
           {shown.length} of {matched.length}
           {matched.length !== items.length ? ` (${items.length} total)` : ""}
         </span>
       </div>
+
+      {terms.length > 0 && (
+        <div className="pgd-chips">
+          {terms.map((t) => (
+            <button
+              type="button"
+              className="pgd-term"
+              key={t}
+              onClick={() => dropTerm(t)}
+              aria-label={`Remove ${t}`}
+            >
+              {t}
+              <span aria-hidden="true">×</span>
+            </button>
+          ))}
+          {terms.length > 1 && (
+            <button type="button" className="pgd-term-clear" onClick={() => setTerms([])}>
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
 
       {shown.length === 0 ? (
         <div className="pgd-panel">
@@ -103,15 +208,29 @@ export default function MediaGrid({
         </div>
       ) : (
         <div className={`pgd-media${columns === "wide" ? " pgd-media-2" : ""}`}>
-          {shown.map((m) => (
+          {shown.map((m, i) => (
             <button
               key={m.id}
               className="pgd-shot"
-              onClick={() => setOpen(m)}
+              onClick={() => setOpenAt(i)}
               aria-label={`Open ${m.athleteName ?? "media"}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.thumbUrl} alt="" loading="lazy" />
+              <img
+                src={m.thumbUrl}
+                alt=""
+                loading="lazy"
+                // The transform endpoint is a separate service from object
+                // storage and can fail on an object storage will still serve.
+                // One retry with the original, guarded by a flag so a broken
+                // original cannot loop.
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (!m.thumbFallbackUrl || el.dataset.fellBack) return;
+                  el.dataset.fellBack = "1";
+                  el.src = m.thumbFallbackUrl;
+                }}
+              />
               {m.isVideo && (
                 <span className="pgd-play" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -151,7 +270,7 @@ export default function MediaGrid({
           role="dialog"
           aria-modal="true"
           aria-label="Media preview"
-          onClick={() => setOpen(null)}
+          onClick={() => setOpenAt(null)}
         >
           {open.isVideo ? (
             // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -171,7 +290,39 @@ export default function MediaGrid({
               Open original
             </a>
           </div>
-          <button className="pgd-close" onClick={() => setOpen(null)}>
+          {/* Previous / next, and Esc closes — bound in the effect above.
+              Disabled rather than hidden at the ends, so the controls do not
+              move under the pointer while paging. */}
+          {shown.length > 1 && openAt !== null && (
+            <>
+              <button
+                className="pgd-lb-step pgd-lb-prev"
+                aria-label="Previous"
+                disabled={openAt === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  step(-1);
+                }}
+              >
+                ‹
+              </button>
+              <button
+                className="pgd-lb-step pgd-lb-next"
+                aria-label="Next"
+                disabled={openAt === shown.length - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  step(1);
+                }}
+              >
+                ›
+              </button>
+              <span className="pgd-lb-count" aria-hidden="true">
+                {openAt + 1} of {shown.length}
+              </span>
+            </>
+          )}
+          <button className="pgd-close" onClick={() => setOpenAt(null)}>
             Close
           </button>
         </div>

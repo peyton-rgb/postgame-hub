@@ -156,6 +156,20 @@
 }
 .pgd-t.pgd-search::placeholder { color: rgba(250, 248, 245, 0.42) }
 .pgd-t.pgd-search:focus-visible { box-shadow: inset 0 0 0 1px rgba(250, 248, 245, 0.3) }
+/* Sits inside the field's pill, on its right edge. */
+.pgd-search-form { position: relative }
+.pgd-t.pgd-search { padding-right: 42px }
+.pgd-search-go {
+  position: absolute; right: 4px; top: 4px; width: 32px; height: 32px;
+  border: 0; border-radius: 999px; background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  color: var(--ink-50);
+}
+.pgd-search-go:hover { color: var(--ink); background: rgba(250, 248, 245, 0.08) }
+.pgd-search-go svg {
+  width: 17px; height: 17px; fill: none; stroke: currentColor;
+  stroke-width: 1.9; stroke-linecap: round;
+}
 .pgd-av {
   width: 40px; height: 40px; border-radius: 50%; background: var(--orange);
   display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
@@ -172,6 +186,9 @@
   margin: 0; letter-spacing: 0.01em;
 }
 .pgd-sub { color: rgba(250, 248, 245, 0.55); margin: 6px 0 0; font-size: 16px }
+/* The header's only line, on a page that names itself in its body. Sits on
+   the h1's baseline rather than 6px below where the h1 would have been. */
+.pgd-sub.pgd-sub-lead { margin: 0; padding-top: 6px }
 .pgd-kpis { display: flex; gap: 26px; flex-wrap: wrap }
 .pgd-kpi { text-align: right }
 .pgd-kpi b {
@@ -308,14 +325,22 @@
 
 
 /* Latest wrapped photo tile */
-.pgd-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 15%; display: block }
+/* 42%, moved down from 15%. The overlay now sits over the top of the tile,
+   so a face framed at 15% ends up behind the campaign name. */
+.pgd-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; display: block }
+/* TOP-LEFT, not bottom. The block is the tile's heading — campaign name, the
+   figures, then where they came from — and a heading belongs where the eye
+   starts. At the bottom it also had to fight the photograph: these are
+   portraits, so the subject's face is usually in the upper half and the lower
+   half is the busiest part of the frame.
+
+   Three gradient stops, not two: the block holds a name, a row of 40px
+   figures and a footnote, and against a linear fade its far end sat on the
+   bright part of a poolside photograph. Near-solid ink behind the text,
+   fading only past it. */
 .pgd-over {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 92px 20px 18px;
-  /* Three stops, not two. The overlay now holds a name, a row of 40px
-     figures and a footnote, and against a linear fade the top of that block
-     sat on the bright part of a poolside photograph. This holds near-solid
-     ink behind the text and only fades above it. */
-  background: linear-gradient(0deg,
+  position: absolute; left: 0; right: 0; top: 0; padding: 20px 20px 92px;
+  background: linear-gradient(180deg,
     rgba(7, 7, 10, 0.96) 0%, rgba(7, 7, 10, 0.86) 46%, rgba(7, 7, 10, 0) 100%);
 }
 .pgd-over h2 {
@@ -341,7 +366,16 @@
    header keeps 120px clear on the right for the link. */
 .pgd-roster h3 { display: block; padding-right: 120px; margin-bottom: 10px }
 .pgd-roster h3 .pgd-muted { display: block; font-weight: 400; margin-top: 3px }
-.pgd-roster .pgd-scroll { overflow: auto; margin-top: 6px; flex: 1; min-height: 0 }
+.pgd-roster .pgd-scroll {
+  overflow: auto; margin-top: 6px; flex: 1; min-height: 0;
+  /* Snap so a row is never left half-hidden behind the sticky header. The
+     header is 34px of the box that never scrolls, so scroll-margin-top on the
+     rows is what makes "aligned to the start" mean "aligned under the
+     header". proximity, not mandatory: a deliberate small scroll should still
+     be possible. */
+  scroll-snap-type: y proximity;
+}
+.pgd-roster tbody tr { scroll-snap-align: start; scroll-margin-top: 34px }
 /* Both scrolling tile bodies fade out at the bottom edge. Without it the last
    visible row is sliced through the middle of its type, which reads as a
    layout bug rather than as "there is more below". */
@@ -349,8 +383,18 @@
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent 100%);
   mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent 100%);
 }
-.pgd-roster thead th { position: sticky; top: 0; background: var(--tile); z-index: 1 }
-.pgd-roster table { width: 100%; border-collapse: collapse; min-width: 560px }
+.pgd-roster thead th { position: sticky; top: 0; background: var(--tile); z-index: 2 }
+/* SEPARATE, not collapse. The sticky header was opaque (#111114), positioned,
+   and above the rows by z-index — elementFromPoint at its centre returned the
+   th — and the rows STILL showed through it. Collapsed borders are why: with
+   border-collapse: collapse a cell's background is painted in the table's
+   own background layer, below the in-flow content of other rows, so no
+   z-index on the cell can lift it. border-spacing: 0 keeps the layout
+   identical, and nothing here needs merged borders — th and td each set only
+   their own bottom edge. */
+.pgd-roster table {
+  width: 100%; border-collapse: separate; border-spacing: 0; min-width: 560px;
+}
 .pgd-roster th {
   text-align: left; font-weight: 400; font-size: 14px; color: var(--ink-45);
   padding: 6px 8px; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
@@ -613,7 +657,9 @@
    a gallery of 460 items and a directory of 1,501 athletes are lists, and
    a list that cannot scroll is a list you cannot read.
    ============================================================ */
-.pgd-page { overflow-y: auto; min-height: 0; padding-bottom: 32px }
+/* min-width: 0 so a wide child (the Reports table) cannot stretch the column
+   it sits in. */
+.pgd-page { overflow-y: auto; min-height: 0; min-width: 0; padding-bottom: 32px }
 .pgd.pgd-scrolls { height: 100vh }
 .pgd.pgd-scrolls .pgd-main { height: 100vh; overflow: hidden }
 
@@ -700,6 +746,102 @@
 .pgd-state-live { color: var(--orange-soft) }
 .pgd-state-wrapped { color: var(--ink-50) }
 
+/* ---- Reports: chart, table -----------------------------------
+   The bar chart is CSS, not a charting library. Two series over at most a
+   handful of quarters is a list of widths; a library would be 80KB to draw
+   what a div does, and the design system's own colours are not any library's
+   defaults.
+
+   TWO SCALES, one per series, stated in the heading. Posts run in the
+   hundreds and reel views in the millions on the same data, so a shared
+   scale renders every posts bar as a hairline — the bars would be honest and
+   unreadable. Each bar carries its own value as text, so the number is never
+   inferred from the length.
+   ------------------------------------------------------------- */
+.pgd-chart-rows { display: flex; flex-direction: column; gap: 14px }
+.pgd-chart-row { display: flex; align-items: center; gap: 16px }
+.pgd-chart-label {
+  flex: 0 0 84px; font-size: 14px; color: var(--ink-60);
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 20px; letter-spacing: 0.02em;
+}
+.pgd-chart-bars { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+/* The bar and its value, side by side. The value outside the bar is what lets
+   the bar be its true width. */
+.pgd-chart-line { display: flex; align-items: center; gap: 10px; min-width: 0 }
+.pgd-chart-track { flex: 1; min-width: 0; display: flex }
+.pgd-chart-line em {
+  font-style: normal; font-size: 14px; color: var(--ink-60);
+  white-space: nowrap; flex: 0 0 132px;
+}
+.pgd-chart-bar { height: 20px; border-radius: 4px; min-width: 3px }
+/* Ink for posts, orange for views — the accent marks the series a brand came
+   for, and it is a bar, not a background fill. */
+.pgd-chart-posts { background: rgba(250, 248, 245, 0.16); color: var(--ink-90) }
+.pgd-chart-views { background: var(--orange); color: #fff }
+
+.pgd-table-actions { display: flex; justify-content: flex-end; margin-bottom: 12px }
+/* The table is wider than a phone and, with every column present, wider than
+   the content column at 1440, so it scrolls in its own container.
+   max-width: 100% is what CONTAINS it: without it the table's 720px min-width
+   propagated up through the panel and the page and laid the whole main column
+   out at 760px — at 390 that pushed the header, the search field and every
+   panel off the right edge, clipped by .pgd's overflow-x: hidden so the page
+   looked cropped rather than scrollable. */
+.pgd-table-scroll { overflow-x: auto; max-width: 100%; margin: 0 -4px; padding: 0 4px }
+.pgd-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 720px }
+.pgd-table th {
+  text-align: left; font-weight: 400; font-size: 14px; color: var(--ink-45);
+  padding: 0 12px 8px 0; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
+}
+.pgd-table th button {
+  background: none; border: 0; padding: 0; font: inherit; color: inherit;
+  cursor: pointer; white-space: nowrap;
+}
+.pgd-table th button:hover { color: var(--ink) }
+.pgd-table th button.on { color: var(--ink); font-weight: 700 }
+.pgd-table td {
+  padding: 11px 12px 11px 0; font-size: 16px;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.06);
+}
+.pgd-table tr:last-child td { border-bottom: 0 }
+/* Figures right-aligned and tabular, so the digits line up down the column. */
+.pgd-table .pgd-num-col { text-align: right; font-variant-numeric: tabular-nums }
+.pgd-table td a { color: var(--orange-soft); text-decoration: none; white-space: nowrap }
+.pgd-table td a:hover { text-decoration: underline }
+
+/* A qualifier under a headline figure's label — "distinct people", "feed +
+   stories" — where the label alone would overstate what was counted. */
+.pgd-fig-sub { display: block; font-style: normal; font-size: 14px; color: var(--ink-45) }
+
+/* ---- recap cards -------------------------------------------
+   Photo, name, button, tight. The generic .pgd-card stretches to its row's
+   tallest sibling and pushes its footer down with margin-top: auto, which is
+   right for a card whose footer is a row of figures and wrong for one whose
+   last element is a single button — it left a band of dead tile under every
+   name. These size to their own content.
+   ------------------------------------------------------------- */
+.pgd-recaps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) }
+.pgd-recap {
+  background: var(--tile); border: 0; border-radius: 14px; overflow: hidden;
+  display: flex; flex-direction: column; align-self: start;
+}
+.pgd-recap:hover { background: #16161a }
+.pgd-recap-thumb {
+  display: block; position: relative; height: 150px; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.04);
+}
+.pgd-recap-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
+/* Hard rule 4: a flat image edge on the black ground gets an edge-blend. */
+.pgd-recap-thumb::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 40%;
+  background: linear-gradient(0deg, rgba(17, 17, 20, 0.92), rgba(17, 17, 20, 0));
+}
+.pgd-recap-body {
+  padding: 14px 16px 16px; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 10px;
+}
+
 /* athlete cards */
 /* 400px, measured rather than guessed. At 1440 the grid is 1304px wide, and
    the widest school+sport in CVS's roster — "University of North Carolina at
@@ -731,9 +873,14 @@
 .pgd-person-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; flex: 1 }
 .pgd-person-name { font-size: 16px; font-weight: 700; line-height: 1.3; overflow-wrap: break-word }
 .pgd-person-meta { font-size: 14px; color: var(--ink-50); line-height: 1.4; overflow-wrap: break-word }
+/* A COLUMN, not just a right-aligned blob: a fixed 92px so the figures line
+   up from one card to the next down the grid, with a hairline separating them
+   from the name and meta. Without the fixed width each card put its number
+   wherever its own text ended, and a grid of them read as ragged. */
 .pgd-person-nums {
-  flex: 0 0 auto; text-align: right; display: flex; flex-direction: column; gap: 2px;
+  flex: 0 0 92px; text-align: right; display: flex; flex-direction: column; gap: 2px;
   font-size: 14px; color: var(--ink-50);
+  padding-left: 14px; border-left: 1px solid rgba(250, 248, 245, 0.08);
 }
 .pgd-person-nums b {
   font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
@@ -797,6 +944,39 @@
 }
 .pgd-shot.pgd-picked { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange) }
 
+/* Keyword chips, under the filter row. A chip is a removable value, which is
+   the one job a pill shape is still right for here. */
+.pgd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 16px }
+.pgd-term {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--ink); color: #07070A; font: inherit; font-size: 14px; font-weight: 700;
+}
+.pgd-term span { font-size: 16px; line-height: 1; opacity: 0.6 }
+.pgd-term:hover span { opacity: 1 }
+.pgd-term-clear {
+  background: none; border: 0; cursor: pointer; font: inherit; font-size: 14px;
+  color: var(--ink-50); padding: 6px 4px;
+}
+.pgd-term-clear:hover { color: var(--ink) }
+
+/* Lightbox paging. Big hit areas down the left and right edges. */
+.pgd-lb-step {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 52px; height: 52px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(17, 17, 20, 0.9); color: var(--ink);
+  font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+}
+.pgd-lb-step:hover { background: rgba(17, 17, 20, 1) }
+.pgd-lb-step[disabled] { opacity: 0.3; cursor: default }
+.pgd-lb-prev { left: 18px }
+.pgd-lb-next { right: 18px }
+.pgd-lb-count {
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  font-size: 14px; color: var(--ink-50);
+}
+
 .pgd-lightbox {
   position: fixed; inset: 0; z-index: 200; background: rgba(7, 7, 10, 0.94);
   display: flex; align-items: center; justify-content: center; padding: 32px;
@@ -827,37 +1007,50 @@
 
 /* detail hero */
 /* ---- campaign detail hero -----------------------------------
-   220px. It was 330 to give a 1:2 portrait enough band to frame a face, but
-   at 330 the hero plus the tab row was the entire first screen and the tab
-   you came to read started below the fold. 220 is a banner: the name sits on
-   it and the content starts inside the first screen.
+   A SPLIT, not a full-bleed band, and the reason is arithmetic. SPF's hero is
+   2400x3200. In a 1325x220 full-bleed band, object-fit: cover scales it to
+   1325x1767 and shows 220 of those 1767px — 12.5% of the image height. A head
+   in a close-up portrait occupies far more than 12.5%, so NO object-position
+   could ever frame one: every crop point was a slice of a face, which is why
+   SPF came out eyes-only. Measured across CVS's six heroes the band showed
+   11-25% of the frame.
 
-   The meta line that used to sit under the name here is gone — the shell's
-   subtitle already carries quarter · type, so it was printed twice, 40px
-   apart. NAME ONLY. */
+   Giving the photo 46% of the width instead drops the scale to 0.25, so the
+   same 220px shows 27% of the image and a whole face fits. The name sits on
+   the dark half, which is also exactly the state a live campaign with no hero
+   media needs, so both use one component.
+
+   FOLLOW-UP, still open: media.focal_y exists (it is NOT missing, as an
+   earlier run-log note claimed) but is populated on 2 of 63 hero rows. Where
+   it is set, it is used, via the --hero-focal custom property. Populating it
+   is the real fix for the remaining crops; 26% is the default and suits a
+   portrait, where faces sit in the upper third. */
 .pgd-hero {
   position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 16px;
-  height: 220px; background: var(--tile); border: 0;
-  display: flex; align-items: flex-end;
+  height: 220px; border: 0; display: flex; align-items: stretch;
+  background: linear-gradient(115deg, #23232a 0%, #14141a 46%, #0a0a0e 100%);
 }
-/* 30%, paired with the 330px band above. Measured, not guessed: a LARGER
-   percentage moves the visible window DOWN the photo, so 45% — asked for to
-   stop the face being cut at the top — moved the crop from the eyes to the
-   mouth and made that symptom worse. Rendered at 22 / 28 / 34 / 45 to check
-   the direction before settling.
-   A focal_y column on the media row is still the real fix and is logged as a
-   follow-up in the run log: one number cannot frame every photograph, and 30%
-   is only known to suit the current hero set. */
-.pgd-hero > img { position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center 30% }
-.pgd-hero::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(0deg, rgba(7, 7, 10, 0.92), rgba(7, 7, 10, 0.15));
+.pgd-hero-in {
+  position: relative; z-index: 2; padding: 20px 24px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  flex: 1 1 auto; min-width: 0;
 }
-.pgd-hero-in { position: relative; z-index: 1; padding: 20px 24px }
-.pgd-hero-in h2 {
+.pgd-hero-in h1, .pgd-hero-in h2 {
   font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
   text-transform: uppercase; font-size: 40px; line-height: 0.94; margin: 0;
+  overflow-wrap: break-word;
+}
+/* One line under the name, for the state where that is all there is to say. */
+.pgd-hero-in .pgd-hero-note { margin: 10px 0 0; font-size: 16px; color: var(--ink-60); max-width: 62ch }
+.pgd-hero-photo { position: relative; flex: 0 0 46%; overflow: hidden }
+.pgd-hero-photo img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  object-position: center var(--hero-focal, 26%);
+}
+/* Feathered into the dark half so the split is not a hard vertical seam. */
+.pgd-hero-photo::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, #14141a 0%, rgba(20, 20, 26, 0.45) 34%, rgba(20, 20, 26, 0) 72%);
 }
 
 /* Campaign Overview tab. gap does the spacing, so the panels inside drop
@@ -937,7 +1130,7 @@
 /* simple panels + table for Settings / Results */
 .pgd-panel {
   background: var(--tile); border: 0; border-radius: 14px;
-  padding: 20px; margin-bottom: 12px;
+  padding: 20px; margin-bottom: 12px; min-width: 0;
 }
 .pgd-panel h3 { margin: 0 0 14px; font-size: 18px; font-weight: 700; line-height: 1.25 }
 .pgd-rows { display: flex; flex-direction: column }
@@ -978,9 +1171,24 @@
   .pgd-media { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .pgd-cards, .pgd-people { grid-template-columns: minmax(0, 1fr) }
   .pgd-count { margin-left: 0 }
-  /* The hero loses 40px on a phone but keeps the name legible on it. */
-  .pgd-hero { height: 180px }
-  .pgd-hero-in h2 { font-size: 32px }
+  /* At 390 the split would leave the name 180px. The photo goes full-bleed
+     behind the name instead, and it can: a 390x180 box scales SPF's 2400x3200
+     by 0.16, showing 32% of the frame — MORE than the desktop split. The
+     geometry that forced the split at 1325 wide does not exist here. */
+  .pgd-hero { height: 180px; display: block }
+  .pgd-hero-in { position: absolute; inset: 0; z-index: 2; justify-content: flex-end }
+  .pgd-hero-in h1, .pgd-hero-in h2 { font-size: 32px }
+  .pgd-hero-photo { position: absolute; inset: 0; flex: none }
+  .pgd-hero-photo::after {
+    background: linear-gradient(0deg, rgba(7, 7, 10, 0.94) 0%, rgba(7, 7, 10, 0.45) 55%, rgba(7, 7, 10, 0.1) 100%);
+  }
+  .pgd-chart-row { flex-direction: column; align-items: stretch; gap: 6px }
+  .pgd-chart-label { flex: none }
+  /* The value moves under its bar: a 132px reserved column beside a bar in a
+     350px panel left the bar 200px and the two fighting. */
+  .pgd-chart-line { flex-direction: column; align-items: stretch; gap: 2px }
+  .pgd-chart-line em { flex: none }
+  .pgd-table { min-width: 640px }
   /* 56px Anton x5 is a whole phone screen of numbers before the first
      takeaway. The Results row drops to 38 and the panel rows to 32; both are
      still the largest type on the page. */

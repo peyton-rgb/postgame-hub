@@ -14,7 +14,7 @@
 
 import { createServerSupabase } from "@/lib/supabase-server";
 import { richText } from "@/lib/rich-text";
-import { compact, titleCaseSchool } from "@/lib/portal/format";
+import { compact, titleCaseSchool, titleCaseSport } from "@/lib/portal/format";
 import {
   figuresFromPostMetrics,
   POST_METRICS_SELECT,
@@ -76,29 +76,84 @@ export function thumb(url: string, width = 420): string {
 const WEB_SAFE = /\.(jpe?g|png|gif|webp)($|\?)/i;
 
 /**
- * The thumbnail source for a media tile: `thumbnail_url` if present, else the
- * plain object URL — WITH ONE EXCEPTION.
+ * The thumbnail source for a media tile, and what to fall back to.
  *
- * THE EXCEPTION IS LOAD-BEARING. 7 of CVS's 460 media rows are `.HEIC`, and
- * no browser paints HEIC. Serving those raw is what made Bella Bonnett's tile
- * a black box: `content-type: image/heif`, 2.2MB, and nothing on screen. The
- * transform endpoint transcodes them (`image/jpeg`, 200KB), so for those rows
- * it is not an optimisation, it is the only way the picture exists. Two more
- * rows carry an extension I cannot identify, and they take the same path on
- * the same reasoning.
+ * EVERY TILE GOES THROUGH THE RENDER ENDPOINT AT 600, with the original as an
+ * onerror fallback. The brief asked for that only where `thumbnail_url` is
+ * empty; measuring the Content page's first 40 tiles is what widened it, and
+ * the numbers are the argument:
  *
- * So: 451 of 460 tiles are served direct and cost no transform call; 9 are
- * transcoded. That keeps a full gallery at ~9 metered calls instead of 411,
- * without trading a slow tile for an empty one.
+ *   thumbnail_url direct, transform only when empty   75.70 MB   (-3%)
+ *   every tile through the transform at 600            9.69 MB   (-88%)
+ *
+ * `thumbnail_url` IS NOT A THUMBNAIL on this data. Of those 40 rows it is
+ * byte-identical to `file_url` on 21 and empty on 6 — so on 27 of 40, serving
+ * "the thumbnail" means serving the original: a mean of 2.0 MB, up to 7.4 MB,
+ * into a 240px tile. Honouring only the empty ones fixed 6 rows and left 78
+ * MB a page. The 13 rows where it genuinely differs are video poster frames,
+ * and they are cheaper through the transform too.
+ *
+ * NON-WEB-SAFE ROWS STILL HAVE NO CHOICE. 7 of CVS's 460 rows are `.HEIC`,
+ * which no browser paints; serving those raw is what made Bella Bonnett's tile
+ * a black box (`content-type: image/heif`, 2.2MB, nothing on screen). For
+ * those the transform is not an optimisation, it is the only way the picture
+ * exists — so they get no fallback, because falling back to the original would
+ * restore the black box.
+ *
+ * WHY A FALLBACK AT ALL. The transform is a separate service from object
+ * storage and can fail on an object storage will still serve — an unsupported
+ * colour profile, a size limit, a bad day. Without a fallback that tile is
+ * permanently blank; with one it costs a wasted request and shows the picture.
+ * The fallback is only ever the same object served unresized, so it can never
+ * show the wrong image.
+ *
+ * 600, not 420: the Content tiles reach 300px wide, which is 600 device
+ * pixels on a 2x screen.
  */
+/**
+ * The searchable text for a media row: who, where, which campaign, and the
+ * filename. Lowercased once here so filtering is a substring test rather than
+ * a per-keystroke rebuild of four fields.
+ *
+ * The filename is decoded (%20 back to a space) and stripped of its path and
+ * the upload timestamp prefix, so "darius acuff" matches
+ * ".../1775691416036-2026_CVS_Darius_Acuff_Jr.18.jpg".
+ */
+function searchText(
+  athlete: string | null | undefined,
+  school: string | null | undefined,
+  campaign: string | null | undefined,
+  url: string
+): string {
+  let file = "";
+  try {
+    file = decodeURIComponent(url.split("?")[0].split("/").pop() ?? "");
+  } catch {
+    file = url.split("?")[0].split("/").pop() ?? "";
+  }
+  // Drop the "1775691416036-" upload prefix and turn separators into spaces.
+  file = file.replace(/^\d{10,}-/, "").replace(/[._\-]+/g, " ");
+  return [athlete, school, campaign, file]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 export function mediaThumb(
   thumbnailUrl: string | null,
   fileUrl: string | null
-): string | null {
-  const url = thumbnailUrl || fileUrl;
+): { src: string; fallback: string | null } | null {
+  const stored = thumbnailUrl && thumbnailUrl.trim() ? thumbnailUrl.trim() : null;
+  const original = fileUrl && fileUrl.trim() ? fileUrl.trim() : null;
+  const url = stored || original;
   if (!url) return null;
-  if (WEB_SAFE.test(url)) return url;
-  return thumb(url, 420);
+  const transformed = thumb(url, 600);
+  // No fallback for a format the browser cannot paint: the "fallback" would be
+  // the very file that renders as nothing.
+  if (!WEB_SAFE.test(url)) return { src: transformed, fallback: null };
+  // Nothing to fall back to if the transform is a no-op (a URL outside object
+  // storage comes back unchanged).
+  return { src: transformed, fallback: transformed === url ? null : url };
 }
 
 export interface CampaignListItem {
@@ -201,7 +256,7 @@ export async function loadCampaignList(brandId: string) {
     quarter: c.quarter,
     campaignType: c.campaign_type,
     athletes: counts.get(c.id) ?? 0,
-    heroUrl: c.hero_image_url || heroes.get(c.id) || null,
+    heroUrl: c.hero_image_url || heroes.get(c.id)?.url || null,
     figures: readFigures(c.kpi_targets),
   }));
 
@@ -217,16 +272,29 @@ export async function loadCampaignList(brandId: string) {
   };
 }
 
+interface Hero {
+  url: string;
+  /**
+   * media.focal_y as a percentage, or null.
+   *
+   * The column EXISTS — an earlier note in the run log said it did not — but
+   * it is populated on 2 of 63 hero rows, so nearly every campaign falls back
+   * to the CSS default. Read here rather than guessed so the two rows that
+   * have one are honoured, and so populating the rest needs no code change.
+   */
+  focalY: number | null;
+}
+
 async function loadHeroes(
   supabase: ReturnType<typeof createServerSupabase>,
   campaignIds: string[],
   width = 900,
-): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
+): Promise<Map<string, Hero>> {
+  const out = new Map<string, Hero>();
   if (campaignIds.length === 0) return out;
   const { data } = await supabase
     .from("media")
-    .select("campaign_id, file_url, thumbnail_url, hero_order")
+    .select("campaign_id, file_url, thumbnail_url, hero_order, focal_y")
     .in("campaign_id", campaignIds)
     .eq("is_hero", true)
     .order("hero_order", { ascending: true });
@@ -234,9 +302,17 @@ async function loadHeroes(
     campaign_id: string;
     file_url: string | null;
     thumbnail_url: string | null;
+    focal_y: number | null;
   }[]) {
     const url = m.thumbnail_url || m.file_url;
-    if (url && !out.has(m.campaign_id)) out.set(m.campaign_id, thumb(url, width));
+    if (!url || out.has(m.campaign_id)) continue;
+    // focal_y is stored 0-1 on the rows that have it; anything outside that
+    // is ignored rather than clamped, because a value out of range means the
+    // column was written with a different convention and guessing which
+    // would move every crop.
+    const f = m.focal_y;
+    const focalY = typeof f === "number" && f >= 0 && f <= 1 ? Math.round(f * 100) : null;
+    out.set(m.campaign_id, { url: thumb(url, width), focalY });
   }
   return out;
 }
@@ -256,6 +332,20 @@ export interface MediaItem {
   id: string;
   url: string;
   thumbUrl: string;
+  /** Serve if thumbUrl fails. Only set where thumbUrl is a transform call. */
+  thumbFallbackUrl: string | null;
+  /**
+   * Everything about this row that is searchable, lowercased, built once.
+   *
+   * THERE IS NO CAPTION OR TAG COLUMN ON `media`. The columns are id,
+   * athlete_id, campaign_id, type, urls, storage/source ids, sizes, focal
+   * points, hero flags and `slot` — and `slot` is populated on 5 of CVS's 460
+   * rows with no vocabulary behind it. So the free text on a media row is the
+   * athlete, the school, the campaign and the FILENAME, which is real text
+   * people recognise ("2026_CVS_Darius_Acuff_Jr.18.jpg"). Logged as the reason
+   * keyword search covers those four and not "tags".
+   */
+  haystack: string;
   isVideo: boolean;
   athleteName: string | null;
   /** From athletes.school via media.athlete_id — the gallery's school filter. */
@@ -352,7 +442,7 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     id: a.id,
     name: a.name,
     school: titleCaseSchool(a.school),
-    sport: a.sport,
+    sport: titleCaseSport(a.sport),
     followers: a.ig_followers,
     views: reelViews(a.metrics),
     headshotUrl: headshots.get(a.id) ?? null,
@@ -392,7 +482,8 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
       return {
         id: m.id,
         url,
-        thumbUrl: thumbSrc,
+        thumbUrl: thumbSrc.src,
+        thumbFallbackUrl: thumbSrc.fallback,
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
         // The detail page's Content tab is already scoped to one campaign,
@@ -402,6 +493,12 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
         // fails the MediaItem[] assignment.
         school: null as string | null,
         campaignName: c.name,
+        haystack: searchText(
+          m.athlete_id ? nameById.get(m.athlete_id) : null,
+          null,
+          c.name,
+          url
+        ),
         createdAt: m.created_at,
       };
     })
@@ -426,7 +523,13 @@ export async function loadCampaignDetail(brandId: string, slug: string) {
     driveFolderId: c.drive_content_folder_id,
     // 1600, not the 900 the cards use: this hero spans the full content
     // column (1325px at 1440) and 900 visibly upscales.
-    heroUrl: c.hero_image_url || (await loadHeroes(supabase, [c.id], 1600)).get(c.id) || null,
+    ...(await (async () => {
+      // hero_image_url is a bare column with no focal point of its own, so a
+      // campaign using it gets the CSS default.
+      if (c.hero_image_url) return { heroUrl: c.hero_image_url, heroFocalY: null };
+      const hero = (await loadHeroes(supabase, [c.id], 1600)).get(c.id);
+      return { heroUrl: hero?.url ?? null, heroFocalY: hero?.focalY ?? null };
+    })()),
     // 5, not the 4 the tiles use: kpi_targets only ever holds four keys, but
     // the derived set is five (posts, reel views, feed and story impressions,
     // followers) and the Results tab is the one surface with room for all of
@@ -548,11 +651,18 @@ export async function loadContentGallery(brandId: string) {
       return {
         id: m.id,
         url,
-        thumbUrl: thumbSrc,
+        thumbUrl: thumbSrc.src,
+        thumbFallbackUrl: thumbSrc.fallback,
         isVideo: m.type === "video",
         athleteName: m.athlete_id ? nameById.get(m.athlete_id) ?? null : null,
         school: m.athlete_id ? schoolById.get(m.athlete_id) ?? null : null,
         campaignName: m.campaign_id ? nameByCampaign.get(m.campaign_id) ?? null : null,
+        haystack: searchText(
+          m.athlete_id ? nameById.get(m.athlete_id) : null,
+          m.athlete_id ? schoolById.get(m.athlete_id) : null,
+          m.campaign_id ? nameByCampaign.get(m.campaign_id) : null,
+          url
+        ),
         createdAt: m.created_at,
       };
     })
@@ -645,7 +755,7 @@ export async function loadReports(
       slug: c.slug,
       quarter: stored || derived?.label || null,
       quarterDerived: !stored && !!derived,
-      heroUrl: c.hero_image_url || heroes.get(c.id) || null,
+      heroUrl: c.hero_image_url || heroes.get(c.id)?.url || null,
       figures: readFigures(c.kpi_targets, 3),
     };
   });
@@ -769,7 +879,7 @@ export async function loadAthleteDirectory(brandId: string) {
     key: r.athlete_key,
     name: r.name,
     school: titleCaseSchool(r.school),
-    sport: r.sport,
+    sport: titleCaseSport(r.sport),
     followers: r.followers,
     campaigns: r.campaigns,
     lastCampaign: r.last_campaign,
@@ -941,7 +1051,7 @@ export async function loadPortalSearch(brandId: string, rawQuery: string) {
     meta:
       [
         titleCaseSchool(a.school),
-        a.sport,
+        titleCaseSport(a.sport),
         a.followers !== null ? `${compact(a.followers)} followers` : null,
         a.last_campaign,
       ]
@@ -953,4 +1063,205 @@ export async function loadPortalSearch(brandId: string, rawQuery: string) {
   }));
 
   return { query: q, tooShort: false, campaigns, athletes };
+}
+
+// ---- 8 · Reports: the metrics dashboard -------------------------
+// The recap LIBRARY moved to /portal/recaps; this is what /portal/reports is
+// now — one page of numbers for every wrapped campaign.
+//
+// SAME RULES AS EVERY OTHER SURFACE. Nothing is invented, nothing is
+// zero-filled, and a figure appears only where at least one athlete reported
+// it. The headline totals come from portal_brand_report_totals (migration
+// 058) because a distinct-person count cannot be summed from per-campaign
+// counts, and the per-campaign rows come from portal_campaign_post_metrics,
+// which is already the source the Results tab uses — so a campaign's row here
+// and its own Results tab cannot disagree.
+
+export interface ReportRow {
+  campaignId: string;
+  name: string;
+  slug: string | null;
+  quarter: string | null;
+  quarterSort: number;
+  athletes: number | null;
+  posts: number | null;
+  reelViews: number | null;
+  impressions: number | null;
+  followers: number | null;
+}
+
+export interface ReportQuarter {
+  label: string;
+  sortKey: number;
+  posts: number;
+  reelViews: number;
+}
+
+export interface TopAthlete {
+  athleteId: string;
+  name: string;
+  school: string | null;
+  campaignName: string | null;
+  views: number;
+  postUrl: string | null;
+}
+
+export interface ReportsMetrics {
+  totals: { label: string; value: string; sub?: string }[];
+  rows: ReportRow[];
+  /** Which optional columns any row actually has. A column nobody has is not
+      rendered — an empty column asserts a measurement that was never taken. */
+  columns: { athletes: boolean; posts: boolean; reelViews: boolean; impressions: boolean; followers: boolean };
+  quarters: ReportQuarter[];
+  topAthletes: TopAthlete[];
+}
+
+/** PostgREST returns numeric as a string; bigint too. */
+function num(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function loadReportsMetrics(brandId: string): Promise<ReportsMetrics> {
+  const supabase = createServerSupabase();
+
+  const [totalsRes, campRes, statsRes, topRes] = await Promise.all([
+    supabase
+      .from("portal_brand_report_totals")
+      .select(
+        "campaigns, athletes, posts, reel_views, reel_views_athletes, impressions, impressions_athletes, followers, followers_athletes"
+      )
+      .eq("brand_id", brandId)
+      .maybeSingle(),
+    supabase
+      .from("portal_campaigns")
+      .select("id, name, slug, lifecycle_status, admin_created_on, quarter")
+      .eq("brand_id", brandId),
+    supabase.from("portal_campaign_stats").select("campaign_id, athletes").eq("brand_id", brandId),
+    supabase
+      .from("portal_top_posts")
+      .select("athlete_id, athlete_name, school, campaign_name, views, post_url")
+      .eq("brand_id", brandId)
+      .order("views", { ascending: false })
+      .limit(10),
+  ]);
+
+  const wrapped = ((campRes.data ?? []) as RawCampaign[]).filter((c) =>
+    isWrapped(c.lifecycle_status)
+  );
+
+  // One request for the per-campaign metrics, scoped to the wrapped ids. 46
+  // for CVS, so far inside PostgREST's 1000-row ceiling.
+  const metricsById = new Map<string, PostMetricsRow>();
+  if (wrapped.length > 0) {
+    const { data } = await supabase
+      .from("portal_campaign_post_metrics")
+      .select(POST_METRICS_SELECT)
+      .in("campaign_id", wrapped.map((c) => c.id));
+    for (const m of (data ?? []) as unknown as (PostMetricsRow & { campaign_id: string })[]) {
+      metricsById.set(m.campaign_id, m);
+    }
+  }
+
+  const athletesById = new Map<string, number>();
+  for (const r of (statsRes.data ?? []) as { campaign_id: string; athletes: number | null }[]) {
+    if (r.athletes !== null) athletesById.set(r.campaign_id, r.athletes);
+  }
+
+  const rows: ReportRow[] = wrapped
+    .map((c) => {
+      // Same quarter rule as the recap library: a STORED quarter wins, but
+      // only when it is a real value — 12 of CVS's 13 non-null quarters are
+      // the empty string, which is falsy.
+      const stored = c.quarter && c.quarter.trim() ? c.quarter.trim() : null;
+      const derived = c.admin_created_on ? quarterFromDate(c.admin_created_on) : null;
+      const m = metricsById.get(c.id);
+      // A figure is null, not 0, where nobody reported it — so the table can
+      // leave the cell blank instead of asserting a zero.
+      const has = (contributors: number | null | undefined) => (contributors ?? 0) > 0;
+      return {
+        campaignId: c.id,
+        name: c.name ?? "Campaign",
+        slug: c.slug,
+        quarter: stored || derived?.label || null,
+        quarterSort: derived?.sortKey ?? 0,
+        athletes: athletesById.get(c.id) ?? null,
+        posts: m && num(m.posts) ? num(m.posts) : null,
+        reelViews: has(m?.reel_views_athletes) ? num(m?.reel_views) : null,
+        impressions:
+          has(m?.feed_impressions_athletes) || has(m?.story_impressions_athletes)
+            ? (num(m?.feed_impressions) ?? 0) + (num(m?.story_impressions) ?? 0)
+            : null,
+        followers: has(m?.followers_athletes) ? num(m?.followers) : null,
+      };
+    })
+    .sort((a, b) => b.quarterSort - a.quarterSort || a.name.localeCompare(b.name));
+
+  const columns = {
+    athletes: rows.some((r) => r.athletes !== null),
+    posts: rows.some((r) => r.posts !== null),
+    reelViews: rows.some((r) => r.reelViews !== null),
+    impressions: rows.some((r) => r.impressions !== null),
+    followers: rows.some((r) => r.followers !== null),
+  };
+
+  // ---- the quarter chart -------------------------------------------
+  // Grouped from the rows above rather than queried again, so the bars and the
+  // table are arithmetically the same numbers. Quarters with neither posts nor
+  // views are dropped: an empty bar pair says nothing a missing one doesn't.
+  const byQuarter = new Map<string, ReportQuarter>();
+  for (const r of rows) {
+    if (!r.quarter) continue;
+    const q = byQuarter.get(r.quarter) ?? {
+      label: r.quarter,
+      sortKey: r.quarterSort,
+      posts: 0,
+      reelViews: 0,
+    };
+    q.posts += r.posts ?? 0;
+    q.reelViews += r.reelViews ?? 0;
+    q.sortKey = Math.max(q.sortKey, r.quarterSort);
+    byQuarter.set(r.quarter, q);
+  }
+  // Array.from, not a spread: this file's tsconfig target predates iterable
+  // spread of a Map iterator.
+  const quarters = Array.from(byQuarter.values())
+    .filter((q) => q.posts > 0 || q.reelViews > 0)
+    .sort((a, b) => a.sortKey - b.sortKey);
+
+  // ---- headline totals ---------------------------------------------
+  const t = (totalsRes.data ?? null) as Record<string, unknown> | null;
+  const totals: { label: string; value: string; sub?: string }[] = [];
+  const add = (label: string, value: unknown, contributors?: unknown, sub?: string) => {
+    const n = num(value);
+    if (n === null || n <= 0) return;
+    if (contributors !== undefined && (num(contributors) ?? 0) < 1) return;
+    totals.push({ label, value: compact(n), sub });
+  };
+  add("Campaigns", t?.campaigns);
+  add("Athletes", t?.athletes, undefined, "distinct people");
+  add("Posts", t?.posts);
+  add("Reel views", t?.reel_views, t?.reel_views_athletes);
+  add("Impressions", t?.impressions, t?.impressions_athletes, "feed + stories");
+
+  const topAthletes: TopAthlete[] = (
+    (topRes.data ?? []) as {
+      athlete_id: string;
+      athlete_name: string | null;
+      school: string | null;
+      campaign_name: string | null;
+      views: number;
+      post_url: string | null;
+    }[]
+  ).map((a) => ({
+    athleteId: a.athlete_id,
+    name: a.athlete_name ?? "Athlete",
+    school: titleCaseSchool(a.school),
+    campaignName: a.campaign_name,
+    views: a.views,
+    postUrl: a.post_url,
+  }));
+
+  return { totals, rows, columns, quarters, topAthletes };
 }

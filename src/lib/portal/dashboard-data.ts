@@ -34,7 +34,7 @@
 // ============================================================
 
 import { createServerSupabase } from "@/lib/supabase-server";
-import { titleCaseSchool } from "@/lib/portal/format";
+import { titleCaseSchool, titleCaseSport } from "@/lib/portal/format";
 import { campaignFigures } from "@/lib/portal/pages-data";
 import { POST_METRICS_SELECT, type PostMetricsRow } from "@/lib/portal/post-metrics";
 
@@ -74,6 +74,8 @@ export interface CampaignCard {
   slug: string | null;
   live: boolean;
   quarter: string | null;
+  /** Second line on a live card: what kind of campaign this is. */
+  campaignType: string | null;
   platform: string | null;
   athletes: number;
 }
@@ -92,6 +94,8 @@ export interface RosterTile {
   /** "Live campaign" when an active campaign has athletes, else "Latest roster". */
   title: string;
   campaignName: string;
+  /** So "All athletes" can go to THIS campaign's roster, not the directory. */
+  campaignSlug: string | null;
   subline: string;
   rows: RosterRow[];
 }
@@ -115,6 +119,7 @@ interface CampaignRow {
   lifecycle_status: string | null;
   admin_created_on: string | null;
   quarter: string | null;
+  campaign_type: string | null;
   platform: string | null;
   kpi_targets: Record<string, unknown> | null;
 }
@@ -141,7 +146,7 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
   const [campaignsRes, statsRes, brandStatsRes, topPostsRes] = await Promise.all([
     supabase
       .from("portal_campaigns")
-      .select("id, name, slug, lifecycle_status, admin_created_on, quarter, platform, kpi_targets")
+      .select("id, name, slug, lifecycle_status, admin_created_on, quarter, campaign_type, platform, kpi_targets")
       .eq("brand_id", brandId),
     supabase
       .from("portal_campaign_stats")
@@ -229,9 +234,13 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
     // delivered recaps in a window. The brief says hide it, so it is absent
     // from this array rather than present and empty.
     //
-    // Posts this month reads athlete_deliverables.posted_at, which is null on
-    // every row in that table, so this is a true 0 and not an unknown.
-    { value: "0", label: "Posts this month" },
+    // POSTS THIS MONTH IS NOW HIDDEN ON THE SAME RULE. It reads
+    // athlete_deliverables.posted_at, which is null on every row in that
+    // table — so "0" was not a measurement, it was the absence of one wearing
+    // a figure's clothes. A brand reading 0 posts this month next to a live
+    // campaign concludes their athletes have stopped posting. It comes back
+    // the moment posted_at carries dates, which is the only thing that would
+    // make it true.
   ];
 
   // ---- Latest wrapped ---------------------------------------------
@@ -325,6 +334,7 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
     roster = {
       title: liveWithAthletes ? "Live campaign" : "Latest roster",
       campaignName: rosterCampaign.name ?? "Campaign",
+      campaignSlug: rosterCampaign.slug,
       subline: [
         rosterCampaign.quarter,
         rosterCampaign.platform,
@@ -339,7 +349,7 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
         // Cased at the data layer, not at each render site, so the filters and
     // the labels can never disagree about a school's spelling.
     school: titleCaseSchool(a.school),
-        sport: a.sport,
+        sport: titleCaseSport(a.sport),
         headshotUrl: headshots.get(a.id) ?? null,
         followers: a.ig_followers,
         views: postViews.get(a.id) ?? null,
@@ -382,6 +392,7 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
     slug: c.slug,
     live: c.lifecycle_status === "active",
     quarter: c.quarter,
+    campaignType: c.campaign_type,
     platform: c.platform,
     athletes: athleteCount(c.id),
   }));

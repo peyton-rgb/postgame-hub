@@ -22,6 +22,7 @@ export type PortalSection =
   | "home"
   | "campaigns"
   | "content"
+  | "recaps"
   | "reports"
   | "athletes"
   | "settings";
@@ -70,6 +71,16 @@ export function GearIcon() {
   );
 }
 
+/** A delivered document — the recap library, not a completed task. */
+function RecapIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M14 3v5h5M8.5 13h7M8.5 17h4.5" />
+    </svg>
+  );
+}
+
 function PersonIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -100,16 +111,22 @@ export function TileEmpty({ line, note }: { line: string; note: string }) {
 }
 
 /**
- * Every section is a real route now (Phase 3b), so every rail item links.
- * Calendar is the one exception — there is no calendar page and no dated
- * source to build one from, so it is not in the rail at all rather than
- * being a link to a 404 or a dead icon.
+ * Home · Campaigns · Content · Recaps · Reports.
+ *
+ * ATHLETES IS NOT IN THE RAIL and /portal/athletes still works. The directory
+ * is a reference list of 1,501 people; a brand reaches the ones that matter
+ * through a campaign's Athletes tab, the roster tile's "All athletes", the
+ * Reports page's top ten, or search. Five rail items that each answer a
+ * question beat six where one is a phone book.
+ *
+ * Calendar is still absent: there is no calendar page and no dated source to
+ * build one from, so it is not a link to a 404 or a dead icon.
  */
 const RAIL: { key: PortalSection; href: string; label: string; icon: React.ReactNode }[] = [
   { key: "home", href: "/portal", label: "Home", icon: <Stroke d={ICON.home} /> },
   { key: "campaigns", href: "/portal/campaigns", label: "Campaigns", icon: <Stroke d={ICON.list} /> },
-  { key: "athletes", href: "/portal/athletes", label: "Athletes", icon: <PeopleIcon /> },
   { key: "content", href: "/portal/content", label: "Content", icon: <ImageIcon /> },
+  { key: "recaps", href: "/portal/recaps", label: "Recaps", icon: <RecapIcon /> },
   { key: "reports", href: "/portal/reports", label: "Reports", icon: <Stroke d={ICON.chart} /> },
 ];
 
@@ -126,7 +143,12 @@ export default function PortalShell({
   active: PortalSection;
   postgameIcon: string | null;
   preview?: PortalPreviewChrome | null;
-  title: string;
+  /**
+   * The page's h1. Pass null when the page names itself in its own body —
+   * campaign detail puts the name in the hero, and printing it here as well
+   * put the same words on screen twice, 40px apart.
+   */
+  title: string | null;
   subtitle?: string | null;
   aside?: React.ReactNode;
   /** Prefills the toolbar box, so the search page shows the term it answered. */
@@ -180,8 +202,12 @@ export default function PortalShell({
       <div className="pgd-main">
         <header className="pgd-head">
           <div>
-            <h1 className="pgd-h1">{title}</h1>
-            {subtitle ? <p className="pgd-sub">{subtitle}</p> : null}
+            {title !== null ? <h1 className="pgd-h1">{title}</h1> : null}
+            {/* With no title the subtitle is the header's only line, so it
+                leads rather than sits under something. */}
+            {subtitle ? (
+              <p className={`pgd-sub${title === null ? " pgd-sub-lead" : ""}`}>{subtitle}</p>
+            ) : null}
           </div>
 
           <div className="pgd-headright">
@@ -220,6 +246,18 @@ export default function PortalShell({
                   placeholder="Search campaigns and athletes"
                   aria-label="Search campaigns and athletes"
                 />
+                {/* A real submit control beside the field. Enter already
+                    submitted — verified in a browser: the input is
+                    hit-testable, the form's action resolves, and Enter
+                    navigates to /portal/search — but a lone unadorned box
+                    gives no sign it is a control at all, and the only way to
+                    find out was to guess that Enter did something. */}
+                <button className="pgd-search-go" type="submit" aria-label="Search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M20 20l-4.2-4.2" />
+                  </svg>
+                </button>
               </form>
               <span className="pgd-av" role="img" aria-label="Your account">
                 <PersonIcon />
