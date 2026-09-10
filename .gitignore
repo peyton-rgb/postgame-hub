@@ -31,3 +31,6 @@ scripts/logs/
 
 # Local-only script variants (not for the repo)
 scripts/*.local.js
+
+# Portal capture output
+tools/portal-capture/out/
