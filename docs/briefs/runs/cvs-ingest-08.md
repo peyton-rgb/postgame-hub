@@ -1,11 +1,11 @@
 # CVS ingest + publish (brief 08) — Phase 1 pre-flight
 
-**Run date:** 2026-09-10 · **Status:** 🟡 **Phase 1 run — 9 of 11 rows complete, 2 gated**
+**Run date:** 2026-09-10 · **Status:** 🟢 **Phase 1 + Phase 2 run — 7 published, 2 rows still gated**
 **Scope:** 11 CVS rows · **Prereq:** brief 07 Phase B — PR #267 merged as `ed6bfa6`
 
-Phase 1 results are in §9. Phase 2 has **not** run: nothing is published and no hero is set.
-Sections 1–8 are the pre-flight as it stood before any write; §9 records what actually happened.
-Drive was read-only throughout — all writes were to `athletes` and `media` in Supabase.
+Phase 1 results are in §9, Phase 2 in §10, and the **standing hero rule** in §11.
+Sections 1–8 are the pre-flight as it stood before any write.
+Drive was read-only throughout — all writes were to `athletes`, `media` and `campaign_recaps`.
 
 ---
 
@@ -274,4 +274,80 @@ requests. It is now a `--concurrency` flag (default unchanged at 8); the recover
 
 ---
 
-*Phase 1 partially complete. Phase 2 not started — awaiting review.*
+---
+
+## 10. Phase 2 results — 7 rows published
+
+Approved by Peyton 2026-09-10. `PNW Content` was held back: it is `delivered` but its ingest is
+still gated, and publishing a campaign with 0 media would put an empty page in the brand portal.
+
+| Campaign | status | published | lifecycle_status | hero | media | linked |
+|---|---|---|---|---|---|---|
+| Bloomington CFP Event | published | true | delivered | ✓ | 10 | 0 |
+| CVS - Spotted at CVS | published | true | delivered | ✓ | 18 | 18 |
+| CVS Epic Beauty | published | true | delivered | ✓ | 24 | 24 |
+| CVS June | published | true | delivered | ✓ | 12 | 12 |
+| Epic Beauty + Unaltered Beauty | published | true | delivered | ✓ | 13 | 13 |
+| Extra Extra Big Deals January | published | true | delivered | ✓ | 20 | 20 |
+| Valentine's Day | published | true | delivered | ✓ | 14 | 14 |
+| **PNW Content** | draft | false | delivered | — | 0 | 0 |
+| Community Captains | draft | false | **active** | — | 6 | 6 |
+| Fall ExtraCare x Epic | draft | false | **active** | — | 0 | 0 |
+| RX Strategic Markets | draft | false | **active** | — | 0 | 0 |
+
+`lifecycle_status` stayed `delivered` on all seven, as §5 predicted — a single
+`update published = true` was enough, with `trg_sync_recap_publish_state` moving `status` to
+`published` in the same write. Re-running the script reports 0 changes. All seven
+`/recap/<slug>` pages return **200**.
+
+### Also fixed
+
+`Olivia Olsen Captions.mp4` on Community Captains is Olivia Olson (Michigan) — the roster
+spelling is right and the filename carries the typo, confirmed by Peyton. Linked by hand:
+`media.athlete_id` null → `ec1d6fdb…`, plus the matching `media_athletes` row. Community
+Captains is now 6/6 linked, and no unlinked media remains outside Bloomington.
+
+Bloomington's 10 unlinked stay unlinked by decision — gallery-only event coverage.
+
+---
+
+## 11. Standing rule — hero selection
+
+Brief 08 asked for "the same rule as brief 04". **Brief 04 defined no hero rule**: its docs never
+mention hero, and nothing in the application picks one — `hero_image_url` is only ever read as a
+card cover (`hero_image_url || thumbnail_url`) and otherwise set by hand in `OptInEditor`.
+
+The rule below was defined here, approved by Peyton on 2026-09-10, and is **the standing rule for
+future briefs to cite**:
+
+> **Hero = the highest `quality_score` IMAGE owned by the campaign** (`media.campaign_id`,
+> `type = 'image'`, ordered by `quality_score` descending, nulls last).
+>
+> - **Videos are excluded** — the column feeds an `<img>`.
+> - `quality_score` is the sharpness + contrast + resolution score the ingest already computes
+>   and curation ranks by, so the hero is the best frame curation kept.
+> - **An existing `hero_image_url` is never overwritten.**
+> - A campaign with no imported image keeps a **null** hero rather than being given a video poster
+>   frame. That is legitimate — the card falls back to `thumbnail_url`, and two long-published CVS
+>   campaigns (W/CWS, SPF) already run with a null hero.
+
+Implemented in `scripts/cvs-ingest-08-publish.js`.
+
+---
+
+## 12. Still outstanding
+
+- **`PNW Content`** — `delivered`, 63 athletes, **0 media**, 531 available in Drive. Ingest gated
+  behind an unrelated render batch. Publish once the media lands; it is the only approved-but-held row.
+- **`Fall ExtraCare x Epic`** — `active`, 215 athletes, 0 media, 368 available. Ingest only; do not publish.
+- **`RX Strategic Markets`** — skipped by the brief's own rule (empty Content folder, no tracker).
+- **Curation caps** — Bloomington went 72 files → 10 (8-image cap per event folder, videos uncapped).
+  If event campaigns read thin in the portal, `teamCap` or `--no-curate` is the lever.
+- **Guardrail** — no new "NCAA" / "March Madness" occurrences. The two known ones from brief 07 §6
+  are unchanged and still flagged, not renamed.
+- **`manager_name`** — still null on all 11, not invented, per brief 05.
+
+---
+
+*Phase 1 and Phase 2 complete for 7 of 11 rows. PNW Content and Fall ExtraCare x Epic await ingest.*
+

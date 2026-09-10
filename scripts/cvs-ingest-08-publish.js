@@ -31,8 +31,9 @@
 const { createClient } = require('@supabase/supabase-js');
 const APPLY = process.argv.includes('--apply');
 
-// The 8 delivered rows. The 3 active ones (Community Captains, Fall ExtraCare x
-// Epic, RX Strategic Markets) are deliberately absent.
+// The 7 delivered rows approved for publish. The 3 active ones (Community Captains,
+// Fall ExtraCare x Epic, RX Strategic Markets) stay active and unpublished, and PNW
+// Content is held back — see below.
 const TARGETS = [
   ['43319346-4a04-4123-9df0-fc1b96e134ab', 'Bloomington CFP Event'],
   ['6e8b601f-1abc-4051-b17c-7ab03beddbde', 'CVS - Spotted at CVS'],
@@ -41,7 +42,9 @@ const TARGETS = [
   ['66fb2d1f-2942-4cc6-991b-3ed940b52732', 'Epic Beauty + Unaltered Beauty'],
   ['165332db-856d-4a1a-a85d-6b1663577a7e', 'Extra Extra Big Deals January'],
   ['ec697283-d195-43ac-9644-f8e26421f5cd', "Valentine's Day"],
-  ['a4bcd17b-2d43-47bc-b9ac-73fe439f1298', 'PNW Content'],
+  // PNW Content is deliberately absent. It is `delivered`, but its ingest is still
+  // gated behind an unrelated render batch and it has 0 media — publishing it would
+  // put an empty campaign in the brand portal. Add it back once its media lands.
 ];
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -101,6 +104,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 
   console.log(`\n${'='.repeat(70)}`);
   console.log(`TOTAL  heroes ${APPLY ? 'set' : 'to set'}: ${heroSet}   ${APPLY ? 'published' : 'to publish'}: ${published}   no image available: ${noImage}   failed: ${failed}`);
-  console.log('\nNot touched (active campaigns): Community Captains, Fall ExtraCare x Epic, RX Strategic Markets');
+  console.log('\nNot touched (active): Community Captains, Fall ExtraCare x Epic, RX Strategic Markets');
+  console.log('Held back (delivered, 0 media): PNW Content — publish once its ingest runs');
   if (failed) process.exit(1);
 })().catch((e) => { console.error('FAILED:', e.message); process.exit(1); });
