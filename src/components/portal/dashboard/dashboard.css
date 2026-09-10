@@ -233,6 +233,18 @@
   white-space: nowrap; line-height: 1.25;
 }
 
+/* Three small tiles under the header: Live · Wrapped · Athletes. Sized to
+   their content rather than a third of the width each — three short figures
+   stretched across 1325px read as a banner, not a summary. */
+.pgd-topkpis { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap }
+.pgd-topkpi { flex: 0 1 auto; min-width: 168px; padding: 14px 18px; gap: 0 }
+.pgd-topkpi b {
+  display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 32px; line-height: 1;
+}
+.pgd-topkpi span { font-size: 16px; color: var(--ink-75); margin-top: 4px; display: block }
+.pgd-topkpi small { font-size: 14px; color: var(--ink-45); display: block }
+
 /* ---- the tile grid ------------------------------------------- */
 .pgd-grid {
   display: grid;
@@ -263,7 +275,16 @@
      Definite keeps the promise the number makes: 8 rows and 6 posts above the
      fold, the remaining four a scroll inside the roster, and Campaigns at
      y=865 with Activity at y=1032. */
-  grid-template-rows: 690px auto auto;
+  /* 730, re-measured after the rail widened and the KPI tiles arrived. The
+     promise from pass 3 still holds — 8 roster rows and all 6 top posts clear
+     of the fade — but the arithmetic moved: a roster row is 69.5px in the
+     narrower tile (was 64), so 8 rows plus the sticky thead (33) and the fade
+     (24) need 613px of scroll box, and the tile's own chrome is 99px.
+
+     Campaigns now begins just below the fold rather than just above it. That
+     is what the three KPI tiles cost, and it is the right trade: the tiles are
+     read at a glance, the campaigns row is read deliberately. */
+  grid-template-rows: 730px auto auto;
   gap: 10px;
   min-height: 0;
 }
@@ -298,9 +319,21 @@
    Row template is 3fr 3fr 3fr / auto / 120px: the content rows share the
    space and the workflow strip is a fixed 120, so the empty tiles cannot
    grow into the room the real ones need. */
+/* REBALANCED for the 200px rail. It took 128px out of the content column, and
+   at the old 3/6/3 split that landed entirely on the two narrow tiles: Top
+   posts fell to 294px, where every athlete name wrapped and six rows became
+   725px of content in a 566px box. 2/6/4 gives Top posts 392px and keeps the
+   roster above its table's 560px min-width, so no cell wraps either. The hero
+   loses width it can afford — it is a portrait photograph in a tall tile. */
+/* 3 / 5 / 4, rebalanced for the 200px rail. It took 128px out of the content
+   column and at 3/6/3 that landed on the two narrow tiles: Top posts fell to
+   294px, where every athlete name wrapped and six rows needed 725px in a
+   566px box. Dropping the roster's duplicate "Top reel" column freed a
+   column for Top posts without pushing the roster's table under its own
+   minimum width. */
 .pgd-photo    { grid-column: 1 / 4;   grid-row: 1 / 2; padding: 0 }
-.pgd-roster   { grid-column: 4 / 10;  grid-row: 1 / 2 }
-.pgd-top      { grid-column: 10 / 13; grid-row: 1 / 2 }
+.pgd-roster   { grid-column: 4 / 9;   grid-row: 1 / 2 }
+.pgd-top      { grid-column: 9 / 13;  grid-row: 1 / 2 }
 .pgd-camps    { grid-column: 1 / 13;  grid-row: 2 / 3 }
 .pgd-activity { grid-column: 1 / 13;  grid-row: 3 / 4 }
 
@@ -419,8 +452,12 @@
    identical, and nothing here needs merged borders — th and td each set only
    their own bottom edge. */
 .pgd-roster table {
-  width: 100%; border-collapse: separate; border-spacing: 0; min-width: 560px;
+  /* 430, down from 560: three columns, not four. */
+  width: 100%; border-collapse: separate; border-spacing: 0; min-width: 430px;
 }
+/* A figure never wraps: "410K views" broke across two lines in the old
+   fourth column and made every row taller. */
+.pgd-roster .pgd-nowrap { white-space: nowrap }
 .pgd-roster th {
   text-align: left; font-weight: 400; font-size: 14px; color: var(--ink-45);
   padding: 6px 8px; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
@@ -465,8 +502,19 @@
   font-size: 14px; font-weight: 700; color: var(--ink-50);
 }
 .pgd-post .pgd-r { font-family: var(--font-anton), Anton, Impact, sans-serif; color: rgba(250, 248, 245, 0.4); width: 16px; font-size: 16px; flex: 0 0 auto }
-.pgd-post b { display: block; font-size: 16px }
-.pgd-post small { font-size: 14px; color: var(--ink-50) }
+/* One line each, ellipsised. This is a ranked list read down the left edge;
+   a wrapped name costs every row below it a line, and the full name is on the
+   post the row links to. min-width: 0 is what lets a flex child shrink far
+   enough to ellipsise at all. */
+.pgd-post > div { min-width: 0 }
+.pgd-post b {
+  display: block; font-size: 16px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pgd-post small {
+  display: block; font-size: 14px; color: var(--ink-50);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .pgd-post .pgd-v { margin-left: auto; text-align: right; font-size: 14px; flex: 0 0 auto; line-height: 1.2 }
 .pgd-post .pgd-v b { font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400; font-size: 22px }
 .pgd-post .pgd-v.pgd-v-inline { display: flex; align-items: baseline; gap: 7px }
@@ -1247,6 +1295,14 @@
   display: block; margin-top: 12px; font-size: 14px; color: var(--ink-45);
 }
 .pgd-over .pgd-figs-note { margin-top: 10px; color: rgba(250, 248, 245, 0.6) }
+/* Bottom-left of the hero tile. The tile was a dead end without it: a photo,
+   a name and figures, and no way into the campaign they describe. */
+.pgd-over-link {
+  display: inline-block; margin-top: 12px; font-size: 14px; font-weight: 700;
+  color: var(--ink); text-decoration: none;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.35); padding-bottom: 2px;
+}
+.pgd-over-link:hover { border-bottom-color: var(--ink) }
 
 /* Rich text from campaign_recaps.description / settings.key_takeaways, after
    sanitising. Styled here rather than inline because the markup is arbitrary

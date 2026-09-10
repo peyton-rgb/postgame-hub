@@ -219,6 +219,10 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
 
   const kpis: DashboardKpi[] = [
     { value: String(live.length), label: "Live campaigns" },
+    // Wrapped joins the row so the three tiles are a complete picture of the
+    // account rather than two facts and a gap. It also lets the Campaigns
+    // strip drop its "0 live · 10 wrapped" subtitle, which said this twice.
+    { value: String(wrapped.length), label: "Wrapped" },
     // "Athletes / all campaigns" rather than "Athletes · all time". The
     // qualifier is what makes the number honest — it is every athlete the
     // brand has ever run with, not a live count — so it gets its own line
@@ -335,9 +339,12 @@ export async function loadBrandDashboard(brandId: string): Promise<DashboardData
       title: liveWithAthletes ? "Live campaign" : "Latest roster",
       campaignName: rosterCampaign.name ?? "Campaign",
       campaignSlug: rosterCampaign.slug,
+      // SIZE ONLY. The quarter and the platform were also on this line —
+      // "Q2 2026 · Instagram (Feed + Reels + Stories) + TikTok · 132 athletes
+      // · 102 schools" — which wrapped to two lines at 1440 and three on a
+      // phone, and both facts are on the campaign's own page one click away.
+      // What the tile is for is who is on it and how many.
       subline: [
-        rosterCampaign.quarter,
-        rosterCampaign.platform,
         `${nAthletes} ${nAthletes === 1 ? "athlete" : "athletes"}`,
         nSchools > 0 ? `${nSchools} ${nSchools === 1 ? "school" : "schools"}` : null,
       ]

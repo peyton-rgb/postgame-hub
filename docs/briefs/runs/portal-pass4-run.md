@@ -124,3 +124,58 @@ just the original) → transform of the original → the original. A stored
 thumbnail still needs a fallback because an object can go missing; the
 transform path stays for rows no job has reached — other brands, and anything
 imported since.
+
+## Dashboard
+
+### 5 · The KPIs became three small tiles — my call, and why
+
+They were figures floating in the header, level with the greeting, which read
+as chrome rather than content. They are now the page's first row: **Live
+campaigns · Wrapped · Athletes**.
+
+Removing them was the alternative and I did not take it: "Athletes, all
+campaigns" is the only place on the dashboard the brand's own size appears —
+the roster tile counts one campaign. **Wrapped is new to the row**, which is
+what makes three tiles rather than two, and it let the Campaigns strip drop its
+"0 live · 10 wrapped" subtitle, which had been saying the same thing again.
+
+### 6 · Roster subtitle
+
+"132 athletes · 102 schools" only. The quarter and the platform were also on
+that line — the whole string was "Q2 2026 · Instagram (Feed + Reels + Stories)
++ TikTok · 132 athletes · 102 schools", which wrapped to two lines at 1440 and
+three on a phone. Both facts are on the campaign's own page, one click away.
+
+### 7 · Top posts
+
+"933K views" on one line. The number and its unit belong together, and the
+stacked pair cost a second row in each of six cards.
+
+### 8 · "View campaign →" on the hero tile
+
+The tile was a dead end: a photograph, a name and three figures, with no way
+into the campaign they describe.
+
+### The rail widening broke the grid, and fixing it removed a duplicate
+
+The 200px rail took 128px out of the content column, and at the old 3/6/3
+split that landed entirely on the two narrow tiles. **Top posts fell to
+294px**, where every athlete name wrapped and six rows needed 725px of content
+in a 566px box — four of six visible.
+
+The fix was to drop the roster's **"Top reel" column**, which duplicated the
+Top posts tile sitting directly beside it: the same campaign's reels, ranked,
+twice on one screen. That freed a column, so the split is now 3/5/4 — Top
+posts back to 392px with all six rows, the hero back to three columns, and the
+roster's table under its own minimum width with three columns instead of four.
+
+Names and metas in Top posts are now single-line and ellipsised: it is a
+ranked list read down its left edge, a wrapped name costs every row below it a
+line, and the full name is on the post the row links to.
+
+Row height re-measured rather than assumed at each step: 640 → 712 → 730, the
+last because dropping a column made the school column wrap and rows grew from
+64px to 71px. Final: 8 roster rows and all 6 top posts clear of the fade,
+Campaigns at y=989. Campaigns now begins just below the fold rather than just
+above it — that is what the three KPI tiles cost, and it is the right trade:
+tiles are read at a glance, the campaigns row deliberately.
