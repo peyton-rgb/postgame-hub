@@ -24,10 +24,16 @@ import { loadPostgameTeam, PostgameTeamBlock } from "@/components/PostgameTeam";
 export default async function CampaignsBody({ brand, basePath }: { brand: PortalBrand; basePath: string }) {
   const supabase = createServiceSupabase();
 
+  // portal_visible is the brand-facing listing switch (migration 061). Rows set
+  // false are shells with nothing in them — old surveys, duplicate admin records —
+  // which otherwise rendered to the client as "content uploading soon" cards.
+  // Filtering here covers the grid AND the header counts below, since both derive
+  // from `recaps`.
   const { data: recapsRaw } = await supabase
     .from("campaign_recaps")
     .select("id, name, slug, published, admin_is_active, created_at, hero_image_url, thumbnail_url")
     .eq("brand_id", brand.id)
+    .eq("portal_visible", true)
     .order("created_at", { ascending: false });
 
   const recaps = (recapsRaw || []) as any[];

@@ -2555,6 +2555,7 @@ export type Database = {
           og_image: string | null
           owner_id: string | null
           pin_hash: string | null
+          portal_visible: boolean
           public_sections: Json | null
           published: boolean | null
           recap_config: Json | null
@@ -2613,6 +2614,7 @@ export type Database = {
           og_image?: string | null
           owner_id?: string | null
           pin_hash?: string | null
+          portal_visible?: boolean
           public_sections?: Json | null
           published?: boolean | null
           recap_config?: Json | null
@@ -2671,6 +2673,7 @@ export type Database = {
           og_image?: string | null
           owner_id?: string | null
           pin_hash?: string | null
+          portal_visible?: boolean
           public_sections?: Json | null
           published?: boolean | null
           recap_config?: Json | null

@@ -46,11 +46,15 @@ export default async function PortalDashboardBody({
 }) {
   const supabase = createServiceSupabase();
 
-  // Every campaign for this brand, newest first. Drafts included.
+  // Every portal-visible campaign for this brand, newest first. Drafts included —
+  // in-flight work is meant to show. Rows with portal_visible = false are hidden
+  // shells (migration 061); without this filter they reached the client twice over,
+  // in the stat counts and in the "in flight" list further down.
   const { data: recapsRaw } = await supabase
     .from("campaign_recaps")
     .select("id, name, slug, published, admin_is_active, created_at, hero_image_url, thumbnail_url")
     .eq("brand_id", brand.id)
+    .eq("portal_visible", true)
     .order("created_at", { ascending: false });
 
   const recaps = (recapsRaw || []) as any[];
