@@ -32,8 +32,25 @@ Two campaigns failed their first fetch with transient Google token/socket errors
 roster". The importer gained a backoff that retries `429`, `5xx` and `fetch error`, and both
 succeeded on retry. Script: `scripts/cvs-populate-09-roster.ts`.
 
-**Fall ExtraCare x Epic** — `pgrep -x ffmpeg` was clear, so its media ingest ran at
-`--concurrency 2` per the guardrail. *(Result appended below when it completes.)*
+### Fall ExtraCare x Epic — media ingest complete
+
+`pgrep -x ffmpeg` was clear, so this ran at `--concurrency 2` per the guardrail.
+
+| | |
+|---|---|
+| media | **86** (71 images / 15 videos) |
+| linked to an athlete | **77** |
+| unlinked | 9 |
+| athletes | 215 (imported in brief 08) |
+| published | **false** — stays `active`, not published, per the brief |
+
+The 9 unlinked come from the 2 folders the brief-08 manifest could not resolve without guessing:
+a pair folder where only one of the two athletes is on the roster, and `Penn State Volleyball`,
+a team with no roster entry.
+
+The run was OOM-killed once at 13 of 16 folders with 71 media in. Resuming it re-listed all 301
+files, **skipped the 71 already imported** on `drive_file_id` and uploaded the remaining 15 —
+which is the idempotency guarantee doing exactly its job. No duplicates, nothing lost.
 
 ---
 
@@ -369,5 +386,17 @@ CVS campaigns have not been surveyed; the true total across CVS is likely severa
 
 ---
 
-*Phase 1 applied. Phase 2 reported, not ingested (folders move first).
-Phase 3 portal_visible implemented in a separate PR.*
+## CVS after brief 09
+
+| | Value |
+|---|---|
+| Campaign rows | 52 |
+| Published | 18 |
+| Media | 697 |
+| Athletes | 4,600 |
+| Listed in the brand portal | **35** (was 52) |
+
+---
+
+*Phase 1 applied. Phase 2 reported, not ingested — the 33 folders move into the CVS tree first.
+Phase 3 shipped as PR #270 (`portal_visible`).*
