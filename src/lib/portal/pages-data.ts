@@ -76,48 +76,19 @@ export function thumb(url: string, width = 420): string {
 const WEB_SAFE = /\.(jpe?g|png|gif|webp)($|\?)/i;
 
 /**
- * The thumbnail source for a media tile, and what to fall back to.
- *
- * EVERY TILE GOES THROUGH THE RENDER ENDPOINT AT 600, with the original as an
- * onerror fallback. The brief asked for that only where `thumbnail_url` is
- * empty; measuring the Content page's first 40 tiles is what widened it, and
- * the numbers are the argument:
- *
- *   thumbnail_url direct, transform only when empty   75.70 MB   (-3%)
- *   every tile through the transform at 600            9.69 MB   (-88%)
- *
- * `thumbnail_url` IS NOT A THUMBNAIL on this data. Of those 40 rows it is
- * byte-identical to `file_url` on 21 and empty on 6 — so on 27 of 40, serving
- * "the thumbnail" means serving the original: a mean of 2.0 MB, up to 7.4 MB,
- * into a 240px tile. Honouring only the empty ones fixed 6 rows and left 78
- * MB a page. The 13 rows where it genuinely differs are video poster frames,
- * and they are cheaper through the transform too.
- *
- * NON-WEB-SAFE ROWS STILL HAVE NO CHOICE. 7 of CVS's 460 rows are `.HEIC`,
- * which no browser paints; serving those raw is what made Bella Bonnett's tile
- * a black box (`content-type: image/heif`, 2.2MB, nothing on screen). For
- * those the transform is not an optimisation, it is the only way the picture
- * exists — so they get no fallback, because falling back to the original would
- * restore the black box.
- *
- * WHY A FALLBACK AT ALL. The transform is a separate service from object
- * storage and can fail on an object storage will still serve — an unsupported
- * colour profile, a size limit, a bad day. Without a fallback that tile is
- * permanently blank; with one it costs a wasted request and shows the picture.
- * The fallback is only ever the same object served unresized, so it can never
- * show the wrong image.
- *
- * 600, not 420: the Content tiles reach 300px wide, which is 600 device
- * pixels on a 2x screen.
- */
-/**
  * The searchable text for a media row: who, where, which campaign, and the
  * filename. Lowercased once here so filtering is a substring test rather than
  * a per-keystroke rebuild of four fields.
  *
+ * THERE IS NO CAPTION OR TAG COLUMN ON `media` — the columns are ids, type,
+ * urls, storage/source ids, sizes, focal points, hero flags and `slot`, and
+ * `slot` is populated on 5 of CVS's 460 rows with no vocabulary behind it. So
+ * the free text on a media row is the athlete, the school, the campaign and
+ * the FILENAME, which is real text people recognise
+ * ("2026_CVS_Darius_Acuff_Jr.18.jpg").
+ *
  * The filename is decoded (%20 back to a space) and stripped of its path and
- * the upload timestamp prefix, so "darius acuff" matches
- * ".../1775691416036-2026_CVS_Darius_Acuff_Jr.18.jpg".
+ * the upload timestamp prefix, so "darius acuff" matches.
  */
 function searchText(
   athlete: string | null | undefined,
@@ -131,7 +102,6 @@ function searchText(
   } catch {
     file = url.split("?")[0].split("/").pop() ?? "";
   }
-  // Drop the "1775691416036-" upload prefix and turn separators into spaces.
   file = file.replace(/^\d{10,}-/, "").replace(/[._\-]+/g, " ");
   return [athlete, school, campaign, file]
     .filter(Boolean)
@@ -139,6 +109,34 @@ function searchText(
     .toLowerCase();
 }
 
+/**
+ * The thumbnail source for a media tile, and what to fall back to.
+ *
+ * `thumbnail_url` FIRST, now that it is a real thumbnail.
+ * scripts/generate-portal-thumbnails.js gave every one of CVS's 411 media
+ * rows a distinct 600px rendition in the bucket — 307 generated, 68.3MB, mean
+ * 228KB — so the stored URL is the cheap, correct answer and the transform
+ * endpoint is only a fallback.
+ *
+ * WHAT CHANGED AND WHY. Before that job `thumbnail_url` was null or
+ * byte-identical to `file_url` on 27 of every 40 rows, so reading it meant
+ * serving a 2MB original into a 240px tile; the portal compensated by routing
+ * EVERY tile through the transform, which fixed the bytes but put a transform
+ * call on the critical path of every tile for every viewer, forever. Now the
+ * bytes are already right and no transform call is made at all on a row the
+ * job reached.
+ *
+ * THE FALLBACK ORDER, per row:
+ *   stored thumbnail (web-safe)  ->  transform of the original
+ *   no stored thumbnail          ->  transform of the original  ->  original
+ * The first case still needs a fallback because a stored object can go
+ * missing; the second is the old behaviour, kept for rows a job has not
+ * reached — other brands, and anything imported since.
+ *
+ * NON-WEB-SAFE SOURCES have no fallback. 7 of CVS's rows are `.HEIC`, which no
+ * browser paints; "falling back" to the original restores the black box that
+ * made Bella Bonnett's tile empty in pass 1.
+ */
 export function mediaThumb(
   thumbnailUrl: string | null,
   fileUrl: string | null
@@ -147,12 +145,15 @@ export function mediaThumb(
   const original = fileUrl && fileUrl.trim() ? fileUrl.trim() : null;
   const url = stored || original;
   if (!url) return null;
+
+  // A stored thumbnail that is just the original again is not a thumbnail.
+  const realThumb = stored && stored !== original ? stored : null;
+  if (realThumb && WEB_SAFE.test(realThumb)) {
+    return { src: realThumb, fallback: original ? thumb(original, 600) : null };
+  }
+
   const transformed = thumb(url, 600);
-  // No fallback for a format the browser cannot paint: the "fallback" would be
-  // the very file that renders as nothing.
   if (!WEB_SAFE.test(url)) return { src: transformed, fallback: null };
-  // Nothing to fall back to if the transform is a no-op (a URL outside object
-  // storage comes back unchanged).
   return { src: transformed, fallback: transformed === url ? null : url };
 }
 

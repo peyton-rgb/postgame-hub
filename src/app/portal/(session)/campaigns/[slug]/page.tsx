@@ -23,7 +23,7 @@ export default async function Page({
   params: { slug: string };
   searchParams: Record<string, string | undefined>;
 }) {
-  const { brand, preview } = await resolveSessionPortal(searchParams.brand);
+  const { brand, preview, chrome } = await resolveSessionPortal(searchParams.brand);
   const [icon, campaign] = await Promise.all([
     getPostgameIcon(),
     loadCampaignDetail(brand.id, params.slug),
@@ -36,12 +36,15 @@ export default async function Page({
       active="campaigns"
       postgameIcon={icon}
       preview={preview}
+      brand={brand}
+      accountLabel={chrome.personLabel}
       /* The campaign is named in the hero, which is its h1. The header
          carried the same words directly above it. */
+      /* The hero carries the name, the quarter and the type. The header
+         carried a small "Q2 2026 · Product Seeding" line above it saying the
+         same thing 40px higher. */
       title={null}
-      subtitle={
-        [campaign.quarter, campaign.campaignType].filter(Boolean).join(" · ") || null
-      }
+      subtitle={null}
     >
       <CampaignDetail campaign={campaign} initialTab={searchParams.tab} />
     </PortalShell>

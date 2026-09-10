@@ -126,7 +126,34 @@ export default function MediaGrid({
 
   return (
     <>
-      <div className="pgd-filters">
+      <div className="pgd-filters pgd-filters-media">
+        {/* SEARCH FIRST AND WIDEST. It is the control that answers "where is
+            the shot of X", which is what someone opens this page to ask; the
+            dropdowns narrow a set you are already looking at. Enter or a
+            comma turns the text into a chip. */}
+        <input
+          className="pgd-input pgd-input-wide"
+          type="search"
+          value={draft}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.endsWith(",")) {
+              setDraft(v.slice(0, -1));
+              setTimeout(addTerm, 0);
+            } else setDraft(v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addTerm();
+            } else if (e.key === "Backspace" && draft === "" && terms.length > 0) {
+              dropTerm(terms[terms.length - 1]);
+            }
+          }}
+          onBlur={addTerm}
+          placeholder="Search athlete, school, campaign, filename…"
+          aria-label="Search content by keyword"
+        />
         {(["all", "photo", "video"] as const).map((k) => (
           <button
             key={k}
@@ -143,33 +170,6 @@ export default function MediaGrid({
         <Picker label="All campaigns" value={campaign} set={withReset(setCampaign)} options={campaigns} />
         <Picker label="All athletes" value={athlete} set={withReset(setAthlete)} options={athletes} />
         <Picker label="All schools" value={school} set={withReset(setSchool)} options={schools} />
-
-        {/* Keyword search, beside the toggles. Enter (or a comma) turns the
-            text into a chip; the chips stack with the dropdowns above. */}
-        <input
-          className="pgd-input"
-          type="search"
-          value={draft}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v.endsWith(",")) {
-              setDraft(v.slice(0, -1));
-              // Defer so the state above lands before addTerm reads it.
-              setTimeout(addTerm, 0);
-            } else setDraft(v);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addTerm();
-            } else if (e.key === "Backspace" && draft === "" && terms.length > 0) {
-              dropTerm(terms[terms.length - 1]);
-            }
-          }}
-          onBlur={addTerm}
-          placeholder="Search athlete, school, campaign, filename…"
-          aria-label="Search content by keyword"
-        />
 
         <span className="pgd-count">
           {shown.length} of {matched.length}
@@ -226,18 +226,37 @@ export default function MediaGrid({
                 // original cannot loop.
                 onError={(e) => {
                   const el = e.currentTarget;
-                  if (!m.thumbFallbackUrl || el.dataset.fellBack) return;
-                  el.dataset.fellBack = "1";
-                  el.src = m.thumbFallbackUrl;
+                  // One retry with the original.
+                  if (m.thumbFallbackUrl && !el.dataset.fellBack) {
+                    el.dataset.fellBack = "1";
+                    el.src = m.thumbFallbackUrl;
+                    return;
+                  }
+                  // NOTHING RENDERS THIS FILE. 6 of CVS's rows are Sony RAW
+                  // (.arw) or extensionless, which no browser and no transform
+                  // can decode — the fallback is another file that also paints
+                  // as nothing. Hide the image so the tile is its own dark
+                  // surface with the caption and the type marker on it, rather
+                  // than a broken-image glyph.
+                  el.hidden = true;
+                  el.closest(".pgd-shot")?.classList.add("pgd-shot-noimage");
                 }}
               />
-              {m.isVideo && (
-                <span className="pgd-play" aria-hidden="true">
+              {/* EVERY TILE SAYS WHAT IT IS. Only videos carried a marker
+                  before, so a photo was identified by the absence of one —
+                  which is only legible if you already know the rule. */}
+              <span className={`pgd-kind${m.isVideo ? " pgd-kind-video" : ""}`} aria-hidden="true">
+                {m.isVideo ? (
                   <svg viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
-                </span>
-              )}
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <path d="M3 16l5-5 4 4 3-3 6 6" />
+                  </svg>
+                )}
+              </span>
               {fresh(m.createdAt) && <span className="pgd-new">New</span>}
               {(m.athleteName || (showCampaign && m.campaignName)) && (
                 <figcaption>

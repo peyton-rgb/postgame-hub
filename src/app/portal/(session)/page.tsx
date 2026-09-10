@@ -40,7 +40,7 @@ export default async function Page({
   // Redirects on its own for every case that is not an entitled viewer:
   // anonymous -> /login, athlete -> /athlete, brand with no reach ->
   // /portal/denied, admin with no brand chosen -> /portal/choose.
-  const { brand, preview } = await resolveSessionPortal(searchParams.brand);
+  const { brand, preview, chrome } = await resolveSessionPortal(searchParams.brand);
 
   const [postgameIcon, data] = await Promise.all([
     getPostgameIcon(),
@@ -48,6 +48,12 @@ export default async function Page({
   ]);
 
   return (
-    <BrandDashboard brand={brand} postgameIcon={postgameIcon} data={data} preview={preview} />
+    <BrandDashboard
+      brand={brand}
+      postgameIcon={postgameIcon}
+      data={data}
+      preview={preview}
+      accountLabel={chrome.personLabel}
+    />
   );
 }
