@@ -38,11 +38,13 @@ export default function BrandDashboard({
   postgameIcon,
   data,
   preview,
+  accountLabel,
 }: {
   brand: PortalBrand;
   postgameIcon: string | null;
   data: DashboardData;
   preview?: PortalPreviewChrome | null;
+  accountLabel?: string | null;
 }) {
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -55,6 +57,8 @@ export default function BrandDashboard({
       active="home"
       postgameIcon={postgameIcon}
       preview={preview}
+      brand={brand}
+      accountLabel={accountLabel}
       title="Welcome back"
       subtitle={today}
       aside={

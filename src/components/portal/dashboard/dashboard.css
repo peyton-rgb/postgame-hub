@@ -48,7 +48,10 @@
   background: #07070A;
   color: var(--ink);
   display: grid;
-  grid-template-columns: 72px 1fr;
+  /* 200px labelled rail. Five destinations whose icons were all abstract
+     enough to need a tooltip to identify — a bar chart and a document read
+     as "Reports" and "Recaps" only once you already know. */
+  grid-template-columns: 200px 1fr;
   font-size: 16px;
   line-height: 1.5;
   /* THE PAGE SCROLLS. It used to be locked to the viewport, like the
@@ -66,9 +69,9 @@
 .pgd-rail {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 18px 0;
-  gap: 6px;
+  align-items: stretch;
+  padding: 18px 12px;
+  gap: 4px;
   border-right: 1px solid var(--hair);
   background: #0A0A0D;
   /* Sticky, not fixed: the page scrolls now, and the rail is the navigation,
@@ -81,14 +84,15 @@
      appear BEHIND the first tile — which is exactly what happened. */
   z-index: 90;
 }
-.pgd-rail img { width: 32px; height: 32px; margin-bottom: 14px; object-fit: contain; }
+.pgd-rail img { width: 32px; height: 32px; margin: 0 0 18px 8px; object-fit: contain; flex: 0 0 auto }
 .pgd-rail a,
 .pgd-rail span.pgd-icon {
-  width: 40px; height: 40px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
+  min-height: 42px; border-radius: 12px; padding: 0 12px; gap: 12px;
+  display: flex; align-items: center; justify-content: flex-start;
   color: var(--ink-45); text-decoration: none; flex: 0 0 auto;
-  position: relative;
+  position: relative; font-size: 16px;
 }
+.pgd-rail-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .pgd-rail a:hover { color: var(--ink); background: rgba(250, 248, 245, 0.06); }
 .pgd-rail a.on { background: rgba(250, 248, 245, 0.1); color: var(--ink); }
 
@@ -108,20 +112,26 @@
   opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity 0.12s ease; z-index: 70;
 }
-.pgd-rail a:hover .pgd-tip,
-.pgd-rail a:focus-visible .pgd-tip,
-.pgd-rail span.pgd-icon:hover .pgd-tip { opacity: 1; visibility: visible }
+/* Tooltips belong to the COLLAPSED rail only: with the label beside the icon
+   a tooltip repeating it is noise. Re-enabled under 1100px below. */
+.pgd-tip { display: none }
 .pgd-rail svg {
   width: 18px; height: 18px; fill: none; stroke: currentColor;
   stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
 }
 .pgd-rail .pgd-spacer { flex: 1 }
-.pgd-rail .pgd-ava {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(250, 248, 245, 0.14);
-  border: 2px solid rgba(250, 248, 245, 0.2);
-  flex: 0 0 auto;
+/* The account, at the foot of the rail. */
+.pgd-account {
+  display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+  min-width: 0; color: var(--ink-60); font-size: 14px;
 }
+.pgd-account-disc {
+  width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: var(--ink-75); letter-spacing: 0.02em;
+}
+.pgd-account-label { min-width: 0 }
 
 /* ---- main column --------------------------------------------- */
 .pgd-main {
@@ -150,8 +160,11 @@
 /* The search field is a real form now, so it is styled as an input rather
    than as a label-shaped span. */
 .pgd-search-form { display: flex; align-items: center; flex: 0 0 auto }
+/* 320px. "Search campaigns, athletes" is 210px at 14px Arimo, and the field
+   also has to hold what someone types without the start of it scrolling out
+   of view. */
 .pgd-t.pgd-search {
-  width: 260px; color: var(--ink); font-family: inherit; font-size: 14px;
+  width: 320px; color: var(--ink); font-family: inherit; font-size: 14px;
   outline: none;
 }
 .pgd-t.pgd-search::placeholder { color: rgba(250, 248, 245, 0.42) }
@@ -180,6 +193,19 @@
 }
 
 .pgd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+/* The brand's own mark, left of the page title, with a rule between them so
+   the two are read as separate things rather than one lockup. */
+.pgd-brandmark {
+  display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto;
+  padding-right: 20px; margin-right: 4px;
+  border-right: 1px solid var(--hair); min-height: 52px; justify-content: center;
+}
+.pgd-brandmark img { height: 30px; width: auto; max-width: 190px; object-fit: contain; display: block }
+.pgd-brandmark-name {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 30px; line-height: 1; letter-spacing: 0.01em;
+}
+.pgd-brandmark-sub { font-size: 14px; color: var(--ink-45) }
 .pgd-h1 {
   font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
   font-weight: 400; font-size: 44px; line-height: 0.92;
@@ -537,6 +563,20 @@
 
 /* ---- tablet: 6 columns, tiles stack in the brief's order ----- */
 @media (max-width: 1100px) {
+  /* COLLAPSED RAIL: icons only, and the tooltips come back as the way to
+     identify them. */
+  .pgd { grid-template-columns: 72px 1fr }
+  .pgd-rail { align-items: center; padding: 18px 0 }
+  .pgd-rail img { margin: 0 0 14px }
+  .pgd-rail a, .pgd-rail span.pgd-icon {
+    width: 40px; height: 40px; min-height: 0; padding: 0; justify-content: center;
+  }
+  .pgd-rail-label { display: none }
+  .pgd-tip { display: block }
+  .pgd-rail a:hover .pgd-tip,
+  .pgd-rail a:focus-visible .pgd-tip { opacity: 1; visibility: visible }
+  .pgd-account { padding: 8px 0; justify-content: center }
+  .pgd-brandmark { border-right: 0; padding-right: 0 }
   /* The page already scrolls; below the reference width the tiles also stack,
      so the content row's 620px floor comes off — each tile is its own row
      here and sizes to what it holds. */

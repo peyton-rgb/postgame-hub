@@ -23,7 +23,7 @@ export default async function Page({
   params: { slug: string };
   searchParams: Record<string, string | undefined>;
 }) {
-  const { brand, preview } = await resolveSessionPortal(searchParams.brand);
+  const { brand, preview, chrome } = await resolveSessionPortal(searchParams.brand);
   const [icon, campaign] = await Promise.all([
     getPostgameIcon(),
     loadCampaignDetail(brand.id, params.slug),
@@ -36,6 +36,8 @@ export default async function Page({
       active="campaigns"
       postgameIcon={icon}
       preview={preview}
+      brand={brand}
+      accountLabel={chrome.personLabel}
       /* The campaign is named in the hero, which is its h1. The header
          carried the same words directly above it. */
       title={null}
