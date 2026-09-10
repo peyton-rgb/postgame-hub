@@ -1,10 +1,11 @@
 # CVS ingest + publish (brief 08) — Phase 1 pre-flight
 
-**Run date:** 2026-09-10 · **Status:** ⛔ **not executed — blocked, nothing written**
-**Scope:** 11 CVS rows · **Prereq:** brief 07 Phase B (applied; PR #267 **still open**)
+**Run date:** 2026-09-10 · **Status:** 🟡 **Phase 1 run — 9 of 11 rows complete, 2 gated**
+**Scope:** 11 CVS rows · **Prereq:** brief 07 Phase B — PR #267 merged as `ed6bfa6`
 
-No Supabase row and no Drive object has been modified by this brief. Everything below is
-read-only verification done before touching anything.
+Phase 1 results are in §9. Phase 2 has **not** run: nothing is published and no hero is set.
+Sections 1–8 are the pre-flight as it stood before any write; §9 records what actually happened.
+Drive was read-only throughout — all writes were to `athletes` and `media` in Supabase.
 
 ---
 
@@ -207,4 +208,70 @@ files**. That is a long job and a meaningful storage cost.
 
 ---
 
-*Read-only pre-flight. No writes performed. Awaiting decisions before any of Phase 1 runs.*
+## 9. Phase 1 results
+
+### Rosters — 1,151 athletes imported across 8 campaigns
+
+Idempotent on `(campaign_id, name)`; a re-run reports 0 inserts / 1,151 skipped. Google's CSV
+export rate-limited two campaigns mid-run (HTTP 429), so the script gained backoff-and-retry.
+Bloomington's names had the bleed-through `Indiana ` prefix stripped, as approved.
+
+### Media — 117 imported, 106 linked to an athlete
+
+| Campaign | lifecycle | athletes | media | linked | unlinked | img/vid |
+|---|---|---|---|---|---|---|
+| Bloomington CFP Event | delivered | 5 | 10 | 0 | 10 | 8/2 |
+| CVS - Spotted at CVS | delivered | 79 | 18 | 18 | 0 | 15/3 |
+| CVS Epic Beauty | delivered | 50 | 24 | 24 | 0 | 20/4 |
+| CVS June | delivered | 102 | 12 | 12 | 0 | 10/2 |
+| Epic Beauty + Unaltered Beauty | delivered | 659 | 13 | 13 | 0 | 9/4 |
+| Extra Extra Big Deals January | delivered | 99 | 20 | 20 | 0 | 13/7 |
+| Valentine's Day | delivered | 2 | 14 | 14 | 0 | 10/4 |
+| **PNW Content** | delivered | 63 | **0** | 0 | 0 | — |
+| Community Captains | active | 6 | 6 | 5 | 1 | 0/6 |
+| **Fall ExtraCare x Epic** | active | 215 | **0** | 0 | 0 | — |
+| RX Strategic Markets | active | 0 | 0 | 0 | 0 | skipped |
+| **TOTAL** | | **1,280** | **117** | **106** | **11** | |
+
+### The 11 unlinked media are deliberate
+
+- **Bloomington CFP Event (10)** — event coverage in a `Photos/` folder plus two recap videos.
+  Not partitioned by athlete, and its roster carries no handles, so nothing could be matched
+  without guessing. `athlete_id` null; the media is still owned by the campaign.
+- **Community Captains (1)** — `Olivia Olsen Captions.mp4`. The roster spells her **Olivia Olson**.
+  The other 5 linked by filename. Left unlinked rather than assume the two are the same person —
+  worth a human confirming.
+
+### Two campaigns still outstanding
+
+`PNW Content` (delivered, 531 media available) and `Fall ExtraCare x Epic` (active, 368 available)
+are gated behind an unrelated video-render batch on the same machine. **PNW is the only `delivered`
+row with no media**, so Phase 2 should not publish it until its ingest runs.
+
+### Curation is doing real work
+
+| Campaign | files listed | uploaded |
+|---|---|---|
+| Bloomington CFP Event | 72 | 10 |
+| CVS - Spotted at CVS | 26 | 18 |
+| CVS Epic Beauty | 26 | 24 |
+| Epic Beauty + Unaltered Beauty | 19 | 13 |
+| Community Captains | 6 | 6 |
+
+Bloomington is the sharpest case — 72 files down to 10, since a single event folder caps at 8
+images (plus both videos, which are never capped).
+
+### Operational note — three OOM kills
+
+The run was killed by system memory pressure three times, and a fourth kill took out the
+*watcher* that was waiting to resume, while it was doing nothing but sleeping. The cause was
+contention with unrelated work on this machine (a 2,410-clip ffmpeg proxy batch and an open
+DaVinci Resolve), not a fault in the ingest. No data was lost or duplicated at any point — the
+importer keys on `drive_file_id`, so each restart resumed exactly where it stopped.
+
+The real memory driver was `CURATION.concurrency`, hardcoded at 8 parallel image-scoring
+requests. It is now a `--concurrency` flag (default unchanged at 8); the recovery runs used 2.
+
+---
+
+*Phase 1 partially complete. Phase 2 not started — awaiting review.*
