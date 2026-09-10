@@ -27,18 +27,23 @@ const APPLY = process.argv.includes('--apply');
 const S2024B = '13Hv4tiyWCPUqJ-euU3dJBUnWsFnVkXQhRD3UOLxEeWE';
 const S2025  = '1WQ2HOig9RBn1dAC1WZg0uHXVNZICf8hgBU0e2z9Jkw8';
 const S2026  = '1uLiJgwjxSc6vg3sk78Q9ph33RBiY3AoW_eQXBH8VdeM';
+const MERGED = Symbol('row removed by the 26-spring merge');
 const url = (sheet, gid) => `https://docs.google.com/spreadsheets/d/${sheet}/edit?gid=${gid}#gid=${gid}`;
 
 // ── tracker_url: 17 corrections + 1 clear ─────────────────────
 const TRACKER = [
   // 2026 Master
   ['ec697283-d195-43ac-9644-f8e26421f5cd', "Valentine's Day",                url(S2026, '578971717'),  'Extra Big Deals → Valentines Day'],
-  ['83702fc8-579a-465d-9fa9-79595c13de56', '26 Spring Epic Beauty (admin 857)', url(S2026, '1684065158'), 'Extra Big Deals → Epic Beauty'],
+  // This row is deleted by scripts/cvs-26-spring-merge.js, which carries this
+  // corrected link onto the surviving row. MERGED marks it as expected-absent on
+  // any re-run after the merge, rather than a failure.
+  ['83702fc8-579a-465d-9fa9-79595c13de56', '26 Spring Epic Beauty (admin 857)', url(S2026, '1684065158'), 'Extra Big Deals → Epic Beauty', MERGED],
   ['8c64e109-1b5f-40db-85fe-1b2ed6590d86', 'The Tournament',                 url(S2026, '1968908289'), 'Ronald Mcdonald House → March Madness tab (title flagged, not renamed)'],
   ['23a3c0d2-b185-4d71-bd7c-5a7ef4712fb9', 'W/CWS',                          url(S2026, '983669871'),  'SPF → College World Series'],
   ['9e0bae8f-adb9-48fe-805a-62e667cf49d4', "Mother's Day (2026)",            url(S2026, '16945540'),   'no gid → Mother\'s Day'],
   ['43319346-4a04-4123-9df0-fc1b96e134ab', 'Bloomington CFP Event',          url(S2026, '1570003009'), 'none → CFP Event'],
   ['c6fc9c9d-c010-4c1b-809c-6b7cecaa38f7', 'Fall ExtraCare x Epic',          url(S2026, '1220833137'), 'none → Fall Epic Beauty'],
+  ['565012d0-4d3c-4203-a20c-07a043f7a833', 'Community Captains',             url(S2026, '1764781348'), 'Minute Clinic → Community Captains (roster tab; 591116651 is a cross-campaign reach calculator)'],
   // 2025 Master
   ['5c62c3f8-8a9f-428e-8ded-302d2e27519c', "Mother's Day 2025",              url(S2025, '1310965878'), "Epic Beauty → Mother's Day"],
   ['275d7916-bb83-4d50-ad65-0a16d3886230', 'Summer/SPF',                     url(S2025, '1653369416'), 'Epic Beauty → Summer SPF'],
@@ -67,12 +72,14 @@ const CONTENT = [
   ['c6fc9c9d-c010-4c1b-809c-6b7cecaa38f7', 'Fall ExtraCare x Epic',          '11D4zEh2SJIPPXSkctFKJ9ZJrl5IKyIuS', 'Epic Beauty - Aug — 368 media'],
   ['a4bcd17b-2d43-47bc-b9ac-73fe439f1298', 'PNW Content',                    '1XhcYSmrjxV6VjK6hi1Ln1-9R9k7AP1vz', '2025 PNW + Events — 531 media'],
   ['f2223120-0c9f-433a-91c0-a932a55c1162', 'CVS June',                       '14XljLWmk5ekDwpBJr3d7hOvCLoAMzt9d', 'Summer - June — 18 media'],
+  ['4dd34b3c-8929-4130-887a-d388ca21f0b1', '26 Spring Epic Beauty',          '13E-8v0Czkh7DtXx4G92OHiaHf0yInaWx', 'Epic Beauty - January — 203 media, no Content subfolder so the folder itself'],
 ];
 
 // ── drive_folder_id: 2 rows (campaign-specific parents only) ──
 const ROOT = [
   ['6e8b601f-1abc-4051-b17c-7ab03beddbde', 'CVS - Spotted at CVS',  '1zSIabQG2jdtn3_daeaZL3CCOmOTELCKw', 'Spotted at CVS - May 2024 (parent of the Content folder)'],
   ['aa58fc27-bc14-4a83-ae0a-22a65ff9bbfb', 'Epic Sale Fall 2025',   '1lLfGX3NvHk0JCfge9YwoQbBdxFLyiaHa', 'Epic Beauty - Fall — 0 media, root only per decision 2'],
+  ['4dd34b3c-8929-4130-887a-d388ca21f0b1', '26 Spring Epic Beauty', '13E-8v0Czkh7DtXx4G92OHiaHf0yInaWx', 'Epic Beauty - January (already set; listed so the manifest is complete)'],
 ];
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -93,11 +100,14 @@ async function run(label, column, changes) {
   console.log(`\n${'='.repeat(78)}\n${label}  (${changes.length} rows)\n${'='.repeat(78)}`);
   let changed = 0, already = 0, failed = 0;
 
-  for (const [id, name, value, why] of changes) {
+  for (const [id, name, value, why, mergedAway] of changes) {
     const { data: before, error: readErr } = await supabase
       .from('campaign_recaps').select(`id,name,${column}`).eq('id', id).single();
 
-    if (readErr || !before) { console.log(`  ✗ ${name}: row not found (${readErr?.message ?? 'no row'})`); failed++; continue; }
+    if (readErr || !before) {
+      if (mergedAway === MERGED) { console.log(`  = ${name}\n      row already merged away — nothing to do`); already++; continue; }
+      console.log(`  ✗ ${name}: row not found (${readErr?.message ?? 'no row'})`); failed++; continue;
+    }
 
     const old = before[column] ?? null;
     if (old === value) { console.log(`  = ${name}\n      already ${show(value)}`); already++; continue; }
@@ -127,7 +137,6 @@ async function run(label, column, changes) {
   console.log(`TOTAL  ${APPLY ? 'applied' : 'would change'}: ${tot('changed')}   already correct: ${tot('already')}   failed: ${tot('failed')}`);
   console.log(`${'='.repeat(78)}`);
   console.log('\nDeliberately NOT touched (see the audit report):');
-  console.log('  · Community Captains tracker_url — tab choice still open (decision 6)');
   console.log('  · PNW Content tracker_url — keeps its standalone sheet (decision 5)');
   console.log('  · CVS Holiday Phase 2 + Phase 3 — held, 1 media file only (decision 3)');
   console.log('  · Summer/SPF, Halloween, ExtraCare December, Mother\'s Day 2025 — root already correct, content stays null (decision 2)');

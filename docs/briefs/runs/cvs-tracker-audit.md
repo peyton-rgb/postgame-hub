@@ -3,7 +3,10 @@
 **Run date:** 2026-09-09 · **Mode:** read-only (no Supabase or Drive writes) · **Brief:** 07
 **Brand:** CVS — `brands.id = 06ad6e6e-b859-461e-a496-14472397ab4e` · **53** `campaign_recaps` rows
 
-Nothing in this report has been applied. Phase B waits on your approval of the tables below.
+> **Status: Phase B applied 2026-09-10.** Every change below has been made — 19 `tracker_url`
+> corrections, 1 cleared, 11 `drive_content_folder_id` links, 3 `drive_folder_id` roots, and the
+> duplicate-row merge. The full old → new log is in **Appendix A**. Sections 1–6 are preserved as
+> the audit found things on 2026-09-09; section 7 records what was actually done.
 
 ---
 
@@ -346,31 +349,127 @@ three become brand-facing and need renaming first.
 
 ---
 
-## 7. What Phase B would do, if approved
+## 7. What Phase B did
 
-One migration-style script, logging old → new per row:
+Applied 2026-09-10 on branch `chore/cvs-tracker-phase-b`, in three commits:
 
-- **18 `tracker_url` updates** — §2. Same sheet, corrected `gid` (14 fixes + 4 additions).
-  Excludes `PNW Content` (sheet change, needs your decision) and `CVS March Madness` (no tab exists).
-- **11 `drive_content_folder_id` updates** — §3a (5) + §3b (3) + §3c (3, or 1 if you drop the two
-  Holiday rows), pending your §3b parent-vs-subfolder call.
-- **Not included:** the 5 zero-media folders (§3d), the `26 Spring Epic Beauty` merge (§4a — it
-  deletes a row, so it wants its own approved script), IMZ (§4b), the four empty rows (§4c), and the
-  IU folder (§4d).
-- **Not touched, per brief:** `lifecycle_status`, `published`, and any media ingest.
+| Commit | Change |
+|---|---|
+| `966a84f` | tracker gid + Drive link repair — 30 rows |
+| `53d3e54` | 26 Spring Epic Beauty merge — 1 row absorbed, 1 deleted |
+| `1bf64fe` | `database.types.ts` regenerated from the live schema |
+| *(follow-up)* | Community Captains tab + 26 Spring Epic Beauty content link — 2 rows |
 
-### Open decisions blocking a clean Phase B
+**Totals**
 
-1. §3b — link `Content` subfolders or parent folders for the three 2024–25 rows?
-2. §3d — link the five zero-media folders anyway, or leave null?
-3. §3c — link `Holiday 2024` (1 media file) to Phase 2 and Phase 3, or hold?
-4. §3a — Community Captains: the 6-file reel, the 5-file "Thank you HQ Event", or both (needs a merge)?
-5. §2 — `PNW Content`: move it to the 2025 Master `PNW` tab, or leave its standalone sheet?
-6. §2 — Community Captains tab: `1764781348` (proposed) or `591116651`?
-7. §4a — confirm the merge direction and what to do with A's UUID `admin_campaign_id`.
-8. §4d — create a campaign row for `CVS x IU Event 2026 Photos` (85 media), or fold into Bloomington CFP?
+| | Before | After |
+|---|---|---|
+| `tracker_url` resolving to a real tab | 16 (11 of them wrong) | **30** |
+| Campaigns sharing a gid with an unrelated campaign | 12 | **0** |
+| `drive_content_folder_id` set | 6 | **20** |
+| Rows named "26 Spring Epic Beauty" | 2 | **1** |
+
+Both scripts are declarative manifests keyed on row UUID and safe to re-run: a second pass reports
+33 rows already correct and 0 changes. `scripts/cvs-tracker-phase-b.js` takes `--apply`; without it
+it dry-runs. `scripts/cvs-26-spring-merge.js` re-checks all 25 campaign-referencing tables and
+aborts if anything points at the row it is about to delete.
+
+### How the open decisions were resolved
+
+| # | Decision | Resolution |
+|---|---|---|
+| 1 | §3b parent vs `Content` subfolder | **Content subfolder for content, parent for root.** Standing rule. Where a media folder sits directly on a shared shelf (`2024`, `2025`, `Athlete Content 2026`) there is no campaign-specific parent, so `drive_folder_id` was left alone — writing a shared shelf id would point many campaigns at one folder. |
+| 2 | §3d five zero-media folders | **`drive_folder_id` only, `drive_content_folder_id` left null.** Four were already correct; only Epic Sale Fall 2025 needed writing. |
+| 3 | §3c Holiday 2024 | **Held.** Neither Phase 2 nor Phase 3 linked — the folder holds 1 media file. |
+| 4 | §3a Community Captains folder | **The 6-file HQ Event Reel.** "Thank you HQ Event" (5 media) still unlinked. |
+| 5 | §2 PNW Content sheet | **Unchanged** — keeps its standalone sheet. Content folder linked (531 media). |
+| 6 | §2 Community Captains tab | **`1764781348`.** The alternative `591116651` turned out to be a cross-campaign reach calculator — it carries `Mother's Day` and `SPF / Summer` section headers and a `CALCULATIONS: DO NOT ERASE` row, so it is not this campaign's roster. |
+| 7 | §4a merge direction | **Hub-native row survives**, absorbed `admin_campaign_id` 857 and the corrected tracker link; admin-linked row deleted after a zero-reference check. Its old UUID `admin_campaign_id` (`afe0fdbb-…`) and B's full row are preserved in `cvs-26-spring-merge-deleted-row.json`. |
+| 8 | §4d IU folder | **No new row.** Bloomington CFP kept the §3a proposal (`Indiana CFP Celebration Event`, 72 media, holds the finished `Final Video CVS.mp4`); `CVS x IU Event 2026 Photos` is a raw-photo sibling of the same event and remains unlinked. |
+
+### Still open
+
+- **`CVS x IU Event 2026 Photos`** — 85 media, no Hub row, deliberately unlinked (decision 8).
+- **`CVS March Madness`** — `tracker_url` cleared; no tab exists in any of the four trackers.
+- **`CVS Holiday Phase 2` / `Phase 3`** — no content folder; the real holiday media has not been found.
+- **The five zero-media 2025 folders** — content stays null until real content folders surface.
+- **IMZ** — one 2025 Drive folder still serves both the 2025 and 2026 campaign rows (§4b).
+- **`Injured Athlete`, `Leadership Video`, `November Leadership Panel Discussion`, `CVS Round Table`** — left unpublished, no action taken (§4c).
+- **Guardrail** — the "March Madness" tab title and the "CVS March Madness" row name still stand (§6). Nothing was renamed, per the brief.
 
 ---
 
-*Read-only run. No Supabase rows and no Drive objects were modified. Scripts used are disposable and
-live in the session scratchpad, not in the repo.*
+## Appendix A — old → new log
+
+Every row written, as logged by the apply runs. Spreadsheet ids are unchanged throughout; only the
+`gid` moves. `sheet 1uLiJgwj…` = 2026 Master, `1WQ2HOig…` = 2025 Master, `13Hv4tiy…` = 2024
+Postgame/CVS.
+
+### `tracker_url` — 19 rows
+
+| Campaign | old | new | tab now |
+|---|---|---|---|
+| Valentine's Day | `1uLiJgwj…` gid=1455656181 | gid=**578971717** | Valentines Day |
+| 26 Spring Epic Beauty (admin 857) | `1uLiJgwj…` gid=1455656181 | gid=**1684065158** | Epic Beauty — *carried onto the surviving row, then this row was deleted* |
+| The Tournament | `1uLiJgwj…` gid=629235660 | gid=**1968908289** | March Madness ⚠ |
+| W/CWS | `1uLiJgwj…` gid=1389657349 | gid=**983669871** | College World Series |
+| Mother's Day (2026) | `1uLiJgwj…` gid=none | gid=**16945540** | Mother's Day |
+| Bloomington CFP Event | null | `1uLiJgwj…` gid=**1570003009** | CFP Event |
+| Fall ExtraCare x Epic | null | `1uLiJgwj…` gid=**1220833137** | Fall Epic Beauty |
+| Community Captains | `1uLiJgwj…` gid=1452875744 | gid=**1764781348** | Community Captains |
+| Mother's Day 2025 | `1WQ2HOig…` gid=314403906 | gid=**1310965878** | Mother's Day |
+| Summer/SPF | `1WQ2HOig…` gid=314403906 | gid=**1653369416** | Summer SPF |
+| Epic Sale Fall 2025 | `1WQ2HOig…` gid=314403906 | gid=**229649195** | Epic Beauty 2 |
+| Immunization | `1WQ2HOig…` gid=314403906 | gid=**1726677583** | IMZ |
+| Halloween | `1WQ2HOig…` gid=514101134 | gid=**1993793254** | Halloween |
+| ExtraCare December | `1WQ2HOig…` gid=334128026 | gid=**1904433336** | ExtraCare December |
+| Epic Beauty + Unaltered Beauty | `1WQ2HOig…` gid=none | gid=**314403906** | Epic Beauty |
+| CVS - Spotted at CVS | `13Hv4tiy…` gid=0 | gid=**427151962** | Spotted at CVS |
+| CVS June | null | `13Hv4tiy…` gid=**1453160804** | CVS Summer (June) |
+| CVS Well Market Gifting | null | `13Hv4tiy…` gid=**199932386** | Well Market Gifting (June) |
+| CVS March Madness | `1CFCFy40…` gid=none | **null** | — no tab exists |
+
+### `drive_content_folder_id` — 11 rows
+
+| Campaign | old | new | folder | media |
+|---|---|---|---|---|
+| Epic Beauty + Unaltered Beauty | null | `1cG-6NPSGkAg7yuEJR4NdEQYu5Lfc4kER` | Epic Beauty - Spring / Content | 60 |
+| CVS Epic Beauty (2024) | null | `1TaGY-LaR5vvyAW5cQHKirPTvEyP6PtvX` | CVS Epic Beauty Content | 26 |
+| CVS - Spotted at CVS | null | `1R-VpD32RTIJr0o-rSVB8KCJO2mkETsYY` | Content Folder - Tier 1s | 26 |
+| Extra Extra Big Deals January | null | `1um06aPXkRbWQIcjj8mekPVy5bQvqeOtn` | EEBD - January 2026 | 36 |
+| Valentine's Day | null | `1qeMUTQ5b_mb1ejf-TapPagM9w92BM-ES` | Valentines - Feb 2026 | 41 |
+| Bloomington CFP Event | null | `1asDYvNGCthsyxtpDodr6EesUiAMMM5Y-` | Indiana CFP Celebration Event | 72 |
+| Community Captains | null | `1MFqtWKVLuMFwYOg3_Ke-_6lsRAtgV9Jl` | Community Captains HQ Event Reel | 6 |
+| Fall ExtraCare x Epic | null | `11D4zEh2SJIPPXSkctFKJ9ZJrl5IKyIuS` | Epic Beauty - Aug | 368 |
+| PNW Content | null | `1XhcYSmrjxV6VjK6hi1Ln1-9R9k7AP1vz` | 2025 PNW + Events | 531 |
+| CVS June | null | `14XljLWmk5ekDwpBJr3d7hOvCLoAMzt9d` | Summer - June | 18 |
+| 26 Spring Epic Beauty | null | `13E-8v0Czkh7DtXx4G92OHiaHf0yInaWx` | Epic Beauty - January | 203 |
+
+`Epic Beauty - January` has no `Content` subfolder — 12 per-athlete folders, 203 media, zero
+non-media files — so the folder itself is the content folder, per the standing rule's fallback.
+
+### `drive_folder_id` — 3 rows
+
+| Campaign | old | new | folder |
+|---|---|---|---|
+| CVS - Spotted at CVS | null | `1zSIabQG2jdtn3_daeaZL3CCOmOTELCKw` | Spotted at CVS - May 2024 (parent of the Content folder) |
+| Epic Sale Fall 2025 | null | `1lLfGX3NvHk0JCfge9YwoQbBdxFLyiaHa` | Epic Beauty - Fall (0 media — root only, decision 2) |
+| 26 Spring Epic Beauty | `13E-8v0Czkh7…` | *(unchanged)* | Epic Beauty - January — already correct |
+
+### Merge — `26 Spring Epic Beauty`
+
+| Field | old | new |
+|---|---|---|
+| `admin_campaign_id` | `afe0fdbb-9eab-4d62-bc18-3bf425d31dbe` | **857** |
+| `tracker_url` | null | `1uLiJgwj…` gid=**1684065158** |
+| `tracker_sheet_id` | null | `1uLiJgwjxSc6vg3sk78Q9ph33RBiY3AoW_eQXBH8VdeM` |
+| row `83702fc8-…` | present, empty | **deleted** (backup: `cvs-26-spring-merge-deleted-row.json`) |
+
+Surviving row `4dd34b3c-…` kept its 418 athletes, 30 media, 30 `media_campaigns`, 1 task, hero and
+thumbnail. `lifecycle_status` (`closed`) and `published` (`true`) were not touched, per the brief.
+
+---
+
+*Phase A was a read-only audit (2026-09-09). Phase B applied the approved changes on 2026-09-10.
+No Drive object was created, moved, renamed or deleted at any point — Drive was read-only throughout
+both phases. All writes were to `campaign_recaps` in Supabase.*
