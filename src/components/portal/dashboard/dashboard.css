@@ -809,10 +809,28 @@
 }
 .pgd-readout-idle { color: var(--ink-45) }
 
-/* VERTICAL GROUPED BARS. A fixed 240px plot so every quarter's bars are
-   comparable by height, with the pair sharing a column and the label under
-   it. */
-.pgd-bars { display: flex; align-items: flex-end; gap: 10px; min-height: 0 }
+/* VERTICAL GROUPED BARS over a gridded plot. The plot is a fixed 240px so
+   every quarter is comparable by height; the gridlines are what turn a
+   height into a quantity.
+
+   The label gutters are padding on the plot, not columns in a table: the
+   bars have to span the full width for their proportions to hold, and the
+   numbers sit in the margins either side. */
+.pgd-plot { position: relative; padding: 0 52px 0 44px }
+.pgd-grid-lines { position: absolute; inset: 0 52px 26px 44px; pointer-events: none }
+.pgd-grid-line {
+  position: absolute; left: 0; right: 0; height: 0;
+  border-top: 1px solid rgba(250, 248, 245, 0.09);
+}
+.pgd-grid-line span {
+  position: absolute; top: -9px; font-size: 14px; color: var(--ink-45);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+/* Posts left, reel views right — the same order as the legend. */
+.pgd-grid-left { right: calc(100% + 8px) }
+.pgd-grid-right { left: calc(100% + 8px) }
+.pgd-axis-note { margin: 14px 0 0; font-size: 14px; color: var(--ink-45) }
+.pgd-bars { display: flex; align-items: flex-end; gap: 10px; min-height: 0; position: relative }
 .pgd-bar-group {
   flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
   align-items: center; gap: 8px; border-radius: 10px; padding: 6px 2px;
@@ -825,6 +843,9 @@
   display: flex; align-items: flex-end; justify-content: center; gap: 5px;
   height: 240px; width: 100%;
 }
+/* Above the gridlines, so a bar covers the line it crosses rather than being
+   striped by it. */
+.pgd-bar-pair, .pgd-bar-label { position: relative; z-index: 1 }
 .pgd-bar { width: 26px; max-width: 44%; border-radius: 4px 4px 0 0; display: block }
 .pgd-bar-posts { background: rgba(250, 248, 245, 0.34) }
 .pgd-bar-views { background: var(--orange) }
@@ -890,6 +911,16 @@
 .pgd-table .pgd-num-col { text-align: right; font-variant-numeric: tabular-nums }
 .pgd-table td a { color: var(--orange-soft); text-decoration: none; white-space: nowrap }
 .pgd-table td a:hover { text-decoration: underline }
+
+/* A text button in a panel heading — "Show all 46". Not a pill: it is an
+   action on the panel it sits in, not a filter chip, and the heading is
+   already the boundary. */
+.pgd-toggle {
+  margin-left: auto; background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 400; color: var(--orange-soft);
+  padding: 0;
+}
+.pgd-toggle:hover { text-decoration: underline }
 
 /* A qualifier under a headline figure's label — "distinct people", "feed +
    stories" — where the label alone would overstate what was counted. */
@@ -1270,6 +1301,12 @@
   .pgd-kpi-tile { padding: 14px }
   .pgd-kpi-label { font-size: 14px }
   .pgd-kpi-cmp { margin-top: 8px }
+  /* Left gutter only on a phone: two 50px gutters plus the bars leave the
+     plot 250px, and the right-hand numbers were the first thing to become
+     unreadable. Reel views move to the axis note underneath. */
+  .pgd-plot { padding: 0 0 0 40px }
+  .pgd-grid-lines { inset: 0 0 26px 40px }
+  .pgd-grid-right { display: none }
   /* The chart scrolls sideways rather than squeezing eleven quarters into
      350px, which would leave each pair 12px wide and the labels unreadable. */
   .pgd-bars { overflow-x: auto; padding-bottom: 6px }

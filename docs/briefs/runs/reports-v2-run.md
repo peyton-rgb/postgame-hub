@@ -125,3 +125,83 @@ the pointer path, which was verified.
 Numbers on the attached renders are the `anon` view (10 wrapped campaigns,
 751 athletes) because the harness has no session; a signed-in CVS contact
 sees 46 and 1,501, which is what the SQL above was verified against.
+
+---
+
+# Round two — three corrections
+
+## Gridlines
+
+The bars were relative only: you could see Q2 was tallest and not what it was
+worth. Three gridlines now, at 1/3, 2/3 and the maximum, **labelled on both
+scales** — posts down the left, reel views down the right, each at the same
+three fractions of its own maximum — plus an axis note stating both maxima.
+
+**Fractions of the maximum, not round numbers.** A "nice" axis top (300, 20M)
+has to exceed the tallest bar, and then the tallest bar no longer reaches the
+top of the plot — which is the one thing the eye reads reliably in a bar
+chart. So the top gridline IS the maximum, and the labels are whatever that
+divides into: 265 / 177 / 88 for posts, 19M / 13M / 6.4M for reel views.
+
+On a phone only the left scale is drawn — two gutters plus the bars left the
+plot 250px and the right-hand numbers were the first thing to become
+unreadable. The reel-views maximum stays in the axis note underneath.
+
+Verified in a browser: left labels `["265","177","88"]`, right labels
+`["19M","13M","6.4M"]`, and the bars sit above the lines rather than being
+striped by them.
+
+## The table defaults to campaigns with posts
+
+**Of CVS's 46 wrapped campaigns, 17 have posts.** The other 29 are events,
+surveys and one-offs — Valentine's Day, PNW Content, Leadership Video, CVS
+Round Table, CVS Ec Survey, Immunization, Injured Athlete — which produced no
+athlete content, so every metric column is empty for them. 27 have no athletes
+at all, and **every campaign with posts also has athletes**, so filtering on
+posts removes all of the zero-athlete rows and two more that have a roster but
+never posted.
+
+Default is the 17; "Show all 46" reveals the rest and flips to "Only the 17
+with posts". They stay reachable because "wrapped" is a real state and a brand
+may be looking for one of them.
+
+**A data finding while counting them: "26 Spring Epic Beauty" exists twice**
+in the wrapped set — one row with 417 posts and 418 athletes, one completely
+empty. It is the only duplicated name among the 46 (45 distinct names), and it
+is the reason an earlier count of "campaigns with posts" disagreed with the
+rendered table. **Follow-up for the admin:** the empty twin is a candidate for
+deletion, and while it exists it will appear in "Show all" as a second
+identical name.
+
+## "Combined followers" is gone; "Total audience reached" replaces it
+
+The observation was right. `followers` summed `ig_followers` over athlete
+ROWS, one per campaign appearance: **17,371,557 across 1,928 rows, but only
+1,441 distinct people** — 310 of them on more than one campaign, one on eight.
+De-duplicated it is **14,614,989**, so the old figure overstated by 2.76M, or
+16%.
+
+Migration 060 de-duplicates it — one value per person, their MAX across
+appearances, then summed — and the tile is labelled **"Combined following,
+de-duplicated"**.
+
+**Max, not latest:** `athletes` rows carry no reliable per-row capture date.
+Not min, because a count that grew is the one a brand's own reporting shows.
+
+**The label carries the caveat, so there is no footnote.** I first shipped this
+as "Total audience reached" plus a footnote saying it could not know how many
+followers two athletes share. Peyton's call was the better one: name the figure
+for what it IS — a following, summed once per athlete — and the misreading
+never arises, so the footnote has nothing to correct. "Audience reached"
+invites being read as unique people; "combined following, de-duplicated" says
+exactly what was counted and how. Sub-label dropped too: the label already
+carries the dedupe.
+
+The row-wise column was dropped from the view rather than kept beside the new
+one: two similar figures in one view is how the wrong one gets picked. The
+table's per-campaign Followers column is unaffected and remains row-wise —
+within a single campaign there is exactly **one** duplicated athlete across
+all of CVS, so the two are consistent to within one row.
+
+`DROP VIEW` then `CREATE`, not `CREATE OR REPLACE`: replacing a view cannot
+remove or rename a column (42P16).

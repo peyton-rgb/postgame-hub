@@ -41,6 +41,13 @@ function csvCell(v: string | number | null): string {
 export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
   const [sort, setSort] = useState<SortKey>("quarter");
   const [desc, setDesc] = useState(true);
+  // DEFAULT TO CAMPAIGNS WITH POSTS. Of CVS's 46 wrapped campaigns, 17 have
+  // posts; the other 29 are events, surveys and one-offs — Valentine's Day,
+  // PNW Content, Leadership Video, CVS Round Table — which produced no
+  // athlete content and so have nothing to report in any column here. They
+  // are still reachable, because "wrapped" is a real state and a brand may be
+  // looking for one of them.
+  const [showAll, setShowAll] = useState(false);
   /** Which quarter the pointer is on, for the chart's hover values. */
   const [hover, setHover] = useState<string | null>(null);
 
@@ -62,7 +69,7 @@ export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
   );
 
   const rows = useMemo(() => {
-    const out = [...data.rows];
+    const out = showAll ? [...data.rows] : data.rows.filter((r) => (r.posts ?? 0) > 0);
     out.sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "quarter") return a.quarterSort - b.quarterSort || a.name.localeCompare(b.name);
@@ -82,7 +89,7 @@ export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
       return [...withValue.reverse(), ...without];
     }
     return out;
-  }, [data.rows, sort, desc]);
+  }, [data.rows, sort, desc, showAll]);
 
   const click = (k: SortKey) => {
     if (k === sort) return setDesc((d) => !d);
@@ -129,6 +136,16 @@ export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
   const postsMax = Math.max(1, ...data.quarters.map((q) => q.posts));
   const viewsMax = Math.max(1, ...data.quarters.map((q) => q.reelViews));
   const active = data.quarters.find((q) => q.label === hover) ?? null;
+
+  // THREE GRIDLINES, LABELLED ON BOTH SCALES. Without them the bars were
+  // relative only — you could see Q2 was the tallest and not what it was
+  // worth. Two series on two scales means two sets of labels: posts read down
+  // the left, reel views down the right, each at the same three fractions of
+  // its own maximum. The fractions, not round numbers: a "nice" axis maximum
+  // would have to exceed the tallest bar, and then the tallest bar no longer
+  // reaches the top of the plot, which is the one thing the eye does read
+  // reliably.
+  const gridFractions = [1, 2 / 3, 1 / 3];
 
   return (
     <div className="pgd-page">
@@ -213,7 +230,16 @@ export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
               )}
             </div>
 
-            <div className="pgd-bars" onMouseLeave={() => setHover(null)}>
+            <div className="pgd-plot">
+              <div className="pgd-grid-lines" aria-hidden="true">
+                {gridFractions.map((f) => (
+                  <div className="pgd-grid-line" style={{ bottom: `${f * 100}%` }} key={f}>
+                    <span className="pgd-grid-left">{compact(postsMax * f)}</span>
+                    <span className="pgd-grid-right">{compact(viewsMax * f)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pgd-bars" onMouseLeave={() => setHover(null)}>
               {data.quarters.map((q) => (
                 <div
                   className={`pgd-bar-group${hover === q.label ? " on" : ""}`}
@@ -243,7 +269,12 @@ export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
                   <span className="pgd-bar-label">{q.label}</span>
                 </div>
               ))}
+              </div>
             </div>
+            <p className="pgd-axis-note">
+              Left scale: posts, to {compact(postsMax)}. Right scale: reel
+              views, to {compact(viewsMax)}.
+            </p>
           </section>
         )}
 
@@ -299,7 +330,16 @@ export default function ReportsDashboard({ data }: { data: ReportsMetrics }) {
         <section className="pgd-panel">
           <h3>
             Campaigns
-            <span className="pgd-group-note">{data.rows.length}</span>
+            <span className="pgd-group-note">
+              {showAll ? data.rows.length : `${data.rowsWithPosts} with posts`}
+            </span>
+            {/* The 29 without posts are events and one-offs. Reachable, not
+                the default. */}
+            {data.rows.length > data.rowsWithPosts && (
+              <button type="button" className="pgd-toggle" onClick={() => setShowAll((v) => !v)}>
+                {showAll ? `Only the ${data.rowsWithPosts} with posts` : `Show all ${data.rows.length}`}
+              </button>
+            )}
           </h3>
           <div className="pgd-table-scroll">
             <table className="pgd-table">
