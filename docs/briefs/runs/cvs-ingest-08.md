@@ -1,6 +1,6 @@
 # CVS ingest + publish (brief 08) — Phase 1 pre-flight
 
-**Run date:** 2026-09-10 · **Status:** 🟢 **Phase 1 + Phase 2 run — 7 published, 2 rows still gated**
+**Run date:** 2026-09-10 · **Status:** 🟢 **Phase 1 + Phase 2 complete — 8 published, 1 ingest outstanding**
 **Scope:** 11 CVS rows · **Prereq:** brief 07 Phase B — PR #267 merged as `ed6bfa6`
 
 Phase 1 results are in §9, Phase 2 in §10, and the **standing hero rule** in §11.
@@ -233,7 +233,7 @@ Bloomington's names had the bleed-through `Indiana ` prefix stripped, as approve
 | RX Strategic Markets | active | 0 | 0 | 0 | 0 | skipped |
 | **TOTAL** | | **1,280** | **117** | **106** | **11** | |
 
-### The 11 unlinked media are deliberate
+### The unlinked media are deliberate
 
 - **Bloomington CFP Event (10)** — event coverage in a `Photos/` folder plus two recap videos.
   Not partitioned by athlete, and its roster carries no handles, so nothing could be matched
@@ -278,8 +278,9 @@ requests. It is now a `--concurrency` flag (default unchanged at 8); the recover
 
 ## 10. Phase 2 results — 7 rows published
 
-Approved by Peyton 2026-09-10. `PNW Content` was held back: it is `delivered` but its ingest is
-still gated, and publishing a campaign with 0 media would put an empty page in the brand portal.
+Approved by Peyton 2026-09-10. `PNW Content` was initially held back — it is `delivered` but had
+0 media, and publishing an empty campaign would have put an empty page in the brand portal. Its
+ingest ran later the same day and it was published in a second pass.
 
 | Campaign | status | published | lifecycle_status | hero | media | linked |
 |---|---|---|---|---|---|---|
@@ -290,15 +291,21 @@ still gated, and publishing a campaign with 0 media would put an empty page in t
 | Epic Beauty + Unaltered Beauty | published | true | delivered | ✓ | 13 | 13 |
 | Extra Extra Big Deals January | published | true | delivered | ✓ | 20 | 20 |
 | Valentine's Day | published | true | delivered | ✓ | 14 | 14 |
-| **PNW Content** | draft | false | delivered | — | 0 | 0 |
+| PNW Content | published | true | delivered | ✓ | 34 | 0 |
 | Community Captains | draft | false | **active** | — | 6 | 6 |
 | Fall ExtraCare x Epic | draft | false | **active** | — | 0 | 0 |
 | RX Strategic Markets | draft | false | **active** | — | 0 | 0 |
 
-`lifecycle_status` stayed `delivered` on all seven, as §5 predicted — a single
+`lifecycle_status` stayed `delivered` on all eight, as §5 predicted — a single
 `update published = true` was enough, with `trg_sync_recap_publish_state` moving `status` to
-`published` in the same write. Re-running the script reports 0 changes. All seven
+`published` in the same write. Re-running the script reports 0 changes. All eight
 `/recap/<slug>` pages return **200**.
+
+**PNW Content, second pass.** Ingested with `--folder --concurrency 2`: 570 files listed, **34
+uploaded** after curation (24 images / 10 videos). All 34 are unlinked — the folder is partitioned
+by store (Spokane / Eugene / Seattle), not by athlete, so nothing was matchable without guessing.
+It publishes as gallery-only, the same shape as Bloomington. Hero picked at `quality_score`
+67.26.
 
 ### Also fixed
 
@@ -337,9 +344,11 @@ Implemented in `scripts/cvs-ingest-08-publish.js`.
 
 ## 12. Still outstanding
 
-- **`PNW Content`** — `delivered`, 63 athletes, **0 media**, 531 available in Drive. Ingest gated
-  behind an unrelated render batch. Publish once the media lands; it is the only approved-but-held row.
-- **`Fall ExtraCare x Epic`** — `active`, 215 athletes, 0 media, 368 available. Ingest only; do not publish.
+- **`Fall ExtraCare x Epic`** — `active`, 215 athletes, **0 media**, 368 available in Drive. The only
+  outstanding ingest. Still gated behind the machine's Sony MXF render batch. Ingest only — it is
+  `active`, so it must **not** be published. Manifest is ready at
+  `scripts/data/cvs-ingest-08/fall-extracare-x-epic-988.csv` (16 rows; 2 folders unmatched — a
+  partially-matched pair folder and `Penn State Volleyball`, a team with no roster entry).
 - **`RX Strategic Markets`** — skipped by the brief's own rule (empty Content folder, no tracker).
 - **Curation caps** — Bloomington went 72 files → 10 (8-image cap per event folder, videos uncapped).
   If event campaigns read thin in the portal, `teamCap` or `--no-curate` is the lever.
@@ -349,5 +358,6 @@ Implemented in `scripts/cvs-ingest-08-publish.js`.
 
 ---
 
-*Phase 1 and Phase 2 complete for 7 of 11 rows. PNW Content and Fall ExtraCare x Epic await ingest.*
+*Phase 1 and Phase 2 complete. 8 campaigns published, 2 left active and unpublished by design,
+1 skipped. Only Fall ExtraCare x Epic's ingest remains.*
 
