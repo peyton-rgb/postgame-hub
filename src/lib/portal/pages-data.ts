@@ -76,6 +76,40 @@ export function thumb(url: string, width = 420): string {
 const WEB_SAFE = /\.(jpe?g|png|gif|webp)($|\?)/i;
 
 /**
+ * The searchable text for a media row: who, where, which campaign, and the
+ * filename. Lowercased once here so filtering is a substring test rather than
+ * a per-keystroke rebuild of four fields.
+ *
+ * THERE IS NO CAPTION OR TAG COLUMN ON `media` — the columns are ids, type,
+ * urls, storage/source ids, sizes, focal points, hero flags and `slot`, and
+ * `slot` is populated on 5 of CVS's 460 rows with no vocabulary behind it. So
+ * the free text on a media row is the athlete, the school, the campaign and
+ * the FILENAME, which is real text people recognise
+ * ("2026_CVS_Darius_Acuff_Jr.18.jpg").
+ *
+ * The filename is decoded (%20 back to a space) and stripped of its path and
+ * the upload timestamp prefix, so "darius acuff" matches.
+ */
+function searchText(
+  athlete: string | null | undefined,
+  school: string | null | undefined,
+  campaign: string | null | undefined,
+  url: string
+): string {
+  let file = "";
+  try {
+    file = decodeURIComponent(url.split("?")[0].split("/").pop() ?? "");
+  } catch {
+    file = url.split("?")[0].split("/").pop() ?? "";
+  }
+  file = file.replace(/^\d{10,}-/, "").replace(/[._\-]+/g, " ");
+  return [athlete, school, campaign, file]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+/**
  * The thumbnail source for a media tile, and what to fall back to.
  *
  * `thumbnail_url` FIRST, now that it is a real thumbnail.

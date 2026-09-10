@@ -80,12 +80,16 @@ function renderUrl(url) {
 }
 
 async function main() {
-  // Every wrapped-or-live campaign for the brand; drafts are not portal-visible.
+  // SCOPE COMES FROM portal_campaigns — the same view the Content page reads.
+  // The first cut filtered campaign_recaps with .neq('lifecycle_status',
+  // 'draft') by hand, and the two did not agree: the job saw 411 media rows
+  // where the page showed 522. Two hand-matched filters are two things to
+  // keep in sync; reading the app's own view makes the scopes identical by
+  // construction.
   const { data: campaigns, error: cErr } = await supabase
-    .from('campaign_recaps')
+    .from('portal_campaigns')
     .select('id')
-    .eq('brand_id', BRAND)
-    .neq('lifecycle_status', 'draft');
+    .eq('brand_id', BRAND);
   if (cErr) throw cErr;
   const ids = (campaigns || []).map((c) => c.id);
   if (!ids.length) {

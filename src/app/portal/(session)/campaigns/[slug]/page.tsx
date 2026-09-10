@@ -40,10 +40,11 @@ export default async function Page({
       accountLabel={chrome.personLabel}
       /* The campaign is named in the hero, which is its h1. The header
          carried the same words directly above it. */
+      /* The hero carries the name, the quarter and the type. The header
+         carried a small "Q2 2026 · Product Seeding" line above it saying the
+         same thing 40px higher. */
       title={null}
-      subtitle={
-        [campaign.quarter, campaign.campaignType].filter(Boolean).join(" · ") || null
-      }
+      subtitle={null}
     >
       <CampaignDetail campaign={campaign} initialTab={searchParams.tab} />
     </PortalShell>

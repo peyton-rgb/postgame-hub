@@ -179,3 +179,141 @@ last because dropping a column made the school column wrap and rows grew from
 Campaigns at y=989. Campaigns now begins just below the fold rather than just
 above it — that is what the three KPI tiles cost, and it is the right trade:
 tiles are read at a glance, the campaigns row deliberately.
+
+## Campaigns, detail, content, recaps, reports
+
+### 9 · Live campaigns are a list, not cards
+
+A live campaign has no recap, no hero and usually no roster, so a card was a
+large rectangle carrying two facts. Rows carry the same two — name, quarter ·
+type, "In progress" — and stack.
+
+### 10 · Photoless wrapped cards, and the events toggle
+
+A wrapped campaign with no photo gets a **flat** dark panel at **half** the
+height of a photo card, name in Bebas. Not a gradient: a gradient reads as an
+image that failed to load. Half height stops a row of photoless campaigns
+claiming the space of a row with pictures.
+
+**Events are hidden by default.** 27 of CVS's 46 wrapped campaigns have no
+athletes — Valentine's Day, PNW Content, Leadership Video, CVS Round Table,
+the surveys — because they are events and one-offs, not content campaigns.
+"Show events (N)" brings them back. Same reasoning as the Reports table's
+default, and the same escape hatch.
+
+### 11 · The hero carries the whole header
+
+Full-bleed photo with a left-to-right scrim: name and quarter · type on the
+solid end, the three At-a-glance figures on the clear end. The separate At a
+glance panel is gone, and so is the small subtitle above the hero — it was
+printing quarter · type 40px above where the hero now prints it.
+
+**The geometry has not changed and is worth restating.** A 1325×220 band shows
+about 12.5% of a portrait hero's height, so no crop point can contain a face —
+which is why pass 3 split the hero in two. Going full-bleed brings that back,
+and the render shows it: SPF's hero is hair and skin texture rather than a
+face. The scrim is what makes it acceptable — the copy sits on the near-solid
+left and the photograph is texture behind the figures — but it IS a trade, and
+**populating `media.focal_y` (2 of 63 hero rows today) remains the fix.**
+
+### 12 · School filter is a dropdown
+
+SPF has 102 schools. The pill row showed the first eight and silently dropped
+94 — a filter that lied about its own options. A select holds all of them in
+one line.
+
+### 13 · Content filter row
+
+Search first and widest; the dropdowns compact after it. Search answers "where
+is the shot of X", which is what someone opens the page to ask; the dropdowns
+narrow a set you are already looking at.
+
+### 14 · Every tile says what it is
+
+Only videos carried a marker, so a photo was identified by the *absence* of
+one — legible only if you already know the rule. Video keeps the orange play
+badge, because it is the tile that behaves differently when clicked; a photo
+gets the same shape in glass.
+
+### 15 · Photoless recap cards match the photo cards
+
+Same 150px band, dark, name in Bebas. A short card beside tall ones reads as
+one that failed to load, and those recaps are as delivered as the rest.
+
+### 16 · Space before "Show all"
+
+20px of clear air. It sat hard against the count, and a button touching the
+text it modifies reads as part of the same phrase.
+
+### 17 · The reports grid closes
+
+`align-items: stretch` on the split. The side column's panels were sized to
+their own content, so the row closed on whichever side was taller and left a
+band of empty page under the other. Measured after: chart bottom 1089, side
+bottom 1101 — the 12px is the gap between the two stacked panels.
+
+### 18 · Gridlines — already shipped
+
+Three lines labelled on both scales landed in #266. Verified still present:
+left `265 / 177 / 88`, right `19M / 13M / 6.4M`.
+
+### A near-miss worth recording
+
+Rewriting `mediaThumb()` deleted `searchText()`, which lived in the same block
+— and **`next build` did not catch it**, because this repo sets
+`typescript.ignoreBuildErrors: true` in next.config. A green build is not
+evidence of type correctness here; `tsc --noEmit`, filtered to the files in
+hand, is. Caught by running exactly that. The Content page would have thrown
+`searchText is not defined` at runtime.
+
+## Mobile (19)
+
+Measured at 390 on the three named pages before changing anything, and again
+after. **No horizontal overflow on any of them**, the bottom tab bar is
+present with its five items pinned at the viewport foot, and the rail is
+hidden. The only element wider than the viewport anywhere is the dashboard's
+roster table, correctly clipped inside its own scroll container.
+
+**One thing was broken and is fixed.** The campaign hero's three At-a-glance
+figures were a CHILD of a fixed-height, `overflow: hidden` hero, so on a phone —
+where they have to sit below the photo, since three Anton numbers and a 30px
+name cannot share 350px — they were clipped out of existence. The figures are
+now a sibling of the hero inside a positioned wrapper: desktop absolutely
+positions them into the hero's right side, the phone renders them in flow
+underneath. Hero capped at 200px there.
+
+## Thumbnails: two more findings after the first run
+
+**The job's scope did not match the app's.** The first cut filtered
+`campaign_recaps` with `.neq('lifecycle_status', 'draft')` by hand while the
+Content page reads `portal_campaigns` — and the two disagreed: the job saw 411
+media rows where the page showed 522. The job now reads the same view the app
+does, so the scopes are identical by construction rather than by two
+hand-matched filters kept in sync. **101 rows the first run never saw have now
+been generated.**
+
+**Final state for CVS: 505 of 528 rows have a generated thumbnail.** Of the
+rest, 17 have no usable source (no storage URL at all) and **6 cannot be
+decoded by anything**: five are Sony RAW `.arw` files and one is the
+extensionless video poster. A `.arw` will never render in a browser, so those
+tiles could not be fixed by any thumbnail strategy.
+
+**So undecodable tiles now have a designed state.** They were showing the
+browser's broken-image glyph — 8 of the first 40 tiles. The image is hidden on
+final error and the tile rests as its own dark surface, still carrying its
+caption and type marker, with the shimmer stopped because nothing is coming.
+
+**Follow-up, with evidence: the sources are extremely tall.** 31 of the first
+40 content tiles have a source taller than 3:1, up to **600×6224** — a 1:10
+image. A 4:5 tile shows about 8% of that, which is why those tiles read as
+crops of a chin or a hoodie. The thumbnail job preserves aspect ratio, so this
+is inherited from the originals, not introduced. The fix is a 4:5 attention
+crop at generation time (`sharp` supports it) — worth doing, and deliberately
+not folded into this pass, which would have meant regenerating all 505 again.
+
+## A note on the figures in the attached renders
+
+The anon view now shows **17 wrapped campaigns and 1,585 athletes** where
+earlier passes showed 10 and 751. That is not a code change: six campaigns were
+touched at 11:03 today, so more of CVS's work became publicly visible while
+this pass was running. Checked rather than assumed.
