@@ -5,6 +5,8 @@
 // Usage:
 //   node --env-file=.env.local scripts/import-campaign-media.js \
 //     --campaign <slug> [--dry-run] [--athlete "Name"] [--limit N] [--manifest <path>] [--no-curate]
+//     --campaign <slug> --folder [driveFolderId]   # manifest-free sweep, see FOLDER_MODE
+//     [--concurrency N]                            # image-scoring parallelism, default 8
 //
 // Curation (on by default): per folder, perceptual-hash de-dups images and keeps the
 // top N by quality (sharpness + contrast + resolution). Solo folders cap at 5, team
@@ -41,6 +43,12 @@ const getArg = (flag) => {
   return i !== -1 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : null;
 };
 const CAMPAIGN_SLUG = getArg('--campaign');
+// --folder: ignore the manifest and sweep a Drive folder directly, linking media to an
+// athlete only when a subfolder name is an unambiguous roster match and leaving the rest
+// unlinked (athlete_id null). Added for brief 08, whose campaigns are partitioned by
+// event/location rather than by athlete. Bare --folder uses drive_content_folder_id.
+const FOLDER_MODE = args.includes('--folder');
+const FOLDER_ID = getArg('--folder');
 const DRY_RUN = args.includes('--dry-run');
 const CURATE = !args.includes('--no-curate');
 const ATHLETE_FILTER = getArg('--athlete'); // optional, case-insensitive substring
@@ -55,7 +63,10 @@ const CURATION = {
   teamCap: 8,        // shared/team folder
   hashThreshold: 18, // bits of Hamming distance below which two images are considered near-duplicates (64-bit dHash)
   thumbSize: 400,    // Drive thumbnail size to fetch for scoring
-  concurrency: 8,    // parallel image scoring requests
+  // Parallel image-scoring requests. Overridable with --concurrency N: the default
+  // of 8 is the memory-hungry part of a run, and on a machine that is also rendering
+  // video a lower value keeps the importer from being OOM-killed.
+  concurrency: parseInt(getArg('--concurrency') || '8', 10) || 8,
 };
 
 // Thumbnail variants written next to each original image (e.g.
@@ -178,6 +189,68 @@ function parseCsv(text) {
 }
 
 // -------- Drive --------
+/**
+ * --folder mode. Build one group per immediate subfolder of `rootId` (so curation caps
+ * stay per-folder, as they are in manifest mode), plus one group for any loose files
+ * sitting at the root. An athlete is attached only on an unambiguous exact name match;
+ * everything else is deliberately left unlinked rather than guessed.
+ */
+async function buildFolderGroups(rootId, roster) {
+  const byName = new Map();
+  for (const a of roster) {
+    const k = normName(a.name);
+    byName.set(k, byName.has(k) ? null : a); // null marks an ambiguous name
+  }
+  const clean = (n) => normName(n.replace(/\(.*?\)/g, ' ').replace(/\b(final|finals|content|selects|extras)\b/gi, ' '));
+
+  const children = [];
+  let pageToken = null;
+  do {
+    const r = await drive.files.list({
+      q: `'${rootId}' in parents and trashed = false`,
+      fields: 'nextPageToken, files(id, name, mimeType, size, md5Checksum, thumbnailLink, imageMediaMetadata(width,height), videoMediaMetadata(width,height,durationMillis))',
+      pageSize: 1000, pageToken,
+      includeItemsFromAllDrives: true, supportsAllDrives: true, corpora: 'allDrives',
+    });
+    children.push(...(r.data.files || []));
+    pageToken = r.data.nextPageToken;
+  } while (pageToken);
+
+  const isFolder = (f) => f.mimeType === 'application/vnd.google-apps.folder';
+  const groups = [];
+  for (const f of children.filter(isFolder)) {
+    const hit = byName.get(clean(f.name));
+    groups.push({
+      folderId: f.id,
+      folderName: f.name,
+      athletes: hit ? [{ athleteId: hit.id, athleteName: hit.name, manifestName: f.name }] : [],
+    });
+  }
+  const loose = children.filter((f) => !isFolder(f) && f.mimeType !== 'application/vnd.google-apps.shortcut');
+  if (loose.length) {
+    groups.push({
+      folderId: rootId, folderName: '(root)', athletes: [],
+      presetFiles: loose.map((f) => ({ ...f, parentFolder: '(root)' })),
+    });
+  }
+  return groups;
+}
+
+/**
+ * --folder mode, per-file linking. Brief 08 step 3 asks for media to be linked "by
+ * filename / subfolder name where possible". When a folder carries no athlete of its
+ * own, try the filename: link only when exactly one roster athlete's full name appears
+ * in it. Ambiguous or absent → null, deliberately unlinked rather than guessed.
+ */
+function matchAthleteInFilename(fileName, roster) {
+  const hay = normName(fileName.replace(/\.[A-Za-z0-9]+$/, '').replace(/[_-]+/g, ' '));
+  const hits = roster.filter((a) => {
+    const n = normName(a.name);
+    return n.length > 4 && hay.includes(n);
+  });
+  return hits.length === 1 ? hits[0] : null;
+}
+
 async function listFolderRecursive(folderId, parentName = '') {
   const out = [];
   async function walk(fid, fname) {
@@ -532,7 +605,7 @@ async function main() {
   //    collision guard against the same brand's other campaigns).
   const { data: camp, error: campErr } = await supabase
     .from('campaign_recaps')
-    .select('id, slug, name, client_name, published, public_sections, brand_id')
+    .select('id, slug, name, client_name, published, public_sections, brand_id, drive_content_folder_id')
     .eq('slug', CAMPAIGN_SLUG)
     .maybeSingle();
   if (campErr) throw new Error(`campaign_recaps lookup failed: ${campErr.message}`);
@@ -574,7 +647,7 @@ async function main() {
     return campKeyparts.some(k => k && blob.includes(k.split(/[^a-z0-9]+/)[0]));
   });
 
-  if (!matched.length) {
+  if (!matched.length && !FOLDER_MODE) {
     console.error('\nNo manifest rows matched the roster for this campaign. Nothing to do.');
     console.error('Hint: athlete names in manifest may not match the loaded roster. Sample unmatched (first 5):');
     for (const r of rows.slice(0, 5)) console.error(`  - ${r.brand} | ${r.campaign} | ${r.athlete}`);
@@ -596,13 +669,23 @@ async function main() {
 
   // Optional --athlete filter
   let groupList = [...groups.values()];
+
+  // --folder overrides the manifest entirely.
+  if (FOLDER_MODE) {
+    const rootId = FOLDER_ID || camp.drive_content_folder_id;
+    if (!rootId) throw new Error('--folder given but campaign has no drive_content_folder_id and no id was passed');
+    groupList = await buildFolderGroups(rootId, athletes);
+    const linked = groupList.filter(g => g.athletes.length).length;
+    console.log(`\nFolder mode: sweeping ${rootId}`);
+    console.log(`  ${groupList.length} group(s) — ${linked} matched to an athlete, ${groupList.length - linked} will be left unlinked (athlete_id null)`);
+  }
   if (ATHLETE_FILTER) {
     const needle = ATHLETE_FILTER.toLowerCase();
     groupList = groupList.filter(g => g.athletes.some(a => a.athleteName.toLowerCase().includes(needle)));
   }
 
-  console.log(`\nMatched ${matched.length} manifest rows in ${groupList.length} Drive folders (${groupList.filter(g=>g.athletes.length>1).length} team folders, ${groupList.filter(g=>g.athletes.length===1).length} per-athlete).`);
-  if (relevantUnmatched.length) {
+  if (!FOLDER_MODE) console.log(`\nMatched ${matched.length} manifest rows in ${groupList.length} Drive folders (${groupList.filter(g=>g.athletes.length>1).length} team folders, ${groupList.filter(g=>g.athletes.length===1).length} per-athlete).`);
+  if (relevantUnmatched.length && !FOLDER_MODE) {
     console.log(`\nUnmatched manifest rows for this campaign (review needed): ${relevantUnmatched.length}`);
     for (const r of relevantUnmatched) console.log(`  ! ${r.athlete}  ig=${r.ig_handle || '-'}  ${r.drive_content_folder_url}`);
   }
@@ -671,15 +754,20 @@ async function main() {
 
   for (const g of groupList) {
     const isTeam = g.athletes.length > 1;
+    // --folder can produce a group with no athlete at all: media is still owned by the
+    // campaign, just not attributed to anyone. Treated as a team folder for capping.
+    const isUnlinked = g.athletes.length === 0;
     const folderLabel = isTeam
       ? `team_${slugify(g.athletes.map(a => a.athleteName).slice(0, 2).join('-'))}_${g.folderId.slice(0,6)}`
-      : slugify(g.athletes[0].athleteName);
+      : isUnlinked
+        ? `unlinked_${slugify(g.folderName || 'folder')}_${g.folderId.slice(0,6)}`
+        : slugify(g.athletes[0].athleteName);
     const groupLog = { folderId: g.folderId, isTeam, folderLabel, athletes: g.athletes.map(a => a.athleteName), files: [] };
-    console.log(`\n— Folder ${g.folderId}  [${isTeam ? 'TEAM' : 'SOLO'}: ${g.athletes.map(a => a.athleteName).join(', ')}]`);
+    console.log(`\n— Folder ${g.folderId}  [${isUnlinked ? `UNLINKED: ${g.folderName || '(root)'}` : isTeam ? `TEAM: ${g.athletes.map(a => a.athleteName).join(', ')}` : `SOLO: ${g.athletes[0].athleteName}`}]`);
 
     let files;
     try {
-      files = await listFolderRecursive(g.folderId, folderLabel);
+      files = g.presetFiles || await listFolderRecursive(g.folderId, folderLabel);
     } catch (e) {
       console.error(`  ! drive list failed: ${e.message}`);
       groupLog.error = e.message;
@@ -698,7 +786,7 @@ async function main() {
     // used slots, so a re-run can never push us above the cap.
     const curatedDrop = new Map(); // driveId -> { reason, dupOf?, score? }
     if (CURATE) {
-      const cap = isTeam ? CURATION.teamCap : CURATION.soloCap;
+      const cap = (isTeam || isUnlinked) ? CURATION.teamCap : CURATION.soloCap;
       const allFolderImages = files.filter(f => {
         const e2 = ext(f.name);
         if (SKIP_EXT.has(e2)) return false;
@@ -823,9 +911,13 @@ async function main() {
       fileLog.willTranscode = willTranscode;
       fileLog.isHeic = isHeic;
 
+      // In --folder mode a group may carry no athlete of its own; fall back to the filename.
+      const fileAthlete = (FOLDER_MODE && isUnlinked) ? matchAthleteInFilename(f.name, athletes) : null;
+      if (fileAthlete) fileLog.filenameMatch = fileAthlete.name;
+
       if (DRY_RUN) {
         const tag = isHeic ? 'image(heic→jpg)' : (willTranscode ? 'video(transcode)' : type);
-        console.log(`  + PLAN ${tag}: ${f.name}  →  ${storagePath}`);
+        console.log(`  + PLAN ${tag}: ${f.name}  →  ${storagePath}${fileAthlete ? `   [→ ${fileAthlete.name}]` : ''}`);
         fileLog.action = 'dry_plan';
         groupLog.files.push(fileLog);
         continue;
@@ -928,7 +1020,7 @@ async function main() {
 
         // Insert media row. For team folders athlete_id stays null; per-athlete sets it.
         const mediaInsert = {
-          athlete_id: isTeam ? null : g.athletes[0].athleteId,
+          athlete_id: (isTeam || isUnlinked) ? (fileAthlete ? fileAthlete.id : null) : g.athletes[0].athleteId,
           campaign_id: camp.id,
           type,
           file_url: fileUrl,
@@ -961,12 +1053,17 @@ async function main() {
           .upsert(mcInsert, { onConflict: 'media_id,campaign_recap_id' });
         if (mcErr) throw new Error(`media_campaigns insert failed: ${mcErr.message}`);
 
-        // Fan out media_athletes to every athlete on the folder
-        const maRows = g.athletes.map(a => ({ media_id: mRow.id, athlete_id: a.athleteId }));
-        const { error: maErr } = await supabase
-          .from('media_athletes')
-          .upsert(maRows, { onConflict: 'media_id,athlete_id' });
-        if (maErr) throw new Error(`media_athletes insert failed: ${maErr.message}`);
+        // Fan out media_athletes to every athlete on the folder. An unlinked
+        // (--folder) group has nobody attached, so there is nothing to fan out.
+        const maRows = g.athletes.length
+          ? g.athletes.map(a => ({ media_id: mRow.id, athlete_id: a.athleteId }))
+          : (fileAthlete ? [{ media_id: mRow.id, athlete_id: fileAthlete.id }] : []);
+        if (maRows.length) {
+          const { error: maErr } = await supabase
+            .from('media_athletes')
+            .upsert(maRows, { onConflict: 'media_id,athlete_id' });
+          if (maErr) throw new Error(`media_athletes insert failed: ${maErr.message}`);
+        }
 
         fileLog.action = 'uploaded';
         fileLog.mediaId = mRow.id;
