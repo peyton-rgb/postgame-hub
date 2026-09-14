@@ -82,7 +82,7 @@ export default function CampaignOptInPublicPage() {
       <style>{`
         :root{--brand:${bc};}
         *{box-sizing:border-box;}
-        .oi-input{width:100%;padding:12px 16px;background:#111;border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:16px;font-family:Arial,sans-serif;outline:none;transition:border-color 0.15s;}
+        .oi-input{width:100%;padding:12px 16px;background:#111;border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:16px;font-family:var(--font-arimo),Arimo,Arial,sans-serif;outline:none;transition:border-color 0.15s;}
         .oi-input:focus{border-color:var(--brand);}
         .oi-input.err{border-color:#f87171;}
         .oi-label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.45);margin-bottom:7px;}
@@ -91,7 +91,7 @@ export default function CampaignOptInPublicPage() {
         .oi-check.err{border-color:#f87171;}
         .oi-box{width:20px;height:20px;border:2px solid rgba(255,255,255,0.25);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:2px;transition:all 0.15s;background:transparent;}
         .oi-box.on{background:var(--brand);border-color:var(--brand);}
-        .oi-submit{width:100%;padding:16px;background:var(--brand);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:0.08em;transition:opacity 0.15s;margin-top:8px;font-family:Arial,sans-serif;}
+        .oi-submit{width:100%;padding:16px;background:var(--brand);border:none;border-radius:10px;color:#fff;font-size:12px;font-family:var(--font-mono),'JetBrains Mono',monospace;font-weight:500;cursor:pointer;text-transform:uppercase;letter-spacing:0.07em;transition:opacity 0.15s;margin-top:8px;}
         .oi-submit:hover{opacity:0.88;}
         .oi-submit:disabled{opacity:0.5;cursor:not-allowed;}
         @media(max-width:600px){.oi-input{font-size:14px;}}

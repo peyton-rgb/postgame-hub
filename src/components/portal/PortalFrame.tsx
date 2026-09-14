@@ -16,7 +16,7 @@
 // token version genuinely cannot know, rather than decoration.
 // ============================================================
 
-import { BG, OFFWHITE, HAIR, MONO, BEBAS } from "@/lib/portal";
+import { BG, OFFWHITE, HAIR, MONO, BEBAS, ORANGE, RAISED } from "@/lib/portal";
 import { anton, arimo } from "@/components/portal/fonts";
 import PortalNav, { PortalTabBar } from "@/components/portal/PortalNav";
 import type { PortalBrand } from "@/lib/portal-data";
@@ -31,6 +31,19 @@ export interface PortalSessionChrome {
   activeBrandId: string;
 }
 
+/**
+ * Set only when an ADMIN is borrowing a client's view. A real client
+ * session is always null here, so there is no state in which a brand
+ * user can be shown this banner.
+ */
+export interface PortalPreviewChrome {
+  /** Which admin is looking — so a screenshot identifies itself. */
+  adminLabel: string;
+  brandName: string;
+  switchHref: string;
+  exitHref: string;
+}
+
 export default function PortalFrame({
   brand,
   brandLogo,
@@ -38,6 +51,7 @@ export default function PortalFrame({
   basePath,
   reviewCount,
   session,
+  preview,
   children,
 }: {
   brand: PortalBrand;
@@ -46,6 +60,7 @@ export default function PortalFrame({
   basePath: string;
   reviewCount: number;
   session?: PortalSessionChrome | null;
+  preview?: PortalPreviewChrome | null;
   children: React.ReactNode;
 }) {
   const multiBrand = (session?.brands.length ?? 0) > 1;
@@ -60,6 +75,77 @@ export default function PortalFrame({
         fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif",
       }}
     >
+      {/* Admin preview banner. Sits above everything, on every portal
+          surface, for the whole preview — so a screenshot of this page can
+          never be mistaken for what a client actually sees. Orange rule,
+          Mono label, glass surface.
+
+          Rendered only when `preview` is set, which only the admin branch
+          of resolveSessionPortal() ever populates. A brand session cannot
+          reach this markup. */}
+      {preview && (
+        <div
+          style={{
+            borderTop: `2px solid ${ORANGE}`,
+            background: RAISED,
+            backdropFilter: "blur(26px)",
+            WebkitBackdropFilter: "blur(26px)",
+            borderBottom: `1px solid ${HAIR}`,
+          }}
+        >
+          <div className="mx-auto max-w-[1248px] px-5 md:px-10 lg:px-24 flex items-center gap-3 flex-wrap py-2.5">
+            <span style={{ ...MONO, fontSize: 10, letterSpacing: ".14em", color: ORANGE, whiteSpace: "nowrap" }}>
+              Admin preview
+            </span>
+            <span aria-hidden style={{ color: "rgba(250,248,245,.24)" }}>
+              &middot;
+            </span>
+            <span style={{ fontSize: 14, color: "rgba(250,248,245,.90)" }}>
+              Viewing as {preview.brandName}
+            </span>
+            <span
+              style={{ ...MONO, fontSize: 10, letterSpacing: ".14em", color: "rgba(250,248,245,.50)" }}
+              className="hidden md:inline"
+            >
+              {preview.adminLabel}
+            </span>
+
+            <span className="flex items-center gap-4 ml-auto">
+              <a
+                href={preview.switchHref}
+                style={{
+                  ...MONO,
+                  fontSize: 10,
+                  letterSpacing: ".14em",
+                  color: "rgba(250,248,245,.68)",
+                  textDecoration: "none",
+                  borderBottom: "1px solid rgba(250,248,245,.24)",
+                  paddingBottom: 2,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Switch brand
+              </a>
+              <a
+                href={preview.exitHref}
+                style={{
+                  ...MONO,
+                  fontSize: 10,
+                  letterSpacing: ".14em",
+                  color: "rgba(250,248,245,.68)",
+                  textDecoration: "none",
+                  borderBottom: "1px solid rgba(250,248,245,.24)",
+                  paddingBottom: 2,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Exit preview
+              </a>
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Utility strip. No "data as of" date — we have no verified freshness
           timestamp, and inventing one would be a fabricated fact (rule 6). */}
       <div

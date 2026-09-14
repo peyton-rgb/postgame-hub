@@ -1327,6 +1327,8 @@ export default function CampaignEditor() {
   const [trackers, setTrackers] = useState<Campaign[]>([]);
   const [linkedTrackerId, setLinkedTrackerId] = useState<string | null>(null);
   const [importingTracker, setImportingTracker] = useState(false);
+  const [refreshingTracker, setRefreshingTracker] = useState(false);
+  const [refreshTrackerError, setRefreshTrackerError] = useState<string | null>(null);
 
   // Bulk upload state
   const [bulkUploading, setBulkUploading] = useState(false);
@@ -3037,6 +3039,79 @@ export default function CampaignEditor() {
                 <p className="text-[10px] text-gray-600 mt-2">
                   Imports all athlete data &amp; metrics from the selected tracker into this recap.
                 </p>
+              </div>
+            )}
+
+            {/* Refresh from the campaign's own linked Google Sheet tracker */}
+            {campaign?.tracker_sheet_id && (
+              <div className="mb-6 p-4 bg-[#111] border border-gray-800 rounded-xl">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                      Refresh from Tracker Sheet
+                    </div>
+                    <p className="text-[10px] text-gray-600">
+                      Re-imports athletes and recomputes all hero metrics from this campaign&apos;s linked Google Sheet.
+                      New athletes are added, removed athletes are deleted, existing ones are updated.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {campaign?.tracker_url && (
+                      <a
+                        href={campaign.tracker_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#D73F09] hover:underline whitespace-nowrap"
+                      >
+                        Open Sheet →
+                      </a>
+                    )}
+                    <button
+                      onClick={async () => {
+                        if (refreshingTracker) return;
+                        setRefreshingTracker(true);
+                        setRefreshTrackerError(null);
+                        try {
+                          const res = await fetch(`/api/recap/${id}/refresh-from-tracker`, { method: "POST" });
+                          const body = await res.json();
+                          if (!res.ok) {
+                            setRefreshTrackerError(body.error ?? "Refresh failed.");
+                          } else {
+                            const { data: aths } = await supabase
+                              .from("athletes")
+                              .select("*")
+                              .eq("campaign_id", id)
+                              .order("sort_order");
+                            setAthletes(aths || []);
+                            setSelected((aths || []).map((a: Athlete) => a.id));
+                            if (body.hiddenHeroes) setHiddenHeroes(body.hiddenHeroes);
+                          }
+                        } catch (e) {
+                          setRefreshTrackerError("Network error — please try again.");
+                        } finally {
+                          setRefreshingTracker(false);
+                        }
+                      }}
+                      disabled={refreshingTracker}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#D73F09] hover:bg-[#b83508] disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      {refreshingTracker ? (
+                        <>
+                          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Refreshing...
+                        </>
+                      ) : (
+                        "Refresh from Sheet"
+                      )}
+                    </button>
+                  </div>
+                </div>
+                {refreshTrackerError && (
+                  <p className="mt-2 text-xs text-red-400">{refreshTrackerError}</p>
+                )}
               </div>
             )}
 

@@ -36,6 +36,7 @@ import { Readable } from "stream";
 import { createServiceSupabase } from "@/lib/supabase";
 import { getDriveClient, ensureFolder } from "@/lib/google-drive";
 import { getGoogleAuth } from "@/lib/google-auth";
+import { upsertTrackerAthlete } from "@/lib/tracker-sheet";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -187,6 +188,8 @@ type Campaign = {
   drive_folder_id: string | null;
   brand_id: string | null;
   brand: string | null;
+  manager_email: string | null;
+  tracker_sheet_id: string | null;
 };
 
 /** What reading the campaign behind a link produced. Three outcomes, not two.
@@ -209,7 +212,7 @@ async function loadCampaign(campaignId: string): Promise<CampaignLoad> {
   // the very distinction this function exists to draw.
   const { data, error } = await supabase
     .from("campaign_recaps")
-    .select("id, name, drive_folder_id, brand_id, client_name")
+    .select("id, name, drive_folder_id, brand_id, client_name, manager_email, tracker_sheet_id")
     .eq("id", campaignId)
     .maybeSingle();
 
@@ -225,6 +228,8 @@ async function loadCampaign(campaignId: string): Promise<CampaignLoad> {
     drive_folder_id: string | null;
     brand_id: string | null;
     client_name: string | null;
+    manager_email: string | null;
+    tracker_sheet_id: string | null;
   };
   return {
     ok: true,
@@ -239,6 +244,8 @@ async function loadCampaign(campaignId: string): Promise<CampaignLoad> {
       // makes it the best stand-in when brand_id is absent.
       brand: row.client_name, // display fallback only when brand_id is null.
                               // Free text — never use as a brand identifier.
+      manager_email: row.manager_email,
+      tracker_sheet_id: row.tracker_sheet_id,
     },
   };
 }
@@ -340,6 +347,9 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     briefUrl: link!.brief_url,
     deliverables: link!.deliverables,
     expiresAt: link!.expires_at,
+    // Null when the campaign has no assigned manager on file — the footer
+    // omits the email link entirely rather than pointing at nothing.
+    managerEmail: campaign?.manager_email ?? null,
   });
 }
 
@@ -574,6 +584,24 @@ async function handleFinalize(req: NextRequest, link: SubmissionLink, who: Submi
   const content = await ensureFolder("Content", campaign.drive_folder_id);
   const folderLabel = athleteFolderName(who.first, who.last);
   const athlete = await ensureFolder(folderLabel, content.id);
+
+  // Best-effort: give this athlete a tracker row on their first submission.
+  // Never lets a Sheets hiccup fail the upload — their file is already safe
+  // in Drive by this point, so a tracker miss just gets logged for now.
+  if (campaign.tracker_sheet_id) {
+    try {
+      await upsertTrackerAthlete({
+        trackerSheetId: campaign.tracker_sheet_id,
+        firstName: who.first,
+        lastName: who.last,
+        igHandle: who.ig,
+        school: who.school || null,
+        contentFolderId: athlete.id,
+      });
+    } catch (e) {
+      console.error(`[submit] tracker row upsert failed for campaign ${campaign.id}:`, e);
+    }
+  }
 
   const drive = getDriveClient();
   let meta;

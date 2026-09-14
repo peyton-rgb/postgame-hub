@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Inter, Arimo } from "next/font/google";
+import { Anton, Arimo, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/motion.css";
 import SiteNav from "@/components/SiteNav";
@@ -12,22 +12,40 @@ const bebasNeue = Bebas_Neue({
   display: "swap",
 });
 
-// Inter for body copy on editorial campaign pages. Kept: those are
-// client-facing and out of scope for the Hub theming pass.
-const inter = Inter({
-  weight: ["400", "500", "700"],
+// The design system is FOUR fonts and this is where all four are loaded, so a
+// page never has to reach for a fifth or re-import one it already has.
+//
+//   Bebas Neue     display — hero lines, H1/H2, athlete names, card titles
+//   Anton          heavy — campaign titles and stat figures ONLY
+//   Arimo          body — everything read at length (Arial is its metric twin
+//                  and the correct fallback, which is why body looked "fine"
+//                  while Arimo was never actually loaded)
+//   JetBrains Mono label — eyebrows, stat labels, captions, nav, buttons, tags
+//
+// That is the DELIVERABLE spec. Tools (the Hub) use two faces — labels are Arimo
+// Bold — so the themed wrapper re-points --font-mono at Arimo inside itself; see
+// the [data-theme] font alias in globals.css. Nothing to change here: all four
+// still load, and the public site keeps JetBrains Mono.
+//
+// Inter used to sit here as a fifth face, loaded on every public page in three
+// weights and used on exactly one. It is gone; its single consumer now takes
+// the body font.
+const anton = Anton({
+  weight: "400",            // Anton ships one weight only.
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-anton",
   display: "swap",
 });
-// Arimo carries body AND labels — labels are Arimo Bold uppercase letterspaced
-// .16em, not a third family. It also fills --font-mono so the 166 existing
-// font-mono call sites resolve to Arimo instead of the browser default while
-// they are migrated. JetBrains Mono is removed.
 const arimo = Arimo({
-  weight: ["400", "700"],
+  weight: ["400", "700"],   // 700 is the pull-quote cut.
   subsets: ["latin"],
   variable: "--font-arimo",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -75,7 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // shadow the dashboard wrapper, which is the real per-user source. Deliverables
   // render outside that wrapper and stay dark by default.
   return (
-    <html lang="en" className={`${bebasNeue.variable} ${inter.variable} ${arimo.variable}`}>
+    <html lang="en" className={`${bebasNeue.variable} ${anton.variable} ${arimo.variable} ${mono.variable}`}>
       <body>
         <PageWrapper>
           {/* SiteNav hides itself on /dashboard, /login, /recap, /pitch, etc.

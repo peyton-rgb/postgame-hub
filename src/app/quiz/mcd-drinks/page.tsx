@@ -16,17 +16,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Arimo } from "next/font/google";
 
 // Bebas Neue (--font-bebas) and JetBrains Mono (--font-mono) already come from
-// the root layout. Arimo does not, so it loads here — scoped to this page
 // rather than added to a layout that feeds every other surface.
-const arimo = Arimo({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-arimo",
-  display: "swap",
-});
 
 /* ─────────────────────────── brand tokens ─────────────────────────── */
 
@@ -387,7 +379,7 @@ export default function McdDrinksQuizPage() {
 
   return (
     <main
-      className={`${arimo.variable} flex min-h-screen flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
+      className={`flex min-h-screen flex-col bg-[#07070A] text-[#FAF8F5] antialiased`}
       style={{ fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif" }}
     >
       <style>{KEYFRAMES}</style>
@@ -598,7 +590,7 @@ export default function McdDrinksQuizPage() {
             </div>
 
             <div className={`${GLASS} mcdq-fade-in-late mt-9 w-full px-5 py-5 text-center`}>
-              <p className="text-[15px] leading-[1.5] text-[#FAF8F5]/[0.68]">
+              <p className="pg-body">
                 Order using the{" "}
                 <span style={{ color: GOLD }}>McDonald&rsquo;s App</span> or
                 in-store digital kiosk. Download the McDonald&rsquo;s App for

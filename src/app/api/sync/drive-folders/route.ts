@@ -23,6 +23,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { getStaffUser } from "@/lib/staff-auth";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import {
@@ -34,7 +35,24 @@ import {
   type ProvisionOutcome,
   type ProvisionSkip,
 } from "@/lib/drive-provision";
-import { getDriveClient } from "@/lib/google-drive";
+import { getDriveClient, copyFile, findFileByName } from "@/lib/google-drive";
+
+/**
+ * The master Performance Tracker template, in the Campaign Templates folder.
+ * Copied (never edited) into every new campaign's folder as "{Campaign
+ * Name} Recap". Finalized 11 Sep 2026 — the older, formula-broken version
+ * that used to live at a different file ID has been retired.
+ */
+const TRACKER_TEMPLATE_ID = "1gzkzwpEXfMR2Jsk3vwbdfTCqVO7BBZ0156YDEMDtpzc";
+
+/**
+ * The manual "create form" button caps max_files at 100 — that's a UI
+ * guardrail on that one route, not a database limit (submission_links has no
+ * CHECK constraint on it at all). The auto-created form is meant to have no
+ * real ceiling, so this is just a number large enough that no campaign will
+ * ever hit it in practice.
+ */
+const UNLIMITED_FILES = 9999;
 
 import { repairSubfolderIds } from "@/lib/drive-subfolder-repair";
 export const dynamic = "force-dynamic";
@@ -341,6 +359,55 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // One tracker per campaign, sitting loose in the campaign folder (no
+        // Trackers subfolder — see the Sep 2026 folder-structure note above).
+        // Name format: "{Campaign} {Brand} '{Year} Performance Tracker" —
+        // e.g. "Tunnel Walks Raising Cane's '26 Performance Tracker".
+        // Adopt-before-create, same pattern as ensureFolder: if a retry lands
+        // here after an earlier run already made this file, use it rather
+        // than leaving a duplicate behind.
+        const trackerYear = String(year).slice(-2);
+        const trackerName = `${candidate.name} ${brand.name} '${trackerYear} Performance Tracker`;
+        const existingTracker = await findFileByName(trackerName, result.campaignFolderId);
+        const tracker =
+          existingTracker ?? (await copyFile(TRACKER_TEMPLATE_ID, trackerName, result.campaignFolderId));
+
+        // A working /submit/[token] link the moment the campaign exists.
+        // Idempotency guard: check for an existing ACTIVE link first, rather
+        // than relying on candidates never repeating — the same retry-after-
+        // partial-failure scenario the tracker step guards against applies
+        // here too, and unlike the tracker (one obvious name to look up), a
+        // second insert here would be a second live link with no way to
+        // notice it from the file system.
+        const { data: existingLink } = await supabase
+          .from("submission_links")
+          .select("token")
+          .eq("campaign_id", candidate.id)
+          .eq("active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingLink) {
+          const { error: linkError } = await supabase.from("submission_links").insert({
+            token: randomBytes(12).toString("hex"),
+            campaign_id: candidate.id,
+            active: true,
+            min_photos: 3,
+            min_videos: 1,
+            max_files: UNLIMITED_FILES,
+            // No reliable source of a contracted deliverables count exists
+            // yet (optin_campaigns.required_deliverables is a list, not a
+            // count, and its link back to a campaign is null on every row) —
+            // null here is the honest "not stated" the athlete page already
+            // expects, not a placeholder waiting to be filled in.
+            deliverables: null,
+            brief_url: null,
+            expires_at: null,
+            created_by: actorId,
+          });
+          if (linkError) throw new Error(`submission_links insert failed: ${linkError.message}`);
+        }
+
         // One update, keyed on the campaign UUID — never admin_campaign_id,
         // which is not a key and has known duplicates.
         const { error: updateError } = await supabase
@@ -348,9 +415,14 @@ export async function POST(req: NextRequest) {
           .update({
             drive_folder_id: result.campaignFolderId,
             drive_content_folder_id: result.contentFolderId,
-            drive_contracts_folder_id: result.contractsFolderId,
-            drive_trackers_folder_id: result.trackersFolderId,
+            drive_legal_folder_id: result.legalFolderId,
+            drive_legal_brand_folder_id: result.legalBrandFolderId,
+            drive_legal_athlete_folder_id: result.legalAthleteFolderId,
+            drive_travel_folder_id: result.travelFolderId,
+            drive_production_assets_folder_id: result.productionAssetsFolderId,
             drive_provisioned_at: new Date().toISOString(),
+            tracker_sheet_id: tracker.id,
+            tracker_url: tracker.url,
           })
           .eq("id", candidate.id);
 

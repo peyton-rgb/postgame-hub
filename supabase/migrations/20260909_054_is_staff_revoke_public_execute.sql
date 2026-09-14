@@ -1,0 +1,55 @@
+-- Take EXECUTE on is_staff() away from PUBLIC and anon. Companion to 053.
+--
+-- Same reasoning as 053: Postgres grants EXECUTE to PUBLIC by default and
+-- Supabase publishes public-schema functions as RPCs, so is_staff() was
+-- callable unauthenticated at /rest/v1/rpc/is_staff. It is SECURITY DEFINER
+-- and reads profiles as its owner.
+--
+-- SAFE, and checked the same way: all 37 RLS policies that call is_staff() are
+-- granted TO authenticated, so anon never needs EXECUTE to satisfy one.
+-- Confirmed empirically in a rolled-back transaction — with the grant removed,
+-- anon still read 84 recaps / 3,266 athletes / 4,241 media, and brands,
+-- brand_logos and media_campaigns all still answered.
+--
+-- ============================================================
+-- is_postgame_staff() IS DELIBERATELY NOT INCLUDED
+-- ============================================================
+-- Its 24 policies are granted TO **public**, not TO authenticated, across 16
+-- tables: brand_contacts, agent_runs, agent_jobs, agent_budgets,
+-- campaign_briefs, creator_briefs, concepts, deliverable_versions,
+-- admin_audit_log, audit_runs, audit_findings, audit_snapshots, hub_surfaces,
+-- recap_readiness, slot_assignments, videographer_details.
+--
+-- PUBLIC includes anon, so anon must be able to EXECUTE the function just for
+-- those policies to evaluate at all. Revoking does not quietly return fewer
+-- rows — it raises. Proved by revoking inside a transaction and rolling back:
+--
+--   before revoke                  ok, 0 rows
+--   after revoke: brand_contacts   FAILED 42501 permission denied for function
+--   after revoke: agent_runs       FAILED 42501 permission denied for function
+--
+-- The prerequisite is retargeting those 24 policies from `public` to
+-- `authenticated`. They are mis-scoped as they stand — staff are always
+-- authenticated — but that touches 16 tables well outside the portal, several
+-- of them agent and audit infrastructure, and belongs in its own change with
+-- its own testing rather than riding along here.
+--
+-- VERIFIED AFTER APPLYING:
+--   · is_brand_user, my_brand_ids and is_staff all show
+--     postgres/authenticated/service_role; anon_can = false
+--   · through the real REST API with the publishable key: is_brand_user,
+--     my_brand_ids and is_staff all return HTTP 401 / 42501; is_postgame_staff
+--     still returns 200, as required by its policies
+--   · anon reads byte-identical to the pre-Phase-2 baseline —
+--     84 / 3,266 / 4,241 / 126 / 381 / 2,120 / 2,130 / 0, and brand_contacts
+--     still answers 0 rows rather than raising
+--   · /recap/[slug] and /clients still 200 in production
+--   · supabase/tests/rls-phase2.sql passes 20 of 20
+--
+-- Rollback:
+--   grant execute on function public.is_staff() to public;
+
+revoke all on function public.is_staff() from public;
+revoke all on function public.is_staff() from anon;
+
+grant execute on function public.is_staff() to authenticated, service_role;

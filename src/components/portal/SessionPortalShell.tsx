@@ -22,7 +22,7 @@ export default async function SessionPortalShell({
   searchParams: Record<string, string | undefined>;
   Body: React.ComponentType<{ brand: PortalBrand; basePath: string }>;
 }) {
-  const { brand, chrome } = await resolveSessionPortal(searchParams.brand);
+  const { brand, chrome, preview } = await resolveSessionPortal(searchParams.brand);
 
   const [postgameMark, reviewCount, team] = await Promise.all([
     getPostgameMark(),
@@ -40,6 +40,7 @@ export default async function SessionPortalShell({
       basePath="/portal"
       reviewCount={reviewCount}
       session={chrome}
+      preview={preview}
     >
       {/* @ts-expect-error async server component passed as a prop */}
       <Body brand={brand} basePath="/portal" />

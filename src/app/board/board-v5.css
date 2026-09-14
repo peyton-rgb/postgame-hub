@@ -23,7 +23,7 @@
   color: var(--ink);
   font-size: 14px;
   line-height: 1.4;
-  font-family: var(--font-inter), "Inter", Arial, sans-serif;
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
   background: var(--bg);
   background-image: radial-gradient(900px 480px at 8% -6%, rgba(215, 63, 9, 0.1), transparent 60%),
     radial-gradient(820px 520px at 104% 0%, rgba(46, 124, 246, 0.1), transparent 58%),
@@ -657,7 +657,7 @@
   border: 1px solid rgba(11, 12, 16, 0.09);
   box-shadow: 0 24px 70px rgba(11, 12, 16, 0.28);
   padding: 22px;
-  font-family: var(--font-inter), "Inter", Arial, sans-serif;
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
   color: #0b0c10;
 }
 .tb-modal h2 {
@@ -679,7 +679,7 @@
 }
 .tb-input {
   width: 100%;
-  font-family: var(--font-inter), "Inter", Arial, sans-serif;
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif;
   font-size: 13.5px;
   line-height: 1.4;
   color: #0b0c10;

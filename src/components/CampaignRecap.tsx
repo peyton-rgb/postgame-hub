@@ -10,6 +10,7 @@ import PostgameCalendar from "./PostgameCalendar";
 // TEMP: Future Opportunities pulled until finalized — uncomment to restore
 // import FutureOpportunities from "./FutureOpportunities";
 import AssetModal, { type PortalAthlete, type PortalPost, type SideMetrics, type Collaborator } from "@/app/portal/[token]/library/AssetModal";
+import { sanitizeRichHtml } from "@/lib/rich-text";
 // Replaced react-masonry-css with a local shortest-column-next implementation
 // (see BalancedMasonry below). react-masonry-css distributes sequentially,
 // which left uneven column bottoms and a lot of dead space.
@@ -1459,8 +1460,12 @@ export function CampaignRecap({
             <div>
               {hasRichTextContent(settings.description) && (
                 <div
-                  className="prose prose-invert max-w-none text-base md:text-lg text-white/70 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: settings.description as string }}
+                  // prose-a:* restores the brand-orange link styling that the
+                  // sanitiser drops with the rest of the class attributes. Two
+                  // links in the whole corpus carry it inline today; doing it in
+                  // CSS covers every future one without letting class through.
+                  className="prose prose-invert max-w-none text-base md:text-lg text-white/70 leading-relaxed prose-a:text-[#D73F09] prose-a:underline"
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(settings.description as string) }}
                 />
               )}
             </div>
@@ -1498,8 +1503,8 @@ export function CampaignRecap({
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-6">Key Takeaways</h2>
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 md:p-8">
             <div
-              className="prose prose-invert max-w-none text-sm md:text-base text-white/90 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: settings.key_takeaways as string }}
+              className="prose prose-invert max-w-none text-sm md:text-base text-white/90 leading-relaxed prose-a:text-[#D73F09] prose-a:underline"
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(settings.key_takeaways as string) }}
             />
           </div>
         </div>

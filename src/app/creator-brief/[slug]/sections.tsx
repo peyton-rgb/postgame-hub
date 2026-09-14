@@ -221,8 +221,8 @@ function SectionBody({
                 VIDEO
               </div>
               <h3 className="text-lg font-bold mt-1">{c.video.title}</h3>
-              <p className="text-sm text-gray-700 mt-1">{c.video.count}</p>
-              <p className="text-sm text-gray-600 mt-3">{c.video.description}</p>
+              <p className="pg-body text-gray-700 mt-1">{c.video.count}</p>
+              <p className="pg-body text-gray-600 mt-3">{c.video.description}</p>
               <p className="text-xs text-gray-500 mt-3 uppercase tracking-wider">
                 Orientation: {c.video.orientation}
               </p>
@@ -237,10 +237,10 @@ function SectionBody({
                 PHOTOGRAPHY
               </div>
               <h3 className="text-lg font-bold mt-1">{c.photography.title}</h3>
-              <p className="text-sm text-gray-700 mt-1">
+              <p className="pg-body text-gray-700 mt-1">
                 Minimum: {c.photography.minimum}
               </p>
-              <p className="text-sm text-gray-600 mt-3">{c.photography.style}</p>
+              <p className="pg-body text-gray-600 mt-3">{c.photography.style}</p>
             </div>
           )}
         </div>
@@ -311,7 +311,7 @@ function SectionBody({
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Visual Style
               </div>
-              <p className="text-sm text-gray-800">{c.visual_style}</p>
+              <p className="pg-body text-gray-800">{c.visual_style}</p>
             </div>
           )}
           {c.lighting_notes && (
@@ -319,7 +319,7 @@ function SectionBody({
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Lighting
               </div>
-              <p className="text-sm text-gray-800">{c.lighting_notes}</p>
+              <p className="pg-body text-gray-800">{c.lighting_notes}</p>
             </div>
           )}
         </>
@@ -354,7 +354,7 @@ function SectionBody({
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Lens Recommendation
               </div>
-              <p className="text-sm text-gray-800">{c.lens_recommendation}</p>
+              <p className="pg-body text-gray-800">{c.lens_recommendation}</p>
             </div>
           )}
         </div>
@@ -426,13 +426,13 @@ function SectionBody({
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Delivery Method
               </div>
-              <p className="text-sm text-gray-800">{c.delivery_method}</p>
+              <p className="pg-body text-gray-800">{c.delivery_method}</p>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">
                 Deadline
               </div>
-              <p className="text-sm font-bold" style={{ color: brandColor }}>
+              <p className="pg-body font-bold" style={{ color: brandColor }}>
                 {c.deadline}
               </p>
             </div>

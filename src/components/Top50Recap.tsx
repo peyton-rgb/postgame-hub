@@ -7,6 +7,7 @@ import { fmt, computeStats } from "@/lib/recap-helpers";
 import { PostgameLogo } from "./PostgameLogo";
 import { SchoolLogo, getFullSchoolName, getSchoolColor } from "./SchoolBadge";
 import PostgameCalendar from "./PostgameCalendar";
+import { sanitizeRichHtml } from "@/lib/rich-text";
 // TEMP: Future Opportunities pulled until finalized — uncomment to restore
 // import FutureOpportunities from "./FutureOpportunities";
 
@@ -402,8 +403,10 @@ export function Top50Recap({
 
             {hasRichTextContent(settings.description) && (
               <div
-                className="prose prose-invert max-w-xl text-lg md:text-xl text-white/50 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: settings.description as string }}
+                // prose-a:* restores the brand-orange link styling that the
+                // sanitiser drops with the rest of the class attributes.
+                className="prose prose-invert max-w-xl text-lg md:text-xl text-white/50 leading-relaxed prose-a:text-[#D73F09] prose-a:underline"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(settings.description as string) }}
               />
             )}
 

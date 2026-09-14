@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -136,6 +136,99 @@ export type Database = {
           },
         ]
       }
+      admin_account_map: {
+        Row: {
+          account_name: string | null
+          admin_account_id: string
+          brand_id: string | null
+          created_at: string
+          mapped_at: string | null
+          mapped_by: string | null
+        }
+        Insert: {
+          account_name?: string | null
+          admin_account_id: string
+          brand_id?: string | null
+          created_at?: string
+          mapped_at?: string | null
+          mapped_by?: string | null
+        }
+        Update: {
+          account_name?: string | null
+          admin_account_id?: string
+          brand_id?: string | null
+          created_at?: string
+          mapped_at?: string | null
+          mapped_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_account_map_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_account_map_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_account_map_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          entity: string
+          entity_id: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          entity: string
+          entity_id?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          entity?: string
+          entity_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_campaigns: {
         Row: {
           admin_id: number
@@ -163,6 +256,93 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_budgets: {
+        Row: {
+          agent_name: string
+          created_at: string
+          enabled: boolean
+          last_alert_at: string | null
+          monthly_cap_usd: number
+          updated_at: string
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string
+          enabled?: boolean
+          last_alert_at?: string | null
+          monthly_cap_usd: number
+          updated_at?: string
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string
+          enabled?: boolean
+          last_alert_at?: string | null
+          monthly_cap_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agent_jobs: {
+        Row: {
+          blocked_on: string | null
+          branch: string | null
+          brief: string
+          claimed_at: string | null
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          files_touched: string[] | null
+          id: string
+          preview_url: string | null
+          priority: number
+          report: string | null
+          reported_at: string | null
+          requires_approval: boolean
+          seq: number
+          status: string
+          title: string
+        }
+        Insert: {
+          blocked_on?: string | null
+          branch?: string | null
+          brief: string
+          claimed_at?: string | null
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          files_touched?: string[] | null
+          id?: string
+          preview_url?: string | null
+          priority?: number
+          report?: string | null
+          reported_at?: string | null
+          requires_approval?: boolean
+          seq?: number
+          status?: string
+          title: string
+        }
+        Update: {
+          blocked_on?: string | null
+          branch?: string | null
+          brief?: string
+          claimed_at?: string | null
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          files_touched?: string[] | null
+          id?: string
+          preview_url?: string | null
+          priority?: number
+          report?: string | null
+          reported_at?: string | null
+          requires_approval?: boolean
+          seq?: number
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
       agent_runs: {
         Row: {
           agent_name: Database["public"]["Enums"]["agent_name"]
@@ -177,7 +357,8 @@ export type Database = {
           output_payload: Json | null
           output_tokens: number | null
           status: Database["public"]["Enums"]["agent_run_status"]
-          triggered_by: string
+          trigger_source: string
+          triggered_by: string | null
         }
         Insert: {
           agent_name: Database["public"]["Enums"]["agent_name"]
@@ -192,7 +373,8 @@ export type Database = {
           output_payload?: Json | null
           output_tokens?: number | null
           status?: Database["public"]["Enums"]["agent_run_status"]
-          triggered_by: string
+          trigger_source?: string
+          triggered_by?: string | null
         }
         Update: {
           agent_name?: Database["public"]["Enums"]["agent_name"]
@@ -207,7 +389,8 @@ export type Database = {
           output_payload?: Json | null
           output_tokens?: number | null
           status?: Database["public"]["Enums"]["agent_run_status"]
-          triggered_by?: string
+          trigger_source?: string
+          triggered_by?: string | null
         }
         Relationships: []
       }
@@ -415,6 +598,27 @@ export type Database = {
             foreignKeyName: "asset_packages_campaign_recap_id_fkey"
             columns: ["campaign_recap_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "asset_packages_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_packages_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "asset_packages_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
@@ -484,6 +688,7 @@ export type Database = {
           athlete_id: string
           content_type: string | null
           created_at: string
+          edit_started_at: string | null
           file_size_bytes: number | null
           file_url: string | null
           id: string
@@ -495,7 +700,9 @@ export type Database = {
           paid_at: string | null
           posted_at: string | null
           review_note: string | null
+          sent_to_brand_at: string | null
           slot: string
+          slot_index: number
           status: string
           storage_bucket: string | null
           storage_path: string | null
@@ -509,6 +716,7 @@ export type Database = {
           athlete_id: string
           content_type?: string | null
           created_at?: string
+          edit_started_at?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
           id?: string
@@ -520,7 +728,9 @@ export type Database = {
           paid_at?: string | null
           posted_at?: string | null
           review_note?: string | null
+          sent_to_brand_at?: string | null
           slot: string
+          slot_index?: number
           status?: string
           storage_bucket?: string | null
           storage_path?: string | null
@@ -534,6 +744,7 @@ export type Database = {
           athlete_id?: string
           content_type?: string | null
           created_at?: string
+          edit_started_at?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
           id?: string
@@ -545,7 +756,9 @@ export type Database = {
           paid_at?: string | null
           posted_at?: string | null
           review_note?: string | null
+          sent_to_brand_at?: string | null
           slot?: string
+          slot_index?: number
           status?: string
           storage_bucket?: string | null
           storage_path?: string | null
@@ -691,16 +904,22 @@ export type Database = {
       }
       athletes: {
         Row: {
+          approval_decided_at: string | null
+          approval_decided_by: string | null
+          approval_provenance: string | null
+          brand_approval_status: string
           campaign_id: string
           content_rating: string | null
           created_at: string | null
           featured_order: number | null
+          funnel_stage: string
           gender: string | null
           id: string
           ig_followers: number | null
           ig_handle: string | null
           is_featured: boolean | null
           metrics: Json | null
+          month: string | null
           name: string
           notes: string | null
           person_id: string | null
@@ -712,16 +931,22 @@ export type Database = {
           sport: string
         }
         Insert: {
+          approval_decided_at?: string | null
+          approval_decided_by?: string | null
+          approval_provenance?: string | null
+          brand_approval_status?: string
           campaign_id: string
           content_rating?: string | null
           created_at?: string | null
           featured_order?: number | null
+          funnel_stage?: string
           gender?: string | null
           id?: string
           ig_followers?: number | null
           ig_handle?: string | null
           is_featured?: boolean | null
           metrics?: Json | null
+          month?: string | null
           name: string
           notes?: string | null
           person_id?: string | null
@@ -733,16 +958,22 @@ export type Database = {
           sport: string
         }
         Update: {
+          approval_decided_at?: string | null
+          approval_decided_by?: string | null
+          approval_provenance?: string | null
+          brand_approval_status?: string
           campaign_id?: string
           content_rating?: string | null
           created_at?: string | null
           featured_order?: number | null
+          funnel_stage?: string
           gender?: string | null
           id?: string
           ig_followers?: number | null
           ig_handle?: string | null
           is_featured?: boolean | null
           metrics?: Json | null
+          month?: string | null
           name?: string
           notes?: string | null
           person_id?: string | null
@@ -767,6 +998,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "athletes_campaign_id_fkey"
@@ -834,6 +1086,149 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      audit_findings: {
+        Row: {
+          collector: string
+          detail: string | null
+          evidence: Json | null
+          fingerprint: string
+          first_seen: string
+          id: string
+          kind: string
+          last_seen: string
+          regressed: boolean | null
+          resolved_at: string | null
+          run_id: string | null
+          severity: string
+          status: string
+          surface_id: string | null
+          times_seen: number
+          title: string
+          verified: boolean | null
+        }
+        Insert: {
+          collector: string
+          detail?: string | null
+          evidence?: Json | null
+          fingerprint: string
+          first_seen?: string
+          id?: string
+          kind: string
+          last_seen?: string
+          regressed?: boolean | null
+          resolved_at?: string | null
+          run_id?: string | null
+          severity?: string
+          status?: string
+          surface_id?: string | null
+          times_seen?: number
+          title: string
+          verified?: boolean | null
+        }
+        Update: {
+          collector?: string
+          detail?: string | null
+          evidence?: Json | null
+          fingerprint?: string
+          first_seen?: string
+          id?: string
+          kind?: string
+          last_seen?: string
+          regressed?: boolean | null
+          resolved_at?: string | null
+          run_id?: string | null
+          severity?: string
+          status?: string
+          surface_id?: string | null
+          times_seen?: number
+          title?: string
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "audit_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_findings_surface_id_fkey"
+            columns: ["surface_id"]
+            isOneToOne: false
+            referencedRelation: "hub_surfaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_runs: {
+        Row: {
+          base_url: string | null
+          collector: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          items_scanned: number | null
+          meta: Json | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          base_url?: string | null
+          collector: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_scanned?: number | null
+          meta?: Json | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          base_url?: string | null
+          collector?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_scanned?: number | null
+          meta?: Json | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      audit_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          run_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          payload: Json
+          run_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_snapshots_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       banner_videos: {
         Row: {
@@ -1089,6 +1484,109 @@ export type Database = {
           },
         ]
       }
+      brand_contacts: {
+        Row: {
+          activated_at: string | null
+          brand_id: string
+          contact_id: string
+          created_at: string
+          id: string
+          invite_expires_at: string | null
+          invite_last_attempt_at: string | null
+          invite_send_error: string | null
+          invite_token: string | null
+          invited_at: string | null
+          invited_email: string | null
+          profile_id: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role: string | null
+          signup_email: string | null
+          status: string
+        }
+        Insert: {
+          activated_at?: string | null
+          brand_id: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_last_attempt_at?: string | null
+          invite_send_error?: string | null
+          invite_token?: string | null
+          invited_at?: string | null
+          invited_email?: string | null
+          profile_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: string | null
+          signup_email?: string | null
+          status?: string
+        }
+        Update: {
+          activated_at?: string | null
+          brand_id?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_last_attempt_at?: string | null
+          invite_send_error?: string | null
+          invite_token?: string | null
+          invited_at?: string | null
+          invited_email?: string | null
+          profile_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: string | null
+          signup_email?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_contacts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_contacts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_contacts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+          {
+            foreignKeyName: "brand_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "postgame_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_contacts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_contacts_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_kit_staging: {
         Row: {
           brand_id: string | null
@@ -1168,8 +1666,131 @@ export type Database = {
           },
         ]
       }
+      brand_logos: {
+        Row: {
+          bg_hex: string | null
+          brand_id: string
+          created_at: string
+          dated: boolean
+          has_alpha: boolean | null
+          height: number | null
+          id: string
+          ink_hex: string | null
+          kind: string
+          reject_reason: string | null
+          source: string | null
+          updated_at: string
+          url: string
+          variant: string
+          verified_at: string | null
+          width: number | null
+        }
+        Insert: {
+          bg_hex?: string | null
+          brand_id: string
+          created_at?: string
+          dated?: boolean
+          has_alpha?: boolean | null
+          height?: number | null
+          id?: string
+          ink_hex?: string | null
+          kind?: string
+          reject_reason?: string | null
+          source?: string | null
+          updated_at?: string
+          url: string
+          variant: string
+          verified_at?: string | null
+          width?: number | null
+        }
+        Update: {
+          bg_hex?: string | null
+          brand_id?: string
+          created_at?: string
+          dated?: boolean
+          has_alpha?: boolean | null
+          height?: number | null
+          id?: string
+          ink_hex?: string | null
+          kind?: string
+          reject_reason?: string | null
+          source?: string | null
+          updated_at?: string
+          url?: string
+          variant?: string
+          verified_at?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_logos_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_logos_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_logos_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      brand_year_folders: {
+        Row: {
+          brand_id: string
+          created_at: string
+          folder_id: string
+          year: number
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          folder_id: string
+          year: number
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          folder_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_year_folders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_year_folders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_year_folders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
       brands: {
         Row: {
+          account_owner_id: string | null
           admin_brand_id: string | null
           approval_settings: Json | null
           archived: boolean
@@ -1180,6 +1801,9 @@ export type Database = {
           created_at: string | null
           drive_campaign_subfolder_id: string | null
           drive_parent_folder_id: string | null
+          fill_color: string | null
+          fill_color_confidence: string | null
+          fill_color_source: string | null
           font_primary: string | null
           font_primary_url: string | null
           font_secondary: string | null
@@ -1188,8 +1812,12 @@ export type Database = {
           hero_recap_prompt: string | null
           hero_recap_video_url: string | null
           id: string
+          ig_handle: string | null
           industry: string | null
           kit_notes: string | null
+          kit_status: string
+          lifecycle_stage: string | null
+          lockup_scale: number | null
           logo_dark_url: string | null
           logo_icon_svg_url: string | null
           logo_icon_url: string | null
@@ -1198,6 +1826,7 @@ export type Database = {
           logo_primary_url: string | null
           logo_url: string | null
           logo_white_url: string | null
+          msa_url: string | null
           name: string
           notes: string | null
           portal_token: string | null
@@ -1207,9 +1836,11 @@ export type Database = {
           slug: string | null
           sort_order: number
           tagline: string | null
+          tiktok_handle: string | null
           website: string | null
         }
         Insert: {
+          account_owner_id?: string | null
           admin_brand_id?: string | null
           approval_settings?: Json | null
           archived?: boolean
@@ -1220,6 +1851,9 @@ export type Database = {
           created_at?: string | null
           drive_campaign_subfolder_id?: string | null
           drive_parent_folder_id?: string | null
+          fill_color?: string | null
+          fill_color_confidence?: string | null
+          fill_color_source?: string | null
           font_primary?: string | null
           font_primary_url?: string | null
           font_secondary?: string | null
@@ -1228,8 +1862,12 @@ export type Database = {
           hero_recap_prompt?: string | null
           hero_recap_video_url?: string | null
           id?: string
+          ig_handle?: string | null
           industry?: string | null
           kit_notes?: string | null
+          kit_status?: string
+          lifecycle_stage?: string | null
+          lockup_scale?: number | null
           logo_dark_url?: string | null
           logo_icon_svg_url?: string | null
           logo_icon_url?: string | null
@@ -1238,6 +1876,7 @@ export type Database = {
           logo_primary_url?: string | null
           logo_url?: string | null
           logo_white_url?: string | null
+          msa_url?: string | null
           name: string
           notes?: string | null
           portal_token?: string | null
@@ -1247,9 +1886,11 @@ export type Database = {
           slug?: string | null
           sort_order?: number
           tagline?: string | null
+          tiktok_handle?: string | null
           website?: string | null
         }
         Update: {
+          account_owner_id?: string | null
           admin_brand_id?: string | null
           approval_settings?: Json | null
           archived?: boolean
@@ -1260,6 +1901,9 @@ export type Database = {
           created_at?: string | null
           drive_campaign_subfolder_id?: string | null
           drive_parent_folder_id?: string | null
+          fill_color?: string | null
+          fill_color_confidence?: string | null
+          fill_color_source?: string | null
           font_primary?: string | null
           font_primary_url?: string | null
           font_secondary?: string | null
@@ -1268,8 +1912,12 @@ export type Database = {
           hero_recap_prompt?: string | null
           hero_recap_video_url?: string | null
           id?: string
+          ig_handle?: string | null
           industry?: string | null
           kit_notes?: string | null
+          kit_status?: string
+          lifecycle_stage?: string | null
+          lockup_scale?: number | null
           logo_dark_url?: string | null
           logo_icon_svg_url?: string | null
           logo_icon_url?: string | null
@@ -1278,6 +1926,7 @@ export type Database = {
           logo_primary_url?: string | null
           logo_url?: string | null
           logo_white_url?: string | null
+          msa_url?: string | null
           name?: string
           notes?: string | null
           portal_token?: string | null
@@ -1287,9 +1936,18 @@ export type Database = {
           slug?: string | null
           sort_order?: number
           tagline?: string | null
+          tiktok_handle?: string | null
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brands_account_owner_id_fkey"
+            columns: ["account_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       briefs: {
         Row: {
@@ -1375,6 +2033,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "briefs_tracker_id_fkey"
+            columns: ["tracker_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "briefs_tracker_id_fkey"
+            columns: ["tracker_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "briefs_tracker_id_fkey"
+            columns: ["tracker_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "briefs_tracker_id_fkey"
@@ -1478,6 +2157,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bts_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "bts_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bts_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "bts_submissions_campaign_id_fkey"
@@ -1812,19 +2512,30 @@ export type Database = {
       }
       campaign_recaps: {
         Row: {
+          admin_account_id: string | null
           admin_campaign_id: string | null
           admin_created_on: string | null
+          admin_is_active: boolean | null
+          admin_name: string | null
           admin_synced_at: string | null
+          asana_synced_at: string | null
+          asana_task_gid: string | null
           brand_id: string | null
           brief_doc_id: string | null
           brief_url: string | null
           carousel_order: number | null
           client_logo_url: string | null
           client_name: string
+          content_host: string
           created_at: string | null
           description: string | null
+          drive_content_folder_id: string | null
+          drive_contracts_folder_id: string | null
           drive_folder_id: string | null
+          drive_provisioned_at: string | null
+          drive_trackers_folder_id: string | null
           featured: boolean | null
+          frameio_url: string | null
           grid_order: number | null
           hero_image_url: string | null
           hero_recap_generated_at: string | null
@@ -1833,15 +2544,20 @@ export type Database = {
           homepage_featured: boolean
           homepage_order: number | null
           id: string
+          lifecycle_status: string
+          manager_email: string | null
+          manager_name: string | null
           media_type: string | null
           meta_description: string | null
           meta_title: string | null
           metric_overrides: Json
           name: string
           og_image: string | null
+          owner_id: string | null
           pin_hash: string | null
           public_sections: Json | null
           published: boolean | null
+          recap_config: Json | null
           settings: Json | null
           slug: string
           status: string
@@ -1854,19 +2570,30 @@ export type Database = {
           visibility: string | null
         }
         Insert: {
+          admin_account_id?: string | null
           admin_campaign_id?: string | null
           admin_created_on?: string | null
+          admin_is_active?: boolean | null
+          admin_name?: string | null
           admin_synced_at?: string | null
+          asana_synced_at?: string | null
+          asana_task_gid?: string | null
           brand_id?: string | null
           brief_doc_id?: string | null
           brief_url?: string | null
           carousel_order?: number | null
           client_logo_url?: string | null
           client_name: string
+          content_host?: string
           created_at?: string | null
           description?: string | null
+          drive_content_folder_id?: string | null
+          drive_contracts_folder_id?: string | null
           drive_folder_id?: string | null
+          drive_provisioned_at?: string | null
+          drive_trackers_folder_id?: string | null
           featured?: boolean | null
+          frameio_url?: string | null
           grid_order?: number | null
           hero_image_url?: string | null
           hero_recap_generated_at?: string | null
@@ -1875,15 +2602,20 @@ export type Database = {
           homepage_featured?: boolean
           homepage_order?: number | null
           id?: string
+          lifecycle_status?: string
+          manager_email?: string | null
+          manager_name?: string | null
           media_type?: string | null
           meta_description?: string | null
           meta_title?: string | null
           metric_overrides?: Json
           name: string
           og_image?: string | null
+          owner_id?: string | null
           pin_hash?: string | null
           public_sections?: Json | null
           published?: boolean | null
+          recap_config?: Json | null
           settings?: Json | null
           slug: string
           status?: string
@@ -1896,19 +2628,30 @@ export type Database = {
           visibility?: string | null
         }
         Update: {
+          admin_account_id?: string | null
           admin_campaign_id?: string | null
           admin_created_on?: string | null
+          admin_is_active?: boolean | null
+          admin_name?: string | null
           admin_synced_at?: string | null
+          asana_synced_at?: string | null
+          asana_task_gid?: string | null
           brand_id?: string | null
           brief_doc_id?: string | null
           brief_url?: string | null
           carousel_order?: number | null
           client_logo_url?: string | null
           client_name?: string
+          content_host?: string
           created_at?: string | null
           description?: string | null
+          drive_content_folder_id?: string | null
+          drive_contracts_folder_id?: string | null
           drive_folder_id?: string | null
+          drive_provisioned_at?: string | null
+          drive_trackers_folder_id?: string | null
           featured?: boolean | null
+          frameio_url?: string | null
           grid_order?: number | null
           hero_image_url?: string | null
           hero_recap_generated_at?: string | null
@@ -1917,15 +2660,20 @@ export type Database = {
           homepage_featured?: boolean
           homepage_order?: number | null
           id?: string
+          lifecycle_status?: string
+          manager_email?: string | null
+          manager_name?: string | null
           media_type?: string | null
           meta_description?: string | null
           meta_title?: string | null
           metric_overrides?: Json
           name?: string
           og_image?: string | null
+          owner_id?: string | null
           pin_hash?: string | null
           public_sections?: Json | null
           published?: boolean | null
+          recap_config?: Json | null
           settings?: Json | null
           slug?: string
           status?: string
@@ -1938,6 +2686,13 @@ export type Database = {
           visibility?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "campaign_recaps_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "campaigns_brand_id_fkey"
             columns: ["brand_id"]
@@ -2049,6 +2804,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "campaign_rosters_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "portal_top_posts"
+            referencedColumns: ["athlete_id"]
+          },
+          {
             foreignKeyName: "campaign_rosters_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
@@ -2061,6 +2823,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_rosters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "campaign_rosters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_rosters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "campaign_rosters_campaign_id_fkey"
@@ -2223,7 +3006,99 @@ export type Database = {
             foreignKeyName: "case_studies_source_campaign_id_fkey"
             columns: ["source_campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "case_studies_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_studies_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "case_studies_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_study_campaigns: {
+        Row: {
+          campaign_recap_id: string
+          case_study_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          campaign_recap_id: string
+          case_study_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          campaign_recap_id?: string
+          case_study_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_study_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_study_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_study_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "case_study_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_study_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "case_study_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_study_campaigns_case_study_id_fkey"
+            columns: ["case_study_id"]
+            isOneToOne: false
+            referencedRelation: "case_studies"
             referencedColumns: ["id"]
           },
         ]
@@ -2257,6 +3132,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "athletes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_container_athletes_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "portal_top_posts"
+            referencedColumns: ["athlete_id"]
           },
           {
             foreignKeyName: "collab_container_athletes_container_id_fkey"
@@ -2323,6 +3205,27 @@ export type Database = {
             foreignKeyName: "collab_containers_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "collab_containers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_containers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "collab_containers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
@@ -2333,8 +3236,11 @@ export type Database = {
           city: string | null
           created_at: string | null
           id: number
+          ipeds_unitid: number | null
           is_active: boolean | null
           name: string
+          ncaa_division: string | null
+          short_name: string | null
           state: string | null
           website: string | null
           zip: string | null
@@ -2342,9 +3248,12 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at?: string | null
-          id: number
+          id?: number
+          ipeds_unitid?: number | null
           is_active?: boolean | null
           name: string
+          ncaa_division?: string | null
+          short_name?: string | null
           state?: string | null
           website?: string | null
           zip?: string | null
@@ -2353,8 +3262,11 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           id?: number
+          ipeds_unitid?: number | null
           is_active?: boolean | null
           name?: string
+          ncaa_division?: string | null
+          short_name?: string | null
           state?: string | null
           website?: string | null
           zip?: string | null
@@ -2660,6 +3572,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contracts_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "portal_top_posts"
+            referencedColumns: ["athlete_id"]
+          },
+          {
             foreignKeyName: "contracts_brand_id_fkey"
             columns: ["brand_id"]
             isOneToOne: false
@@ -2698,6 +3617,27 @@ export type Database = {
             foreignKeyName: "contracts_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "contracts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "contracts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
@@ -2706,6 +3646,89 @@ export type Database = {
             columns: ["optin_id"]
             isOneToOne: false
             referencedRelation: "athlete_campaign_optins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craft_platforms: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string
+          name: string
+          notes: string | null
+          vendor: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          vendor?: string | null
+        }
+        Relationships: []
+      }
+      craft_tools: {
+        Row: {
+          counterparts: string | null
+          coverage_area: string | null
+          created_at: string | null
+          family_name: string
+          id: string
+          members: string[] | null
+          notes: string | null
+          platform_id: string
+          skill_tier: string | null
+          sort_order: number | null
+          ui_location: string | null
+          what_it_does: string | null
+          when_to_reach_for_it: string | null
+        }
+        Insert: {
+          counterparts?: string | null
+          coverage_area?: string | null
+          created_at?: string | null
+          family_name: string
+          id?: string
+          members?: string[] | null
+          notes?: string | null
+          platform_id: string
+          skill_tier?: string | null
+          sort_order?: number | null
+          ui_location?: string | null
+          what_it_does?: string | null
+          when_to_reach_for_it?: string | null
+        }
+        Update: {
+          counterparts?: string | null
+          coverage_area?: string | null
+          created_at?: string | null
+          family_name?: string
+          id?: string
+          members?: string[] | null
+          notes?: string | null
+          platform_id?: string
+          skill_tier?: string | null
+          sort_order?: number | null
+          ui_location?: string | null
+          what_it_does?: string | null
+          when_to_reach_for_it?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craft_tools_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "craft_platforms"
             referencedColumns: ["id"]
           },
         ]
@@ -2909,6 +3932,7 @@ export type Database = {
           athlete_name: string | null
           athlete_photo_url: string | null
           athlete_school: string | null
+          athlete_school_source: string | null
           athlete_sport: string | null
           bg_position_desktop: string | null
           bg_position_mobile: string | null
@@ -2928,6 +3952,7 @@ export type Database = {
           focal_point_tablet: string | null
           id: string
           image_url: string | null
+          image_url_source: string | null
           meta_description: string | null
           meta_title: string | null
           og_image: string | null
@@ -2950,6 +3975,7 @@ export type Database = {
           athlete_name?: string | null
           athlete_photo_url?: string | null
           athlete_school?: string | null
+          athlete_school_source?: string | null
           athlete_sport?: string | null
           bg_position_desktop?: string | null
           bg_position_mobile?: string | null
@@ -2969,6 +3995,7 @@ export type Database = {
           focal_point_tablet?: string | null
           id?: string
           image_url?: string | null
+          image_url_source?: string | null
           meta_description?: string | null
           meta_title?: string | null
           og_image?: string | null
@@ -2991,6 +4018,7 @@ export type Database = {
           athlete_name?: string | null
           athlete_photo_url?: string | null
           athlete_school?: string | null
+          athlete_school_source?: string | null
           athlete_sport?: string | null
           bg_position_desktop?: string | null
           bg_position_mobile?: string | null
@@ -3010,6 +4038,7 @@ export type Database = {
           focal_point_tablet?: string | null
           id?: string
           image_url?: string | null
+          image_url_source?: string | null
           meta_description?: string | null
           meta_title?: string | null
           og_image?: string | null
@@ -3063,6 +4092,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "deals_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "deals_source_campaign_id_fkey"
@@ -3145,6 +4195,56 @@ export type Database = {
             columns: ["submission_id"]
             isOneToOne: false
             referencedRelation: "tier3_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deliverable_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deliverable_id: string
+          drive_file_id: string | null
+          file_url: string
+          id: string
+          is_final: boolean
+          media_type: string
+          source: string
+          thumbnail_url: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deliverable_id: string
+          drive_file_id?: string | null
+          file_url: string
+          id?: string
+          is_final?: boolean
+          media_type: string
+          source?: string
+          thumbnail_url?: string | null
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deliverable_id?: string
+          drive_file_id?: string | null
+          file_url?: string
+          id?: string
+          is_final?: boolean
+          media_type?: string
+          source?: string
+          thumbnail_url?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliverable_versions_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_deliverables"
             referencedColumns: ["id"]
           },
         ]
@@ -3518,6 +4618,48 @@ export type Database = {
         }
         Relationships: []
       }
+      hub_surfaces: {
+        Row: {
+          first_seen: string
+          id: string
+          last_gated: boolean | null
+          last_load_ms: number | null
+          last_seen: string
+          last_status: number | null
+          path: string
+          requires_auth: boolean | null
+          screenshot_at: string | null
+          screenshot_url: string | null
+          shape: string | null
+        }
+        Insert: {
+          first_seen?: string
+          id?: string
+          last_gated?: boolean | null
+          last_load_ms?: number | null
+          last_seen?: string
+          last_status?: number | null
+          path: string
+          requires_auth?: boolean | null
+          screenshot_at?: string | null
+          screenshot_url?: string | null
+          shape?: string | null
+        }
+        Update: {
+          first_seen?: string
+          id?: string
+          last_gated?: boolean | null
+          last_load_ms?: number | null
+          last_seen?: string
+          last_status?: number | null
+          path?: string
+          requires_auth?: boolean | null
+          screenshot_at?: string | null
+          screenshot_url?: string | null
+          shape?: string | null
+        }
+        Relationships: []
+      }
       inspo_items: {
         Row: {
           action_description: string | null
@@ -3551,6 +4693,7 @@ export type Database = {
           editing_status: string | null
           editor_name: string | null
           embedding: string | null
+          embedding_v2: string | null
           fetch_status: string | null
           file_size_bytes: number | null
           file_url: string | null
@@ -3623,6 +4766,7 @@ export type Database = {
           editing_status?: string | null
           editor_name?: string | null
           embedding?: string | null
+          embedding_v2?: string | null
           fetch_status?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
@@ -3695,6 +4839,7 @@ export type Database = {
           editing_status?: string | null
           editor_name?: string | null
           embedding?: string | null
+          embedding_v2?: string | null
           fetch_status?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
@@ -3789,6 +4934,7 @@ export type Database = {
       }
       media: {
         Row: {
+          aspect_ratio: number | null
           athlete_id: string | null
           campaign_id: string
           content_type: string | null
@@ -3807,6 +4953,12 @@ export type Database = {
           is_hero: boolean | null
           is_video_thumbnail: boolean | null
           phash: string | null
+          public_hero: boolean
+          public_hero_order: number | null
+          public_order: number | null
+          public_selected: boolean
+          public_selected_at: string | null
+          public_selected_by: string | null
           quality_score: number | null
           resolution: string | null
           slot: string | null
@@ -3820,6 +4972,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          aspect_ratio?: number | null
           athlete_id?: string | null
           campaign_id: string
           content_type?: string | null
@@ -3838,6 +4991,12 @@ export type Database = {
           is_hero?: boolean | null
           is_video_thumbnail?: boolean | null
           phash?: string | null
+          public_hero?: boolean
+          public_hero_order?: number | null
+          public_order?: number | null
+          public_selected?: boolean
+          public_selected_at?: string | null
+          public_selected_by?: string | null
           quality_score?: number | null
           resolution?: string | null
           slot?: string | null
@@ -3851,6 +5010,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          aspect_ratio?: number | null
           athlete_id?: string | null
           campaign_id?: string
           content_type?: string | null
@@ -3869,6 +5029,12 @@ export type Database = {
           is_hero?: boolean | null
           is_video_thumbnail?: boolean | null
           phash?: string | null
+          public_hero?: boolean
+          public_hero_order?: number | null
+          public_order?: number | null
+          public_selected?: boolean
+          public_selected_at?: string | null
+          public_selected_by?: string | null
           quality_score?: number | null
           resolution?: string | null
           slot?: string | null
@@ -3890,6 +5056,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "media_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "portal_top_posts"
+            referencedColumns: ["athlete_id"]
+          },
+          {
             foreignKeyName: "media_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
@@ -3902,6 +5075,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "media_campaign_id_fkey"
@@ -3941,6 +5135,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "athletes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_athletes_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "portal_top_posts"
+            referencedColumns: ["athlete_id"]
           },
           {
             foreignKeyName: "media_athletes_media_id_fkey"
@@ -3990,6 +5191,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "media_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "media_campaigns_campaign_recap_id_fkey"
@@ -4252,6 +5474,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_related_campaign_id_fkey"
+            columns: ["related_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "notifications_related_campaign_id_fkey"
+            columns: ["related_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_related_campaign_id_fkey"
+            columns: ["related_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "notifications_related_campaign_id_fkey"
@@ -4697,7 +5940,42 @@ export type Database = {
             foreignKeyName: "pages_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
-            referencedRelation: "brand_campaigns"
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "pages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "pages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
         ]
@@ -4833,6 +6111,11 @@ export type Database = {
           college_state: string | null
           college_zip: string | null
           device: string | null
+          dnw_category: string | null
+          dnw_flag: boolean
+          dnw_reason: string | null
+          dnw_set_at: string | null
+          dnw_set_by: string | null
           email: string | null
           first_name: string | null
           gender: string | null
@@ -4870,6 +6153,11 @@ export type Database = {
           college_state?: string | null
           college_zip?: string | null
           device?: string | null
+          dnw_category?: string | null
+          dnw_flag?: boolean
+          dnw_reason?: string | null
+          dnw_set_at?: string | null
+          dnw_set_by?: string | null
           email?: string | null
           first_name?: string | null
           gender?: string | null
@@ -4907,6 +6195,11 @@ export type Database = {
           college_state?: string | null
           college_zip?: string | null
           device?: string | null
+          dnw_category?: string | null
+          dnw_flag?: boolean
+          dnw_reason?: string | null
+          dnw_set_at?: string | null
+          dnw_set_by?: string | null
           email?: string | null
           first_name?: string | null
           gender?: string | null
@@ -4940,6 +6233,13 @@ export type Database = {
             columns: ["college_id"]
             isOneToOne: false
             referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_dnw_set_by_fkey"
+            columns: ["dnw_set_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5127,33 +6427,50 @@ export type Database = {
       }
       postgame_contacts: {
         Row: {
+          agency_name: string | null
+          contact_type: string
           created_at: string | null
           email: string | null
           id: string
           is_active: boolean | null
           name: string
           phone: string | null
+          profile_id: string | null
           role: string | null
         }
         Insert: {
+          agency_name?: string | null
+          contact_type?: string
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           phone?: string | null
+          profile_id?: string | null
           role?: string | null
         }
         Update: {
+          agency_name?: string | null
+          contact_type?: string
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           phone?: string | null
+          profile_id?: string | null
           role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "postgame_contacts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       posting_packages: {
         Row: {
@@ -5402,13 +6719,113 @@ export type Database = {
             foreignKeyName: "press_articles_source_campaign_id_fkey"
             columns: ["source_campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "press_articles_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "press_articles_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "press_articles_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      press_campaigns: {
+        Row: {
+          campaign_recap_id: string
+          created_at: string
+          id: string
+          press_article_id: string
+        }
+        Insert: {
+          campaign_recap_id: string
+          created_at?: string
+          id?: string
+          press_article_id: string
+        }
+        Update: {
+          campaign_recap_id?: string
+          created_at?: string
+          id?: string
+          press_article_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "press_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "press_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "press_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "press_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "press_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "press_campaigns_campaign_recap_id_fkey"
+            columns: ["campaign_recap_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "press_campaigns_press_article_id_fkey"
+            columns: ["press_article_id"]
+            isOneToOne: false
+            referencedRelation: "press_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "press_campaigns_press_article_id_fkey"
+            columns: ["press_article_id"]
+            isOneToOne: false
+            referencedRelation: "public_press"
             referencedColumns: ["id"]
           },
         ]
       }
       profiles: {
         Row: {
+          access_level: string
           avatar_url: string | null
           class_year: string | null
           created_at: string | null
@@ -5424,13 +6841,16 @@ export type Database = {
           reach_total: number | null
           role: string
           school: string | null
+          slack_user_id: string | null
           sport: string | null
+          theme: string
           tiktok_handle: string | null
           updated_at: string | null
           w9_status: string | null
           w9_year: number | null
         }
         Insert: {
+          access_level?: string
           avatar_url?: string | null
           class_year?: string | null
           created_at?: string | null
@@ -5446,13 +6866,16 @@ export type Database = {
           reach_total?: number | null
           role?: string
           school?: string | null
+          slack_user_id?: string | null
           sport?: string | null
+          theme?: string
           tiktok_handle?: string | null
           updated_at?: string | null
           w9_status?: string | null
           w9_year?: number | null
         }
         Update: {
+          access_level?: string
           avatar_url?: string | null
           class_year?: string | null
           created_at?: string | null
@@ -5468,7 +6891,9 @@ export type Database = {
           reach_total?: number | null
           role?: string
           school?: string | null
+          slack_user_id?: string | null
           sport?: string | null
+          theme?: string
           tiktok_handle?: string | null
           updated_at?: string | null
           w9_status?: string | null
@@ -5496,6 +6921,85 @@ export type Database = {
           reasons?: string | null
         }
         Relationships: []
+      }
+      recap_readiness: {
+        Row: {
+          checked_at: string
+          drive_file_count: number | null
+          has_brief: boolean
+          has_tracker: boolean
+          id: string
+          media_count: number
+          ready: boolean
+          recap_id: string
+          tier3_count: number
+        }
+        Insert: {
+          checked_at?: string
+          drive_file_count?: number | null
+          has_brief?: boolean
+          has_tracker?: boolean
+          id?: string
+          media_count?: number
+          ready?: boolean
+          recap_id: string
+          tier3_count?: number
+        }
+        Update: {
+          checked_at?: string
+          drive_file_count?: number | null
+          has_brief?: boolean
+          has_tracker?: boolean
+          id?: string
+          media_count?: number
+          ready?: boolean
+          recap_id?: string
+          tier3_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recap_readiness_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recap_readiness_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recap_readiness_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "recap_readiness_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recap_readiness_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "recap_readiness_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       review_comments: {
         Row: {
@@ -5555,6 +7059,7 @@ export type Database = {
         Row: {
           agency_token: string | null
           asset_name: string | null
+          asset_url: string | null
           athlete_name: string | null
           brand_decided_at: string | null
           brand_decision: string | null
@@ -5563,21 +7068,25 @@ export type Database = {
           campaign_id: string | null
           created_at: string | null
           creator_brief_id: string | null
+          deliverable_id: string | null
+          deliverable_version_id: string | null
           editor_deadline: string | null
           editor_token: string | null
           id: string
           inspo_item_id: string | null
+          media_type: string | null
           notes: string | null
           revision_round: number | null
           status: string | null
           updated_at: string | null
           version_number: number | null
           video_duration_seconds: number | null
-          video_url: string
+          video_url: string | null
         }
         Insert: {
           agency_token?: string | null
           asset_name?: string | null
+          asset_url?: string | null
           athlete_name?: string | null
           brand_decided_at?: string | null
           brand_decision?: string | null
@@ -5586,21 +7095,25 @@ export type Database = {
           campaign_id?: string | null
           created_at?: string | null
           creator_brief_id?: string | null
+          deliverable_id?: string | null
+          deliverable_version_id?: string | null
           editor_deadline?: string | null
           editor_token?: string | null
           id?: string
           inspo_item_id?: string | null
+          media_type?: string | null
           notes?: string | null
           revision_round?: number | null
           status?: string | null
           updated_at?: string | null
           version_number?: number | null
           video_duration_seconds?: number | null
-          video_url: string
+          video_url?: string | null
         }
         Update: {
           agency_token?: string | null
           asset_name?: string | null
+          asset_url?: string | null
           athlete_name?: string | null
           brand_decided_at?: string | null
           brand_decision?: string | null
@@ -5609,17 +7122,20 @@ export type Database = {
           campaign_id?: string | null
           created_at?: string | null
           creator_brief_id?: string | null
+          deliverable_id?: string | null
+          deliverable_version_id?: string | null
           editor_deadline?: string | null
           editor_token?: string | null
           id?: string
           inspo_item_id?: string | null
+          media_type?: string | null
           notes?: string | null
           revision_round?: number | null
           status?: string | null
           updated_at?: string | null
           version_number?: number | null
           video_duration_seconds?: number | null
-          video_url?: string
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -5641,6 +7157,20 @@ export type Database = {
             columns: ["creator_brief_id"]
             isOneToOne: false
             referencedRelation: "creator_briefs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_sessions_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_deliverables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_sessions_deliverable_version_id_fkey"
+            columns: ["deliverable_version_id"]
+            isOneToOne: false
+            referencedRelation: "deliverable_versions"
             referencedColumns: ["id"]
           },
           {
@@ -5817,23 +7347,34 @@ export type Database = {
       school_aliases: {
         Row: {
           alias: string
+          college_id: number | null
           created_at: string
           id: string
           school_name: string
         }
         Insert: {
           alias: string
+          college_id?: number | null
           created_at?: string
           id?: string
           school_name: string
         }
         Update: {
           alias?: string
+          college_id?: number | null
           created_at?: string
           id?: string
           school_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "school_aliases_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       slot_assignments: {
         Row: {
@@ -5920,6 +7461,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slot_assignments_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "slot_assignments_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slot_assignments_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "slot_assignments_recap_id_fkey"
@@ -6094,6 +7656,27 @@ export type Database = {
             foreignKeyName: "submission_links_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "submission_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "submission_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
@@ -6175,6 +7758,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "submissions_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "portal_top_posts"
+            referencedColumns: ["athlete_id"]
+          },
+          {
             foreignKeyName: "submissions_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
@@ -6187,6 +7777,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "submissions_campaign_id_fkey"
@@ -6276,6 +7887,27 @@ export type Database = {
             foreignKeyName: "tasks_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "tasks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "tasks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
@@ -6309,10 +7941,14 @@ export type Database = {
           form_response_id: string | null
           id: string
           ig_handle: string | null
+          is_test_upload: boolean
           mime_type: string | null
           recap_id: string | null
+          rescore_attempts: number
+          review_instructions: Json | null
           review_notes: string | null
           reviewed_at: string | null
+          reviewed_at_stage: string | null
           reviewed_by: string | null
           school: string | null
           score_brand_visibility: number | null
@@ -6322,6 +7958,7 @@ export type Database = {
           score_lighting: number | null
           score_subject: number | null
           scored_at: string | null
+          scoring_error: string | null
           scoring_model: string | null
           shoot_date: string | null
           status: string
@@ -6350,10 +7987,14 @@ export type Database = {
           form_response_id?: string | null
           id?: string
           ig_handle?: string | null
+          is_test_upload?: boolean
           mime_type?: string | null
           recap_id?: string | null
+          rescore_attempts?: number
+          review_instructions?: Json | null
           review_notes?: string | null
           reviewed_at?: string | null
+          reviewed_at_stage?: string | null
           reviewed_by?: string | null
           school?: string | null
           score_brand_visibility?: number | null
@@ -6363,6 +8004,7 @@ export type Database = {
           score_lighting?: number | null
           score_subject?: number | null
           scored_at?: string | null
+          scoring_error?: string | null
           scoring_model?: string | null
           shoot_date?: string | null
           status?: string
@@ -6391,10 +8033,14 @@ export type Database = {
           form_response_id?: string | null
           id?: string
           ig_handle?: string | null
+          is_test_upload?: boolean
           mime_type?: string | null
           recap_id?: string | null
+          rescore_attempts?: number
+          review_instructions?: Json | null
           review_notes?: string | null
           reviewed_at?: string | null
+          reviewed_at_stage?: string | null
           reviewed_by?: string | null
           school?: string | null
           score_brand_visibility?: number | null
@@ -6404,6 +8050,7 @@ export type Database = {
           score_lighting?: number | null
           score_subject?: number | null
           scored_at?: string | null
+          scoring_error?: string | null
           scoring_model?: string | null
           shoot_date?: string | null
           status?: string
@@ -6452,6 +8099,27 @@ export type Database = {
             foreignKeyName: "tier3_submissions_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
@@ -6468,6 +8136,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tier3_submissions_recap_id_fkey"
+            columns: ["recap_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
           },
           {
             foreignKeyName: "tier3_submissions_recap_id_fkey"
@@ -6617,6 +8306,89 @@ export type Database = {
           },
         ]
       }
+      videographer_w9_submissions: {
+        Row: {
+          ack_accurate_at: string
+          address_line1: string
+          address_line2: string | null
+          business_name: string | null
+          city: string
+          created_at: string
+          drive_file_id: string
+          drive_view_url: string | null
+          email: string
+          file_name: string
+          file_size_bytes: number | null
+          first_name: string
+          id: string
+          last_name: string
+          matched_at: string | null
+          matched_by: string | null
+          phone: string
+          postal_code: string
+          state: string
+          status: string
+          tax_year: number
+          videographer_id: string | null
+        }
+        Insert: {
+          ack_accurate_at: string
+          address_line1: string
+          address_line2?: string | null
+          business_name?: string | null
+          city: string
+          created_at?: string
+          drive_file_id: string
+          drive_view_url?: string | null
+          email: string
+          file_name: string
+          file_size_bytes?: number | null
+          first_name: string
+          id?: string
+          last_name: string
+          matched_at?: string | null
+          matched_by?: string | null
+          phone: string
+          postal_code: string
+          state: string
+          status?: string
+          tax_year: number
+          videographer_id?: string | null
+        }
+        Update: {
+          ack_accurate_at?: string
+          address_line1?: string
+          address_line2?: string | null
+          business_name?: string | null
+          city?: string
+          created_at?: string
+          drive_file_id?: string
+          drive_view_url?: string | null
+          email?: string
+          file_name?: string
+          file_size_bytes?: number | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          phone?: string
+          postal_code?: string
+          state?: string
+          status?: string
+          tax_year?: number
+          videographer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videographer_w9_submissions_videographer_id_fkey"
+            columns: ["videographer_id"]
+            isOneToOne: false
+            referencedRelation: "videographers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videographers: {
         Row: {
           created_at: string | null
@@ -6759,6 +8531,466 @@ export type Database = {
           visibility?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_brand_athletes: {
+        Row: {
+          athlete_key: string | null
+          brand_id: string | null
+          campaigns: number | null
+          followers: number | null
+          last_campaign: string | null
+          last_campaign_on: string | null
+          name: string | null
+          sample_athlete_id: string | null
+          school: string | null
+          sport: string | null
+          top_reel_views: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_brand_report_periods: {
+        Row: {
+          athletes: number | null
+          audience: number | null
+          audience_athletes: number | null
+          brand_id: string | null
+          campaigns: number | null
+          feed_impressions: number | null
+          feed_impressions_athletes: number | null
+          period: string | null
+          period_year: number | null
+          posts: number | null
+          reel_views: number | null
+          reel_views_athletes: number | null
+          story_impressions: number | null
+          story_impressions_athletes: number | null
+          tiktok_views: number | null
+          tiktok_views_athletes: number | null
+        }
+        Relationships: []
+      }
+      portal_brand_report_quarters: {
+        Row: {
+          brand_id: string | null
+          campaigns: number | null
+          posts: number | null
+          quarter_label: string | null
+          quarter_start: string | null
+          quarter_year: number | null
+          reel_views: number | null
+          reel_views_athletes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_brand_report_totals: {
+        Row: {
+          athletes: number | null
+          brand_id: string | null
+          campaigns: number | null
+          followers: number | null
+          followers_athletes: number | null
+          impressions: number | null
+          impressions_athletes: number | null
+          posts: number | null
+          reel_views: number | null
+          reel_views_athletes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_brand_stats: {
+        Row: {
+          athletes_active: number | null
+          athletes_all_time: number | null
+          brand_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_campaign_post_metrics: {
+        Row: {
+          campaign_id: string | null
+          feed_impressions: number | null
+          feed_impressions_athletes: number | null
+          followers: number | null
+          followers_athletes: number | null
+          posts: number | null
+          reel_views: number | null
+          reel_views_athletes: number | null
+          story_impressions: number | null
+          story_impressions_athletes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_campaign_stats: {
+        Row: {
+          athletes: number | null
+          brand_id: string | null
+          campaign_id: string | null
+          lifecycle_status: string | null
+          schools: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_campaigns: {
+        Row: {
+          admin_created_on: string | null
+          brand_id: string | null
+          campaign_type: string | null
+          content_type: string | null
+          description: string | null
+          drive_content_folder_id: string | null
+          hero_image_url: string | null
+          id: string | null
+          key_takeaways: Json | null
+          kpi_targets: Json | null
+          lifecycle_status: string | null
+          manager_email: string | null
+          manager_name: string | null
+          name: string | null
+          platform: string | null
+          public_sections: Json | null
+          quarter: string | null
+          slug: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+        }
+        Insert: {
+          admin_created_on?: string | null
+          brand_id?: string | null
+          campaign_type?: never
+          content_type?: never
+          description?: never
+          drive_content_folder_id?: string | null
+          hero_image_url?: string | null
+          id?: string | null
+          key_takeaways?: never
+          kpi_targets?: never
+          lifecycle_status?: string | null
+          manager_email?: string | null
+          manager_name?: string | null
+          name?: string | null
+          platform?: never
+          public_sections?: Json | null
+          quarter?: never
+          slug?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+        }
+        Update: {
+          admin_created_on?: string | null
+          brand_id?: string | null
+          campaign_type?: never
+          content_type?: never
+          description?: never
+          drive_content_folder_id?: string | null
+          hero_image_url?: string | null
+          id?: string | null
+          key_takeaways?: never
+          kpi_targets?: never
+          lifecycle_status?: string | null
+          manager_email?: string | null
+          manager_name?: string | null
+          name?: string | null
+          platform?: never
+          public_sections?: Json | null
+          quarter?: never
+          slug?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_report_campaign_quarters: {
+        Row: {
+          brand_id: string | null
+          campaign_id: string | null
+          quarter_start: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          campaign_id?: string | null
+          quarter_start?: never
+        }
+        Update: {
+          brand_id?: string | null
+          campaign_id?: string | null
+          quarter_start?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_pages"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
+      portal_top_posts: {
+        Row: {
+          athlete_id: string | null
+          athlete_name: string | null
+          brand_id: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          post_url: string | null
+          school: string | null
+          sport: string | null
+          views: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "athletes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaign_recaps"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "campaigns_brand_id_fkey"
             columns: ["brand_id"]
@@ -6964,6 +9196,27 @@ export type Database = {
             foreignKeyName: "media_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "portal_campaign_stats"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "portal_report_campaign_quarters"
+            referencedColumns: ["campaign_id"]
+          },
+          {
+            foreignKeyName: "media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "public_campaign_recaps"
             referencedColumns: ["id"]
           },
@@ -6971,6 +9224,37 @@ export type Database = {
       }
     }
     Functions: {
+      add_deliverable_version: {
+        Args: {
+          p_created_by?: string
+          p_deliverable_id: string
+          p_drive_file_id?: string
+          p_file_url: string
+          p_media_type: string
+          p_source?: string
+          p_thumbnail_url?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          deliverable_id: string
+          drive_file_id: string | null
+          file_url: string
+          id: string
+          is_final: boolean
+          media_type: string
+          source: string
+          thumbnail_url: string | null
+          version_number: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliverable_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      is_brand_user: { Args: never; Returns: boolean }
       is_postgame_staff: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       match_inspo_items: {
@@ -7006,9 +9290,17 @@ export type Database = {
           visual_description: string
         }[]
       }
+      my_brand_ids: { Args: never; Returns: string[] }
+      pg_num: { Args: { t: string }; Returns: number }
       resolve_brand: { Args: { p_admin_name: string }; Returns: string }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      tables_without_rls: {
+        Args: never
+        Returns: {
+          table_name: string
+        }[]
+      }
     }
     Enums: {
       agent_name:
@@ -7020,7 +9312,17 @@ export type Database = {
         | "video_evaluator"
         | "edit_planner"
         | "editing_orchestrator"
-      agent_run_status: "running" | "complete" | "failed"
+        | "admin_sync"
+        | "pitch_generator"
+        | "tier3_scorer"
+        | "auto_editor"
+        | "suggestions"
+        | "analytics"
+        | "content_strategist"
+        | "gemini"
+        | "recap_readiness"
+        | "health_check"
+      agent_run_status: "running" | "complete" | "failed" | "budget_exceeded"
       brief_campaign_type:
         | "standard"
         | "top_50"
@@ -7071,12 +9373,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7100,11 +9402,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7125,11 +9427,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7150,11 +9452,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7167,11 +9469,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7192,8 +9494,18 @@ export const Constants = {
         "video_evaluator",
         "edit_planner",
         "editing_orchestrator",
+        "admin_sync",
+        "pitch_generator",
+        "tier3_scorer",
+        "auto_editor",
+        "suggestions",
+        "analytics",
+        "content_strategist",
+        "gemini",
+        "recap_readiness",
+        "health_check",
       ],
-      agent_run_status: ["running", "complete", "failed"],
+      agent_run_status: ["running", "complete", "failed", "budget_exceeded"],
       brief_campaign_type: [
         "standard",
         "top_50",

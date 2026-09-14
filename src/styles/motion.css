@@ -38,10 +38,10 @@
 }
 
 /* ── Scroll-triggered base state (hidden until .in-view added) ── */
-.anim-fade-up    { opacity: 0; transform: translateY(28px); transition: opacity 0.55s ease, transform 0.55s ease; }
-.anim-fade-in    { opacity: 0; transition: opacity 0.6s ease; }
-.anim-scale-in   { opacity: 0; transform: scale(0.94); transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.56,0.64,1); }
-.anim-slide-left { opacity: 0; transform: translateX(-24px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.anim-fade-up    { opacity: 0; transform: translateY(28px); transition: opacity 0.3s ease, transform 0.3s ease; }
+.anim-fade-in    { opacity: 0; transition: opacity 0.3s ease; }
+.anim-scale-in   { opacity: 0; transform: scale(0.94); transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+.anim-slide-left { opacity: 0; transform: translateX(-24px); transition: opacity 0.3s ease, transform 0.3s ease; }
 
 .anim-fade-up.in-view,
 .anim-fade-in.in-view,

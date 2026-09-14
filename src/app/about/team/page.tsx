@@ -3,11 +3,9 @@ import { PostgameLogo } from "@/components/PostgameLogo";
 export const revalidate = 60;
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
   :root { --orange:#D73F09; --bg:#0A0A0A; --surface:#141414; --border:rgba(255,255,255,0.08); --text:#fff; --text-muted:rgba(255,255,255,0.55); --text-dim:rgba(255,255,255,0.35); }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;}
-  .d{font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:0.02em;}
+  body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
 
   /* Nav */
   .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border);}
@@ -15,21 +13,21 @@ const styles = `
   .nav-links{display:flex;align-items:center;gap:32px;}
   .nav-links a{color:var(--text-muted);font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.05em;transition:color 0.2s;}
   .nav-links a:hover{color:var(--text);}
-  .btn-outline{padding:8px 20px;border:1.5px solid var(--orange);border-radius:8px;color:var(--orange);font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;transition:all 0.2s;}
+  .btn-outline{padding:8px 20px;border:1.5px solid var(--orange);border-radius:8px;color:var(--orange);text-decoration:none;transition:all 0.2s;}
   .btn-outline:hover{background:var(--orange);color:#fff;}
-  .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:background 0.2s;}
+  .btn-solid{padding:10px 28px;background:var(--orange);border:none;border-radius:8px;color:#fff;text-decoration:none;cursor:pointer;transition:background 0.2s;}
   .btn-solid:hover{background:#c43808;}
 
   /* Hero */
   .hero{padding:160px 48px 80px;background:radial-gradient(ellipse at 50% 0%,rgba(215,63,9,0.1) 0%,transparent 60%);text-align:center;}
-  .eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:20px;}
-  .hero-title{font-size:clamp(48px,8vw,80px);line-height:0.95;margin:0 0 20px;}
-  .hero-desc{font-size:18px;color:var(--text-muted);max-width:560px;line-height:1.6;margin:0 auto;}
+  .eyebrow{color:var(--orange);margin-bottom:20px;}
+  .hero-title{margin:0 0 20px;}
+  .hero-desc{max-width:560px;margin:0 auto;}
 
   /* Team grid */
   .section{padding:80px 48px;}
-  .section-eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.2em;color:var(--orange);margin-bottom:12px;}
-  .section-title{font-size:clamp(32px,4vw,48px);line-height:1;margin:0 0 48px;}
+  .section-eyebrow{color:var(--orange);margin-bottom:12px;}
+  .section-title{margin:0 0 48px;}
   .team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;}
   .team-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color 0.2s,transform 0.25s;}
   .team-card:hover{border-color:var(--orange);transform:translateY(-4px);}
@@ -37,9 +35,9 @@ const styles = `
   .team-photo img{width:100%;height:100%;object-fit:cover;object-position:center top;}
   .team-photo-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;color:var(--orange);}
   .team-info{padding:20px;}
-  .team-role{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--orange);margin-bottom:4px;}
-  .team-name{font-size:18px;font-weight:800;margin-bottom:2px;}
-  .team-school{font-size:13px;color:var(--text-muted);margin-bottom:12px;}
+  .team-role{color:var(--orange);margin-bottom:4px;}
+  .team-name{margin-bottom:2px;}
+  .team-school{margin-bottom:12px;}
   .team-socials{display:flex;gap:10px;}
   .team-social{color:var(--text-dim);transition:color 0.2s;display:flex;}
   .team-social:hover{color:var(--orange);}
@@ -49,36 +47,33 @@ const styles = `
   .values-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;}
   .value-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 24px;transition:border-color 0.2s;}
   .value-card:hover{border-color:var(--orange);}
-  .value-num{font-size:36px;line-height:1;color:var(--orange);margin-bottom:12px;font-family:'Bebas Neue',Arial,sans-serif;}
-  .value-title{font-size:16px;font-weight:800;margin-bottom:8px;}
-  .value-desc{font-size:14px;color:var(--text-muted);line-height:1.6;}
+  .value-num{color:var(--orange);margin-bottom:12px;}
+  .value-title{margin-bottom:8px;}
 
   /* Offices */
   .offices-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
   .office-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;transition:border-color 0.2s;}
   .office-card:hover{border-color:var(--orange);}
-  .office-badge{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:3px 8px;margin-bottom:16px;}
-  .office-city{font-size:24px;font-weight:900;margin-bottom:8px;}
-  .office-address{font-size:14px;color:var(--text-muted);line-height:1.7;}
+  .office-badge{display:inline-block;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:3px 8px;margin-bottom:16px;}
+  .office-city{margin-bottom:8px;}
 
   /* CTA */
   .cta{text-align:center;padding:100px 24px;background:radial-gradient(ellipse at 50% 100%,rgba(215,63,9,0.1) 0%,transparent 60%);}
-  .cta-title{font-size:clamp(36px,5vw,64px);line-height:1;margin:0 0 16px;}
-  .cta-sub{font-size:16px;color:var(--text-muted);margin:0 0 36px;max-width:480px;display:inline-block;line-height:1.6;}
+  .cta-title{margin:0 0 16px;}
+  .cta-sub{margin:0 0 36px;max-width:480px;display:inline-block;}
   .cta-btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
 
   /* Footer */
   .footer{border-top:1px solid var(--border);padding:48px 48px 40px;}
   .footer-inner{max-width:1200px;margin:0 auto;}
   .footer-top{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;margin-bottom:40px;}
-  .footer-brand-desc{font-size:13px;color:var(--text-muted);line-height:1.6;max-width:240px;}
-  .footer-col-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:16px;}
+  .footer-brand-desc{max-width:240px;}
+  .footer-col-title{margin-bottom:16px;}
   .footer-links{list-style:none;}
   .footer-links li{margin-bottom:10px;}
   .footer-links a{font-size:14px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;}
   .footer-links a:hover{color:var(--text);}
   .footer-bottom{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:24px;}
-  .footer-copy{font-size:12px;color:var(--text-dim);}
   .footer-socials{display:flex;gap:24px;}
   .footer-socials a{font-size:12px;color:var(--text-muted);text-decoration:none;transition:color 0.2s;}
   .footer-socials a:hover{color:var(--text);}
@@ -147,22 +142,22 @@ export default function TeamPage() {
           <a href="/clients">Clients</a>
           <a href="/campaigns">Campaigns</a>
           <a href="/about/team">About</a>
-          <a href="/contact" className="btn-outline">Contact</a>
-          <a href="/deals" className="btn-solid">Deal Tracker</a>
+          <a href="/contact" className="pg-btn btn-outline">Contact</a>
+          <a href="/deals" className="pg-btn btn-solid">Deal Tracker</a>
         </div>
       </nav>
 
       {/* Hero */}
       <section className="hero">
-        <div className="eyebrow">The Postgame Team</div>
-        <h1 className="d hero-title">Built by Athletes,<br />Run for Athletes</h1>
-        <p className="hero-desc">Every person on our team played college sports. We know what it takes — and we use that to build campaigns that actually connect.</p>
+        <div className="pg-eyebrow eyebrow">The Postgame Team</div>
+        <h1 className="pg-h1 hero-title">Built by Athletes,<br />Run for Athletes</h1>
+        <p className="pg-lead hero-desc">Every person on our team played college sports. We know what it takes — and we use that to build campaigns that actually connect.</p>
       </section>
 
       {/* Team Grid */}
       <section className="section">
-        <div className="section-eyebrow">Who We Are</div>
-        <h2 className="d section-title">Meet the Team</h2>
+        <div className="pg-eyebrow section-eyebrow">Who We Are</div>
+        <h2 className="pg-h2 section-title">Meet the Team</h2>
         <div className="team-grid">
           {TEAM.map((member) => (
             <div key={member.name} className="team-card">
@@ -170,9 +165,9 @@ export default function TeamPage() {
                 <img src={member.photo} alt={member.name} />
               </div>
               <div className="team-info">
-                <div className="team-role">{member.role}</div>
-                <div className="team-name">{member.name}</div>
-                <div className="team-school">{member.school}</div>
+                <div className="pg-eyebrow team-role">{member.role}</div>
+                <div className="pg-h3 team-name">{member.name}</div>
+                <div className="pg-body team-school">{member.school}</div>
                 <div className="team-socials">
                   {member.ig && (
                     <a href={member.ig} target="_blank" rel="noopener noreferrer" className="team-social" title="Instagram">
@@ -193,14 +188,14 @@ export default function TeamPage() {
 
       {/* Values */}
       <section className="section" style={{ paddingTop: 0 }}>
-        <div className="section-eyebrow">What Drives Us</div>
-        <h2 className="d section-title">Our Values</h2>
+        <div className="pg-eyebrow section-eyebrow">What Drives Us</div>
+        <h2 className="pg-h2 section-title">Our Values</h2>
         <div className="values-grid">
           {VALUES.map((v) => (
             <div key={v.num} className="value-card">
-              <div className="value-num">{v.num}</div>
-              <div className="value-title">{v.title}</div>
-              <p className="value-desc">{v.desc}</p>
+              <div className="pg-stat value-num">{v.num}</div>
+              <div className="pg-h3 value-title">{v.title}</div>
+              <p className="pg-body value-desc">{v.desc}</p>
             </div>
           ))}
         </div>
@@ -208,14 +203,14 @@ export default function TeamPage() {
 
       {/* Offices */}
       <section className="section" style={{ paddingTop: 0 }}>
-        <div className="section-eyebrow">Where We Work</div>
-        <h2 className="d section-title">Offices</h2>
+        <div className="pg-eyebrow section-eyebrow">Where We Work</div>
+        <h2 className="pg-h2 section-title">Offices</h2>
         <div className="offices-grid">
           {OFFICES.map((o) => (
             <div key={o.city} className="office-card">
-              <div className="office-badge">{o.badge}</div>
-              <div className="office-city">{o.city}</div>
-              <div className="office-address">{o.address.split("\n").map((line, i) => <span key={i}>{line}<br /></span>)}</div>
+              <div className="pg-label office-badge">{o.badge}</div>
+              <div className="pg-h3 office-city">{o.city}</div>
+              <div className="pg-body office-address">{o.address.split("\n").map((line, i) => <span key={i}>{line}<br /></span>)}</div>
             </div>
           ))}
         </div>
@@ -223,11 +218,11 @@ export default function TeamPage() {
 
       {/* CTA */}
       <section className="cta">
-        <h2 className="d cta-title">Want to Join<br />the Team?</h2>
-        <p className="cta-sub">We&apos;re always looking for former athletes and sports marketers who want to build the future of NIL.</p>
+        <h2 className="pg-h2 cta-title">Want to Join<br />the Team?</h2>
+        <p className="pg-body cta-sub">We&apos;re always looking for former athletes and sports marketers who want to build the future of NIL.</p>
         <div className="cta-btns">
-          <a href="/contact" className="btn-solid">Get In Touch</a>
-          <a href="/campaigns" className="btn-outline">See Our Work</a>
+          <a href="/contact" className="pg-btn btn-solid">Get In Touch</a>
+          <a href="/campaigns" className="pg-btn btn-outline">See Our Work</a>
         </div>
       </section>
 
@@ -239,10 +234,10 @@ export default function TeamPage() {
               <a href="/homepage" style={{ display: "inline-block", marginBottom: 16 }}>
                 <img src="/postgame-logo.png" alt="Postgame" style={{ height: 28, width: "auto" }} />
               </a>
-              <p className="footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p>
+              <p className="pg-body footer-brand-desc">The #1 NIL agency in the country. Connecting elite college athletes with the world&apos;s most ambitious brands.</p>
             </div>
             <div>
-              <div className="footer-col-title">Company</div>
+              <div className="pg-label footer-col-title">Company</div>
               <ul className="footer-links">
                 <li><a href="/about/team">About</a></li>
                 <li><a href="/services/elevated">Services</a></li>
@@ -250,7 +245,7 @@ export default function TeamPage() {
               </ul>
             </div>
             <div>
-              <div className="footer-col-title">Network</div>
+              <div className="pg-label footer-col-title">Network</div>
               <ul className="footer-links">
                 <li><a href="/clients">Clients</a></li>
                 <li><a href="/campaigns">Campaigns</a></li>
@@ -258,7 +253,7 @@ export default function TeamPage() {
               </ul>
             </div>
             <div>
-              <div className="footer-col-title">Connect</div>
+              <div className="pg-label footer-col-title">Connect</div>
               <ul className="footer-links">
                 <li><a href="#">Instagram</a></li>
                 <li><a href="#">TikTok</a></li>
@@ -268,7 +263,7 @@ export default function TeamPage() {
             </div>
           </div>
           <div className="footer-bottom">
-            <div className="footer-copy">&copy; {new Date().getFullYear()} Postgame. All rights reserved.</div>
+            <div className="pg-label footer-copy">&copy; {new Date().getFullYear()} Postgame. All rights reserved.</div>
             <div className="footer-socials">
               <a href="#">Privacy</a>
               <a href="#">Terms</a>

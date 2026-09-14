@@ -411,6 +411,102 @@ export async function getDriveThumbnail(
  * Create a new folder in Google Drive inside `parentFolderId`.
  * Returns the new folder's ID. Throws if Drive doesn't return one.
  */
+/**
+ * Copy an existing file into a new folder under a new name. Used to spin up
+ * a fresh Performance Tracker from the master template for each new
+ * campaign.
+ *
+ * Deliberately does NOT check whether a same-named file already exists —
+ * unlike ensureFolder, "a file with this name is already there" isn't the
+ * same question as "did we already make a tracker for this campaign" (a
+ * human could have manually dropped a same-named file in). The caller
+ * decides whether to copy at all, by checking tracker_sheet_id in the
+ * database first — see the drive-folders sync route.
+ */
+export async function copyFile(
+  sourceFileId: string,
+  newName: string,
+  destinationFolderId: string
+): Promise<{ id: string; url: string }> {
+  const drive = getDriveClient();
+  const res = await drive.files.copy({
+    fileId: sourceFileId,
+    supportsAllDrives: true,
+    requestBody: {
+      name: newName,
+      parents: [destinationFolderId],
+    },
+    fields: "id, webViewLink",
+  });
+
+  if (!res.data.id) {
+    throw new Error(`copyFile: Drive returned no ID copying "${newName}"`);
+  }
+  return {
+    id: res.data.id,
+    // webViewLink is the normal "open in Sheets" URL Drive returns for a
+    // copied spreadsheet. Falls back to the standard edit-URL shape on the
+    // rare chance Drive omits it, so callers never get an empty link.
+    url: res.data.webViewLink ?? `https://docs.google.com/spreadsheets/d/${res.data.id}/edit`,
+  };
+}
+
+/**
+ * Find a non-folder file by exact name inside `parentFolderId`. Same shape as
+ * findFolderByName, for the same reason: pairs with a create step (here,
+ * copyFile) so a retry after a partial failure adopts what's already there
+ * instead of leaving a second copy behind.
+ */
+export async function findFileByName(
+  name: string,
+  parentFolderId: string
+): Promise<{ id: string; url: string } | null> {
+  const drive = getDriveClient();
+  const safeName = name.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q: `'${parentFolderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and name = '${safeName}' and trashed = false`,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: "allDrives",
+    fields: "files(id, webViewLink)",
+    pageSize: 1,
+  });
+
+  const file = res.data.files?.[0];
+  if (!file?.id) return null;
+  return { id: file.id, url: file.webViewLink ?? `https://docs.google.com/spreadsheets/d/${file.id}/edit` };
+}
+
+/**
+ * Create a brand-new, blank Google Sheet directly inside a folder. Unlike
+ * copyFile (used for campaign trackers, which start from a template), the
+ * Brand Master Tracker has no template — it's built up one campaign tab at
+ * a time, so it starts genuinely empty.
+ */
+export async function createSpreadsheet(
+  name: string,
+  parentFolderId: string
+): Promise<{ id: string; url: string }> {
+  const drive = getDriveClient();
+  const res = await drive.files.create({
+    supportsAllDrives: true,
+    requestBody: {
+      name,
+      mimeType: "application/vnd.google-apps.spreadsheet",
+      parents: [parentFolderId],
+    },
+    fields: "id, webViewLink",
+  });
+
+  if (!res.data.id) {
+    throw new Error(`createSpreadsheet: Drive returned no ID for "${name}"`);
+  }
+  return {
+    id: res.data.id,
+    url: res.data.webViewLink ?? `https://docs.google.com/spreadsheets/d/${res.data.id}/edit`,
+  };
+}
+
 export async function createFolder(
   name: string,
   parentFolderId: string

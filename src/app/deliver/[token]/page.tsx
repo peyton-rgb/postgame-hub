@@ -225,7 +225,7 @@ export default function AthleteDeliveryPage() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Your Content Package</h1>
-              <p className="text-xs text-gray-500">
+              <p className="pg-body text-gray-500">
                 {pkg.athlete_name ? `For ${pkg.athlete_name}` : 'From Postgame'}
               </p>
             </div>
@@ -285,7 +285,7 @@ export default function AthleteDeliveryPage() {
                   </span>
                   <CopyButton text={caption.text!} />
                 </div>
-                <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+                <p className="pg-body text-gray-800 whitespace-pre-wrap">
                   {caption.text}
                 </p>
               </div>
@@ -297,7 +297,7 @@ export default function AthleteDeliveryPage() {
         {pkg.platform_notes && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Platform Notes</h3>
-            <p className="text-gray-800 text-sm">{pkg.platform_notes}</p>
+            <p className="pg-body text-gray-800">{pkg.platform_notes}</p>
           </div>
         )}
 
@@ -350,7 +350,7 @@ export default function AthleteDeliveryPage() {
               </svg>
               <div>
                 <h3 className="text-sm font-semibold text-amber-800 mb-1">FTC Disclosure Required</h3>
-                <p className="text-sm text-amber-700">{pkg.ftc_note}</p>
+                <p className="pg-body text-amber-700">{pkg.ftc_note}</p>
               </div>
             </div>
           </div>
@@ -364,7 +364,7 @@ export default function AthleteDeliveryPage() {
               <svg className="w-5 h-5 text-[#D73F09]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
               </svg>
-              <p className="text-gray-800 text-sm">
+              <p className="pg-body text-gray-800">
                 {pkg.posting_window_start && pkg.posting_window_end ? (
                   <>
                     Please post between{' '}
@@ -523,7 +523,7 @@ export default function AthleteDeliveryPage() {
         {pkg.am_notes && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Notes from Your Rep</h3>
-            <p className="text-gray-700 text-sm whitespace-pre-wrap">{pkg.am_notes}</p>
+            <p className="pg-body text-gray-700 whitespace-pre-wrap">{pkg.am_notes}</p>
           </div>
         )}
       </main>
@@ -531,7 +531,7 @@ export default function AthleteDeliveryPage() {
       {/* Footer */}
       <footer className="border-t border-gray-200 mt-12">
         <div className="max-w-3xl mx-auto px-6 py-6 text-center">
-          <p className="text-sm text-gray-400">
+          <p className="pg-body text-gray-400">
             Questions? Contact your Postgame rep.
           </p>
           <div className="flex items-center justify-center gap-2 mt-3">
