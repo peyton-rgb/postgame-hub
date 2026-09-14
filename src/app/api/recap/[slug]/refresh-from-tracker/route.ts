@@ -37,13 +37,13 @@ export const maxDuration = 60;
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { slug: string } }
 ) {
   const staff = await getStaffUser();
   if (!staff) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
 
   const supabase = createServiceSupabase();
-  const { id } = params;
+  const { slug: id } = params;
 
   // ── Load the campaign ─────────────────────────────────────────
   const { data: recap, error: recapError } = await supabase
