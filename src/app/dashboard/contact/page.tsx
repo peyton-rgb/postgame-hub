@@ -5,23 +5,23 @@ import { createBrowserSupabase } from "@/lib/supabase";
 import Link from "next/link";
 
 const S = {
-  page: { minHeight: "100vh", background: "#0A0A0A", color: "#fff", fontFamily: "Arial, sans-serif", padding: "32px 48px" } as const,
+  page: { minHeight: "100vh", background: "var(--ground)", color: "var(--ink-1)", fontFamily: "Arial, sans-serif", padding: "32px 48px" } as const,
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 } as const,
   h1: { fontSize: 28, fontWeight: 900, margin: 0 } as const,
   headerActions: { display: "flex", gap: 12 } as const,
-  btnOutline: { padding: "8px 20px", border: "1.5px solid #D73F09", borderRadius: 8, background: "none", color: "#D73F09", fontSize: 12, fontWeight: 800, cursor: "pointer", textDecoration: "none", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
-  btnSave: { padding: "10px 28px", background: "#D73F09", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
-  card: { background: "#141414", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 24, marginBottom: 16 } as const,
-  label: { display: "block", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 },
-  input: { width: "100%", padding: "10px 14px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", boxSizing: "border-box" as const },
-  textarea: { width: "100%", padding: "10px 14px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", minHeight: 80, resize: "vertical" as const, boxSizing: "border-box" as const },
+  btnOutline: { padding: "8px 20px", border: "1.5px solid var(--accent)", borderRadius: 8, background: "none", color: "var(--accent)", fontSize: 12, fontWeight: 800, cursor: "pointer", textDecoration: "none", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
+  btnSave: { padding: "10px 28px", background: "var(--accent)", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
+  card: { background: "var(--surface-card)", border: "1px solid var(--hairline-soft)", borderRadius: 12, padding: 24, marginBottom: 16 } as const,
+  label: { display: "block", fontSize: 11, fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 },
+  input: { width: "100%", padding: "10px 14px", background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)", borderRadius: 8, color: "var(--ink-1)", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", boxSizing: "border-box" as const },
+  textarea: { width: "100%", padding: "10px 14px", background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)", borderRadius: 8, color: "var(--ink-1)", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", minHeight: 80, resize: "vertical" as const, boxSizing: "border-box" as const },
   row: { display: "flex", gap: 16, marginBottom: 16 } as const,
   col: { flex: 1 } as const,
-  btnDanger: { padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(255,100,100,0.3)", background: "none", color: "#ff6b6b", fontSize: 11, fontWeight: 700, cursor: "pointer" },
-  btnAdd: { padding: "8px 16px", borderRadius: 8, border: "1px dashed rgba(255,255,255,0.15)", background: "none", color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 700, cursor: "pointer", width: "100%", marginTop: 12 },
-  toast: { position: "fixed" as const, bottom: 24, right: 24, background: "#1a1a1a", border: "1px solid #D73F09", borderRadius: 12, padding: "12px 24px", color: "#D73F09", fontSize: 13, fontWeight: 700, zIndex: 9999 },
+  btnDanger: { padding: "6px 14px", borderRadius: 6, border: "1px solid rgb(var(--status-bad-rgb) / 0.3)", background: "none", color: "var(--status-bad)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
+  btnAdd: { padding: "8px 16px", borderRadius: 8, border: "1px dashed var(--hairline)", background: "none", color: "var(--ink-4)", fontSize: 12, fontWeight: 700, cursor: "pointer", width: "100%", marginTop: 12 },
+  toast: { position: "fixed" as const, bottom: 24, right: 24, background: "linear-gradient(var(--surface-raised), var(--surface-raised)), var(--ground)", border: "1px solid var(--accent)", borderRadius: 12, padding: "12px 24px", color: "var(--accent)", fontSize: 13, fontWeight: 700, zIndex: 9999 },
   mb: (n: number) => ({ marginBottom: n }),
-  sectionLabel: { fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 20 },
+  sectionLabel: { fontSize: 13, fontWeight: 800, color: "var(--ink-4)", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 20 },
 };
 
 interface Office { badge: string; city: string; address: string; }
@@ -95,7 +95,7 @@ export default function ContactEditorPage() {
     <div style={S.page}>
       <div style={S.header}>
         <div>
-          <Link href="/dashboard/homepage" style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, textDecoration: "none", marginBottom: 8, display: "block" }}>← Website Editor</Link>
+          <Link href="/dashboard/homepage" style={{ color: "var(--ink-4)", fontSize: 12, textDecoration: "none", marginBottom: 8, display: "block" }}>← Website Editor</Link>
           <h1 style={S.h1}>Contact Page Editor</h1>
         </div>
         <div style={S.headerActions}>
@@ -123,7 +123,7 @@ export default function ContactEditorPage() {
       <div style={S.card}>
         <div style={S.sectionLabel}>Office Locations</div>
         {offices.map((o, i) => (
-          <div key={i} style={{ background: "#1a1a1a", borderRadius: 10, padding: 16, marginBottom: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div key={i} style={{ background: "var(--surface-raised)", borderRadius: 10, padding: 16, marginBottom: 10, border: "1px solid var(--hairline-soft)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <span style={{ fontWeight: 700 }}>{o.city || `Office ${i + 1}`}</span>
               <button style={S.btnDanger} onClick={() => removeOffice(i)}>Remove</button>

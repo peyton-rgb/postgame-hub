@@ -1,5 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // The Hub's theme is per-user and lives on a data-theme attribute set by
+  // dashboard/layout.tsx — NOT on the OS preference. Without this, a dark:
+  // variant would follow the operating system and contradict the toggle.
+  // Nothing used dark: before this line was added, so it changes no existing
+  // styling; it exists so a fixed-hue pair can differ per theme.
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
@@ -25,6 +31,10 @@ module.exports = {
         body: ["var(--font-arimo)", "Arimo", "Arial", "Helvetica", "sans-serif"],
         heavy: ["var(--font-anton)", "Anton", "Arial", "sans-serif"],
         display: ["var(--font-bebas)", "Bebas Neue", "sans-serif"],
+        // Through the variable, not straight to Arimo: --font-mono is JetBrains
+        // Mono on the public site and Arimo inside the themed Hub wrapper (see
+        // the [data-theme] font alias in globals.css), so font-mono follows
+        // whichever spec — deliverable or tool — the element sits in.
         mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
       colors: {
@@ -54,6 +64,37 @@ module.exports = {
         "glass-1": "rgb(var(--white-rgb) / var(--alpha-1))",
         "glass-2": "rgb(var(--white-rgb) / var(--alpha-2))",
         "glass-3": "rgb(var(--white-rgb) / var(--alpha-3))",
+
+        // ── Semantic roles — PREFER THESE ──
+        // Theme-agnostic by construction: the channel vars swap under
+        // [data-theme]. bg-ground / text-ink / border-hairline are correct
+        // in both themes; bg-black and text-white never are.
+        ground: "rgb(var(--ground-rgb) / <alpha-value>)",
+        accent: "rgb(var(--accent-rgb) / <alpha-value>)",
+        // Ladder rungs. Fixed alpha from the token, so text-ink-3 is complete
+        // on its own and text-ink-3/50 will NOT work — use text-ink/[.42].
+        "ink-1": "rgb(var(--ink-rgb) / var(--ink-display))",
+        "ink-2": "rgb(var(--ink-rgb) / var(--ink-lead))",
+        "ink-3": "rgb(var(--ink-rgb) / var(--ink-body))",
+        "ink-4": "rgb(var(--ink-rgb) / var(--ink-label))",
+        // Glass tiers, both recipes handled by the alpha vars.
+        "surface-raised": "rgb(var(--ink-rgb) / var(--raised-fill-a))",
+        "surface-card": "rgb(var(--ink-rgb) / var(--card-fill-a))",
+        hairline: "rgb(var(--ink-rgb) / var(--raised-line-a))",
+        "hairline-soft": "rgb(var(--ink-rgb) / var(--card-line-a))",
+
+        // Status — done / partial / missing. The one sanctioned departure from
+        // the three-colour palette; see globals.css and CLAUDE.md. Alpha-capable,
+        // so bg-status-ok/15 works for a tint.
+        "status-ok": "rgb(var(--status-ok-rgb) / <alpha-value>)",
+        "status-warn": "rgb(var(--status-warn-rgb) / <alpha-value>)",
+        "status-bad": "rgb(var(--status-bad-rgb) / <alpha-value>)",
+        // Badge ink — the role sitting on a tint OF ITSELF rather than on the
+        // ground. Same as the role in dark; a darker step in light, where the
+        // role-on-its-own-tint measured ~3.6:1. See globals.css.
+        "status-ok-ink": "rgb(var(--status-ok-ink-rgb) / <alpha-value>)",
+        "status-warn-ink": "rgb(var(--status-warn-ink-rgb) / <alpha-value>)",
+        "status-bad-ink": "rgb(var(--status-bad-ink-rgb) / <alpha-value>)",
       },
       fontSize: {
         "recap-body": ["24px", { lineHeight: "1.4" }],

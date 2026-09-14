@@ -10,14 +10,11 @@
 
 import DashboardContent from "@/components/DashboardContent";
 import SplitView from "@/components/submission-forms/SplitView";
-import { anton } from "../fonts";
 
 export default function SubmissionFormDetail({ params }: { params: { id: string } }) {
   return (
     <DashboardContent>
-      <div className={anton.variable}>
-        <SplitView initialToken={params.id} />
-      </div>
+      <SplitView initialToken={params.id} />
     </DashboardContent>
   );
 }

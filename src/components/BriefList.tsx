@@ -47,12 +47,12 @@ export default function BriefList() {
   return (
     <>
       <div className="flex items-center justify-between mb-6">
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-ink-4">
           Archived link-docs. New brand briefs are created in the 14-section form.
         </p>
         <Link
           href="/dashboard/briefs/new"
-          className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407]"
+          className="px-5 py-2 bg-[var(--accent)] text-ink-1 text-sm font-bold rounded-lg hover:bg-[var(--accent)]"
         >
           + New Brief
         </Link>
@@ -60,13 +60,13 @@ export default function BriefList() {
 
       {/* Brief list */}
       {loading ? (
-        <div className="text-gray-500 text-center py-20">Loading...</div>
+        <div className="text-ink-4 text-center py-20">Loading...</div>
       ) : briefs.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-gray-500 mb-4">No archived briefs.</p>
+          <p className="text-ink-4 mb-4">No archived briefs.</p>
           <Link
             href="/dashboard/briefs/new"
-            className="text-[#D73F09] font-bold text-sm hover:underline"
+            className="text-[var(--accent)] font-bold text-sm hover:underline"
           >
             Create a brand brief →
           </Link>
@@ -76,7 +76,7 @@ export default function BriefList() {
           {briefs.map((brief) => (
             <div
               key={brief.id}
-              className="relative p-6 bg-[#111] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors group"
+              className="relative p-6 bg-surface-card border border-hairline rounded-xl hover:border-ink-4 transition-colors group"
             >
               {brief.external_url ? (
                 <a
@@ -92,27 +92,27 @@ export default function BriefList() {
                 />
               )}
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-4">
                   {brief.client_name}
                 </span>
                 {/* Archive: no delete control — `briefs` is write-free. */}
                 <span
                   className={`text-xs font-bold px-2 py-1 rounded ${
                     brief.external_url
-                      ? "bg-blue-900/30 text-blue-400"
+                      ? "bg-surface-card/30 text-ink-2"
                       : brief.published
-                      ? "bg-green-900/30 text-green-400"
-                      : "bg-gray-800 text-gray-500"
+                      ? "bg-surface-card/30 text-ink-3"
+                      : "bg-surface-raised text-ink-4"
                   }`}
                 >
                   {brief.external_url ? "External" : brief.published ? "Published" : "Draft"}
                 </span>
               </div>
               <h3 className="text-lg font-black mb-2">{brief.title}</h3>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-ink-4">
                 {new Date(brief.created_at).toLocaleDateString()}
                 {brief.published && (
-                  <span className="ml-2 text-[#D73F09]">/brief/{brief.slug}</span>
+                  <span className="ml-2 text-[var(--accent)]">/brief/{brief.slug}</span>
                 )}
               </p>
             </div>

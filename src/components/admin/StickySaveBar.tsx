@@ -47,7 +47,7 @@ export default function AdminForm({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 md:px-4">
           <span
             className={
-              "text-[13px] " + (dirty ? "font-medium text-amber-700" : "text-stone-400")
+              "text-[13px] " + (dirty ? "font-medium text-status-warn" : "text-stone-400")
             }
           >
             {saving ? "Saving…" : dirty ? "Unsaved changes" : "No changes"}

@@ -70,7 +70,7 @@ export default function TickerEditor({ data, onChange }: Props) {
             </select>
             <button
               onClick={() => removeItem(i)}
-              className="text-xs text-gray-500 hover:text-red-400"
+              className="text-xs text-gray-500 hover:text-status-bad"
             >
               &times;
             </button>

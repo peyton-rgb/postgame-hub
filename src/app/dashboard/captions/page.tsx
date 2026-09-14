@@ -48,22 +48,27 @@ interface ContentQueueItem {
 // --- Channel config ---
 
 const CHANNELS = [
-  { key: 'instagram', label: 'Instagram', icon: 'IG', color: 'bg-pink-600' },
-  { key: 'tiktok', label: 'TikTok', icon: 'TT', color: 'bg-black border border-white/20' },
-  { key: 'linkedin', label: 'LinkedIn', icon: 'LI', color: 'bg-blue-700' },
-  { key: 'youtube', label: 'YouTube', icon: 'YT', color: 'bg-red-600' },
-  { key: 'twitter/x', label: 'Twitter/X', icon: 'X', color: 'bg-gray-800' },
-  { key: 'newsletter', label: 'Newsletter', icon: 'NL', color: 'bg-emerald-700' },
+  // `fg` is separate from `color` because the two kinds of chip behave
+  // differently under a theme flip. The platform colours are saturated and
+  // theme-invariant, so their label must stay white in both themes — flipping it
+  // to ink would put near-black on pink-600. The two that use a SEMANTIC surface
+  // do follow the theme, so their label has to follow it too.
+  { key: 'instagram', label: 'Instagram', icon: 'IG', color: 'bg-pink-600', fg: 'text-white' },
+  { key: 'tiktok', label: 'TikTok', icon: 'TT', color: 'bg-ground border border-hairline', fg: 'text-ink-1' },
+  { key: 'linkedin', label: 'LinkedIn', icon: 'LI', color: 'bg-blue-700', fg: 'text-white' },
+  { key: 'youtube', label: 'YouTube', icon: 'YT', color: 'bg-red-600', fg: 'text-white' },
+  { key: 'twitter/x', label: 'Twitter/X', icon: 'X', color: 'bg-surface-raised', fg: 'text-ink-1' },
+  { key: 'newsletter', label: 'Newsletter', icon: 'NL', color: 'bg-emerald-700', fg: 'text-white' },
 ];
 
 // --- Status badges ---
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
-  draft: { label: 'Draft', classes: 'bg-gray-600/20 text-gray-300 border-gray-600/30' },
-  approved: { label: 'Approved', classes: 'bg-green-600/20 text-green-300 border-green-600/30' },
-  scheduled: { label: 'Scheduled', classes: 'bg-blue-600/20 text-blue-300 border-blue-600/30' },
-  published: { label: 'Published', classes: 'bg-purple-600/20 text-purple-300 border-purple-600/30' },
-  failed: { label: 'Failed', classes: 'bg-red-600/20 text-red-300 border-red-600/30' },
+  draft: { label: 'Draft', classes: 'bg-surface-raised text-ink-2 border-hairline' },
+  approved: { label: 'Approved', classes: 'bg-status-ok/20 text-status-ok-ink border-status-ok/30' },
+  scheduled: { label: 'Scheduled', classes: 'bg-blue-600/20 text-blue-700 dark:text-blue-300 border-blue-600/30' },
+  published: { label: 'Published', classes: 'bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30' },
+  failed: { label: 'Failed', classes: 'bg-status-bad/20 text-status-bad-ink border-status-bad/30' },
 };
 
 export default function CaptionsPage() {
@@ -298,14 +303,14 @@ export default function CaptionsPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Caption AI Composer</h1>
-            <p className="text-gray-400 mt-1">
+            <p className="text-ink-3 mt-1">
               Generate platform-native captions with Postgame&apos;s voice
             </p>
           </div>
           <div className="flex items-center gap-3">
             <a
               href="/dashboard/publishing"
-              className="px-4 py-2 text-sm text-gray-300 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
+              className="px-4 py-2 text-sm text-ink-2 border border-hairline rounded-lg hover:bg-surface-raised transition"
             >
               Publishing Calendar
             </a>
@@ -317,8 +322,8 @@ export default function CaptionsPage() {
           {/* Left: Compose panel (3 cols) */}
           <div className="lg:col-span-3 space-y-6">
             {/* Channel selector */}
-            <div className="bg-[#141414] border border-gray-800 rounded-xl p-6">
-              <label className="block text-sm text-gray-400 mb-3">Channel</label>
+            <div className="bg-surface-card border border-hairline-soft rounded-xl p-6">
+              <label className="block text-sm text-ink-3 mb-3">Channel</label>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {CHANNELS.map((ch) => (
                   <button
@@ -326,11 +331,11 @@ export default function CaptionsPage() {
                     onClick={() => setSelectedChannel(ch.key)}
                     className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition text-sm ${
                       selectedChannel === ch.key
-                        ? 'border-[#D73F09] bg-[#D73F09]/10 text-[#D73F09]'
-                        : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:border-gray-600'
+                        ? 'border-accent bg-accent/10 text-accent'
+                        : 'border-hairline-soft bg-surface-card text-ink-3 hover:border-hairline'
                     }`}
                   >
-                    <span className={`w-8 h-8 rounded-full ${ch.color} flex items-center justify-center text-xs font-bold text-white`}>
+                    <span className={`w-8 h-8 rounded-full ${ch.color} ${ch.fg} flex items-center justify-center text-xs font-bold`}>
                       {ch.icon}
                     </span>
                     <span className="truncate w-full text-center">{ch.label}</span>
@@ -340,41 +345,41 @@ export default function CaptionsPage() {
             </div>
 
             {/* Asset + context inputs */}
-            <div className="bg-[#141414] border border-gray-800 rounded-xl p-6 space-y-4">
+            <div className="bg-surface-card border border-hairline-soft rounded-xl p-6 space-y-4">
               <h2 className="text-lg font-semibold">Content Details</h2>
 
               {/* Asset URL */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1.5">Asset URL</label>
+                <label className="block text-sm text-ink-3 mb-1.5">Asset URL</label>
                 <input
                   type="text"
                   value={assetUrl}
                   onChange={(e) => setAssetUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                  className="w-full px-4 py-2.5 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent"
                 />
               </div>
 
               {/* Thumbnail URL */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1.5">Thumbnail URL (optional)</label>
+                <label className="block text-sm text-ink-3 mb-1.5">Thumbnail URL (optional)</label>
                 <input
                   type="text"
                   value={thumbnailUrl}
                   onChange={(e) => setThumbnailUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                  className="w-full px-4 py-2.5 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent"
                 />
               </div>
 
               {/* Asset description */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1.5">Describe the content</label>
+                <label className="block text-sm text-ink-3 mb-1.5">Describe the content</label>
                 <textarea
                   value={assetDescription}
                   onChange={(e) => setAssetDescription(e.target.value)}
                   placeholder="e.g., Behind-the-scenes video of a basketball player lacing up Nike shoes before a game, locker room setting, cinematic lighting..."
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] resize-none"
+                  className="w-full px-4 py-3 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent resize-none"
                   rows={3}
                 />
               </div>
@@ -382,23 +387,23 @@ export default function CaptionsPage() {
               {/* Row: Athlete + Brand */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Athlete Name</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Athlete Name</label>
                   <input
                     type="text"
                     value={athleteName}
                     onChange={(e) => setAthleteName(e.target.value)}
                     placeholder="e.g., Jordan Smith"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                    className="w-full px-4 py-2.5 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Brand Name</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Brand Name</label>
                   <input
                     type="text"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
                     placeholder="e.g., Nike"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                    className="w-full px-4 py-2.5 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
@@ -406,23 +411,23 @@ export default function CaptionsPage() {
               {/* Row: Campaign + Tone */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Campaign Name</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Campaign Name</label>
                   <input
                     type="text"
                     value={campaignName}
                     onChange={(e) => setCampaignName(e.target.value)}
                     placeholder="e.g., Fall NIL Launch"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                    className="w-full px-4 py-2.5 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Tone (optional)</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Tone (optional)</label>
                   <input
                     type="text"
                     value={tone}
                     onChange={(e) => setTone(e.target.value)}
                     placeholder="e.g., hype, chill, professional"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09]"
+                    className="w-full px-4 py-2.5 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
@@ -431,13 +436,13 @@ export default function CaptionsPage() {
               <button
                 onClick={handleGenerate}
                 disabled={generating || !assetDescription.trim()}
-                className="w-full px-6 py-3 bg-[#D73F09] hover:bg-[#b33507] disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition text-center"
+                className="w-full px-6 py-3 bg-accent hover:bg-brand-dark disabled:bg-surface-raised disabled:text-ink-4 rounded-lg font-medium transition text-center"
               >
                 {generating ? 'Generating Captions...' : 'Generate Captions'}
               </button>
 
               {generateError && (
-                <div className="p-3 bg-red-600/10 border border-red-600/30 rounded-lg text-red-400 text-sm">
+                <div className="p-3 bg-status-bad/10 border border-status-bad/30 rounded-lg text-status-bad-ink text-sm">
                   {generateError}
                 </div>
               )}
@@ -445,19 +450,19 @@ export default function CaptionsPage() {
 
             {/* Caption variants */}
             {(captionShort || captionMedium || captionLong) && (
-              <div className="bg-[#141414] border border-gray-800 rounded-xl p-6 space-y-4">
+              <div className="bg-surface-card border border-hairline-soft rounded-xl p-6 space-y-4">
                 <h2 className="text-lg font-semibold">Caption Variants</h2>
 
                 {/* Short */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm text-gray-400">Short</label>
-                    <span className="text-xs text-gray-600">{captionShort.length} chars</span>
+                    <label className="text-sm text-ink-3">Short</label>
+                    <span className="text-xs text-ink-4">{captionShort.length} chars</span>
                   </div>
                   <textarea
                     value={captionShort}
                     onChange={(e) => setCaptionShort(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09] resize-none"
+                    className="w-full px-4 py-3 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 focus:outline-none focus:border-accent resize-none"
                     rows={2}
                   />
                 </div>
@@ -465,13 +470,13 @@ export default function CaptionsPage() {
                 {/* Medium */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm text-gray-400">Medium</label>
-                    <span className="text-xs text-gray-600">{captionMedium.length} chars</span>
+                    <label className="text-sm text-ink-3">Medium</label>
+                    <span className="text-xs text-ink-4">{captionMedium.length} chars</span>
                   </div>
                   <textarea
                     value={captionMedium}
                     onChange={(e) => setCaptionMedium(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09] resize-none"
+                    className="w-full px-4 py-3 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 focus:outline-none focus:border-accent resize-none"
                     rows={4}
                   />
                 </div>
@@ -479,20 +484,20 @@ export default function CaptionsPage() {
                 {/* Long */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm text-gray-400">Long</label>
-                    <span className="text-xs text-gray-600">{captionLong.length} chars</span>
+                    <label className="text-sm text-ink-3">Long</label>
+                    <span className="text-xs text-ink-4">{captionLong.length} chars</span>
                   </div>
                   <textarea
                     value={captionLong}
                     onChange={(e) => setCaptionLong(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#D73F09] resize-none"
+                    className="w-full px-4 py-3 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 focus:outline-none focus:border-accent resize-none"
                     rows={6}
                   />
                 </div>
 
                 {/* Hashtags */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Hashtags</label>
+                  <label className="block text-sm text-ink-3 mb-2">Hashtags</label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {hashtags.map((tag) => (
                       <span
@@ -502,7 +507,7 @@ export default function CaptionsPage() {
                         #{tag}
                         <button
                           onClick={() => removeHashtag(tag)}
-                          className="text-blue-400 hover:text-white ml-0.5"
+                          className="text-blue-400 hover:text-ink-1 ml-0.5"
                         >
                           x
                         </button>
@@ -516,11 +521,11 @@ export default function CaptionsPage() {
                       onChange={(e) => setNewHashtag(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addHashtag()}
                       placeholder="Add hashtag..."
-                      className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D73F09] text-sm"
+                      className="flex-1 px-4 py-2 bg-surface-card border border-hairline-soft rounded-lg text-ink-1 placeholder-ink-4 focus:outline-none focus:border-accent text-sm"
                     />
                     <button
                       onClick={addHashtag}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition"
+                      className="px-4 py-2 bg-surface-card hover:bg-surface-raised rounded-lg text-sm transition"
                     >
                       Add
                     </button>
@@ -529,9 +534,9 @@ export default function CaptionsPage() {
 
                 {/* FTC Note */}
                 {ftcNote && (
-                  <div className="p-3 bg-yellow-600/10 border border-yellow-600/30 rounded-lg">
-                    <p className="text-xs text-yellow-300 font-medium mb-1">FTC Disclosure</p>
-                    <p className="text-sm text-yellow-200">{ftcNote}</p>
+                  <div className="p-3 bg-status-warn/10 border border-status-warn/30 rounded-lg">
+                    <p className="text-xs text-status-warn font-medium mb-1">FTC Disclosure</p>
+                    <p className="text-sm text-status-warn">{ftcNote}</p>
                   </div>
                 )}
 
@@ -540,7 +545,7 @@ export default function CaptionsPage() {
                   <button
                     onClick={handleSaveDraft}
                     disabled={saving}
-                    className="flex-1 px-5 py-2.5 border border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg font-medium transition text-center"
+                    className="flex-1 px-5 py-2.5 border border-hairline text-ink-2 hover:bg-surface-raised rounded-lg font-medium transition text-center"
                   >
                     {saving ? 'Saving...' : 'Save as Draft'}
                   </button>
@@ -558,7 +563,7 @@ export default function CaptionsPage() {
 
           {/* Right: Preview panel (2 cols) */}
           <div className="lg:col-span-2">
-            <div className="bg-[#141414] border border-gray-800 rounded-xl p-6 sticky top-8">
+            <div className="bg-surface-card border border-hairline-soft rounded-xl p-6 sticky top-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Preview</h2>
                 {/* Variant toggle */}
@@ -570,8 +575,8 @@ export default function CaptionsPage() {
                         onClick={() => setPreviewVariant(v)}
                         className={`px-2.5 py-1 rounded text-xs font-medium transition ${
                           previewVariant === v
-                            ? 'bg-[#D73F09]/20 text-[#D73F09]'
-                            : 'text-gray-500 hover:text-gray-300'
+                            ? 'bg-accent/20 text-accent'
+                            : 'text-ink-4 hover:text-ink-2'
                         }`}
                       >
                         {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -582,22 +587,22 @@ export default function CaptionsPage() {
               </div>
 
               {/* Phone mockup */}
-              <div className="bg-black rounded-2xl border-2 border-gray-700 overflow-hidden">
+              <div className="bg-ground rounded-2xl border-2 border-hairline overflow-hidden">
                 {/* Top bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-hairline-soft">
                   <div className="flex items-center gap-2">
-                    <div className={`w-6 h-6 rounded-full ${getChannelConfig(selectedChannel).color} flex items-center justify-center text-[10px] font-bold text-white`}>
+                    <div className={`w-6 h-6 rounded-full ${getChannelConfig(selectedChannel).color} flex items-center justify-center text-[10px] font-bold text-ink-1`}>
                       {getChannelConfig(selectedChannel).icon}
                     </div>
-                    <span className="text-xs font-medium text-gray-300">
+                    <span className="text-xs font-medium text-ink-2">
                       {getChannelConfig(selectedChannel).label}
                     </span>
                   </div>
-                  <span className="text-xs text-gray-600">Preview</span>
+                  <span className="text-xs text-ink-4">Preview</span>
                 </div>
 
                 {/* Asset preview */}
-                <div className="aspect-square bg-gray-900 flex items-center justify-center">
+                <div className="aspect-square bg-surface-card flex items-center justify-center">
                   {thumbnailUrl || assetUrl ? (
                     <img
                       src={thumbnailUrl || assetUrl}
@@ -606,8 +611,8 @@ export default function CaptionsPage() {
                     />
                   ) : (
                     <div className="text-center p-4">
-                      <div className="text-3xl mb-2 text-gray-600">&#9654;</div>
-                      <p className="text-xs text-gray-600">Asset preview</p>
+                      <div className="text-3xl mb-2 text-ink-4">&#9654;</div>
+                      <p className="text-xs text-ink-4">Asset preview</p>
                     </div>
                   )}
                 </div>
@@ -617,12 +622,12 @@ export default function CaptionsPage() {
                   {getPreviewCaption() ? (
                     <>
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-gray-700" />
-                        <span className="text-xs font-semibold text-gray-300">
+                        <div className="w-6 h-6 rounded-full bg-surface-raised" />
+                        <span className="text-xs font-semibold text-ink-2">
                           {athleteName || 'athlete'}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-line">
+                      <p className="text-xs text-ink-2 leading-relaxed whitespace-pre-line">
                         {getPreviewCaption()}
                       </p>
                       {hashtags.length > 0 && (
@@ -632,7 +637,7 @@ export default function CaptionsPage() {
                       )}
                     </>
                   ) : (
-                    <p className="text-xs text-gray-600 text-center py-4">
+                    <p className="text-xs text-ink-4 text-center py-4">
                       Generate captions to see a preview
                     </p>
                   )}
@@ -641,7 +646,7 @@ export default function CaptionsPage() {
 
               {/* Character count */}
               {getPreviewCaption() && (
-                <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                <div className="mt-3 flex items-center justify-between text-xs text-ink-4">
                   <span>{getPreviewCaption().length} characters</span>
                   <span className="capitalize">{previewVariant} variant</span>
                 </div>
@@ -654,7 +659,7 @@ export default function CaptionsPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Content Queue</h2>
-            <span className="text-sm text-gray-500">{totalItems} items</span>
+            <span className="text-sm text-ink-4">{totalItems} items</span>
           </div>
 
           {/* Filter tabs */}
@@ -665,8 +670,8 @@ export default function CaptionsPage() {
                 onClick={() => setQueueFilter(tab.key)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                   queueFilter === tab.key
-                    ? 'bg-[#D73F09]/20 text-[#D73F09] border border-[#D73F09]/30'
-                    : 'text-gray-400 border border-gray-800 hover:bg-gray-800'
+                    ? 'bg-accent/20 text-accent border border-accent/30'
+                    : 'text-ink-3 border border-hairline-soft hover:bg-surface-raised'
                 }`}
               >
                 {tab.label}
@@ -677,14 +682,14 @@ export default function CaptionsPage() {
           {/* Queue items */}
           {queueLoading ? (
             <div className="text-center py-16">
-              <div className="animate-spin w-8 h-8 border-2 border-[#D73F09] border-t-transparent rounded-full mx-auto mb-3" />
-              <p className="text-gray-500">Loading queue...</p>
+              <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-3" />
+              <p className="text-ink-4">Loading queue...</p>
             </div>
           ) : queueItems.length === 0 ? (
-            <div className="text-center py-16 border border-gray-800 rounded-xl bg-[#141414]">
-              <div className="text-4xl mb-3 text-gray-700">&#9997;</div>
-              <p className="text-gray-400 font-medium">No items in the queue</p>
-              <p className="text-gray-600 text-sm mt-1">
+            <div className="text-center py-16 border border-hairline-soft rounded-xl bg-surface-card">
+              <div className="text-4xl mb-3 text-ink-4">&#9997;</div>
+              <p className="text-ink-3 font-medium">No items in the queue</p>
+              <p className="text-ink-4 text-sm mt-1">
                 Generate captions above to get started
               </p>
             </div>
@@ -698,15 +703,15 @@ export default function CaptionsPage() {
                 return (
                   <div
                     key={item.id}
-                    className="bg-[#141414] border border-gray-800 rounded-xl overflow-hidden"
+                    className="bg-surface-card border border-hairline-soft rounded-xl overflow-hidden"
                   >
                     {/* Item row */}
                     <div
-                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-white/[0.02] transition"
+                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-surface-card transition"
                       onClick={() => setExpandedItem(isExpanded ? null : item.id)}
                     >
                       {/* Thumbnail */}
-                      <div className="w-12 h-12 rounded-lg bg-gray-800 flex-shrink-0 overflow-hidden">
+                      <div className="w-12 h-12 rounded-lg bg-surface-raised flex-shrink-0 overflow-hidden">
                         {item.thumbnail_url || item.asset_url ? (
                           <img
                             src={item.thumbnail_url || item.asset_url || ''}
@@ -714,7 +719,7 @@ export default function CaptionsPage() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-600 text-lg">
+                          <div className="w-full h-full flex items-center justify-center text-ink-4 text-lg">
                             &#128247;
                           </div>
                         )}
@@ -722,15 +727,15 @@ export default function CaptionsPage() {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-200 truncate">
+                        <p className="text-sm text-ink-2 truncate">
                           {item.caption || 'No caption'}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           {item.athlete_name && (
-                            <span className="text-xs text-gray-500">{item.athlete_name}</span>
+                            <span className="text-xs text-ink-4">{item.athlete_name}</span>
                           )}
                           {item.scheduled_for && (
-                            <span className="text-xs text-gray-600">
+                            <span className="text-xs text-ink-4">
                               Scheduled: {new Date(item.scheduled_for).toLocaleDateString()}
                             </span>
                           )}
@@ -738,7 +743,7 @@ export default function CaptionsPage() {
                       </div>
 
                       {/* Channel badge */}
-                      <span className={`w-7 h-7 rounded-full ${channelConfig.color} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0`}>
+                      <span className={`w-7 h-7 rounded-full ${channelConfig.color} flex items-center justify-center text-[10px] font-bold text-ink-1 flex-shrink-0`}>
                         {channelConfig.icon}
                       </span>
 
@@ -748,26 +753,26 @@ export default function CaptionsPage() {
                       </span>
 
                       {/* Expand chevron */}
-                      <span className={`text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                      <span className={`text-ink-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
                         &#9660;
                       </span>
                     </div>
 
                     {/* Expanded details */}
                     {isExpanded && (
-                      <div className="border-t border-gray-800 p-4 bg-[#0f0f0f]">
+                      <div className="border-t border-hairline-soft p-4 bg-surface-card">
                         {/* Full caption */}
                         {item.caption && (
                           <div className="mb-4">
-                            <p className="text-xs text-gray-500 mb-1">Caption</p>
-                            <p className="text-sm text-gray-300 whitespace-pre-line">{item.caption}</p>
+                            <p className="text-xs text-ink-4 mb-1">Caption</p>
+                            <p className="text-sm text-ink-2 whitespace-pre-line">{item.caption}</p>
                           </div>
                         )}
 
                         {/* Hashtags */}
                         {item.hashtags && item.hashtags.length > 0 && (
                           <div className="mb-4">
-                            <p className="text-xs text-gray-500 mb-1">Hashtags</p>
+                            <p className="text-xs text-ink-4 mb-1">Hashtags</p>
                             <div className="flex flex-wrap gap-1.5">
                               {item.hashtags.map((h) => (
                                 <span key={h} className="px-2 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-xs text-blue-300">
@@ -781,15 +786,15 @@ export default function CaptionsPage() {
                         {/* Notes */}
                         {item.notes && (
                           <div className="mb-4">
-                            <p className="text-xs text-gray-500 mb-1">Notes</p>
-                            <p className="text-xs text-gray-400 whitespace-pre-line">{item.notes}</p>
+                            <p className="text-xs text-ink-4 mb-1">Notes</p>
+                            <p className="text-xs text-ink-3 whitespace-pre-line">{item.notes}</p>
                           </div>
                         )}
 
                         {/* Error */}
                         {item.publish_error && (
-                          <div className="mb-4 p-2 bg-red-600/10 border border-red-600/20 rounded-lg">
-                            <p className="text-xs text-red-400">{item.publish_error}</p>
+                          <div className="mb-4 p-2 bg-status-bad/10 border border-status-bad/20 rounded-lg">
+                            <p className="text-xs text-status-bad">{item.publish_error}</p>
                           </div>
                         )}
 
@@ -798,14 +803,14 @@ export default function CaptionsPage() {
                           {item.status === 'draft' && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleApproveItem(item.id); }}
-                              className="px-4 py-1.5 bg-green-600/20 text-green-400 border border-green-600/30 rounded-lg text-xs font-medium hover:bg-green-600/30 transition"
+                              className="px-4 py-1.5 bg-status-ok/20 text-status-ok-ink border border-status-ok/30 rounded-lg text-xs font-medium hover:bg-status-ok/30 transition"
                             >
                               Approve
                             </button>
                           )}
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                            className="px-4 py-1.5 bg-red-600/10 text-red-400 border border-red-600/20 rounded-lg text-xs font-medium hover:bg-red-600/20 transition"
+                            className="px-4 py-1.5 bg-status-bad/10 text-status-bad-ink border border-status-bad/20 rounded-lg text-xs font-medium hover:bg-status-bad/20 transition"
                           >
                             Delete
                           </button>

@@ -704,7 +704,7 @@ export default function DrivePicker({
               Cancel
             </button>
             {addFolderError ? (
-              <div className="text-xs text-red-400 ml-2">{addFolderError}</div>
+              <div className="text-xs text-status-bad ml-2">{addFolderError}</div>
             ) : null}
           </div>
         )}
@@ -736,7 +736,7 @@ export default function DrivePicker({
                   className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
                 />
                 {connectError ? (
-                  <div className="text-sm text-red-400">{connectError}</div>
+                  <div className="text-sm text-status-bad">{connectError}</div>
                 ) : null}
 
                 <button
@@ -797,14 +797,14 @@ export default function DrivePicker({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mt-6">
-                  <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3">
-                    <div className="text-sm font-black text-green-300">
+                  <div className="rounded-xl border border-status-ok/20 bg-status-ok/10 px-4 py-3">
+                    <div className="text-sm font-black text-status-ok">
                       ✓ Succeeded: {importProgress.succeeded}
                     </div>
                   </div>
                   {importProgress.failed > 0 ? (
-                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3">
-                      <div className="text-sm font-black text-red-300">
+                    <div className="rounded-xl border border-status-bad/20 bg-status-bad/10 px-4 py-3">
+                      <div className="text-sm font-black text-status-bad">
                         ✗ Failed: {importProgress.failed}
                       </div>
                     </div>
@@ -822,7 +822,7 @@ export default function DrivePicker({
                   <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                     {importProgress.errors.map((e, i) => (
                       <div key={i} className="text-sm">
-                        <div className="text-red-300 font-bold truncate">{e.file}</div>
+                        <div className="text-status-bad font-bold truncate">{e.file}</div>
                         <div className="text-gray-500 text-xs">{e.error}</div>
                       </div>
                     ))}
@@ -867,7 +867,7 @@ export default function DrivePicker({
                   <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
                     {importProgress.errors.map((e, i) => (
                       <div key={i} className="text-sm">
-                        <div className="text-red-300 font-bold truncate">{e.file}</div>
+                        <div className="text-status-bad font-bold truncate">{e.file}</div>
                         <div className="text-gray-500 text-xs">{e.error}</div>
                       </div>
                     ))}
@@ -926,7 +926,7 @@ export default function DrivePicker({
           <div className="flex-1 flex items-center justify-center px-6">
             <div className="text-center max-w-md">
               <div className="text-4xl mb-3">⚠️</div>
-              <div className="text-sm font-bold text-red-400 mb-2">
+              <div className="text-sm font-bold text-status-bad mb-2">
                 Failed to load Drive
               </div>
               <div className="text-xs text-gray-500">{error}</div>
@@ -1033,7 +1033,7 @@ export default function DrivePicker({
                             )}
                           </>
                         ) : (
-                          <span className="text-red-400">No folder match</span>
+                          <span className="text-status-bad">No folder match</span>
                         )}
                       </div>
                     </div>
@@ -1189,12 +1189,12 @@ export default function DrivePicker({
                               </div>
                             )}
                             {isAlreadyImported && (
-                              <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
+                              <div className="absolute top-2 right-2 bg-status-ok/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
                                 ✓ Imported
                               </div>
                             )}
                             {!isAlreadyImported && wasAssigned && !isSelected && (
-                              <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white">
+                              <div className="absolute top-2 right-2 bg-status-ok/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white">
                                 ✓
                               </div>
                             )}

@@ -139,7 +139,7 @@ function ShootLogisticsEditor({
             </div>
             <button
               onClick={() => removeContact(i)}
-              className="text-gray-500 hover:text-red-400 text-lg"
+              className="text-gray-500 hover:text-status-bad text-lg"
             >
               &times;
             </button>
@@ -185,7 +185,7 @@ function ShootLogisticsEditor({
             </div>
             <button
               onClick={() => onUpdate({ ...content, videographer: null })}
-              className="text-gray-500 hover:text-red-400 text-sm"
+              className="text-gray-500 hover:text-status-bad text-sm"
             >
               Change
             </button>
@@ -470,7 +470,7 @@ export default function CreatorBriefEditorPage({
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <p className="text-red-400 text-lg">{error || 'Failed to load creator brief'}</p>
+          <p className="text-status-bad text-lg">{error || 'Failed to load creator brief'}</p>
           <button
             onClick={() => router.back()}
             className="mt-4 px-6 py-2 bg-gray-800 rounded-lg text-gray-300"
@@ -499,7 +499,7 @@ export default function CreatorBriefEditorPage({
             <p className="text-gray-400 text-sm mt-1">{creatorBrief.title}</p>
             {creatorBrief.status === 'published' && (
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-green-400 text-xs font-medium px-2 py-0.5 bg-green-900/50 rounded-full">
+                <span className="text-status-ok-ink text-xs font-medium px-2 py-0.5 bg-status-ok/50 rounded-full">
                   PUBLISHED
                 </span>
                 <button
@@ -538,9 +538,9 @@ export default function CreatorBriefEditorPage({
         </div>
 
         {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm">
+          <div className="bg-status-bad/50 border border-status-bad text-status-bad-ink px-4 py-3 rounded-lg mb-6 text-sm">
             {error}
-            <button onClick={() => setError(null)} className="ml-3 text-red-400">Dismiss</button>
+            <button onClick={() => setError(null)} className="ml-3 text-status-bad">Dismiss</button>
           </div>
         )}
 
@@ -742,7 +742,7 @@ function GenericSectionEditor({
                       const arr = value.filter((_, j) => j !== i);
                       updateNested(path, arr);
                     }}
-                    className="text-gray-500 hover:text-red-400 text-sm px-2"
+                    className="text-gray-500 hover:text-status-bad text-sm px-2"
                   >
                     &times;
                   </button>

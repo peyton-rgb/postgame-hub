@@ -38,7 +38,7 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 const SCOPE_COLORS: Record<string, string> = {
-  ugc_only: 'bg-green-900/50 text-green-300',
+  ugc_only: 'bg-status-ok/50 text-status-ok-ink',
   hybrid: 'bg-blue-900/50 text-blue-300',
   full_production: 'bg-purple-900/50 text-purple-300',
 };
@@ -484,7 +484,7 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
                                 <td className="px-2 py-2">
                                   <button
                                     onClick={() => removeAthlete(idx)}
-                                    className="text-gray-600 hover:text-red-400 text-xs"
+                                    className="text-gray-600 hover:text-status-bad text-xs"
                                     aria-label="Remove athlete"
                                   >
                                     ×
@@ -499,7 +499,7 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => setAthleteRoster([])}
-                        className="text-xs text-gray-500 hover:text-red-400"
+                        className="text-xs text-gray-500 hover:text-status-bad"
                       >
                         Clear roster
                       </button>
@@ -599,7 +599,7 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
                         {seeds.length > 1 && (
                           <button
                             onClick={() => removeSeed(idx)}
-                            className="text-gray-500 hover:text-red-400 px-2"
+                            className="text-gray-500 hover:text-status-bad px-2"
                             aria-label="Remove idea"
                           >
                             ×
@@ -628,9 +628,9 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
         </div>
 
         {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-status-bad/50 border border-status-bad text-status-bad-ink px-4 py-3 rounded-lg mb-6">
             {error}
-            <button onClick={() => setError(null)} className="ml-4 text-red-400 hover:text-red-200">
+            <button onClick={() => setError(null)} className="ml-4 text-status-bad hover:text-status-bad">
               Dismiss
             </button>
           </div>
@@ -661,9 +661,9 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
               key={concept.id}
               className={`bg-gray-900 border rounded-xl p-6 ${
                 concept.status === 'approved'
-                  ? 'border-green-600'
+                  ? 'border-status-ok'
                   : concept.status === 'rejected'
-                  ? 'border-red-800 opacity-60'
+                  ? 'border-status-bad opacity-60'
                   : 'border-gray-800'
               }`}
             >
@@ -693,7 +693,7 @@ export default function ConceptDeckPage({ params }: { params: { id: string } }) 
                     </span>
                     {concept.status !== 'proposed' && (
                       <span className={`text-xs font-medium ${
-                        concept.status === 'approved' ? 'text-green-400' : 'text-red-400'
+                        concept.status === 'approved' ? 'text-status-ok' : 'text-status-bad'
                       }`}>
                         {STATUS_LABELS[concept.status]}
                       </span>

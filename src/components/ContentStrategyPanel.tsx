@@ -88,8 +88,8 @@ const PLATFORM_TABS = [
 ];
 
 const PRIORITY_BADGES: Record<string, { label: string; classes: string }> = {
-  high: { label: 'High', classes: 'bg-red-600/20 text-red-300 border-red-600/30' },
-  medium: { label: 'Med', classes: 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30' },
+  high: { label: 'High', classes: 'bg-status-bad/20 text-status-bad-ink border-status-bad/30' },
+  medium: { label: 'Med', classes: 'bg-status-warn/20 text-status-warn-ink border-status-warn/30' },
   low: { label: 'Low', classes: 'bg-gray-600/20 text-gray-400 border-gray-600/30' },
 };
 
@@ -757,8 +757,8 @@ export default function ContentStrategyPanel() {
                                 {actedOn[s.id] ? (
                                   <div className={`px-3 py-2 rounded-lg text-xs font-medium text-center ${
                                     actedOn[s.id] === 'approved'
-                                      ? 'bg-green-600/10 text-green-400 border border-green-600/20'
-                                      : 'bg-red-600/10 text-red-400 border border-red-600/20'
+                                      ? 'bg-status-ok/10 text-status-ok-ink border border-status-ok/20'
+                                      : 'bg-status-bad/10 text-status-bad-ink border border-status-bad/20'
                                   }`}>
                                     {actedOn[s.id] === 'approved' ? 'Approved — added to queue' : 'Denied'}
                                   </div>
@@ -766,13 +766,13 @@ export default function ContentStrategyPanel() {
                                   <div className="flex flex-wrap gap-2 pt-1">
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setApprovingItem(s); }}
-                                      className="px-4 py-1.5 bg-green-600/10 text-green-400 border border-green-600/20 rounded-lg text-xs font-medium hover:bg-green-600/20 transition"
+                                      className="px-4 py-1.5 bg-status-ok/10 text-status-ok-ink border border-status-ok/20 rounded-lg text-xs font-medium hover:bg-status-ok/20 transition"
                                     >
                                       Approve & Schedule
                                     </button>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setDenyingItem(s); }}
-                                      className="px-4 py-1.5 bg-red-600/10 text-red-400 border border-red-600/20 rounded-lg text-xs font-medium hover:bg-red-600/20 transition"
+                                      className="px-4 py-1.5 bg-status-bad/10 text-status-bad-ink border border-status-bad/20 rounded-lg text-xs font-medium hover:bg-status-bad/20 transition"
                                     >
                                       Deny
                                     </button>
@@ -958,8 +958,8 @@ export default function ContentStrategyPanel() {
                               {actedOn[s.id] ? (
                                 <div className={`px-3 py-2 rounded-lg text-xs font-medium text-center ${
                                   actedOn[s.id] === 'approved'
-                                    ? 'bg-green-600/10 text-green-400 border border-green-600/20'
-                                    : 'bg-red-600/10 text-red-400 border border-red-600/20'
+                                    ? 'bg-status-ok/10 text-status-ok-ink border border-status-ok/20'
+                                    : 'bg-status-bad/10 text-status-bad-ink border border-status-bad/20'
                                 }`}>
                                   {actedOn[s.id] === 'approved' ? 'Approved — added to queue' : 'Denied'}
                                 </div>
@@ -967,13 +967,13 @@ export default function ContentStrategyPanel() {
                                 <div className="flex flex-wrap gap-2 pt-1">
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setApprovingItem(s); }}
-                                    className="px-4 py-1.5 bg-green-600/10 text-green-400 border border-green-600/20 rounded-lg text-xs font-medium hover:bg-green-600/20 transition"
+                                    className="px-4 py-1.5 bg-status-ok/10 text-status-ok-ink border border-status-ok/20 rounded-lg text-xs font-medium hover:bg-status-ok/20 transition"
                                   >
                                     Approve & Schedule
                                   </button>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setDenyingItem(s); }}
-                                    className="px-4 py-1.5 bg-red-600/10 text-red-400 border border-red-600/20 rounded-lg text-xs font-medium hover:bg-red-600/20 transition"
+                                    className="px-4 py-1.5 bg-status-bad/10 text-status-bad-ink border border-status-bad/20 rounded-lg text-xs font-medium hover:bg-status-bad/20 transition"
                                   >
                                     Deny
                                   </button>
@@ -1013,8 +1013,8 @@ export default function ContentStrategyPanel() {
       {actionMessage && (
         <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium ${
           actionMessage.type === 'success'
-            ? 'bg-green-600/20 text-green-300 border-green-600/30'
-            : 'bg-red-600/20 text-red-300 border-red-600/30'
+            ? 'bg-status-ok/20 text-status-ok-ink border-status-ok/30'
+            : 'bg-status-bad/20 text-status-bad-ink border-status-bad/30'
         }`}>
           {actionMessage.text}
         </div>

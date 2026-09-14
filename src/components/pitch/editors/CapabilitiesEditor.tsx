@@ -43,7 +43,7 @@ export default function CapabilitiesEditor({ data, onChange }: Props) {
             <div className="flex gap-2 mb-2">
               <input value={item.index} onChange={(e) => updateItem(i, "index", e.target.value)} placeholder="001" className="w-16 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none" />
               <input value={item.title} onChange={(e) => updateItem(i, "title", e.target.value)} placeholder="Title" className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none" />
-              <button onClick={() => removeItem(i)} className="px-2 text-gray-500 hover:text-red-400 text-sm">&times;</button>
+              <button onClick={() => removeItem(i)} className="px-2 text-gray-500 hover:text-status-bad text-sm">&times;</button>
             </div>
             <textarea value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} rows={2} className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none resize-none" />
           </div>

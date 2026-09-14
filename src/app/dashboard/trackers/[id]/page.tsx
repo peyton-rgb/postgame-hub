@@ -224,7 +224,7 @@ export default function TrackerEditor() {
               {hasAnyOverride && !editingOverrides && (
                 <span
                   title={`${stats.overriddenKeys.size} value(s) hand-edited`}
-                  className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-900/40 text-amber-300"
+                  className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-status-warn/40 text-status-warn-ink"
                 >
                   {stats.overriddenKeys.size} edited
                 </span>
@@ -241,7 +241,7 @@ export default function TrackerEditor() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleClearAllOverrides}
-                  className="text-xs font-semibold text-gray-400 hover:text-red-300 px-2 py-1"
+                  className="text-xs font-semibold text-gray-400 hover:text-status-bad px-2 py-1"
                   type="button"
                 >
                   Clear all
@@ -289,7 +289,7 @@ export default function TrackerEditor() {
                       <span
                         title="Hand-edited override"
                         aria-label="overridden"
-                        className="text-amber-400 text-[10px]"
+                        className="text-status-warn text-[10px]"
                       >
                         ✎
                       </span>
@@ -306,13 +306,13 @@ export default function TrackerEditor() {
                         setTracker({ ...tracker, settings: newSettings });
                         supabase.from("campaign_recaps").update({ settings: newSettings }).eq("id", tracker.id);
                       }}
-                      className={"text-[10px] px-1.5 py-0.5 rounded border transition-colors mb-1 " + ((tracker.settings?.hidden_heroes || []).includes(metric.key) ? "border-red-500/50 text-red-400 bg-red-900/20" : "border-gray-600 text-gray-400 hover:text-white")}
+                      className={"text-[10px] px-1.5 py-0.5 rounded border transition-colors mb-1 " + ((tracker.settings?.hidden_heroes || []).includes(metric.key) ? "border-status-bad/50 text-status-bad-ink bg-status-bad/20" : "border-gray-600 text-gray-400 hover:text-white")}
                       title={(tracker.settings?.hidden_heroes || []).includes(metric.key) ? "Hidden on recap — click to show" : "Visible on recap — click to hide"}
                     >
                       {(tracker.settings?.hidden_heroes || []).includes(metric.key) ? "Hidden" : "Visible"}
                     </button>
                   )}
-                  <div className={`text-2xl font-black ${isOverridden ? "text-amber-300" : ""}`}>
+                  <div className={`text-2xl font-black ${isOverridden ? "text-status-warn" : ""}`}>
                     {metric.format(displayValue)}
                   </div>
 

@@ -245,7 +245,7 @@ export default function BtsSubmissionDetailPage() {
       {/* Body */}
       <div className="p-8 max-w-4xl">
         {loadError && (
-          <div className="text-sm text-red-400 mb-6">
+          <div className="text-sm text-status-bad mb-6">
             Failed to load submission: {loadError}
           </div>
         )}
@@ -298,12 +298,12 @@ export default function BtsSubmissionDetailPage() {
 
             {/* Sheet-sync failure banner — only when we have an error */}
             {row.sheet_sync_error && (
-              <div className="mt-6 bg-yellow-500/10 border border-yellow-500/40 rounded-xl px-5 py-4 flex items-start justify-between gap-4">
+              <div className="mt-6 bg-status-warn/10 border border-status-warn/40 rounded-xl px-5 py-4 flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-xs font-black uppercase tracking-wider text-yellow-400 mb-1">
+                  <div className="text-xs font-black uppercase tracking-wider text-status-warn mb-1">
                     ⚠ Sheet sync failed
                   </div>
-                  <div className="text-sm text-yellow-100/80 break-words">
+                  <div className="text-sm text-status-warn/80 break-words">
                     {row.sheet_sync_error}
                   </div>
                 </div>
@@ -364,7 +364,7 @@ export default function BtsSubmissionDetailPage() {
             </div>
 
             {actionError && (
-              <div className="mt-3 text-xs text-red-400">{actionError}</div>
+              <div className="mt-3 text-xs text-status-bad">{actionError}</div>
             )}
           </>
         )}

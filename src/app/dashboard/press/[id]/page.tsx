@@ -168,7 +168,7 @@ export default function PressEditor() {
         </div>
         <div className="flex items-center gap-3">
           {archived && (
-            <span className="text-xs font-bold px-2 py-1 rounded bg-yellow-900/30 text-yellow-400">
+            <span className="text-xs font-bold px-2 py-1 rounded bg-status-warn/30 text-status-warn-ink">
               Archived
             </span>
           )}
@@ -215,7 +215,7 @@ export default function PressEditor() {
                   )}
                   <button
                     onClick={() => setImageUrl("")}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-600/80 transition-colors"
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 flex items-center justify-center text-gray-400 hover:text-white hover:bg-status-bad/80 transition-colors"
                     title="Remove image"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -360,7 +360,7 @@ export default function PressEditor() {
                       <img src={brandLogoUrl} alt="Brand logo" className="h-8 object-contain" />
                       <button
                         onClick={() => setBrandLogoUrl("")}
-                        className="text-xs text-gray-500 hover:text-red-400"
+                        className="text-xs text-gray-500 hover:text-status-bad"
                       >
                         Remove
                       </button>
@@ -396,7 +396,7 @@ export default function PressEditor() {
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} className="w-5 h-5 rounded border-gray-700 bg-black text-[#D73F09] focus:ring-[#D73F09]" />
               <div>
-                <span className="text-sm font-bold text-yellow-400">Archive Article</span>
+                <span className="text-sm font-bold text-status-warn">Archive Article</span>
                 <p className="text-xs text-gray-600">Hide from the public press page without deleting</p>
               </div>
             </label>

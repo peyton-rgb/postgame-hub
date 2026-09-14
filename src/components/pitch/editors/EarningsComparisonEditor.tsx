@@ -108,7 +108,7 @@ export default function EarningsComparisonEditor({ data, onChange }: Props) {
               </span>
               <button
                 onClick={() => removeScenario(si)}
-                className="text-xs text-gray-500 hover:text-red-400"
+                className="text-xs text-gray-500 hover:text-status-bad"
               >
                 &times; Remove
               </button>
@@ -162,7 +162,7 @@ export default function EarningsComparisonEditor({ data, onChange }: Props) {
                   />
                   <button
                     onClick={() => removeRow(si, ri)}
-                    className="text-xs text-gray-500 hover:text-red-400"
+                    className="text-xs text-gray-500 hover:text-status-bad"
                   >
                     &times;
                   </button>

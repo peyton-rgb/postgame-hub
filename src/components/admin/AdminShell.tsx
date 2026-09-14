@@ -104,7 +104,7 @@ export default function AdminShell({
             {accessLevel}
             {accessLevelPending && (
               <span
-                className="ml-1 text-amber-500"
+                className="ml-1 text-status-warn"
                 title="Access levels run on the legacy role column until migration 022 is applied."
               >
                 · pending 022

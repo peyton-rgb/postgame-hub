@@ -106,41 +106,41 @@ export default function CaseStudyEditor() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center text-ink-4">Loading...</div>;
   }
   if (!study) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-500">Case study not found.</div>;
+    return <div className="min-h-screen flex items-center justify-center text-ink-4">Case study not found.</div>;
   }
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="border-b border-gray-800 px-8 py-4 flex items-center justify-between flex-shrink-0">
+      <div className="border-b border-hairline-soft px-8 py-4 flex items-center justify-between flex-shrink-0">
         <div>
-          <Link href="/dashboard?tab=case-studies" className="text-xs text-gray-500 hover:text-gray-300 mb-1 block">
+          <Link href="/dashboard?tab=case-studies" className="text-xs text-ink-4 hover:text-ink-2 mb-1 block">
             ← Back to Case Studies
           </Link>
-          <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mt-1">
+          <div className="text-xs font-bold uppercase tracking-wider text-ink-4 mt-1">
             {study.brand_name}
           </div>
           <h1 className="text-lg font-black">{study.title}</h1>
         </div>
         <div className="flex items-center gap-3">
           {study.published && (
-            <Link href={`/case-studies/${study.slug}`} target="_blank" className="text-xs text-[#D73F09] hover:underline">
+            <Link href={`/case-studies/${study.slug}`} target="_blank" className="text-xs text-accent hover:underline">
               View Live →
             </Link>
           )}
           <button
             onClick={() => saveStudy()}
             disabled={saving}
-            className="px-4 py-2 border border-gray-700 text-gray-400 text-sm font-bold rounded-lg hover:border-[#D73F09] hover:text-[#D73F09] transition-colors disabled:opacity-50"
+            className="px-4 py-2 border border-hairline text-ink-3 text-sm font-bold rounded-lg hover:border-accent hover:text-accent transition-colors disabled:opacity-50"
           >
             {saving ? "Saving..." : saved ? "Saved" : "Save Draft"}
           </button>
           <button
             onClick={() => saveStudy(!study.published)}
             disabled={saving}
-            className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407] disabled:opacity-50"
+            className="px-5 py-2 bg-accent text-white text-sm font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50"
           >
             {study.published ? "Unpublish" : "Publish"}
           </button>
@@ -149,58 +149,58 @@ export default function CaseStudyEditor() {
 
       <div className="flex-1 overflow-y-auto p-8 max-w-3xl mx-auto w-full space-y-6">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+          <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Title</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none" />
         </div>
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Slug</label>
-            <input value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Slug</label>
+            <input value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none" />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Brand Name</label>
-            <input value={brandName} onChange={(e) => setBrandName(e.target.value)} className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Brand Name</label>
+            <input value={brandName} onChange={(e) => setBrandName(e.target.value)} className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none" />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Category</label>
-            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. NIL, Social Media" className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Category</label>
+            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. NIL, Social Media" className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Hero Stat</label>
-            <input value={heroStat} onChange={(e) => setHeroStat(e.target.value)} placeholder="e.g. 2.5M+" className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Hero Stat</label>
+            <input value={heroStat} onChange={(e) => setHeroStat(e.target.value)} placeholder="e.g. 2.5M+" className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none" />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Hero Stat Label</label>
-            <input value={heroStatLabel} onChange={(e) => setHeroStatLabel(e.target.value)} placeholder="e.g. Total Impressions" className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Hero Stat Label</label>
+            <input value={heroStatLabel} onChange={(e) => setHeroStatLabel(e.target.value)} placeholder="e.g. Total Impressions" className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none" />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Overview</label>
-          <textarea value={overview} onChange={(e) => setOverview(e.target.value)} rows={4} className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none resize-y" />
+          <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Overview</label>
+          <textarea value={overview} onChange={(e) => setOverview(e.target.value)} rows={4} className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-accent outline-none resize-y" />
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Challenge</label>
-          <textarea value={challenge} onChange={(e) => setChallenge(e.target.value)} rows={4} className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none resize-y" />
+          <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Challenge</label>
+          <textarea value={challenge} onChange={(e) => setChallenge(e.target.value)} rows={4} className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-accent outline-none resize-y" />
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Solution</label>
-          <textarea value={solution} onChange={(e) => setSolution(e.target.value)} rows={4} className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none resize-y" />
+          <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Solution</label>
+          <textarea value={solution} onChange={(e) => setSolution(e.target.value)} rows={4} className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-accent outline-none resize-y" />
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Results</label>
-          <textarea value={results} onChange={(e) => setResults(e.target.value)} rows={4} className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none resize-y" />
+          <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Results</label>
+          <textarea value={results} onChange={(e) => setResults(e.target.value)} rows={4} className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 text-sm focus:border-accent outline-none resize-y" />
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Highlights</label>
+          <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Highlights</label>
           <div className="space-y-2">
             {highlights.map((h, i) => (
               <div key={i} className="flex gap-2">
@@ -208,11 +208,11 @@ export default function CaseStudyEditor() {
                   value={h}
                   onChange={(e) => updateHighlight(i, e.target.value)}
                   placeholder={`Highlight ${i + 1}`}
-                  className="flex-1 px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                  className="flex-1 px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none"
                 />
                 <button
                   onClick={() => removeHighlight(i)}
-                  className="px-3 text-gray-600 hover:text-red-400 transition-colors"
+                  className="px-3 text-ink-4 hover:text-status-bad transition-colors"
                   title="Remove"
                 >
                   ×
@@ -222,21 +222,21 @@ export default function CaseStudyEditor() {
           </div>
           <button
             onClick={addHighlight}
-            className="mt-2 text-xs text-[#D73F09] font-bold hover:underline"
+            className="mt-2 text-xs text-accent font-bold hover:underline"
           >
             + Add Highlight
           </button>
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Image URL</label>
-          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none" />
+          <label className="block text-xs font-bold uppercase tracking-wider text-ink-4 mb-2">Image URL</label>
+          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full px-4 py-3 bg-ground border border-hairline rounded-lg text-ink-1 focus:border-accent outline-none" />
         </div>
 
         <div>
           <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="w-5 h-5 rounded border-gray-700 bg-black text-[#D73F09] focus:ring-[#D73F09]" />
-            <span className="text-sm font-bold text-gray-400">Featured Case Study</span>
+            <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="w-5 h-5 rounded border-hairline bg-ground text-accent focus:ring-accent" />
+            <span className="text-sm font-bold text-ink-3">Featured Case Study</span>
           </label>
         </div>
       </div>

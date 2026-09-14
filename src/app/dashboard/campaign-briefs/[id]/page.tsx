@@ -205,7 +205,7 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
                 </div>
               )}
               {!brief.drive_folder_id && brief.status !== 'draft' && (
-                <div className="col-span-2 text-yellow-500 text-xs">
+                <div className="col-span-2 text-status-warn text-xs">
                   Drive folder not linked — the brand may not have a parent folder set.
                 </div>
               )}
@@ -226,7 +226,7 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
               <div className="grid grid-cols-2 gap-6">
                 {brief.mandatories.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-green-400 mb-3">Must Include</h3>
+                    <h3 className="text-sm font-semibold text-status-ok mb-3">Must Include</h3>
                     <ul className="space-y-1">
                       {brief.mandatories.map((m, i) => (
                         <li key={i} className="text-gray-300 text-sm">
@@ -238,7 +238,7 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
                 )}
                 {brief.restrictions.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-red-400 mb-3">Do Not Mention</h3>
+                    <h3 className="text-sm font-semibold text-status-bad mb-3">Do Not Mention</h3>
                     <ul className="space-y-1">
                       {brief.restrictions.map((r, i) => (
                         <li key={i} className="text-gray-300 text-sm">
@@ -269,7 +269,7 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
                   </span>
                 ))}
                 {(brief.athlete_targeting.follower_tiers || []).map((t: string) => (
-                  <span key={t} className="px-3 py-1 bg-green-900/50 text-green-300 rounded-full text-xs capitalize">
+                  <span key={t} className="px-3 py-1 bg-status-ok/50 text-status-ok-ink rounded-full text-xs capitalize">
                     {t}
                   </span>
                 ))}
@@ -301,10 +301,10 @@ export default function CampaignBriefDetailPage({ params }: { params: { id: stri
                       <span
                         className={
                           cb.status === 'published'
-                            ? 'text-green-400 font-medium'
+                            ? 'text-status-ok font-medium'
                             : cb.status === 'archived'
                             ? 'text-gray-500'
-                            : 'text-yellow-400 font-medium'
+                            : 'text-status-warn font-medium'
                         }
                       >
                         {cb.status}

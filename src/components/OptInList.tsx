@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase";
+import { BrandInlineLogo } from "@/components/BrandInlineLogo";
+import { useHubTheme } from "@/lib/use-hub-theme";
 import Link from "next/link";
 
 /**
@@ -33,7 +35,11 @@ type OptInCampaign = {
   brands?: {
     id: string;
     name: string;
+    // The name describes the INK, not the background: logo_light_url is light
+    // ink (dark grounds), logo_dark_url is dark ink (light grounds).
     logo_light_url: string | null;
+    logo_dark_url: string | null;
+    logo_primary_url: string | null;
     logo_url: string | null;
     primary_color: string | null;
   } | null;
@@ -43,6 +49,8 @@ type Brand = {
   id: string;
   name: string;
   logo_light_url: string | null;
+  logo_dark_url: string | null;
+  logo_primary_url: string | null;
   logo_url: string | null;
   primary_color: string | null;
 };
@@ -52,6 +60,9 @@ type OptInCounts = Record<string, number>;
 export default function OptInList() {
   const router = useRouter();
   const supabase = createBrowserSupabase();
+  // Which logo file to render is a JS decision, not a CSS one — you cannot
+  // choose between two image URLs without downloading both.
+  const theme = useHubTheme();
 
   const [campaigns, setCampaigns] = useState<OptInCampaign[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -86,7 +97,9 @@ export default function OptInList() {
   async function loadCampaigns() {
     const { data, error } = await supabase
       .from("optin_campaigns")
-      .select("*, brands(id, name, logo_light_url, logo_url, primary_color)")
+      .select(
+        "*, brands(id, name, logo_light_url, logo_dark_url, logo_primary_url, logo_url, primary_color)"
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -120,7 +133,7 @@ export default function OptInList() {
   async function loadBrands() {
     const { data } = await supabase
       .from("brands")
-      .select("id, name, logo_light_url, logo_url, primary_color")
+      .select("id, name, logo_light_url, logo_dark_url, logo_primary_url, logo_url, primary_color")
       .eq("archived", false)
       .order("name");
     setBrands((data || []) as Brand[]);
@@ -216,13 +229,13 @@ export default function OptInList() {
       {/* Header row: brand filter + create button */}
       <div className="flex items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 shrink-0">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-ink-4 shrink-0">
             Filter by brand
           </label>
           <select
             value={brandFilterId}
             onChange={(e) => setBrandFilterId(e.target.value)}
-            className="px-3 py-2 bg-[#111] border border-gray-800 rounded-lg text-sm text-white font-bold focus:border-[#D73F09] focus:outline-none min-w-[220px]"
+            className="px-3 py-2 bg-surface-card border border-hairline rounded-lg text-sm text-ink-1 font-bold focus:border-[var(--accent)] focus:outline-none min-w-[220px]"
           >
             <option value="">All Brands</option>
             {brands.map((b) => (
@@ -234,7 +247,7 @@ export default function OptInList() {
           {brandFilterId && (
             <button
               onClick={() => setBrandFilterId("")}
-              className="text-[11px] font-bold text-gray-500 hover:text-white uppercase tracking-wider"
+              className="text-[11px] font-bold text-ink-4 hover:text-ink-1 uppercase tracking-wider"
             >
               Clear
             </button>
@@ -242,7 +255,7 @@ export default function OptInList() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407] shrink-0"
+          className="px-5 py-2 bg-[var(--accent)] text-ink-1 text-sm font-bold rounded-lg hover:bg-[var(--accent)] shrink-0"
         >
           + New Opt-In Page
         </button>
@@ -250,22 +263,22 @@ export default function OptInList() {
 
       {/* Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#111] border border-gray-700 rounded-2xl p-8 w-[480px] max-w-[92vw]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ground/80 backdrop-blur-sm">
+          <div className="bg-surface-card border border-hairline rounded-2xl p-8 w-[480px] max-w-[92vw]">
             <h2 className="text-lg font-black mb-1">New Opt-In Page</h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-ink-4 mb-6">
               You can edit everything else in the editor after creating.
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-4 mb-2">
                   Brand
                 </label>
                 <select
                   value={newBrandId}
                   onChange={(e) => setNewBrandId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white font-bold focus:border-[#D73F09] focus:outline-none"
+                  className="w-full px-3 py-2.5 bg-ground border border-hairline rounded-lg text-sm text-ink-1 font-bold focus:border-[var(--accent)] focus:outline-none"
                 >
                   <option value="">Select a brand…</option>
                   {brands.map((b) => (
@@ -277,7 +290,7 @@ export default function OptInList() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-4 mb-2">
                   Title
                 </label>
                 <input
@@ -285,14 +298,14 @@ export default function OptInList() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="iHerb Gifting Campaign"
-                  className="w-full px-3 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white font-bold focus:border-[#D73F09] focus:outline-none"
+                  className="w-full px-3 py-2.5 bg-ground border border-hairline rounded-lg text-sm text-ink-1 font-bold focus:border-[var(--accent)] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-4 mb-2">
                   Admin Campaign ID
-                  <span className="ml-2 normal-case font-normal text-gray-600">
+                  <span className="ml-2 normal-case font-normal text-ink-4">
                     (numeric, optional)
                   </span>
                 </label>
@@ -302,15 +315,15 @@ export default function OptInList() {
                   value={newAdminId}
                   onChange={(e) => setNewAdminId(e.target.value)}
                   placeholder="e.g. 1187"
-                  className="w-full px-3 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white font-bold focus:border-[#D73F09] focus:outline-none"
+                  className="w-full px-3 py-2.5 bg-ground border border-hairline rounded-lg text-sm text-ink-1 font-bold focus:border-[var(--accent)] focus:outline-none"
                 />
-                <p className="text-[11px] text-gray-600 mt-2">
+                <p className="text-[11px] text-ink-4 mt-2">
                   The ColdFusion admin campaign ID. Opt-ins will be queued under this ID for the admin to pull.
                 </p>
               </div>
 
               {createError && (
-                <div className="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">
+                <div className="text-xs font-bold text-accent bg-accent/10 border border-accent/30 rounded px-3 py-2">
                   {createError}
                 </div>
               )}
@@ -323,14 +336,14 @@ export default function OptInList() {
                   setCreateError(null);
                 }}
                 disabled={creating}
-                className="flex-1 px-4 py-2.5 text-sm font-bold text-gray-400 hover:text-white border border-gray-800 rounded-lg disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 text-sm font-bold text-ink-3 hover:text-ink-1 border border-hairline rounded-lg disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="flex-1 px-4 py-2.5 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407] disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-[var(--accent)] text-ink-1 text-sm font-bold rounded-lg hover:bg-[var(--accent)] disabled:opacity-50"
               >
                 {creating ? "Creating…" : "Create & Edit"}
               </button>
@@ -341,28 +354,28 @@ export default function OptInList() {
 
       {/* Delete confirmation modal */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#111] border border-gray-700 rounded-2xl p-8 w-[420px]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ground/80 backdrop-blur-sm">
+          <div className="bg-surface-card border border-hairline rounded-2xl p-8 w-[420px]">
             <h2 className="text-lg font-black mb-2">Delete Opt-In Page</h2>
-            <p className="text-sm text-gray-400 mb-1">
+            <p className="text-sm text-ink-3 mb-1">
               Are you sure you want to delete{" "}
-              <span className="text-white font-bold">{confirmDelete.title}</span>?
+              <span className="text-ink-1 font-bold">{confirmDelete.title}</span>?
             </p>
-            <p className="text-xs text-red-400/70 mb-6">
+            <p className="text-xs text-accent/70 mb-6">
               This will permanently remove the page and all submitted opt-ins. This cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
                 disabled={deleting === confirmDelete.id}
-                className="flex-1 px-4 py-2.5 text-sm font-bold text-gray-400 hover:text-white border border-gray-800 rounded-lg disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 text-sm font-bold text-ink-3 hover:text-ink-1 border border-hairline rounded-lg disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(confirmDelete)}
                 disabled={deleting === confirmDelete.id}
-                className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-accent text-ink-1 text-sm font-bold rounded-lg hover:bg-accent disabled:opacity-50"
               >
                 {deleting === confirmDelete.id ? "Deleting…" : "Delete"}
               </button>
@@ -374,15 +387,15 @@ export default function OptInList() {
       {/* List */}
       {(() => {
         if (loading) {
-          return <div className="text-gray-500 text-center py-20">Loading…</div>;
+          return <div className="text-ink-4 text-center py-20">Loading…</div>;
         }
         if (campaigns.length === 0) {
           return (
             <div className="text-center py-20">
-              <p className="text-gray-500 mb-4">No opt-in pages yet.</p>
+              <p className="text-ink-4 mb-4">No opt-in pages yet.</p>
               <button
                 onClick={() => setShowCreate(true)}
-                className="text-[#D73F09] font-bold text-sm hover:underline"
+                className="text-[var(--accent)] font-bold text-sm hover:underline"
               >
                 Create your first opt-in page →
               </button>
@@ -393,10 +406,10 @@ export default function OptInList() {
           const brandName = brands.find((b) => b.id === brandFilterId)?.name || "this brand";
           return (
             <div className="text-center py-20">
-              <p className="text-gray-500 mb-4">No opt-in pages for {brandName}.</p>
+              <p className="text-ink-4 mb-4">No opt-in pages for {brandName}.</p>
               <button
                 onClick={() => setBrandFilterId("")}
-                className="text-[#D73F09] font-bold text-sm hover:underline"
+                className="text-[var(--accent)] font-bold text-sm hover:underline"
               >
                 Clear filter →
               </button>
@@ -408,12 +421,11 @@ export default function OptInList() {
           <div className="flex flex-col gap-2">
             {filteredCampaigns.map((c) => {
               const count = optInCounts[c.id] || 0;
-              const brandLogo = c.brands?.logo_light_url || c.brands?.logo_url || null;
               const brandName = c.brands?.name || "—";
               return (
                 <div
                   key={c.id}
-                  className="relative flex items-center gap-4 px-5 py-4 bg-[#111] border border-gray-800 rounded-lg hover:border-gray-600 transition-colors group"
+                  className="relative flex items-center gap-4 px-5 py-4 bg-surface-card border border-hairline rounded-lg hover:border-ink-4 transition-colors group"
                 >
                   <Link href={`/dashboard/campaign-optin/${c.id}`} className="absolute inset-0 z-0" />
 
@@ -423,34 +435,28 @@ export default function OptInList() {
                       <span
                         className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${
                           c.status === "live"
-                            ? "bg-green-900/30 text-green-400"
+                            ? "bg-surface-card/30 text-ink-3"
                             : c.status === "closed"
-                            ? "bg-gray-800 text-gray-400"
-                            : "bg-amber-900/30 text-amber-400"
+                            ? "bg-surface-raised text-ink-3"
+                            : "bg-status-warn/30 text-status-warn-ink"
                         }`}
                       >
                         {c.status === "live" ? "Live" : c.status === "closed" ? "Closed" : "Draft"}
                       </span>
                       {count > 0 && (
-                        <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded bg-[#D73F09]/15 text-[#D73F09]">
+                        <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--accent)]/15 text-[var(--accent)]">
                           {count} opt-in{count === 1 ? "" : "s"}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1">
-                      {brandLogo ? (
-                        <img
-                          src={brandLogo}
-                          alt={brandName}
-                          className="h-[16px] max-w-[60px] object-contain flex-shrink-0"
-                        />
-                      ) : null}
-                      <span className="text-xs text-gray-500">{brandName}</span>
-                      <span className="text-[10px] text-gray-700">
+                      <BrandInlineLogo brand={c.brands} name={brandName} theme={theme} />
+                      <span className="text-xs text-ink-4">{brandName}</span>
+                      <span className="text-[10px] text-ink-4">
                         {new Date(c.created_at).toLocaleDateString()}
                       </span>
                       {c.status === "live" && (
-                        <span className="text-[10px] text-[#D73F09]">/optin/{c.slug}</span>
+                        <span className="text-[10px] text-[var(--accent)]">/optin/{c.slug}</span>
                       )}
                     </div>
                   </div>
@@ -461,7 +467,7 @@ export default function OptInList() {
                       e.stopPropagation();
                       setConfirmDelete(c);
                     }}
-                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-ink-4 hover:text-accent hover:bg-accent/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                     title="Delete opt-in page"
                   >
                     <svg

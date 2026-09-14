@@ -130,7 +130,7 @@ function SortableItem({
         }}
         className={`text-xs px-1.5 py-0.5 rounded ${
           section.visible
-            ? "text-green-400 hover:text-green-300"
+            ? "text-status-ok hover:text-status-ok"
             : "text-gray-600 hover:text-gray-400"
         }`}
         title={section.visible ? "Visible" : "Hidden"}
@@ -311,14 +311,14 @@ export default function PitchEditor() {
               onClick={toggleStatus}
               className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded transition-colors ${
                 status === "published"
-                  ? "bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                  ? "bg-status-ok/10 text-status-ok-ink hover:bg-status-ok/20"
                   : "bg-gray-500/10 text-gray-400 hover:bg-gray-500/20"
               }`}
             >
               {status}
             </button>
             {saving && <span className="text-[10px] text-gray-500">Saving...</span>}
-            {saved && <span className="text-[10px] text-green-500">Saved</span>}
+            {saved && <span className="text-[10px] text-status-ok">Saved</span>}
           </div>
         </div>
 
@@ -378,7 +378,7 @@ export default function PitchEditor() {
           {selectedSection && (
             <button
               onClick={() => removeSection(selectedIndex)}
-              className="text-xs text-gray-600 hover:text-red-400 transition-colors"
+              className="text-xs text-gray-600 hover:text-status-bad transition-colors"
             >
               Remove
             </button>

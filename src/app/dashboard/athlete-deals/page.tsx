@@ -125,12 +125,12 @@ async function sendBackToAthlete(formData: FormData) {
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { t: string; bg: string; c: string }> = {
-    in_review: { t: "In review", bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" },
-    in_edit: { t: "Being edited", bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" },
-    brand_review: { t: "With the brand", bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" },
-    pending_verification: { t: "Awaiting verify", bg: "rgba(215,63,9,0.18)", c: "#ff8a5c" },
+    in_review: { t: "In review", bg: "var(--hairline)", c: "var(--ink-3)" },
+    in_edit: { t: "Being edited", bg: "var(--hairline)", c: "var(--ink-3)" },
+    brand_review: { t: "With the brand", bg: "var(--hairline)", c: "var(--ink-3)" },
+    pending_verification: { t: "Awaiting verify", bg: "var(--accent-dim)", c: "var(--accent)" },
   };
-  const s = map[status] || { t: status, bg: "rgba(255,255,255,0.12)", c: "rgba(255,255,255,0.7)" };
+  const s = map[status] || { t: status, bg: "var(--hairline)", c: "var(--ink-3)" };
   return <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", borderRadius: 20, padding: "4px 10px", background: s.bg, color: s.c }}>{s.t}</span>;
 }
 
@@ -142,25 +142,25 @@ function DeliverableRow({ d }: { d: any }) {
   // Phase 2B, so this checks versions rather than file_url.
   const hasVersion = Array.isArray(d.versions) && d.versions.length > 0;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap" }}>
-      <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", flex: "none", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: "1px solid var(--surface-raised)", flexWrap: "wrap" }}>
+      <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", flex: "none", background: "var(--surface-raised)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {d.file_url && !isVideo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={d.file_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, fill: "#fff" }}><path d="M8 5v14l11-7z" /></svg>
+          <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, fill: "var(--ink-1)" }}><path d="M8 5v14l11-7z" /></svg>
         )}
       </div>
       <div style={{ flex: 1, minWidth: 150 }}>
-        <div style={{ fontSize: 13, color: "#fff" }}>{slotLabel(d.slot)}</div>
+        <div style={{ fontSize: 13, color: "var(--ink-1)" }}>{slotLabel(d.slot)}</div>
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 3, flexWrap: "wrap" }}>
           {d.file_url && (
-            <a href={d.file_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textDecoration: "underline" }}>
+            <a href={d.file_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "var(--ink-3)", textDecoration: "underline" }}>
               {mode === "review" ? "View file" : "Open file"}
             </a>
           )}
           {mode === "verify" && d.live_url && (
-            <a href={d.live_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#9cc3ff", wordBreak: "break-all" }}>{d.live_url}</a>
+            <a href={d.live_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "var(--accent)", wordBreak: "break-all" }}>{d.live_url}</a>
           )}
         </div>
       </div>
@@ -168,18 +168,18 @@ function DeliverableRow({ d }: { d: any }) {
       {d.status === "in_edit" && (
         <form action={sendBackToAthlete} style={{ flexBasis: "100%", marginTop: 10 }}>
           <input type="hidden" name="deliverableId" value={d.id} />
-          <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: 6 }}>
             Brand feedback — edit before the athlete sees it
           </div>
           <textarea
             name="note"
             defaultValue={d.review_note || ""}
             rows={4}
-            style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: 10, fontSize: 13, color: "#fff", resize: "vertical" }}
+            style={{ width: "100%", background: "var(--surface-card)", border: "1px solid var(--hairline)", borderRadius: 10, padding: 10, fontSize: 13, color: "var(--ink-1)", resize: "vertical" }}
           />
           <button
             type="submit"
-            style={{ marginTop: 8, background: "#D73F09", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#fff", fontWeight: 700, border: "none", cursor: "pointer" }}
+            style={{ marginTop: 8, background: "var(--accent)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--ink-1)", fontWeight: 700, border: "none", cursor: "pointer" }}
           >
             Send to athlete
           </button>
@@ -190,7 +190,7 @@ function DeliverableRow({ d }: { d: any }) {
           <input type="hidden" name="deliverableId" value={d.id} />
           <button
             type="submit"
-            style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "rgba(255,255,255,0.85)", background: "transparent", cursor: "pointer" }}
+            style={{ border: "1px solid var(--hairline)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "var(--ink-2)", background: "transparent", cursor: "pointer" }}
           >
             Open review
           </button>
@@ -253,15 +253,15 @@ async function GroupCard({ g }: { g: Group }) {
   const initials = g.athleteName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
   const evaluations = await fetchEvaluations(g.athleteId, g.campaignId);
   return (
-    <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "16px 18px", marginBottom: 14 }}>
+    <div style={{ background: "var(--surface-card)", border: "1px solid var(--surface-raised)", borderRadius: 14, padding: "16px 18px", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-        <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#D73F09", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "none" }}>{initials}</div>
+        <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent)", color: "var(--ink-1)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flex: "none" }}>{initials}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, color: "#fff" }}>{g.athleteName}{g.athleteHandle ? <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 400 }}> · @{g.athleteHandle}</span> : null}</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{g.brandName ? `${g.brandName} · ` : ""}{g.campaignTitle}</div>
+          <div style={{ fontSize: 14, color: "var(--ink-1)" }}>{g.athleteName}{g.athleteHandle ? <span style={{ color: "var(--ink-4)", fontWeight: 400 }}> · @{g.athleteHandle}</span> : null}</div>
+          <div style={{ fontSize: 12, color: "var(--ink-4)" }}>{g.brandName ? `${g.brandName} · ` : ""}{g.campaignTitle}</div>
         </div>
         {g.brandLogo && (
-          <div style={{ background: "rgba(255,255,255,0.94)", borderRadius: 6, padding: "5px 8px", display: "flex" }}>
+          <div style={{ background: "var(--ink-1)", borderRadius: 6, padding: "5px 8px", display: "flex" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={g.brandLogo} alt={g.brandName || "brand"} style={{ height: 13 }} />
           </div>
@@ -271,7 +271,7 @@ async function GroupCard({ g }: { g: Group }) {
 
       <AutoEditorPanel athleteId={g.athleteId} campaignId={g.campaignId} initial={evaluations} />
 
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 10, paddingTop: 12 }}>
+      <div style={{ borderTop: "1px solid var(--surface-raised)", marginTop: 10, paddingTop: 12 }}>
         <VideographerLinkButton
           endpoint="/api/staff/videographer-link"
           body={{ athleteId: g.athleteId, campaignId: g.campaignId }}
@@ -289,18 +289,18 @@ export default async function AthleteDealsReviewPage({ searchParams }: { searchP
 
   return (
     <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 20px 60px" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Inbound reviews</h1>
-      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--ink-1)", marginBottom: 4 }}>Inbound reviews</h1>
+      <p style={{ fontSize: 13, color: "var(--ink-4)", marginBottom: 24 }}>
         Approve athlete content, then verify their live posts to release payment. Grouped by athlete + deal.
       </p>
 
       {groups.length === 0 ? (
-        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: 24, fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
+        <div style={{ background: "var(--surface-card)", border: "1px solid var(--surface-raised)", borderRadius: 14, padding: 24, fontSize: 13, color: "var(--ink-4)" }}>
           Nothing waiting for review right now. Submitted content and posted links will show up here.
         </div>
       ) : (
         <>
-          <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-4)", marginBottom: 12 }}>
             {totalItems} item{totalItems === 1 ? "" : "s"} across {groups.length} athlete deal{groups.length === 1 ? "" : "s"}
           </div>
           {groups.map((g) => <GroupCard key={g.key} g={g} />)}

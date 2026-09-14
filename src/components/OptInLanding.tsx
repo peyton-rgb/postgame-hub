@@ -130,7 +130,7 @@ export default function OptInLanding({ campaign, previewMode = false }: Props) {
               }}
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/95" />
+          <div className="absolute inset-0 bg-gradient-to-b from-ground/30 via-transparent to-ground/95" />
 
           {/* Top bar */}
           <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-10">

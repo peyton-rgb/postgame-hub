@@ -22,6 +22,11 @@ const bebasNeue = Bebas_Neue({
 //                  while Arimo was never actually loaded)
 //   JetBrains Mono label — eyebrows, stat labels, captions, nav, buttons, tags
 //
+// That is the DELIVERABLE spec. Tools (the Hub) use two faces — labels are Arimo
+// Bold — so the themed wrapper re-points --font-mono at Arimo inside itself; see
+// the [data-theme] font alias in globals.css. Nothing to change here: all four
+// still load, and the public site keeps JetBrains Mono.
+//
 // Inter used to sit here as a fifth face, loaded on every public page in three
 // weights and used on exactly one. It is gone; its single consumer now takes
 // the body font.
@@ -83,6 +88,10 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // No data-theme on <html> on purpose. :root in globals.css already carries the
+  // dark values, so the default needs no attribute — and an attribute here would
+  // shadow the dashboard wrapper, which is the real per-user source. Deliverables
+  // render outside that wrapper and stay dark by default.
   return (
     <html lang="en" className={`${bebasNeue.variable} ${anton.variable} ${arimo.variable} ${mono.variable}`}>
       <body>

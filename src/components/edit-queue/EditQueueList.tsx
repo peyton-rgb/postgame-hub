@@ -189,10 +189,10 @@ function Style() {
 // product. Breakpoint at 860px mirrors the review hub's, and the dashboard
 // shell hands over the full viewport below 900px (#219, #222).
 const CSS = `
-.eqx{--bg:#0B0B0F;--surface:#131319;--surface2:#1A1A22;
- --line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);
- --text:#F2F1EE;--muted:#9A9AA4;--faint:#6B6B75;
- --orange:#D73F09;--good:#4FB88A;--mid:#D99A2B;--bad:#CF5049;
+.eqx{--bg:var(--ground);--surface:var(--surface-card);--surface2:var(--surface-raised);
+ --line:var(--surface-raised);--line2:var(--hairline);
+ --text:var(--ink-1);--muted:var(--ink-3);--faint:var(--ink-4);
+ --orange:var(--accent);--good:var(--ink-3);--mid:var(--ink-2);--bad:var(--accent);
  background:var(--bg);color:var(--text);min-height:100vh;
  font-family:Arimo,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -210,9 +210,9 @@ const CSS = `
  border:1px solid var(--line2);border-radius:9px;padding:7px 10px;font-size:13px}
 
 .eqx .orphan{margin:16px 24px 0;padding:12px 14px;border-radius:10px;
- background:rgba(207,80,73,.12);border:1px solid rgba(207,80,73,.45);
+ background:var(--accent-dim);border:1px solid var(--accent-dim);
  display:flex;flex-direction:column;gap:3px;font-size:13px}
-.eqx .orphan strong{color:#F0A184;font-weight:700}
+.eqx .orphan strong{color:var(--accent);font-weight:700}
 .eqx .orphan .hint{color:var(--muted);font-size:12px}
 
 .eqx .page{padding:16px 24px 60px;max-width:1080px}
@@ -237,8 +237,8 @@ const CSS = `
 
 .eqx .right{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .eqx .st{font-size:11px;font-weight:700;border-radius:20px;padding:3px 9px;border:1px solid}
-.eqx .st.queued{border-color:rgba(215,63,9,.5);color:#F0A184;background:rgba(215,63,9,.14)}
-.eqx .st.review{border-color:rgba(217,154,43,.5);color:#E7C078;background:rgba(217,154,43,.14)}
+.eqx .st.queued{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-dim)}
+.eqx .st.review{border-color:var(--surface-raised);color:var(--ink-2);background:var(--surface-raised)}
 .eqx .age{font-size:16px;font-weight:700;color:var(--muted)}
 
 @media(max-width:860px){

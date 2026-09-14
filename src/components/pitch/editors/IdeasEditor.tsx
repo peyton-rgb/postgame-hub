@@ -56,7 +56,7 @@ export default function IdeasEditor({ data, onChange }: Props) {
             <div className="flex gap-2 mb-2">
               <input value={idea.number} onChange={(e) => updateIdea(i, "number", e.target.value)} placeholder="Idea 01" className="w-28 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none" />
               <input value={idea.name} onChange={(e) => updateIdea(i, "name", e.target.value)} placeholder="Name" className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none" />
-              <button onClick={() => removeIdea(i)} className="px-2 text-gray-500 hover:text-red-400 text-sm">&times;</button>
+              <button onClick={() => removeIdea(i)} className="px-2 text-gray-500 hover:text-status-bad text-sm">&times;</button>
             </div>
             <textarea value={idea.description} onChange={(e) => updateIdea(i, "description", e.target.value)} rows={2} placeholder="Description" className="w-full px-3 py-2 mb-2 bg-black border border-gray-700 rounded-lg text-white text-sm focus:border-[#D73F09] outline-none resize-none" />
             <div className="flex gap-2">

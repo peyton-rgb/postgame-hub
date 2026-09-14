@@ -22,6 +22,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
+import { pickBrandLogo, type BrandLogoColumns } from '@/lib/brand-logo';
+import { useHubTheme } from '@/lib/use-hub-theme';
 import {
   DASHBOARD_NAV,
   resolveActiveHref,
@@ -296,6 +298,15 @@ const BrowserIcon = () => (
   </Icon>
 );
 
+
+// Settings (gear) — nav icon for the Account section
+const GearIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </Icon>
+);
+
 // Sign Out
 const LogOutIcon = () => (
   <Icon>
@@ -362,6 +373,7 @@ const ICONS: Record<NavIcon, React.FC> = {
   chart: BarChartIcon,
   dollar: DollarIcon,
   calendar: CalendarIcon,
+  settings: GearIcon,
 };
 
 // Which groups the viewer has collapsed. Storing the collapsed set (rather
@@ -379,7 +391,13 @@ export default function DashboardSidebar() {
   const supabase = createBrowserSupabase();
 
   // Holds the Postgame logo URL once fetched from Supabase.
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  // The row, not the URL — the URL is a function of the row AND the theme, so
+  // deriving it keeps the two from drifting apart.
+  const [logoRow, setLogoRow] = useState<BrandLogoColumns | null>(null);
+  const theme = useHubTheme();
+  // pickBrandLogo() inverts the column names on purpose: logo_light_url is
+  // light INK, which belongs on the DARK ground.
+  const logoUrl = pickBrandLogo(logoRow, theme)?.url ?? null;
 
   // Whether the current viewer is staff (role !== 'athlete'), mirroring the
   // is_staff() DB helper. staffOnly nav links stay hidden until this is
@@ -410,19 +428,27 @@ export default function DashboardSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch the Postgame brand logo once when the sidebar mounts.
-  // Brand ID is hardcoded — this is the Postgame brand's row in the
-  // brands table, and it doesn't change.
+  // Fetch the Postgame brand row ONCE. Brand ID is hardcoded — this is the
+  // Postgame brand's row in the brands table, and it doesn't change.
+  //
+  // Selects both ink variants, not logo_primary_url alone, because the wordmark
+  // has to survive a theme flip: the primary file is light ink and disappeared
+  // against the light ground.
+  //
+  // Deliberately fetch-once-then-derive rather than refetching per theme. An
+  // earlier version keyed this effect on [theme] and raced: useHubTheme starts
+  // at 'dark' and corrects on mount, so two requests went out and whichever
+  // resolved last won — often the stale dark one, which put the light-ink
+  // wordmark back on a light ground. Deriving from state has no such window,
+  // and costs one request instead of two.
   useEffect(() => {
     async function fetchLogo() {
       const { data } = await supabase
         .from('brands')
-        .select('logo_primary_url')
+        .select('logo_primary_url,logo_light_url,logo_dark_url,logo_url')
         .eq('id', '7a0e28e9-d62f-427d-a207-cd22596fcf50')
         .single();
-      if (data?.logo_primary_url) {
-        setLogoUrl(data.logo_primary_url);
-      }
+      if (data) setLogoRow(data);
     }
     fetchLogo();
   }, []);
@@ -519,8 +545,8 @@ export default function DashboardSidebar() {
         onClick={() => setDrawerOpen(false)}
         className={`flex flex-1 items-center gap-3 text-sm py-2 px-3 rounded-lg transition-colors min-w-0 ${
           active
-            ? 'bg-white/10 text-white font-medium ring-1 ring-inset ring-white/15'
-            : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+            ? 'bg-surface-raised text-ink-1 font-medium ring-1 ring-inset ring-ink/15'
+            : 'text-ink-4 hover:text-ink-2 hover:bg-surface-card'
         }`}
       >
         <LinkIcon />
@@ -548,7 +574,7 @@ export default function DashboardSidebar() {
             onClick={() => toggleGroup(link.href)}
             aria-expanded={open}
             aria-label={`${open ? 'Collapse' : 'Expand'} ${link.name}`}
-            className="flex items-center justify-center w-6 h-8 -ml-1 text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
+            className="flex items-center justify-center w-6 h-8 -ml-1 text-ink-4 hover:text-ink-3 transition-colors flex-shrink-0"
           >
             <span
               className={`inline-flex transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
@@ -560,7 +586,7 @@ export default function DashboardSidebar() {
         </div>
 
         {open && (
-          <div className="ml-[18px] pl-3 border-l border-white/[0.08] flex flex-col">
+          <div className="ml-[18px] pl-3 border-l border-hairline-soft flex flex-col">
             {kids.map((child) => (
               <div key={child.href + child.name} className="flex">
                 {renderRow(child)}
@@ -580,8 +606,8 @@ export default function DashboardSidebar() {
         {/* Section band — the orange lives here, which is why the active state
             below is glass rather than orange: two orange cues compete. */}
         <div className="flex items-center gap-2 px-3 mb-1.5">
-          <span className="block w-[3px] h-3 rounded-full bg-[#D73F09]" aria-hidden="true" />
-          <span className="text-[10px] uppercase tracking-widest text-white/40">
+          <span className="block w-[3px] h-3 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+          <span className="text-[10px] uppercase tracking-widest text-ink-4">
             {section.label}
           </span>
         </div>
@@ -602,7 +628,7 @@ export default function DashboardSidebar() {
           so the page lands underneath it without every page needing a matching
           offset; sticky keeps it in reach once the page scrolls. */}
       <div
-        className="nav:hidden sticky top-0 z-30 flex items-center gap-2 bg-black border-b border-white/10"
+        className="nav:hidden sticky top-0 z-30 flex items-center gap-2 bg-ground border-b border-hairline"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))',
@@ -616,11 +642,11 @@ export default function DashboardSidebar() {
           aria-label="Open navigation"
           aria-expanded={drawerOpen}
           aria-controls="dashboard-drawer"
-          className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors flex-shrink-0"
+          className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface-card transition-colors flex-shrink-0"
         >
           <MenuIcon />
         </button>
-        <span className="text-sm font-medium text-white truncate">{activeTitle}</span>
+        <span className="text-sm font-medium text-ink-1 truncate">{activeTitle}</span>
       </div>
 
       {/* Scrim. Sits under the rail's z-50 and over page content, which carries
@@ -629,13 +655,13 @@ export default function DashboardSidebar() {
         <div
           onClick={() => setDrawerOpen(false)}
           aria-hidden="true"
-          className="nav:hidden fixed inset-0 z-40 bg-black/60"
+          className="nav:hidden fixed inset-0 z-40 bg-ground/60"
         />
       )}
 
     <aside
       id="dashboard-drawer"
-      className={`fixed left-0 top-0 h-full w-[240px] bg-black border-r border-white/10 flex flex-col z-50 transition-transform duration-200 ease-out nav:transition-none ${
+      className={`fixed left-0 top-0 h-full w-[240px] bg-ground border-r border-hairline flex flex-col z-50 transition-transform duration-200 ease-out nav:transition-none ${
         drawerOpen ? 'translate-x-0' : '-translate-x-full'
       } nav:translate-x-0`}
       style={{
@@ -648,7 +674,7 @@ export default function DashboardSidebar() {
          when the fetch fails we hold the row height with an empty box rather
          than falling back to a typed wordmark. A missing mark is acceptable;
          a typed one is not. */}
-      <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-white/[0.08]">
+      <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-hairline-soft">
         <Link href="/dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center">
           {logoUrl ? (
             <img
@@ -664,7 +690,7 @@ export default function DashboardSidebar() {
           type="button"
           onClick={() => setDrawerOpen(false)}
           aria-label="Close navigation"
-          className="nav:hidden flex items-center justify-center w-8 h-8 -mr-1 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors flex-shrink-0"
+          className="nav:hidden flex items-center justify-center w-8 h-8 -mr-1 rounded-lg text-ink-4 hover:text-ink-2 hover:bg-surface-card transition-colors flex-shrink-0"
         >
           <CloseIcon />
         </button>
@@ -676,10 +702,10 @@ export default function DashboardSidebar() {
       </nav>
 
       {/* Sign Out — fixed at bottom */}
-      <div className="px-3 py-3 border-t border-white/[0.08]">
+      <div className="px-3 py-3 border-t border-hairline-soft">
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors w-full"
+          className="flex items-center gap-3 text-sm py-2 px-3 rounded-lg text-ink-4 hover:text-ink-3 hover:bg-surface-card transition-colors w-full"
         >
           <LogOutIcon />
           Sign Out

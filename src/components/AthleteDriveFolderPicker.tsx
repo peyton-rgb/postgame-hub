@@ -279,7 +279,7 @@ export default function AthleteDriveFolderPicker({
             </div>
           )}
           {isAlready && (
-            <div className="absolute top-2 right-2 bg-green-600/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
+            <div className="absolute top-2 right-2 bg-status-ok/90 px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wide">
               ✓ Imported
             </div>
           )}
@@ -296,7 +296,7 @@ export default function AthleteDriveFolderPicker({
         <div className="px-2 py-1.5 bg-black/60">
           <div className="text-[10px] text-gray-400 truncate">{file.name}</div>
           {isAlready && (
-            <div className="text-[9px] text-green-400/70">Already imported</div>
+            <div className="text-[9px] text-status-ok/70">Already imported</div>
           )}
         </div>
       </div>
@@ -369,7 +369,7 @@ export default function AthleteDriveFolderPicker({
                   className="w-full bg-[#111] border border-gray-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D73F09]"
                 />
                 {inputError && (
-                  <div className="text-sm text-red-400">{inputError}</div>
+                  <div className="text-sm text-status-bad">{inputError}</div>
                 )}
                 <button
                   type="button"
@@ -505,14 +505,14 @@ export default function AthleteDriveFolderPicker({
                   Importing {importIndex} of {selected.size}…
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-6">
-                  <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3">
-                    <div className="text-sm font-black text-green-300">
+                  <div className="rounded-xl border border-status-ok/20 bg-status-ok/10 px-4 py-3">
+                    <div className="text-sm font-black text-status-ok">
                       ✓ Succeeded: {importedCount}
                     </div>
                   </div>
                   {failedCount > 0 ? (
-                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3">
-                      <div className="text-sm font-black text-red-300">
+                    <div className="rounded-xl border border-status-bad/20 bg-status-bad/10 px-4 py-3">
+                      <div className="text-sm font-black text-status-bad">
                         ✗ Failed: {failedCount}
                       </div>
                     </div>
@@ -543,7 +543,7 @@ export default function AthleteDriveFolderPicker({
                   <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
                     {importErrors.map((e, i) => (
                       <div key={i} className="text-sm">
-                        <div className="text-red-300 font-bold truncate">{e.file}</div>
+                        <div className="text-status-bad font-bold truncate">{e.file}</div>
                         <div className="text-gray-500 text-xs">{e.error}</div>
                       </div>
                     ))}

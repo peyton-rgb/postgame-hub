@@ -26,16 +26,16 @@ const STATUS_COLS = new Set<ColumnKey>(["kit", "recap"]);
 
 // ── glyphs (verbatim from v25 — 21px, 1.75px stroke) ─────────────────────────
 const Check = () => (
-  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="#3FB950" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.6l4.2 4.2L19 7" /></svg></span>
+  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="var(--status-ok)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.6l4.2 4.2L19 7" /></svg></span>
 );
 const Half = () => (
-  <span className="st"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.2" stroke="#D29922" strokeWidth="1.75" /><path d="M12 4.8a7.2 7.2 0 0 1 0 14.4z" fill="#D29922" /></svg></span>
+  <span className="st"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.2" stroke="var(--status-warn)" strokeWidth="1.75" /><path d="M12 4.8a7.2 7.2 0 0 1 0 14.4z" fill="var(--status-warn)" /></svg></span>
 );
 const Cross = () => (
-  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="#CF6A64" strokeWidth="1.75" strokeLinecap="round"><path d="M7.4 7.4l9.2 9.2M16.6 7.4l-9.2 9.2" /></svg></span>
+  <span className="st"><svg viewBox="0 0 24 24" fill="none" stroke="var(--status-bad)" strokeWidth="1.75" strokeLinecap="round"><path d="M7.4 7.4l9.2 9.2M16.6 7.4l-9.2 9.2" /></svg></span>
 );
 const Chain = () => (
-  <span className="lk"><svg viewBox="0 0 24 24" fill="none" stroke="#D73F09" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13.5a4.2 4.2 0 0 0 6.3.45l2.5-2.5a4.2 4.2 0 0 0-5.94-5.94l-1.43 1.42" /><path d="M14 10.5a4.2 4.2 0 0 0-6.3-.45l-2.5 2.5a4.2 4.2 0 0 0 5.94 5.94l1.42-1.42" /></svg></span>
+  <span className="lk"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13.5a4.2 4.2 0 0 0 6.3.45l2.5-2.5a4.2 4.2 0 0 0-5.94-5.94l-1.43 1.42" /><path d="M14 10.5a4.2 4.2 0 0 0-6.3-.45l-2.5 2.5a4.2 4.2 0 0 0 5.94 5.94l1.42-1.42" /></svg></span>
 );
 const Dash = () => <span className="dsh">—</span>;
 
@@ -154,9 +154,9 @@ export default function ReadinessClient({
             {summary.map((s) => (
               <div className="scol" key={s.col} title={`${LABELS[s.col]}: ${s.g} done · ${s.y} partial · ${s.r} missing`}>
                 <div className="sbar">
-                  <i style={{ width: `${s.gp}%`, background: "#3FB950" }} />
-                  <i style={{ width: `${s.yp}%`, background: "#D29922" }} />
-                  <i style={{ width: `${s.rp}%`, background: "rgba(207,106,100,.55)" }} />
+                  <i style={{ width: `${s.gp}%`, background: "var(--status-ok)" }} />
+                  <i style={{ width: `${s.yp}%`, background: "var(--status-warn)" }} />
+                  <i style={{ width: `${s.rp}%`, background: "var(--status-bad)" }} />
                 </div>
                 <span className="slab">{LABELS[s.col]}</span>
               </div>
@@ -368,9 +368,9 @@ function Card({
 
 // ── styles (ported verbatim from v25 + v9) ────────────────────────────────────
 const CSS = `
-.rdy{--bg:#101014;--panel:#1B1B21;--panel2:#1F1F26;--line:rgba(255,255,255,.10);
-  --grp:rgba(255,255,255,.22);--mut:rgba(255,255,255,.5);--org:#D73F09;
-  background:var(--bg);color:#fff;min-height:100vh;
+.rdy{--bg:var(--ground);--panel:var(--surface-card);--panel2:var(--surface-raised);--line:var(--hairline);
+  --grp:var(--hairline);--mut:var(--ink-4);--org:var(--accent);
+  background:var(--bg);color:var(--ink-1);min-height:100vh;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;font-size:14px;padding:30px 24px 70px}
 .rdy *{box-sizing:border-box}
@@ -380,45 +380,45 @@ const CSS = `
 .rdy .count{font-size:13px;color:var(--mut)}
 .rdy .sub{font-size:14px;color:var(--mut);margin:8px 0 22px}
 .rdy .bar2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.rdy .search{flex:1 1 300px;min-width:220px;background:var(--panel);color:#fff;font:inherit;font-size:13px;
+.rdy .search{flex:1 1 300px;min-width:220px;background:var(--panel);color:var(--ink-1);font:inherit;font-size:13px;
   border:1px solid var(--line);border-radius:8px;padding:9px 12px;outline:none}
-.rdy .search::placeholder{color:rgba(255,255,255,.35)}
+.rdy .search::placeholder{color:var(--ink-4)}
 .rdy .search:focus{border-color:rgba(215,63,9,.65)}
-.rdy .sel{background:var(--panel);color:#fff;font:inherit;font-size:13px;border:1px solid var(--line);
+.rdy .sel{background:var(--panel);color:var(--ink-1);font:inherit;font-size:13px;border:1px solid var(--line);
   border-radius:8px;padding:9px 10px;outline:none;cursor:pointer}
 .rdy .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .rdy .seg button{background:transparent;border:none;border-right:1px solid var(--line);color:var(--mut);
   font:inherit;font-size:13px;padding:9px 15px;cursor:pointer}
 .rdy .seg button:last-child{border-right:none}
-.rdy .seg button.on{background:rgba(255,255,255,.11);color:#fff;font-weight:600}
+.rdy .seg button.on{background:var(--hairline);color:var(--ink-1);font-weight:600}
 .rdy .shown{font-size:12.5px;color:var(--mut);margin-left:auto;white-space:nowrap}
 
 .rdy .strip{display:flex;gap:8px;margin:0 0 14px}
 .rdy .scol{flex:1;min-width:0}
-.rdy .sbar{display:flex;height:5px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.09)}
+.rdy .sbar{display:flex;height:5px;border-radius:99px;overflow:hidden;background:var(--surface-raised)}
 .rdy .sbar i{display:block;height:100%}
 .rdy .slab{display:block;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;
-  color:rgba(255,255,255,.38);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  color:var(--ink-4);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .rdy .tbl{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel)}
 .rdy .scroll{max-height:calc(100vh - 250px);overflow:auto;-webkit-overflow-scrolling:touch}
 .rdy .empty{padding:34px 20px;text-align:center;color:var(--mut);font-size:13.5px}
 .rdy table{width:100%;border-collapse:collapse;min-width:1620px}
-.rdy thead th{font-weight:600;color:var(--mut);text-align:center;background:#22222B;white-space:nowrap}
+.rdy thead th{font-weight:600;color:var(--mut);text-align:center;background:var(--surface-raised);white-space:nowrap}
 .rdy thead tr.grp th{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;padding:12px 8px 9px;
-  color:rgba(255,255,255,.62);border-bottom:1px solid rgba(255,255,255,.07)}
+  color:var(--ink-3);border-bottom:1px solid var(--surface-raised)}
 .rdy thead tr.sub th{font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;padding:9px 8px 12px;
   border-bottom:1px solid var(--line)}
 .rdy thead th.l{text-align:left;padding-left:16px}
 .rdy .gl{border-left:2px solid var(--grp)!important}
 /* sticky rules declared LAST so no later background overrides the solid fill */
-.rdy thead tr.grp th,.rdy thead tr.sub th{position:sticky;z-index:5;background:#22222B!important}
+.rdy thead tr.grp th,.rdy thead tr.sub th{position:sticky;z-index:5;background:var(--surface-raised)!important}
 .rdy thead tr.grp th{top:0;box-shadow:inset 0 -1px 0 var(--line)}
 .rdy thead tr.sub th{top:var(--hdr1,36px);box-shadow:inset 0 -1px 0 var(--line)}
 .rdy thead tr.sub th.gl,.rdy thead tr.grp th.gl{box-shadow:inset 1px 0 0 var(--grp),inset 0 -1px 0 var(--line)}
 
-.rdy tbody td{padding:0;text-align:center;height:62px;border-bottom:1px solid rgba(255,255,255,.05);
-  border-left:1px solid rgba(255,255,255,.05)}
+.rdy tbody td{padding:0;text-align:center;height:62px;border-bottom:1px solid var(--surface-card);
+  border-left:1px solid var(--surface-card)}
 .rdy thead th.idc{text-align:center;padding:0 10px}
 .rdy tbody td.idc{text-align:center;width:84px;border-left:none}
 .rdy tbody td.idc a.cell{align-items:center;justify-content:center}
@@ -430,30 +430,30 @@ const CSS = `
 .rdy a.cell.start{align-items:flex-start;justify-content:center;width:100%}
 .rdy tbody td.idc a.cell.start{align-items:center}
 .rdy .idn{font-size:13.5px;color:var(--mut);font-variant-numeric:tabular-nums}
-.rdy .bname{font-size:13.5px;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rdy .bname{font-size:13.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rdy tbody tr:nth-child(even){background:var(--panel2)}
-.rdy tbody tr:hover{background:rgba(255,255,255,.06)}
+.rdy tbody tr:hover{background:var(--surface-card)}
 .rdy tbody tr:last-child td{border-bottom:none}
 .rdy .bc{display:flex;align-items:center;gap:11px;min-width:0}
 .rdy .ico{width:40px;height:40px;flex:0 0 40px;display:flex;align-items:center;justify-content:center;
   border-radius:5px;overflow:hidden}
 .rdy .ico img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-.rdy .ico.chip{background:#fff;padding:4px}
-.rdy .ico.none{background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.18)}
-.rdy .cname{display:block;font-size:15px;font-weight:600;line-height:1.3;color:#fff;white-space:nowrap;
+.rdy .ico.chip{background:rgb(var(--pg-off-white-rgb));padding:4px}
+.rdy .ico.none{background:var(--surface-card);border:1px dashed var(--hairline)}
+.rdy .cname{display:block;font-size:15px;font-weight:600;line-height:1.3;color:var(--ink-1);white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;max-width:330px;transition:color .12s}
-.rdy td.l a.cell:hover .cname{color:#D73F09;text-decoration:underline;text-underline-offset:3px;
+.rdy td.l a.cell:hover .cname{color:var(--accent);text-decoration:underline;text-underline-offset:3px;
   text-decoration-thickness:1.5px}
 .rdy thead th.prog,.rdy tbody td.prog{width:132px}
 .rdy .score{display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center}
-.rdy .track{width:74px;height:6px;border-radius:99px;background:rgba(255,255,255,.13);overflow:hidden}
-.rdy .track i{display:block;height:100%;background:#30D158}
+.rdy .track{width:74px;height:6px;border-radius:99px;background:var(--hairline);overflow:hidden}
+.rdy .track i{display:block;height:100%;background:var(--status-ok)}
 .rdy .snum{font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;letter-spacing:.02em}
 /* the anchor fills the whole cell so hover covers the full column width */
 .rdy a.cell{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;width:100%;
   padding:0 10px;text-decoration:none;border-radius:5px;transition:background .12s}
-.rdy a.cell:hover{background:rgba(255,255,255,.10)}
-.rdy a.cell:focus-visible{outline:2px solid #4C9AFF;outline-offset:-2px}
+.rdy a.cell:hover{background:var(--hairline)}
+.rdy a.cell:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .rdy .st{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 26px}
 .rdy .st svg{width:21px;height:21px;display:block}
 .rdy .drv{width:32px;height:32px;object-fit:contain;display:block}
@@ -466,12 +466,12 @@ const CSS = `
 .rdy a.cell:hover .st svg,.rdy a.cell:hover .lk svg{filter:brightness(1.35) saturate(1.15)}
 .rdy a.cell:hover .drv{filter:brightness(1.15)}
 .rdy a.cell:hover .drv.off{filter:grayscale(1) brightness(1);opacity:.85}
-.rdy a.cell:hover .dsh{color:rgba(255,255,255,.55)}
-.rdy a.cell:hover .frac{color:rgba(255,255,255,.78)}
-.rdy a.cell:hover .idn{color:rgba(255,255,255,.85)}
-.rdy a.cell:hover .bname{color:#fff}
+.rdy a.cell:hover .dsh{color:var(--ink-4)}
+.rdy a.cell:hover .frac{color:var(--ink-3)}
+.rdy a.cell:hover .idn{color:var(--ink-2)}
+.rdy a.cell:hover .bname{color:var(--ink-1)}
 .rdy .dsh{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
-  color:rgba(255,255,255,.22);font-size:16px;line-height:1}
+  color:var(--hairline);font-size:16px;line-height:1}
 .rdy .drv.off{filter:grayscale(1) brightness(.62);opacity:.5}
 .rdy .frac{display:block;font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1}
 .rdy .key{display:flex;gap:26px;flex-wrap:wrap;margin-top:16px;font-size:13px;color:var(--mut);align-items:center}
@@ -481,19 +481,19 @@ const CSS = `
 
 /* ── mobile cards (campaign-cards-v9) ───────────────────────── */
 .rdy .only-narrow{display:none}
-.rdy .camp{background:#191B21;border:1px solid rgba(255,255,255,.08);border-radius:20px;margin-bottom:11px;overflow:hidden}
+.rdy .camp{background:var(--surface-card);border:1px solid var(--surface-raised);border-radius:20px;margin-bottom:11px;overflow:hidden}
 .rdy .ch{width:100%;display:flex;align-items:center;gap:12px;padding:14px;background:none;border:none;
   color:inherit;font:inherit;cursor:pointer;text-align:left}
-.rdy .lg{width:38px;height:38px;flex:0 0 38px;border-radius:11px;background:rgba(255,255,255,.95);
+.rdy .lg{width:38px;height:38px;flex:0 0 38px;border-radius:11px;background:var(--ink-1);
   display:flex;align-items:center;justify-content:center;padding:6px}
 .rdy .lg img{max-width:100%;max-height:100%;object-fit:contain}
 .rdy .ct{min-width:0;flex:1}
 .rdy .cn{display:block;font-size:15px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rdy .cm{display:block;font-size:11.5px;color:rgba(255,255,255,.5);margin-top:2px}
+.rdy .cm{display:block;font-size:11.5px;color:var(--ink-4);margin-top:2px}
 .rdy .cc{text-align:right}
 .rdy .cc b{font-size:18px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
-.rdy .cc span{display:block;font-size:10px;color:rgba(255,255,255,.42);margin-top:2px}
-.rdy .cv{width:18px;height:18px;color:rgba(255,255,255,.35);transition:transform .22s;flex:0 0 18px}
+.rdy .cc span{display:block;font-size:10px;color:var(--ink-4);margin-top:2px}
+.rdy .cv{width:18px;height:18px;color:var(--ink-4);transition:transform .22s;flex:0 0 18px}
 .rdy .cv svg{width:100%;height:100%;display:block}
 .rdy .camp.open>.ch .cv{transform:rotate(180deg)}
 .rdy .deck{display:none;padding:2px 0 0}
@@ -515,17 +515,21 @@ const CSS = `
   display:flex;align-items:center;justify-content:center}
 .rdy .sh .cv svg{width:18px;height:18px}
 .rdy .w .sh .cv{background:rgba(0,0,0,.07)}
-.rdy .g .sh .cv,.rdy .o .sh .cv{background:rgba(255,255,255,.12)}
+.rdy .g .sh .cv,.rdy .o .sh .cv{background:var(--hairline)}
 .rdy .sect.open .sh .cv{transform:rotate(180deg)}
 .rdy .sb{display:none;flex-direction:column;gap:7px;padding:0 12px 16px}
 .rdy .sect.open .sb{display:flex}
 .rdy .sect.open .sh{padding-bottom:16px}
-.rdy .w{background:linear-gradient(168deg,#FFFFFF,#E9E9EE);color:#16181D}
-.rdy .w .cv{color:rgba(0,0,0,.5)}
-.rdy .g{background:#0B0B0E;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.07) inset}
-.rdy .g .cv{color:rgba(255,255,255,.6)}
-.rdy .o{background:linear-gradient(168deg,#E4571A,#B8360A);color:#fff}
-.rdy .o .cv{color:rgba(255,255,255,.8)}
+/* .w/.g/.o are three FIXED card treatments (light plate, graphite, orange),
+   not theme roles. Each is a deliberate two-stop gradient and inverting them
+   would destroy the distinction between the three, so they stay literal. The
+   orange pair is the accent family. Revisit only with a design decision. */
+.rdy .w{background:linear-gradient(168deg,rgb(var(--pg-off-white-rgb)),#E9E9EE);color:var(--surface-card)}
+.rdy .w .cv{color:rgb(var(--ground-rgb) / .5)}
+.rdy .g{background:#0B0B0E;color:var(--ink-1);box-shadow:0 6px 18px rgb(var(--ground-rgb) / .5),0 0 0 1px var(--surface-raised) inset}
+.rdy .g .cv{color:var(--ink-3)}
+.rdy .o{background:linear-gradient(168deg,#E4571A,#B8360A);color:var(--ink-1)}
+.rdy .o .cv{color:var(--ink-2)}
 .rdy .it{display:flex;align-items:center;gap:11px;height:58px;padding:0 9px 0 11px;border-radius:14px}
 .rdy .w .it{background:rgba(0,0,0,.055)}.rdy .w .it.off{background:rgba(0,0,0,.03)}
 .rdy .g .it{background:rgba(255,255,255,.075)}.rdy .g .it.off{background:rgba(255,255,255,.035)}
@@ -538,8 +542,8 @@ const CSS = `
    and would vanish on the white Assets card */
 .rdy .bg{width:36px;height:36px;flex:0 0 36px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;padding:7px}
-.rdy .w .bg{background:#16181D}
-.rdy .g .bg,.rdy .o .bg{background:rgba(255,255,255,.94)}
+.rdy .w .bg{background:var(--surface-card)}
+.rdy .g .bg,.rdy .o .bg{background:var(--ink-1)}
 .rdy .bg img{max-width:100%;max-height:100%;object-fit:contain}
 .rdy .it.off .bg img{opacity:.42;filter:grayscale(1)}
 .rdy .nm{font-size:14.5px;font-weight:600;min-width:0}
@@ -549,11 +553,11 @@ const CSS = `
    Two greys — one mid-grey either vanishes on white or smudges on black. */
 .rdy .go{margin-left:auto;width:36px;height:36px;flex:0 0 36px;border-radius:50%;display:flex;
   align-items:center;justify-content:center;text-decoration:none;
-  background:#FFFFFF;color:var(--org);box-shadow:0 2px 5px rgba(0,0,0,.28)}
+  background:var(--ink-1);color:var(--org);box-shadow:0 2px 5px rgba(0,0,0,.28)}
 .rdy .it.off .go{background:#8E9099;color:var(--org);box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .rdy .w .it.off .go{background:#C3C5CB}
 .rdy .go svg{width:17px;height:17px}
-.rdy .go:active{background:var(--org);color:#FFFFFF}
+.rdy .go:active{background:var(--org);color:var(--ink-1)}
 
 @media(max-width:750px){
   .rdy{padding:18px 12px 60px}

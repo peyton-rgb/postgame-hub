@@ -79,7 +79,7 @@ function StringList({
           />
           <button
             onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-            className="text-gray-400 hover:text-red-500 px-2 text-sm"
+            className="text-gray-400 hover:text-status-bad px-2 text-sm"
             aria-label="Remove"
           >
             &times;
@@ -147,7 +147,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                     const { callout: _omit, ...rest } = section.content;
                     setContent(rest);
                   }}
-                  className="text-xs text-gray-400 hover:text-red-500"
+                  className="text-xs text-gray-400 hover:text-status-bad"
                 >
                   Remove callout
                 </button>
@@ -205,7 +205,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                         images: images.filter((_, idx) => idx !== i),
                       })
                     }
-                    className="text-gray-400 hover:text-red-500 px-2"
+                    className="text-gray-400 hover:text-status-bad px-2"
                   >
                     &times;
                   </button>
@@ -275,7 +275,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                         videos: videos.filter((_, idx) => idx !== i),
                       })
                     }
-                    className="text-gray-400 hover:text-red-500 px-2"
+                    className="text-gray-400 hover:text-status-bad px-2"
                   >
                     &times;
                   </button>
@@ -339,7 +339,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                 />
                 <button
                   onClick={() => setContent({ ...section.content, items: items.filter((_, idx) => idx !== i) })}
-                  className="text-gray-400 hover:text-red-500 px-2"
+                  className="text-gray-400 hover:text-status-bad px-2"
                 >
                   &times;
                 </button>
@@ -393,7 +393,7 @@ export default function SectionEditor({ section, onChange }: Props) {
               {tip && (
                 <button
                   onClick={() => { const { tip: _omit, ...rest } = section.content; setContent(rest); }}
-                  className="text-xs text-gray-400 hover:text-red-500"
+                  className="text-xs text-gray-400 hover:text-status-bad"
                 >
                   Remove tip
                 </button>
@@ -504,7 +504,7 @@ export default function SectionEditor({ section, onChange }: Props) {
                 />
                 <button
                   onClick={() => setContent({ ...section.content, steps: steps.filter((_, idx) => idx !== i) })}
-                  className="text-gray-400 hover:text-red-500 px-2"
+                  className="text-gray-400 hover:text-status-bad px-2"
                 >
                   &times;
                 </button>

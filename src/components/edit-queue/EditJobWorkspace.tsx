@@ -307,10 +307,10 @@ function Style() {
 // breakpoint as the review hub, so moving between the two screens does not
 // feel like moving between two apps.
 const CSS = `
-.eqw{--bg:#0B0B0F;--surface:#131319;--surface2:#1A1A22;
- --line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);
- --text:#F2F1EE;--muted:#9A9AA4;--faint:#6B6B75;
- --orange:#D73F09;--good:#4FB88A;--mid:#D99A2B;--bad:#CF5049;
+.eqw{--bg:var(--ground);--surface:var(--surface-card);--surface2:var(--surface-raised);
+ --line:var(--surface-raised);--line2:var(--hairline);
+ --text:var(--ink-1);--muted:var(--ink-3);--faint:var(--ink-4);
+ --orange:var(--accent);--good:var(--ink-3);--mid:var(--ink-2);--bad:var(--accent);
  background:var(--bg);color:var(--text);min-height:100vh;
  font-family:Arimo,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -328,9 +328,9 @@ const CSS = `
 .eqw .ttl .sub{font-size:12px;color:var(--muted);margin-top:2px}
 .eqw .top .st{margin-left:auto;font-size:11px;font-weight:700;border-radius:20px;
  padding:4px 10px;border:1px solid}
-.eqw .st.queued{border-color:rgba(215,63,9,.5);color:#F0A184;background:rgba(215,63,9,.14)}
-.eqw .st.review{border-color:rgba(217,154,43,.5);color:#E7C078;background:rgba(217,154,43,.14)}
-.eqw .st.done{border-color:rgba(79,184,138,.5);color:#7FD3AE;background:rgba(79,184,138,.14)}
+.eqw .st.queued{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-dim)}
+.eqw .st.review{border-color:var(--surface-raised);color:var(--ink-2);background:var(--surface-raised)}
+.eqw .st.done{border-color:var(--ink-4);color:var(--ink-3);background:var(--surface-raised)}
 
 .eqw .work{display:grid;grid-template-columns:1fr 320px 360px;gap:14px;padding:16px 24px 60px;
  align-items:start;max-width:1400px}
@@ -349,8 +349,8 @@ const CSS = `
 .eqw .instr li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:14px}
 .eqw .instr .src{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
  border-radius:20px;padding:2px 8px;border:1px solid;flex:none}
-.eqw .instr .src.flag{border-color:rgba(215,63,9,.5);color:#F0A184}
-.eqw .instr .src.note{border-color:rgba(154,154,164,.5);color:var(--muted)}
+.eqw .instr .src.flag{border-color:var(--accent-dim);color:var(--accent)}
+.eqw .instr .src.note{border-color:var(--ink-4);color:var(--muted)}
 .eqw .instr .tc{font-size:11px;color:var(--faint);flex:none}
 .eqw .instr .txt{flex:1;min-width:0}
 .eqw .prose{margin:0;white-space:pre-wrap;font-family:inherit;font-size:14px}
@@ -363,12 +363,12 @@ const CSS = `
 .eqw .file{display:none}
 
 .eqw .btn{display:inline-block;width:100%;text-align:center;background:var(--orange);
- color:#fff;border:1px solid transparent;border-radius:9px;padding:9px 12px;
+ color:var(--ink-1);border:1px solid transparent;border-radius:9px;padding:9px 12px;
  font-size:14px;font-weight:700;text-decoration:none}
 .eqw .btn:disabled{opacity:.55;cursor:default}
 .eqw .btn.ghost{background:transparent;border-color:var(--line2);color:var(--text);font-weight:400}
-.eqw .btn.good{background:rgba(79,184,138,.16);border-color:rgba(79,184,138,.5);color:#7FD3AE}
-.eqw .btn.bad{background:rgba(207,80,73,.14);border-color:rgba(207,80,73,.5);color:#F0A184}
+.eqw .btn.good{background:var(--surface-raised);border-color:var(--ink-4);color:var(--ink-3)}
+.eqw .btn.bad{background:var(--accent-dim);border-color:var(--accent-dim);color:var(--accent)}
 
 .eqw .gate{display:flex;gap:8px;margin-top:10px}
 .eqw .reject{margin-top:10px;display:flex;flex-direction:column;gap:8px}
@@ -376,7 +376,7 @@ const CSS = `
  border:1px solid var(--line2);border-radius:9px;padding:9px 10px;resize:vertical}
 .eqw .closed{margin:10px 0 0;font-size:13px;color:var(--muted)}
 .eqw .err{margin:0 24px 24px;padding:10px 12px;border-radius:9px;
- background:rgba(207,80,73,.14);border:1px solid rgba(207,80,73,.45);color:#F0A184;font-size:13px}
+ background:var(--accent-dim);border:1px solid var(--accent-dim);color:var(--accent);font-size:13px}
 
 @media(max-width:1100px){
  .eqw .work{grid-template-columns:1fr 320px}

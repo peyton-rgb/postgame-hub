@@ -179,10 +179,10 @@ function Style() {
 }
 
 const CSS = `
-.rix{--bg:#0B0B0F;--surface:#131319;--surface2:#1A1A22;
- --line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);
- --text:#F2F1EE;--muted:#9A9AA4;--faint:#6B6B75;
- --orange:#D73F09;--good:#4FB88A;--mid:#D99A2B;--bad:#CF5049;
+.rix{--bg:var(--ground);--surface:var(--surface-card);--surface2:var(--surface-raised);
+ --line:var(--surface-raised);--line2:var(--hairline);
+ --text:var(--ink-1);--muted:var(--ink-3);--faint:var(--ink-4);
+ --orange:var(--accent);--good:var(--ink-3);--mid:var(--ink-2);--bad:var(--accent);
  background:var(--bg);color:var(--text);min-height:100vh;
  font-family:Arimo,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -223,12 +223,12 @@ const CSS = `
 
 /* Age is the only thing that changes colour, because age is the point. */
 .rix .age.quiet .v{color:var(--muted)}
-.rix .age.warn .v{color:#E7C078}
-.rix .age.bad .v{color:#F0A184}
-.rix .age.bad .k{color:#F0A184;opacity:.75}
+.rix .age.warn .v{color:var(--ink-2)}
+.rix .age.bad .v{color:var(--accent)}
+.rix .age.bad .k{color:var(--accent);opacity:.75}
 
 .rix .act{display:flex;justify-content:flex-end}
-.rix .btn{display:inline-block;text-align:center;background:var(--orange);color:#fff;
+.rix .btn{display:inline-block;text-align:center;background:var(--orange);color:var(--ink-1);
  border:1px solid transparent;border-radius:9px;padding:7px 14px;font-size:13px;
  font-weight:700;text-decoration:none;white-space:nowrap}
 .rix .btn.ghost{background:transparent;border-color:var(--line2);
