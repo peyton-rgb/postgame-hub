@@ -49,7 +49,8 @@ export type NavIcon =
   | "star"
   | "chart"
   | "dollar"
-  | "calendar";
+  | "calendar"
+  | "settings";
 
 export type NavLink = {
   name: string;
@@ -176,6 +177,12 @@ export const DASHBOARD_NAV: NavSection[] = [
       // /dashboard/* and the routes remain reachable by URL.
       { name: "Athletes", href: "/dashboard/athletes", icon: "team", staffOnly: true, hidden: true },
       { name: "Campaign briefs", href: "/dashboard/campaign-briefs", icon: "brief", hidden: true },
+    ],
+  },
+  {
+    label: "Account",
+    links: [
+      { name: "Settings", href: "/dashboard/settings", icon: "settings" },
     ],
   },
 ];
