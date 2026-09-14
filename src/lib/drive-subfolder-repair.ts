@@ -90,10 +90,18 @@ export interface RepairReport {
   stoppedEarly: null | "deadline" | "rate limited";
 }
 
+// Kept in exact sync with SUBFOLDERS in drive-provision.ts — every name in
+// that list needs an entry here, or that subfolder's id silently fails to
+// save (an unmapped name lands on a `patch["undefined"]` key, which either
+// clobbers a sibling's value or makes the whole update fail outright).
+// Contracts/Trackers are the old 3-folder standard's names — this pass can
+// never see them since SUBFOLDERS doesn't create them anymore, so they've
+// been dropped rather than left as dead entries.
 const COLUMN_FOR: Record<string, string> = {
   Content: "drive_content_folder_id",
-  Contracts: "drive_contracts_folder_id",
-  Trackers: "drive_trackers_folder_id",
+  Legal: "drive_legal_folder_id",
+  Travel: "drive_travel_folder_id",
+  "Production Assets": "drive_production_assets_folder_id",
 };
 
 /**
@@ -178,9 +186,9 @@ export async function repairSubfolderIds(
         }
       }
 
-      // Content is the one that decides. Contracts and Trackers ride along
-      // because they are the same lookup, but a campaign is not repaired
-      // unless the column the Drive check reads is now set.
+      // Content is the one that decides. Legal, Travel and Production Assets
+      // ride along because they are the same lookup, but a campaign is not
+      // repaired unless the column the Drive check reads is now set.
       if (!patch.drive_content_folder_id) {
         report.skipped.push({
           campaignId: c.id,

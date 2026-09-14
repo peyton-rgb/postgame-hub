@@ -51,6 +51,7 @@ interface LinkConfig {
   briefUrl: string | null;
   deliverables: number | null;
   expiresAt: string | null;
+  managerEmail: string | null;
 }
 
 type FileKind = "photo" | "video";
@@ -622,7 +623,7 @@ export default function SubmitPage() {
             onClick={() => chooseMode("videographer")}
           />
 
-          <Footer postgame={config.postgameLogoUrl} expiresAt={config.expiresAt} />
+          <Footer postgame={config.postgameLogoUrl} expiresAt={config.expiresAt} managerEmail={config.managerEmail} />
         </div>
       </Shell>
     );
@@ -768,6 +769,7 @@ export default function SubmitPage() {
           <Footer
             postgame={config.postgameLogoDarkUrl ?? config.postgameLogoUrl}
             expiresAt={null}
+            managerEmail={config.managerEmail}
           />
         </div>
       </Shell>
@@ -1019,7 +1021,7 @@ export default function SubmitPage() {
           {sendHelper && <div className="sf-send-help">{sendHelper}</div>}
         </Card>
 
-        <Footer postgame={config.postgameLogoUrl} expiresAt={config.expiresAt} />
+        <Footer postgame={config.postgameLogoUrl} expiresAt={config.expiresAt} managerEmail={config.managerEmail} />
       </div>
     </Shell>
   );
@@ -1581,7 +1583,15 @@ function UploadRow({
   );
 }
 
-function Footer({ postgame, expiresAt }: { postgame: string | null; expiresAt: string | null }) {
+function Footer({
+  postgame,
+  expiresAt,
+  managerEmail,
+}: {
+  postgame: string | null;
+  expiresAt: string | null;
+  managerEmail: string | null;
+}) {
   return (
     <div className="sf-foot">
       {postgame && (
@@ -1590,9 +1600,11 @@ function Footer({ postgame, expiresAt }: { postgame: string | null; expiresAt: s
       )}
       <div className="q">Have a question?</div>
       <div className="sf-ln">
-        <a href="sms:">
-          <MsgIcon /> Text your Postgame contact
-        </a>
+        {managerEmail && (
+          <a href={`mailto:${managerEmail}`}>
+            <MsgIcon /> Email your Postgame campaign manager
+          </a>
+        )}
         <a href="https://instagram.com/postgame" target="_blank" rel="noopener noreferrer">
           <IgIcon /> DM @postgame
         </a>

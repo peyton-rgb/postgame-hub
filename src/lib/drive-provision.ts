@@ -3,8 +3,22 @@
 //
 //   {client root} / {brand root} / {year} / {campaign name} /
 //       ├── Content
-//       ├── Contracts
-//       └── Trackers
+//       ├── Legal
+//       │     ├── Brand Legal
+//       │     └── Athlete Legal
+//       ├── Travel
+//       ├── Production Assets
+//       └── {Campaign Name} Recap   (the Performance Tracker sheet — a FILE,
+//                                    sitting loose in the campaign folder,
+//                                    not inside a subfolder of its own)
+//
+// Approved Sep 2026. Supersedes the earlier 3-folder standard (Content/
+// Contracts/Trackers) — that shape is what old campaigns still have;
+// drive_contracts_folder_id and drive_trackers_folder_id stay on those rows
+// untouched. New campaigns get drive_legal_folder_id instead, and no longer
+// get a Trackers folder at all — one tracker per campaign, syncing up into
+// the brand's master tracker (separate automation), so there's no reason to
+// nest it. No Invoices folder either — deliberately dropped.
 //
 // The client root (DRIVE_CLIENT_ROOT_FOLDER_ID) holds one folder per brand and
 // is the one level this module never creates into — see resolveBrandRoot.
@@ -26,9 +40,17 @@
 import type { drive_v3 } from "googleapis";
 import { getDriveClient, createFolder } from "@/lib/google-drive";
 
-/** The three subfolders every campaign gets. One Trackers folder holds both
- *  internal and external tracker sheets — decided; do not split. */
-export const SUBFOLDERS = ["Content", "Contracts", "Trackers"] as const;
+/** The five top-level subfolders every campaign gets (current standard, Sep
+ *  2026). Legal has its own nested subfolders; see NESTED_SUBFOLDERS below. */
+export const SUBFOLDERS = ["Content", "Legal", "Travel", "Production Assets"] as const;
+
+/** Sub-subfolders nested one level inside SUBFOLDERS entries that split
+ *  further. Only Legal does — Trackers is flat (one Performance Tracker sheet
+ *  per campaign, no Internal/External/Performance split), and Content, Travel,
+ *  Production Assets are flat too. */
+export const NESTED_SUBFOLDERS: Partial<Record<(typeof SUBFOLDERS)[number], readonly string[]>> = {
+  Legal: ["Brand Legal", "Athlete Legal"],
+};
 
 /** Why a campaign was not provisioned. Surfaced in the run report so the fix
  *  (usually: fill in the brand's Drive root) is a known task, not silent. */
@@ -61,8 +83,11 @@ export interface ProvisionOutcome {
   yearFolderName: string;
   campaignFolderId: string;
   contentFolderId: string;
-  contractsFolderId: string;
-  trackersFolderId: string;
+  legalFolderId: string;
+  legalBrandFolderId: string;
+  legalAthleteFolderId: string;
+  travelFolderId: string;
+  productionAssetsFolderId: string;
 }
 
 export interface ProvisionSkip {
@@ -350,9 +375,26 @@ export async function provisionCampaign(
   // Same adopt-or-create rule one level down.
   const children = linkedExisting ? await listChildFolders(drive, campaignFolderId) : [];
   const subIds: Record<string, string> = {};
+  // Tracked alongside subIds so the nested pass below knows whether it's safe
+  // to skip listing a subfolder's children (freshly created = definitely empty).
+  const subWasAdopted: Record<string, boolean> = {};
   for (const sub of SUBFOLDERS) {
     const hit = matchesByName(children, sub);
+    subWasAdopted[sub] = hit.length > 0;
     subIds[sub] = hit.length > 0 ? hit[0].id : await createFolder(sub, campaignFolderId);
+  }
+
+  // One level deeper still, for the two subfolders that split further
+  // (Legal → Athlete Contracts / Brand Contract; Trackers → Internal /
+  // External / Performance). Exact same adopt-or-create rule, one level down.
+  const nestedIds: Record<string, string> = {};
+  for (const [parent, names] of Object.entries(NESTED_SUBFOLDERS) as [string, readonly string[]][]) {
+    const parentId = subIds[parent];
+    const parentChildren = subWasAdopted[parent] ? await listChildFolders(drive, parentId) : [];
+    for (const name of names) {
+      const hit = matchesByName(parentChildren, name);
+      nestedIds[`${parent}/${name}`] = hit.length > 0 ? hit[0].id : await createFolder(name, parentId);
+    }
   }
 
   return {
@@ -364,7 +406,10 @@ export async function provisionCampaign(
     yearFolderName: yearFolder.name,
     campaignFolderId,
     contentFolderId: subIds.Content,
-    contractsFolderId: subIds.Contracts,
-    trackersFolderId: subIds.Trackers,
+    legalFolderId: subIds.Legal,
+    legalBrandFolderId: nestedIds["Legal/Brand Legal"],
+    legalAthleteFolderId: nestedIds["Legal/Athlete Legal"],
+    travelFolderId: subIds.Travel,
+    productionAssetsFolderId: subIds["Production Assets"],
   };
 }
