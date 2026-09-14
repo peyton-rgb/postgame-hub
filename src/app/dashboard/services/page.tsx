@@ -136,7 +136,25 @@ export default function ServicesEditorPage() {
   useEffect(() => {
     async function load() {
       const { data: row } = await supabase.from("pages").select("settings").eq("slug", "services").single();
-      if (row?.settings) setData(row.settings as Record<ServiceTab, ServiceData>);
+      if (row?.settings) {
+        // The saved row predates some fields — "elevated" has no `process`
+        // key, and every list render crashed on it. Missing lists load as
+        // empty, NOT as DEFAULTS: filling defaults in here would publish them
+        // to the live page on the next save. A tab missing entirely still
+        // falls back to its defaults, as before it was ever saved.
+        const saved = row.settings as Partial<Record<ServiceTab, Partial<ServiceData>>>;
+        const tabs = Object.keys(DEFAULTS) as ServiceTab[];
+        setData(
+          Object.fromEntries(
+            tabs.map((t) => [
+              t,
+              saved[t]
+                ? { ...saved[t], features: saved[t]!.features ?? [], process: saved[t]!.process ?? [] }
+                : DEFAULTS[t],
+            ])
+          ) as Record<ServiceTab, ServiceData>
+        );
+      }
       setLoading(false);
     }
     load();
