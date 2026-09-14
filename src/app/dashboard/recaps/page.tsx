@@ -24,6 +24,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase';
 import { supabaseImageUrl } from '@/lib/supabase-image';
+import { pickBrandLogo, type HubTheme } from '@/lib/brand-logo';
+import { useHubTheme } from '@/lib/use-hub-theme';
 
 // ---- Types ----
 
@@ -31,7 +33,11 @@ interface BrandRef {
   id: string;
   name: string;
   slug: string;
+  // logo_light_url is light INK (for dark grounds), logo_dark_url is dark
+  // ink (for light grounds). See pickBrandLogo().
   logo_light_url: string | null;
+  logo_dark_url: string | null;
+  logo_primary_url: string | null;
   logo_url: string | null;
   logo_mark_url: string | null;
   fill_color: string | null;
@@ -89,14 +95,19 @@ const SQUARE_MARKS = ['Whoop', 'Athlete Ally'];
 // Single-colour dark artwork rendered knocked out to white on photos.
 const KNOCKOUT_MARKS = ['UMG'];
 
-// Wordmark for the dark card. Square-badge brands keep their mark
-// column, which is where their (correct) square artwork already lives.
-function brandMark(brand: BrandRef | null): string | null {
+// Wordmark for the card's ground in the active theme. This used to read
+// logo_light_url unconditionally — light INK, built for the dark card — so
+// in light mode every mark rendered white on an off-white well and
+// vanished. pickBrandLogo() owns the ink/ground inversion.
+//
+// Square-badge brands keep their mark column, which is where their
+// (correct) square artwork already lives.
+function brandMark(brand: BrandRef | null, theme: HubTheme): string | null {
   if (!brand) return null;
-  if (SQUARE_MARKS.includes(brand.name)) {
-    return brand.logo_mark_url ?? brand.logo_light_url ?? brand.logo_url;
+  if (SQUARE_MARKS.includes(brand.name) && brand.logo_mark_url) {
+    return brand.logo_mark_url;
   }
-  return brand.logo_light_url ?? brand.logo_url;
+  return pickBrandLogo(brand, theme)?.url ?? null;
 }
 
 // Neutral, and deliberately not orange — fill_color is populated on 25
@@ -517,6 +528,17 @@ function RecapsStyles() {
         filter: brightness(0) invert(1);
         opacity: 0.62;
       }
+      /* Knockout means "single-colour art, forced to the ink colour" — white
+         on the dark ground, so black on the light one. That holds over a
+         photo too: .tint and the drop-shadow wash the photo in the ground
+         colour, which is why brandMark picks dark ink there in light mode. */
+      [data-theme='light'] .rcp-page .mark img.knockout {
+        filter: brightness(0) drop-shadow(0 3px 16px rgb(var(--ground-rgb) / 0.75));
+      }
+      [data-theme='light'] .rcp-page .emptywell img.knockout,
+      [data-theme='light'] .rcp-page .card.empty-card:hover .emptywell img.knockout {
+        filter: brightness(0);
+      }
       .rcp-page .tint {
         position: absolute;
         inset: 0;
@@ -799,6 +821,16 @@ function RecapsStyles() {
       .rcp-page .card.empty-card:hover .emptywell img {
         opacity: 0.72;
         filter: grayscale(0.35) brightness(1.4);
+      }
+      /* The brightness lift above mutes a light-ink mark toward the dark
+         well. On the light well the mark is dark ink (see brandMark), and
+         lifting it pushes it toward the ground it sits on — so light mode
+         mutes by greyscale and opacity alone. */
+      [data-theme='light'] .rcp-page .emptywell img {
+        filter: grayscale(1);
+      }
+      [data-theme='light'] .rcp-page .card.empty-card:hover .emptywell img {
+        filter: grayscale(0.35);
       }
       .rcp-page .emptywell .init {
         font-family: var(--font-bebas), 'Bebas Neue', sans-serif;
@@ -1539,7 +1571,8 @@ function RecapCard({
   const router = useRouter();
   const status = normalizeStatus(recap.status);
   const brandName = recap.brand?.name || recap.client_name;
-  const mark = brandMark(recap.brand);
+  const theme = useHubTheme();
+  const mark = brandMark(recap.brand, theme);
   const isSquare = SQUARE_MARKS.includes(brandName);
   const isKnockout = KNOCKOUT_MARKS.includes(brandName);
 
@@ -1776,7 +1809,8 @@ function ListRow({
   const router = useRouter();
   const status = normalizeStatus(recap.status);
   const brandName = recap.brand?.name || recap.client_name;
-  const mark = brandMark(recap.brand);
+  const theme = useHubTheme();
+  const mark = brandMark(recap.brand, theme);
 
   const [thumbnailUrl, setThumbnailUrl] = useState(recap.thumbnail_url);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1883,6 +1917,7 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 
 export default function RecapsPage() {
+  const theme = useHubTheme();
   const [recaps, setRecaps] = useState<CampaignRecap[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('draft');
@@ -1908,7 +1943,8 @@ export default function RecapsPage() {
           thumbnail_url, hero_image_url, created_at, updated_at,
           athletes(count), media(count),
           brand:brands!campaigns_brand_id_fkey (
-            id, name, slug, logo_light_url, logo_url, logo_mark_url, fill_color
+            id, name, slug, logo_light_url, logo_dark_url, logo_primary_url,
+            logo_url, logo_mark_url, fill_color
           )
         `
         )
@@ -2159,8 +2195,8 @@ export default function RecapsPage() {
               <section key={g.key} className="bgroup">
                 <div className="bghead">
                   <span className="chip" style={{ background: chipTint(g.brand) }}>
-                    {brandMark(g.brand) ? (
-                      <img src={brandMark(g.brand) as string} alt="" />
+                    {brandMark(g.brand, theme) ? (
+                      <img src={brandMark(g.brand, theme) as string} alt="" />
                     ) : (
                       <span className="i" style={{ color: brandFill(g.brand) }}>
                         {initials(g.name)}
