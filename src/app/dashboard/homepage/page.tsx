@@ -33,34 +33,34 @@ interface SectionData {
 
 // ── Styles ──────────────────────────────────────────────────
 const S = {
-  page: { minHeight: "100vh", background: "#0A0A0A", color: "#fff", fontFamily: "Arial, sans-serif", padding: "32px 48px" } as const,
+  page: { minHeight: "100vh", background: "var(--ground)", color: "var(--ink-1)", fontFamily: "Arial, sans-serif", padding: "32px 48px" } as const,
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 } as const,
   h1: { fontSize: 28, fontWeight: 900, margin: 0 } as const,
   headerActions: { display: "flex", gap: 12, alignItems: "center" } as const,
-  btnOutline: { padding: "8px 20px", border: "1.5px solid #D73F09", borderRadius: 8, background: "none", color: "#D73F09", fontSize: 12, fontWeight: 800, cursor: "pointer", textDecoration: "none", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
-  btnSave: { padding: "10px 28px", background: "#D73F09", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
+  btnOutline: { padding: "8px 20px", border: "1.5px solid var(--accent)", borderRadius: 8, background: "none", color: "var(--accent)", fontSize: 12, fontWeight: 800, cursor: "pointer", textDecoration: "none", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
+  btnSave: { padding: "10px 28px", background: "var(--accent)", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
   tabs: { display: "flex", gap: 8, marginBottom: 32 } as const,
-  tab: (active: boolean) => ({ padding: "8px 20px", borderRadius: 20, border: "none", background: active ? "#D73F09" : "#141414", color: active ? "#fff" : "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }),
-  card: { background: "#141414", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 24, marginBottom: 16 } as const,
-  label: { display: "block", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 },
-  input: { width: "100%", padding: "10px 14px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", boxSizing: "border-box" as const },
-  textarea: { width: "100%", padding: "10px 14px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", minHeight: 80, resize: "vertical" as const, boxSizing: "border-box" as const },
+  tab: (active: boolean) => ({ padding: "8px 20px", borderRadius: 20, border: "none", background: active ? "var(--accent)" : "var(--surface-card)", color: active ? "#fff" : "var(--ink-4)", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }),
+  card: { background: "var(--surface-card)", border: "1px solid var(--hairline-soft)", borderRadius: 12, padding: 24, marginBottom: 16 } as const,
+  label: { display: "block", fontSize: 11, fontWeight: 700, color: "var(--ink-4)", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 },
+  input: { width: "100%", padding: "10px 14px", background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)", borderRadius: 8, color: "var(--ink-1)", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", boxSizing: "border-box" as const },
+  textarea: { width: "100%", padding: "10px 14px", background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)", borderRadius: 8, color: "var(--ink-1)", fontSize: 14, fontFamily: "Arial, sans-serif", outline: "none", minHeight: 80, resize: "vertical" as const, boxSizing: "border-box" as const },
   row: { display: "flex", gap: 16, marginBottom: 16 } as const,
   col: { flex: 1 } as const,
   sectionHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" } as const,
   sectionTitle: { fontSize: 16, fontWeight: 800, margin: 0 } as const,
-  toggle: (on: boolean) => ({ width: 40, height: 22, borderRadius: 11, background: on ? "#D73F09" : "#333", border: "none", cursor: "pointer", position: "relative" as const, transition: "background 0.2s", padding: 0 }),
+  toggle: (on: boolean) => ({ width: 40, height: 22, borderRadius: 11, background: on ? "var(--accent)" : "rgb(var(--ink-rgb) / 0.2)", border: "none", cursor: "pointer", position: "relative" as const, transition: "background 0.2s", padding: 0 }),
   toggleDot: (on: boolean) => ({ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute" as const, top: 3, left: on ? 21 : 3, transition: "left 0.2s" }),
-  badge: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.35)", textTransform: "uppercase" as const, letterSpacing: "0.06em" },
-  btnSmall: { padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: "none", color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
-  btnDanger: { padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(255,100,100,0.3)", background: "none", color: "#ff6b6b", fontSize: 11, fontWeight: 700, cursor: "pointer" },
-  btnAdd: { padding: "8px 16px", borderRadius: 8, border: "1px dashed rgba(255,255,255,0.15)", background: "none", color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 700, cursor: "pointer", width: "100%", marginTop: 12 },
-  gradientSelect: { padding: "6px 10px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#fff", fontSize: 12 },
-  toast: { position: "fixed" as const, bottom: 24, right: 24, background: "#1a1a1a", border: "1px solid #D73F09", borderRadius: 12, padding: "12px 24px", color: "#D73F09", fontSize: 13, fontWeight: 700, zIndex: 9999 },
+  badge: { fontSize: 10, fontWeight: 800, color: "var(--ink-4)", textTransform: "uppercase" as const, letterSpacing: "0.06em" },
+  btnSmall: { padding: "6px 14px", borderRadius: 6, border: "1px solid var(--hairline)", background: "none", color: "var(--ink-3)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
+  btnDanger: { padding: "6px 14px", borderRadius: 6, border: "1px solid rgb(var(--status-bad-rgb) / 0.3)", background: "none", color: "var(--status-bad)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
+  btnAdd: { padding: "8px 16px", borderRadius: 8, border: "1px dashed var(--hairline)", background: "none", color: "var(--ink-4)", fontSize: 12, fontWeight: 700, cursor: "pointer", width: "100%", marginTop: 12 },
+  gradientSelect: { padding: "6px 10px", background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)", borderRadius: 6, color: "var(--ink-1)", fontSize: 12 },
+  toast: { position: "fixed" as const, bottom: 24, right: 24, background: "linear-gradient(var(--surface-raised), var(--surface-raised)), var(--ground)", border: "1px solid var(--accent)", borderRadius: 12, padding: "12px 24px", color: "var(--accent)", fontSize: 13, fontWeight: 700, zIndex: 9999 },
   mb: (n: number) => ({ marginBottom: n }),
-  itemCard: { background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 16, marginBottom: 10 } as const,
-  picker: { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" },
-  pickerContent: { background: "#141414", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, width: 500, maxHeight: "70vh", overflow: "auto" } as const,
+  itemCard: { background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)", borderRadius: 10, padding: 16, marginBottom: 10 } as const,
+  picker: { position: "fixed" as const, inset: 0, background: "rgb(var(--ground-rgb) / 0.8)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" },
+  pickerContent: { background: "linear-gradient(var(--surface-card), var(--surface-card)), var(--ground)", border: "1px solid var(--hairline-soft)", borderRadius: 16, padding: 24, width: 500, maxHeight: "70vh", overflow: "auto" } as const,
 };
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
@@ -301,7 +301,7 @@ const response = await fetch("/api/suggest-athletes", {
   if (loading) {
     return (
       <div style={{ ...S.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Loading...</div>
+        <div style={{ color: "var(--ink-4)", fontSize: 14 }}>Loading...</div>
       </div>
     );
   }
@@ -309,7 +309,7 @@ const response = await fetch("/api/suggest-athletes", {
   if (!page) {
     return (
       <div style={{ ...S.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "#ff6b6b", fontSize: 14 }}>Homepage not found</div>
+        <div style={{ color: "var(--status-bad)", fontSize: 14 }}>Homepage not found</div>
       </div>
     );
   }
@@ -319,7 +319,7 @@ const response = await fetch("/api/suggest-athletes", {
       {/* Header */}
       <div style={S.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/dashboard" style={{ color: "rgba(255,255,255,0.4)", textDecoration: "none", fontSize: 13 }}>&larr; Dashboard</Link>
+          <Link href="/dashboard" style={{ color: "var(--ink-4)", textDecoration: "none", fontSize: 13 }}>&larr; Dashboard</Link>
           <h1 style={S.h1}>Homepage Editor</h1>
         </div>
         <div style={S.headerActions}>
@@ -418,7 +418,7 @@ const response = await fetch("/api/suggest-athletes", {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }} onClick={(e) => e.stopPropagation()}>
                     <Toggle on={isSectionVisible(sec.type)} onChange={(v) => updatePublicSection(sec.type, v)} />
-                    <span style={{ fontSize: 20, color: "rgba(255,255,255,0.3)" }}>{isExpanded ? "−" : "+"}</span>
+                    <span style={{ fontSize: 20, color: "var(--ink-4)" }}>{isExpanded ? "−" : "+"}</span>
                   </div>
                 </div>
 
@@ -427,10 +427,10 @@ const response = await fetch("/api/suggest-athletes", {
                     <Field label="Eyebrow" value={String(sec.content?.eyebrow || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, eyebrow: v })} />
                     <Field label="Description" value={String(sec.content?.description || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, description: v })} />
                     {getCampaigns().map((c, i) => (
-                      <div key={i} style={{ ...S.itemCard, borderLeft: c.featured ? "3px solid #D73F09" : "3px solid transparent", display: "flex", gap: 14 }}>
+                      <div key={i} style={{ ...S.itemCard, borderLeft: c.featured ? "3px solid var(--accent)" : "3px solid transparent", display: "flex", gap: 14 }}>
                         {/* Thumbnail */}
                         <div
-                          style={{ width: 80, height: 80, borderRadius: 8, flexShrink: 0, background: c.image_url && c.media_type !== "video" ? `url(${c.image_url}) center/cover` : "#222", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase" as const, overflow: "hidden", position: "relative" as const }}
+                          style={{ width: 80, height: 80, borderRadius: 8, flexShrink: 0, background: c.image_url && c.media_type !== "video" ? `url(${c.image_url}) center/cover` : "var(--surface-raised)", border: "1px solid var(--hairline-soft)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--ink-4)", fontWeight: 700, textTransform: "uppercase" as const, overflow: "hidden", position: "relative" as const }}
                           onClick={() => { setMediaPickerTarget(i); setMediaPickerMode("media-only"); setMediaPickerInitialCampaign(c.campaign_id ? { id: c.campaign_id, name: c.name, brand_name: c.brand } : undefined); setMediaPickerOpen(true); }}
                           title="Click to change media"
                         >
@@ -449,12 +449,12 @@ const response = await fetch("/api/suggest-athletes", {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 13, fontWeight: 800, color: "#D73F09" }}>{c.brand || "No Brand"}</span>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{c.name}</span>
+                              <span style={{ fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>{c.brand || "No Brand"}</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-3)" }}>{c.name}</span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                               <button
-                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: c.featured ? "#D73F09" : "rgba(255,255,255,0.2)", padding: 0 }}
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: c.featured ? "var(--accent)" : "rgb(var(--ink-rgb) / 0.25)", padding: 0 }}
                                 title={c.featured ? "Featured (big card)" : "Set as featured"}
                                 onClick={() => { const items = getCampaigns().map((item, j) => ({ ...item, featured: j === i })); updateSectionItems("featured_campaigns", "campaigns", items); }}
                               >&#9733;</button>
@@ -469,11 +469,11 @@ const response = await fetch("/api/suggest-athletes", {
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             {GRADIENTS.map((g) => (
                               <button key={g.key} onClick={() => { const items = [...getCampaigns()]; items[i] = { ...items[i], gradient: g.key }; updateSectionItems("featured_campaigns", "campaigns", items); }}
-                                style={{ width: 22, height: 22, borderRadius: 4, background: g.color, border: c.gradient === g.key ? "2px solid #D73F09" : "2px solid transparent", cursor: "pointer" }} title={g.key} />
+                                style={{ width: 22, height: 22, borderRadius: 4, background: g.color, border: c.gradient === g.key ? "2px solid var(--accent)" : "2px solid transparent", cursor: "pointer" }} title={g.key} />
                             ))}
-                            <span style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
+                            <span style={{ width: 1, height: 16, background: "var(--hairline-soft)", margin: "0 4px" }} />
                             <button onClick={() => { const items = [...getCampaigns()]; items[i] = { ...items[i], aspect_ratio: (c.aspect_ratio || "landscape") === "landscape" ? "portrait" : "landscape" }; updateSectionItems("featured_campaigns", "campaigns", items); }}
-                              style={{ ...S.btnSmall, fontSize: 10, padding: "3px 8px", color: c.aspect_ratio === "portrait" ? "#D73F09" : "rgba(255,255,255,0.4)", borderColor: c.aspect_ratio === "portrait" ? "#D73F09" : "rgba(255,255,255,0.15)" }}
+                              style={{ ...S.btnSmall, fontSize: 10, padding: "3px 8px", color: c.aspect_ratio === "portrait" ? "var(--accent)" : "var(--ink-4)", borderColor: c.aspect_ratio === "portrait" ? "var(--accent)" : "var(--hairline)" }}
                               title="Toggle landscape/portrait"
                             >{c.aspect_ratio === "portrait" ? "Portrait" : "Landscape"}</button>
                             <select
@@ -502,21 +502,21 @@ const response = await fetch("/api/suggest-athletes", {
                     <Field label="Description" value={String(sec.content?.description || "")} onChange={(v) => updateSectionContent(sec.id, { ...sec.content, description: v })} />
                     {getAthletes().map((a, i) => (
                       <div key={i} style={{ ...S.itemCard, display: "flex", alignItems: "center", gap: 14 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, overflow: "hidden", background: "#222", border: "1px solid rgba(255,255,255,0.1)" }}>
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, overflow: "hidden", background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)" }}>
                           {a.image_url ? (
                             <img src={a.image_url} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
                           ) : (
-                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, color: "#D73F09" }}>
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, color: "var(--accent)" }}>
                               {a.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                             </div>
                           )}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{a.name}</span>
-                            {a.sport && <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: "#D73F09", background: "rgba(215,63,9,0.15)", padding: "2px 8px", borderRadius: 10 }}>{a.sport}</span>}
+                            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink-1)" }}>{a.name}</span>
+                            {a.sport && <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: "var(--accent)", background: "var(--accent-dim)", padding: "2px 8px", borderRadius: 10 }}>{a.sport}</span>}
                           </div>
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: "var(--ink-4)", marginTop: 2 }}>
                             {a.school}{a.brand ? ` · ${a.brand}` : ""}
                           </div>
                         </div>
@@ -526,22 +526,22 @@ const response = await fetch("/api/suggest-athletes", {
                       </div>
                     ))}
                     <button style={S.btnAdd} onClick={openAthletePicker}>+ Add Athlete</button>
-                    <button style={{ ...S.btnAdd, background: "rgba(215,63,9,0.15)", color: "#D73F09", border: "1px solid rgba(215,63,9,0.3)", marginLeft: 8 }} onClick={suggestFromNews} disabled={suggesting}>
+                    <button style={{ ...S.btnAdd, background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid rgb(var(--accent-rgb) / 0.3)", marginLeft: 8 }} onClick={suggestFromNews} disabled={suggesting}>
                       {suggesting ? "Searching news..." : "Suggest from News"}
                     </button>
                     {suggestions.length > 0 && (
-                      <div style={{ marginTop: 16, background: "#0d0d0d", border: "1px solid rgba(215,63,9,0.25)", borderRadius: 10, padding: 16 }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "#D73F09", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 12 }}>Trending from your deal tracker</div>
+                      <div style={{ marginTop: 16, background: "var(--surface-card)", border: "1px solid rgb(var(--accent-rgb) / 0.25)", borderRadius: 10, padding: 16 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--accent)", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 12 }}>Trending from your deal tracker</div>
                         {suggestions.map((a, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < suggestions.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                            <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", background: "#222", flexShrink: 0 }}>
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < suggestions.length - 1 ? "1px solid var(--hairline-soft)" : "none" }}>
+                            <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", background: "var(--surface-raised)", flexShrink: 0 }}>
                               {a.image_url && <img src={a.image_url} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{a.name}</div>
-                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>{a.gradient}</div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--ink-1)" }}>{a.name}</div>
+                              <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 1 }}>{a.gradient}</div>
                             </div>
-                            <button style={{ padding: "5px 12px", background: "#D73F09", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
+                            <button style={{ padding: "5px 12px", background: "var(--accent)", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
                               onClick={() => { updateSectionItems("featured_athletes", "athletes", [...getAthletes(), { ...a, gradient: undefined }]); setSuggestions(suggestions.filter((_, j) => j !== i)); }}>
                               + Add
                             </button>
@@ -592,7 +592,7 @@ const response = await fetch("/api/suggest-athletes", {
                     {getServices().map((svc, i) => (
                       <div key={i} style={S.itemCard}>
                         <div style={S.row}>
-                          <div style={{ width: 50, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: svc.accent ? "#D73F09" : "rgba(255,255,255,0.3)" }}>
+                          <div style={{ width: 50, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: svc.accent ? "var(--accent)" : "var(--ink-4)" }}>
                             {String(i + 1).padStart(2, "0")}
                           </div>
                           <div style={S.col}>
@@ -664,7 +664,7 @@ const response = await fetch("/api/suggest-athletes", {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 4px" }}>Published</h3>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>When off, the homepage shows the fallback.</p>
+                <p style={{ fontSize: 12, color: "var(--ink-4)", margin: 0 }}>When off, the homepage shows the fallback.</p>
               </div>
               <Toggle on={page.published} onChange={(v) => setPage((p) => p ? { ...p, published: v } : p)} />
             </div>
@@ -688,7 +688,7 @@ const response = await fetch("/api/suggest-athletes", {
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
               </div>
             ))}
-            {pickerItems.length === 0 && <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>No brands found</div>}
+            {pickerItems.length === 0 && <div style={{ color: "var(--ink-4)", fontSize: 13 }}>No brands found</div>}
           </div>
         </div>
       )}
@@ -696,7 +696,7 @@ const response = await fetch("/api/suggest-athletes", {
       {/* Athlete Picker Modal */}
       {athletePickerOpen && (
         <div style={S.picker} onClick={() => setAthletePickerOpen(false)}>
-          <div style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, width: 600, maxHeight: "70vh", display: "flex", flexDirection: "column" as const }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: "linear-gradient(var(--surface-raised), var(--surface-raised)), var(--ground)", border: "1px solid var(--hairline-soft)", borderRadius: 16, padding: 24, width: 600, maxHeight: "70vh", display: "flex", flexDirection: "column" as const }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 16px" }}>Add Athlete from Deal Tracker</h3>
             <input
               style={{ ...S.input, marginBottom: 12 }}
@@ -716,7 +716,7 @@ const response = await fetch("/api/suggest-athletes", {
               </select>
             </div>
             <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
-              {filteredAthleteDeals.length === 0 && <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, padding: 12 }}>No athletes found</div>}
+              {filteredAthleteDeals.length === 0 && <div style={{ color: "var(--ink-4)", fontSize: 13, padding: 12 }}>No athletes found</div>}
               {filteredAthleteDeals.slice(0, 100).map((deal) => (
                 <div
                   key={deal.id}
@@ -736,19 +736,19 @@ const response = await fetch("/api/suggest-athletes", {
                     setAthletePickerOpen(false);
                   }}
                 >
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, overflow: "hidden", background: "#222", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, overflow: "hidden", background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)" }}>
                     {deal.image_url ? (
                       <img src={deal.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }} />
                     ) : (
-                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#D73F09" }}>?</div>
+                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "var(--accent)" }}>?</div>
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 700 }}>{deal.athlete_name}</span>
-                      {deal.athlete_sport && <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: "#D73F09", background: "rgba(215,63,9,0.15)", padding: "2px 8px", borderRadius: 10 }}>{deal.athlete_sport}</span>}
+                      {deal.athlete_sport && <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: "var(--accent)", background: "var(--accent-dim)", padding: "2px 8px", borderRadius: 10 }}>{deal.athlete_sport}</span>}
                     </div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>
+                    <div style={{ fontSize: 12, color: "var(--ink-4)", marginTop: 1 }}>
                       {deal.athlete_school}{deal.brand_name ? ` · ${deal.brand_name}` : ""}
                     </div>
                   </div>
@@ -763,7 +763,7 @@ const response = await fetch("/api/suggest-athletes", {
       {tab === "settings" && (
         <div style={{ ...S.card, marginTop: 8 }}>
           <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px" }}>Site Pages</h3>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 20px" }}>Edit content for each public page of the website.</p>
+          <p style={{ fontSize: 13, color: "var(--ink-4)", margin: "0 0 20px" }}>Edit content for each public page of the website.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {[
               { label: "Homepage", href: "/dashboard/homepage", live: "/homepage" },
@@ -776,11 +776,11 @@ const response = await fetch("/api/suggest-athletes", {
               { label: "Press", href: "/dashboard?tab=press", live: "/press" },
               { label: "Case Studies", href: "/dashboard?tab=case-studies", live: "/case-studies" },
             ].map((p) => (
-              <div key={p.label} style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div key={p.label} style={{ background: "var(--surface-raised)", border: "1px solid var(--hairline-soft)", borderRadius: 10, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>{p.label}</span>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <Link href={p.href} style={{ fontSize: 11, fontWeight: 700, color: "#D73F09", textDecoration: "none", padding: "4px 10px", border: "1px solid #D73F09", borderRadius: 6 }}>Edit</Link>
-                  <a href={p.live} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textDecoration: "none", padding: "4px 10px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6 }}>↗</a>
+                  <Link href={p.href} style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textDecoration: "none", padding: "4px 10px", border: "1px solid var(--accent)", borderRadius: 6 }}>Edit</Link>
+                  <a href={p.live} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-4)", textDecoration: "none", padding: "4px 10px", border: "1px solid var(--hairline-soft)", borderRadius: 6 }}>↗</a>
                 </div>
               </div>
             ))}
