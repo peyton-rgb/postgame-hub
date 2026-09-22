@@ -86,6 +86,9 @@ type CascadeResult = {
   model: "haiku" | "claude";
   project: string;
   answer: string;
+  // Haiku's self-rated 1-10 score. On escalation this is the low score that
+  // triggered it; Sonnet doesn't rate itself.
+  haikuConfidence: number;
 };
 
 // Haiku answers first; if it isn't confident, escalate to Sonnet.
@@ -140,6 +143,7 @@ Respond in this JSON format:
       model: "haiku",
       project: haikusResult.project,
       answer: haikusResult.answer,
+      haikuConfidence: haikusResult.confidence,
     };
   }
 
@@ -169,7 +173,32 @@ Provide a comprehensive answer to their question.`;
     model: "claude",
     project: haikusResult.project,
     answer: claudeAnswer,
+    haikuConfidence: haikusResult.confidence,
   };
+}
+
+// The models write standard markdown, but Slack uses its own "mrkdwn":
+// *bold* not **bold**, <url|label> not [label](url), and no # headings.
+// Without this, answers show up littered with literal ** and ##.
+function toSlackMrkdwn(markdown: string): string {
+  return markdown
+    .replace(/^#{1,6}\s+(.+)$/gm, "*$1*")
+    .replace(/\*\*(.+?)\*\*/g, "*$1*")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, "<$2|$1>");
+}
+
+function formatReply(result: CascadeResult): string {
+  const model =
+    result.model === "haiku"
+      ? `Haiku (confidence ${result.haikuConfidence}/10)`
+      : `Sonnet (escalated — Haiku was ${result.haikuConfidence}/10)`;
+
+  return [
+    toSlackMrkdwn(String(result.answer).trim()),
+    "",
+    "───",
+    `*Project:* ${result.project}   ·   *Model:* ${model}`,
+  ].join("\n");
 }
 
 // Post a reply into the thread under the user's message.
@@ -198,8 +227,7 @@ async function postThreadReply(channel: string, threadTs: string, text: string) 
 async function answerInThread(channel: string, threadTs: string, prompt: string) {
   try {
     const result = await runCascade(prompt);
-    const footer = `_${result.model === "haiku" ? "Haiku" : "Sonnet"} · ${result.project}_`;
-    await postThreadReply(channel, threadTs, `${result.answer}\n\n${footer}`);
+    await postThreadReply(channel, threadTs, formatReply(result));
   } catch (error) {
     console.error("Cascade error:", error);
     await postThreadReply(
@@ -254,6 +282,15 @@ export async function POST(request: Request) {
     !event.subtype &&
     typeof event.text === "string" &&
     event.text.trim() !== "";
+
+  // One line per event so the Vercel logs show what Slack is actually sending.
+  // Deliberately no message text.
+  console.log(
+    `Cascade: ${payload.type}/${event?.type ?? "-"}` +
+      `${event?.subtype ? `/${event.subtype}` : ""}` +
+      ` channel=${event?.channel ?? "-"} bot=${Boolean(event?.bot_id)}` +
+      ` → ${isHumanMessage ? "answering" : "ignored"}`
+  );
 
   if (isHumanMessage) {
     // Reply inside the existing thread if the message was in one, otherwise
