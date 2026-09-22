@@ -30,6 +30,7 @@ import { getStaffUser } from "@/lib/staff-auth";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import { getAccounts, getCampaigns, PostgameAdminError, type AdminCampaign } from "@/lib/postgame-admin";
 import { loadAccountMap, recordUnknownAccounts } from "@/lib/account-brand-map";
+import { applyQueuedHandoffs } from "@/lib/admin-drive/queue";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -407,17 +408,36 @@ async function handleSync(request: NextRequest) {
       else written.refreshed++;
     }
 
+    // 8 ── Apply any Drive handoffs that were parked waiting for these
+    // campaigns. A handoff the admin sent before the campaign synced returned
+    // 202 on the promise that this step would land it; this is that step.
+    //
+    // Runs after the insert above, so a campaign created in the same pass is
+    // already there to be matched. Never throws, and its errors are reported
+    // separately from the sync's own — a queue problem must not mark a sync
+    // that wrote campaigns correctly as failed.
+    const driveHandoffs = await applyQueuedHandoffs();
+    if (driveHandoffs.errors.length > 0) {
+      console.error("[admin-sync] drive handoff queue:", driveHandoffs.errors.join(" | "));
+    }
+
     const status = written.errors.length > 0 ? "failed" : "complete";
     await logRun(
       supabase,
       actorId,
       { apply },
-      { ...report.counts, ...written, errors: written.errors.slice(0, 20) },
+      { ...report.counts, ...written, drive_handoffs: driveHandoffs, errors: written.errors.slice(0, 20) },
       status,
       startedAt,
     );
 
-    return NextResponse.json({ ok: written.errors.length === 0, dry_run: false, ...report, written });
+    return NextResponse.json({
+      ok: written.errors.length === 0,
+      dry_run: false,
+      ...report,
+      written,
+      drive_handoffs: driveHandoffs,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logRun(supabase, actorId, { apply }, null, "failed", startedAt, message).catch(() => {});
