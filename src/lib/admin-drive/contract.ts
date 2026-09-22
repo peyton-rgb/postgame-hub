@@ -12,9 +12,9 @@
 // THE RULE THIS FILE EXISTS FOR: a non-null id is never silently replaced.
 //
 // Two provisioning runs against one brand would otherwise leave the Hub
-// pointing at the second root while every athlete folder, contract and invoice
-// sits under the first — and nothing would say so. Content would be filed into
-// a tree nobody looks at. So a conflicting id is a 409 carrying BOTH values,
+// pointing at the second root while every athlete folder and contract sits
+// under the first — and nothing would say so. Content would be filed into a
+// tree nobody looks at. So a conflicting id is a 409 carrying BOTH values,
 // and a human decides which is real. Writing the new one and logging a warning
 // is not an option: that is the silent-overwrite shape this codebase has spent
 // the week paying down.
@@ -82,75 +82,6 @@ export function mergeIds(
     : { ok: true, patch, unchanged, conflicts: [] };
 }
 
-// ── Invoice file naming ───────────────────────────────────────────────────────
-
-/**
- * Drive-safe text. Local copy rather than an import: the Drive naming module
- * (src/lib/drive/naming.ts) lives only on the redesign branch, and this ships
- * off main independently. When that branch merges these should become one — the
- * rule is identical and two copies of a naming rule is one too many.
- */
-export function clean(s: string): string {
-  return String(s ?? "").replace(/\//g, " ").replace(/\s+/g, " ").trim();
-}
-
-export type InvoiceContext = { brand: string; campaign: string; year: number };
-
-/** `{Full Name} Invoice - {Brand} {Campaign} {Year}` — without the extension. */
-export function invoiceBaseName(submitterName: string, ctx: InvoiceContext): string {
-  return `${clean(submitterName)} Invoice - ${clean(ctx.brand)} ${clean(ctx.campaign)} ${ctx.year}`;
-}
-
-/**
- * The filename to write, given what is already in the folder.
- *
- * A second invoice from the same person becomes " (2)", a third " (3)". The
- * suffix goes before the extension, because a file called "… .pdf (2)" is not
- * a PDF to anything that reads extensions.
- *
- * Existing names are matched on the BASE, so the count is per person per
- * campaign — two different athletes never collide, and a resubmission by the
- * same athlete never overwrites their first one. Drive will happily hold two
- * files with identical names in one folder, which is exactly why this cannot
- * be left to Drive.
- */
-export function invoiceFileName(
-  submitterName: string,
-  ctx: InvoiceContext,
-  existingNames: readonly string[],
-): string {
-  const base = invoiceBaseName(submitterName, ctx);
-  const lower = base.toLowerCase();
-
-  // Highest suffix already present, so a gap left by a deleted file is not
-  // reused and cannot collide with a link the admin already stored.
-  let highest = 0;
-  for (const name of existingNames) {
-    const stem = String(name ?? "").replace(/\.pdf$/i, "").trim();
-    const stemLower = stem.toLowerCase();
-    if (stemLower === lower) {
-      highest = Math.max(highest, 1);
-      continue;
-    }
-    if (stemLower.startsWith(`${lower} (`)) {
-      const m = stem.slice(base.length).match(/^\s*\((\d+)\)$/);
-      if (m) highest = Math.max(highest, Number(m[1]));
-    }
-  }
-
-  return highest === 0 ? `${base}.pdf` : `${base} (${highest + 1}).pdf`;
-}
-
-// ── Which folder an invoice belongs in ───────────────────────────────────────
-
-export type SubmitterKind = "athlete" | "videographer";
-
-export function invoiceFolderField(kind: SubmitterKind): string {
-  return kind === "athlete"
-    ? "drive_invoices_athlete_folder_id"
-    : "drive_invoices_videographer_folder_id";
-}
-
 // ── Field maps: request body -> database column ──────────────────────────────
 
 /** POST /api/admin-drive/brand */
@@ -171,9 +102,6 @@ export const CAMPAIGN_FIELDS: Record<string, string> = {
   legal_brand_folder_id: "drive_legal_brand_folder_id",
   legal_athlete_folder_id: "drive_legal_athlete_folder_id",
   trackers_folder_id: "drive_trackers_folder_id",
-  invoices_folder_id: "drive_invoices_folder_id",
-  invoices_athlete_folder_id: "drive_invoices_athlete_folder_id",
-  invoices_videographer_folder_id: "drive_invoices_videographer_folder_id",
   performance_tracker_id: "tracker_sheet_id",
   performance_tracker_url: "tracker_url",
   internal_tracker_id: "tracker_internal_sheet_id",
@@ -220,7 +148,7 @@ export function requireFields(body: Record<string, unknown>, fields: readonly st
  * what stops the literal drifting from the map it is supposed to mirror.
  */
 export const CAMPAIGN_SELECT =
-  "drive_folder_id, drive_content_folder_id, drive_legal_folder_id, drive_legal_brand_folder_id, drive_legal_athlete_folder_id, drive_trackers_folder_id, drive_invoices_folder_id, drive_invoices_athlete_folder_id, drive_invoices_videographer_folder_id, tracker_sheet_id, tracker_url, tracker_internal_sheet_id, tracker_internal_url, tracker_external_sheet_id, tracker_external_url" as const;
+  "drive_folder_id, drive_content_folder_id, drive_legal_folder_id, drive_legal_brand_folder_id, drive_legal_athlete_folder_id, drive_trackers_folder_id, tracker_sheet_id, tracker_url, tracker_internal_sheet_id, tracker_internal_url, tracker_external_sheet_id, tracker_external_url" as const;
 
 /** The same columns as a list, for comparison. */
 export function campaignSelectColumns(): string[] {

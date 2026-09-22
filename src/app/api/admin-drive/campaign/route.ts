@@ -1,7 +1,7 @@
 // ============================================================
 // POST /api/admin-drive/campaign — the admin hands the Hub a campaign's Drive
-// ids: the campaign folder, Content, the Legal subtree, Trackers, the Invoices
-// subtree, and the three tracker sheets.
+// ids: the campaign folder, Content, the Legal subtree, Trackers, and the three
+// tracker sheets.
 //
 // Brief 15 §1b. Same 409 rule as the brand endpoint, plus one thing the brand
 // endpoint does not need:
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     const { data: matches, error: findError } = await db
       .from("campaign_recaps")
       .select(
-        "id, name, admin_account_id, drive_folder_id, drive_content_folder_id, drive_legal_folder_id, drive_legal_brand_folder_id, drive_legal_athlete_folder_id, drive_trackers_folder_id, drive_invoices_folder_id, drive_invoices_athlete_folder_id, drive_invoices_videographer_folder_id, tracker_sheet_id, tracker_url, tracker_internal_sheet_id, tracker_internal_url, tracker_external_sheet_id, tracker_external_url",
+        "id, name, admin_account_id, drive_folder_id, drive_content_folder_id, drive_legal_folder_id, drive_legal_brand_folder_id, drive_legal_athlete_folder_id, drive_trackers_folder_id, tracker_sheet_id, tracker_url, tracker_internal_sheet_id, tracker_internal_url, tracker_external_sheet_id, tracker_external_url",
       )
       .eq("admin_campaign_id", cfCampaignId)
       .limit(2);
