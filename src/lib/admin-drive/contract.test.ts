@@ -2,8 +2,7 @@
 // The admin → Hub Drive contract, pinned.
 //
 // The four rules Brief 15 names, each tested against the case that motivated
-// it: no silent re-point (409), idempotency, the queue, and invoice naming
-// including the duplicate suffix.
+// it: no silent re-point (409), idempotency, and the queue.
 // ============================================================
 
 import test from "node:test";
@@ -13,18 +12,11 @@ import {
   BRAND_FIELDS,
   CAMPAIGN_FIELDS,
   campaignSelectColumns,
-  clean,
-  invoiceBaseName,
-  invoiceFileName,
-  invoiceFolderField,
   mergeIds,
   requireFields,
   resolveBrand,
   toColumnPatch,
-  type InvoiceContext,
 } from "./contract.ts";
-
-const CTX: InvoiceContext = { brand: "POSTGAME (TEST)", campaign: "Fall Test Campaign", year: 2026 };
 
 // ── THE 409 RULE ──────────────────────────────────────────────────────────────
 
@@ -117,92 +109,6 @@ test("a first handoff onto an empty row writes everything", () => {
   assert.deepEqual(r.unchanged, []);
 });
 
-// ── INVOICE NAMING, including the duplicate case ─────────────────────────────
-
-test("invoice naming: the convention, first submission", () => {
-  assert.equal(
-    invoiceFileName("Jordan Miles", CTX, []),
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf",
-  );
-});
-
-test("invoice naming: a second invoice from the same person gets ' (2)'", () => {
-  const first = "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf";
-  assert.equal(
-    invoiceFileName("Jordan Miles", CTX, [first]),
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026 (2).pdf",
-  );
-});
-
-test("invoice naming: a third gets ' (3)'", () => {
-  const existing = [
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf",
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026 (2).pdf",
-  ];
-  assert.equal(
-    invoiceFileName("Jordan Miles", CTX, existing),
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026 (3).pdf",
-  );
-});
-
-test("invoice naming: the suffix goes BEFORE the extension", () => {
-  const name = invoiceFileName("Ava Carter", CTX, [
-    "Ava Carter Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf",
-  ]);
-  assert.ok(name.endsWith(".pdf"), `"${name}" must still be a .pdf`);
-  assert.ok(!name.includes(".pdf ("), "a file called '… .pdf (2)' is not a PDF to anything that reads extensions");
-});
-
-test("invoice naming: a gap left by a deleted file is not reused", () => {
-  // (2) was deleted. Reusing it would collide with a link the admin stored.
-  const existing = [
-    "Ava Carter Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf",
-    "Ava Carter Invoice - POSTGAME (TEST) Fall Test Campaign 2026 (3).pdf",
-  ];
-  assert.equal(
-    invoiceFileName("Ava Carter", CTX, existing),
-    "Ava Carter Invoice - POSTGAME (TEST) Fall Test Campaign 2026 (4).pdf",
-  );
-});
-
-test("invoice naming: two different people never collide", () => {
-  const existing = ["Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf"];
-  assert.equal(
-    invoiceFileName("Ava Carter", CTX, existing),
-    "Ava Carter Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf",
-    "Ava's first invoice is her first, whatever Jordan has submitted",
-  );
-});
-
-test("invoice naming: another campaign's files do not advance this count", () => {
-  const other = ["Jordan Miles Invoice - POSTGAME (TEST) Holiday Fresh Test 2026.pdf"];
-  assert.equal(
-    invoiceFileName("Jordan Miles", CTX, other),
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026.pdf",
-  );
-});
-
-test("invoice naming: whitespace in the submitted name is cleaned", () => {
-  assert.equal(
-    invoiceBaseName("  Jordan   Miles ", CTX),
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026",
-  );
-  assert.equal(clean("Back/To  School"), "Back To School");
-});
-
-test("invoice naming: matching ignores case, so 'INVOICE.PDF' still counts", () => {
-  const existing = ["JORDAN MILES INVOICE - POSTGAME (TEST) FALL TEST CAMPAIGN 2026.PDF"];
-  assert.equal(
-    invoiceFileName("Jordan Miles", CTX, existing),
-    "Jordan Miles Invoice - POSTGAME (TEST) Fall Test Campaign 2026 (2).pdf",
-  );
-});
-
-test("invoices land in the folder for their submitter kind", () => {
-  assert.equal(invoiceFolderField("athlete"), "drive_invoices_athlete_folder_id");
-  assert.equal(invoiceFolderField("videographer"), "drive_invoices_videographer_folder_id");
-});
-
 // ── Body → column translation ────────────────────────────────────────────────
 
 test("the body maps onto columns, and unknown keys are dropped", () => {
@@ -217,8 +123,7 @@ test("the body maps onto columns, and unknown keys are dropped", () => {
 test("the campaign map covers every id the brief sends", () => {
   for (const key of [
     "campaign_folder_id", "content_folder_id", "legal_folder_id", "legal_brand_folder_id",
-    "legal_athlete_folder_id", "trackers_folder_id", "invoices_folder_id",
-    "invoices_athlete_folder_id", "invoices_videographer_folder_id",
+    "legal_athlete_folder_id", "trackers_folder_id",
     "performance_tracker_id", "performance_tracker_url",
     "internal_tracker_id", "internal_tracker_url", "external_tracker_id", "external_tracker_url",
   ]) {

@@ -42,30 +42,12 @@ type BrandDriveColumns = {
   drive_brand_assets_folder_id: string | null;
 };
 
-/** Migration 068. The Invoices subtree and the two trackers beside Performance. */
+/** Migration 068. The two tracker sheets beside the Performance Tracker. */
 type CampaignDriveColumns = {
-  drive_invoices_folder_id: string | null;
-  drive_invoices_athlete_folder_id: string | null;
-  drive_invoices_videographer_folder_id: string | null;
   tracker_internal_sheet_id: string | null;
   tracker_internal_url: string | null;
   tracker_external_sheet_id: string | null;
   tracker_external_url: string | null;
-};
-
-/** Migration 069. */
-type InvoiceFilesRow = {
-  id: string;
-  campaign_id: string;
-  cf_campaign_id: string;
-  submitter_kind: string;
-  submitter_name: string;
-  invoice_number: string | null;
-  drive_file_name: string;
-  drive_file_id: string;
-  web_view_link: string | null;
-  submitted_at: string | null;
-  uploaded_at: string;
 };
 
 /** Migration 070. */
@@ -107,12 +89,6 @@ export type Database = Omit<Generated, "public"> & {
         Row: Omit<Tables["agent_runs"]["Row"], "agent_name"> & { agent_name: AgentName };
         Insert: Omit<Tables["agent_runs"]["Insert"], "agent_name"> & { agent_name: AgentName };
         Update: Omit<Tables["agent_runs"]["Update"], "agent_name"> & { agent_name?: AgentName };
-      };
-      invoice_files: {
-        Row: InvoiceFilesRow;
-        Insert: InsertOf<InvoiceFilesRow, "id" | "uploaded_at" | "invoice_number" | "web_view_link" | "submitted_at">;
-        Update: Partial<InvoiceFilesRow>;
-        Relationships: [];
       };
       admin_drive_queue: {
         Row: AdminDriveQueueRow;

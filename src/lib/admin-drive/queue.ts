@@ -70,7 +70,7 @@ export async function applyQueuedHandoffs(
         const { data: matches, error: findError } = await db
           .from("campaign_recaps")
           .select(
-            "id, drive_folder_id, drive_content_folder_id, drive_legal_folder_id, drive_legal_brand_folder_id, drive_legal_athlete_folder_id, drive_trackers_folder_id, drive_invoices_folder_id, drive_invoices_athlete_folder_id, drive_invoices_videographer_folder_id, tracker_sheet_id, tracker_url, tracker_internal_sheet_id, tracker_internal_url, tracker_external_sheet_id, tracker_external_url",
+            "id, drive_folder_id, drive_content_folder_id, drive_legal_folder_id, drive_legal_brand_folder_id, drive_legal_athlete_folder_id, drive_trackers_folder_id, tracker_sheet_id, tracker_url, tracker_internal_sheet_id, tracker_internal_url, tracker_external_sheet_id, tracker_external_url",
           )
           .eq("admin_campaign_id", entry.cf_campaign_id)
           .limit(2);
