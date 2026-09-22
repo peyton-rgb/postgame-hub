@@ -68,7 +68,18 @@ export async function POST(
     );
   }
 
-  // Optionally save the edited asset as a new inspo item
+  // Optionally save the edited asset as a new inspo item.
+  //
+  // This insert has never once succeeded. It failed on two counts, and because
+  // the error is logged and swallowed rather than surfaced, nobody noticed:
+  //
+  //   1. `uploaded_by` is not a column on inspo_items, so PostgREST rejected
+  //      the whole insert against its schema cache.
+  //   2. 'ai_edited' was not a value of content_source_enum. The accompanying
+  //      migration adds it.
+  //
+  // The approver is recorded in `notes` instead, which is where the rest of
+  // this row's provenance already lives.
   if (saveAsInspo && job.output_url) {
     const { error: inspoError } = await supabase
       .from('inspo_items')
@@ -78,8 +89,7 @@ export async function POST(
         content_type: job.content_type === 'video' ? 'produced' : 'photography',
         source: 'ai_edited',
         tagging_status: 'pending', // will need to be tagged
-        notes: `AI-edited from job ${jobId}. Original instruction: "${job.instruction}"`,
-        uploaded_by: user.id,
+        notes: `AI-edited from job ${jobId}, approved by ${user.id}. Original instruction: "${job.instruction}"`,
       });
 
     if (inspoError) {

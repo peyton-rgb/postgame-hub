@@ -24,6 +24,7 @@ import {
   estimateGeminiCost,
 } from '@/lib/tools/gemini';
 import type { SceneMap, VideoEvaluatorInput } from '@/lib/types/editing';
+import { assertAgentBudget } from '@/lib/agents/budget';
 
 // Admin Supabase client — bypasses RLS for server-side agent work
 const supabase = createClient(
@@ -43,6 +44,16 @@ export async function evaluateVideo(
   userId: string
 ): Promise<SceneMap> {
   const startTime = Date.now();
+
+  // Spend cap, before the run row so a blocked call leaves no orphan
+  // 'running' row — the same order lib/agents/brief-writer.ts uses.
+  const budget = await assertAgentBudget(supabase, 'video_evaluator', {
+    triggeredBy: userId,
+    context: { edit_job_id: input.edit_job_id },
+  });
+  if (!budget.allowed) {
+    throw new Error(`video_evaluator skipped — ${budget.reason}`);
+  }
 
   // --- Log the agent run start ---
   const { data: agentRun } = await supabase

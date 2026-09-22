@@ -27,6 +27,7 @@ import type {
   SceneMap,
 } from '@/lib/types/editing';
 import { estimateFFmpegCost } from '@/lib/tools/ffmpeg';
+import { assertAgentBudget } from '@/lib/agents/budget';
 import { estimateVOIDCostUpfront } from '@/lib/tools/void';
 import { estimateHiggsFieldCost } from '@/lib/tools/higgsfield';
 import { estimateGeminiCost } from '@/lib/tools/gemini';
@@ -93,6 +94,16 @@ export async function createEditPlan(
   userId: string
 ): Promise<EditDecisionList> {
   const startTime = Date.now();
+
+  // Spend cap, before the run row so a blocked call leaves no orphan
+  // 'running' row — the same order lib/agents/brief-writer.ts uses.
+  const budget = await assertAgentBudget(supabase, 'edit_planner', {
+    triggeredBy: userId,
+    context: { edit_job_id: input.edit_job_id },
+  });
+  if (!budget.allowed) {
+    throw new Error(`edit_planner skipped — ${budget.reason}`);
+  }
 
   // --- Log the agent run ---
   const { data: agentRun } = await supabase

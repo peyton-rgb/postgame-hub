@@ -1,0 +1,26 @@
+-- ============================================================
+-- Add 'ai_edited' to content_source_enum.
+--
+-- /api/editing/jobs/[id]/approve has been inserting an inspo_items row with
+-- source = 'ai_edited' since 2026-05, whenever an edit is approved with
+-- "save as inspo". content_source_enum carries only inspo, produced_catalog
+-- and live_athlete_post, so every one of those inserts failed on the enum.
+--
+-- The route logs the error and swallows it so the approval itself still
+-- succeeds, which is why this has gone unnoticed: approvals worked, and the
+-- inspo row they were supposed to create silently never appeared.
+--
+-- The same commit removes a second fault in that insert — an `uploaded_by`
+-- column inspo_items does not have — which would keep it failing even with
+-- this value present.
+--
+-- Keeping edited files under their own source value also keeps them
+-- distinguishable from the inspo library they would otherwise be mixed into.
+--
+-- ALTER TYPE ... ADD VALUE cannot run inside a transaction block, so this
+-- migration must not be wrapped in one.
+--
+-- ALREADY APPLIED to POSTGAME HUB (xqaybwhpgxillpbbqtks) on 2026-09-22.
+-- ============================================================
+
+alter type public.content_source_enum add value if not exists 'ai_edited';

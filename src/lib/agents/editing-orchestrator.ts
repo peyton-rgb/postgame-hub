@@ -29,6 +29,7 @@ import type {
   ToolResult,
 } from '@/lib/types/editing';
 import { executeFFmpeg } from '@/lib/tools/ffmpeg';
+import { assertAgentBudget } from '@/lib/agents/budget';
 
 // Admin Supabase client
 const supabase = createClient(
@@ -47,6 +48,16 @@ export async function executeEditPlan(
   userId: string
 ): Promise<void> {
   const startTime = Date.now();
+
+  // Spend cap, before the run row so a blocked call leaves no orphan
+  // 'running' row — the same order lib/agents/brief-writer.ts uses.
+  const budget = await assertAgentBudget(supabase, 'editing_orchestrator', {
+    triggeredBy: userId,
+    context: { edit_job_id: jobId },
+  });
+  if (!budget.allowed) {
+    throw new Error(`editing_orchestrator skipped — ${budget.reason}`);
+  }
 
   // --- Log the agent run ---
   const { data: agentRun } = await supabase
