@@ -138,10 +138,9 @@ Respond with only this JSON:
     ],
   });
 
+  const haikusTextBlock = haikusResponse.content.find((b) => b.type === "text");
   const haikusContent =
-    haikusResponse.content[0].type === "text"
-      ? haikusResponse.content[0].text
-      : "";
+    haikusTextBlock && haikusTextBlock.type === "text" ? haikusTextBlock.text : "";
 
   let haikusResult = parseJsonResponse(haikusContent);
 
@@ -194,10 +193,9 @@ Respond with only this JSON:
     ],
   });
 
+  const claudeTextBlock = claudeResponse.content.find((b) => b.type === "text");
   const claudeContent =
-    claudeResponse.content[0].type === "text"
-      ? claudeResponse.content[0].text
-      : "";
+    claudeTextBlock && claudeTextBlock.type === "text" ? claudeTextBlock.text : "";
 
   // If Sonnet didn't return JSON, use its whole reply as the answer.
   const claudeResult = parseJsonResponse(claudeContent) ?? {
