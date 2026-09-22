@@ -19,6 +19,7 @@ import {
   invoiceFolderField,
   mergeIds,
   requireFields,
+  resolveBrand,
   toColumnPatch,
   type InvoiceContext,
 } from "./contract.ts";
@@ -295,4 +296,56 @@ test("the read-back select covers every column the write map can set", () => {
     assert.ok(selected.has(column), `${column} is writable but not read back`);
   }
   assert.equal(selected.size, new Set(Object.values(CAMPAIGN_FIELDS)).size, "no extra columns");
+});
+
+// ── 404 vs 409: the admin's retry policy turns on this ───────────────────────
+
+test("404: an account with no admin_account_map row is NOT a 409", () => {
+  const r = resolveBrand(null, "133");
+  assert.equal(r.ok, false);
+  // 409 tells the admin "never retry". This handoff is correct and will
+  // succeed unchanged once a human links the account, so it must not be 409.
+  assert.equal(r.status, 404, "an unmapped account must be 404, never 409");
+  assert.equal(r.reason, "brand_not_mapped");
+  assert.match(r.detail, /no row in admin_account_map/);
+  assert.match(r.resolution, /[Rr]etry after a human links the account/);
+});
+
+test("404: a map row with a null brand_id is also 404", () => {
+  const r = resolveBrand({ brand_id: null, account_name: "POSTGAME (TEST)" }, "133");
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 404);
+  assert.match(r.detail, /in admin_account_map but not linked to a brand/);
+});
+
+test("404: a blank brand_id is treated as unlinked, not as a brand", () => {
+  const r = resolveBrand({ brand_id: "   ", account_name: "Acme" }, "12");
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 404);
+});
+
+test("the two unmapped cases stay tellable apart in detail", () => {
+  const noRow = resolveBrand(null, "133");
+  const noBrand = resolveBrand({ brand_id: null, account_name: "Acme" }, "133");
+  assert.equal(noRow.ok, false);
+  assert.equal(noBrand.ok, false);
+  assert.notEqual(noRow.detail, noBrand.detail, "the log must say which case it was");
+});
+
+test("a mapped account resolves to its brand", () => {
+  const r = resolveBrand({ brand_id: "brand-uuid-1", account_name: "Acme" }, "12");
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.brandId, "brand-uuid-1");
+});
+
+test("409 is reserved strictly for the repoint conflict", () => {
+  // The only thing in these endpoints that may answer 409: an id that already
+  // holds a different value. Everything else that means "not ready yet" is a
+  // 404, so the admin can tell "give up" from "try again later".
+  const conflict = mergeIds({ drive_parent_folder_id: "A" }, { drive_parent_folder_id: "B" });
+  assert.equal(conflict.ok, false, "this, and only this, is the 409 case");
+
+  const unmapped = resolveBrand(null, "133");
+  assert.equal(unmapped.ok, false);
+  assert.notEqual(unmapped.status, 409);
 });

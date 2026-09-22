@@ -226,3 +226,57 @@ export const CAMPAIGN_SELECT =
 export function campaignSelectColumns(): string[] {
   return CAMPAIGN_SELECT.split(",").map((c) => c.trim());
 }
+
+// ── Resolving the brand behind an admin account ──────────────────────────────
+
+/** What the Hub holds in admin_account_map for an account, if anything. */
+export type AccountMapRow = { brand_id: string | null; account_name: string | null } | null;
+
+export type BrandResolution =
+  | { ok: true; brandId: string }
+  | { ok: false; status: 404; reason: "brand_not_mapped"; detail: string; resolution: string };
+
+/**
+ * 404, NOT 409.
+ *
+ * The difference is the admin's retry policy, and getting it wrong strands the
+ * handoff. 409 means "this will never succeed as you sent it" — the repoint
+ * conflict, where a human has to decide which of two ids is real and the
+ * handoff as posted is simply wrong. An unmapped account is the opposite: the
+ * handoff is CORRECT and will succeed unchanged, as soon as somebody links the
+ * account to a brand. Returning 409 for it tells the admin to give up on a
+ * request that was never wrong.
+ *
+ * 409 is therefore reserved strictly for the repoint conflict. Nothing else in
+ * these endpoints may use it to mean "not ready yet".
+ *
+ * Both unmapped shapes answer 404 because the admin's next move is identical
+ * for both — wait for a human, then retry. They stay tellable apart in `detail`
+ * so whoever reads the log knows which screen to go to.
+ */
+export function resolveBrand(mapRow: AccountMapRow, adminAccountId: string): BrandResolution {
+  const resolution =
+    "Retry after a human links the account to a brand on the Hub's Brands screen. The handoff as sent is correct and needs no change.";
+
+  if (!mapRow) {
+    return {
+      ok: false,
+      status: 404,
+      reason: "brand_not_mapped",
+      detail: `account ${adminAccountId} has no row in admin_account_map yet`,
+      resolution,
+    };
+  }
+
+  if (!mapRow.brand_id || String(mapRow.brand_id).trim() === "") {
+    return {
+      ok: false,
+      status: 404,
+      reason: "brand_not_mapped",
+      detail: `account ${adminAccountId} ("${mapRow.account_name ?? "unnamed"}") is in admin_account_map but not linked to a brand yet`,
+      resolution,
+    };
+  }
+
+  return { ok: true, brandId: mapRow.brand_id };
+}

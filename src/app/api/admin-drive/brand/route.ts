@@ -10,15 +10,24 @@
 // resolution is what put "Cane's" beside "Raising Cane's" and it is banned in
 // lib/account-brand-map.ts for that reason.
 //
-// AN UNMAPPED ACCOUNT IS A 409, NOT A NEW BRAND. /api/sync/admin-accounts can
+// AN UNMAPPED ACCOUNT IS A 404, NOT A NEW BRAND. /api/sync/admin-accounts can
 // create a brand for an unambiguously new account and deliberately refuses when
 // anything close already exists; that veto is the reason the duplicate-brand
 // problem stopped. This endpoint does not get to reopen it from off-box — an
 // account with no mapping is handed back for a human, which is the same
 // needs_human queue the Brands screen already surfaces.
 //
+// THE TWO REFUSALS MEAN DIFFERENT THINGS TO THE CALLER:
+//
+//   404 brand_not_mapped  the handoff is CORRECT; it will succeed unchanged
+//                         once a human links the account. Retry later.
+//   409 id_conflict       the handoff is WRONG as sent; an id already holds a
+//                         different value and a human must decide. Never retry.
+//
+// 409 is reserved strictly for that repoint conflict. Using it for "not ready
+// yet" tells the admin to give up on a request that was never wrong.
+//
 // Idempotent. Re-posting the same ids writes nothing and returns 200.
-// A DIFFERENT id for a field that already holds one is a 409 carrying both.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -26,6 +35,7 @@ import {
   BRAND_FIELDS,
   mergeIds,
   requireFields,
+  resolveBrand,
   toColumnPatch,
 } from "@/lib/admin-drive/contract";
 import type { UpdateFor } from "@/lib/admin-drive/db-types";
@@ -66,32 +76,32 @@ export async function POST(req: NextRequest) {
 
     if (mapError) throw new Error(`admin_account_map lookup failed: ${mapError.message}`);
 
-    if (!mapRow || !mapRow.brand_id) {
-      const detail = mapRow
-        ? `account ${adminAccountId} ("${mapRow.account_name ?? "unnamed"}") is in the map but not linked to a brand yet`
-        : `account ${adminAccountId} has no row in admin_account_map yet`;
+    // 404, not 409. The handoff is correct and will succeed unchanged once a
+    // human links the account; 409 would tell the admin to give up on it. See
+    // resolveBrand — 409 is reserved strictly for the repoint conflict below.
+    const resolved = resolveBrand(mapRow, adminAccountId);
+
+    if (!resolved.ok) {
       await logRun(db, {
         endpoint: "brand",
         input: { admin_account_id: adminAccountId },
-        output: { resolved: false, reason: "brand_not_mapped" },
+        output: { resolved: false, reason: resolved.reason },
         status: "failed",
         startedAt,
-        errorMessage: detail,
+        errorMessage: resolved.detail,
       });
       return NextResponse.json(
         {
-          error: "brand_not_mapped",
-          detail,
-          // Said plainly so the admin does not retry on a timer. Nothing this
-          // endpoint can do will resolve it; a person has to pick the brand.
-          resolution: "A human links the account to a brand on the Hub's Brands screen, then this handoff succeeds on retry.",
+          error: resolved.reason,
+          detail: resolved.detail,
+          resolution: resolved.resolution,
           admin_account_id: adminAccountId,
         },
-        { status: 409 },
+        { status: resolved.status },
       );
     }
 
-    const brandId = mapRow.brand_id;
+    const brandId = resolved.brandId;
 
     // ── Compare against what the Hub already holds ───────────────────────────
     const { data: brand, error: brandError } = await db
