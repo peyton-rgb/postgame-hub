@@ -675,3 +675,68 @@ export async function withDriveRetry<T>(
     }
   }
 }
+
+/**
+ * Every non-folder file name inside a folder, paged to the end.
+ *
+ * Pairs with the invoice duplicate-suffix rule (lib/admin-drive/contract.ts),
+ * which decides "(2)" vs "(3)" from what is already in the folder. That has to
+ * see ALL of them: a truncated first page makes the highest existing suffix
+ * look lower than it is, and the next upload reuses a number that is taken.
+ */
+export async function listFileNames(parentFolderId: string): Promise<string[]> {
+  const drive = getDriveClient();
+  const names: string[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const res = await drive.files.list({
+      q: `'${parentFolderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      corpora: "allDrives",
+      fields: "nextPageToken, files(name)",
+      pageSize: 1000,
+      pageToken,
+    });
+    for (const file of res.data.files ?? []) {
+      if (file.name) names.push(file.name);
+    }
+    pageToken = res.data.nextPageToken ?? undefined;
+  } while (pageToken);
+
+  return names;
+}
+
+/**
+ * Upload raw bytes as a new file in a folder.
+ *
+ * CREATE ONLY, like everything else in this module — it never updates or
+ * replaces an existing file. The caller picks a name that does not collide
+ * (see invoiceFileName); Drive itself would happily accept two files with the
+ * same name in one folder, which is exactly why the name is decided first.
+ */
+export async function uploadFile(
+  name: string,
+  mimeType: string,
+  body: Buffer,
+  parentFolderId: string,
+): Promise<{ id: string; url: string }> {
+  const drive = getDriveClient();
+  const { Readable } = await import("stream");
+
+  const res = await drive.files.create({
+    supportsAllDrives: true,
+    requestBody: { name, parents: [parentFolderId] },
+    media: { mimeType, body: Readable.from(body) },
+    fields: "id, webViewLink",
+  });
+
+  if (!res.data.id) {
+    throw new Error(`uploadFile: Drive returned no ID for "${name}"`);
+  }
+  return {
+    id: res.data.id,
+    url: res.data.webViewLink ?? `https://drive.google.com/file/d/${res.data.id}/view`,
+  };
+}

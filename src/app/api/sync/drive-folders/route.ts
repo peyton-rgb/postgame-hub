@@ -36,6 +36,7 @@ import {
   type ProvisionSkip,
 } from "@/lib/drive-provision";
 import { getDriveClient, copyFile, findFileByName } from "@/lib/google-drive";
+import { hubProvisioningStoodDown, standDownReport } from "@/lib/admin-drive/stand-down";
 
 /**
  * The master Performance Tracker template, in the Campaign Templates folder.
@@ -180,6 +181,18 @@ export async function POST(req: NextRequest) {
     since: FEATURE_LAUNCH_DATE,
     cap: MAX_PER_RUN,
   };
+
+  // Stand-down switch. Checked BEFORE the Google credentials, because a stood-
+  // down sweep should report "did not run" rather than "misconfigured" — the
+  // credentials stop mattering once the admin owns provisioning.
+  //
+  // Default is off: unless ADMIN_OWNS_DRIVE_PROVISIONING is set, this is a
+  // no-op and the sweep runs exactly as before.
+  if (hubProvisioningStoodDown()) {
+    const report = standDownReport();
+    await logRun(supabase, actorId, inputPayload, report, "complete", startedAt).catch(() => {});
+    return NextResponse.json(report);
+  }
 
   // Stub-safe: an unconfigured Google credential is a deployment state, not a
   // crash. getGoogleAuth() throws on missing env, so check before touching it.
