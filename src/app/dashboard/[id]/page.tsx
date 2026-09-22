@@ -3072,7 +3072,20 @@ export default function CampaignEditor() {
                         setRefreshingTracker(true);
                         setRefreshTrackerError(null);
                         try {
-                          const res = await fetch(`/api/recap/${id}/refresh-from-tracker`, { method: "POST" });
+                          // apply:true because a plain POST is now a dry run —
+                          // the route previews and writes nothing without it.
+                          //
+                          // confirmDeletions is deliberately NOT sent. This
+                          // button updates and inserts; it never removes an
+                          // athlete. Anyone the sheet has dropped comes back in
+                          // `notInSheet` to be dealt with deliberately, rather
+                          // than being deleted by a button whose label is
+                          // "Refresh".
+                          const res = await fetch(`/api/recap/${id}/refresh-from-tracker`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ apply: true }),
+                          });
                           const body = await res.json();
                           if (!res.ok) {
                             setRefreshTrackerError(body.error ?? "Refresh failed.");
@@ -3085,6 +3098,15 @@ export default function CampaignEditor() {
                             setAthletes(aths || []);
                             setSelected((aths || []).map((a: Athlete) => a.id));
                             if (body.hiddenHeroes) setHiddenHeroes(body.hiddenHeroes);
+                            // Not an error, so it does not go in the error slot —
+                            // but a roster the sheet no longer lists is the one
+                            // thing about this refresh worth saying out loud.
+                            const dropped = Array.isArray(body.notInSheet) ? body.notInSheet.length : 0;
+                            if (dropped > 0) {
+                              setRefreshTrackerError(
+                                `Refreshed. ${dropped} athlete${dropped === 1 ? " is" : "s are"} no longer in the sheet and ${dropped === 1 ? "was" : "were"} left untouched — remove ${dropped === 1 ? "them" : "any"} in the roster below if that is intended.`,
+                              );
+                            }
                           }
                         } catch (e) {
                           setRefreshTrackerError("Network error — please try again.");
