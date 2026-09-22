@@ -59,11 +59,36 @@ export async function POST(
   if (mode === 'resume' && canResume) {
     // Resume from execution — the plan is already built
     // Reset failed steps to pending
-    await supabase
+    const { error: resetError } = await supabase
       .from('edit_steps')
       .update({ status: 'pending', error_message: null, started_at: null, completed_at: null })
       .eq('edit_job_id', jobId)
       .eq('status', 'failed');
+
+    // Unchecked, this reported "resuming" while the failed steps stayed failed:
+    // the orchestrator would then find nothing pending and do nothing, and the
+    // job would sit exactly where it was with a success message behind it.
+    //
+    // NOT SUFFICIENT ON ITS OWN, and deliberately left that way. As of
+    // 2026-09-22 `edit_steps` has RLS enabled with exactly two policies: ALL
+    // for service_role, and SELECT (USING true) for authenticated. There is no
+    // UPDATE or DELETE policy for authenticated at all — and this route runs as
+    // the signed-in user (createServerSupabase = anon key + session cookies),
+    // not as the service role. Postgres does not error when RLS denies a write;
+    // it silently affects zero rows. So this update, and the delete in the
+    // restart path below, have never actually done anything for a staff user.
+    //
+    // A row-count check cannot distinguish that from the legitimate case:
+    // canResume is `scene_map && edit_plan`, which does not imply any step is
+    // failed, so zero rows is a normal outcome too. The real fix is an RLS
+    // policy or the service-role client, not a guess here. Flagged rather than
+    // papered over.
+    if (resetError) {
+      return NextResponse.json(
+        { error: `Could not reset the failed steps, so the retry was not started: ${resetError.message}` },
+        { status: 500 }
+      );
+    }
 
     // Fire off the orchestrator
     executeEditPlan(jobId, user.id).catch((err) => {
@@ -73,13 +98,24 @@ export async function POST(
     return NextResponse.json({ message: 'Resuming from failed step', job_id: jobId, mode: 'resume' });
   }
 
-  // Full restart — reset everything
-  await supabase
+  // Full restart — reset everything.
+  //
+  // Order matters and so does checking: the steps are deleted first, so a
+  // failure here followed by a successful job reset would leave a `pending` job
+  // carrying a dead step history from the previous run.
+  const { error: clearError } = await supabase
     .from('edit_steps')
     .delete()
     .eq('edit_job_id', jobId);
 
-  await supabase
+  if (clearError) {
+    return NextResponse.json(
+      { error: `Could not clear the previous steps, so the retry was not started: ${clearError.message}` },
+      { status: 500 }
+    );
+  }
+
+  const { data: reset, error: resetJobError } = await supabase
     .from('edit_jobs')
     .update({
       status: 'pending',
@@ -92,7 +128,25 @@ export async function POST(
       processing_time_seconds: null,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', jobId);
+    .eq('id', jobId)
+    .select('id');
+
+  // The steps are already gone by this point. Reporting success here would
+  // leave a job stuck in its old status with no step history and a pipeline
+  // about to run against it — the worst of the three outcomes.
+  if (resetJobError || !reset || reset.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          `The previous steps were cleared, but the job could not be reset` +
+          `${resetJobError ? `: ${resetJobError.message}` : ' — it matched no row'}. ` +
+          `Job ${jobId} needs resetting by hand before it can run again.`,
+        job_id: jobId,
+        steps_cleared: true,
+      },
+      { status: 500 }
+    );
+  }
 
   // Re-run the full pipeline
   (async () => {
