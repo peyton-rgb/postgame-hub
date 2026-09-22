@@ -19,6 +19,8 @@
 --
 -- ALTER TYPE ... ADD VALUE cannot run inside a transaction block, so this
 -- migration must not be wrapped in one.
+--
+-- ALREADY APPLIED to POSTGAME HUB (xqaybwhpgxillpbbqtks) on 2026-09-22.
 -- ============================================================
 
 alter type public.content_source_enum add value if not exists 'ai_edited';
