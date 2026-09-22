@@ -86,6 +86,9 @@ type CascadeResult = {
   model: "haiku" | "claude";
   project: string;
   answer: string;
+  // Haiku's self-rated 1-10 score. On escalation this is the low score that
+  // triggered it; Sonnet doesn't rate itself.
+  haikuConfidence: number;
 };
 
 // Haiku answers first; if it isn't confident, escalate to Sonnet.
@@ -140,6 +143,7 @@ Respond in this JSON format:
       model: "haiku",
       project: haikusResult.project,
       answer: haikusResult.answer,
+      haikuConfidence: haikusResult.confidence,
     };
   }
 
@@ -169,11 +173,37 @@ Provide a comprehensive answer to their question.`;
     model: "claude",
     project: haikusResult.project,
     answer: claudeAnswer,
+    haikuConfidence: haikusResult.confidence,
   };
 }
 
-// Post a reply into the thread under the user's message.
-async function postThreadReply(channel: string, threadTs: string, text: string) {
+// The models write standard markdown, but Slack uses its own "mrkdwn":
+// *bold* not **bold**, <url|label> not [label](url), and no # headings.
+// Without this, answers show up littered with literal ** and ##.
+function toSlackMrkdwn(markdown: string): string {
+  return markdown
+    .replace(/^#{1,6}\s+(.+)$/gm, "*$1*")
+    .replace(/\*\*(.+?)\*\*/g, "*$1*")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, "<$2|$1>");
+}
+
+function formatReply(result: CascadeResult): string {
+  const model =
+    result.model === "haiku"
+      ? `Haiku (confidence ${result.haikuConfidence}/10)`
+      : `Sonnet (escalated — Haiku was ${result.haikuConfidence}/10)`;
+
+  return [
+    toSlackMrkdwn(String(result.answer).trim()),
+    "",
+    "───",
+    `*Project:* ${result.project}   ·   *Model:* ${model}`,
+  ].join("\n");
+}
+
+// Post straight into the channel feed. No thread_ts, so the answer is a new
+// top-level message rather than a reply nested under the question.
+async function postToChannel(channel: string, text: string) {
   const res = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
     headers: {
@@ -182,7 +212,6 @@ async function postThreadReply(channel: string, threadTs: string, text: string) 
     },
     body: JSON.stringify({
       channel,
-      thread_ts: threadTs,
       text,
       unfurl_links: false,
     }),
@@ -195,16 +224,14 @@ async function postThreadReply(channel: string, threadTs: string, text: string) 
 }
 
 // Runs after the 200 has gone back to Slack.
-async function answerInThread(channel: string, threadTs: string, prompt: string) {
+async function answerInChannel(channel: string, prompt: string) {
   try {
     const result = await runCascade(prompt);
-    const footer = `_${result.model === "haiku" ? "Haiku" : "Sonnet"} · ${result.project}_`;
-    await postThreadReply(channel, threadTs, `${result.answer}\n\n${footer}`);
+    await postToChannel(channel, formatReply(result));
   } catch (error) {
     console.error("Cascade error:", error);
-    await postThreadReply(
+    await postToChannel(
       channel,
-      threadTs,
       "Sorry — something went wrong answering that. Try again in a minute."
     );
   }
@@ -245,7 +272,7 @@ export async function POST(request: Request) {
   const event = payload.event;
 
   // Only answer plain messages from people. Skipping bot_id is what stops the
-  // bot answering its own thread replies in an endless loop; skipping subtypes
+  // bot answering its own posts in an endless loop; skipping subtypes
   // drops edits, deletes, joins and other non-message noise.
   const isHumanMessage =
     payload.type === "event_callback" &&
@@ -255,11 +282,17 @@ export async function POST(request: Request) {
     typeof event.text === "string" &&
     event.text.trim() !== "";
 
+  // One line per event so the Vercel logs show what Slack is actually sending.
+  // Deliberately no message text.
+  console.log(
+    `Cascade: ${payload.type}/${event?.type ?? "-"}` +
+      `${event?.subtype ? `/${event.subtype}` : ""}` +
+      ` channel=${event?.channel ?? "-"} bot=${Boolean(event?.bot_id)}` +
+      ` → ${isHumanMessage ? "answering" : "ignored"}`
+  );
+
   if (isHumanMessage) {
-    // Reply inside the existing thread if the message was in one, otherwise
-    // start a thread under the message itself.
-    const threadTs = event.thread_ts || event.ts;
-    waitUntil(answerInThread(event.channel, threadTs, event.text));
+    waitUntil(answerInChannel(event.channel, event.text));
   }
 
   // Acknowledge immediately so Slack doesn't time out and retry.
