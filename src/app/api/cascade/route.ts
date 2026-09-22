@@ -86,25 +86,44 @@ type CascadeResult = {
   model: "haiku" | "claude";
   project: string;
   answer: string;
+  // One line, or "" when there's nothing to do next.
+  nextStep: string;
   // Haiku's self-rated 1-10 score. On escalation this is the low score that
   // triggered it; Sonnet doesn't rate itself.
   haikuConfidence: number;
 };
 
+// How every answer must read in Slack. Shared by both models so a question
+// reads the same whichever one ends up answering it.
+const STYLE_RULES = `How to write the answer:
+- Plain English. Start with the answer itself: no title, no restating the question, no preamble, no sign-off.
+- Put any code or commands in triple-backtick blocks.
+- Define any technical term the first time you use it, in a few words.
+- Keep it under about 150 words. No blank lines inside the answer.
+- If a full answer genuinely needs more than that, set answer to exactly "I'll produce this as a document." and nothing else.
+
+How to write next_step:
+- One line: the single concrete action the person should take next.
+- Use "" (an empty string) if there's no real next action. Don't invent one.`;
+
+const CONFIDENCE_THRESHOLD = 7;
+
 // Haiku answers first; if it isn't confident, escalate to Sonnet.
 async function runCascade(prompt: string): Promise<CascadeResult> {
   // Step 1: Send to Haiku (cheap model)
-  const haikusystemPrompt = `You are a helpful assistant that:
-1. Classifies the user's request into one of these projects: ${PROJECTS.join(", ")}
-2. Answers their question if you can
-3. Rates your confidence in the answer (1-10 scale)
+  const haikusystemPrompt = `You are a helpful assistant for Postgame, a sports NIL marketing agency. You:
+1. Classify the user's request into one of these projects: ${PROJECTS.join(", ")}
+2. Answer their question if you can
+3. Rate your confidence in the answer (1-10 scale)
 
-Respond in this JSON format:
+${STYLE_RULES}
+
+Respond with only this JSON:
 {
   "project": "project_name",
   "answer": "your answer here",
-  "confidence": 8,
-  "reasoning": "why you chose this project and confidence level"
+  "next_step": "one line, or empty string",
+  "confidence": 8
 }`;
 
   const haikusResponse = await client.messages.create({
@@ -131,26 +150,37 @@ Respond in this JSON format:
     haikusResult = {
       project: "general",
       answer: haikusContent,
+      next_step: "",
       confidence: 5,
-      reasoning: "Failed to parse JSON response",
     };
   }
 
+  // A missing or non-numeric score counts as 0, which escalates.
+  const haikuConfidence = Number(haikusResult.confidence) || 0;
+
   // Step 2: Check confidence threshold
-  if (haikusResult.confidence >= 7) {
+  if (haikuConfidence >= CONFIDENCE_THRESHOLD) {
     // Haiku is confident - return its answer
     return {
       model: "haiku",
       project: haikusResult.project,
-      answer: haikusResult.answer,
-      haikuConfidence: haikusResult.confidence,
+      answer: String(haikusResult.answer ?? ""),
+      nextStep: String(haikusResult.next_step ?? ""),
+      haikuConfidence,
     };
   }
 
   // Step 3: Escalate to Claude (expensive model)
-  const claudeSystemPrompt = `You are a helpful assistant for a sports NIL marketing agency called Postgame.
-The user's request may have been partially classified as: ${haikusResult.project}
-Provide a comprehensive answer to their question.`;
+  const claudeSystemPrompt = `You are a helpful assistant for Postgame, a sports NIL marketing agency.
+The user's request has been classified as: ${haikusResult.project}
+
+${STYLE_RULES}
+
+Respond with only this JSON:
+{
+  "answer": "your answer here",
+  "next_step": "one line, or empty string"
+}`;
 
   const claudeResponse = await client.messages.create({
     model: "claude-sonnet-5",
@@ -164,41 +194,71 @@ Provide a comprehensive answer to their question.`;
     ],
   });
 
-  const claudeAnswer =
+  const claudeContent =
     claudeResponse.content[0].type === "text"
       ? claudeResponse.content[0].text
       : "";
 
+  // If Sonnet didn't return JSON, use its whole reply as the answer.
+  const claudeResult = parseJsonResponse(claudeContent) ?? {
+    answer: claudeContent,
+    next_step: "",
+  };
+
   return {
     model: "claude",
     project: haikusResult.project,
-    answer: claudeAnswer,
-    haikuConfidence: haikusResult.confidence,
+    answer: String(claudeResult.answer ?? ""),
+    nextStep: String(claudeResult.next_step ?? ""),
+    haikuConfidence,
   };
 }
 
 // The models write standard markdown, but Slack uses its own "mrkdwn":
 // *bold* not **bold**, <url|label> not [label](url), and no # headings.
-// Without this, answers show up littered with literal ** and ##.
+// Code blocks are left alone apart from dropping the language tag, which
+// Slack would otherwise print as the first line of the block. Blank lines
+// outside code are collapsed: the only blank lines in a reply are the ones
+// between answer, next step and footer.
 function toSlackMrkdwn(markdown: string): string {
   return markdown
-    .replace(/^#{1,6}\s+(.+)$/gm, "*$1*")
-    .replace(/\*\*(.+?)\*\*/g, "*$1*")
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, "<$2|$1>");
+    .split(/(```[\s\S]*?```)/g)
+    .map((part) => {
+      if (part.startsWith("```")) {
+        return part.replace(/^```[\w-]*\n/, "```\n");
+      }
+      return part
+        .replace(/^#{1,6}\s+(.+)$/gm, "*$1*")
+        .replace(/\*\*(.+?)\*\*/g, "*$1*")
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, "<$2|$1>")
+        .replace(/\n\s*\n/g, "\n");
+    })
+    .join("")
+    .trim();
+}
+
+function confidenceEmoji(score: number): string {
+  if (score >= 8) return "🟢";
+  if (score >= 5) return "🟡";
+  return "🔴";
+}
+
+// Footer examples:
+//   _postgame-hub · Haiku · confidence 8/10 🟢_
+//   _🔴 postgame-hub · escalated: Haiku 5/10 → Claude_
+function formatFooter(result: CascadeResult): string {
+  if (result.model === "claude") {
+    return `_🔴 ${result.project} · escalated: Haiku ${result.haikuConfidence}/10 → Claude_`;
+  }
+  return `_${result.project} · Haiku · confidence ${result.haikuConfidence}/10 ${confidenceEmoji(result.haikuConfidence)}_`;
 }
 
 function formatReply(result: CascadeResult): string {
-  const model =
-    result.model === "haiku"
-      ? `Haiku (confidence ${result.haikuConfidence}/10)`
-      : `Sonnet (escalated — Haiku was ${result.haikuConfidence}/10)`;
+  const nextStep = toSlackMrkdwn(result.nextStep).split("\n")[0].trim();
 
-  return [
-    toSlackMrkdwn(String(result.answer).trim()),
-    "",
-    "───",
-    `*Project:* ${result.project}   ·   *Model:* ${model}`,
-  ].join("\n");
+  return [toSlackMrkdwn(result.answer), nextStep, formatFooter(result)]
+    .filter((section) => section !== "")
+    .join("\n\n");
 }
 
 // Post straight into the channel feed. No thread_ts, so the answer is a new
