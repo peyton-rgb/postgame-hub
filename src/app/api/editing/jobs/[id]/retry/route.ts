@@ -68,6 +68,21 @@ export async function POST(
     // Unchecked, this reported "resuming" while the failed steps stayed failed:
     // the orchestrator would then find nothing pending and do nothing, and the
     // job would sit exactly where it was with a success message behind it.
+    //
+    // NOT SUFFICIENT ON ITS OWN, and deliberately left that way. As of
+    // 2026-09-22 `edit_steps` has RLS enabled with exactly two policies: ALL
+    // for service_role, and SELECT (USING true) for authenticated. There is no
+    // UPDATE or DELETE policy for authenticated at all — and this route runs as
+    // the signed-in user (createServerSupabase = anon key + session cookies),
+    // not as the service role. Postgres does not error when RLS denies a write;
+    // it silently affects zero rows. So this update, and the delete in the
+    // restart path below, have never actually done anything for a staff user.
+    //
+    // A row-count check cannot distinguish that from the legitimate case:
+    // canResume is `scene_map && edit_plan`, which does not imply any step is
+    // failed, so zero rows is a normal outcome too. The real fix is an RLS
+    // policy or the service-role client, not a guess here. Flagged rather than
+    // papered over.
     if (resetError) {
       return NextResponse.json(
         { error: `Could not reset the failed steps, so the retry was not started: ${resetError.message}` },
