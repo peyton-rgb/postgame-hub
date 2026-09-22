@@ -8,7 +8,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import type { Json } from "@/lib/database.types";
 import type { Database } from "./db-types";
 
 /**
@@ -42,6 +41,11 @@ export function adminDriveDb() {
 
 export type AdminDriveDb = ReturnType<typeof adminDriveDb>;
 
+// Re-exported so the routes keep importing everything from one place. The
+// implementation lives in ./run-log, which deliberately does not import
+// next/server — see the note there.
+export { logRun, type RunLog } from "./run-log";
+
 /**
  * 404, not 401.
  *
@@ -65,57 +69,6 @@ export function authorized(req: NextRequest): boolean {
   const secret = process.env.ADMIN_DRIVE_SERVICE_SECRET;
   if (!secret) return false;
   return (req.headers.get("authorization") || "") === `Bearer ${secret}`;
-}
-
-/**
- * agent_runs.triggered_by is NOT NULL and a foreign key to auth.users, so a
- * machine caller still needs a human to hang the run on. Same fallback the
- * other unattended jobs use.
- */
-async function resolveActor(db: AdminDriveDb): Promise<string | null> {
-  const email = process.env.SLACK_FALLBACK_EMAIL;
-  if (!email) return null;
-  const { data } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
-  return data?.id ?? null;
-}
-
-export type RunLog = {
-  endpoint: string;
-  input: Record<string, unknown>;
-  output: Record<string, unknown> | null;
-  status: "complete" | "failed";
-  startedAt: number;
-  errorMessage?: string;
-};
-
-/**
- * Log the run under its own name.
- *
- * NOT reused from 'admin_sync', which is already standing in for five separate
- * nightly jobs and is only tellable apart by input_payload.source. Migration
- * 071 adds 'admin_drive_service' so these writes say what they are.
- *
- * A failed log never fails the request: the handoff already succeeded, and
- * turning a bookkeeping error into a 500 would make the admin retry a write
- * that landed. It is reported loudly instead.
- */
-export async function logRun(db: AdminDriveDb, run: RunLog): Promise<void> {
-  const actorId = await resolveActor(db);
-  if (!actorId) {
-    console.warn("[admin-drive] no actor to attribute the run to — skipping agent_runs insert");
-    return;
-  }
-  const { error } = await db.from("agent_runs").insert({
-    agent_name: "admin_drive_service",
-    triggered_by: actorId,
-    input_payload: { endpoint: run.endpoint, ...run.input } as Json,
-    output_payload: run.output as Json,
-    model: "none",
-    status: run.status,
-    duration_ms: Date.now() - run.startedAt,
-    error_message: run.errorMessage ?? null,
-  });
-  if (error) console.error("[admin-drive] agent_runs insert failed:", error.message);
 }
 
 /** Parse a JSON body without letting a malformed one throw a 500. */
