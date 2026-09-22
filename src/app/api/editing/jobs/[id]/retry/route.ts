@@ -8,7 +8,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
+import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server';
 import { evaluateVideo } from '@/lib/agents/video-evaluator';
 import { createEditPlan } from '@/lib/agents/edit-planner';
 import { executeEditPlan } from '@/lib/agents/editing-orchestrator';
@@ -18,6 +18,27 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const supabase = createServerSupabase();
+
+  // A SECOND client, used for the two edit_steps writes below and nothing else.
+  //
+  // edit_steps has RLS enabled with exactly two policies: ALL for service_role,
+  // and SELECT for authenticated. There is no UPDATE or DELETE policy for
+  // authenticated at all — and Postgres does not error when RLS denies a write,
+  // it silently affects zero rows. So both edit_steps writes in this route have
+  // never done anything for a staff user, and no error check could have caught
+  // it because there was no error.
+  //
+  // The pipeline itself already writes edit_steps as the service role
+  // (lib/agents/editing-orchestrator.ts). This route was the sole outlier; it
+  // now matches. The alternative — granting authenticated UPDATE/DELETE on
+  // edit_steps — would hand every signed-in account, athletes included, write
+  // access to the edit pipeline, which is far wider than this needs.
+  //
+  // Deliberately NOT used for the edit_jobs writes further down. Those are
+  // correctly RLS-scoped, they work, and they should stay as the signed-in
+  // user: the service role is the master key, and it is only drawn for the one
+  // lock the app-layer staff check has already stood in front of.
+  const stepsDb = createServiceSupabase();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -59,7 +80,7 @@ export async function POST(
   if (mode === 'resume' && canResume) {
     // Resume from execution — the plan is already built
     // Reset failed steps to pending
-    const { error: resetError } = await supabase
+    const { error: resetError } = await stepsDb
       .from('edit_steps')
       .update({ status: 'pending', error_message: null, started_at: null, completed_at: null })
       .eq('edit_job_id', jobId)
@@ -69,20 +90,10 @@ export async function POST(
     // the orchestrator would then find nothing pending and do nothing, and the
     // job would sit exactly where it was with a success message behind it.
     //
-    // NOT SUFFICIENT ON ITS OWN, and deliberately left that way. As of
-    // 2026-09-22 `edit_steps` has RLS enabled with exactly two policies: ALL
-    // for service_role, and SELECT (USING true) for authenticated. There is no
-    // UPDATE or DELETE policy for authenticated at all — and this route runs as
-    // the signed-in user (createServerSupabase = anon key + session cookies),
-    // not as the service role. Postgres does not error when RLS denies a write;
-    // it silently affects zero rows. So this update, and the delete in the
-    // restart path below, have never actually done anything for a staff user.
-    //
-    // A row-count check cannot distinguish that from the legitimate case:
-    // canResume is `scene_map && edit_plan`, which does not imply any step is
-    // failed, so zero rows is a normal outcome too. The real fix is an RLS
-    // policy or the service-role client, not a guess here. Flagged rather than
-    // papered over.
+    // This runs as the service role now (see stepsDb), so an RLS denial is no
+    // longer the silent failure hiding behind it. A row count is still not
+    // checked: canResume is `scene_map && edit_plan`, which does not imply any
+    // step is failed, so zero rows is a legitimate outcome here.
     if (resetError) {
       return NextResponse.json(
         { error: `Could not reset the failed steps, so the retry was not started: ${resetError.message}` },
@@ -103,7 +114,7 @@ export async function POST(
   // Order matters and so does checking: the steps are deleted first, so a
   // failure here followed by a successful job reset would leave a `pending` job
   // carrying a dead step history from the previous run.
-  const { error: clearError } = await supabase
+  const { error: clearError } = await stepsDb
     .from('edit_steps')
     .delete()
     .eq('edit_job_id', jobId);
