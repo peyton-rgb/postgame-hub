@@ -1826,6 +1826,8 @@ export type Database = {
           logo_primary_url: string | null
           logo_url: string | null
           logo_white_url: string | null
+          master_tracker_id: string | null
+          master_tracker_url: string | null
           msa_url: string | null
           name: string
           notes: string | null
@@ -1876,6 +1878,8 @@ export type Database = {
           logo_primary_url?: string | null
           logo_url?: string | null
           logo_white_url?: string | null
+          master_tracker_id?: string | null
+          master_tracker_url?: string | null
           msa_url?: string | null
           name: string
           notes?: string | null
@@ -1926,6 +1930,8 @@ export type Database = {
           logo_primary_url?: string | null
           logo_url?: string | null
           logo_white_url?: string | null
+          master_tracker_id?: string | null
+          master_tracker_url?: string | null
           msa_url?: string | null
           name?: string
           notes?: string | null
@@ -2532,8 +2538,13 @@ export type Database = {
           drive_content_folder_id: string | null
           drive_contracts_folder_id: string | null
           drive_folder_id: string | null
+          drive_legal_athlete_folder_id: string | null
+          drive_legal_brand_folder_id: string | null
+          drive_legal_folder_id: string | null
+          drive_production_assets_folder_id: string | null
           drive_provisioned_at: string | null
           drive_trackers_folder_id: string | null
+          drive_travel_folder_id: string | null
           featured: boolean | null
           frameio_url: string | null
           grid_order: number | null
@@ -2555,6 +2566,7 @@ export type Database = {
           og_image: string | null
           owner_id: string | null
           pin_hash: string | null
+          portal_visible: boolean
           public_sections: Json | null
           published: boolean | null
           recap_config: Json | null
@@ -2590,8 +2602,13 @@ export type Database = {
           drive_content_folder_id?: string | null
           drive_contracts_folder_id?: string | null
           drive_folder_id?: string | null
+          drive_legal_athlete_folder_id?: string | null
+          drive_legal_brand_folder_id?: string | null
+          drive_legal_folder_id?: string | null
+          drive_production_assets_folder_id?: string | null
           drive_provisioned_at?: string | null
           drive_trackers_folder_id?: string | null
+          drive_travel_folder_id?: string | null
           featured?: boolean | null
           frameio_url?: string | null
           grid_order?: number | null
@@ -2613,6 +2630,7 @@ export type Database = {
           og_image?: string | null
           owner_id?: string | null
           pin_hash?: string | null
+          portal_visible?: boolean
           public_sections?: Json | null
           published?: boolean | null
           recap_config?: Json | null
@@ -2648,8 +2666,13 @@ export type Database = {
           drive_content_folder_id?: string | null
           drive_contracts_folder_id?: string | null
           drive_folder_id?: string | null
+          drive_legal_athlete_folder_id?: string | null
+          drive_legal_brand_folder_id?: string | null
+          drive_legal_folder_id?: string | null
+          drive_production_assets_folder_id?: string | null
           drive_provisioned_at?: string | null
           drive_trackers_folder_id?: string | null
+          drive_travel_folder_id?: string | null
           featured?: boolean | null
           frameio_url?: string | null
           grid_order?: number | null
@@ -2671,6 +2694,7 @@ export type Database = {
           og_image?: string | null
           owner_id?: string | null
           pin_hash?: string | null
+          portal_visible?: boolean
           public_sections?: Json | null
           published?: boolean | null
           recap_config?: Json | null
@@ -6482,23 +6506,30 @@ export type Database = {
           caption_long: string | null
           caption_medium: string | null
           caption_short: string | null
+          caption_status: string
           confirmed_at: string | null
+          cover_url: string | null
           created_at: string | null
+          date_conditional: boolean
           delivery_token: string | null
           ftc_note: string | null
           hashtags: string[] | null
           id: string
+          ig_handle: string | null
           inspo_item_id: string | null
           intended_post_date: string | null
           live_url: string | null
           mentions: string[] | null
           platform_notes: string | null
+          post_date_label: string | null
           posted_at: string | null
           posting_window_end: string | null
           posting_window_start: string | null
+          school: string | null
           sent_at: string | null
           status: string | null
           updated_at: string | null
+          video_status: string
           video_url: string | null
         }
         Insert: {
@@ -6510,23 +6541,30 @@ export type Database = {
           caption_long?: string | null
           caption_medium?: string | null
           caption_short?: string | null
+          caption_status?: string
           confirmed_at?: string | null
+          cover_url?: string | null
           created_at?: string | null
+          date_conditional?: boolean
           delivery_token?: string | null
           ftc_note?: string | null
           hashtags?: string[] | null
           id?: string
+          ig_handle?: string | null
           inspo_item_id?: string | null
           intended_post_date?: string | null
           live_url?: string | null
           mentions?: string[] | null
           platform_notes?: string | null
+          post_date_label?: string | null
           posted_at?: string | null
           posting_window_end?: string | null
           posting_window_start?: string | null
+          school?: string | null
           sent_at?: string | null
           status?: string | null
           updated_at?: string | null
+          video_status?: string
           video_url?: string | null
         }
         Update: {
@@ -6538,23 +6576,30 @@ export type Database = {
           caption_long?: string | null
           caption_medium?: string | null
           caption_short?: string | null
+          caption_status?: string
           confirmed_at?: string | null
+          cover_url?: string | null
           created_at?: string | null
+          date_conditional?: boolean
           delivery_token?: string | null
           ftc_note?: string | null
           hashtags?: string[] | null
           id?: string
+          ig_handle?: string | null
           inspo_item_id?: string | null
           intended_post_date?: string | null
           live_url?: string | null
           mentions?: string[] | null
           platform_notes?: string | null
+          post_date_label?: string | null
           posted_at?: string | null
           posting_window_end?: string | null
           posting_window_start?: string | null
+          school?: string | null
           sent_at?: string | null
           status?: string | null
           updated_at?: string | null
+          video_status?: string
           video_url?: string | null
         }
         Relationships: [
@@ -9346,7 +9391,11 @@ export type Database = {
         | "iterating"
         | "archived"
       content_freshness_enum: "evergreen" | "timely" | "expired"
-      content_source_enum: "inspo" | "produced_catalog" | "live_athlete_post"
+      content_source_enum:
+        | "inspo"
+        | "produced_catalog"
+        | "live_athlete_post"
+        | "ai_edited"
       content_type_enum:
         | "produced"
         | "athlete_ugc"
@@ -9532,7 +9581,12 @@ export const Constants = {
         "archived",
       ],
       content_freshness_enum: ["evergreen", "timely", "expired"],
-      content_source_enum: ["inspo", "produced_catalog", "live_athlete_post"],
+      content_source_enum: [
+        "inspo",
+        "produced_catalog",
+        "live_athlete_post",
+        "ai_edited",
+      ],
       content_type_enum: [
         "produced",
         "athlete_ugc",
