@@ -201,8 +201,9 @@ function formatReply(result: CascadeResult): string {
   ].join("\n");
 }
 
-// Post a reply into the thread under the user's message.
-async function postThreadReply(channel: string, threadTs: string, text: string) {
+// Post straight into the channel feed. No thread_ts, so the answer is a new
+// top-level message rather than a reply nested under the question.
+async function postToChannel(channel: string, text: string) {
   const res = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
     headers: {
@@ -211,7 +212,6 @@ async function postThreadReply(channel: string, threadTs: string, text: string) 
     },
     body: JSON.stringify({
       channel,
-      thread_ts: threadTs,
       text,
       unfurl_links: false,
     }),
@@ -224,15 +224,14 @@ async function postThreadReply(channel: string, threadTs: string, text: string) 
 }
 
 // Runs after the 200 has gone back to Slack.
-async function answerInThread(channel: string, threadTs: string, prompt: string) {
+async function answerInChannel(channel: string, prompt: string) {
   try {
     const result = await runCascade(prompt);
-    await postThreadReply(channel, threadTs, formatReply(result));
+    await postToChannel(channel, formatReply(result));
   } catch (error) {
     console.error("Cascade error:", error);
-    await postThreadReply(
+    await postToChannel(
       channel,
-      threadTs,
       "Sorry — something went wrong answering that. Try again in a minute."
     );
   }
@@ -273,7 +272,7 @@ export async function POST(request: Request) {
   const event = payload.event;
 
   // Only answer plain messages from people. Skipping bot_id is what stops the
-  // bot answering its own thread replies in an endless loop; skipping subtypes
+  // bot answering its own posts in an endless loop; skipping subtypes
   // drops edits, deletes, joins and other non-message noise.
   const isHumanMessage =
     payload.type === "event_callback" &&
@@ -293,10 +292,7 @@ export async function POST(request: Request) {
   );
 
   if (isHumanMessage) {
-    // Reply inside the existing thread if the message was in one, otherwise
-    // start a thread under the message itself.
-    const threadTs = event.thread_ts || event.ts;
-    waitUntil(answerInThread(event.channel, threadTs, event.text));
+    waitUntil(answerInChannel(event.channel, event.text));
   }
 
   // Acknowledge immediately so Slack doesn't time out and retry.
