@@ -1,7 +1,7 @@
 // src/app/api/drive/list-folder-files/route.ts
 // ─────────────────────────────────────────────────────────────
 // POST /api/drive/list-folder-files
-// Body: { folderUrl: string, recapId: string, recursive?: boolean }
+// Body: { folderUrl: string, recapId?: string, recursive?: boolean }
 //
 // Lists media files (images/videos) in a Drive folder so a folder
 // picker can render thumbnails to pick from. Reports which file ids
@@ -62,9 +62,8 @@ export async function POST(request: NextRequest) {
       recursive?: boolean;
     };
 
-    if (!recapId) {
-      return NextResponse.json({ error: "Missing recapId." }, { status: 400 });
-    }
+    // recapId is optional: without it (the posting-instructions picker) the
+    // folder is listed with no "already imported" greying.
 
     const parsed = parseDriveUrl(folderUrl ?? "");
     if (parsed.kind === "file") {
@@ -202,7 +201,7 @@ export async function POST(request: NextRequest) {
     // Already-imported detection for this campaign — greyed out in the picker.
     // Works off the full collected file-id list, so dedup spans all subfolders.
     let alreadyImportedFileIds: string[] = [];
-    if (files.length > 0) {
+    if (recapId && files.length > 0) {
       const supabase = createServiceSupabase();
       const { data: importedRows, error: importedErr } = await supabase
         .from("media")

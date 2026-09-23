@@ -11,7 +11,7 @@ export function getDriveClient() {
   return google.drive({ version: "v3", auth: getGoogleAuth() });
 }
 
-function sanitizeFileName(name: string): string {
+export function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_{2,}/g, "_");
 }
 
