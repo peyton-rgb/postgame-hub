@@ -71,8 +71,8 @@ export default function PostingInstructionsIndex() {
               <div className="ameta">{c.brandName ?? ''}</div>
             </div>
             <div className="lab" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-              <span><b style={{ color: 'var(--ink-1)' }}>{c.counts.athletes}</b> athletes</span>
-              <span><b style={{ color: 'var(--ink-1)' }}>{c.counts.posts}</b> posts</span>
+              <span><b style={{ color: 'var(--ink-1)' }}>{c.counts.athletes}</b> athlete{c.counts.athletes === 1 ? '' : 's'}</span>
+              <span><b style={{ color: 'var(--ink-1)' }}>{c.counts.posts}</b> post{c.counts.posts === 1 ? '' : 's'}</span>
               <span><b style={{ color: 'var(--ink-1)' }}>{c.counts.linksSent}</b> sent</span>
               <span><b style={{ color: 'var(--ink-1)' }}>{c.counts.posted}</b> posted</span>
             </div>

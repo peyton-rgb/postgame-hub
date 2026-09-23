@@ -109,7 +109,7 @@
 .pi .key{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px}
 
 /* ---- table ---- */
-.pi .table{margin-top:14px;border:1px solid var(--hairline);border-radius:16px;overflow:hidden;background:var(--surface-card)}
+.pi .roster{margin-top:14px;border:1px solid var(--hairline);border-radius:16px;overflow:hidden;background:var(--surface-card)}
 .pi .trow{display:grid;grid-template-columns:34px minmax(180px,1.3fr) minmax(200px,1.4fr) minmax(170px,1.1fr) minmax(150px,1fr) 44px;gap:14px;align-items:center;padding:14px 16px;border-top:1px solid var(--hairline-soft)}
 .pi .trow.th{border-top:0;padding-top:12px;padding-bottom:12px;background:var(--surface-raised)}
 .pi .trow:not(.th):hover{background:var(--surface-raised)}
@@ -131,7 +131,7 @@
 /* ---- phone cards (below 750px) ---- */
 .pi .cards{display:none}
 @media(max-width:749px){
-  .pi .table{display:none}
+  .pi .roster{display:none}
   .pi .cards{display:block;margin-top:10px}
   .pi .cards .group{border-top:0;padding:18px 0 4px}
   .pi .card{display:block;margin-top:10px;padding:14px;border-radius:16px;background:var(--surface-card);border:1px solid var(--hairline)}

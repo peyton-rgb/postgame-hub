@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   addDays,
   deliverUrl,
@@ -124,10 +124,12 @@ function linkLine(a: AthleteRow) {
 }
 
 export default function PostingRoster({ campaignId }: { campaignId: string }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const search = useSearchParams();
-  const openPkg = search.get('pkg');
+  // The open drawer lives in local state, seeded from ?pkg= so a deep link
+  // opens it. The URL is kept in step with history.replaceState rather than
+  // router.replace: on this force-dynamic route a router navigation waits on
+  // a server round trip, which made opening and closing the drawer lag.
+  const [openPkg, setOpenPkg] = useState<string | null>(() => search.get('pkg'));
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [packages, setPackages] = useState<StaffPackage[] | null>(null);
@@ -246,16 +248,17 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
 
   // ---- drawer ----
   const drawerAthlete = openPkg ? athletes.find((a) => postsOf(a).some((p) => p.id === openPkg)) ?? null : null;
-  const setPkgParam = useCallback(
-    (id: string | null) => {
-      const params = new URLSearchParams(search.toString());
-      if (id) params.set('pkg', id);
-      else params.delete('pkg');
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, search]
-  );
+  const setPkgParam = useCallback((id: string | null) => {
+    setOpenPkg(id);
+    try {
+      const url = new URL(window.location.href);
+      if (id) url.searchParams.set('pkg', id);
+      else url.searchParams.delete('pkg');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search);
+    } catch {
+      /* URL sync is a convenience; the drawer state is what matters */
+    }
+  }, []);
   const applyUpdates = useCallback((updated: StaffPackage[]) => {
     setPackages((prev) => {
       if (!prev) return prev;
@@ -444,7 +447,7 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
       </div>
 
       {/* ---- desktop table ---- */}
-      <div className="table" role="table" aria-label="Athletes">
+      <div className="roster" role="table" aria-label="Athletes">
         <div className="trow th" role="row">
           <span role="columnheader">
             <input type="checkbox" aria-label="Select all shown" checked={allVisibleSelected} onChange={toggleAll} />
