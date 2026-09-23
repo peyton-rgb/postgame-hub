@@ -114,8 +114,7 @@ export const DASHBOARD_NAV: NavSection[] = [
       // /dashboard/run-of-show is a 5-line stub.
       { name: "Run of shows", href: "/dashboard?tab=ros", icon: "runofshow" },
       { name: "Campaign instructions", href: "/dashboard/campaign-instructions", icon: "instructions" },
-      // Page does not exist yet.
-      { name: "Posting instructions", href: "/dashboard/posting-instructions", icon: "instructions", hidden: true },
+      { name: "Posting instructions", href: "/dashboard/posting-instructions", icon: "instructions", staffOnly: true },
     ],
   },
   {
