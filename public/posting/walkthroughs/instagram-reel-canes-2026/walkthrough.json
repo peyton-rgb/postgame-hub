@@ -1,0 +1,314 @@
+{
+  "platform": "instagram_reel",
+  "source": "approved King Miller posting page, 18 Sep 2026",
+  "phases": [
+    {
+      "title": "Start the reel",
+      "from_step": 1,
+      "to_step": 3
+    },
+    {
+      "title": "Set your cover photo",
+      "from_step": 4,
+      "to_step": 7
+    },
+    {
+      "title": "Tag Cane's and paste your caption",
+      "from_step": 8,
+      "to_step": 9
+    },
+    {
+      "title": "Add the paid partnership label",
+      "from_step": 10,
+      "to_step": 15
+    },
+    {
+      "title": "Share it",
+      "from_step": 16,
+      "to_step": 16
+    }
+  ],
+  "steps": [
+    {
+      "n": 1,
+      "image": "step-01.jpg",
+      "caption_html": "Go to your profile and tap the <b>+</b>.",
+      "caption_plain": "Go to your profile and tap the +.",
+      "highlights": [
+        {
+          "tag": "side-right",
+          "x": 4.5,
+          "y": 15,
+          "w": 11,
+          "h": 21,
+          "label": "Tap +"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "image": "step-02.jpg",
+      "caption_html": "Choose <b>Reel</b>.",
+      "caption_plain": "Choose Reel.",
+      "highlights": [
+        {
+          "tag": "side-right",
+          "x": 3,
+          "y": 15.5,
+          "w": 40,
+          "h": 11,
+          "label": "Tap Reel"
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "image": "step-03.jpg",
+      "caption_html": "Pick the Cane's video — it's <b>0:14</b> — then tap <b>Next</b> twice.",
+      "caption_plain": "Pick the Cane's video — it's 0:14 — then tap Next twice.",
+      "highlights": [
+        {
+          "tag": "in-tl",
+          "x": 66.9,
+          "y": 31.0,
+          "w": 32.6,
+          "h": 63.4,
+          "label": "Your video"
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "image": "step-04.jpg",
+      "caption_html": "Tap <b>Edit cover</b>.",
+      "caption_plain": "Tap Edit cover.",
+      "highlights": [
+        {
+          "tag": "side-left",
+          "x": 34,
+          "y": 78,
+          "w": 31,
+          "h": 11,
+          "label": "Tap Edit cover"
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "image": "step-05.jpg",
+      "caption_html": "Tap <b>Add from camera roll</b>.",
+      "caption_plain": "Tap Add from camera roll.",
+      "highlights": [
+        {
+          "tag": "below",
+          "x": 1.5,
+          "y": 79.8,
+          "w": 96.9,
+          "h": 12.7,
+          "label": "Tap Add from camera roll"
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "image": "step-06.jpg",
+      "caption_html": "Pick the <b>cover photo</b> you downloaded.",
+      "caption_plain": "Pick the cover photo you downloaded.",
+      "highlights": [
+        {
+          "tag": "in-tl",
+          "x": 0.5,
+          "y": 19.1,
+          "w": 32.5,
+          "h": 74.5,
+          "label": "Your cover"
+        }
+      ]
+    },
+    {
+      "n": 7,
+      "image": "step-07.jpg",
+      "caption_html": "Tap the <b>check</b> to confirm it.",
+      "caption_plain": "Tap the check to confirm it.",
+      "highlights": [
+        {
+          "tag": "side-left",
+          "x": 84.3,
+          "y": 8.9,
+          "w": 12.1,
+          "h": 10.7,
+          "label": "Tap check"
+        }
+      ]
+    },
+    {
+      "n": 8,
+      "image": "step-08.jpg",
+      "caption_html": "Tap <b>Tag people</b>, search <b>raisingcanes</b>, tap <b>Add tag</b>.",
+      "caption_plain": "Tap Tag people, search raisingcanes, tap Add tag.",
+      "highlights": [
+        {
+          "tag": "in-right",
+          "x": 2,
+          "y": 28,
+          "w": 96,
+          "h": 13,
+          "label": "Tap raisingcanes"
+        }
+      ]
+    },
+    {
+      "n": 9,
+      "image": "step-09.jpg",
+      "caption_html": "Paste your caption. It should read exactly like this.",
+      "caption_plain": "Paste your caption. It should read exactly like this.",
+      "highlights": [
+        {
+          "tag": "below",
+          "x": 3,
+          "y": 24,
+          "w": 92,
+          "h": 32,
+          "label": "Your caption, pasted"
+        }
+      ]
+    },
+    {
+      "n": 10,
+      "image": "step-10.jpg",
+      "caption_html": "Scroll to the bottom, tap <b>More options</b>.",
+      "caption_plain": "Scroll to the bottom, tap More options.",
+      "highlights": [
+        {
+          "tag": "in-right",
+          "x": 2,
+          "y": 16,
+          "w": 96,
+          "h": 15,
+          "label": "Tap More options"
+        }
+      ]
+    },
+    {
+      "n": 11,
+      "image": "step-11.jpg",
+      "caption_html": "Tap <b>Partnership label &amp; ads</b>.",
+      "caption_plain": "Tap Partnership label & ads.",
+      "highlights": [
+        {
+          "tag": "in-right",
+          "x": 2,
+          "y": 47,
+          "w": 96,
+          "h": 31,
+          "label": "Tap this row"
+        }
+      ]
+    },
+    {
+      "n": 12,
+      "image": "step-12.jpg",
+      "caption_html": "Tap <b>Add paid partnership label</b>.",
+      "caption_plain": "Tap Add paid partnership label.",
+      "highlights": [
+        {
+          "tag": "in-right",
+          "x": 2,
+          "y": 48,
+          "w": 96,
+          "h": 28,
+          "label": "Tap this"
+        }
+      ]
+    },
+    {
+      "n": 13,
+      "image": "step-13.jpg",
+      "caption_html": "Switch it <b>on</b>, then <b>Add brands manually</b>.",
+      "caption_plain": "Switch it on, then Add brands manually.",
+      "highlights": [
+        {
+          "tag": "right",
+          "x": 78,
+          "y": 24,
+          "w": 19,
+          "h": 13,
+          "label": "Switch this on"
+        },
+        {
+          "tag": "in-right",
+          "x": 2,
+          "y": 78,
+          "w": 96,
+          "h": 13,
+          "label": "Then tap this"
+        }
+      ]
+    },
+    {
+      "n": 14,
+      "image": "step-14.jpg",
+      "caption_html": "Type <b>rai</b>, tap <b>Add</b> next to <b>raisingcanes</b>.",
+      "caption_plain": "Type rai, tap Add next to raisingcanes.",
+      "highlights": [
+        {
+          "tag": "side-left",
+          "x": 79.2,
+          "y": 53.4,
+          "w": 18.2,
+          "h": 22.3,
+          "label": "Tap Add"
+        }
+      ]
+    },
+    {
+      "n": 15,
+      "image": "step-15.jpg",
+      "caption_html": "It says <b>Pending</b> — that's normal, Cane's approves it.",
+      "caption_plain": "It says Pending — that's normal, Cane's approves it.",
+      "highlights": [
+        {
+          "tag": "side-right",
+          "x": 2,
+          "y": 41,
+          "w": 70,
+          "h": 21,
+          "label": "Pending is fine"
+        }
+      ]
+    },
+    {
+      "n": 16,
+      "image": "step-16.jpg",
+      "caption_html": "Check it over, then tap <b>Share</b>.",
+      "caption_plain": "Check it over, then tap Share.",
+      "highlights": [
+        {
+          "tag": "right",
+          "x": 51.6,
+          "y": 88.8,
+          "w": 44.9,
+          "h": 6.5,
+          "label": "Tap Share"
+        }
+      ]
+    }
+  ],
+  "quick_steps": {
+    "instagram_reel": [
+      "Tap <b>+</b> → <b>Reel</b> → pick the Cane's video → <b>Next</b>.",
+      "Tap <b>Edit cover</b> → <b>Add from camera roll</b> → pick the cover photo.",
+      "Tap <b>Tag people</b> → add <b>raisingcanes</b>. Paste your caption.",
+      "<b>More options</b> → <b>Partnership label &amp; ads</b> → switch on → add <b>raisingcanes</b>. It'll say <i>Pending</i> — that's fine.",
+      "Tap <b>Share</b>."
+    ],
+    "tiktok": [
+      "Tap <b>+</b> → <b>Upload</b> → pick the Cane's video → <b>Next</b>.",
+      "Tap <b>Select cover</b> → <b>Upload cover</b> → pick the cover photo.",
+      "Paste your caption. Type <b>@raisingcanes</b> in it so the tag links.",
+      "<b>More options</b> → <b>Branded content</b> → switch on <b>Paid partnership</b> → add Raising Cane's.",
+      "Tap <b>Post</b>."
+    ]
+  },
+  "key": "instagram-reel-canes-2026"
+}

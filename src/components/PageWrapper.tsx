@@ -18,6 +18,7 @@ import PostgameLoader from './PostgameLoader'
 // render over /portal itself while hiding it on /portal/anything.
 const NO_LOADER_ROUTES = [
   '/quiz/',
+  '/deliver/',
   '/portal',
   '/dashboard',
   '/athlete',
