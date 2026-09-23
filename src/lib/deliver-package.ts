@@ -208,13 +208,37 @@ async function loadLogos(
     resolveBrandLogo(rowsFor(POSTGAME_BRAND_ID), { surface: 'dark', prefer: 'lockup' })?.url ??
     pickBrandLogo(byId.get(POSTGAME_BRAND_ID), 'dark')?.url ??
     null;
-  const brand = brandId
-    ? resolveBrandLogo(rowsFor(brandId), { surface: 'light', prefer: 'lockup' })?.url ??
-      pickBrandLogo(byId.get(brandId), 'light')?.url ??
-      null
-    : null;
+  const brand = brandId ? plateLogo(brandId, byId.get(brandId), rowsFor(brandId)) : null;
 
   return { postgame, brand, brandName: brandId ? byId.get(brandId)?.name?.trim() || null : null };
+}
+
+// True when a logo's measured ink is light enough to vanish on the off-white
+// plate (#FAF8F5). sRGB relative luminance; anything above 0.6 is light ink.
+function isLightInk(hex: string | null | undefined): boolean {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex?.trim() ?? '');
+  if (!m) return false;
+  const lin = (c: string) => {
+    const v = parseInt(c, 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  const L = 0.2126 * lin(m[1]) + 0.7152 * lin(m[2]) + 0.0722 * lin(m[3]);
+  return L > 0.6;
+}
+
+// The brand logo for the off-white plate.
+//
+// brand_logos' variant is not always right: Postgame's on_white lockup is
+// measured at ink #FAE9E3 — white on white. So the plate never trusts the
+// label alone. For Postgame, or when the chosen file's measured ink is light,
+// it uses the brand's dark-ink column (logo_dark_url = dark ink, for light
+// grounds). No dark-ink file → no logo, never an invisible one.
+function plateLogo(brandId: string, brand: BrandRow | undefined, rows: BrandLogoRow[]): string | null {
+  const resolved = resolveBrandLogo(rows, { surface: 'light', prefer: 'lockup' });
+  if (brandId === POSTGAME_BRAND_ID || (resolved && isLightInk(resolved.inkHex))) {
+    return brand?.logo_dark_url || null;
+  }
+  return resolved?.url ?? pickBrandLogo(brand, 'light')?.url ?? null;
 }
 
 // Tokens exist in three shapes: crypto.randomUUID() / the column default
