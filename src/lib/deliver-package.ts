@@ -352,3 +352,14 @@ export async function writeAthleteFields(
 export async function loadPostgameLogo(): Promise<string | null> {
   return (await loadLogos(createLiveServiceSupabase(), null)).postgame;
 }
+
+/**
+ * Postgame's logo (for a dark ground) and a brand's logo (for its off-white
+ * plate), plus the brand's name. Same lookup as the athlete page, reused by
+ * the staff editor (/api/posting-campaigns).
+ */
+export async function loadBrandLockup(
+  brandId: string | null
+): Promise<{ postgame: string | null; brand: string | null; brandName: string | null }> {
+  return loadLogos(createLiveServiceSupabase(), brandId);
+}
