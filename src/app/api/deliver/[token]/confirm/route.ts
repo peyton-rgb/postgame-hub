@@ -1,49 +1,49 @@
 // ============================================================
 // POST /api/deliver/[token]/confirm — Athlete confirms receipt
 //
-// Public endpoint — no auth. The athlete clicks "I Got It"
-// and this marks the package as confirmed with a timestamp.
+// Public endpoint — no auth. The athlete clicks "I Got It" and this stamps
+// confirmed_at. That is the ONLY column it writes: status belongs to staff,
+// and the page reads its confirmed state from confirmed_at instead (see
+// athleteStage in src/lib/deliver-package.ts).
+//
+// The write re-matches on the token server-side; no id comes from the
+// browser. Confirming twice keeps the first timestamp.
 // ============================================================
 
-import { createServerSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
+import { loadDeliverView, loadPackageState, writeAthleteFields } from '@/lib/deliver-package';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { token: string } }
 ) {
-  const supabase = createServerSupabase();
+  const pkg = await loadPackageState(params.token);
+  if (!pkg) {
+    return NextResponse.json({ error: 'Package not found' }, { status: 404 });
+  }
 
-  // Check that the package exists
-  const { data: pkg, error: fetchError } = await supabase
-    .from('posting_packages')
-    .select('id, status')
-    .eq('delivery_token', params.token)
-    .single();
+  // Already confirmed or posted: nothing to write, return the current view.
+  if (pkg.stage === 'confirmed' || pkg.stage === 'posted') {
+    return NextResponse.json(await loadDeliverView(params.token));
+  }
 
-  if (fetchError || !pkg) {
+  // Only a package staff have sent can be confirmed. The page only shows the
+  // button in that state; this stops a draft being confirmed by a direct POST.
+  if (pkg.stage !== 'sent') {
     return NextResponse.json(
-      { error: 'Package not found' },
-      { status: 404 }
+      { error: 'This package is not ready yet.' },
+      { status: 409 }
     );
   }
 
-  // Update to confirmed
-  const { data, error } = await supabase
-    .from('posting_packages')
-    .update({
-      status: 'confirmed',
-      confirmed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', pkg.id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error confirming package:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const result = await writeAthleteFields(params.token, {
+    confirmed_at: new Date().toISOString(),
+  });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(await loadDeliverView(params.token));
 }

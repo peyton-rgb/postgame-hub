@@ -1,53 +1,57 @@
 // ============================================================
-// POST /api/deliver/[token]/posted — Athlete reports they posted
+// POST /api/deliver/[token]/posted — Athlete sends the link to their post
 //
-// Public endpoint — no auth. The athlete submits the live URL
-// of their post. This marks the package as 'posted' and stores
-// the link so the Postgame team can track it.
+// Public endpoint — no auth. A posted link is what starts the athlete's
+// payment, so this is strict:
+//
+//   • Only Instagram or TikTok links (vm.tiktok.com short links included) —
+//     see checkLiveUrl in src/lib/post-link.ts. Anything else is a 400 with a
+//     message the page shows as-is.
+//   • Idempotent: once live_url is set it is never overwritten. A second
+//     submit returns the existing view unchanged; corrections go through staff.
+//   • Writes live_url, posted_at and status = 'posted' (staff lists filter on
+//     status), re-matched on the token server-side; no id comes from the
+//     browser.
 // ============================================================
 
-import { createServerSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  loadDeliverView,
+  loadPackageState,
+  writeAthleteFields,
+} from '@/lib/deliver-package';
+import { checkLiveUrl } from '@/lib/post-link';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { token: string } }
 ) {
-  const supabase = createServerSupabase();
+  const state = await loadPackageState(params.token);
+  if (!state) {
+    return NextResponse.json({ error: 'Package not found' }, { status: 404 });
+  }
 
-  // Check that the package exists
-  const { data: pkg, error: fetchError } = await supabase
-    .from('posting_packages')
-    .select('id, status')
-    .eq('delivery_token', params.token)
-    .single();
-
-  if (fetchError || !pkg) {
-    return NextResponse.json(
-      { error: 'Package not found' },
-      { status: 404 }
-    );
+  // Already have a link: return what's there, don't touch it.
+  if (state.live_url) {
+    return NextResponse.json(await loadDeliverView(params.token));
   }
 
   const body = await request.json().catch(() => ({}));
-
-  // Update to posted
-  const { data, error } = await supabase
-    .from('posting_packages')
-    .update({
-      status: 'posted',
-      posted_at: new Date().toISOString(),
-      live_url: body.live_url || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', pkg.id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error marking package as posted:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const check = checkLiveUrl(body?.live_url);
+  if (!check.ok) {
+    return NextResponse.json({ error: check.error }, { status: 400 });
   }
 
-  return NextResponse.json(data);
+  const result = await writeAthleteFields(params.token, {
+    live_url: check.url,
+    posted_at: state.posted_at ?? new Date().toISOString(),
+    status: 'posted',
+  });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
+  }
+
+  return NextResponse.json(await loadDeliverView(params.token));
 }
