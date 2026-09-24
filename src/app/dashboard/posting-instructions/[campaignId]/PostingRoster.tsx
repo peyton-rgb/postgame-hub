@@ -1,21 +1,23 @@
 'use client';
 
 // ============================================================
-// Posting instructions roster for one campaign (mockup boards 1 + 4).
+// Posting instructions roster for one campaign — redesigned.
 //
-// One row per ATHLETE, grouped by their Reel date. Every number on the page
-// — the count strip, alert counts, filter counts — is computed from the rows
-// the API returned, never typed in (rules in src/lib/posting-packages.ts).
+// Six PIPELINE CARDS replace the old stat strip and filter tabs, which used to
+// disagree: the stats counted posts, the tabs counted athletes, and the tab
+// filters overlapped so the numbers never summed to the roster. Now every post
+// sits in exactly one stage (stageOf in src/lib/posting-packages.ts) and a card
+// both shows a count and applies that filter.
 //
-// "Their link": ONE link per athlete, always the same one — their first
-// post's token (the Reel, for everyone today). Both of an athlete's tokens
-// open the same combined page, so the link never has to change. One text
-// covers every post, so "Mark as sent" marks ALL of that athlete's posts
-// still in draft, not just one.
+// One NEEDS ATTENTION card replaces the two alert boxes, and only appears when
+// it has something to say.
 //
-// The Hub sends nothing itself (decided 2026-09-23). "Copy links" puts a
-// plain-text block on the clipboard for staff to text out; "Mark as sent"
-// only records that they did.
+// Every number on the page is computed from the rows the API returned, never
+// typed in. A missing caption or file can only ever read as missing.
+//
+// "Their link" is ONE link per athlete, always the same one — both of an
+// athlete's tokens open the same page, so the link never has to change.
+// Copying is all this page does: the Hub never texts anyone.
 //
 // ?pkg=<id> opens the edit drawer on that post (deep link).
 // ============================================================
@@ -24,8 +26,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
+  STAGES,
   addDays,
+  athleteInStage,
   deliverUrl,
+  filesDone,
   formatPostDate,
   formatShortDay,
   groupAthletes,
@@ -33,43 +38,42 @@ import {
   isPosted,
   isSent,
   localToday,
-  matchesFilter,
-  missingFiles,
-  pillsFor,
+  nextPostDate,
+  partsFor,
   postsOf,
-  rosterCounts,
+  stageOf,
+  statusPill,
   type AthleteRow,
-  type FilterKey,
+  type PostStage,
   type PostingPhoto,
   type StaffPackage,
 } from '@/lib/posting-packages';
 import PackageDrawer from './PackageDrawer';
+
+type Deliverable = { key: string; label: string; order?: number };
 
 type Campaign = {
   id: string;
   title: string | null;
   seasonLabel: string | null;
   brandName: string | null;
+  tagHandle: string | null;
+  hashtag: string | null;
+  ftcNote: string | null;
+  deliverables: Deliverable[];
   logos: { postgame: string | null; brand: string | null };
 };
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'needs_caption', label: 'Needs caption' },
-  { key: 'awaiting_files', label: 'Awaiting files' },
-  { key: 'ready', label: 'Ready to send' },
-  { key: 'sent', label: 'Sent' },
-  { key: 'posted', label: 'Posted' },
-];
-
-const PILL_WORD = { ok: 'Approved', pending: 'Awaiting brand', rev: 'In revision', none: 'Not added yet' } as const;
+type StageKey = PostStage | 'all';
 
 async function copyText(text: string) {
   try {
-    await navigator.clipboard.writeText(text);
-    return;
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
   } catch {
-    /* fall back */
+    /* fall through */
   }
   const ta = document.createElement('textarea');
   ta.value = text;
@@ -80,75 +84,100 @@ async function copyText(text: string) {
   try {
     document.execCommand('copy');
   } catch {
-    /* nothing else */
+    /* nothing else to try */
   }
   document.body.removeChild(ta);
 }
 
-function Pills({ p, photoCount }: { p: StaffPackage | null; photoCount: number }) {
-  if (!p) return <span className="hint">No post</span>;
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+
+/** Athlete name block: initials, name, and school · handle (red when absent). */
+function AthleteCell({ a }: { a: AthleteRow }) {
+  const meta = [a.school, a.handle ? `@${a.handle}` : null].filter(Boolean).join(' · ');
   return (
-    <div className="cell-pills">
-      {pillsFor(p, photoCount).map((pill) => (
-        <span key={pill.label} className={`st ${pill.state}`} title={`${pill.label}: ${PILL_WORD[pill.state]}`}>
-          <i />
-          {pill.label}
-        </span>
-      ))}
+    <div className="ath">
+      <span className="avatar" aria-hidden="true">{initials(a.name)}</span>
+      <span className="who">
+        <span className="aname">{a.name}</span>
+        {meta ? (
+          <span className="ameta">{meta}</span>
+        ) : (
+          <span className="ameta bad">No school or handle on file</span>
+        )}
+      </span>
     </div>
   );
 }
 
-function PostCell({ p, photoCount = 0 }: { p: StaffPackage | null; photoCount?: number }) {
+/** One post cell: date line, one pill, then the part dots. */
+function PostCell({
+  p,
+  photoCount,
+  brandName,
+  today,
+}: {
+  p: StaffPackage | null;
+  photoCount: number;
+  brandName: string | null;
+  today: string;
+}) {
+  if (!p) return <span className="hint">No post</span>;
+  const pill = statusPill(p, photoCount, brandName);
+  const late = isPastDraft(p, today);
+  const date = formatPostDate(p.intended_post_date) ?? 'No date';
   return (
-    <div>
-      <span className="lab">{p ? formatPostDate(p.intended_post_date) ?? 'No date' : '—'}</span>
-      <Pills p={p} photoCount={photoCount} />
+    <div className="pcell">
+      <div className="pdate">
+        {date}
+        {p.date_conditional && <span className="cond"> · if they win</span>}
+        {late && <span className="late"> · date passed</span>}
+      </div>
+      <span className={`pill ${pill.tone}`}>{pill.label}</span>
+      <div className="parts">
+        {partsFor(p, photoCount).map((part) => (
+          <span className={`part ${part.state}`} key={part.label}>
+            <i />
+            {part.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
 function LinkState({ a }: { a: AthleteRow }) {
-  // The link is one per athlete, but its STATE reads from the whole set:
-  // sent once any post is sent, posted only when every post is.
   const posts = postsOf(a);
-  const p = posts.every(isPosted) ? a.link : posts.find((x) => !isPosted(x)) ?? a.link;
-  if (isPosted(p) && p.live_url) {
-    return (
-      <a href={p.live_url} target="_blank" rel="noopener noreferrer">
-        Posted ↗
-      </a>
-    );
-  }
-  if (isPosted(p)) return <span>Posted</span>;
-  if (isSent(p)) return <span>Sent {formatShortDay(p.sent_at) ?? ''}</span>;
-  return <span style={{ color: 'var(--ink-4)' }}>Not sent</span>;
-}
-
-function linkLine(a: AthleteRow) {
-  return `${a.name} — ${deliverUrl(a.link.delivery_token)}`;
+  if (posts.every(isPosted)) return <span className="lstate posted">Posted</span>;
+  const sent = posts.find(isSent);
+  if (sent) return <span className="lstate sent">Sent {formatShortDay(sent.sent_at) ?? ''}</span>;
+  return <span className="lstate">Not sent</span>;
 }
 
 export default function PostingRoster({ campaignId }: { campaignId: string }) {
   const search = useSearchParams();
   // The open drawer lives in local state, seeded from ?pkg= so a deep link
-  // opens it. The URL is kept in step with history.replaceState rather than
-  // router.replace: on this force-dynamic route a router navigation waits on
-  // a server round trip, which made opening and closing the drawer lag.
+  // opens it. history.replaceState rather than router.replace: on this
+  // force-dynamic route a router navigation waits on a server round trip,
+  // which made opening and closing the drawer lag.
   const [openPkg, setOpenPkg] = useState<string | null>(() => search.get('pkg'));
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [packages, setPackages] = useState<StaffPackage[] | null>(null);
-  // Carousel photos by package id — the Feed pill's count comes from here,
-  // and the drawer edits them through the same map.
   const [photos, setPhotos] = useState<Record<string, PostingPhoto[]>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const [stage, setStage] = useState<StageKey>('all');
+  const [lateOnly, setLateOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [flash, setFlash] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmSend, setConfirmSend] = useState(false);
   const [rowCopied, setRowCopied] = useState<string | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // today is read on the client so "past" matches the viewer's calendar.
   const [today, setToday] = useState<string>('');
@@ -189,76 +218,93 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
     const t = setTimeout(() => setRowCopied(null), 1400);
     return () => clearTimeout(t);
   }, [rowCopied]);
+  useEffect(() => {
+    if (!copiedAll) return;
+    const t = setTimeout(() => setCopiedAll(false), 1800);
+    return () => clearTimeout(t);
+  }, [copiedAll]);
 
   const athletes = useMemo(() => groupAthletes(packages ?? []), [packages]);
-  const counts = useMemo(() => rosterCounts(packages ?? []), [packages]);
+  const photoCountOf = useCallback(
+    (p: StaffPackage | null) => (p ? (photos[p.id] ?? []).length : 0),
+    [photos]
+  );
+  const countPhotos = useCallback((p: StaffPackage) => photoCountOf(p), [photoCountOf]);
 
-  const filterCounts = useMemo(() => {
+  // ---- the six pipeline cards ----
+  const stageCounts = useMemo(() => {
     const out: Record<string, number> = {};
-    for (const f of [...FILTERS.map((x) => x.key), 'past_draft' as const]) {
-      out[f] = today ? athletes.filter((a) => matchesFilter(a, f, today)).length : 0;
-    }
+    for (const s of STAGES) out[s.key] = athletes.filter((a) => athleteInStage(a, s.key, countPhotos)).length;
     return out;
-  }, [athletes, today]);
+  }, [athletes, countPhotos]);
 
+  // ---- needs attention ----
+  const allPosts = packages ?? [];
+  const pastDrafts = today ? allPosts.filter((p) => isPastDraft(p, today) && !isSent(p)) : [];
+  const soonNoFiles = today
+    ? allPosts.filter(
+        (p) =>
+          p.intended_post_date &&
+          p.intended_post_date >= today &&
+          p.intended_post_date <= addDays(today, 7) &&
+          !isPosted(p) &&
+          !filesDone(p, photoCountOf(p))
+      )
+    : [];
+  const missingDetails = athletes.filter((a) => !a.school || !a.handle);
+
+  // ---- visible list ----
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return athletes.filter(
-      (a) =>
-        (today ? matchesFilter(a, filter, today) : true) &&
-        (!q || a.name.toLowerCase().includes(q) || (a.school ?? '').toLowerCase().includes(q) || (a.handle ?? '').toLowerCase().includes(q))
-    );
-  }, [athletes, filter, query, today]);
+    return athletes.filter((a) => {
+      if (!athleteInStage(a, stage, countPhotos)) return false;
+      if (lateOnly && !(today && postsOf(a).some((p) => isPastDraft(p, today) && !isSent(p)))) return false;
+      if (!q) return true;
+      return (
+        a.name.toLowerCase().includes(q) ||
+        (a.school ?? '').toLowerCase().includes(q) ||
+        (a.handle ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [athletes, stage, lateOnly, query, today, countPhotos]);
 
-  // Groups by Reel date: upcoming first (soonest first), then past (most
-  // recent first), then undated.
+  // Grouped by each athlete's next post date: soonest first, dates already
+  // gone last, undated after those.
   const groups = useMemo(() => {
     const byDate = new Map<string, AthleteRow[]>();
     for (const a of visible) {
-      const d = (a.reel ?? a.link).intended_post_date ?? '';
+      const d = nextPostDate(a) ?? '';
       const list = byDate.get(d);
       if (list) list.push(a);
       else byDate.set(d, [a]);
     }
     const keys = Array.from(byDate.keys());
     const upcoming = keys.filter((k) => k && (!today || k >= today)).sort();
-    const past = keys.filter((k) => k && today && k < today).sort().reverse();
+    const past = keys.filter((k) => k && today && k < today).sort();
     const ordered = [...upcoming, ...past, ...(byDate.has('') ? [''] : [])];
     return ordered.map((d) => {
       const rows = byDate.get(d)!.sort((x, y) => x.name.localeCompare(y.name));
       const isPast = !!d && !!today && d < today;
-      const lateDrafts = rows.filter((a) => a.reel && isPastDraft(a.reel, today)).length;
       const days = d && today ? Math.round((Date.parse(d) - Date.parse(today)) / 86400000) : null;
+      const when = isPast
+        ? 'date passed, still not sent'
+        : days === 0
+          ? 'today'
+          : days === 1
+            ? 'tomorrow'
+            : days !== null
+              ? `in ${days} days`
+              : '';
       return {
         date: d,
-        label: d ? formatPostDate(d) ?? d : 'No Reel date',
-        sub: isPast
-          ? lateDrafts
-            ? `${lateDrafts} · date passed, still draft`
-            : 'Date passed'
-          : days === 0
-            ? `${rows.length} · today`
-            : days !== null
-              ? `${rows.length} · in ${days} day${days === 1 ? '' : 's'}`
-              : `${rows.length}`,
-        late: isPast && lateDrafts > 0,
+        label: d ? formatPostDate(d) ?? d : 'No date set',
+        count: `${rows.length} athlete${rows.length === 1 ? '' : 's'}`,
+        when,
         isPast,
         rows,
       };
     });
   }, [visible, today]);
-
-  // ---- alerts ----
-  const pastDrafts = today ? (packages ?? []).filter((p) => isPastDraft(p, today)) : [];
-  const soon = today
-    ? (packages ?? []).filter((p) => p.intended_post_date && p.intended_post_date >= today && p.intended_post_date <= addDays(today, 7) && !isPosted(p))
-    : [];
-  const photoCountOf = useCallback(
-    (pkg: StaffPackage | null) => (pkg ? (photos[pkg.id] ?? []).length : 0),
-    [photos]
-  );
-  const soonMissingFiles = soon.filter((p) => missingFiles(p, photoCountOf(p))).length;
-  const soonMissingCaption = soon.filter((p) => !p.caption_medium?.trim()).length;
 
   // ---- drawer ----
   const drawerAthlete = openPkg ? athletes.find((a) => postsOf(a).some((p) => p.id === openPkg)) ?? null : null;
@@ -281,7 +327,7 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
     });
   }, []);
 
-  // ---- selection + bulk ----
+  // ---- selection ----
   const selectedAthletes = athletes.filter((a) => selected.has(a.key));
   const allVisibleSelected = visible.length > 0 && visible.every((a) => selected.has(a.key));
   const toggle = (key: string) =>
@@ -293,25 +339,35 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
     });
   const toggleAll = () =>
     setSelected((s) => {
-      if (allVisibleSelected) {
-        const n = new Set(s);
-        visible.forEach((a) => n.delete(a.key));
-        return n;
-      }
-      return new Set([...Array.from(s), ...visible.map((a) => a.key)]);
+      const n = new Set(s);
+      if (allVisibleSelected) visible.forEach((a) => n.delete(a.key));
+      else visible.forEach((a) => n.add(a.key));
+      return n;
     });
 
+  // ---- copy ----
+  const readyAthletes = useMemo(
+    () => athletes.filter((a) => athleteInStage(a, 'ready', countPhotos)),
+    [athletes, countPhotos]
+  );
+  const linkLine = (a: AthleteRow) => `${a.name} — ${deliverUrl(a.link.delivery_token)}`;
+
+  async function copyReady() {
+    if (!readyAthletes.length) return;
+    await copyText(readyAthletes.map(linkLine).join('\n'));
+    setCopiedAll(true);
+  }
   async function bulkCopy() {
     await copyText(selectedAthletes.map(linkLine).join('\n'));
     setFlash(`Copied ${selectedAthletes.length} link${selectedAthletes.length === 1 ? '' : 's'}. Paste them into your texts.`);
   }
 
-  async function bulkMarkSent() {
+  // ---- mark as sent (confirmed) ----
+  async function doMarkSent() {
+    setConfirmSend(false);
     // One text carries every post, so sending marks all of an athlete's
     // drafts — not just the post whose token is in the link.
-    const targets = selectedAthletes
-      .flatMap(postsOf)
-      .filter((p) => p.status === 'draft' && !isSent(p));
+    const targets = selectedAthletes.flatMap(postsOf).filter((p) => p.status === 'draft' && !isSent(p));
     if (!targets.length) {
       setFlash('Nothing to mark: those links are already sent.');
       return;
@@ -359,6 +415,19 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
   }
 
   const title = [campaign.title, campaign.seasonLabel].filter(Boolean).join(' · ') || 'Posting campaign';
+  const deliverableWords = (campaign.deliverables ?? [])
+    .slice()
+    .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
+    .map((d) => (d.key === 'reel' ? 'Reel + cover' : d.label));
+  const summary = [
+    `${athletes.length} athlete${athletes.length === 1 ? '' : 's'}`,
+    `${packages.length} posts${deliverableWords.length ? ` (${deliverableWords.join(', then a ')})` : ''}`,
+    campaign.tagHandle ? `tag @${campaign.tagHandle}` : null,
+    campaign.hashtag ? `#${campaign.hashtag}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const stageLabel = STAGES.find((s) => s.key === stage)?.label ?? 'All athletes';
 
   return (
     <div className="pi">
@@ -379,89 +448,139 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
           <div style={{ minWidth: 0 }}>
             <p className="eye">Posting instructions</p>
             <h1 className="title">{title}</h1>
+            <p className="summary">{summary}</p>
           </div>
+        </div>
+        <div className="headacts">
+          <button type="button" className="btn g" onClick={() => setShowRules(true)}>
+            Campaign rules
+          </button>
+          <button
+            type="button"
+            className="btn p"
+            onClick={copyReady}
+            disabled={readyAthletes.length === 0}
+            title={readyAthletes.length ? 'Copies name + link for each ready athlete' : undefined}
+          >
+            {copiedAll
+              ? 'Copied'
+              : readyAthletes.length
+                ? `Copy ${readyAthletes.length} ready link${readyAthletes.length === 1 ? '' : 's'}`
+                : 'No links ready yet'}
+          </button>
         </div>
       </header>
 
-      <div className="counts">
-        <div><div className="n">{counts.athletes}</div><span className="lab">Athletes</span></div>
-        <div><div className="n">{counts.posts}</div><span className="lab">Posts</span></div>
-        <div><div className="n">{counts.linksSent}</div><span className="lab">Links sent</span></div>
-        <div><div className="n">{counts.posted}</div><span className="lab">Posted</span></div>
-        <div><div className="n">{counts.captionsMissing}</div><span className="lab">Captions missing</span></div>
+      {/* ---- pipeline ---- */}
+      <div className="pipeline" role="group" aria-label="Filter by stage">
+        {STAGES.map((s) => {
+          const n = stageCounts[s.key] ?? 0;
+          const on = stage === s.key && !lateOnly;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              className={`pcard${on ? ' on' : ''}`}
+              aria-pressed={on}
+              onClick={() => {
+                setStage(s.key);
+                setLateOnly(false);
+              }}
+            >
+              <span className={`n${s.key === 'needs_caption' && n > 0 ? ' bad' : ''}`}>{n}</span>
+              <span className="lab">{s.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {(pastDrafts.length > 0 || soon.length > 0) && (
-        <div className={`alerts${pastDrafts.length > 0 && soon.length > 0 ? ' two' : ''}`}>
+      {/* ---- needs attention ---- */}
+      {(pastDrafts.length > 0 || soonNoFiles.length > 0 || missingDetails.length > 0) && (
+        <section className="attention" aria-label="Needs attention">
+          <p className="lab">Needs attention</p>
           {pastDrafts.length > 0 && (
-            <div className="alert warn" role="status">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 1.8l6.5 11.4H1.5z" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" />
-                <path d="M8 6.2v3.3" stroke="var(--accent)" strokeWidth="1.6" strokeLinecap="round" />
-                <circle cx="8" cy="11.4" r=".9" fill="var(--accent)" />
-              </svg>
+            <div className="arow">
               <div>
                 <div className="t">
-                  {pastDrafts.length} post{pastDrafts.length === 1 ? '' : 's'} dated before today {pastDrafts.length === 1 ? 'is' : 'are'} still Draft
+                  {pastDrafts.length} post{pastDrafts.length === 1 ? '' : 's'} {pastDrafts.length === 1 ? 'is' : 'are'} past {pastDrafts.length === 1 ? 'its' : 'their'} date and {pastDrafts.length === 1 ? 'was' : 'were'} never marked sent.
                 </div>
-                <p>Their links were never marked sent. Mark the ones that went out, or move them to a new date.</p>
-                <button type="button" className="btn g sm" style={{ marginTop: 10 }} onClick={() => setFilter('past_draft')}>
-                  Review these {filterCounts.past_draft}
-                </button>
+                <p>Mark the ones that went out, or move them to a new date.</p>
               </div>
+              <button
+                type="button"
+                className="btn g sm"
+                onClick={() => {
+                  setStage('all');
+                  setLateOnly(true);
+                }}
+              >
+                Review {pastDrafts.length}
+              </button>
             </div>
           )}
-          {soon.length > 0 && (
-            <div className="alert" role="status">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="8" cy="8" r="6.2" stroke="var(--ink-1)" strokeWidth="1.5" />
-                <path d="M8 4.8V8l2.2 1.4" stroke="var(--ink-1)" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
+          {soonNoFiles.length > 0 && (
+            <div className="arow">
               <div>
                 <div className="t">
-                  {soon.length} post{soon.length === 1 ? '' : 's'} go{soon.length === 1 ? 'es' : ''} live in the next 7 days
+                  {soonNoFiles.length} post{soonNoFiles.length === 1 ? '' : 's'} go{soonNoFiles.length === 1 ? 'es' : ''} live in the next 7 days without {soonNoFiles.length === 1 ? 'its' : 'their'} files.
                 </div>
-                <p>
-                  {soonMissingFiles
-                    ? `${soonMissingFiles} still ${soonMissingFiles === 1 ? 'lacks' : 'lack'} files`
-                    : 'All have their files'}
-                  {soonMissingCaption ? `, ${soonMissingCaption} ${soonMissingCaption === 1 ? 'has' : 'have'} no caption` : ''}.
-                  {' '}Athletes see a labelled “awaiting” slot until a file is attached.
-                </p>
+                <p>Athletes see an “on its way” slot until the files are attached.</p>
               </div>
+              <button
+                type="button"
+                className="btn g sm"
+                onClick={() => {
+                  setStage('awaiting_files');
+                  setLateOnly(false);
+                }}
+              >
+                Show them
+              </button>
             </div>
           )}
-        </div>
+          {missingDetails.length > 0 && (
+            <div className="arow">
+              <div>
+                <div className="t">
+                  {missingDetails.length} athlete{missingDetails.length === 1 ? '' : 's'} {missingDetails.length === 1 ? 'is' : 'are'} missing a school or handle
+                </div>
+                <p>{missingDetails.map((a) => a.name).join(', ')}</p>
+              </div>
+              <button
+                type="button"
+                className="btn g sm"
+                onClick={() => {
+                  setStage('all');
+                  setLateOnly(false);
+                  setQuery(missingDetails.length === 1 ? missingDetails[0].name : '');
+                }}
+              >
+                Show them
+              </button>
+            </div>
+          )}
+        </section>
       )}
 
-      <div className="filters">
-        <div className="pills" role="group" aria-label="Filter athletes">
-          {FILTERS.map((f) => (
-            <button key={f.key} type="button" className="pillnav" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
-              {f.label} <b>{filterCounts[f.key] ?? 0}</b>
-            </button>
-          ))}
-          {filter === 'past_draft' && (
-            <button type="button" className="pillnav" aria-pressed onClick={() => setFilter('all')}>
-              Past date, still draft <b>{filterCounts.past_draft}</b> ✕
-            </button>
-          )}
-        </div>
+      {/* ---- list heading ---- */}
+      <div className="listhead">
+        <h2>
+          {lateOnly ? 'Past date, still not sent' : stageLabel}
+          <span className="c">{visible.length}</span>
+        </h2>
         <label className="search">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" />
             <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
-          <input type="search" placeholder="Search athlete or school" aria-label="Search athlete or school" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input
+            type="search"
+            placeholder="Search athlete or school"
+            aria-label="Search athlete or school"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </label>
-      </div>
-
-      <div className="key" aria-label="Key">
-        <span className="lab">Key</span>
-        <span className="st ok"><i />Approved</span>
-        <span className="st pending"><i />Awaiting {campaign.brandName ?? 'brand'}</span>
-        <span className="st rev"><i />In revision</span>
-        <span className="st none"><i />Not added yet</span>
       </div>
 
       {/* ---- desktop table ---- */}
@@ -481,20 +600,27 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
           <div key={g.date || 'none'} role="rowgroup">
             <div className={`group${g.isPast ? ' past' : ''}`}>
               <span className="d">{g.label}</span>
-              <span className={`lab${g.late ? ' late' : ''}`}>{g.sub}</span>
+              <span className="lab">· {g.count}</span>
+              {g.when && <span className={`lab${g.isPast ? ' late' : ''}`}>· {g.when}</span>}
             </div>
             {g.rows.map((a) => (
-              <div className="trow" role="row" key={a.key}>
-                <span role="cell">
+              <div
+                className="trow row"
+                role="row"
+                key={a.key}
+                onClick={() => setPkgParam(a.link.id)}
+              >
+                <span role="cell" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" aria-label={`Select ${a.name}`} checked={selected.has(a.key)} onChange={() => toggle(a.key)} />
                 </span>
-                <div role="cell" style={{ minWidth: 0 }}>
-                  <div className="aname">{a.name}</div>
-                  <AthleteMeta a={a} />
+                <div role="cell" style={{ minWidth: 0 }}><AthleteCell a={a} /></div>
+                <div role="cell">
+                  <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} brandName={campaign.brandName} today={today} />
                 </div>
-                <div role="cell"><PostCell p={a.reel} photoCount={photoCountOf(a.reel)} /></div>
-                <div role="cell"><PostCell p={a.feed} photoCount={photoCountOf(a.feed)} /></div>
-                <div role="cell" className="linkcell">
+                <div role="cell">
+                  <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} brandName={campaign.brandName} today={today} />
+                </div>
+                <div role="cell" className="linkcell" onClick={(e) => e.stopPropagation()}>
                   <LinkState a={a} />
                   <button
                     type="button"
@@ -508,11 +634,11 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
                   </button>
                 </div>
                 <span role="cell">
-                  <button type="button" className="open" aria-label={`Open ${a.name}`} onClick={() => setPkgParam(a.link.id)}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <span className="open" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                  </button>
+                  </span>
                 </span>
               </div>
             ))}
@@ -527,24 +653,33 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
           <div key={g.date || 'none'}>
             <div className={`group${g.isPast ? ' past' : ''}`}>
               <span className="d">{g.label}</span>
-              <span className={`lab${g.late ? ' late' : ''}`}>{g.sub}</span>
+              <span className="lab">· {g.count}</span>
+              {g.when && <span className={`lab${g.isPast ? ' late' : ''}`}>· {g.when}</span>}
             </div>
             {g.rows.map((a) => (
               <div className="card" key={a.key}>
                 <div className="top">
-                  <input type="checkbox" aria-label={`Select ${a.name}`} checked={selected.has(a.key)} onChange={() => toggle(a.key)} style={{ marginTop: 4 }} />
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${a.name}`}
+                    checked={selected.has(a.key)}
+                    onChange={() => toggle(a.key)}
+                    style={{ marginTop: 6 }}
+                  />
                   <button type="button" className="grow" onClick={() => setPkgParam(a.link.id)} aria-label={`Open ${a.name}`}>
-                    <div className="aname">{a.name}</div>
-                    <AthleteMeta a={a} />
+                    <AthleteCell a={a} />
                   </button>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ color: 'var(--ink-1)', marginTop: 6 }}>
-                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
                 </div>
                 <div className="sub">
-                  <div><span className="lab">1 · Reel</span> <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} /></div>
-                  <div><span className="lab">2 · Feed</span> <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} /></div>
-                  <div className="linkcell" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span className="lab">1 · Reel + cover</span>
+                    <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} brandName={campaign.brandName} today={today} />
+                  </div>
+                  <div>
+                    <span className="lab">2 · Feed post</span>
+                    <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} brandName={campaign.brandName} today={today} />
+                  </div>
+                  <div className="linkcell row">
                     <LinkState a={a} />
                     <button
                       type="button"
@@ -564,20 +699,92 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
         ))}
       </div>
 
+      {/* ---- bulk bar ---- */}
       {(selectedAthletes.length > 0 || flash) && (
         <div className="bulk" role="region" aria-label="Selected athletes">
-          <span style={{ color: 'var(--ink-1)' }} role="status">
-            {flash ?? `${selectedAthletes.length} selected · links for each athlete's next post`}
+          <span role="status">
+            {flash ?? `${selectedAthletes.length} selected`}
           </span>
           {selectedAthletes.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="btn g sm" onClick={() => setSelected(new Set())}>Clear</button>
-              <button type="button" className="btn g sm" onClick={bulkCopy}>Copy links</button>
-              <button type="button" className="btn p sm" onClick={bulkMarkSent} disabled={bulkBusy}>
+            <div className="acts">
+              <button type="button" className="btn g sm" onClick={bulkCopy}>Copy their links</button>
+              <button type="button" className="btn p sm" onClick={() => setConfirmSend(true)} disabled={bulkBusy}>
                 {bulkBusy ? 'Marking…' : 'Mark as sent'}
               </button>
+              <button type="button" className="btn g sm" onClick={() => setSelected(new Set())}>Clear</button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ---- confirm mark as sent ---- */}
+      {confirmSend && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label="Confirm mark as sent">
+          <div className="box sm">
+            <div className="mhead">
+              <div>
+                <p className="lab">Mark as sent</p>
+                <div style={{ color: 'var(--ink-1)', fontWeight: 700, marginTop: 4 }}>
+                  {selectedAthletes.length} athlete{selectedAthletes.length === 1 ? '' : 's'}
+                </div>
+              </div>
+            </div>
+            <div className="mbody">
+              <p className="hint">
+                This records that you texted their link. It marks every post of{' '}
+                {selectedAthletes.length === 1 ? 'this athlete' : 'these athletes'} that is still a draft.
+                It does not send anything — the Hub never texts athletes.
+              </p>
+            </div>
+            <div className="dfoot">
+              <button type="button" className="btn g" onClick={() => setConfirmSend(false)}>Cancel</button>
+              <button type="button" className="btn p" onClick={doMarkSent}>Yes, mark as sent</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- campaign rules (read-only) ---- */}
+      {showRules && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label="Campaign rules">
+          <div className="box sm">
+            <div className="mhead">
+              <div>
+                <p className="lab">Campaign rules</p>
+                <div style={{ color: 'var(--ink-1)', fontWeight: 700, marginTop: 4 }}>{title}</div>
+              </div>
+              <button type="button" className="close" onClick={() => setShowRules(false)} aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="mbody rules">
+              <div className="rule">
+                <span className="lab">Tag</span>
+                <div>{campaign.tagHandle ? `@${campaign.tagHandle}` : 'Not set'}</div>
+              </div>
+              <div className="rule">
+                <span className="lab">Hashtag</span>
+                <div>{campaign.hashtag ? `#${campaign.hashtag}` : 'Not set'}</div>
+              </div>
+              <div className="rule">
+                <span className="lab">Posts each athlete makes</span>
+                <div>{deliverableWords.join(', then a ') || 'Not set'}</div>
+              </div>
+              <div className="rule">
+                <span className="lab">FTC note athletes see</span>
+                <div>{campaign.ftcNote ?? 'Not set'}</div>
+              </div>
+              <p className="hint">
+                These come from the campaign and apply to every athlete. Editing them
+                is campaign setup, which isn&apos;t built yet.
+              </p>
+            </div>
+            <div className="dfoot">
+              <button type="button" className="btn g" onClick={() => setShowRules(false)}>Close</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -592,16 +799,9 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
           onClose={() => setPkgParam(null)}
           onUpdated={applyUpdates}
           photos={photos}
-          onPhotosChanged={(packageId, next) =>
-            setPhotos((prev) => ({ ...prev, [packageId]: next }))
-          }
+          onPhotosChanged={(packageId, next) => setPhotos((prev) => ({ ...prev, [packageId]: next }))}
         />
       )}
     </div>
   );
-}
-
-function AthleteMeta({ a }: { a: AthleteRow }) {
-  const meta = [a.school, a.handle ? `@${a.handle}` : null].filter(Boolean).join(' · ');
-  return meta ? <div className="ameta">{meta}</div> : <div className="ameta blank">No school or handle on file</div>;
 }
