@@ -12,14 +12,23 @@
 //
 // GET returns STAFF_PACKAGE_COLUMNS — never am_notes, even to staff.
 // ?posting_campaign_id= lists one posting campaign (the staff editor), and
-// lifts the page size so a whole roster comes back in one call.
+// lifts the page size so a whole roster comes back in one call. That form
+// also returns `photos`, the carousel photos of every Feed post in the
+// campaign grouped by package id, so the roster can count them without a
+// request per row.
 // ============================================================
 
 import { createServerSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getHubStaff } from '@/lib/staff-auth';
-import { STAFF_PACKAGE_COLUMNS } from '@/lib/posting-packages';
+import {
+  PHOTO_COLUMNS,
+  STAFF_PACKAGE_COLUMNS,
+  groupPhotos,
+  type PostingPhoto,
+  type StaffPackage,
+} from '@/lib/posting-packages';
 
 function denied(reason: 'anon' | 'forbidden') {
   return reason === 'anon'
@@ -72,7 +81,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ packages: data, total: count });
+  const packages = (data as unknown as StaffPackage[] | null) ?? [];
+
+  // Carousel photos for the whole roster in one go. Only the editor needs
+  // them, so the unfiltered list stays exactly as it was.
+  let photos: Record<string, PostingPhoto[]> = {};
+  if (postingCampaignId && packages.length) {
+    const { data: photoRows, error: photoError } = await supabase
+      .from('posting_package_files')
+      .select(PHOTO_COLUMNS)
+      .in('package_id', packages.map((p) => p.id))
+      .eq('kind', 'photo')
+      .order('position', { ascending: true });
+    if (photoError) {
+      return NextResponse.json({ error: photoError.message }, { status: 500 });
+    }
+    photos = groupPhotos((photoRows as unknown as PostingPhoto[] | null) ?? []);
+  }
+
+  return NextResponse.json({ packages, total: count, photos });
 }
 
 export async function POST(request: NextRequest) {

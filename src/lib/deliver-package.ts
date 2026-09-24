@@ -5,21 +5,33 @@
 // only gate, and the lookup runs server-side on the service-role client, so
 // posting_packages needs no anon RLS policy at all.
 //
-//   • One row, matched by exact equality on delivery_token.
+// ONE LINK, EVERY POST. A token still identifies exactly one row, but the
+// page it opens shows every post that row's athlete has in that campaign —
+// the rows sharing (posting_campaign_id, athlete_key). Each athlete kept the
+// tokens they were already texted, so either of them opens the same combined
+// page. Sibling tokens are NEVER returned: posts are addressed by their
+// package id (`postId`), and every write re-checks that the id belongs to the
+// token's own athlete before touching it.
+//
 //   • Only the fields the athlete page renders go back to the browser —
-//     never delivery_token, am_notes, or any internal id.
-//   • Writes re-match on the token too (never on an id from the browser),
-//     and touch ONLY the athlete-owned columns: confirmed_at, posted_at,
-//     live_url — plus status, and only ever to 'posted'.
+//     never delivery_token, am_notes, or any other internal column.
+//   • Writes re-match on the token server-side and touch ONLY the
+//     athlete-owned columns: confirmed_at, posted_at, live_url — plus
+//     status, and only ever to 'posted'.
+//   • No payment or invoice copy reaches the athlete page; invoice_email
+//     stays in posting_campaigns for staff, and is not read here.
 //
 // No-store client (createLiveServiceSupabase) because this read decides
 // access: a Data-Cached row would keep serving after staff change it.
 //
-// Campaign-level copy (tag handle, hashtag, FTC note, invoice address, which
-// walkthrough to show) comes from posting_campaigns (migration 072), joined
-// through posting_packages.posting_campaign_id. The deliverable a row is —
-// reel or feed — is posting_packages.deliverable_key, looked up in that
-// campaign's `deliverables` list.
+// Campaign-level copy (tag handle, hashtag, FTC note, which walkthrough to
+// show) comes from posting_campaigns (migration 072), joined through
+// posting_packages.posting_campaign_id. The deliverable a row is — reel or
+// feed — is posting_packages.deliverable_key, looked up in that campaign's
+// `deliverables` list, which also gives each post its order and platforms.
+//
+// Feed posts are carousels: their photos live in posting_package_files
+// (migration 074), ordered by `position`. The Reel keeps video_url/cover_url.
 // ============================================================
 
 import { createLiveServiceSupabase } from '@/lib/supabase-server';
@@ -34,10 +46,13 @@ const POSTGAME_BRAND_ID = '7a0e28e9-d62f-427d-a207-cd22596fcf50';
 
 // Columns read from posting_packages. am_notes is deliberately absent: it is
 // internal and must never reach the athlete, so it is never even selected.
+// delivery_token is never selected either — the token comes in from the URL.
 const READ_COLUMNS = [
+  'id',
   'athlete_name',
   'school',
   'ig_handle',
+  'athlete_key',
   'deliverable_key',
   'posting_campaign_id',
   'intended_post_date',
@@ -58,9 +73,11 @@ const READ_COLUMNS = [
 ].join(', ');
 
 type PackageRow = {
+  id: string;
   athlete_name: string;
   school: string | null;
   ig_handle: string | null;
+  athlete_key: string | null;
   deliverable_key: string | null;
   posting_campaign_id: string | null;
   intended_post_date: string | null;
@@ -80,6 +97,13 @@ type PackageRow = {
   live_url: string | null;
 };
 
+type PhotoRow = {
+  package_id: string;
+  position: number;
+  url: string;
+  file_name: string | null;
+};
+
 type Deliverable = {
   key: string;
   label: string;
@@ -96,7 +120,6 @@ type CampaignRow = {
   tag_handle: string | null;
   hashtag: string | null;
   ftc_note: string | null;
-  invoice_email: string | null;
   deliverables: Deliverable[] | null;
 };
 
@@ -112,24 +135,35 @@ type BrandRow = {
 /** One file slot on the page: 'video' | 'cover' | 'photo'. */
 export type FileKind = 'video' | 'cover' | 'photo';
 
-/** Exactly what GET /api/deliver/[token] returns. Nothing internal. */
-export type DeliverView = {
-  athlete: { name: string; school: string | null; handle: string | null };
-  post: {
-    deliverableKey: string | null;
-    label: string | null;
-    dateLabel: string | null;
-    date: string | null;
-    dateConditional: boolean;
-  };
+/** One photo of a Feed carousel, in the order it should be posted. */
+export type DeliverPhoto = { url: string; position: number; fileName: string | null };
+
+/** One of the athlete's posts. `postId` is the package id — never a token. */
+export type DeliverPost = {
+  postId: string;
+  deliverableKey: string | null;
+  label: string | null;
+  date: string | null;
+  dateLabel: string | null;
+  dateConditional: boolean;
+  status: string;
+  caption: { text: string | null; status: string | null };
   files: {
     videoUrl: string | null;
     coverUrl: string | null;
     videoStatus: string | null;
+    photos: DeliverPhoto[];
     /** Which slots to render, in order. Reel: video + cover. Feed: photo. */
     slots: FileKind[];
   };
-  caption: { text: string | null; status: string | null };
+  walkthrough: string | null;
+  platforms: string[];
+  link: { liveUrl: string | null; postedAt: string | null };
+};
+
+/** Exactly what GET /api/deliver/[token] returns. Nothing internal. */
+export type DeliverView = {
+  athlete: { name: string; school: string | null; handle: string | null };
   campaign: {
     title: string | null;
     seasonLabel: string | null;
@@ -137,13 +171,11 @@ export type DeliverView = {
     tagHandle: string | null;
     hashtag: string | null;
     ftcNote: string | null;
-    invoiceEmail: string | null;
-    walkthrough: string | null;
-    platforms: string[];
   };
   logos: { postgame: string | null; brand: string | null };
-  link: { liveUrl: string | null; postedAt: string | null };
-  status: string;
+  posts: DeliverPost[];
+  /** The post to open on: the first not yet posted, else the last one. */
+  activePostId: string;
 };
 
 // The athlete no longer writes most of `status` (it belongs to staff), so the
@@ -247,9 +279,15 @@ function plateLogo(brandId: string, brand: BrandRow | undefined, rows: BrandLogo
 // before a query is ever made — but do not tighten the length floor without
 // checking the live rows, or real links 404.
 const TOKEN_RE = /^[0-9a-f-]{12,64}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isPlausibleToken(token: unknown): token is string {
   return typeof token === 'string' && TOKEN_RE.test(token);
+}
+
+/** A postId from the browser is only ever a uuid. Checked before any query. */
+export function isPlausiblePostId(id: unknown): id is string {
+  return typeof id === 'string' && UUID_RE.test(id);
 }
 
 async function loadRow(token: string): Promise<PackageRow | null> {
@@ -267,6 +305,58 @@ async function loadRow(token: string): Promise<PackageRow | null> {
   return (data as PackageRow | null) ?? null;
 }
 
+/**
+ * Every post belonging to the token's athlete, the token's own row included.
+ *
+ * Grouped on (posting_campaign_id, athlete_key). A row with no athlete_key —
+ * only possible before migration 074's backfill runs — degrades to just that
+ * row rather than guessing at a grouping, so the page stays correct.
+ */
+async function loadAthletePosts(row: PackageRow): Promise<PackageRow[]> {
+  if (!row.athlete_key || !row.posting_campaign_id) return [row];
+
+  const supabase = createLiveServiceSupabase();
+  const { data, error } = await supabase
+    .from('posting_packages')
+    .select(READ_COLUMNS)
+    .eq('posting_campaign_id', row.posting_campaign_id)
+    .eq('athlete_key', row.athlete_key);
+  if (error) {
+    console.error('deliver: sibling lookup failed', error);
+    return [row];
+  }
+  // Cast through unknown: the generated types don't narrow a multi-row select
+  // built from a joined column string, the way they do for maybeSingle().
+  const rows = (data as unknown as PackageRow[] | null) ?? [];
+  // Never lose the token's own row to a race or a filter.
+  return rows.some((r) => r.id === row.id) ? rows : [...rows, row];
+}
+
+async function loadPhotos(packageIds: string[]): Promise<Map<string, DeliverPhoto[]>> {
+  const byPackage = new Map<string, DeliverPhoto[]>();
+  if (!packageIds.length) return byPackage;
+
+  const supabase = createLiveServiceSupabase();
+  const { data, error } = await supabase
+    .from('posting_package_files')
+    .select('package_id, position, url, file_name')
+    .in('package_id', packageIds)
+    .eq('kind', 'photo')
+    .order('position', { ascending: true });
+  if (error) {
+    // A missing table (before migration 074) must not take the page down:
+    // the Feed post simply renders its pending state.
+    console.error('deliver: photo lookup failed', error);
+    return byPackage;
+  }
+  for (const p of (data as PhotoRow[] | null) ?? []) {
+    const list = byPackage.get(p.package_id) ?? [];
+    list.push({ url: p.url, position: p.position, fileName: p.file_name });
+    byPackage.set(p.package_id, list);
+  }
+  return byPackage;
+}
+
 export async function loadDeliverView(token: string): Promise<DeliverView | null> {
   const row = await loadRow(token);
   if (!row) return null;
@@ -276,38 +366,67 @@ export async function loadDeliverView(token: string): Promise<DeliverView | null
   if (row.posting_campaign_id) {
     const { data, error } = await supabase
       .from('posting_campaigns')
-      .select('brand_id, title, season_label, tag_handle, hashtag, ftc_note, invoice_email, deliverables')
+      .select('brand_id, title, season_label, tag_handle, hashtag, ftc_note, deliverables')
       .eq('id', row.posting_campaign_id)
       .maybeSingle();
     if (error) console.error('deliver: campaign lookup failed', error);
     campaign = (data as CampaignRow | null) ?? null;
   }
 
-  const deliverable = (campaign?.deliverables ?? []).find((d) => d.key === row.deliverable_key);
-  const logos = await loadLogos(supabase, campaign?.brand_id ?? null);
+  const deliverables = campaign?.deliverables ?? [];
+  const rows = await loadAthletePosts(row);
+  const [photos, logos] = await Promise.all([
+    loadPhotos(rows.map((r) => r.id)),
+    loadLogos(supabase, campaign?.brand_id ?? null),
+  ]);
+
+  // Campaign order first (reel = 1, feed = 2), then the date, so a campaign
+  // with no deliverables list still comes out in a stable, sensible order.
+  const orderOf = (key: string | null) => {
+    const i = deliverables.findIndex((d) => d.key === key);
+    if (i < 0) return Number.MAX_SAFE_INTEGER;
+    return deliverables[i].order ?? i + 1;
+  };
+  const sorted = rows.slice().sort((a, b) => {
+    const byOrder = orderOf(a.deliverable_key) - orderOf(b.deliverable_key);
+    if (byOrder !== 0) return byOrder;
+    return (a.intended_post_date ?? '9999-12-31').localeCompare(b.intended_post_date ?? '9999-12-31');
+  });
+
+  const posts: DeliverPost[] = sorted.map((r) => {
+    const deliverable = deliverables.find((d) => d.key === r.deliverable_key);
+    return {
+      postId: r.id,
+      deliverableKey: r.deliverable_key,
+      label: deliverable?.label ?? null,
+      date: r.intended_post_date,
+      dateLabel: r.post_date_label?.trim() || formatPostDate(r.intended_post_date),
+      dateConditional: !!r.date_conditional,
+      status: athleteStage(r),
+      caption: {
+        text: r.caption_medium?.trim() || r.caption_short?.trim() || r.caption_long?.trim() || null,
+        status: r.caption_status,
+      },
+      files: {
+        videoUrl: r.video_url,
+        coverUrl: r.cover_url,
+        videoStatus: r.video_status,
+        photos: photos.get(r.id) ?? [],
+        slots: slotsFor(deliverable, r.deliverable_key),
+      },
+      walkthrough: deliverable?.walkthrough ?? null,
+      platforms: deliverable?.platforms ?? [],
+      link: { liveUrl: r.live_url, postedAt: r.posted_at },
+    };
+  });
+
+  const activePostId = (posts.find((p) => p.status !== 'posted') ?? posts[posts.length - 1]).postId;
 
   return {
     athlete: {
       name: row.athlete_name,
       school: row.school?.trim() || null,
       handle: stripAt(row.ig_handle),
-    },
-    post: {
-      deliverableKey: row.deliverable_key,
-      label: deliverable?.label ?? null,
-      dateLabel: row.post_date_label?.trim() || formatPostDate(row.intended_post_date),
-      date: row.intended_post_date,
-      dateConditional: !!row.date_conditional,
-    },
-    files: {
-      videoUrl: row.video_url,
-      coverUrl: row.cover_url,
-      videoStatus: row.video_status,
-      slots: slotsFor(deliverable, row.deliverable_key),
-    },
-    caption: {
-      text: row.caption_medium?.trim() || row.caption_short?.trim() || row.caption_long?.trim() || null,
-      status: row.caption_status,
     },
     campaign: {
       title: campaign?.title ?? null,
@@ -316,28 +435,46 @@ export async function loadDeliverView(token: string): Promise<DeliverView | null
       tagHandle: stripAt(campaign?.tag_handle),
       hashtag: campaign?.hashtag ?? null,
       ftcNote: campaign?.ftc_note ?? row.ftc_note,
-      invoiceEmail: campaign?.invoice_email ?? null,
-      walkthrough: deliverable?.walkthrough ?? null,
-      platforms: deliverable?.platforms ?? [],
     },
     logos: { postgame: logos.postgame, brand: logos.brand },
-    link: { liveUrl: row.live_url, postedAt: row.posted_at },
-    status: athleteStage(row),
+    posts,
+    activePostId,
   };
 }
 
-/** Just the state the write routes need to decide what to do. */
+/**
+ * The state one post is in, for the write routes.
+ *
+ * `postId` must name a post belonging to the SAME athlete as `token` — same
+ * posting_campaign_id and athlete_key. Anything else returns null and the
+ * route answers 404, so a token can never move another athlete's post. Left
+ * out, it means the token's own row.
+ */
 export async function loadPackageState(
-  token: string
-): Promise<(Pick<PackageRow, 'status' | 'confirmed_at' | 'posted_at' | 'live_url'> & { stage: string }) | null> {
+  token: string,
+  postId?: string | null
+): Promise<
+  | (Pick<PackageRow, 'id' | 'status' | 'confirmed_at' | 'posted_at' | 'live_url'> & { stage: string })
+  | null
+> {
   const row = await loadRow(token);
   if (!row) return null;
+
+  let target: PackageRow = row;
+  if (postId && postId !== row.id) {
+    if (!isPlausiblePostId(postId)) return null;
+    const sibling = (await loadAthletePosts(row)).find((r) => r.id === postId);
+    if (!sibling) return null;
+    target = sibling;
+  }
+
   return {
-    status: row.status,
-    confirmed_at: row.confirmed_at,
-    posted_at: row.posted_at,
-    live_url: row.live_url,
-    stage: athleteStage(row),
+    id: target.id,
+    status: target.status,
+    confirmed_at: target.confirmed_at,
+    posted_at: target.posted_at,
+    live_url: target.live_url,
+    stage: athleteStage(target),
   };
 }
 
@@ -348,11 +485,21 @@ type AthleteWrite = Partial<Pick<PackageRow, 'confirmed_at' | 'posted_at' | 'liv
   status?: 'posted';
 };
 
+/**
+ * Write the athlete-owned columns of ONE post.
+ *
+ * The post is re-resolved from the token here — the caller's postId is never
+ * trusted straight into the WHERE clause — so the write can only ever land on
+ * a row belonging to this token's athlete.
+ */
 export async function writeAthleteFields(
   token: string,
+  postId: string | null | undefined,
   fields: AthleteWrite
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!isPlausibleToken(token)) return { ok: false, error: 'Package not found' };
+  const state = await loadPackageState(token, postId);
+  if (!state) return { ok: false, error: 'Package not found' };
+
   const patch: AthleteWrite = {};
   if ('confirmed_at' in fields) patch.confirmed_at = fields.confirmed_at;
   if ('posted_at' in fields) patch.posted_at = fields.posted_at;
@@ -364,7 +511,7 @@ export async function writeAthleteFields(
   const { error } = await supabase
     .from('posting_packages')
     .update(patch)
-    .eq('delivery_token', token);
+    .eq('id', state.id);
   if (error) {
     console.error('deliver: athlete write failed', error);
     return { ok: false, error: 'Could not save. Please try again.' };

@@ -10,7 +10,8 @@
 // Edits are held in local state per post until Save; school / handle belong
 // to the athlete, so they are written to every one of their posts. Attaching
 // a file from Drive is the exception — it saves straight away, and the panel
-// says so.
+// says so. So is everything on a Feed post's photo list: adding, reordering
+// and removing a carousel photo each write immediately.
 //
 // Two confirmations, both inline (no browser dialogs):
 //   • a live link marks the post Posted and starts payment;
@@ -31,6 +32,7 @@ import {
   slotsFor,
   type AthleteRow,
   type PackageStatus,
+  type PostingPhoto,
   type Slot,
   type StaffPackage,
 } from '@/lib/posting-packages';
@@ -91,6 +93,126 @@ async function copyText(text: string) {
   document.body.removeChild(ta);
 }
 
+/**
+ * The carousel photo list for a Feed post.
+ *
+ * Order here IS the order the athlete posts in, so moving a photo changes the
+ * post. Every action writes straight away through
+ * /api/posting-packages/[id]/photos and the server answers with the whole
+ * list back, so what's on screen is always what's stored — no optimistic
+ * ordering that could drift from the database.
+ */
+function PhotoList({
+  photos,
+  packageId,
+  disabled,
+  onAdd,
+  onChanged,
+  onError,
+}: {
+  photos: PostingPhoto[];
+  packageId: string;
+  disabled: boolean;
+  onAdd: () => void;
+  onChanged: (photos: PostingPhoto[]) => void;
+  onError: (message: string | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function send(method: 'PATCH' | 'DELETE', body: Record<string, unknown>) {
+    setBusy(true);
+    onError(null);
+    try {
+      const res = await fetch(`/api/posting-packages/${packageId}/photos`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'That did not save.');
+      onChanged((payload.photos as PostingPhoto[]) ?? []);
+    } catch (e: any) {
+      onError(e?.message || 'That did not save.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function move(index: number, by: -1 | 1) {
+    const next = photos.slice();
+    const to = index + by;
+    if (to < 0 || to >= next.length) return;
+    [next[index], next[to]] = [next[to], next[index]];
+    send('PATCH', { order: next.map((p) => p.id) });
+  }
+
+  return (
+    <>
+      {photos.length === 0 ? (
+        <p className="empty">No photos yet. A feed post needs at least one.</p>
+      ) : (
+        <ol className="photolist">
+          {photos.map((photo, i) => (
+            <li className="photorow" key={photo.id}>
+              <span className="pos">{i + 1}</span>
+              <div className="thumb">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={`Photo ${i + 1}`} />
+              </div>
+              <div className="pmeta">
+                <div className="pname" title={photo.file_name ?? undefined}>
+                  {photo.file_name ?? 'Photo'}
+                </div>
+              </div>
+              <div className="pactions">
+                <button
+                  type="button"
+                  className="btn g sm"
+                  onClick={() => move(i, -1)}
+                  disabled={disabled || busy || i === 0}
+                  aria-label={`Move photo ${i + 1} earlier`}
+                  title="Move up"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="btn g sm"
+                  onClick={() => move(i, 1)}
+                  disabled={disabled || busy || i === photos.length - 1}
+                  aria-label={`Move photo ${i + 1} later`}
+                  title="Move down"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="btn g sm"
+                  onClick={() => send('DELETE', { photoId: photo.id })}
+                  disabled={disabled || busy}
+                  aria-label={`Remove photo ${i + 1}`}
+                  title="Remove"
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      <button
+        type="button"
+        className="btn g sm"
+        style={{ marginTop: 10 }}
+        onClick={onAdd}
+        disabled={disabled || busy}
+      >
+        {busy ? 'Saving…' : 'Add from Drive'}
+      </button>
+    </>
+  );
+}
+
 export default function PackageDrawer({
   athlete,
   activeId,
@@ -99,6 +221,8 @@ export default function PackageDrawer({
   onSelect,
   onClose,
   onUpdated,
+  photos,
+  onPhotosChanged,
 }: {
   athlete: AthleteRow;
   activeId: string;
@@ -107,6 +231,9 @@ export default function PackageDrawer({
   onSelect: (pkgId: string) => void;
   onClose: () => void;
   onUpdated: (updated: StaffPackage[]) => void;
+  /** Carousel photos by package id, each list already in order. */
+  photos: Record<string, PostingPhoto[]>;
+  onPhotosChanged: (packageId: string, photos: PostingPhoto[]) => void;
 }) {
   const posts = useMemo(
     () => [athlete.reel, athlete.feed, ...athlete.other].filter((p): p is StaffPackage => !!p),
@@ -258,6 +385,7 @@ export default function PackageDrawer({
   const stageIdx = PACKAGE_STATUSES.indexOf(stage);
   const caption = val('caption_medium') ?? '';
   const slots = slotsFor(pkg.deliverable_key);
+  const pkgPhotos = photos[pkg.id] ?? [];
   const url = deliverUrl(pkg.delivery_token);
   const canMarkSent = stage === 'draft';
   const brandPossessive = brandName ? (/['’]s$/i.test(brandName) ? brandName : `${brandName}'s`) : 'the brand';
@@ -382,59 +510,83 @@ export default function PackageDrawer({
           </div>
 
           {/* files */}
-          <div className="field">
-            <span className="lab">
-              {slots.length > 1 ? 'Files' : 'File'} · athletes see {slots.length > 1 ? 'these' : 'this'} as soon as {slots.length > 1 ? "they're" : "it's"} attached
-            </span>
-            <div className={`slots${slots.length > 1 ? ' two' : ''}`}>
-              {slots.map((slot) => {
-                const fileUrl = pkg[slotColumn(slot)];
-                const pill = pillsFor(pkg).find((p) => p.label === (slot === 'video' ? 'Video' : slot === 'cover' ? 'Cover' : 'Photo'));
-                return (
-                  <div className="slot" key={slot}>
-                    <span className="lab">{SLOT_LABEL[slot]}</span>
-                    <div className={`pv${fileUrl ? ' has' : ''}`}>
-                      {fileUrl ? (
-                        slot === 'video' ? (
-                          <video src={fileUrl} controls playsInline preload="metadata" />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={fileUrl} alt="" />
-                        )
-                      ) : (
-                        <span className="em">—</span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                      {pill && (
-                        <span className={`st ${pill.state}`}>
-                          <i />
-                          {pill.state === 'ok' ? 'Approved' : pill.state === 'rev' ? 'In revision' : pill.state === 'pending' ? `Awaiting ${brandPossessive}` : 'Not added yet'}
-                        </span>
-                      )}
-                      {slot === 'video' && (
-                        <select
-                          className="inp"
-                          aria-label="Video status"
-                          value={val('video_status') ?? ''}
-                          onChange={(e) => set({ video_status: e.target.value })}
-                        >
-                          {!val('video_status') && <option value="">Status…</option>}
-                          {REVIEW_STATUSES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                    <button type="button" className="btn g sm" onClick={() => setPicker(slot)} disabled={saving}>
-                      {fileUrl ? 'Replace from Drive' : 'Choose from Drive'}
-                    </button>
-                  </div>
-                );
-              })}
+          {slots.includes('photo') ? (
+            <div className="field">
+              <span className="lab">
+                Photos · the carousel, in the order the athlete posts them
+              </span>
+              <PhotoList
+                photos={pkgPhotos}
+                packageId={pkg.id}
+                disabled={saving}
+                onAdd={() => setPicker('photo')}
+                onChanged={(next) => onPhotosChanged(pkg.id, next)}
+                onError={setError}
+              />
+              <p className="hint">
+                Athletes see these as soon as they&apos;re attached. Adding, moving and
+                removing all save straight away.
+              </p>
             </div>
-            <p className="hint">Choosing a file copies it into the Hub and saves straight away.</p>
-          </div>
+          ) : (
+            <div className="field">
+              <span className="lab">
+                {slots.length > 1 ? 'Files' : 'File'} · athletes see {slots.length > 1 ? 'these' : 'this'} as soon as {slots.length > 1 ? "they're" : "it's"} attached
+              </span>
+              <div className={`slots${slots.length > 1 ? ' two' : ''}`}>
+                {slots.map((slot) => {
+                  const column = slotColumn(slot);
+                  const fileUrl = column ? pkg[column] : null;
+                  const pill = pillsFor(pkg, pkgPhotos.length).find(
+                    (p) => p.label === (slot === 'video' ? 'Video' : 'Cover')
+                  );
+                  return (
+                    <div className="slot" key={slot}>
+                      <span className="lab">{SLOT_LABEL[slot]}</span>
+                      <div className={`pv${fileUrl ? ' has' : ''}`}>
+                        {fileUrl ? (
+                          slot === 'video' ? (
+                            <video src={fileUrl} controls playsInline preload="metadata" />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={fileUrl} alt="" />
+                          )
+                        ) : (
+                          <span className="em">—</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {pill && (
+                          <span className={`st ${pill.state}`}>
+                            <i />
+                            {pill.state === 'ok' ? 'Approved' : pill.state === 'rev' ? 'In revision' : pill.state === 'pending' ? `Awaiting ${brandPossessive}` : 'Not added yet'}
+                          </span>
+                        )}
+                        {slot === 'video' && (
+                          <select
+                            className="inp"
+                            aria-label="Video status"
+                            value={val('video_status') ?? ''}
+                            onChange={(e) => set({ video_status: e.target.value })}
+                          >
+                            {!val('video_status') && <option value="">Status…</option>}
+                            {REVIEW_STATUSES.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                      <button type="button" className="btn g sm" onClick={() => setPicker(slot)} disabled={saving}>
+                        {fileUrl ? 'Replace from Drive' : 'Choose from Drive'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="hint">Choosing a file copies it into the Hub and saves straight away.</p>
+            </div>
+          )
+          }
 
           {/* caption */}
           <div className="field">
@@ -550,9 +702,10 @@ export default function PackageDrawer({
           slot={picker}
           campaignId={campaignId}
           onClose={() => setPicker(null)}
-          onAttached={(u) => {
-            onUpdated([u]);
-            setNotice('File attached.');
+          onAttached={({ package: updated, photos: nextPhotos }) => {
+            if (updated) onUpdated([updated]);
+            if (nextPhotos) onPhotosChanged(pkg.id, nextPhotos);
+            setNotice(nextPhotos ? 'Photos attached.' : 'File attached.');
           }}
         />
       )}

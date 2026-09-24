@@ -4,7 +4,12 @@
 //
 // Staff only. Copies the Drive file into Supabase Storage (campaign-media)
 // at posting/<posting_campaign_id>/<package_id>/<slot>-<ts>-<fileName>, then
-// writes video_url (video) or cover_url (cover / feed photo).
+// writes video_url (video) or cover_url (cover).
+//
+// A Feed post is a CAROUSEL, so 'photo' does not write a column at all: it
+// appends a row to posting_package_files at the next free position
+// (migration 074). Attaching several photos is just this route called once
+// per file; cover_url on feed rows stays null.
 //
 // Why copy instead of linking Drive: athletes aren't signed into Postgame's
 // Drive, and /deliver/[token] needs a URL it can play inline and download.
@@ -14,9 +19,10 @@
 //     photo), and the Drive file's type must fit it — checked from Drive's
 //     metadata BEFORE any bytes move.
 //   • If saving the URL fails, the new upload is removed.
-//   • Replacing a file removes the old upload — but only one this route
-//     made (a posting/ path in campaign-media). Anything else a URL points
-//     at is left alone.
+//   • Replacing a video or cover removes the old upload — but only one this
+//     route made (a posting/ path in campaign-media). Anything else a URL
+//     points at is left alone. Photos are appended, never replaced, so they
+//     are removed through DELETE /api/posting-packages/[id]/photos instead.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,7 +30,14 @@ import { createServiceSupabase } from '@/lib/supabase';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { getHubStaff } from '@/lib/staff-auth';
 import { downloadAndUpload, getDriveClient, removeUpload, sanitizeFileName } from '@/lib/drive-import';
-import { STAFF_PACKAGE_COLUMNS, slotColumn, slotsFor, type Slot } from '@/lib/posting-packages';
+import {
+  PHOTO_COLUMNS,
+  STAFF_PACKAGE_COLUMNS,
+  slotColumn,
+  slotsFor,
+  type PostingPhoto,
+  type Slot,
+} from '@/lib/posting-packages';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -122,7 +135,7 @@ export async function POST(
   }
 
   const column = slotColumn(slot);
-  const oldUrl = (pkg as Record<string, string | null>)[column];
+  const oldUrl = column ? (pkg as Record<string, string | null>)[column] : null;
   const storagePath = `posting/${pkg.posting_campaign_id ?? 'none'}/${pkg.id}/${slot}-${Date.now()}-${sanitizeFileName(fileName)}`;
 
   const service = createServiceSupabase();
@@ -134,6 +147,51 @@ export async function POST(
     return NextResponse.json({ error: err?.message || 'Copying from Drive failed.' }, { status: 500 });
   }
 
+  // ---- a carousel photo: append a row, don't touch any column ----
+  if (!column) {
+    // Next free position. Two staff attaching at once would collide on the
+    // (package_id, position) unique index rather than silently overwrite —
+    // the second gets an error and can retry.
+    const { data: last, error: lastError } = await supabase
+      .from('posting_package_files')
+      .select('position')
+      .eq('package_id', pkg.id)
+      .order('position', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastError) {
+      await removeUpload(service, storagePath);
+      return NextResponse.json({ error: lastError.message }, { status: 500 });
+    }
+    const nextPosition = ((last as { position: number } | null)?.position ?? 0) + 1;
+
+    const { error: insertError } = await supabase.from('posting_package_files').insert({
+      package_id: pkg.id,
+      kind: 'photo',
+      position: nextPosition,
+      url: publicUrl,
+      storage_path: storagePath,
+      drive_file_id: driveFileId,
+      file_name: fileName,
+    });
+    if (insertError) {
+      await removeUpload(service, storagePath);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    const { data: photos } = await supabase
+      .from('posting_package_files')
+      .select(PHOTO_COLUMNS)
+      .eq('package_id', pkg.id)
+      .order('position', { ascending: true });
+
+    return NextResponse.json({
+      url: publicUrl,
+      photos: (photos as unknown as PostingPhoto[] | null) ?? [],
+    });
+  }
+
+  // ---- video / cover: one column, replace in place ----
   const { data: updated, error: saveError } = await supabase
     .from('posting_packages')
     .update({ [column]: publicUrl, updated_at: new Date().toISOString() })

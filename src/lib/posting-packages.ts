@@ -92,14 +92,44 @@ export function isSent(p: Pick<StaffPackage, 'status' | 'sent_at'>): boolean {
   return !!p.sent_at || SENT_OR_LATER.has(p.status);
 }
 
-/** File slots a deliverable needs. Reel: video + cover. Feed: one photo. */
+/** File slots a deliverable needs. Reel: video + cover. Feed: photos. */
 export type Slot = 'video' | 'cover' | 'photo';
 export function slotsFor(deliverableKey: string | null): Slot[] {
   return deliverableKey === 'feed' ? ['photo'] : ['video', 'cover'];
 }
-/** Which column a slot's file lives in. Feed photos use cover_url. */
-export function slotColumn(slot: Slot): 'video_url' | 'cover_url' {
-  return slot === 'video' ? 'video_url' : 'cover_url';
+/**
+ * Which column a slot's file lives in — or null for 'photo'.
+ *
+ * A Feed post is a carousel of several photos, so they cannot live in one
+ * column: they are rows in posting_package_files, ordered by `position`
+ * (migration 074). cover_url is left alone on feed rows; it is null on all of
+ * them and stays that way.
+ */
+export function slotColumn(slot: Slot): 'video_url' | 'cover_url' | null {
+  if (slot === 'video') return 'video_url';
+  if (slot === 'cover') return 'cover_url';
+  return null;
+}
+
+/** One carousel photo, as the staff editor sees it. */
+export type PostingPhoto = {
+  id: string;
+  package_id: string;
+  position: number;
+  url: string;
+  storage_path: string | null;
+  drive_file_id: string | null;
+  file_name: string | null;
+};
+
+export const PHOTO_COLUMNS = 'id, package_id, position, url, storage_path, drive_file_id, file_name';
+
+/** Photos grouped by package id, each list already in carousel order. */
+export function groupPhotos(rows: PostingPhoto[]): Record<string, PostingPhoto[]> {
+  const by: Record<string, PostingPhoto[]> = {};
+  for (const r of rows) (by[r.package_id] ??= []).push(r);
+  for (const list of Object.values(by)) list.sort((a, b) => a.position - b.position);
+  return by;
 }
 
 // ---- pills ----------------------------------------------------------------
@@ -123,7 +153,7 @@ function reviewPill(label: string, hasThing: boolean, status: string | null): Pi
  *   cover / photo — no status column, so a file present is 'ok' and a
  *             missing one is 'none'.
  */
-export function pillsFor(p: StaffPackage): Pill[] {
+export function pillsFor(p: StaffPackage, photoCount = 0): Pill[] {
   const pills: Pill[] = [reviewPill('Caption', !!p.caption_medium?.trim(), p.caption_status)];
   for (const slot of slotsFor(p.deliverable_key)) {
     if (slot === 'video') {
@@ -133,15 +163,22 @@ export function pillsFor(p: StaffPackage): Pill[] {
       } else {
         pills.push(reviewPill('Video', has, p.video_status));
       }
+    } else if (slot === 'cover') {
+      pills.push({ label: 'Cover', state: p.cover_url ? 'ok' : 'none' });
     } else {
-      pills.push({ label: slot === 'cover' ? 'Cover' : 'Photo', state: p.cover_url ? 'ok' : 'none' });
+      // A carousel: the pill carries its count, and is done at one or more.
+      pills.push({ label: `Photos ${photoCount}`, state: photoCount > 0 ? 'ok' : 'none' });
     }
   }
   return pills;
 }
 
-export function missingFiles(p: StaffPackage): boolean {
-  return slotsFor(p.deliverable_key).some((s) => !p[slotColumn(s)]);
+/** True when a post is still missing a file it needs. */
+export function missingFiles(p: StaffPackage, photoCount = 0): boolean {
+  return slotsFor(p.deliverable_key).some((s) => {
+    const column = slotColumn(s);
+    return column ? !p[column] : photoCount === 0;
+  });
 }
 export function hasCaption(p: StaffPackage): boolean {
   return !!p.caption_medium?.trim();
@@ -191,8 +228,13 @@ export type AthleteRow = {
   feed: StaffPackage | null;
   /** Any post that isn't reel/feed (none today) — kept, never dropped. */
   other: StaffPackage[];
-  /** The post the "Their link" column, Copy links and Mark as sent act on. */
-  next: StaffPackage;
+  /**
+   * The ONE post whose token is the athlete's link. Both of an athlete's
+   * tokens open the same combined page, so the roster shows a single link
+   * and never changes which one it shows — an athlete who was texted this
+   * link keeps using it for every post in the campaign.
+   */
+  link: StaffPackage;
 };
 
 // Names can carry stray spaces and case differences (CLAUDE.md: match with
@@ -206,13 +248,16 @@ function byDate(a: StaffPackage, b: StaffPackage): number {
 }
 
 /**
- * The athlete's next post that's due: the earliest-dated post not yet posted.
- * Each post has its own private link, so the roster's single "Their link"
- * column needs one. When everything is posted, the latest post.
+ * The post whose delivery_token is the athlete's one link.
+ *
+ * Their first post — the Reel for everyone today, else the earliest-dated.
+ * Deliberately NOT "the next one due": the link must not move to a different
+ * token as posts go live, because the one already texted out has to keep
+ * working and keep being the one staff copy.
  */
-export function nextPost(posts: StaffPackage[]): StaffPackage {
-  const sorted = posts.slice().sort(byDate);
-  return sorted.find((p) => !isPosted(p)) ?? sorted[sorted.length - 1];
+export function linkPost(posts: StaffPackage[]): StaffPackage {
+  const reel = posts.find((p) => p.deliverable_key === 'reel');
+  return reel ?? posts.slice().sort(byDate)[0];
 }
 
 export function groupAthletes(packages: StaffPackage[]): AthleteRow[] {
@@ -240,7 +285,7 @@ export function groupAthletes(packages: StaffPackage[]): AthleteRow[] {
       reel,
       feed,
       other,
-      next: nextPost(posts),
+      link: linkPost(posts),
     });
   }
   return rows;
