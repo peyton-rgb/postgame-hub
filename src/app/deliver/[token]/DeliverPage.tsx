@@ -593,19 +593,19 @@ export default function DeliverPage({ token, view }: { token: string; view: Deli
       label: 'Video · the post',
       note: 'Vertical 9:16',
       button: 'Save video',
-      url: post.files.videoUrl,
+      url: post.files.video,
     },
     cover: {
       label: 'Photo · the cover',
       note: 'Cover image for the reel — not its own post',
       button: 'Save cover photo',
-      url: post.files.coverUrl,
+      url: post.files.cover,
     },
     photo: {
       label: 'Photo · the post',
       note: 'The photo for your feed post',
       button: 'Save photo',
-      url: post.files.coverUrl,
+      url: post.files.cover,
     },
   };
   const reelSlots = post.files.slots.filter((s) => s !== 'photo');

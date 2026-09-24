@@ -149,10 +149,13 @@ export type DeliverPost = {
   status: string;
   caption: { text: string | null; status: string | null };
   files: {
-    videoUrl: string | null;
-    coverUrl: string | null;
-    videoStatus: string | null;
+    /** A Reel's two files. Null on a Feed post. */
+    video: string | null;
+    cover: string | null;
+    /** A Feed carousel's photos, in posting order. Empty on a Reel. */
     photos: DeliverPhoto[];
+    /** Review state of the video, for the pending chip. */
+    videoStatus: string | null;
     /** Which slots to render, in order. Reel: video + cover. Feed: photo. */
     slots: FileKind[];
   };
@@ -408,10 +411,10 @@ export async function loadDeliverView(token: string): Promise<DeliverView | null
         status: r.caption_status,
       },
       files: {
-        videoUrl: r.video_url,
-        coverUrl: r.cover_url,
-        videoStatus: r.video_status,
+        video: r.video_url,
+        cover: r.cover_url,
         photos: photos.get(r.id) ?? [],
+        videoStatus: r.video_status,
         slots: slotsFor(deliverable, r.deliverable_key),
       },
       walkthrough: deliverable?.walkthrough ?? null,
