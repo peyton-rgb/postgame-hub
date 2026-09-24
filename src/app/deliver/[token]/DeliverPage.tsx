@@ -397,7 +397,8 @@ function Home({
           const status = done
             ? '✓ Posted · link received'
             : !filesReady
-              ? `${p.deliverableKey === 'feed' ? 'Photos' : 'Video'} on its way · you can prep the rest`
+              // Photos are plural, the video is one file — so the verb differs.
+              ? `${p.deliverableKey === 'feed' ? 'Photos on their way' : 'Video on its way'} · you can prep the rest`
               : doneSteps > 0
                 ? `${Math.min(doneSteps, TASK_COUNT)} of ${TASK_COUNT} steps done`
                 : `Everything's ready · ${TASK_COUNT} quick steps`;
