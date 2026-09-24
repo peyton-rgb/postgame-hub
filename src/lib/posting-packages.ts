@@ -295,6 +295,132 @@ export function postsOf(a: AthleteRow): StaffPackage[] {
   return [a.reel, a.feed, ...a.other].filter((p): p is StaffPackage => !!p);
 }
 
+// ---- stages ----------------------------------------------------------------
+//
+// The redesigned roster puts every post in EXACTLY ONE stage, tested in this
+// order, first match wins. The old filters overlapped — a post with no caption
+// and no files counted in two places, so the tab numbers never added up to the
+// roster. These do.
+//
+//   posted         → a live link, or a posted time
+//   sent           → sent_at, or status past draft
+//   needs_caption  → no caption text, or a caption not yet Approved
+//   awaiting_files → reel: video not Approved AND attached, or no cover
+//                    feed: no photos yet
+//   ready          → everything else
+//
+// An ATHLETE counts in a stage if ANY of their posts is in it.
+
+export type PostStage = 'posted' | 'sent' | 'needs_caption' | 'awaiting_files' | 'ready';
+
+export const STAGES: { key: PostStage | 'all'; label: string }[] = [
+  { key: 'all', label: 'All athletes' },
+  { key: 'needs_caption', label: 'Need a caption' },
+  { key: 'awaiting_files', label: 'Waiting on files' },
+  { key: 'ready', label: 'Ready to send' },
+  { key: 'sent', label: 'Link sent' },
+  { key: 'posted', label: 'Posted' },
+];
+
+/** A caption only counts when it exists AND the brand has approved it. */
+export function captionApproved(p: StaffPackage): boolean {
+  return hasCaption(p) && p.caption_status === 'Approved';
+}
+
+/** A reel's video counts when the file is attached AND approved. */
+export function videoReady(p: StaffPackage): boolean {
+  return !!p.video_url && p.video_status === 'Approved';
+}
+
+/** Whether every file this post needs is in place. */
+export function filesDone(p: StaffPackage, photoCount: number): boolean {
+  if (p.deliverable_key === 'feed') return photoCount > 0;
+  return videoReady(p) && !!p.cover_url;
+}
+
+export function stageOf(p: StaffPackage, photoCount: number): PostStage {
+  if (isPosted(p) || p.live_url) return 'posted';
+  if (isSent(p)) return 'sent';
+  if (!captionApproved(p)) return 'needs_caption';
+  if (!filesDone(p, photoCount)) return 'awaiting_files';
+  return 'ready';
+}
+
+/** An athlete is in a stage when any of their posts is. */
+export function athleteInStage(
+  a: AthleteRow,
+  stage: PostStage | 'all',
+  photoCount: (p: StaffPackage) => number
+): boolean {
+  if (stage === 'all') return true;
+  return postsOf(a).some((p) => stageOf(p, photoCount(p)) === stage);
+}
+
+// ---- the one status pill ----------------------------------------------------
+
+export type PillTone = 'red' | 'amber' | 'orange' | 'blue' | 'green';
+
+/**
+ * The single pill a post cell shows. Sized to its text, never full width.
+ * The brand name is passed in — it comes from the campaign, never hard-coded.
+ */
+export function statusPill(
+  p: StaffPackage,
+  photoCount: number,
+  brandName: string | null
+): { label: string; tone: PillTone } {
+  const stage = stageOf(p, photoCount);
+  if (stage === 'posted') return { label: 'Posted', tone: 'green' };
+  if (stage === 'sent') return { label: 'Link sent', tone: 'blue' };
+  if (stage === 'needs_caption') return { label: 'Needs caption', tone: 'red' };
+  if (stage === 'ready') return { label: 'Ready to send', tone: 'orange' };
+
+  // awaiting_files — say WHICH file, so the row is actionable at a glance.
+  if (p.deliverable_key === 'feed') return { label: 'Needs photos', tone: 'amber' };
+  if (p.video_status === 'In Revision') return { label: 'Video in revision', tone: 'amber' };
+  if (!videoReady(p)) return { label: `Video with ${brandName ?? 'the brand'}`, tone: 'amber' };
+  return { label: 'Needs cover', tone: 'amber' };
+}
+
+// ---- the small part dots ----------------------------------------------------
+
+export type DotState = 'done' | 'rev' | 'missing';
+export type Part = { label: string; state: DotState };
+
+/** Caption / Video / Cover for a reel; Caption / Photos N for a feed post. */
+export function partsFor(p: StaffPackage, photoCount: number): Part[] {
+  const caption: Part = {
+    label: 'Caption',
+    state: captionApproved(p) ? 'done' : p.caption_status === 'In Revision' ? 'rev' : 'missing',
+  };
+  if (p.deliverable_key === 'feed') {
+    return [caption, { label: `Photos ${photoCount}`, state: photoCount > 0 ? 'done' : 'missing' }];
+  }
+  return [
+    caption,
+    {
+      label: 'Video',
+      state: videoReady(p) ? 'done' : p.video_status === 'In Revision' ? 'rev' : 'missing',
+    },
+    { label: 'Cover', state: p.cover_url ? 'done' : 'missing' },
+  ];
+}
+
+// ---- grouping by the athlete's next post date -------------------------------
+
+/**
+ * The date the roster groups an athlete under: their earliest post that isn't
+ * posted yet. When everything is posted, their last date. Null when undated.
+ */
+export function nextPostDate(a: AthleteRow): string | null {
+  const posts = postsOf(a);
+  const open = posts.filter((p) => !isPosted(p) && p.intended_post_date);
+  const pool = open.length ? open : posts.filter((p) => p.intended_post_date);
+  if (!pool.length) return null;
+  const dates = pool.map((p) => p.intended_post_date!).sort();
+  return open.length ? dates[0] : dates[dates.length - 1];
+}
+
 // ---- filters and counts ----------------------------------------------------
 
 export type FilterKey = 'all' | 'needs_caption' | 'awaiting_files' | 'ready' | 'sent' | 'posted' | 'past_draft';
