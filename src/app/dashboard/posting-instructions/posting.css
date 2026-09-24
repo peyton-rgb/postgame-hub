@@ -338,3 +338,58 @@
 .pi .rules{display:flex;flex-direction:column;gap:14px}
 .pi .rule .lab{display:block;margin-bottom:4px}
 .pi .rule > div{color:var(--ink-1);font-size:15px;line-height:1.45}
+
+/* ---- panel: post tabs with a second line ---- */
+.pi .ptabs{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.pi .ptab{
+  flex:1 1 180px;min-width:0;text-align:left;cursor:pointer;
+  display:flex;flex-direction:column;gap:3px;
+  background:var(--surface-card);border:1px solid var(--hairline);border-radius:10px;padding:9px 11px;
+}
+.pi .ptab.on{border-color:var(--accent);background:rgb(var(--accent-rgb) / .10)}
+.pi .ptab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pi .ptab .t{color:var(--ink-1);font-weight:700;font-size:13px;line-height:1.2}
+.pi .ptab .t b{color:var(--accent)}
+.pi .ptab .s{
+  font-family:var(--pi-label);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ---- panel: six-bar status track ---- */
+.pi .track6{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px}
+.pi .track6 .bar{height:4px;border-radius:999px;background:var(--surface-raised)}
+.pi .track6 .bar.on{background:var(--accent)}
+.pi .track6l{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:6px}
+.pi .track6l .lab{font-size:8px;letter-spacing:.06em;text-align:left;line-height:1.2}
+.pi .track6l .lab.cur{color:var(--ink-1);font-weight:700}
+
+/* ---- panel: ready checklist ---- */
+.pi .ready{border-radius:12px;padding:13px 14px;margin-top:4px;border:1px solid transparent}
+.pi .ready.ok{background:rgb(var(--status-ok-rgb) / .10);border-color:rgb(var(--status-ok-rgb) / .35)}
+.pi .ready.warn{background:rgb(var(--status-warn-rgb) / .10);border-color:rgb(var(--status-warn-rgb) / .35)}
+.pi .ready.sent{background:var(--surface-card);border-color:var(--hairline)}
+.pi .ready .rt{
+  font-family:var(--pi-label);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px;
+}
+.pi .ready.ok .rt{color:rgb(var(--status-ok-ink-rgb))}
+.pi .ready.warn .rt{color:rgb(var(--status-warn-ink-rgb))}
+.pi .ready.sent .rt{color:var(--ink-3)}
+.pi .ready ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.pi .ready li{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-4);line-height:1.3}
+.pi .ready li.done{color:var(--ink-1)}
+.pi .ready .tick{
+  width:16px;height:16px;border-radius:999px;flex:none;
+  border:1px solid var(--ink-4);display:flex;align-items:center;justify-content:center;color:#fff;
+}
+.pi .ready li.done .tick{background:rgb(var(--status-ok-rgb));border-color:rgb(var(--status-ok-rgb))}
+.pi .ready .tick svg{width:10px;height:10px}
+
+/* ---- panel: date switch + preview ---- */
+.pi .switch{display:flex;align-items:center;gap:9px;margin-top:10px;cursor:pointer;font-size:14px;color:var(--ink-3)}
+.pi .switch input{width:16px;height:16px}
+.pi .preview{
+  margin-top:10px;padding:10px 12px;border-radius:10px;
+  background:var(--surface-card);border:1px solid var(--hairline);
+  font-size:13px;color:var(--ink-1);line-height:1.45;
+}
+.pi .preview .lab{display:block;margin-bottom:3px}

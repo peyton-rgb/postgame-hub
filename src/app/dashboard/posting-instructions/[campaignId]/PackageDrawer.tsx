@@ -1,7 +1,15 @@
 'use client';
 
 // ============================================================
-// Edit panel for one athlete's posts (mockup board 2).
+// Edit panel for one athlete's posts — redesigned (Step 3).
+//
+// Adds a READY CHECKLIST: the handful of things that must be true before a
+// link is worth texting, each ticked or not. It reads the same rules the
+// roster's pipeline uses (captionApproved / videoReady in posting-packages.ts),
+// so the panel and the roster can never disagree about whether a post is ready.
+//
+// Feed photos have no approval field in the database, so the Feed checklist
+// has three items, not four. Nothing here adds a column.
 //
 // A right-side drawer (full-screen sheet on phones). It is a
 // div[role=dialog], not an <aside>: DashboardShell hides every <aside>
@@ -24,10 +32,13 @@ import {
   PACKAGE_STATUSES,
   REVIEW_STATUSES,
   STATUS_LABEL,
+  captionApproved,
   deliverUrl,
   formatPostDate,
   isPosted,
   pillsFor,
+  statusPill,
+  videoReady,
   slotColumn,
   slotsFor,
   type AthleteRow,
@@ -386,9 +397,58 @@ export default function PackageDrawer({
   const caption = val('caption_medium') ?? '';
   const slots = slotsFor(pkg.deliverable_key);
   const pkgPhotos = photos[pkg.id] ?? [];
-  const url = deliverUrl(pkg.delivery_token);
+  // The athlete's ONE link — always their first post's token, never the
+  // selected tab's. Both tokens open the same page, but the link staff copy
+  // must not change as they click between posts.
+  const url = deliverUrl(athlete.link.delivery_token);
   const canMarkSent = stage === 'draft';
+  // Undo is offered only from 'sent'. Once an athlete has confirmed or posted,
+  // walking the status backwards would contradict something they did.
+  const canUndoSent = stage === 'sent';
   const brandPossessive = brandName ? (/['’]s$/i.test(brandName) ? brandName : `${brandName}'s`) : 'the brand';
+
+  // ---- ready checklist ----
+  // Built from the values ON SCREEN (val/drafts), so ticks move as you edit
+  // rather than only after a save.
+  const draftPkg = { ...pkg, ...(drafts[pkg.id] ?? {}) } as StaffPackage;
+  const isFeed = pkg.deliverable_key === 'feed';
+  const checklist: { label: string; done: boolean }[] = isFeed
+    ? [
+        { label: 'Caption approved', done: captionApproved(draftPkg) },
+        { label: 'At least 1 photo', done: pkgPhotos.length > 0 },
+        { label: 'Date set', done: !!val('intended_post_date') },
+      ]
+    : [
+        { label: 'Caption approved', done: captionApproved(draftPkg) },
+        { label: 'Video approved', done: videoReady(draftPkg) },
+        { label: 'Cover attached', done: !!pkg.cover_url },
+        { label: 'Date set', done: !!val('intended_post_date') },
+      ];
+  const left = checklist.filter((c) => !c.done).length;
+  const sentAlready = stage !== 'draft';
+
+  // ---- what the athlete will see for the date ----
+  const previewDate = formatPostDate(val('intended_post_date')) ?? null;
+  const previewLabel = (val('post_date_label') ?? '').trim() || previewDate;
+  const schoolWord = school.trim() || athlete.school || 'they';
+  const datePreview = previewLabel
+    ? `${previewLabel} · ${val('date_conditional') ? `only if ${schoolWord} wins` : 'any time that day works'}`
+    : 'No date yet — the athlete sees “Date TBC”.';
+
+  async function undoSent() {
+    setError(null);
+    setNotice(null);
+    setSaving(true);
+    try {
+      const updated = await patch(pkg, { status: 'draft', sent_at: null });
+      onUpdated([updated]);
+      setNotice('Marked back to draft.');
+    } catch (e: any) {
+      setError(e?.message || 'Could not undo.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <>
@@ -397,7 +457,7 @@ export default function PackageDrawer({
         <div className="dhead">
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p className="eye">Athlete package</p>
+              <p className="eye">Athlete</p>
               <h2 className="dname" id="pi-drawer-name">{athlete.name}</h2>
             </div>
             <button ref={closeRef} type="button" className="close" onClick={requestClose} aria-label="Close">
@@ -428,58 +488,87 @@ export default function PackageDrawer({
             >
               {copied ? 'Copied' : 'Copy'}
             </button>
-            <a className="btn g sm" href={`/deliver/${pkg.delivery_token}`} target="_blank" rel="noopener noreferrer">
+            <a className="btn g sm" href={`/deliver/${athlete.link.delivery_token}`} target="_blank" rel="noopener noreferrer">
               Preview
             </a>
           </div>
+          <p className="hint" style={{ marginTop: 6 }}>
+            One link per athlete — it covers every post below.
+          </p>
+
           {posts.length > 1 && (
-            <div className="tabs" role="tablist" aria-label="Posts">
-              {posts.map((p, i) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="tab"
-                  className="pillnav"
-                  aria-pressed={p.id === pkg.id}
-                  aria-selected={p.id === pkg.id}
-                  onClick={() => onSelect(p.id)}
-                >
-                  {i + 1} · {tabLabel(p)}
-                  {Object.keys(changesFor(p)).length > 0 && <b aria-label="unsaved">•</b>}
-                </button>
-              ))}
+            <div className="ptabs" role="tablist" aria-label="Posts">
+              {posts.map((p, i) => {
+                const pill = statusPill(p, (photos[p.id] ?? []).length, brandName);
+                const on = p.id === pkg.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="tab"
+                    className={`ptab${on ? ' on' : ''}`}
+                    aria-selected={on}
+                    onClick={() => onSelect(p.id)}
+                  >
+                    <span className="t">
+                      {i + 1} · {p.deliverable_key === 'feed' ? 'Feed post' : 'Reel + cover'}
+                      {Object.keys(changesFor(p)).length > 0 && <b aria-label="unsaved"> •</b>}
+                    </span>
+                    <span className="s">
+                      {formatPostDate(p.intended_post_date) ?? 'No date'} · {pill.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
 
         <div className="dbody">
-          {/* status */}
+          {/* status track */}
           <div className="field">
             <span className="lab">Status</span>
-            <div className="steps" aria-hidden="true">
+            <div className="track6">
               {PACKAGE_STATUSES.map((s, i) => (
-                <span key={s} className={i <= stageIdx ? 'on' : ''} />
+                <span key={s} className={`bar${i <= stageIdx ? ' on' : ''}`} />
               ))}
             </div>
-            <div className="steps-l">
+            <div className="track6l">
               {PACKAGE_STATUSES.map((s) => (
                 <span key={s} className={`lab${s === stage ? ' cur' : ''}`}>
                   {STATUS_LABEL[s]}
                 </span>
               ))}
             </div>
-            <p className="hint">
-              {pkg.sent_at ? `Sent ${new Date(pkg.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. ` : ''}
-              {pkg.confirmed_at ? 'The athlete confirmed they got it. ' : ''}
-              {pkg.posted_at ? `Posted ${new Date(pkg.posted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.` : ''}
-            </p>
           </div>
 
-          {/* date */}
+          {/* ready checklist */}
+          <div className={`ready ${sentAlready ? 'sent' : left === 0 ? 'ok' : 'warn'}`}>
+            <div className="rt">
+              {sentAlready ? 'Link sent' : left === 0 ? 'Ready to send' : `Not ready to send · ${left} left`}
+            </div>
+            <ul>
+              {checklist.map((c) => (
+                <li key={c.label} className={c.done ? 'done' : ''}>
+                  <span className="tick" aria-hidden="true">
+                    {c.done && (
+                      <svg viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  {c.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* post date */}
           <div className="field">
+            <span className="lab">Post date</span>
             <div className="row2">
               <div className="field">
-                <label className="lab" htmlFor="pi-date">Post date</label>
+                <label className="lab" htmlFor="pi-date">Date</label>
                 <input
                   id="pi-date"
                   className="inp"
@@ -489,32 +578,34 @@ export default function PackageDrawer({
                 />
               </div>
               <div className="field">
-                <label className="lab" htmlFor="pi-label">Shown to athlete</label>
+                <label className="lab" htmlFor="pi-datelabel">Shown to athlete</label>
                 <input
-                  id="pi-label"
+                  id="pi-datelabel"
                   className="inp"
                   value={val('post_date_label') ?? ''}
-                  placeholder={formatPostDate(val('intended_post_date')) ?? 'e.g. Sat, Sept 26'}
+                  placeholder={previewDate ?? 'e.g. Sat, Sept 26'}
                   onChange={(e) => set({ post_date_label: e.target.value })}
                 />
               </div>
             </div>
-            <label className="check">
+            <label className="switch">
               <input
                 type="checkbox"
                 checked={!!val('date_conditional')}
                 onChange={(e) => set({ date_conditional: e.target.checked })}
               />
-              Date depends on the game result
+              <span>Only if they win that day</span>
             </label>
+            <p className="preview">
+              <span className="lab">Athlete sees</span>
+              {datePreview}
+            </p>
           </div>
 
           {/* files */}
           {slots.includes('photo') ? (
             <div className="field">
-              <span className="lab">
-                Photos · the carousel, in the order the athlete posts them
-              </span>
+              <span className="lab">Photos · the carousel, in posting order</span>
               <PhotoList
                 photos={pkgPhotos}
                 packageId={pkg.id}
@@ -524,21 +615,19 @@ export default function PackageDrawer({
                 onError={setError}
               />
               <p className="hint">
-                Athletes see these as soon as they&apos;re attached. Adding, moving and
-                removing all save straight away.
+                Athletes see them as soon as they&apos;re attached. Adding, moving and removing
+                all save straight away.
               </p>
             </div>
           ) : (
             <div className="field">
-              <span className="lab">
-                {slots.length > 1 ? 'Files' : 'File'} · athletes see {slots.length > 1 ? 'these' : 'this'} as soon as {slots.length > 1 ? "they're" : "it's"} attached
-              </span>
-              <div className={`slots${slots.length > 1 ? ' two' : ''}`}>
+              <span className="lab">Files · athletes see them as soon as they&apos;re attached</span>
+              <div className="slots two">
                 {slots.map((slot) => {
                   const column = slotColumn(slot);
                   const fileUrl = column ? pkg[column] : null;
                   const pill = pillsFor(pkg, pkgPhotos.length).find(
-                    (p) => p.label === (slot === 'video' ? 'Video' : 'Cover')
+                    (x) => x.label === (slot === 'video' ? 'Video' : 'Cover')
                   );
                   return (
                     <div className="slot" key={slot}>
@@ -556,13 +645,7 @@ export default function PackageDrawer({
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        {pill && (
-                          <span className={`st ${pill.state}`}>
-                            <i />
-                            {pill.state === 'ok' ? 'Approved' : pill.state === 'rev' ? 'In revision' : pill.state === 'pending' ? `Awaiting ${brandPossessive}` : 'Not added yet'}
-                          </span>
-                        )}
-                        {slot === 'video' && (
+                        {slot === 'video' ? (
                           <select
                             className="inp"
                             aria-label="Video status"
@@ -574,10 +657,17 @@ export default function PackageDrawer({
                               <option key={s} value={s}>{s}</option>
                             ))}
                           </select>
+                        ) : (
+                          pill && (
+                            <span className={`st ${pill.state}`}>
+                              <i />
+                              {fileUrl ? 'Attached' : 'Not added yet'}
+                            </span>
+                          )
                         )}
                       </div>
                       <button type="button" className="btn g sm" onClick={() => setPicker(slot)} disabled={saving}>
-                        {fileUrl ? 'Replace from Drive' : 'Choose from Drive'}
+                        {fileUrl ? 'Replace' : 'From Drive'}
                       </button>
                     </div>
                   );
@@ -585,12 +675,11 @@ export default function PackageDrawer({
               </div>
               <p className="hint">Choosing a file copies it into the Hub and saves straight away.</p>
             </div>
-          )
-          }
+          )}
 
           {/* caption */}
           <div className="field">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <label className="lab" htmlFor="pi-cap">Caption</label>
               <select
                 className="inp"
@@ -613,7 +702,7 @@ export default function PackageDrawer({
               onChange={(e) => set({ caption_medium: e.target.value })}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <span className="lab" style={caption.length > CAPTION_LIMIT ? { color: 'var(--status-bad-ink)' } : undefined}>
+              <span className="lab" style={caption.length > CAPTION_LIMIT ? { color: 'rgb(var(--status-bad-ink-rgb))' } : undefined}>
                 {caption.length.toLocaleString()} / {CAPTION_LIMIT.toLocaleString()}
               </span>
             </div>
@@ -677,17 +766,27 @@ export default function PackageDrawer({
               <div style={{ marginRight: 'auto', alignSelf: 'center', minWidth: 0 }}>
                 {error && <p className="err" role="alert">{error}</p>}
                 {!error && notice && <p className="okmsg" role="status">{notice}</p>}
-                {!error && !notice && dirty && <p className="hint">Unsaved changes</p>}
+                {!error && !notice && (
+                  <p className="hint">
+                    {dirty ? 'Unsaved changes' : 'Changes save straight away; files copy into the Hub when chosen.'}
+                  </p>
+                )}
               </div>
-              <button
-                type="button"
-                className="btn g"
-                onClick={() => save({ thenMarkSent: true })}
-                disabled={saving || !canMarkSent}
-                title={canMarkSent ? 'Records that this link went out' : 'Already sent'}
-              >
-                Mark as sent
-              </button>
+              {canUndoSent ? (
+                <button type="button" className="btn g" onClick={undoSent} disabled={saving} title="Put this post back to draft">
+                  Undo sent
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn g"
+                  onClick={() => save({ thenMarkSent: true })}
+                  disabled={saving || !canMarkSent}
+                  title={canMarkSent ? 'Records that this link went out' : 'Already sent'}
+                >
+                  Mark as sent
+                </button>
+              )}
               <button type="button" className="btn p" onClick={() => save()} disabled={saving || !dirty}>
                 {saving ? 'Saving…' : 'Save'}
               </button>
