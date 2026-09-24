@@ -211,3 +211,38 @@
 @media(max-width:749px){ .pi .modal{padding:0} .pi .modal .box{height:100%;max-height:none;border-radius:0} }
 
 @media(prefers-reduced-motion:reduce){ .pi *{transition:none!important;animation:none!important} }
+
+/* ---- carousel photo list (Feed tab of the edit panel) ---- */
+.pi .photolist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pi .photorow{
+  display:grid;grid-template-columns:22px 56px 1fr auto;gap:10px;align-items:center;
+  background:var(--surface-raised);border:1px solid var(--hairline);border-radius:10px;padding:8px 10px;
+}
+.pi .photorow .pos{
+  font-family:var(--pi-label);font-size:11px;color:var(--ink-4);text-align:center;
+}
+.pi .photorow .thumb{
+  width:56px;aspect-ratio:4/5;border-radius:6px;overflow:hidden;
+  background:var(--surface-card);border:1px solid var(--hairline);
+}
+.pi .photorow .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pi .photorow .pmeta{min-width:0}
+.pi .photorow .pname{
+  font-size:13px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.pi .photorow .pactions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:560px){
+  .pi .photorow{grid-template-columns:22px 48px 1fr}
+  .pi .photorow .thumb{width:48px}
+  .pi .photorow .pactions{grid-column:1 / -1;justify-content:flex-start}
+}
+
+/* ---- multi-select order badge in the Drive picker ---- */
+.pi .grid .tile .th{position:relative}
+.pi .grid .tile .pickno{
+  position:absolute;left:6px;top:6px;
+  width:22px;height:22px;border-radius:999px;
+  background:var(--accent,#D73F09);color:#fff;
+  font-family:var(--pi-label);font-size:11px;
+  display:flex;align-items:center;justify-content:center;
+}

@@ -1,13 +1,15 @@
 // ============================================================
-// POST /api/deliver/[token]/confirm — Athlete confirms receipt
+// POST /api/deliver/[token]/confirm — Athlete confirms receipt of one post
 //
-// Public endpoint — no auth. The athlete clicks "I Got It" and this stamps
-// confirmed_at. That is the ONLY column it writes: status belongs to staff,
-// and the page reads its confirmed state from confirmed_at instead (see
-// athleteStage in src/lib/deliver-package.ts).
+// Public endpoint — no auth. Body: { postId } (optional; without it, the
+// token's own post). The athlete confirms and this stamps confirmed_at. That
+// is the ONLY column it writes: status belongs to staff, and the page reads
+// its confirmed state from confirmed_at instead (see athleteStage in
+// src/lib/deliver-package.ts).
 //
-// The write re-matches on the token server-side; no id comes from the
-// browser. Confirming twice keeps the first timestamp.
+// postId is a package id, not a token, and only ids sharing this token's
+// (posting_campaign_id, athlete_key) resolve — the same rule the posted
+// route uses. Confirming twice keeps the first timestamp.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,10 +18,13 @@ import { loadDeliverView, loadPackageState, writeAthleteFields } from '@/lib/del
 export const dynamic = 'force-dynamic';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { token: string } }
 ) {
-  const pkg = await loadPackageState(params.token);
+  const body = await request.json().catch(() => ({}));
+  const postId = typeof body?.postId === 'string' ? body.postId : null;
+
+  const pkg = await loadPackageState(params.token, postId);
   if (!pkg) {
     return NextResponse.json({ error: 'Package not found' }, { status: 404 });
   }
@@ -38,7 +43,7 @@ export async function POST(
     );
   }
 
-  const result = await writeAthleteFields(params.token, {
+  const result = await writeAthleteFields(params.token, postId, {
     confirmed_at: new Date().toISOString(),
   });
   if (!result.ok) {

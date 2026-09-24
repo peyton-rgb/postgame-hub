@@ -7,9 +7,11 @@
 // — the count strip, alert counts, filter counts — is computed from the rows
 // the API returned, never typed in (rules in src/lib/posting-packages.ts).
 //
-// "Their link": each post has its own private link, so the link column,
-// Copy links and Mark as sent act on the athlete's NEXT post that's due
-// (the earliest-dated one not yet posted — the Reel, for everyone today).
+// "Their link": ONE link per athlete, always the same one — their first
+// post's token (the Reel, for everyone today). Both of an athlete's tokens
+// open the same combined page, so the link never has to change. One text
+// covers every post, so "Mark as sent" marks ALL of that athlete's posts
+// still in draft, not just one.
 //
 // The Hub sends nothing itself (decided 2026-09-23). "Copy links" puts a
 // plain-text block on the clipboard for staff to text out; "Mark as sent"
@@ -38,6 +40,7 @@ import {
   rosterCounts,
   type AthleteRow,
   type FilterKey,
+  type PostingPhoto,
   type StaffPackage,
 } from '@/lib/posting-packages';
 import PackageDrawer from './PackageDrawer';
@@ -82,11 +85,11 @@ async function copyText(text: string) {
   document.body.removeChild(ta);
 }
 
-function Pills({ p }: { p: StaffPackage | null }) {
+function Pills({ p, photoCount }: { p: StaffPackage | null; photoCount: number }) {
   if (!p) return <span className="hint">No post</span>;
   return (
     <div className="cell-pills">
-      {pillsFor(p).map((pill) => (
+      {pillsFor(p, photoCount).map((pill) => (
         <span key={pill.label} className={`st ${pill.state}`} title={`${pill.label}: ${PILL_WORD[pill.state]}`}>
           <i />
           {pill.label}
@@ -96,17 +99,20 @@ function Pills({ p }: { p: StaffPackage | null }) {
   );
 }
 
-function PostCell({ p }: { p: StaffPackage | null }) {
+function PostCell({ p, photoCount = 0 }: { p: StaffPackage | null; photoCount?: number }) {
   return (
     <div>
       <span className="lab">{p ? formatPostDate(p.intended_post_date) ?? 'No date' : '—'}</span>
-      <Pills p={p} />
+      <Pills p={p} photoCount={photoCount} />
     </div>
   );
 }
 
 function LinkState({ a }: { a: AthleteRow }) {
-  const p = a.next;
+  // The link is one per athlete, but its STATE reads from the whole set:
+  // sent once any post is sent, posted only when every post is.
+  const posts = postsOf(a);
+  const p = posts.every(isPosted) ? a.link : posts.find((x) => !isPosted(x)) ?? a.link;
   if (isPosted(p) && p.live_url) {
     return (
       <a href={p.live_url} target="_blank" rel="noopener noreferrer">
@@ -120,7 +126,7 @@ function LinkState({ a }: { a: AthleteRow }) {
 }
 
 function linkLine(a: AthleteRow) {
-  return `${a.name} — ${deliverUrl(a.next.delivery_token)}`;
+  return `${a.name} — ${deliverUrl(a.link.delivery_token)}`;
 }
 
 export default function PostingRoster({ campaignId }: { campaignId: string }) {
@@ -133,6 +139,9 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [packages, setPackages] = useState<StaffPackage[] | null>(null);
+  // Carousel photos by package id — the Feed pill's count comes from here,
+  // and the drawer edits them through the same map.
+  const [photos, setPhotos] = useState<Record<string, PostingPhoto[]>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [query, setQuery] = useState('');
@@ -160,6 +169,7 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
         if (!live) return;
         setCampaign(c);
         setPackages(p.packages ?? []);
+        setPhotos(p.photos ?? {});
       } catch (e: any) {
         if (live) setLoadError(e?.message || 'Could not load this campaign.');
       }
@@ -205,7 +215,7 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
   const groups = useMemo(() => {
     const byDate = new Map<string, AthleteRow[]>();
     for (const a of visible) {
-      const d = (a.reel ?? a.next).intended_post_date ?? '';
+      const d = (a.reel ?? a.link).intended_post_date ?? '';
       const list = byDate.get(d);
       if (list) list.push(a);
       else byDate.set(d, [a]);
@@ -243,7 +253,11 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
   const soon = today
     ? (packages ?? []).filter((p) => p.intended_post_date && p.intended_post_date >= today && p.intended_post_date <= addDays(today, 7) && !isPosted(p))
     : [];
-  const soonMissingFiles = soon.filter(missingFiles).length;
+  const photoCountOf = useCallback(
+    (pkg: StaffPackage | null) => (pkg ? (photos[pkg.id] ?? []).length : 0),
+    [photos]
+  );
+  const soonMissingFiles = soon.filter((p) => missingFiles(p, photoCountOf(p))).length;
   const soonMissingCaption = soon.filter((p) => !p.caption_medium?.trim()).length;
 
   // ---- drawer ----
@@ -293,7 +307,11 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
   }
 
   async function bulkMarkSent() {
-    const targets = selectedAthletes.map((a) => a.next).filter((p) => p.status === 'draft' && !isSent(p));
+    // One text carries every post, so sending marks all of an athlete's
+    // drafts — not just the post whose token is in the link.
+    const targets = selectedAthletes
+      .flatMap(postsOf)
+      .filter((p) => p.status === 'draft' && !isSent(p));
     if (!targets.length) {
       setFlash('Nothing to mark: those links are already sent.');
       return;
@@ -318,8 +336,8 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
     setBulkBusy(false);
     setFlash(
       failed
-        ? `Marked ${updated.length} as sent. ${failed} failed — try those again.`
-        : `Marked ${updated.length} link${updated.length === 1 ? '' : 's'} as sent.`
+        ? `Marked ${updated.length} post${updated.length === 1 ? '' : 's'} as sent. ${failed} failed — try those again.`
+        : `Marked ${updated.length} post${updated.length === 1 ? '' : 's'} as sent for ${selectedAthletes.length} athlete${selectedAthletes.length === 1 ? '' : 's'}.`
     );
   }
 
@@ -474,15 +492,15 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
                   <div className="aname">{a.name}</div>
                   <AthleteMeta a={a} />
                 </div>
-                <div role="cell"><PostCell p={a.reel} /></div>
-                <div role="cell"><PostCell p={a.feed} /></div>
+                <div role="cell"><PostCell p={a.reel} photoCount={photoCountOf(a.reel)} /></div>
+                <div role="cell"><PostCell p={a.feed} photoCount={photoCountOf(a.feed)} /></div>
                 <div role="cell" className="linkcell">
                   <LinkState a={a} />
                   <button
                     type="button"
                     className="link-btn lab"
                     onClick={async () => {
-                      await copyText(deliverUrl(a.next.delivery_token));
+                      await copyText(deliverUrl(a.link.delivery_token));
                       setRowCopied(a.key);
                     }}
                   >
@@ -490,7 +508,7 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
                   </button>
                 </div>
                 <span role="cell">
-                  <button type="button" className="open" aria-label={`Open ${a.name}`} onClick={() => setPkgParam(a.next.id)}>
+                  <button type="button" className="open" aria-label={`Open ${a.name}`} onClick={() => setPkgParam(a.link.id)}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                       <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -515,7 +533,7 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
               <div className="card" key={a.key}>
                 <div className="top">
                   <input type="checkbox" aria-label={`Select ${a.name}`} checked={selected.has(a.key)} onChange={() => toggle(a.key)} style={{ marginTop: 4 }} />
-                  <button type="button" className="grow" onClick={() => setPkgParam(a.next.id)} aria-label={`Open ${a.name}`}>
+                  <button type="button" className="grow" onClick={() => setPkgParam(a.link.id)} aria-label={`Open ${a.name}`}>
                     <div className="aname">{a.name}</div>
                     <AthleteMeta a={a} />
                   </button>
@@ -524,15 +542,15 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
                   </svg>
                 </div>
                 <div className="sub">
-                  <div><span className="lab">1 · Reel</span> <PostCell p={a.reel} /></div>
-                  <div><span className="lab">2 · Feed</span> <PostCell p={a.feed} /></div>
+                  <div><span className="lab">1 · Reel</span> <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} /></div>
+                  <div><span className="lab">2 · Feed</span> <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} /></div>
                   <div className="linkcell" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <LinkState a={a} />
                     <button
                       type="button"
                       className="link-btn lab"
                       onClick={async () => {
-                        await copyText(deliverUrl(a.next.delivery_token));
+                        await copyText(deliverUrl(a.link.delivery_token));
                         setRowCopied(a.key);
                       }}
                     >
@@ -573,6 +591,10 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
           onSelect={(id) => setPkgParam(id)}
           onClose={() => setPkgParam(null)}
           onUpdated={applyUpdates}
+          photos={photos}
+          onPhotosChanged={(packageId, next) =>
+            setPhotos((prev) => ({ ...prev, [packageId]: next }))
+          }
         />
       )}
     </div>
