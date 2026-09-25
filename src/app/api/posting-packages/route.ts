@@ -28,6 +28,12 @@ import {
   groupPhotos,
   type PostingPhoto,
   type StaffPackage,
+  LINK_COLUMNS,
+  STORY_COLUMNS,
+  groupLinks,
+  type PostLinkRow,
+  type PostLinks,
+  type StoryShot,
 } from '@/lib/posting-packages';
 
 function denied(reason: 'anon' | 'forbidden') {
@@ -99,7 +105,28 @@ export async function GET(request: NextRequest) {
     photos = groupPhotos((photoRows as unknown as PostingPhoto[] | null) ?? []);
   }
 
-  return NextResponse.json({ packages, total: count, photos });
+  // Where each post is up (migration 075): the three platform links and the
+  // Story screenshot. Before 075 the links table doesn't exist — logged and
+  // read as "nothing in yet", so the roster still loads.
+  let links: Record<string, PostLinks> = {};
+  let stories: Record<string, StoryShot> = {};
+  if (postingCampaignId && packages.length) {
+    const ids = packages.map((p) => p.id);
+    const [{ data: linkRows, error: linkError }, { data: storyRows, error: storyError }] = await Promise.all([
+      supabase.from('posting_package_links').select(LINK_COLUMNS).in('package_id', ids),
+      supabase
+        .from('posting_package_files')
+        .select(STORY_COLUMNS)
+        .in('package_id', ids)
+        .eq('kind', 'story_screenshot'),
+    ]);
+    if (linkError) console.error('[posting-packages] links not loaded:', linkError.message);
+    if (storyError) console.error('[posting-packages] story screenshots not loaded:', storyError.message);
+    links = groupLinks((linkRows as unknown as PostLinkRow[] | null) ?? []);
+    for (const s of (storyRows as unknown as StoryShot[] | null) ?? []) stories[s.package_id] = s;
+  }
+
+  return NextResponse.json({ packages, total: count, photos, links, stories });
 }
 
 export async function POST(request: NextRequest) {

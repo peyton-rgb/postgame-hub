@@ -44,6 +44,9 @@ async function loadPhotos(
     .from('posting_package_files')
     .select(PHOTO_COLUMNS)
     .eq('package_id', packageId)
+    // Photos only: the Story screenshot (migration 075) shares this table at
+    // position 0, and must never be reordered, renumbered or listed here.
+    .eq('kind', 'photo')
     .order('position', { ascending: true });
   return (data as unknown as PostingPhoto[] | null) ?? [];
 }
@@ -136,6 +139,7 @@ export async function DELETE(
     .select(PHOTO_COLUMNS)
     .eq('id', photoId)
     .eq('package_id', params.id)
+    .eq('kind', 'photo')
     .maybeSingle();
   if (loadError) return NextResponse.json({ error: loadError.message }, { status: 500 });
   if (!photo) return NextResponse.json({ error: 'Photo not found' }, { status: 404 });

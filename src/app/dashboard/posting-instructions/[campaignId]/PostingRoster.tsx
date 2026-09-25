@@ -47,6 +47,10 @@ import {
   type PostStage,
   type PostingPhoto,
   type StaffPackage,
+  placesFor,
+  placesIn,
+  type PostLinks,
+  type StoryShot,
 } from '@/lib/posting-packages';
 import PackageDrawer from './PackageDrawer';
 
@@ -112,20 +116,29 @@ function AthleteCell({ a }: { a: AthleteRow }) {
   );
 }
 
-/** One post cell: date line, one pill, then the part dots. */
+/**
+ * One post cell: date line, one pill, the part dots, then where it's up —
+ * four chips, IG · Story · TT · X: green when in (and a link to it), grey
+ * when missing. The pill only says Posted when all four are in.
+ */
 function PostCell({
   p,
   photoCount,
   brandName,
   today,
+  links,
+  story,
 }: {
   p: StaffPackage | null;
   photoCount: number;
   brandName: string | null;
   today: string;
+  links?: PostLinks;
+  story?: StoryShot;
 }) {
   if (!p) return <span className="hint">No post</span>;
-  const pill = statusPill(p, photoCount, brandName);
+  const chips = placesFor(p, links, story);
+  const pill = statusPill(p, photoCount, brandName, placesIn(chips));
   const late = isPastDraft(p, today);
   const date = formatPostDate(p.intended_post_date) ?? 'No date';
   return (
@@ -143,6 +156,19 @@ function PostCell({
             {part.label}
           </span>
         ))}
+      </div>
+      <div className="places-row" aria-label="Where it's posted">
+        {chips.map((c) =>
+          c.url ? (
+            <a key={c.key} className="chip in" href={c.url} target="_blank" rel="noopener noreferrer" title={`Open ${c.label}`}>
+              {c.label}
+            </a>
+          ) : (
+            <span key={c.key} className="chip" title={`${c.label}: not in yet`}>
+              {c.label}
+            </span>
+          )
+        )}
       </div>
     </div>
   );
@@ -167,6 +193,8 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [packages, setPackages] = useState<StaffPackage[] | null>(null);
   const [photos, setPhotos] = useState<Record<string, PostingPhoto[]>>({});
+  const [links, setLinks] = useState<Record<string, PostLinks>>({});
+  const [stories, setStories] = useState<Record<string, StoryShot>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stage, setStage] = useState<StageKey>('all');
   const [lateOnly, setLateOnly] = useState(false);
@@ -199,6 +227,8 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
         setCampaign(c);
         setPackages(p.packages ?? []);
         setPhotos(p.photos ?? {});
+        setLinks(p.links ?? {});
+        setStories(p.stories ?? {});
       } catch (e: any) {
         if (live) setLoadError(e?.message || 'Could not load this campaign.');
       }
@@ -615,10 +645,10 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
                 </span>
                 <div role="cell" style={{ minWidth: 0 }}><AthleteCell a={a} /></div>
                 <div role="cell">
-                  <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} brandName={campaign.brandName} today={today} />
+                  <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} brandName={campaign.brandName} today={today} links={a.reel ? links[a.reel.id] : undefined} story={a.reel ? stories[a.reel.id] : undefined} />
                 </div>
                 <div role="cell">
-                  <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} brandName={campaign.brandName} today={today} />
+                  <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} brandName={campaign.brandName} today={today} links={a.feed ? links[a.feed.id] : undefined} story={a.feed ? stories[a.feed.id] : undefined} />
                 </div>
                 <div role="cell" className="linkcell" onClick={(e) => e.stopPropagation()}>
                   <LinkState a={a} />
@@ -673,11 +703,11 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
                 <div className="sub">
                   <div>
                     <span className="lab">1 · Reel + cover</span>
-                    <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} brandName={campaign.brandName} today={today} />
+                    <PostCell p={a.reel} photoCount={photoCountOf(a.reel)} brandName={campaign.brandName} today={today} links={a.reel ? links[a.reel.id] : undefined} story={a.reel ? stories[a.reel.id] : undefined} />
                   </div>
                   <div>
                     <span className="lab">2 · Feed post</span>
-                    <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} brandName={campaign.brandName} today={today} />
+                    <PostCell p={a.feed} photoCount={photoCountOf(a.feed)} brandName={campaign.brandName} today={today} links={a.feed ? links[a.feed.id] : undefined} story={a.feed ? stories[a.feed.id] : undefined} />
                   </div>
                   <div className="linkcell row">
                     <LinkState a={a} />
@@ -800,6 +830,33 @@ export default function PostingRoster({ campaignId }: { campaignId: string }) {
           onUpdated={applyUpdates}
           photos={photos}
           onPhotosChanged={(packageId, next) => setPhotos((prev) => ({ ...prev, [packageId]: next }))}
+          links={links}
+          stories={stories}
+          onPlacesChanged={(packageId, next) => {
+            setLinks((prev) => ({ ...prev, [packageId]: next.links }));
+            setStories((prev) => {
+              const copy = { ...prev };
+              if (next.story) copy[packageId] = next.story;
+              else delete copy[packageId];
+              return copy;
+            });
+            if ('live_url' in next || 'posted_at' in next || 'status' in next) {
+              setPackages((prev) =>
+                prev
+                  ? prev.map((p) =>
+                      p.id === packageId
+                        ? {
+                            ...p,
+                            ...(next.live_url !== undefined ? { live_url: next.live_url } : {}),
+                            ...(next.posted_at !== undefined ? { posted_at: next.posted_at } : {}),
+                            ...(next.status !== undefined ? { status: next.status } : {}),
+                          }
+                        : p
+                    )
+                  : prev
+              );
+            }
+          }}
         />
       )}
     </div>

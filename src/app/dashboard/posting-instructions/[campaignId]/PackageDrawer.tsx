@@ -22,7 +22,7 @@
 // and removing a carousel photo each write immediately.
 //
 // Two confirmations, both inline (no browser dialogs):
-//   • a live link marks the post Posted and starts payment;
+//   • clearing a link or removing the Story screenshot (a second tap);
 //   • closing with unsaved edits discards them.
 // ============================================================
 
@@ -46,8 +46,13 @@ import {
   type PostingPhoto,
   type Slot,
   type StaffPackage,
+  formatShortDay,
+  placesFor,
+  placesIn,
+  type PostLinks,
+  type StoryShot,
 } from '@/lib/posting-packages';
-import { checkLiveUrl } from '@/lib/post-link';
+import { checkPlatformLink } from '@/lib/post-link';
 import PostingDrivePicker from './PostingDrivePicker';
 
 type Draft = Partial<
@@ -234,6 +239,9 @@ export default function PackageDrawer({
   onUpdated,
   photos,
   onPhotosChanged,
+  links,
+  stories,
+  onPlacesChanged,
 }: {
   athlete: AthleteRow;
   activeId: string;
@@ -245,6 +253,13 @@ export default function PackageDrawer({
   /** Carousel photos by package id, each list already in order. */
   photos: Record<string, PostingPhoto[]>;
   onPhotosChanged: (packageId: string, photos: PostingPhoto[]) => void;
+  /** Where each post is up (migration 075), by package id. */
+  links: Record<string, PostLinks>;
+  stories: Record<string, StoryShot>;
+  onPlacesChanged: (
+    packageId: string,
+    next: { links: PostLinks; story: StoryShot | null; live_url?: string | null; posted_at?: string | null; status?: string }
+  ) => void;
 }) {
   const posts = useMemo(
     () => [athlete.reel, athlete.feed, ...athlete.other].filter((p): p is StaffPackage => !!p),
@@ -258,7 +273,8 @@ export default function PackageDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [confirmLive, setConfirmLive] = useState(false);
+  const [confirmClear, setConfirmClear] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [picker, setPicker] = useState<Slot | null>(null);
   const [copied, setCopied] = useState(false);
@@ -333,10 +349,28 @@ export default function PackageDrawer({
 
   // ---- save ----
   const liveDraft = (val('live_url') ?? '').trim();
-  const liveChanging = posts.some((p) => {
-    const d = drafts[p.id]?.live_url;
-    return typeof d === 'string' && d.trim() && d.trim() !== (p.live_url ?? '');
-  });
+
+  /** Clear one place a post is up. posted_at is never unset by this. */
+  async function clearPlace(place: 'instagram' | 'tiktok' | 'x' | 'story') {
+    setClearing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/posting-packages/${pkg.id}/places`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ place }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'That did not clear.');
+      onPlacesChanged(pkg.id, { links: json.links ?? {}, story: json.story ?? null, ...(json.package ?? {}) });
+      setNotice(place === 'story' ? 'Story screenshot removed.' : 'Link cleared.');
+    } catch (e: any) {
+      setError(e?.message || 'That did not clear.');
+    } finally {
+      setClearing(false);
+      setConfirmClear(null);
+    }
+  }
 
   async function patch(p: StaffPackage, body: Record<string, unknown>) {
     const res = await fetch(`/api/posting-packages/${p.id}`, {
@@ -349,14 +383,14 @@ export default function PackageDrawer({
     return json as StaffPackage;
   }
 
-  async function save(opts: { confirmed?: boolean; thenMarkSent?: boolean } = {}) {
+  async function save(opts: { thenMarkSent?: boolean } = {}) {
     setError(null);
     setNotice(null);
-    // Validate links before asking anyone to confirm payment.
+    // An Instagram link typed here must be a real Instagram post link.
     for (const p of dirtyPosts) {
       const d = drafts[p.id]?.live_url;
       if (typeof d === 'string' && d.trim()) {
-        const c = checkLiveUrl(d);
+        const c = checkPlatformLink('instagram', d);
         if (!c.ok) {
           onSelect(p.id);
           setError(c.error);
@@ -364,18 +398,11 @@ export default function PackageDrawer({
         }
       }
     }
-    if (liveChanging && !opts.confirmed) {
-      setConfirmLive(true);
-      return;
-    }
-    setConfirmLive(false);
     setSaving(true);
     const updated: StaffPackage[] = [];
     try {
       for (const p of dirtyPosts) {
-        const body = changesFor(p);
-        if ('live_url' in body) body.confirm = true; // confirmed above
-        updated.push(await patch(p, body));
+        updated.push(await patch(p, changesFor(p)));
       }
       if (opts.thenMarkSent) {
         const fresh = updated.find((u) => u.id === pkg.id) ?? pkg;
@@ -708,44 +735,74 @@ export default function PackageDrawer({
             </div>
           </div>
 
-          {/* live link */}
-          <div className="field">
-            <label className="lab" htmlFor="pi-live">Link to their live post</label>
-            {pkg.live_url ? (
-              <a href={pkg.live_url} target="_blank" rel="noopener noreferrer" style={{ overflowWrap: 'anywhere' }}>
-                {pkg.live_url}
-              </a>
-            ) : (
-              <>
-                <input
-                  id="pi-live"
-                  className="inp"
-                  type="url"
-                  value={liveDraft}
-                  placeholder="The athlete submits this. Paste it here only if they sent it another way."
-                  onChange={(e) => {
-                    set({ live_url: e.target.value });
-                    setConfirmLive(false);
-                  }}
-                />
-                <p className="hint">Saving a link marks this post Posted and starts payment.</p>
-              </>
-            )}
-          </div>
-
-          {confirmLive && (
-            <div className="confirm" role="alert">
-              <div className="t">Saving this marks the post Posted and starts payment.</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" className="btn p sm" onClick={() => save({ confirmed: true })} disabled={saving}>
-                  Yes, save and mark Posted
-                </button>
-                <button type="button" className="btn g sm" onClick={() => setConfirmLive(false)} disabled={saving}>
-                  Not yet
-                </button>
+          {/* where it's posted (migration 075) */}
+          {(() => {
+            const chips = placesFor(pkg, links[pkg.id], stories[pkg.id]);
+            const inCount = placesIn(chips);
+            const story = stories[pkg.id];
+            const NAMES: Record<string, string> = { instagram: 'Instagram', story: 'Story', tiktok: 'TikTok', x: 'X' };
+            return (
+              <div className="field">
+                <span className="lab">Where it&apos;s posted · {inCount} of 4 in</span>
+                {pkg.posted_at && inCount < 4 && (
+                  <p className="hint" style={{ color: 'var(--status-warn-ink)' }}>
+                    Marked posted on {formatShortDay(pkg.posted_at)}; a link was removed since.
+                  </p>
+                )}
+                <div className="places">
+                  {chips.map((c) => (
+                    <div className="place" key={c.key}>
+                      <span className={`chip ${c.url ? 'in' : ''}`}>{c.label}</span>
+                      <span className="pname">{NAMES[c.key]}</span>
+                      {c.key === 'story' && story ? (
+                        <a className="pthumb" href={story.url} target="_blank" rel="noopener noreferrer" aria-label="Open the Story screenshot">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={story.url} alt="" />
+                        </a>
+                      ) : c.url ? (
+                        <a className="purl" href={c.url} target="_blank" rel="noopener noreferrer" title={c.url}>
+                          {c.url.replace(/^https?:\/\/(www\.)?/, '')}
+                        </a>
+                      ) : (
+                        <span className="hint">Not in yet</span>
+                      )}
+                      {c.url && (
+                        <span className="pact">
+                          <a className="btn g sm" href={c.url} target="_blank" rel="noopener noreferrer">Open</a>
+                          {confirmClear === c.key ? (
+                            <button type="button" className="btn g sm danger" onClick={() => clearPlace(c.key)} disabled={clearing}>
+                              {clearing ? 'Clearing…' : c.key === 'story' ? 'Yes, remove' : 'Yes, clear'}
+                            </button>
+                          ) : (
+                            <button type="button" className="btn g sm" onClick={() => setConfirmClear(c.key)} disabled={clearing}>
+                              {c.key === 'story' ? 'Remove' : 'Clear'}
+                            </button>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {!pkg.live_url && !links[pkg.id]?.instagram && (
+                  <>
+                    <label className="lab" htmlFor="pi-live">Add their Instagram link</label>
+                    <input
+                      id="pi-live"
+                      className="inp"
+                      type="url"
+                      value={liveDraft}
+                      placeholder="Only if they sent it another way."
+                      onChange={(e) => set({ live_url: e.target.value })}
+                    />
+                    <p className="hint">
+                      Saved with the post. It counts as Posted (the payment trigger) only once Instagram, the Story
+                      screenshot, TikTok and X are all in.
+                    </p>
+                  </>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         <div className="dfoot">

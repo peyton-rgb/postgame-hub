@@ -32,9 +32,18 @@
 //
 // Feed posts are carousels: their photos live in posting_package_files
 // (migration 074), ordered by `position`. The Reel keeps video_url/cover_url.
+//
+// EVERY PLATFORM (migration 075). Each post goes up on Instagram, the
+// athlete's Story (proved with a screenshot), TikTok and X. The three links
+// are rows in posting_package_links; the Story screenshot is a
+// posting_package_files row of kind 'story_screenshot' at position 0.
+// A post is Posted — the payment trigger — only when all four are in, and
+// maybeMarkPosted() below is the ONLY athlete-side code that sets it.
 // ============================================================
 
+import { randomUUID } from 'crypto';
 import { createLiveServiceSupabase } from '@/lib/supabase-server';
+import { PLATFORMS, type Platform } from '@/lib/post-link';
 import {
   BRAND_LOGO_COLUMNS,
   pickBrandLogo,
@@ -162,6 +171,10 @@ export type DeliverPost = {
   walkthrough: string | null;
   platforms: string[];
   link: { liveUrl: string | null; postedAt: string | null };
+  /** Per-platform post links (migration 075). Missing key = not in yet. */
+  links: Partial<Record<Platform, string>>;
+  /** The Story screenshot, once the athlete has sent it. */
+  storyScreenshot?: { url: string };
 };
 
 /** Exactly what GET /api/deliver/[token] returns. Nothing internal. */
@@ -360,6 +373,48 @@ async function loadPhotos(packageIds: string[]): Promise<Map<string, DeliverPhot
   return byPackage;
 }
 
+/**
+ * Per-platform links for these posts. Before migration 075 the table does not
+ * exist; that is logged and treated as "no links yet" so the page still works.
+ */
+async function loadLinks(packageIds: string[]): Promise<Map<string, Partial<Record<Platform, string>>>> {
+  const byPackage = new Map<string, Partial<Record<Platform, string>>>();
+  if (!packageIds.length) return byPackage;
+  const { data, error } = await createLiveServiceSupabase()
+    .from('posting_package_links')
+    .select('package_id, platform, url')
+    .in('package_id', packageIds);
+  if (error) {
+    console.error('deliver: link lookup failed', error);
+    return byPackage;
+  }
+  for (const r of (data as { package_id: string; platform: Platform; url: string }[] | null) ?? []) {
+    const cur = byPackage.get(r.package_id) ?? {};
+    cur[r.platform] = r.url;
+    byPackage.set(r.package_id, cur);
+  }
+  return byPackage;
+}
+
+/** The Story screenshot per post (kind 'story_screenshot'), if any. */
+async function loadStories(packageIds: string[]): Promise<Map<string, { url: string }>> {
+  const byPackage = new Map<string, { url: string }>();
+  if (!packageIds.length) return byPackage;
+  const { data, error } = await createLiveServiceSupabase()
+    .from('posting_package_files')
+    .select('package_id, url')
+    .in('package_id', packageIds)
+    .eq('kind', 'story_screenshot');
+  if (error) {
+    console.error('deliver: story lookup failed', error);
+    return byPackage;
+  }
+  for (const r of (data as { package_id: string; url: string }[] | null) ?? []) {
+    byPackage.set(r.package_id, { url: r.url });
+  }
+  return byPackage;
+}
+
 export async function loadDeliverView(token: string): Promise<DeliverView | null> {
   const row = await loadRow(token);
   if (!row) return null;
@@ -378,9 +433,12 @@ export async function loadDeliverView(token: string): Promise<DeliverView | null
 
   const deliverables = campaign?.deliverables ?? [];
   const rows = await loadAthletePosts(row);
-  const [photos, logos] = await Promise.all([
-    loadPhotos(rows.map((r) => r.id)),
+  const ids = rows.map((r) => r.id);
+  const [photos, logos, links, stories] = await Promise.all([
+    loadPhotos(ids),
     loadLogos(supabase, campaign?.brand_id ?? null),
+    loadLinks(ids),
+    loadStories(ids),
   ]);
 
   // Campaign order first (reel = 1, feed = 2), then the date, so a campaign
@@ -420,6 +478,13 @@ export async function loadDeliverView(token: string): Promise<DeliverView | null
       walkthrough: deliverable?.walkthrough ?? null,
       platforms: deliverable?.platforms ?? [],
       link: { liveUrl: r.live_url, postedAt: r.posted_at },
+      links: {
+        // live_url has always held the Instagram link; keep reading it for
+        // any row written before the links table existed.
+        ...(r.live_url ? { instagram: r.live_url } : {}),
+        ...(links.get(r.id) ?? {}),
+      },
+      ...(stories.get(r.id) ? { storyScreenshot: stories.get(r.id) } : {}),
     };
   });
 
@@ -482,11 +547,10 @@ export async function loadPackageState(
 }
 
 // The only columns an athlete may write. Anything else in a caller's object
-// is dropped here, so a route cannot widen the write by accident. status is
-// typed to the single value the athlete path may set.
-type AthleteWrite = Partial<Pick<PackageRow, 'confirmed_at' | 'posted_at' | 'live_url'>> & {
-  status?: 'posted';
-};
+// is dropped here, so a route cannot widen the write by accident.
+// posted_at / status are NOT here: since migration 075 only maybeMarkPosted()
+// sets them, once all four platforms are in.
+type AthleteWrite = Partial<Pick<PackageRow, 'confirmed_at' | 'live_url'>>;
 
 /**
  * Write the athlete-owned columns of ONE post.
@@ -505,9 +569,7 @@ export async function writeAthleteFields(
 
   const patch: AthleteWrite = {};
   if ('confirmed_at' in fields) patch.confirmed_at = fields.confirmed_at;
-  if ('posted_at' in fields) patch.posted_at = fields.posted_at;
   if ('live_url' in fields) patch.live_url = fields.live_url;
-  if (fields.status === 'posted') patch.status = 'posted';
   if (Object.keys(patch).length === 0) return { ok: true };
 
   const supabase = createLiveServiceSupabase();
@@ -536,4 +598,211 @@ export async function loadBrandLockup(
   brandId: string | null
 ): Promise<{ postgame: string | null; brand: string | null; brandName: string | null }> {
   return loadLogos(createLiveServiceSupabase(), brandId);
+}
+
+// ============================================================
+// Every platform (migration 075)
+// ============================================================
+
+export type AthleteSubmitResult =
+  | { ok: true }
+  | { ok: false; status: 400 | 404 | 409 | 413 | 500 | 503; error: string };
+
+/** Already-have messages, shown as-is on the athlete page. */
+export const ALREADY_HAVE_LINK = "We already have this link. Text us if it's wrong.";
+export const ALREADY_HAVE_STORY = "We already have your Story screenshot. Text us if it's wrong.";
+
+const UNIQUE_VIOLATION = '23505';
+const UNDEFINED_TABLE = '42P01';
+
+/**
+ * THE payment trigger. Marks one post Posted — status 'posted', posted_at
+ * now — only when all four are in: the Instagram, TikTok and X link rows and
+ * a Story screenshot. Runs after every athlete link / screenshot write.
+ *
+ * Once only: the update is conditioned on posted_at still being null, so two
+ * writes landing together can't both stamp it, and a post already marked
+ * (by staff, or earlier) is never re-stamped.
+ */
+export async function maybeMarkPosted(packageId: string): Promise<boolean> {
+  const supabase = createLiveServiceSupabase();
+  const [{ data: links, error: linkError }, { count: stories, error: storyError }] = await Promise.all([
+    supabase.from('posting_package_links').select('platform').eq('package_id', packageId),
+    supabase
+      .from('posting_package_files')
+      .select('id', { count: 'exact', head: true })
+      .eq('package_id', packageId)
+      .eq('kind', 'story_screenshot'),
+  ]);
+  if (linkError || storyError) {
+    console.error('deliver: posted check failed', linkError ?? storyError);
+    return false;
+  }
+  const have = new Set(((links as { platform: string }[] | null) ?? []).map((l) => l.platform));
+  const complete = PLATFORMS.every((p) => have.has(p)) && (stories ?? 0) > 0;
+  if (!complete) return false;
+
+  const { data, error } = await supabase
+    .from('posting_packages')
+    .update({ status: 'posted', posted_at: new Date().toISOString() })
+    .eq('id', packageId)
+    .is('posted_at', null)
+    .select('id');
+  if (error) {
+    console.error('deliver: marking posted failed', error);
+    return false;
+  }
+  return ((data as unknown[] | null) ?? []).length > 0;
+}
+
+/**
+ * Save one platform's link for one of the token's athlete's posts.
+ * The URL must already be checked (checkPlatformLink). Never overwrites: an
+ * existing row for that platform is a 409. The Instagram link is also written
+ * to live_url, which everything that predates 075 reads.
+ */
+export async function writeLink(
+  token: string,
+  postId: string | null | undefined,
+  platform: Platform,
+  url: string
+): Promise<AthleteSubmitResult> {
+  const state = await loadPackageState(token, postId);
+  if (!state) return { ok: false, status: 404, error: 'Package not found' };
+
+  const supabase = createLiveServiceSupabase();
+  const { data: existing, error: readError } = await supabase
+    .from('posting_package_links')
+    .select('id')
+    .eq('package_id', state.id)
+    .eq('platform', platform)
+    .maybeSingle();
+  if (readError) {
+    console.error('deliver: link read failed', readError);
+    return readError.code === UNDEFINED_TABLE
+      ? { ok: false, status: 503, error: 'Saving links opens soon. Text us your link for now.' }
+      : { ok: false, status: 500, error: 'Could not save. Please try again.' };
+  }
+  // The legacy column counts as "already have it" for Instagram too.
+  if (existing || (platform === 'instagram' && state.live_url)) {
+    return { ok: false, status: 409, error: ALREADY_HAVE_LINK };
+  }
+
+  const { error: insertError } = await supabase
+    .from('posting_package_links')
+    .insert({ package_id: state.id, platform, url });
+  if (insertError) {
+    if (insertError.code === UNIQUE_VIOLATION) return { ok: false, status: 409, error: ALREADY_HAVE_LINK };
+    console.error('deliver: link write failed', insertError);
+    return { ok: false, status: 500, error: 'Could not save. Please try again.' };
+  }
+
+  if (platform === 'instagram') {
+    const { error } = await supabase
+      .from('posting_packages')
+      .update({ live_url: url })
+      .eq('id', state.id)
+      .is('live_url', null);
+    if (error) console.error('deliver: live_url mirror failed', error);
+  }
+
+  await maybeMarkPosted(state.id);
+  return { ok: true };
+}
+
+// ---- Story screenshot -------------------------------------------------------
+
+export const STORY_MAX_BYTES = 10 * 1024 * 1024;
+const STORY_BUCKET = 'campaign-media';
+const STORY_TYPES: Record<string, { ext: string; mime: string }> = {
+  jpeg: { ext: 'jpg', mime: 'image/jpeg' },
+  png: { ext: 'png', mime: 'image/png' },
+  webp: { ext: 'webp', mime: 'image/webp' },
+  heic: { ext: 'heic', mime: 'image/heic' },
+  heif: { ext: 'heif', mime: 'image/heif' },
+};
+const DECLARED_OK = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', '', 'application/octet-stream']);
+
+/** What the file's first bytes say it is — never what it claims to be. */
+export function sniffImage(bytes: Uint8Array): keyof typeof STORY_TYPES | null {
+  const b = bytes;
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpeg';
+  if (b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 && b[4] === 0x0d && b[5] === 0x0a && b[6] === 0x1a && b[7] === 0x0a) return 'png';
+  const ascii = (from: number, to: number) => String.fromCharCode(...Array.from(b.subarray(from, to)));
+  if (b.length >= 12 && ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'webp';
+  if (b.length >= 12 && ascii(4, 8) === 'ftyp') {
+    const brand = ascii(8, 12);
+    if (['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis'].includes(brand)) return 'heic';
+    if (['mif1', 'msf1', 'heif'].includes(brand)) return 'heif';
+  }
+  return null;
+}
+
+/**
+ * Store the Story screenshot for one of the token's athlete's posts.
+ * Checked by magic bytes, 10 MB max, uploaded server-side with the service
+ * role to campaign-media at posting/story-screenshots/<package>/<uuid>.<ext>.
+ * Never overwrites (409). A failed row insert removes the upload again.
+ */
+export async function writeStoryScreenshot(
+  token: string,
+  postId: string | null | undefined,
+  file: { bytes: Uint8Array; declaredType: string; name: string }
+): Promise<AthleteSubmitResult> {
+  const state = await loadPackageState(token, postId);
+  if (!state) return { ok: false, status: 404, error: 'Package not found' };
+
+  const tooBig = "That didn't upload. Try a smaller screenshot.";
+  if (file.bytes.byteLength === 0 || file.bytes.byteLength > STORY_MAX_BYTES) {
+    return { ok: false, status: file.bytes.byteLength ? 413 : 400, error: tooBig };
+  }
+  const kind = sniffImage(file.bytes);
+  if (!kind || !DECLARED_OK.has(file.declaredType.toLowerCase())) {
+    return { ok: false, status: 400, error: 'That needs to be a screenshot (a JPG, PNG, WEBP or HEIC image).' };
+  }
+
+  const supabase = createLiveServiceSupabase();
+  const { data: existing, error: readError } = await supabase
+    .from('posting_package_files')
+    .select('id')
+    .eq('package_id', state.id)
+    .eq('kind', 'story_screenshot')
+    .maybeSingle();
+  if (readError) {
+    console.error('deliver: story read failed', readError);
+    return { ok: false, status: 500, error: tooBig };
+  }
+  if (existing) return { ok: false, status: 409, error: ALREADY_HAVE_STORY };
+
+  const { ext, mime } = STORY_TYPES[kind];
+  const storagePath = `posting/story-screenshots/${state.id}/${randomUUID()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from(STORY_BUCKET)
+    .upload(storagePath, file.bytes, { contentType: mime, cacheControl: '3600', upsert: false });
+  if (uploadError) {
+    console.error('deliver: story upload failed', uploadError);
+    return { ok: false, status: 500, error: tooBig };
+  }
+  const { data: pub } = supabase.storage.from(STORY_BUCKET).getPublicUrl(storagePath);
+
+  const { error: insertError } = await supabase.from('posting_package_files').insert({
+    package_id: state.id,
+    kind: 'story_screenshot',
+    position: 0,
+    url: pub.publicUrl,
+    storage_path: storagePath,
+    file_name: file.name.slice(0, 200) || `story.${ext}`,
+  });
+  if (insertError) {
+    await supabase.storage.from(STORY_BUCKET).remove([storagePath]);
+    if (insertError.code === UNIQUE_VIOLATION) return { ok: false, status: 409, error: ALREADY_HAVE_STORY };
+    console.error('deliver: story row failed', insertError);
+    // Before 075 the kind check rejects 'story_screenshot' (23514).
+    return insertError.code === '23514'
+      ? { ok: false, status: 503, error: 'Screenshot upload opens soon. Text us your screenshot for now.' }
+      : { ok: false, status: 500, error: tooBig };
+  }
+
+  await maybeMarkPosted(state.id);
+  return { ok: true };
 }
