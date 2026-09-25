@@ -371,6 +371,35 @@ function ShootModal({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                    Second Videographer (optional)
+                  </label>
+                  <input
+                    value={form.videographer_2 || ""}
+                    onChange={(e) =>
+                      updateForm({ videographer_2: e.target.value })
+                    }
+                    placeholder="e.g. Josh V."
+                    className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                    Second Videographer Phone
+                  </label>
+                  <input
+                    value={form.videographer_2_phone || ""}
+                    onChange={(e) =>
+                      updateForm({ videographer_2_phone: e.target.value })
+                    }
+                    placeholder="(555) 123-4567"
+                    className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
                   Starting Address / Location
@@ -698,6 +727,8 @@ export default function RunOfShowEditor() {
   const [cameraSettings, setCameraSettings] = useState("");
   const [contacts, setContacts] = useState<RosContact[]>([]);
   const [published, setPublished] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const [rosRes, shootsRes] = await Promise.all([
@@ -747,11 +778,28 @@ export default function RunOfShowEditor() {
         subtitle: subtitle || null,
         camera_settings: cameraSettings,
         contacts,
-        published,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id);
     setSaving(false);
+  }
+
+  // Publishing saves on its own, touching only `published`, so it never
+  // depends on (or sweeps in) unsaved edits in the settings form.
+  async function togglePublish() {
+    const next = !published;
+    setPublishing(true);
+    setPublishError(null);
+    const { error } = await supabase
+      .from("run_of_shows")
+      .update({ published: next, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) {
+      setPublishError(error.message);
+    } else {
+      setPublished(next);
+    }
+    setPublishing(false);
   }
 
   async function saveShoot(data: Partial<RosShoot>) {
@@ -774,6 +822,8 @@ export default function RunOfShowEditor() {
       athlete: data.athlete || null,
       videographer: data.videographer || "TBD",
       videographer_phone: data.videographer_phone || null,
+      videographer_2: data.videographer_2 || null,
+      videographer_2_phone: data.videographer_2_phone || null,
       starting_address: data.starting_address || null,
       website: data.website || null,
       shoot_type: data.shoot_type || "standard",
@@ -860,6 +910,33 @@ export default function RunOfShowEditor() {
               View Public Page →
             </Link>
           )}
+          {publishError && (
+            <span className="text-xs text-status-bad-ink max-w-[240px]">
+              {publishError}
+            </span>
+          )}
+          {published ? (
+            <>
+              <span className="px-3 py-2 text-sm font-bold rounded-lg bg-status-ok/30 text-status-ok-ink">
+                ✓ Live
+              </span>
+              <button
+                onClick={togglePublish}
+                disabled={publishing}
+                className="px-3 py-1.5 border border-gray-700 text-gray-400 text-xs font-bold rounded-lg hover:border-gray-500 disabled:opacity-50"
+              >
+                {publishing ? "Unpublishing..." : "Unpublish"}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={togglePublish}
+              disabled={publishing}
+              className="px-5 py-2 bg-[#D73F09] text-white text-sm font-bold rounded-lg hover:bg-[#B33407] disabled:opacity-50"
+            >
+              {publishing ? "Publishing..." : "Publish"}
+            </button>
+          )}
           <button
             onClick={saveCampaignSettings}
             disabled={saving}
@@ -935,25 +1012,6 @@ export default function RunOfShowEditor() {
                 onChange={(e) => setCameraSettings(e.target.value)}
                 className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
               />
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={published}
-                  onChange={(e) => setPublished(e.target.checked)}
-                  className="accent-[#D73F09] w-4 h-4"
-                />
-                <span className="text-sm font-bold text-gray-300">
-                  Published
-                </span>
-              </label>
-              {published && (
-                <span className="text-xs text-gray-500">
-                  Live at /run-of-show/{ros.slug}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -1082,10 +1140,12 @@ export default function RunOfShowEditor() {
                       </div>
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                          Videographer
+                          {shoot.videographer_2 ? "Videographers" : "Videographer"}
                         </div>
                         <div className="text-gray-400">
-                          {shoot.videographer}
+                          {shoot.videographer_2
+                            ? `${shoot.videographer} · ${shoot.videographer_2}`
+                            : shoot.videographer}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

@@ -126,9 +126,13 @@ export default async function DynamicRunOfShowIndex({
                   </div>
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Videographer
+                      {shoot.videographer_2 ? "Videographers" : "Videographer"}
                     </div>
-                    <div className="text-gray-700">{shoot.videographer}</div>
+                    <div className="text-gray-700">
+                      {shoot.videographer_2
+                        ? `${shoot.videographer} · ${shoot.videographer_2}`
+                        : shoot.videographer}
+                    </div>
                   </div>
                   <div className="text-gray-300 group-hover:text-[#D73F09] transition-colors">
                     →

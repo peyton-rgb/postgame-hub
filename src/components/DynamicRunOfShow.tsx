@@ -177,7 +177,9 @@ export function DynamicRunOfShowDetail({
         {/* Videographer Info */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-10">
           <div className="text-xs font-bold uppercase tracking-[1.5px] text-gray-400 mb-3">
-            Assigned Videographer
+            {shoot.videographer_2
+              ? "Assigned Videographers"
+              : "Assigned Videographer"}
           </div>
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-[#D73F09] flex items-center justify-center text-sm font-black text-white">
@@ -194,6 +196,23 @@ export function DynamicRunOfShowDetail({
               )}
             </div>
           </div>
+          {shoot.videographer_2 && (
+            <div className="flex items-center gap-4 mt-3">
+              <div className="w-10 h-10 rounded-full bg-[#D73F09] flex items-center justify-center text-sm font-black text-white">
+                {shoot.videographer_2[0]}
+              </div>
+              <div>
+                <div className="font-bold text-lg text-gray-900">
+                  {shoot.videographer_2}
+                </div>
+                {shoot.videographer_2_phone && (
+                  <div className="text-gray-500 text-sm">
+                    {shoot.videographer_2_phone}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Postgame Points of Contact */}
