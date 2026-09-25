@@ -1,39 +1,43 @@
 'use client';
 
 // ============================================================
-// /deliver/[token] — the athlete page, redesigned (Step 4)
+// /deliver/[token] — the athlete page: one job per screen
 //
-// TWO SCREENS behind one link:
+// TWO SCREENS behind one link (approved boards 7, 8, 9):
 //
-//   HOME     every post the athlete has this season, as cards
-//   POST     one post, with its four steps all open on the page
+//   HOME   a greeting, one headline about the active post, a hero card with
+//          ONE orange button, then "Coming up" and "Done" as compact rows.
+//   POST   the four steps as a list where only one is open at a time. The
+//          open step has exactly one orange button; pressing it does the
+//          action, ticks the step and opens the next one.
 //
-// The old page put tiles and one checklist on a single screen, which meant
-// the four steps belonged to whichever tile happened to be selected. Splitting
-// them makes "what do I have to do" and "how do I do this one" two different
-// questions, which is how the athlete actually reads it on a phone.
-//
-// ONE DROPDOWN on the whole page: "See it step by step, with screenshots".
-// Everything else is open. Inside it every group shows at once, each a
-// sideways-scrolling row of the real screenshots — no nested dropdowns.
+// Everything the page did before still works: Web Share into Photos (now for
+// the Reel's two files too), the one-file-at-a-time download fallback, Save
+// all photos, copy caption, copy tag (kept only where a caption lacks the
+// tag), the Instagram / TikTok toggle, the screenshot walkthrough, Send link
+// (URL checks, no overwrite — both server-side), the pending "on its way"
+// slots, the conditional date, the posted state and the help box.
 //
 // The tick-offs are the athlete's own and live only in their browser
-// (localStorage, keyed per post, every access wrapped — private mode throws).
-// The ONLY thing written to the database is the live link, through
+// (localStorage, same keys as before: pg-deliver:<token>:<postId>). The ONLY
+// thing written to the database is the live link, through
 // POST /api/deliver/[token]/posted, exactly as before.
 //
-// Missing data is never invented: a file that isn't attached shows a dashed
-// "On its way" slot and never blocks the other steps.
+// DATES. intended_post_date is a plain calendar date. "Today", "in N days"
+// and "due today" are worked out in the athlete's browser against their own
+// calendar, after the page mounts — never on the server, whose UTC clock is
+// already on tomorrow during a Florida evening. A post with no date counts as
+// undated even when its label holds placeholder text ("TBD").
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { DeliverPhoto, DeliverPost, DeliverView } from '@/lib/deliver-package';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { DeliverPost, DeliverView } from '@/lib/deliver-package';
 import { checkLiveUrl } from '@/lib/post-link';
 
 // --- walkthrough.json (public/posting/walkthroughs/<key>/) -----------------
 
 type Highlight = { tag?: string; x: number; y: number; w: number; h: number; label: string };
-type WalkStep = { n: number; image: string; caption_html: string; highlights?: Highlight[] };
+type WalkStep = { n: number; image: string; caption_html: string; caption_plain?: string; highlights?: Highlight[] };
 type Walkthrough = {
   key: string;
   platform: string;
@@ -42,7 +46,6 @@ type Walkthrough = {
   quick_steps?: Record<string, string[]>;
 };
 
-const TAG_PLACEMENTS = new Set(['above-left', 'right', 'below', 'side-right', 'side-left', 'in-right', 'in-tl']);
 const WALKTHROUGH_KEY = /^[a-z0-9-]{1,80}$/;
 // The walkthrough was shot on the Cane's campaign; its copy names this handle.
 const SHOT_HANDLE = 'raisingcanes';
@@ -54,7 +57,7 @@ const PLATFORM_LABEL: Record<string, string> = {
 };
 
 const TASK_COUNT = 4;
-const STEP_NAMES = ['Save your files', 'Copy your caption', 'Post it', 'Send us the link'];
+const STEP_NAMES = ['Save your files', 'Copy your caption', 'Post it on Instagram', 'Send us the link'];
 
 // --- helpers ---------------------------------------------------------------
 
@@ -166,31 +169,32 @@ function writeTicks(key: string, ticks: boolean[]) {
   }
 }
 
+type NamedFile = { url: string; name: string };
+
 /**
- * Save every carousel photo at once.
+ * Save several files at once — a Feed carousel, or a Reel's video + cover.
  *
  * On a phone the Web Share API with files hands them to the share sheet, so
- * iOS can "Save N Images" straight into Photos — the only way into the camera
- * roll from a browser. Everywhere else each photo downloads on its own.
- * Never a zip: a phone can't open one.
+ * iOS can "Save Images" straight into Photos — the only way into the camera
+ * roll from a browser. Everywhere else (or if sharing fails) each file
+ * downloads on its own, one after another. Never a zip: a phone can't open one.
  */
-async function saveAllPhotos(
-  photos: DeliverPhoto[],
-  athlete: string
-): Promise<'shared' | 'downloaded' | 'cancelled' | 'failed'> {
-  const named = photos.map((p, i) => ({ url: p.url, name: photoName(athlete, i, p.url) }));
+async function saveFiles(
+  files: NamedFile[],
+  opts: { downloadFallback: boolean } = { downloadFallback: true }
+): Promise<'shared' | 'downloaded' | 'cancelled' | 'unavailable' | 'failed'> {
   if (typeof navigator !== 'undefined' && navigator.canShare && navigator.share) {
     try {
-      const files = await Promise.all(
-        named.map(async ({ url, name }) => {
+      const blobs = await Promise.all(
+        files.map(async ({ url, name }) => {
           const res = await fetch(url);
           if (!res.ok) throw new Error(`fetch ${res.status}`);
           const blob = await res.blob();
-          return new File([blob], name, { type: blob.type || 'image/jpeg' });
+          return new File([blob], name, { type: blob.type || 'application/octet-stream' });
         })
       );
-      if (navigator.canShare({ files })) {
-        await navigator.share({ files });
+      if (navigator.canShare({ files: blobs })) {
+        await navigator.share({ files: blobs });
         return 'shared';
       }
     } catch (err) {
@@ -198,8 +202,11 @@ async function saveAllPhotos(
       /* otherwise fall through to downloads */
     }
   }
+  // The Reel asks for no automatic fallback: its fallback is the per-file
+  // links the athlete taps (see saveStepFiles), which browsers never block.
+  if (!opts.downloadFallback) return 'unavailable';
   try {
-    named.forEach(({ url, name }, i) => {
+    files.forEach(({ url, name }, i) => {
       setTimeout(() => {
         const a = document.createElement('a');
         a.href = downloadHref(url, name);
@@ -217,21 +224,80 @@ async function saveAllPhotos(
   }
 }
 
-// --- small pieces ----------------------------------------------------------
+// --- dates (always the athlete's own calendar) ------------------------------
+
+/** Today as 'YYYY-MM-DD' in the browser's local time. */
+function localToday(): string {
+  const n = new Date();
+  const p = (x: number) => String(x).padStart(2, '0');
+  return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
+}
+
+/** Whole days from `today` to a plain calendar date. Both are Y-M-D strings. */
+function daysBetween(today: string, iso: string | null): number | null {
+  const a = /^(\d{4})-(\d{2})-(\d{2})/.exec(today);
+  const b = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  if (!a || !b) return null;
+  return Math.round((Date.UTC(+b[1], +b[2] - 1, +b[3]) - Date.UTC(+a[1], +a[2] - 1, +a[3])) / 86400000);
+}
+
+// --- post facts ------------------------------------------------------------
+
+const isPosted = (p: DeliverPost) => !!p.link.liveUrl || p.status === 'posted';
+const isFeed = (p: DeliverPost) => p.deliverableKey === 'feed';
+/** "Reel" / "Feed post" — for "Your Reel", "Your Feed post's link". */
+const shortLabel = (p: DeliverPost) => (isFeed(p) ? p.label ?? 'Feed post' : 'Reel');
+/** "Reel + cover" / "Feed post" — the post's title on cards. */
+const cardLabel = (p: DeliverPost) => (isFeed(p) ? p.label ?? 'Feed post' : 'Reel + cover');
+/** A post is undated when it has no date — whatever placeholder its label holds. */
+const hasDate = (p: DeliverPost) => !!p.date;
+
+function dateLine(p: DeliverPost, school: string | null): string {
+  if (!hasDate(p)) return "Date coming soon. We'll text you.";
+  return p.dateConditional
+    ? `${p.dateLabel} · only if ${school ?? 'your team'} wins`
+    : `${p.dateLabel} · any time that day`;
+}
+
+// --- icons -----------------------------------------------------------------
 
 const CHECK = (
   <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-
 const CLOCK = (
   <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.5" />
-    <path d="M8 4.8V8l2.2 1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.6" />
+    <path d="M8 4.8V8l2.2 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
-
+const CHEVRON = (
+  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const BACK = (
+  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const ARROW = (
+  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const DOWNLOAD = (
+  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const COPY = (
+  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <rect x="5" y="5" width="8.5" height="8.5" rx="2" stroke="currentColor" strokeWidth="1.6" />
+    <path d="M3 10.5V4a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+);
 const PHOTO_ICON = (
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.6" />
@@ -240,256 +306,389 @@ const PHOTO_ICON = (
   </svg>
 );
 
-/** A save button that turns green once it has been used. */
-function SaveLink({ href, label, saved, onSaved }: { href: string; label: string; saved: boolean; onSaved: () => void }) {
+function Thumb({ p, size }: { p: DeliverPost; size: 'big' | 'small' }) {
+  const src = p.files.cover ?? p.files.photos[0]?.url ?? null;
   return (
-    <a
-      className={`btn ${saved ? 'done' : 'primary'} full`}
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      download
-      onClick={onSaved}
-    >
-      {saved ? 'Saved ✓' : label}
-    </a>
-  );
-}
-
-function CopyButton({
-  text,
-  label,
-  variant,
-  onCopied,
-}: {
-  text: string;
-  label: string;
-  variant: 'primary' | 'ghost';
-  onCopied?: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1600);
-    return () => clearTimeout(t);
-  }, [copied]);
-  return (
-    <button
-      type="button"
-      className={`btn ${copied ? 'done' : variant}`}
-      onClick={async () => {
-        await copyText(text);
-        setCopied(true);
-        onCopied?.();
-      }}
-    >
-      {copied ? 'Copied ✓' : label}
-    </button>
+    <span className={`thumb ${size}`}>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" />
+      ) : (
+        <span className="ph">{PHOTO_ICON}</span>
+      )}
+    </span>
   );
 }
 
 // Highlight boxes are positioned in % of the image, so until the image has
 // loaded they would collapse into thin lines across a zero-height box.
-function Shot({ step, base }: { step: WalkStep; base: string }) {
+// Boxes only: the floating tag labels overflowed the image and got clipped
+// on a phone, so their words are shown under the image instead (ShotViewer).
+function Shot({ step, base, eager }: { step: WalkStep; base: string; eager: boolean }) {
   const [ready, setReady] = useState(false);
   const imgRef = useCallback((img: HTMLImageElement | null) => {
     if (img?.complete && img.naturalWidth > 0) setReady(true);
   }, []);
   return (
-    <figure className="shot">
+    <div className="shot">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img ref={imgRef} src={`${base}/${step.image}`} alt="" loading="lazy" onLoad={() => setReady(true)} />
-      {ready && (step.highlights ?? []).map((h, i) => {
-        const tag = h.tag && TAG_PLACEMENTS.has(h.tag) && h.tag !== 'above-left' ? ` ${h.tag}` : '';
-        return (
+      <img
+        ref={imgRef}
+        src={`${base}/${step.image}`}
+        alt=""
+        loading={eager ? 'eager' : 'lazy'}
+        onLoad={() => setReady(true)}
+      />
+      {ready &&
+        (step.highlights ?? []).map((h, i) => (
           <span
             key={i}
-            className={`hl${tag}`}
+            className="hl"
+            aria-hidden="true"
             style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
-          >
-            <i>{h.label}</i>
-          </span>
-        );
-      })}
-      <figcaption className="snum">{step.n}</figcaption>
-    </figure>
+          />
+        ))}
+    </div>
   );
 }
 
-// --- date helpers ----------------------------------------------------------
+// A highlight label is worth showing under the caption only if it says
+// something the caption doesn't: "Your video", "Pending is fine" — not
+// "Tap Share" under "Check it over, then tap Share."
+function extraLabels(step: WalkStep): string[] {
+  const plain = (step.caption_plain ?? step.caption_html.replace(/<[^>]+>/g, '')).toLowerCase();
+  return (step.highlights ?? [])
+    .map((h) => h.label.trim())
+    .filter((label) => {
+      const core = label.toLowerCase().replace(/^tap\s+/, '').replace(/[.!]$/, '');
+      return core && !plain.includes(core);
+    });
+}
 
-function daysUntil(iso: string | null): number | null {
-  if (!iso) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  if (!m) return null;
-  const then = Date.UTC(+m[1], +m[2] - 1, +m[3]);
-  const now = new Date();
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((then - today) / 86400000);
+/**
+ * The walkthrough, one screenshot at a time.
+ *
+ * A scroll-snap strip (so a swipe works natively) driven by Back / Next.
+ * The step being looked at is remembered per post in localStorage, so
+ * switching platforms and back — which unmounts this — returns to it.
+ * The current and next images load eagerly; the rest stay lazy.
+ */
+function ShotViewer({
+  walk,
+  base,
+  personalise,
+  storageKey,
+  onClose,
+}: {
+  walk: Walkthrough;
+  base: string;
+  personalise: (html: string) => string;
+  storageKey: string;
+  onClose: () => void;
+}) {
+  const steps = useMemo(() => walk.steps.slice().sort((a, b) => a.n - b.n), [walk.steps]);
+  const phaseOf = (n: number) => walk.phases.find((p) => n >= p.from_step && n <= p.to_step)?.title ?? '';
+  const total = steps.length;
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const [idx, setIdx] = useState(() => {
+    try {
+      const v = Number(window.localStorage.getItem(storageKey));
+      return Number.isInteger(v) && v >= 0 && v < total ? v : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Jump (no animation) to the remembered step once the strip has a width.
+  useEffect(() => {
+    const t = trackRef.current;
+    if (t) t.scrollLeft = idx * t.clientWidth;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, String(idx));
+    } catch {
+      /* not critical */
+    }
+  }, [idx, storageKey]);
+
+  // Back / Next scroll the strip smoothly; while that runs, the scroll
+  // events pass through every in-between position, so they are ignored until
+  // the strip arrives. A swipe updates idx only once scrolling has settled —
+  // reading it mid-flight would drag idx back and make a quick second tap
+  // land on the wrong step.
+  const targetRef = useRef<number | null>(null);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (settleRef.current) clearTimeout(settleRef.current);
+  }, []);
+
+  const onScroll = () => {
+    const t = trackRef.current;
+    if (!t || !t.clientWidth) return;
+    if (targetRef.current !== null) {
+      if (Math.abs(t.scrollLeft - targetRef.current * t.clientWidth) > 2) return;
+      targetRef.current = null; // arrived
+      return;
+    }
+    if (settleRef.current) clearTimeout(settleRef.current);
+    settleRef.current = setTimeout(() => {
+      const i = Math.round(t.scrollLeft / t.clientWidth);
+      if (i >= 0 && i < total) setIdx(i);
+    }, 90);
+  };
+
+  const go = (i: number) => {
+    const t = trackRef.current;
+    if (i < 0 || i >= total) return;
+    setIdx(i);
+    if (!t) return;
+    targetRef.current = i;
+    t.scrollTo({ left: i * t.clientWidth, behavior: 'smooth' });
+    // If a swipe interrupts the animation it never "arrives"; stop ignoring.
+    setTimeout(() => {
+      if (targetRef.current === i) targetRef.current = null;
+    }, 900);
+  };
+
+  // The strip is only as tall as the screenshot on show — otherwise every
+  // short step would sit above the tallest image's worth of empty space.
+  const [trackH, setTrackH] = useState<number | null>(null);
+  useEffect(() => {
+    const t = trackRef.current;
+    const slide = t?.children[idx] as HTMLElement | undefined;
+    if (!slide) return;
+    const measure = () => setTrackH(slide.offsetHeight || null);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure); // fires again once the image loads
+    ro.observe(slide);
+    return () => ro.disconnect();
+  }, [idx]);
+
+  const step = steps[idx];
+  const extras = step ? extraLabels(step) : [];
+
+  return (
+    <div className="viewer" role="region" aria-label="Screenshots, one step at a time">
+      <div className="vhead" aria-live="polite">
+        Step {step?.n ?? idx + 1} of {total}
+        {step && phaseOf(step.n) ? ` · ${phaseOf(step.n)}` : ''}
+      </div>
+      <div
+        className="vtrack"
+        ref={trackRef}
+        onScroll={onScroll}
+        style={trackH ? { height: trackH } : undefined}
+      >
+        {steps.map((s, i) => (
+          <div className="vslide" key={s.n} aria-hidden={i !== idx}>
+            <Shot step={s} base={base} eager={i === idx || i === idx + 1} />
+          </div>
+        ))}
+      </div>
+      {step && (
+        <div className="vcap">
+          <p dangerouslySetInnerHTML={{ __html: personalise(step.caption_html) }} />
+          {extras.map((label, i) => (
+            <p className="vlabel" key={i}>
+              <span className="swatch" aria-hidden="true" />
+              {label}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="vnav">
+        <button type="button" className="btn ghost" onClick={() => go(idx - 1)} disabled={idx === 0}>
+          ‹ Back
+        </button>
+        <button type="button" className="btn ghost" onClick={() => (idx >= total - 1 ? onClose() : go(idx + 1))}>
+          Next ›
+        </button>
+      </div>
+      <p className="note">Screenshots are from the Postgame account. Your app may look slightly different.</p>
+    </div>
+  );
+}
+
+function HelpBox() {
+  // Wording unchanged from the shipped page.
+  return (
+    <div className="help">
+      <p>
+        Date doesn&apos;t work, or stuck on a step? Reply to the text this link came in, <b>before</b> you post.
+      </p>
+    </div>
+  );
 }
 
 // ============================================================
-// HOME — every post
+// HOME — board 7
 // ============================================================
 
 function Home({
   view,
-  ticksFor,
+  activeId,
+  today,
   onOpen,
 }: {
   view: DeliverView;
-  ticksFor: (postId: string) => boolean[];
+  activeId: string;
+  today: string | null;
   onOpen: (postId: string) => void;
 }) {
-  const { athlete, campaign, posts } = view;
-  const postedCount = posts.filter((p) => p.link.liveUrl || p.status === 'posted').length;
-  const nextId = posts.find((p) => !(p.link.liveUrl || p.status === 'posted'))?.postId ?? null;
-  const school = athlete.school;
+  const { athlete, campaign, posts, logos } = view;
+  const firstName = athlete.name.trim().split(/\s+/)[0];
+  const allDone = posts.length > 0 && posts.every(isPosted);
+  const active = allDone ? null : posts.find((p) => p.postId === activeId) ?? null;
+  const days = active && today ? daysBetween(today, active.date) : null;
+
+  const headline = !active
+    ? "You're all done"
+    : !hasDate(active)
+      ? `Your ${shortLabel(active)} is next`
+      : days === 0
+        ? `Your ${shortLabel(active)} goes up today`
+        : days !== null && days < 0
+          ? `Your ${shortLabel(active)} is next`
+          : `Your ${shortLabel(active)} goes up ${active.dateLabel}`;
+
+  const when =
+    !active || !hasDate(active)
+      ? 'Date coming soon'
+      : days === null
+        ? active.dateLabel
+        : days === 0
+          ? 'Due today'
+          : days === 1
+            ? 'Tomorrow'
+            : days > 1
+              ? `In ${days} days`
+              : `Due ${active.dateLabel}`;
+
+  const comingUp = posts.filter((p) => !isPosted(p) && p.postId !== active?.postId);
+  const done = posts.filter(isPosted);
+  const greeting = [campaign.title, campaign.seasonLabel].filter(Boolean).join(', ');
 
   return (
     <>
-      <p className="kicker">
-        {[campaign.title, campaign.seasonLabel].filter(Boolean).join(' · ')}
+      <p className="greet">
+        Hi {firstName}
+        {greeting ? ` · ${greeting}` : ''}
       </p>
-      <h1 className="h1">Your posting instructions</h1>
-      <p className="who">
-        {[athlete.name, school, athlete.handle ? `@${athlete.handle}` : null].filter(Boolean).join(' · ')}
-      </p>
+      <h1 className="headline">{headline}</h1>
 
-      <div className="prog">
-        <div className="row">
-          <span className="lab">
-            <b>{postedCount}</b> of {posts.length} posted
-          </span>
-          <span className="lab">{posts.length} posts this season</span>
+      {active && (
+        <div className="hero">
+          <div className="hero-top">
+            <Thumb p={active} size="big" />
+            <div className="hero-text">
+              <div className="when">
+                Post {posts.indexOf(active) + 1} of {posts.length} · {when}
+              </div>
+              <div className="ptitle">{cardLabel(active)}</div>
+              <div className="dline">{dateLine(active, athlete.school)}</div>
+            </div>
+          </div>
+          <button type="button" className="btn primary" onClick={() => onOpen(active.postId)}>
+            Start · {TASK_COUNT} quick steps {ARROW}
+          </button>
         </div>
-        <div className="track">
-          <div className="fill ok" style={{ width: `${posts.length ? (postedCount / posts.length) * 100 : 0}%` }} />
-        </div>
-      </div>
+      )}
 
-      <div className="plist">
-        {posts.map((p, i) => {
-          const done = !!(p.link.liveUrl || p.status === 'posted');
-          const isNext = p.postId === nextId;
-          const days = daysUntil(p.date);
-          const badge = done
-            ? 'Done'
-            : !isNext
-              ? 'Later'
-              : days === null
-                ? 'Up next'
-                : days < 0
-                  ? 'Up next'
-                  : days === 0
-                    ? 'Today'
-                    : days === 1
-                      ? 'Tomorrow'
-                      : `In ${days} days`;
-          // A reel always reads "Reel + cover": the cover is part of the same
-          // post, and calling it just "Reel" hides a file they must save.
-          const kind = p.deliverableKey === 'reel' ? 'Reel + cover' : p.label ?? 'Feed post';
-          const label = `Post ${i + 1} · ${kind.toUpperCase()}`;
-          const filesReady =
-            p.deliverableKey === 'feed' ? p.files.photos.length > 0 : !!p.files.video && !!p.files.cover;
-          const ticks = ticksFor(p.postId);
-          const doneSteps = ticks.filter(Boolean).length + (done && !ticks[3] ? 1 : 0);
-          const status = done
-            ? '✓ Posted · link received'
-            : !filesReady
-              // Photos are plural, the video is one file — so the verb differs.
-              ? `${p.deliverableKey === 'feed' ? 'Photos on their way' : 'Video on its way'} · you can prep the rest`
-              : doneSteps > 0
-                ? `${Math.min(doneSteps, TASK_COUNT)} of ${TASK_COUNT} steps done`
-                : `Everything's ready · ${TASK_COUNT} quick steps`;
-          const thumb = p.files.cover ?? p.files.photos[0]?.url ?? null;
-
-          return (
-            <button
-              type="button"
-              key={p.postId}
-              className={`pcard${isNext && !done ? ' next' : ''}${done ? ' done' : ''}`}
-              onClick={() => onOpen(p.postId)}
-            >
-              <span className="thumb">
-                {thumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumb} alt="" />
-                ) : (
-                  <span className="ph">{PHOTO_ICON}</span>
-                )}
-              </span>
-              <span className="body">
-                <span className="top">
-                  <span className="lab">{label}</span>
-                  <span className={`badge ${done ? 'done' : isNext ? 'next' : 'later'}`}>{badge}</span>
+      {comingUp.length > 0 && (
+        <section className="group">
+          <h2 className="gtitle">Coming up</h2>
+          {comingUp.map((p) => (
+            <button type="button" className="prow" key={p.postId} onClick={() => onOpen(p.postId)}>
+              <Thumb p={p} size="small" />
+              <span className="prow-text">
+                <span className="prow-t">
+                  {cardLabel(p)}
+                  {isFeed(p) && p.files.photos.length > 0
+                    ? ` · ${p.files.photos.length} photo${p.files.photos.length === 1 ? '' : 's'}`
+                    : ''}
                 </span>
-                <span className="date">{p.dateLabel ?? 'Date TBC'}</span>
-                {p.dateConditional && (
-                  <span className="cond">· only if {school ?? 'they'} wins</span>
-                )}
-                <span className={`status${done ? ' ok' : ''}`}>{status}</span>
+                <span className="prow-s">{dateLine(p, athlete.school)}</span>
               </span>
+              <span className="chev">{CHEVRON}</span>
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </section>
+      )}
 
-      <div className="everypost">
-        <span className="lab">Every post</span>
-        <p>
-          {campaign.tagHandle && (
-            <>
-              Tag <b>@{campaign.tagHandle}</b>
-            </>
-          )}
-          {campaign.hashtag && (
-            <>
-              {campaign.tagHandle ? ' · ' : ''}use <b>#{campaign.hashtag}</b>
-            </>
-          )}
-          {campaign.brandName && (
-            <>
-              {campaign.tagHandle || campaign.hashtag ? ' · ' : ''}turn on the paid partnership label with{' '}
-              <b>{campaign.brandName}</b>.
-            </>
-          )}
-        </p>
-      </div>
+      {done.length > 0 && (
+        <section className="group">
+          <h2 className="gtitle">Done</h2>
+          {done.map((p) => (
+            <button type="button" className="prow done" key={p.postId} onClick={() => onOpen(p.postId)}>
+              <span className="tick">{CHECK}</span>
+              <span className="prow-text">
+                <span className="prow-t">{cardLabel(p)}</span>
+                <span className="prow-s ok">Posted · link received</span>
+              </span>
+              <span className="chev">{CHEVRON}</span>
+            </button>
+          ))}
+        </section>
+      )}
+
+      <HelpBox />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {logos.postgame && <img className="footmark" src={logos.postgame} alt="Postgame" />}
     </>
   );
 }
 
 // ============================================================
-// POST — one post, four open steps
+// POST — boards 8 and 9
 // ============================================================
 
-function Step({
+type StepState = 'done' | 'current' | 'todo' | 'locked';
+
+function StepRow({
   n,
   title,
-  status,
-  done,
-  isNext,
+  line,
+  state,
+  open,
+  onToggle,
   children,
 }: {
   n: number;
   title: string;
-  status: string;
-  done: boolean;
-  isNext: boolean;
+  line: string | null;
+  state: StepState;
+  open: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
+  const locked = state === 'locked';
   return (
-    <section className={`step${done ? ' done' : ''}${isNext ? ' next' : ''}`}>
-      <header>
-        <span className="circle" aria-hidden="true">{done ? CHECK : n}</span>
-        <span className="h">
-          <span className="t">{title}</span>
-          <span className="s">{status}</span>
+    <div className={`srow ${state}${open ? ' open' : ''}`}>
+      <button
+        type="button"
+        className="shead"
+        onClick={onToggle}
+        disabled={locked}
+        aria-expanded={open}
+        aria-controls={`step-${n}`}
+      >
+        <span className="circle" aria-hidden="true">{state === 'done' ? CHECK : n}</span>
+        <span className="stext">
+          <span className="st">{title}</span>
+          {line && <span className="ss">{line}</span>}
         </span>
-      </header>
-      <div className="sbody">{children}</div>
-    </section>
+      </button>
+      {open && !locked && (
+        <div className="sbody" id={`step-${n}`}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -497,6 +696,7 @@ function PostScreen({
   view,
   post,
   token,
+  today,
   ticks,
   setTick,
   onBack,
@@ -505,17 +705,19 @@ function PostScreen({
   view: DeliverView;
   post: DeliverPost;
   token: string;
+  today: string | null;
   ticks: boolean[];
   setTick: (i: number, v: boolean) => void;
   onBack: () => void;
   onPosted: (url: string) => void;
 }) {
-  const { athlete, campaign } = view;
-  const isFeed = post.deliverableKey === 'feed';
+  const { athlete, campaign, logos, posts } = view;
+  const feed = isFeed(post);
   const photos = post.files.photos;
-  const label = isFeed ? post.label ?? 'Feed post' : 'Reel + cover';
   const liveUrl = post.link.liveUrl;
-  const school = athlete.school ?? 'they';
+  const firstName = athlete.name.trim().split(/\s+/)[0];
+  const undated = !hasDate(post);
+  const days = today ? daysBetween(today, post.date) : null;
 
   // ---- walkthrough ----
   const [walk, setWalk] = useState<Walkthrough | null>(null);
@@ -545,8 +747,8 @@ function PostScreen({
   const platforms = useMemo(() => {
     const known = post.platforms.filter((p) => PLATFORM_LABEL[p]);
     if (known.length) return known;
-    return isFeed ? ['instagram_feed'] : ['instagram_reel', 'tiktok'];
-  }, [post.platforms, isFeed]);
+    return feed ? ['instagram_feed'] : ['instagram_reel', 'tiktok'];
+  }, [post.platforms, feed]);
   const [platform, setPlatform] = useState(platforms[0]);
   const [showShots, setShowShots] = useState(false);
   useEffect(() => {
@@ -555,31 +757,111 @@ function PostScreen({
   }, [post.postId, platforms]);
 
   const who = tagHtml ?? (campaign.brandName ? esc(campaign.brandName) : 'the brand');
-  const quickFor = (p: string) => (walk?.quick_steps?.[p] ?? fallbackQuickSteps(p, who)).map(personalise);
+  const quick = (walk?.quick_steps?.[platform] ?? fallbackQuickSteps(platform, who)).map(personalise);
   const shots = walk && walk.platform === platform ? walk : null;
 
-  // ---- saving files ----
+  // ---- step state ----
+  const locked = [false, false, undated, undated];
+  const done = ticks.map((t) => (liveUrl ? true : t));
+  const current = done.findIndex((d, i) => !d && !locked[i]);
+  // Finished means the link is in — the only thing that ends a post.
+  const allDone = !!liveUrl && done.every(Boolean);
+  const doneCount = done.filter(Boolean).length;
+  // 'auto' = open whichever step is current. Ticks load from localStorage
+  // after the first render, so a step chosen on mount would be stale; 'auto'
+  // follows them until the athlete taps a row or presses a button.
+  const [openSel, setOpenSel] = useState<number | null | 'auto'>('auto');
+  const open = openSel === 'auto' ? (current >= 0 ? current : null) : openSel;
+  useEffect(() => {
+    setOpenSel('auto'); // a different post: back to its current step
+  }, [post.postId]);
+  const setOpen = (v: number | null) => setOpenSel(v);
+
+  /** Tick step i and open the next step that still needs doing. */
+  const advance = (i: number) => {
+    setTick(i, true);
+    const after = done.map((d, j) => (j === i ? true : d));
+    const nxt = after.findIndex((d, j) => j > i && !d && !locked[j]);
+    const any = nxt >= 0 ? nxt : after.findIndex((d, j) => !d && !locked[j]);
+    setOpen(any >= 0 ? any : null);
+  };
+  const stateOf = (i: number): StepState =>
+    done[i] ? 'done' : locked[i] ? 'locked' : i === current ? 'current' : 'todo';
+
+  // ---- step 1: save ----
+  const videoSlot = post.files.video;
+  const coverSlot = post.files.cover;
+  const filesReady = feed ? photos.length > 0 : !!videoSlot && !!coverSlot;
+  const [saving, setSaving] = useState(false);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+  // Reel fallback: today's one-file-at-a-time links, shown when the share
+  // sheet can't take both files (e.g. desktop, or a video too big to hand over).
+  const [showSingles, setShowSingles] = useState(false);
   const [savedVideo, setSavedVideo] = useState(false);
   const [savedCover, setSavedCover] = useState(false);
-  const [savingAll, setSavingAll] = useState(false);
-  const [saveNote, setSaveNote] = useState<string | null>(null);
+  useEffect(() => {
+    setShowSingles(false);
+    setSavedVideo(false);
+    setSavedCover(false);
+  }, [post.postId]);
   useEffect(() => {
     if (!saveNote) return;
-    const t = setTimeout(() => setSaveNote(null), 2600);
+    const t = setTimeout(() => setSaveNote(null), 3200);
     return () => clearTimeout(t);
   }, [saveNote]);
 
-  async function saveAll() {
-    setSavingAll(true);
-    const how = await saveAllPhotos(photos, athlete.name);
-    setSavingAll(false);
-    if (how === 'shared') setSaveNote('Sent to your share sheet — choose Save Images.');
-    else if (how === 'downloaded') setSaveNote(`Saving ${photos.length} photos…`);
-    else if (how === 'failed') setSaveNote('Couldn’t save them together — save each one below.');
-    if (how === 'shared' || how === 'downloaded') setTick(0, true);
+  async function saveStepFiles() {
+    const files: NamedFile[] = feed
+      ? photos.map((p, i) => ({ url: p.url, name: photoName(athlete.name, i, p.url) }))
+      : [
+          ...(videoSlot ? [{ url: videoSlot, name: fileName(athlete.name, 'video', videoSlot) }] : []),
+          ...(coverSlot ? [{ url: coverSlot, name: fileName(athlete.name, 'cover', coverSlot) }] : []),
+        ];
+    if (!files.length) return;
+    setSaving(true);
+    const how = await saveFiles(files, { downloadFallback: feed });
+    setSaving(false);
+    if (how === 'shared') setSaveNote('Sent to your share sheet. Choose Save to keep them in Photos.');
+    else if (how === 'downloaded') setSaveNote(`Saving ${files.length} photos…`);
+    else if (how === 'unavailable') {
+      setShowSingles(true);
+      setSaveNote('Save them one at a time with the two buttons below.');
+    } else if (how === 'failed') setSaveNote('Couldn’t save them together. Tap and hold each one to save it.');
+    if (how === 'shared' || how === 'downloaded') advance(0);
   }
 
-  // ---- link ----
+  /** One file saved from the per-file links; both saved ticks the step. */
+  function savedOne(which: 'video' | 'cover') {
+    const v = which === 'video' ? true : savedVideo || !videoSlot;
+    const c = which === 'cover' ? true : savedCover || !coverSlot;
+    if (which === 'video') setSavedVideo(true);
+    else setSavedCover(true);
+    if (v && c) advance(0);
+  }
+
+  // ---- step 2: caption ----
+  const caption = post.caption.text;
+  const [copied, setCopied] = useState(false);
+  const [tagCopied, setTagCopied] = useState(false);
+  // Keep the tag row only where this caption doesn't already carry the tag.
+  const captionHasTag =
+    !!caption && !!campaign.tagHandle && caption.toLowerCase().includes(`@${campaign.tagHandle.toLowerCase()}`);
+  async function copyCaption() {
+    if (!caption) return;
+    await copyText(caption);
+    setCopied(true);
+    setTimeout(() => {
+      setCopied(false);
+      advance(1);
+    }, 1400);
+  }
+  useEffect(() => {
+    if (!tagCopied) return;
+    const t = setTimeout(() => setTagCopied(false), 1400);
+    return () => clearTimeout(t);
+  }, [tagCopied]);
+
+  // ---- step 4: link ----
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -627,6 +909,8 @@ function PostScreen({
       }
       const saved =
         (body?.posts ?? []).find((p: DeliverPost) => p.postId === post.postId)?.link?.liveUrl ?? check.url;
+      setTick(3, true);
+      setOpen(null);
       onPosted(saved);
     } catch {
       setSubmitError('Could not reach us. Check your connection and try again.');
@@ -635,320 +919,412 @@ function PostScreen({
     }
   }
 
-  // ---- progress ----
-  const shown = ticks.map((t, i) => (i === 3 && liveUrl ? true : t));
-  const doneCount = shown.filter(Boolean).length;
-  const nextStep = shown.findIndex((t) => !t);
-  const firstName = athlete.name.trim().split(/\s+/)[0];
+  // ---- the next post, for the finished card ----
+  const nextPost = posts.find((p) => p.postId !== post.postId && !isPosted(p)) ?? null;
+  const nextLine = nextPost
+    ? hasDate(nextPost)
+      ? `Next up: your ${shortLabel(nextPost)}. It goes up ${nextPost.dateLabel}.`
+      : `Next up: your ${shortLabel(nextPost)}. We'll text you its date.`
+    : "That's everything for now.";
 
-  const videoSlot = post.files.video;
-  const coverSlot = post.files.cover;
-  const filesReady = isFeed ? photos.length > 0 : !!videoSlot && !!coverSlot;
+  // ---- step lines ----
+  const quickCount = quick.length;
+  const lines: (string | null)[] = [0, 1, 2, 3].map((i) => {
+    const s = stateOf(i);
+    if (s === 'done') return [feed ? 'Photos saved' : 'Video and cover saved', 'Caption copied', 'Posted', 'Link sent'][i];
+    if (s === 'locked') return 'Opens once your date is set';
+    if (i === 0 && feed && photos.length) return 'A carousel: post them together, in this order';
+    if (s === 'current') return null;
+    return [
+      feed ? (photos.length ? `${photos.length} photos` : 'Photos on their way') : 'Video + cover photo',
+      'One tap',
+      `${quickCount} taps in the app`,
+      'Paste it here',
+    ][i];
+  });
+
+  const toggle = (i: number) => {
+    if (locked[i]) return;
+    setOpen(open === i ? null : i);
+  };
 
   return (
     <>
-      <button type="button" className="back" onClick={onBack}>‹ All your posts</button>
+      <header className="topbar">
+        <button type="button" className="backlink" onClick={onBack}>
+          {BACK}
+          All posts
+        </button>
+        {logos.brand && (
+          <span className="plate">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logos.brand} alt={campaign.brandName ?? ''} />
+          </span>
+        )}
+      </header>
 
-      {liveUrl && (
-        <div className="postedbanner">
-          {CHECK}
-          Posted
+      <h1 className="posttitle">Your {shortLabel(post)}</h1>
+
+      {undated ? (
+        <div className="datebox">
+          <span className="ic">{CLOCK}</span>
+          <div>
+            <div className="t">Date coming soon.</div>
+            <p>
+              We&apos;ll text you when it&apos;s set. Don&apos;t post it yet, but you can save your{' '}
+              {feed ? 'photos' : 'files'} now.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="dateline">
+            <span className="ic">{CLOCK}</span>
+            {days === 0 ? `Post today · ${post.dateLabel}` : `Post on ${post.dateLabel}`}
+          </div>
+          {post.dateConditional ? (
+            <div className="datebox cond">
+              <span className="ic">{CLOCK}</span>
+              <p>
+                Only post if {athlete.school ?? 'your team'} wins that day. Any time after the win works.
+              </p>
+            </div>
+          ) : (
+            <p className="datesub">Any time that day works.</p>
+          )}
+        </>
+      )}
+
+      {allDone ? (
+        <div className="finished" role="status">
+          <div className="t">
+            <span className="tick">{CHECK}</span>
+            Link received. Thanks, {firstName}.
+          </div>
+          <p>{nextLine}</p>
+          {liveUrl && (
+            <a href={liveUrl} target="_blank" rel="noopener noreferrer">
+              {liveUrl}
+            </a>
+          )}
+        </div>
+      ) : (
+        <div className="progress">
+          <div className="prow-l">
+            <b>{current >= 0 ? `Step ${current + 1} of ${TASK_COUNT}` : `${doneCount} of ${TASK_COUNT} done`}</b>
+            <span>
+              {current < 0 ? 'Waiting for your date' : current === 0 && feed ? 'Save your photos' : STEP_NAMES[current]}
+            </span>
+          </div>
+          <div className="segs" aria-hidden="true">
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className={done[i] ? 'done' : i === current ? 'current' : ''} />
+            ))}
+          </div>
         </div>
       )}
 
-      <p className="kicker">{label.toUpperCase()}</p>
-      <h1 className="h1 big">{post.dateLabel ?? 'Date TBC'}</h1>
-
-      <div className={`golive${post.dateConditional ? ' cond' : ''}`}>
-        <span className="ic">{CLOCK}</span>
-        <div>
-          <div className="t">Goes live · {post.dateLabel ?? 'Date TBC'}</div>
-          <p>
-            {post.dateConditional
-              ? `Only post if ${school} wins that day. Any time after the win works.`
-              : 'Any time that day works.'}
-          </p>
-        </div>
-      </div>
-
-      <div className="prog">
-        <div className="row">
-          <span className="lab">
-            <b>{doneCount}</b> of {TASK_COUNT} done
-          </span>
-          {nextStep >= 0 && <span className="lab">Next: {STEP_NAMES[nextStep]}</span>}
-        </div>
-        <div className="track">
-          <div className="fill ok" style={{ width: `${(doneCount / TASK_COUNT) * 100}%` }} />
-        </div>
-      </div>
-
-      {/* ---- 1 · files ---- */}
-      <Step
-        n={1}
-        title={isFeed ? 'Save your photos' : 'Save your files'}
-        status={
-          filesReady
-            ? isFeed
-              ? `${photos.length} photo${photos.length === 1 ? '' : 's'}, post them in the order shown`
-              : 'Video and cover ready'
-            : `Waiting on ${campaign.brandName ?? 'the brand'} — you can prep the rest`
-        }
-        done={shown[0]}
-        isNext={nextStep === 0}
-      >
-        {isFeed ? (
-          photos.length ? (
-            <>
-              <button type="button" className="btn primary full" disabled={savingAll} onClick={saveAll}>
-                {savingAll ? 'Preparing…' : `Save all ${photos.length} photos`}
-              </button>
-              {saveNote && <p className="hint" role="status">{saveNote}</p>}
+      <div className="steps">
+        {/* ---- 1 · save ---- */}
+        <StepRow
+          n={1}
+          title={feed && photos.length ? `Save your ${photos.length} photos` : feed ? 'Save your photos' : 'Save your files'}
+          line={lines[0]}
+          state={stateOf(0)}
+          open={open === 0}
+          onToggle={() => toggle(0)}
+        >
+          {feed ? (
+            photos.length ? (
               <div className="pgrid">
                 {photos.map((p, i) => (
                   <figure className="pcell" key={`${p.position}-${p.url}`}>
-                    <div className="pframe">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.url} alt={`Photo ${i + 1}`} />
-                      <span className="pnumber">{i + 1}</span>
-                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.url} alt={`Photo ${i + 1}`} />
+                    <span className="pnumber">{i + 1}</span>
                   </figure>
                 ))}
               </div>
-              <p className="fnote">Post them in the order shown.</p>
-            </>
+            ) : (
+              <div className="onway">
+                <b>Your photos are on their way.</b>
+                <span>
+                  Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval. They appear here on their own.
+                </span>
+              </div>
+            )
           ) : (
-            <div className="onway">
-              <span className="lab">Photos · the post</span>
-              <p>Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval. They appear here on their own.</p>
-            </div>
-          )
-        ) : (
-          <>
             <div className="tiles">
               <div className="tile">
-                <span className="lab">Video · the post</span>
                 {videoSlot ? (
-                  <>
-                    <video className="media" src={videoSlot} controls playsInline preload="metadata" />
-                    <SaveLink
-                      href={downloadHref(videoSlot, fileName(athlete.name, 'video', videoSlot))}
-                      label="Save"
-                      saved={savedVideo}
-                      onSaved={() => {
-                        setSavedVideo(true);
-                        if (savedCover || !coverSlot) setTick(0, true);
-                      }}
-                    />
-                  </>
+                  // The cover as poster, so the tile isn't a black box while
+                  // the (large) video loads.
+                  <video
+                    className="media"
+                    src={videoSlot}
+                    poster={coverSlot ?? undefined}
+                    controls
+                    playsInline
+                    preload="metadata"
+                  />
                 ) : (
                   <div className="onway">
-                    <p>Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval. It appears here on its own.</p>
+                    <b>On its way.</b>
+                    <span>Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval.</span>
                   </div>
                 )}
+                <div className="tt">Video</div>
+                <div className="ts">This is your post</div>
               </div>
               <div className="tile">
-                <span className="lab">Photo · the cover</span>
                 {coverSlot ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="media" src={coverSlot} alt="" />
-                    <SaveLink
-                      href={downloadHref(coverSlot, fileName(athlete.name, 'cover', coverSlot))}
-                      label="Save"
-                      saved={savedCover}
-                      onSaved={() => {
-                        setSavedCover(true);
-                        if (savedVideo || !videoSlot) setTick(0, true);
-                      }}
-                    />
-                  </>
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="media" src={coverSlot} alt="" />
                 ) : (
                   <div className="onway">
-                    <p>Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval. It appears here on its own.</p>
+                    <b>On its way.</b>
+                    <span>Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval.</span>
                   </div>
                 )}
+                <div className="tt">Cover photo</div>
+                <div className="ts">Goes on the Reel</div>
               </div>
             </div>
-            <p className="fnote">Vertical 9:16 video. The photo is the Reel&apos;s cover, never a separate post.</p>
-          </>
-        )}
-      </Step>
+          )}
+          <button
+            type="button"
+            className={`btn ${done[0] ? 'done' : 'primary'}`}
+            disabled={!filesReady || saving}
+            onClick={saveStepFiles}
+          >
+            {DOWNLOAD}
+            {saving
+              ? 'Preparing…'
+              : done[0]
+                ? 'Saved ✓ · Save again'
+                : feed
+                  ? photos.length
+                    ? `Save all ${photos.length} photos`
+                    : 'Save all photos'
+                  : 'Save both to Photos'}
+          </button>
+          {saveNote && <p className="note" role="status">{saveNote}</p>}
+          {!feed && showSingles && (
+            <div className="singles">
+              {videoSlot && (
+                <a
+                  className={`btn small ${savedVideo ? 'done' : 'ghost'}`}
+                  href={downloadHref(videoSlot, fileName(athlete.name, 'video', videoSlot))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  onClick={() => savedOne('video')}
+                >
+                  {savedVideo ? 'Video saved ✓' : 'Save video'}
+                </a>
+              )}
+              {coverSlot && (
+                <a
+                  className={`btn small ${savedCover ? 'done' : 'ghost'}`}
+                  href={downloadHref(coverSlot, fileName(athlete.name, 'cover', coverSlot))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  onClick={() => savedOne('cover')}
+                >
+                  {savedCover ? 'Cover saved ✓' : 'Save cover'}
+                </a>
+              )}
+            </div>
+          )}
+          {!feed && <p className="note">The photo is the Reel&apos;s cover, not a separate post.</p>}
+        </StepRow>
 
-      {/* ---- 2 · caption ---- */}
-      <Step
-        n={2}
-        title="Copy your caption"
-        status={post.caption.text ? 'Paste it exactly' : 'On its way'}
-        done={shown[1]}
-        isNext={nextStep === 1}
-      >
-        <div className="card">
-          {post.caption.text ? (
+        {/* ---- 2 · caption ---- */}
+        <StepRow
+          n={2}
+          title="Copy your caption"
+          line={lines[1]}
+          state={stateOf(1)}
+          open={open === 1}
+          onToggle={() => toggle(1)}
+        >
+          <div className="capcard">
+            {caption ? (
+              <p className="captext">{caption}</p>
+            ) : (
+              <p className="captext pending">Your caption is on its way. It&apos;ll appear here once it&apos;s approved.</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className={`btn ${copied ? 'done' : 'primary'}`}
+            disabled={!caption}
+            onClick={copyCaption}
+          >
+            {COPY}
+            {copied ? 'Copied ✓' : 'Copy caption'}
+          </button>
+          {caption && captionHasTag && <p className="note">Paste it exactly. The tag and hashtag are already in it.</p>}
+          {caption && !captionHasTag && campaign.tagHandle && (
             <>
-              <p className="captext">{post.caption.text}</p>
-              <CopyButton
-                text={post.caption.text}
-                label="Copy caption"
-                variant="primary"
-                onCopied={() => setTick(1, true)}
-              />
+              <p className="note">Paste it exactly, then tag this account too.</p>
+              <div className="tagrow">
+                <div>
+                  <div className="tl">Tag this account</div>
+                  <div className="tv">@{campaign.tagHandle}</div>
+                </div>
+                <button
+                  type="button"
+                  className={`btn small ${tagCopied ? 'done' : 'ghost'}`}
+                  onClick={async () => {
+                    await copyText(`@${campaign.tagHandle}`);
+                    setTagCopied(true);
+                  }}
+                >
+                  {tagCopied ? 'Copied ✓' : 'Copy'}
+                </button>
+              </div>
+            </>
+          )}
+        </StepRow>
+
+        {/* ---- 3 · post it ---- */}
+        <StepRow
+          n={3}
+          title="Post it on Instagram"
+          line={lines[2]}
+          state={stateOf(2)}
+          open={open === 2}
+          onToggle={() => toggle(2)}
+        >
+          {platforms.length > 1 && (
+            <div className="seg" role="group" aria-label="Where you post">
+              {platforms.map((p) => (
+                <button key={p} type="button" aria-pressed={platform === p} onClick={() => setPlatform(p)}>
+                  {PLATFORM_LABEL[p]}
+                </button>
+              ))}
+            </div>
+          )}
+          <ol className="quick">
+            {quick.map((html, i) => (
+              <li key={i}>
+                <span className="n">{i + 1}</span>
+                <span dangerouslySetInnerHTML={{ __html: html }} />
+              </li>
+            ))}
+          </ol>
+
+          {campaign.ftcNote && (
+            <div className="dontskip">
+              <div className="t">Don&apos;t skip</div>
+              <p>{campaign.ftcNote}</p>
+            </div>
+          )}
+
+          {shots ? (
+            <>
+              <button
+                type="button"
+                className="btn ghost"
+                aria-expanded={showShots}
+                onClick={() => setShowShots((v) => !v)}
+              >
+                {showShots ? 'Hide the screenshots' : 'See it with screenshots'}
+              </button>
+              {showShots && (
+                <ShotViewer
+                  walk={shots}
+                  base={walkBase}
+                  personalise={personalise}
+                  storageKey={`pg-deliver:${token}:${post.postId}:shot`}
+                  onClose={() => setShowShots(false)}
+                />
+              )}
             </>
           ) : (
+            <p className="note">Screenshots coming.</p>
+          )}
+
+          <button
+            type="button"
+            className={`btn ${done[2] ? 'done' : 'primary'}`}
+            onClick={() => (done[2] ? setTick(2, false) : advance(2))}
+          >
+            {CHECK}
+            {done[2] ? 'Posted ✓' : 'I’ve posted it'}
+          </button>
+        </StepRow>
+
+        {/* ---- 4 · link ---- */}
+        <StepRow
+          n={4}
+          title="Send us the link"
+          line={lines[3]}
+          state={stateOf(3)}
+          open={open === 3}
+          onToggle={() => toggle(3)}
+        >
+          {liveUrl ? (
+            <p className="note">
+              We have it:{' '}
+              <a href={liveUrl} target="_blank" rel="noopener noreferrer">
+                {liveUrl}
+              </a>
+            </p>
+          ) : (
             <>
-              <p className="captext pending">Your caption is on its way. It&apos;ll appear here once it&apos;s approved.</p>
-              <button type="button" className="btn primary" disabled>Copy caption</button>
+              <label className="flabel" htmlFor="postlink">
+                Your {shortLabel(post)}&apos;s link
+              </label>
+              <div className="linkfield">
+                <input
+                  type="url"
+                  id="postlink"
+                  inputMode="url"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  placeholder={feed ? 'instagram.com/p/…' : 'instagram.com/reel/…'}
+                  value={draft}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    setSubmitError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && draftOk && !submitting) submit();
+                  }}
+                />
+                <button type="button" className="btn ghost small" onClick={paste}>
+                  {pasted ? 'Pasted' : 'Paste'}
+                </button>
+              </div>
+              <p className="note">
+                {platform === 'tiktok' ? (
+                  <>
+                    On TikTok, tap <b>Share</b> → <b>Copy link</b>.
+                  </>
+                ) : (
+                  <>
+                    On Instagram, tap <b>···</b> on your {shortLabel(post)} → <b>Copy link</b>.
+                  </>
+                )}
+              </p>
+              {submitError && (
+                <p className="err" role="alert">
+                  {submitError}
+                </p>
+              )}
+              <button type="button" className="btn primary" disabled={!draftOk || submitting} onClick={submit}>
+                {submitting ? 'Sending…' : 'Send link'}
+              </button>
             </>
           )}
-          {campaign.tagHandle && (
-            <div className="tagrow">
-              <div>
-                <span className="lab">Tag this account</span>
-                <div className="val">@{campaign.tagHandle}</div>
-              </div>
-              <CopyButton text={`@${campaign.tagHandle}`} label="Copy" variant="ghost" />
-            </div>
-          )}
-          <p className="fnote">Paste it exactly. The hashtag is already in it.</p>
-        </div>
-      </Step>
+        </StepRow>
+      </div>
 
-      {/* ---- 3 · post it ---- */}
-      <Step
-        n={3}
-        title="Post it"
-        status={
-          platforms.length > 1
-            ? `${platforms.map((p) => (p === 'instagram_reel' ? 'Reel' : PLATFORM_LABEL[p])).join(' or ')} — either counts`
-            : `On ${PLATFORM_LABEL[platforms[0]]}`
-        }
-        done={shown[2]}
-        isNext={nextStep === 2}
-      >
-        {platforms.length > 1 && (
-          <div className="plat" role="tablist" aria-label="Platform">
-            {platforms.map((p) => (
-              <button
-                key={p}
-                type="button"
-                role="tab"
-                aria-selected={platform === p}
-                onClick={() => setPlatform(p)}
-              >
-                {PLATFORM_LABEL[p]}
-              </button>
-            ))}
-          </div>
-        )}
-        <ol className="quick">
-          {quickFor(platform).map((html, i) => (
-            <li key={i}>
-              <span className="n">{i + 1}</span>
-              <span dangerouslySetInnerHTML={{ __html: html }} />
-            </li>
-          ))}
-        </ol>
-
-        {campaign.ftcNote && (
-          <div className="required">
-            <span className="lab">Required</span>
-            <p>{campaign.ftcNote}</p>
-          </div>
-        )}
-
-        {shots ? (
-          <details className="shotsblock" open={showShots} onToggle={(e) => setShowShots((e.target as HTMLDetailsElement).open)}>
-            <summary>See it step by step, with screenshots</summary>
-            <div className="groups">
-              {shots.phases.map((ph, pi) => {
-                const steps = shots.steps.filter((s) => s.n >= ph.from_step && s.n <= ph.to_step);
-                return (
-                  <div className="sgroup" key={pi}>
-                    <div className="ghead">
-                      <span className="gt">{ph.title}</span>
-                      <span className="lab">{steps.length} {steps.length === 1 ? 'step' : 'steps'}</span>
-                    </div>
-                    <div className="scroller">
-                      {steps.map((s) => (
-                        <div className="scell" key={s.n}>
-                          <Shot step={s} base={walkBase} />
-                          <p className="scap" dangerouslySetInnerHTML={{ __html: personalise(s.caption_html) }} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="hint">Screenshots are from the Postgame account. Your app may look slightly different.</p>
-          </details>
-        ) : (
-          <p className="hint">Screenshots coming.</p>
-        )}
-
-        <button
-          type="button"
-          className={`btn ${shown[2] ? 'done' : 'ghost'} full`}
-          onClick={() => setTick(2, !ticks[2])}
-        >
-          {shown[2] ? 'Posted ✓' : 'I’ve posted it'}
-        </button>
-      </Step>
-
-      {/* ---- 4 · link ---- */}
-      <Step
-        n={4}
-        title="Send us the link"
-        status={liveUrl ? 'Link received' : 'So we know it’s up'}
-        done={shown[3]}
-        isNext={nextStep === 3}
-      >
-        {liveUrl ? (
-          <div className="received">
-            <div className="t">{CHECK} Link received. Thanks, {firstName}.</div>
-            <a href={liveUrl} target="_blank" rel="noopener noreferrer">{liveUrl}</a>
-          </div>
-        ) : (
-          <div className="card">
-            <label className="lab" htmlFor="postlink">Link to your post</label>
-            <div className="linkfield">
-              <input
-                type="url"
-                id="postlink"
-                inputMode="url"
-                autoComplete="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                placeholder={isFeed ? 'https://instagram.com/p/…' : 'https://instagram.com/reel/…'}
-                value={draft}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  setSubmitError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && draftOk && !submitting) submit();
-                }}
-              />
-              <button type="button" className="btn ghost" onClick={paste}>
-                {pasted ? 'Pasted' : 'Paste'}
-              </button>
-            </div>
-            <p className="hint">
-              Instagram: tap <b>···</b> on your post → <b>Copy link</b>. TikTok: tap <b>Share</b> → <b>Copy link</b>.
-            </p>
-            {submitError && <p className="err" role="alert">{submitError}</p>}
-            <button
-              type="button"
-              className="btn primary full big"
-              style={{ marginTop: 14 }}
-              disabled={!draftOk || submitting}
-              onClick={submit}
-            >
-              {submitting ? 'Sending…' : 'Send link'}
-            </button>
-          </div>
-        )}
-      </Step>
+      <HelpBox />
     </>
   );
 }
@@ -964,8 +1340,11 @@ export default function DeliverPage({ token, view }: { token: string; view: Deli
     Object.fromEntries(view.posts.map((p) => [p.postId, p.link.liveUrl]))
   );
   const [allTicks, setAllTicks] = useState<Record<string, boolean[]>>({});
+  // The athlete's own calendar day — only known in the browser.
+  const [today, setToday] = useState<string | null>(null);
+  useEffect(() => setToday(localToday()), []);
 
-  // Ticks are per post and live only in this browser.
+  // Ticks are per post and live only in this browser. Keys unchanged.
   const keyFor = useCallback((postId: string) => `pg-deliver:${token}:${postId}`, [token]);
   useEffect(() => {
     const next: Record<string, boolean[]> = {};
@@ -1000,6 +1379,9 @@ export default function DeliverPage({ token, view }: { token: string; view: Deli
     [view.posts, liveUrls]
   );
   const shownView: DeliverView = { ...view, posts };
+  // Same rule as the API's activePostId, re-run so a link sent on this page
+  // moves the home screen on to the next post.
+  const activeId = (posts.find((p) => !isPosted(p)) ?? posts[posts.length - 1])?.postId ?? view.activePostId;
   const post = openId ? posts.find((p) => p.postId === openId) ?? null : null;
 
   // Back to the top whenever the screen changes — a phone keeps its scroll.
@@ -1010,39 +1392,32 @@ export default function DeliverPage({ token, view }: { token: string; view: Deli
   return (
     <div className="dv">
       <main className="wrap">
-        <header className="masthead">
-          <div className="lockup">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {logos.postgame && <img className="pg" src={logos.postgame} alt="Postgame" />}
-          </div>
-          {logos.brand && (
-            <div className="plate">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="cn" src={logos.brand} alt={campaign.brandName ?? ''} />
-            </div>
-          )}
-        </header>
-
         {post ? (
           <PostScreen
             view={shownView}
             post={post}
             token={token}
+            today={today}
             ticks={ticksFor(post.postId)}
             setTick={(i, v) => setTick(post.postId, i, v)}
             onBack={() => setOpenId(null)}
             onPosted={(url) => setLiveUrls((prev) => ({ ...prev, [post.postId]: url }))}
           />
         ) : (
-          <Home view={shownView} ticksFor={ticksFor} onOpen={setOpenId} />
+          <>
+            <header className="topbar">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {logos.postgame ? <img className="pg" src={logos.postgame} alt="Postgame" /> : <span />}
+              {logos.brand && (
+                <span className="plate">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logos.brand} alt={campaign.brandName ?? ''} />
+                </span>
+              )}
+            </header>
+            <Home view={shownView} activeId={activeId} today={today} onOpen={setOpenId} />
+          </>
         )}
-
-        <div className="help">
-          <p>
-            Date doesn&apos;t work, or stuck on a step? Reply to the text this link came in,{' '}
-            <b>before</b> you post.
-          </p>
-        </div>
       </main>
     </div>
   );
