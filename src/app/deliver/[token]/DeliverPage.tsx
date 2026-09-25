@@ -7,9 +7,12 @@
 //
 //   HOME   a greeting, one headline about the active post, a hero card with
 //          ONE orange button, then "Coming up" and "Done" as compact rows.
-//   POST   the four steps as a list where only one is open at a time. The
+//   POST   the six steps as a list where only one is open at a time. The
 //          open step has exactly one orange button; pressing it does the
-//          action, ticks the step and opens the next one.
+//          action and opens the next step (board 10): save the files, copy
+//          the caption, then Instagram, the Story (screenshot), TikTok and X.
+//          A post is Posted — the payment trigger — only when all four places
+//          are in; the server decides that (maybeMarkPosted).
 //
 // Everything the page did before still works: Web Share into Photos (now for
 // the Reel's two files too), the one-file-at-a-time download fallback, Save
@@ -18,10 +21,11 @@
 // (URL checks, no overwrite — both server-side), the pending "on its way"
 // slots, the conditional date, the posted state and the help box.
 //
-// The tick-offs are the athlete's own and live only in their browser
-// (localStorage, same keys as before: pg-deliver:<token>:<postId>). The ONLY
-// thing written to the database is the live link, through
-// POST /api/deliver/[token]/posted, exactly as before.
+// Steps 1–2 are ticked in the athlete's browser only (localStorage, same keys
+// as before: pg-deliver:<token>:<postId>). Steps 3–6 are done when the SERVER
+// has the link or screenshot: POST /api/deliver/[token]/link and
+// …/story-screenshot answer with the whole view, and the page re-renders
+// from it.
 //
 // DATES. intended_post_date is a plain calendar date. "Today", "in N days"
 // and "due today" are worked out in the athlete's browser against their own
@@ -32,7 +36,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DeliverPost, DeliverView } from '@/lib/deliver-package';
-import { checkLiveUrl } from '@/lib/post-link';
+import { checkPlatformLink, type Platform } from '@/lib/post-link';
 
 // --- walkthrough.json (public/posting/walkthroughs/<key>/) -----------------
 
@@ -50,14 +54,15 @@ const WALKTHROUGH_KEY = /^[a-z0-9-]{1,80}$/;
 // The walkthrough was shot on the Cane's campaign; its copy names this handle.
 const SHOT_HANDLE = 'raisingcanes';
 
-const PLATFORM_LABEL: Record<string, string> = {
-  instagram_reel: 'Instagram Reel',
-  instagram_feed: 'Instagram',
-  tiktok: 'TikTok',
-};
-
-const TASK_COUNT = 4;
-const STEP_NAMES = ['Save your files', 'Copy your caption', 'Post it on Instagram', 'Send us the link'];
+const TASK_COUNT = 6;
+const STEP_NAMES = [
+  'Save your files',
+  'Copy your caption',
+  'Post it on Instagram',
+  'Share it to your Story',
+  'Post it on TikTok',
+  'Post it on X',
+];
 
 // --- helpers ---------------------------------------------------------------
 
@@ -243,7 +248,9 @@ function daysBetween(today: string, iso: string | null): number | null {
 
 // --- post facts ------------------------------------------------------------
 
-const isPosted = (p: DeliverPost) => !!p.link.liveUrl || p.status === 'posted';
+// Posted = all four places are in (the server sets status 'posted' then).
+// An Instagram link alone is not Posted any more.
+const isPosted = (p: DeliverPost) => p.status === 'posted';
 const isFeed = (p: DeliverPost) => p.deliverableKey === 'feed';
 /** "Reel" / "Feed post" — for "Your Reel", "Your Feed post's link". */
 const shortLabel = (p: DeliverPost) => (isFeed(p) ? p.label ?? 'Feed post' : 'Reel');
@@ -628,7 +635,7 @@ function Home({
               <span className="tick">{CHECK}</span>
               <span className="prow-text">
                 <span className="prow-t">{cardLabel(p)}</span>
-                <span className="prow-s ok">Posted · link received</span>
+                <span className="prow-s ok">All 4 are up</span>
               </span>
               <span className="chev">{CHEVRON}</span>
             </button>
@@ -692,6 +699,335 @@ function StepRow({
   );
 }
 
+// ---- one platform's link (steps 3, 5, 6) -----------------------------------
+
+/**
+ * A labelled link input with Paste and one orange button. Checks the link for
+ * its platform before enabling the button (the server checks again), posts it
+ * to /api/deliver/[token]/link, and hands the server's fresh view back up.
+ * Once a link is in, it just shows it.
+ */
+function LinkField({
+  token,
+  postId,
+  platform,
+  label,
+  placeholder,
+  helper,
+  buttonLabel,
+  saved,
+  onSaved,
+}: {
+  token: string;
+  postId: string;
+  platform: Platform;
+  label: string;
+  placeholder: string;
+  helper: React.ReactNode;
+  buttonLabel: string;
+  saved: string | undefined;
+  onSaved: (view: DeliverView) => void;
+}) {
+  const id = `link-${platform}`;
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pasted, setPasted] = useState(false);
+  const check = checkPlatformLink(platform, draft);
+  useEffect(() => {
+    if (!pasted) return;
+    const t = setTimeout(() => setPasted(false), 1400);
+    return () => clearTimeout(t);
+  }, [pasted]);
+
+  if (saved) {
+    return (
+      <p className="note">
+        We have it:{' '}
+        <a href={saved} target="_blank" rel="noopener noreferrer">
+          {saved}
+        </a>
+      </p>
+    );
+  }
+
+  async function paste() {
+    try {
+      const t = await navigator.clipboard?.readText?.();
+      if (t) {
+        setDraft(t.trim());
+        setError(null);
+        setPasted(true);
+        return;
+      }
+    } catch {
+      /* permission denied: let them paste by hand */
+    }
+    document.getElementById(id)?.focus();
+  }
+
+  async function send() {
+    if (!check.ok) {
+      setError(check.error);
+      return;
+    }
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/deliver/${encodeURIComponent(token)}/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId, platform, url: check.url }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(
+          res.status === 409
+            ? "We already have this link. Text us if it's wrong."
+            : body?.error ?? 'Something went wrong. Please try again.'
+        );
+        return;
+      }
+      if (body?.posts) onSaved(body as DeliverView);
+    } catch {
+      setError('Could not reach us. Check your connection and try again.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <>
+      <label className="flabel" htmlFor={id}>
+        {label}
+      </label>
+      <div className="linkfield">
+        <input
+          type="url"
+          id={id}
+          inputMode="url"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          placeholder={placeholder}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && check.ok && !sending) send();
+          }}
+        />
+        <button type="button" className="btn ghost small" onClick={paste}>
+          {pasted ? 'Pasted' : 'Paste'}
+        </button>
+      </div>
+      <p className="note">{helper}</p>
+      {error && (
+        <p className="err" role="alert">
+          {error}
+        </p>
+      )}
+      <button type="button" className="btn primary" disabled={!check.ok || sending} onClick={send}>
+        {sending ? 'Saving…' : buttonLabel}
+      </button>
+    </>
+  );
+}
+
+// ---- the Story screenshot (step 4) -----------------------------------------
+
+/**
+ * Shrink a screenshot before sending it. Vercel refuses request bodies over
+ * ~4.5 MB and a phone screenshot can be bigger, so anything the browser can
+ * decode is redrawn as a JPEG, longest side 2000px. If it can't be decoded
+ * here (e.g. HEIC on a desktop browser) the original goes as-is and the
+ * server decides.
+ */
+async function shrinkScreenshot(file: File): Promise<File> {
+  if (file.size < 900 * 1024 && /^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+  try {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = url;
+      });
+      const scale = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+      if (!blob) return file;
+      return new File([blob], (file.name || 'story').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    return file;
+  }
+}
+
+function StoryUpload({
+  token,
+  postId,
+  saved,
+  onSaved,
+}: {
+  token: string;
+  postId: string;
+  saved: string | undefined;
+  onSaved: (view: DeliverView) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  if (saved) {
+    return (
+      <div className="storysaved">
+        <a href={saved} target="_blank" rel="noopener noreferrer" className="storythumb">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={saved} alt="Your Story screenshot" />
+        </a>
+        <p className="note">We have your Story screenshot.</p>
+      </div>
+    );
+  }
+
+  async function send() {
+    if (!file) return;
+    setSending(true);
+    setError(null);
+    try {
+      const small = await shrinkScreenshot(file);
+      const form = new FormData();
+      form.append('postId', postId);
+      form.append('file', small, small.name);
+      const res = await fetch(`/api/deliver/${encodeURIComponent(token)}/story-screenshot`, {
+        method: 'POST',
+        body: form,
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(
+          res.status === 409
+            ? "We already have your Story screenshot. Text us if it's wrong."
+            : res.status === 400 && body?.error
+              ? body.error
+              : "That didn't upload. Try a smaller screenshot."
+        );
+        return;
+      }
+      if (body?.posts) onSaved(body as DeliverView);
+    } catch {
+      setError("That didn't upload. Try a smaller screenshot.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="flabel">Your Story screenshot</div>
+      <div className={`storypick${preview ? ' has' : ''}`}>
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt="The screenshot you picked" />
+        ) : (
+          <span className="note">No screenshot yet</span>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0] ?? null;
+          setError(null);
+          setFile(f);
+          setPreview((old) => {
+            if (old) URL.revokeObjectURL(old);
+            return f ? URL.createObjectURL(f) : null;
+          });
+        }}
+      />
+      <button type="button" className="btn ghost" onClick={() => inputRef.current?.click()}>
+        {file ? 'Choose a different screenshot' : 'Choose screenshot'}
+      </button>
+      {error && (
+        <p className="err" role="alert">
+          {error}
+        </p>
+      )}
+      <button type="button" className="btn primary" disabled={!file || sending} onClick={send}>
+        {sending ? 'Sending…' : 'Send screenshot'}
+      </button>
+    </>
+  );
+}
+
+// ---- taps for the new platforms --------------------------------------------
+// Instagram keeps today's taps word for word (walkthrough.json / fallback).
+// `who` is already HTML-escaped.
+
+function storyTaps(feed: boolean, who: string): string[] {
+  return [
+    feed ? 'Open the post you just put up.' : 'Open the Reel you just posted.',
+    'Tap the <b>paper-plane</b> icon → <b>Add to story</b>.',
+    `Add a <b>mention</b> sticker → <b>@${who}</b>.`,
+    'Tap <b>Your story</b>.',
+    'Open your Story and take a screenshot of it.',
+  ];
+}
+
+function tiktokTaps(feed: boolean, who: string, photoCount: number): string[] {
+  return feed
+    ? [
+        'Tap <b>+</b> → <b>Upload</b> → <b>Photos</b>.',
+        `Pick all ${photoCount || 'your'} photos <b>in the order shown above</b> → <b>Next</b>.`,
+        `Paste your caption. Type <b>@${who}</b> in it so the tag links.`,
+        '<b>More options</b> → <b>Content disclosure</b> → switch on <b>Brand content</b>.',
+        'Tap <b>Post</b>.',
+      ]
+    : [
+        'Tap <b>+</b> → <b>Upload</b> → pick the video → <b>Next</b>.',
+        'Tap <b>Select cover</b> → <b>Upload cover</b> → pick the cover photo.',
+        `Paste your caption. Type <b>@${who}</b> in it so the tag links.`,
+        '<b>More options</b> → <b>Content disclosure</b> → switch on <b>Brand content</b>.',
+        'Tap <b>Post</b>.',
+      ];
+}
+
+function xTaps(feed: boolean): string[] {
+  return feed
+    ? ['Tap <b>+</b> → attach photos <b>1–4</b>, in order.', 'Paste your caption.', 'Tap <b>Post</b>.']
+    : ['Tap <b>+</b> → attach the video.', 'Paste your caption.', 'Tap <b>Post</b>.'];
+}
+
+function Taps({ items }: { items: string[] }) {
+  return (
+    <ol className="quick">
+      {items.map((html, i) => (
+        <li key={i}>
+          <span className="n">{i + 1}</span>
+          <span dangerouslySetInnerHTML={{ __html: html }} />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function PostScreen({
   view,
   post,
@@ -700,7 +1036,7 @@ function PostScreen({
   ticks,
   setTick,
   onBack,
-  onPosted,
+  onServerView,
 }: {
   view: DeliverView;
   post: DeliverPost;
@@ -709,17 +1045,17 @@ function PostScreen({
   ticks: boolean[];
   setTick: (i: number, v: boolean) => void;
   onBack: () => void;
-  onPosted: (url: string) => void;
+  onServerView: (view: DeliverView) => void;
 }) {
   const { athlete, campaign, logos, posts } = view;
   const feed = isFeed(post);
   const photos = post.files.photos;
-  const liveUrl = post.link.liveUrl;
   const firstName = athlete.name.trim().split(/\s+/)[0];
   const undated = !hasDate(post);
   const days = today ? daysBetween(today, post.date) : null;
+  const brand = campaign.brandName ?? 'the brand';
 
-  // ---- walkthrough ----
+  // ---- walkthrough (Instagram only) ----
   const [walk, setWalk] = useState<Walkthrough | null>(null);
   const walkKey = post.walkthrough && WALKTHROUGH_KEY.test(post.walkthrough) ? post.walkthrough : null;
   const walkBase = walkKey ? `/posting/walkthroughs/${walkKey}` : '';
@@ -743,29 +1079,30 @@ function PostScreen({
     (html: string) => (tagHtml ? html.split(SHOT_HANDLE).join(tagHtml) : html),
     [tagHtml]
   );
-
-  const platforms = useMemo(() => {
-    const known = post.platforms.filter((p) => PLATFORM_LABEL[p]);
-    if (known.length) return known;
-    return feed ? ['instagram_feed'] : ['instagram_reel', 'tiktok'];
-  }, [post.platforms, feed]);
-  const [platform, setPlatform] = useState(platforms[0]);
   const [showShots, setShowShots] = useState(false);
-  useEffect(() => {
-    setPlatform(platforms[0]);
-    setShowShots(false);
-  }, [post.postId, platforms]);
+  useEffect(() => setShowShots(false), [post.postId]);
 
-  const who = tagHtml ?? (campaign.brandName ? esc(campaign.brandName) : 'the brand');
-  const quick = (walk?.quick_steps?.[platform] ?? fallbackQuickSteps(platform, who)).map(personalise);
-  const shots = walk && walk.platform === platform ? walk : null;
+  const who = tagHtml ?? esc(brand);
+  const igKey = feed ? 'instagram_feed' : 'instagram_reel';
+  const igTaps = (walk?.quick_steps?.[igKey] ?? fallbackQuickSteps(igKey, who)).map(personalise);
+  const shots = walk && walk.platform === igKey ? walk : null;
 
   // ---- step state ----
-  const locked = [false, false, undated, undated];
-  const done = ticks.map((t) => (liveUrl ? true : t));
+  // Steps 1–2: this browser's ticks. Steps 3–6: what the server has.
+  const links = post.links ?? {};
+  const story = post.storyScreenshot?.url;
+  const fourIn = !!links.instagram && !!story && !!links.tiktok && !!links.x;
+  const posted = post.status === 'posted' || fourIn;
+  const done = [
+    ticks[0] || posted,
+    ticks[1] || posted,
+    !!links.instagram,
+    !!story,
+    !!links.tiktok,
+    !!links.x,
+  ];
+  const locked = [false, false, undated, undated, undated, undated];
   const current = done.findIndex((d, i) => !d && !locked[i]);
-  // Finished means the link is in — the only thing that ends a post.
-  const allDone = !!liveUrl && done.every(Boolean);
   const doneCount = done.filter(Boolean).length;
   // 'auto' = open whichever step is current. Ticks load from localStorage
   // after the first render, so a step chosen on mount would be stale; 'auto'
@@ -777,13 +1114,25 @@ function PostScreen({
   }, [post.postId]);
   const setOpen = (v: number | null) => setOpenSel(v);
 
-  /** Tick step i and open the next step that still needs doing. */
+  /** Open the next step that still needs doing after step i (i is now done). */
+  const openAfter = (i: number, doneNow: boolean[]) => {
+    const nxt = doneNow.findIndex((d, j) => j > i && !d && !locked[j]);
+    const any = nxt >= 0 ? nxt : doneNow.findIndex((d, j) => !d && !locked[j]);
+    setOpen(any >= 0 ? any : null);
+  };
+  /** Steps 1–2: tick in this browser, then move on. */
   const advance = (i: number) => {
     setTick(i, true);
-    const after = done.map((d, j) => (j === i ? true : d));
-    const nxt = after.findIndex((d, j) => j > i && !d && !locked[j]);
-    const any = nxt >= 0 ? nxt : after.findIndex((d, j) => !d && !locked[j]);
-    setOpen(any >= 0 ? any : null);
+    openAfter(i, done.map((d, j) => (j === i ? true : d)));
+  };
+  /** Steps 3–6: the server answered; take its view, then move on. */
+  const serverSaved = (i: number) => (next: DeliverView) => {
+    onServerView(next);
+    const p = next.posts.find((x) => x.postId === post.postId);
+    const l = p?.links ?? {};
+    const doneNow = [done[0], done[1], !!l.instagram, !!p?.storyScreenshot, !!l.tiktok, !!l.x];
+    doneNow[i] = true;
+    openAfter(i, doneNow);
   };
   const stateOf = (i: number): StepState =>
     done[i] ? 'done' : locked[i] ? 'locked' : i === current ? 'current' : 'todo';
@@ -861,64 +1210,6 @@ function PostScreen({
     return () => clearTimeout(t);
   }, [tagCopied]);
 
-  // ---- step 4: link ----
-  const [draft, setDraft] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [pasted, setPasted] = useState(false);
-  const draftOk = checkLiveUrl(draft).ok;
-  useEffect(() => {
-    if (!pasted) return;
-    const t = setTimeout(() => setPasted(false), 1400);
-    return () => clearTimeout(t);
-  }, [pasted]);
-
-  async function paste() {
-    try {
-      const t = await navigator.clipboard?.readText?.();
-      if (t) {
-        setDraft(t.trim());
-        setSubmitError(null);
-        setPasted(true);
-        return;
-      }
-    } catch {
-      /* permission denied: let them paste by hand */
-    }
-    document.getElementById('postlink')?.focus();
-  }
-
-  async function submit() {
-    const check = checkLiveUrl(draft);
-    if (!check.ok) {
-      setSubmitError(check.error);
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const res = await fetch(`/api/deliver/${encodeURIComponent(token)}/posted`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: post.postId, live_url: check.url }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        setSubmitError(body?.error ?? 'Something went wrong. Please try again.');
-        return;
-      }
-      const saved =
-        (body?.posts ?? []).find((p: DeliverPost) => p.postId === post.postId)?.link?.liveUrl ?? check.url;
-      setTick(3, true);
-      setOpen(null);
-      onPosted(saved);
-    } catch {
-      setSubmitError('Could not reach us. Check your connection and try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   // ---- the next post, for the finished card ----
   const nextPost = posts.find((p) => p.postId !== post.postId && !isPosted(p)) ?? null;
   const nextLine = nextPost
@@ -928,25 +1219,37 @@ function PostScreen({
     : "That's everything for now.";
 
   // ---- step lines ----
-  const quickCount = quick.length;
-  const lines: (string | null)[] = [0, 1, 2, 3].map((i) => {
-    const s = stateOf(i);
-    if (s === 'done') return [feed ? 'Photos saved' : 'Video and cover saved', 'Caption copied', 'Posted', 'Link sent'][i];
-    if (s === 'locked') return 'Opens once your date is set';
+  const DONE_LINES = [
+    feed ? 'Photos saved' : 'Video and cover saved',
+    'Caption copied',
+    feed ? 'Post up · link saved' : 'Reel posted · link saved',
+    'Story screenshot sent',
+    'TikTok posted · link saved',
+    'X post up · link saved',
+  ];
+  const TODO_LINES = [
+    feed ? (photos.length ? `${photos.length} photos` : 'Photos on their way') : 'Video + cover photo',
+    'Same caption everywhere',
+    feed ? 'Carousel + link' : 'Reel + link',
+    'Share + send a screenshot',
+    feed ? 'Same photos + link' : 'Same video + link',
+    feed ? 'Photos 1–4 + link' : 'Same video + link',
+  ];
+  const lines: (string | null)[] = TODO_LINES.map((todo, i) => {
+    const st = stateOf(i);
+    if (st === 'done') return DONE_LINES[i];
+    if (st === 'locked') return 'Opens once your date is set';
     if (i === 0 && feed && photos.length) return 'A carousel: post them together, in this order';
-    if (s === 'current') return null;
-    return [
-      feed ? (photos.length ? `${photos.length} photos` : 'Photos on their way') : 'Video + cover photo',
-      'One tap',
-      `${quickCount} taps in the app`,
-      'Paste it here',
-    ][i];
+    if (st === 'current') return null;
+    return todo;
   });
 
   const toggle = (i: number) => {
-    if (locked[i]) return;
+    if (locked[i] && !done[i]) return;
     setOpen(open === i ? null : i);
   };
+  const stepName = (i: number) => (i === 0 && feed ? 'Save your photos' : STEP_NAMES[i]);
+  const xPhotos = photos.slice(0, 4);
 
   return (
     <>
@@ -995,30 +1298,32 @@ function PostScreen({
         </>
       )}
 
-      {allDone ? (
+      <div className="places4">
+        <div className="pchips" aria-label="Where it goes">
+          {['Instagram', 'Story', 'TikTok', 'X'].map((name) => (
+            <span key={name}>{name}</span>
+          ))}
+        </div>
+        <p className="note">{feed ? 'One post' : 'One video'}, four places, all the same day.</p>
+      </div>
+
+      {fourIn ? (
         <div className="finished" role="status">
           <div className="t">
             <span className="tick">{CHECK}</span>
-            Link received. Thanks, {firstName}.
+            All 4 are up. Thanks, {firstName}.
           </div>
-          <p>{nextLine}</p>
-          {liveUrl && (
-            <a href={liveUrl} target="_blank" rel="noopener noreferrer">
-              {liveUrl}
-            </a>
-          )}
+          <p>We got your Instagram, TikTok and X links and your Story screenshot. {nextLine}</p>
         </div>
       ) : (
         <div className="progress">
           <div className="prow-l">
             <b>{current >= 0 ? `Step ${current + 1} of ${TASK_COUNT}` : `${doneCount} of ${TASK_COUNT} done`}</b>
-            <span>
-              {current < 0 ? 'Waiting for your date' : current === 0 && feed ? 'Save your photos' : STEP_NAMES[current]}
-            </span>
+            <span>{current < 0 ? 'Waiting for your date' : stepName(current)}</span>
           </div>
-          <div className="segs" aria-hidden="true">
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className={done[i] ? 'done' : i === current ? 'current' : ''} />
+          <div className="segs six" aria-hidden="true">
+            {done.map((d, i) => (
+              <span key={i} className={d ? 'done' : i === current ? 'current' : ''} />
             ))}
           </div>
         </div>
@@ -1048,9 +1353,7 @@ function PostScreen({
             ) : (
               <div className="onway">
                 <b>Your photos are on their way.</b>
-                <span>
-                  Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval. They appear here on their own.
-                </span>
+                <span>Waiting on {brand}&apos;s approval. They appear here on their own.</span>
               </div>
             )
           ) : (
@@ -1070,7 +1373,7 @@ function PostScreen({
                 ) : (
                   <div className="onway">
                     <b>On its way.</b>
-                    <span>Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval.</span>
+                    <span>Waiting on {brand}&apos;s approval.</span>
                   </div>
                 )}
                 <div className="tt">Video</div>
@@ -1083,7 +1386,7 @@ function PostScreen({
                 ) : (
                   <div className="onway">
                     <b>On its way.</b>
-                    <span>Waiting on {campaign.brandName ?? 'the brand'}&apos;s approval.</span>
+                    <span>Waiting on {brand}&apos;s approval.</span>
                   </div>
                 )}
                 <div className="tt">Cover photo</div>
@@ -1165,7 +1468,12 @@ function PostScreen({
             {COPY}
             {copied ? 'Copied ✓' : 'Copy caption'}
           </button>
-          {caption && captionHasTag && <p className="note">Paste it exactly. The tag and hashtag are already in it.</p>}
+          {caption && (
+            <p className="note">
+              Use this same caption on Instagram, TikTok and X.
+              {captionHasTag ? ' The tag and hashtag are already in it.' : ''}
+            </p>
+          )}
           {caption && !captionHasTag && campaign.tagHandle && (
             <>
               <p className="note">Paste it exactly, then tag this account too.</p>
@@ -1189,7 +1497,7 @@ function PostScreen({
           )}
         </StepRow>
 
-        {/* ---- 3 · post it ---- */}
+        {/* ---- 3 · Instagram ---- */}
         <StepRow
           n={3}
           title="Post it on Instagram"
@@ -1198,31 +1506,13 @@ function PostScreen({
           open={open === 2}
           onToggle={() => toggle(2)}
         >
-          {platforms.length > 1 && (
-            <div className="seg" role="group" aria-label="Where you post">
-              {platforms.map((p) => (
-                <button key={p} type="button" aria-pressed={platform === p} onClick={() => setPlatform(p)}>
-                  {PLATFORM_LABEL[p]}
-                </button>
-              ))}
-            </div>
-          )}
-          <ol className="quick">
-            {quick.map((html, i) => (
-              <li key={i}>
-                <span className="n">{i + 1}</span>
-                <span dangerouslySetInnerHTML={{ __html: html }} />
-              </li>
-            ))}
-          </ol>
-
+          <Taps items={igTaps} />
           {campaign.ftcNote && (
             <div className="dontskip">
               <div className="t">Don&apos;t skip</div>
               <p>{campaign.ftcNote}</p>
             </div>
           )}
-
           {shots ? (
             <>
               <button
@@ -1246,81 +1536,111 @@ function PostScreen({
           ) : (
             <p className="note">Screenshots coming.</p>
           )}
-
-          <button
-            type="button"
-            className={`btn ${done[2] ? 'done' : 'primary'}`}
-            onClick={() => (done[2] ? setTick(2, false) : advance(2))}
-          >
-            {CHECK}
-            {done[2] ? 'Posted ✓' : 'I’ve posted it'}
-          </button>
+          <LinkField
+            token={token}
+            postId={post.postId}
+            platform="instagram"
+            label={`Your ${shortLabel(post)}'s link`}
+            placeholder={feed ? 'instagram.com/p/…' : 'instagram.com/reel/…'}
+            helper={
+              <>
+                Tap <b>···</b> on your {feed ? 'post' : 'Reel'} → <b>Copy link</b>.
+              </>
+            }
+            buttonLabel="Save link & keep going"
+            saved={links.instagram}
+            onSaved={serverSaved(2)}
+          />
         </StepRow>
 
-        {/* ---- 4 · link ---- */}
+        {/* ---- 4 · Story ---- */}
         <StepRow
           n={4}
-          title="Send us the link"
+          title="Share it to your Story"
           line={lines[3]}
           state={stateOf(3)}
           open={open === 3}
           onToggle={() => toggle(3)}
         >
-          {liveUrl ? (
-            <p className="note">
-              We have it:{' '}
-              <a href={liveUrl} target="_blank" rel="noopener noreferrer">
-                {liveUrl}
-              </a>
-            </p>
-          ) : (
+          <p className="note">Now put the same {feed ? 'post' : 'Reel'} on your Story.</p>
+          <Taps items={storyTaps(feed, who)} />
+          <p className="note">Stories disappear after a day, so a screenshot is how we show {brand} it went up.</p>
+          <StoryUpload token={token} postId={post.postId} saved={story} onSaved={serverSaved(3)} />
+        </StepRow>
+
+        {/* ---- 5 · TikTok ---- */}
+        <StepRow
+          n={5}
+          title="Post it on TikTok"
+          line={lines[4]}
+          state={stateOf(4)}
+          open={open === 4}
+          onToggle={() => toggle(4)}
+        >
+          <p className="note">Same {feed ? 'photos' : 'video'}, same caption, on TikTok.</p>
+          <Taps items={tiktokTaps(feed, who, photos.length)} />
+          <div className="dontskip">
+            <div className="t">Don&apos;t skip</div>
+            <p>Turn on Content disclosure → Brand content.</p>
+          </div>
+          <p className="note">Screenshots for TikTok are coming.</p>
+          <LinkField
+            token={token}
+            postId={post.postId}
+            platform="tiktok"
+            label="Your TikTok's link"
+            placeholder={feed ? 'tiktok.com/@you/photo/…' : 'tiktok.com/@you/video/…'}
+            helper={
+              <>
+                On TikTok, tap <b>Share</b> → <b>Copy link</b>.
+              </>
+            }
+            buttonLabel="Save link & keep going"
+            saved={links.tiktok}
+            onSaved={serverSaved(4)}
+          />
+        </StepRow>
+
+        {/* ---- 6 · X ---- */}
+        <StepRow
+          n={6}
+          title="Post it on X"
+          line={lines[5]}
+          state={stateOf(5)}
+          open={open === 5}
+          onToggle={() => toggle(5)}
+        >
+          <p className="note">Last one: post it on X.</p>
+          <Taps items={xTaps(feed)} />
+          {feed && xPhotos.length > 0 && (
             <>
-              <label className="flabel" htmlFor="postlink">
-                Your {shortLabel(post)}&apos;s link
-              </label>
-              <div className="linkfield">
-                <input
-                  type="url"
-                  id="postlink"
-                  inputMode="url"
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  placeholder={feed ? 'instagram.com/p/…' : 'instagram.com/reel/…'}
-                  value={draft}
-                  onChange={(e) => {
-                    setDraft(e.target.value);
-                    setSubmitError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && draftOk && !submitting) submit();
-                  }}
-                />
-                <button type="button" className="btn ghost small" onClick={paste}>
-                  {pasted ? 'Pasted' : 'Paste'}
-                </button>
+              <div className="xrow">
+                {xPhotos.map((p, i) => (
+                  <figure className="pcell" key={`x-${p.position}-${p.url}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.url} alt={`Photo ${i + 1}`} />
+                    <span className="pnumber">{i + 1}</span>
+                  </figure>
+                ))}
               </div>
-              <p className="note">
-                {platform === 'tiktok' ? (
-                  <>
-                    On TikTok, tap <b>Share</b> → <b>Copy link</b>.
-                  </>
-                ) : (
-                  <>
-                    On Instagram, tap <b>···</b> on your {shortLabel(post)} → <b>Copy link</b>.
-                  </>
-                )}
-              </p>
-              {submitError && (
-                <p className="err" role="alert">
-                  {submitError}
-                </p>
-              )}
-              <button type="button" className="btn primary" disabled={!draftOk || submitting} onClick={submit}>
-                {submitting ? 'Sending…' : 'Send link'}
-              </button>
+              {photos.length >= 5 && <p className="note">X allows 4 photos. Use photos 1–4.</p>}
             </>
           )}
+          <LinkField
+            token={token}
+            postId={post.postId}
+            platform="x"
+            label="Your X post's link"
+            placeholder="x.com/you/status/…"
+            helper={
+              <>
+                Tap the <b>share</b> icon on your post → <b>Copy link</b>.
+              </>
+            }
+            buttonLabel="Send your links"
+            saved={links.x}
+            onSaved={serverSaved(5)}
+          />
         </StepRow>
       </div>
 
@@ -1333,24 +1653,25 @@ function PostScreen({
 // The page
 // ============================================================
 
-export default function DeliverPage({ token, view }: { token: string; view: DeliverView }) {
+export default function DeliverPage({ token, view: initialView }: { token: string; view: DeliverView }) {
+  // The server's view. Every link / screenshot save answers with a fresh one,
+  // so steps 3–6 always show what the server actually has.
+  const [view, setView] = useState<DeliverView>(initialView);
   const { logos, campaign } = view;
   const [openId, setOpenId] = useState<string | null>(null);
-  const [liveUrls, setLiveUrls] = useState<Record<string, string | null>>(() =>
-    Object.fromEntries(view.posts.map((p) => [p.postId, p.link.liveUrl]))
-  );
   const [allTicks, setAllTicks] = useState<Record<string, boolean[]>>({});
   // The athlete's own calendar day — only known in the browser.
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(localToday()), []);
 
-  // Ticks are per post and live only in this browser. Keys unchanged.
+  // Ticks are per post and live only in this browser. Keys unchanged; only
+  // steps 1–2 read them now (3–6 come from the server).
   const keyFor = useCallback((postId: string) => `pg-deliver:${token}:${postId}`, [token]);
   useEffect(() => {
     const next: Record<string, boolean[]> = {};
-    for (const p of view.posts) next[p.postId] = readTicks(keyFor(p.postId));
+    for (const p of initialView.posts) next[p.postId] = readTicks(keyFor(p.postId));
     setAllTicks(next);
-  }, [view.posts, keyFor]);
+  }, [initialView.posts, keyFor]);
 
   const ticksFor = useCallback(
     (postId: string) => allTicks[postId] ?? Array(TASK_COUNT).fill(false),
@@ -1369,18 +1690,9 @@ export default function DeliverPage({ token, view }: { token: string; view: Deli
     [keyFor]
   );
 
-  const posts = useMemo(
-    () =>
-      view.posts.map((p) =>
-        liveUrls[p.postId] && !p.link.liveUrl
-          ? { ...p, status: 'posted', link: { ...p.link, liveUrl: liveUrls[p.postId] } }
-          : p
-      ),
-    [view.posts, liveUrls]
-  );
-  const shownView: DeliverView = { ...view, posts };
-  // Same rule as the API's activePostId, re-run so a link sent on this page
-  // moves the home screen on to the next post.
+  const posts = view.posts;
+  // Same rule as the API's activePostId, re-run so a post completed on this
+  // page moves the home screen on to the next one.
   const activeId = (posts.find((p) => !isPosted(p)) ?? posts[posts.length - 1])?.postId ?? view.activePostId;
   const post = openId ? posts.find((p) => p.postId === openId) ?? null : null;
 
@@ -1394,14 +1706,14 @@ export default function DeliverPage({ token, view }: { token: string; view: Deli
       <main className="wrap">
         {post ? (
           <PostScreen
-            view={shownView}
+            view={view}
             post={post}
             token={token}
             today={today}
             ticks={ticksFor(post.postId)}
             setTick={(i, v) => setTick(post.postId, i, v)}
             onBack={() => setOpenId(null)}
-            onPosted={(url) => setLiveUrls((prev) => ({ ...prev, [post.postId]: url }))}
+            onServerView={setView}
           />
         ) : (
           <>
@@ -1415,7 +1727,7 @@ export default function DeliverPage({ token, view }: { token: string; view: Deli
                 </span>
               )}
             </header>
-            <Home view={shownView} activeId={activeId} today={today} onOpen={setOpenId} />
+            <Home view={view} activeId={activeId} today={today} onOpen={setOpenId} />
           </>
         )}
       </main>

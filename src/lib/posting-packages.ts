@@ -124,6 +124,43 @@ export type PostingPhoto = {
 
 export const PHOTO_COLUMNS = 'id, package_id, position, url, storage_path, drive_file_id, file_name';
 
+// ---- where a post is up (migration 075) -------------------------------------
+//
+// Every post goes up in four places: Instagram, the athlete's Story (proved by
+// a screenshot), TikTok and X. It is Posted — the payment trigger — only when
+// all four are in; the server sets that (maybeMarkPosted in deliver-package).
+
+export type LinkPlatform = 'instagram' | 'tiktok' | 'x';
+export type PostLinkRow = { id: string; package_id: string; platform: LinkPlatform; url: string; submitted_at: string };
+export type PostLinks = Partial<Record<LinkPlatform, PostLinkRow>>;
+export type StoryShot = { id: string; package_id: string; url: string; storage_path: string | null; created_at: string };
+
+export const LINK_COLUMNS = 'id, package_id, platform, url, submitted_at';
+export const STORY_COLUMNS = 'id, package_id, url, storage_path, created_at';
+
+export function groupLinks(rows: PostLinkRow[]): Record<string, PostLinks> {
+  const by: Record<string, PostLinks> = {};
+  for (const r of rows) (by[r.package_id] ??= {})[r.platform] = r;
+  return by;
+}
+
+/** The four chips, in roster order: IG · Story · TT · X. */
+export type PlaceChip = { key: 'instagram' | 'story' | 'tiktok' | 'x'; label: string; url: string | null };
+
+export function placesFor(p: StaffPackage, links: PostLinks | undefined, story: StoryShot | undefined): PlaceChip[] {
+  return [
+    // live_url has always held the Instagram link; read it for older rows.
+    { key: 'instagram', label: 'IG', url: links?.instagram?.url ?? p.live_url ?? null },
+    { key: 'story', label: 'Story', url: story?.url ?? null },
+    { key: 'tiktok', label: 'TT', url: links?.tiktok?.url ?? null },
+    { key: 'x', label: 'X', url: links?.x?.url ?? null },
+  ];
+}
+
+export function placesIn(chips: PlaceChip[]): number {
+  return chips.filter((c) => !!c.url).length;
+}
+
 /** Photos grouped by package id, each list already in carousel order. */
 export function groupPhotos(rows: PostingPhoto[]): Record<string, PostingPhoto[]> {
   const by: Record<string, PostingPhoto[]> = {};
@@ -302,7 +339,7 @@ export function postsOf(a: AthleteRow): StaffPackage[] {
 // and no files counted in two places, so the tab numbers never added up to the
 // roster. These do.
 //
-//   posted         → a live link, or a posted time
+//   posted         → status / posted_at — set only once all four places are in
 //   sent           → sent_at, or status past draft
 //   needs_caption  → no caption text, or a caption not yet Approved
 //   awaiting_files → reel: video not Approved AND attached, or no cover
@@ -339,7 +376,9 @@ export function filesDone(p: StaffPackage, photoCount: number): boolean {
 }
 
 export function stageOf(p: StaffPackage, photoCount: number): PostStage {
-  if (isPosted(p) || p.live_url) return 'posted';
+  // Posted comes from the server (status / posted_at), which sets it only when
+  // all four places are in. An Instagram link alone (live_url) is not Posted.
+  if (isPosted(p)) return 'posted';
   if (isSent(p)) return 'sent';
   if (!captionApproved(p)) return 'needs_caption';
   if (!filesDone(p, photoCount)) return 'awaiting_files';
@@ -367,9 +406,14 @@ export type PillTone = 'red' | 'amber' | 'orange' | 'blue' | 'green';
 export function statusPill(
   p: StaffPackage,
   photoCount: number,
-  brandName: string | null
+  brandName: string | null,
+  placesInCount = 0
 ): { label: string; tone: PillTone } {
   const stage = stageOf(p, photoCount);
+  // "Posted" only when all four places are in. Anything partial — including a
+  // post marked Posted that has since had a link removed — reads "n of 4 in".
+  if (stage === 'posted' && placesInCount >= 4) return { label: 'Posted', tone: 'green' };
+  if (placesInCount > 0) return { label: `${placesInCount} of 4 in`, tone: 'blue' };
   if (stage === 'posted') return { label: 'Posted', tone: 'green' };
   if (stage === 'sent') return { label: 'Link sent', tone: 'blue' };
   if (stage === 'needs_caption') return { label: 'Needs caption', tone: 'red' };

@@ -9,22 +9,24 @@
 //   • caption_status / video_status must be Awaiting Approval | In Revision |
 //     Approved; status must be one of the table's CHECK values.
 //   • status → 'sent' stamps sent_at (first time only).
-//   • A post going Posted is the athlete's PAYMENT TRIGGER. Setting live_url,
-//     status 'posted', or a first posted_at therefore needs `confirm: true`. Setting
-//     live_url also sets posted_at (first time only) and status 'posted' —
-//     the same as the athlete route. The link must be Instagram or TikTok
-//     (checkLiveUrl, shared with the athlete page). Clearing a live link is
-//     not done here.
+//   • A post going Posted is the athlete's PAYMENT TRIGGER. Staff setting
+//     status 'posted' or a first posted_at by hand therefore needs
+//     `confirm: true`.
+//   • live_url is the INSTAGRAM link (migration 075). Setting it saves the
+//     instagram row in posting_package_links too, and no longer marks the post
+//     Posted by itself: like the athlete side, maybeMarkPosted() does that
+//     only once Instagram, TikTok, X and the Story screenshot are all in.
+//     Clearing a link is DELETE …/places.
 // ============================================================
 
 import { createServerSupabase } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import { getHubStaff } from '@/lib/staff-auth';
-import { checkLiveUrl } from '@/lib/post-link';
+import { checkPlatformLink } from '@/lib/post-link';
+import { maybeMarkPosted } from '@/lib/deliver-package';
 import {
   CAPTION_LIMIT,
   PACKAGE_STATUSES,
-  POSTED_STATUSES,
   REVIEW_STATUSES,
   STAFF_PACKAGE_COLUMNS,
 } from '@/lib/posting-packages';
@@ -138,24 +140,31 @@ export async function PATCH(
 
   const now = new Date().toISOString();
 
+  let instagramSaved = false;
   if ('live_url' in updates) {
     if (updates.live_url === null || updates.live_url === '') {
-      return bad("Clearing a live link isn't supported here");
+      return bad("Clear a link from Where it's posted instead");
     }
-    const check = checkLiveUrl(updates.live_url);
+    const check = checkPlatformLink('instagram', updates.live_url);
     if (!check.ok) return bad(check.error);
     if (check.url !== current.live_url) {
-      if (body.confirm !== true) {
+      if (current.live_url) {
         return NextResponse.json(
-          { error: 'Saving a live link marks the post Posted and starts payment. Send confirm: true to proceed.', needsConfirm: true },
+          { error: "There's already an Instagram link. Clear it under Where it's posted first." },
           { status: 409 }
         );
       }
+      // The instagram row first; a row already there (unique) is the same 409.
+      const { error: linkError } = await supabase
+        .from('posting_package_links')
+        .insert({ package_id: params.id, platform: 'instagram', url: check.url });
+      if (linkError) {
+        return linkError.code === '23505'
+          ? NextResponse.json({ error: "There's already an Instagram link. Clear it under Where it's posted first." }, { status: 409 })
+          : NextResponse.json({ error: linkError.message }, { status: 500 });
+      }
       updates.live_url = check.url;
-      if (!current.posted_at && !('posted_at' in updates)) updates.posted_at = now;
-      // Already past posted (metrics_due / complete): leave the status alone.
-      if (POSTED_STATUSES.has(current.status) && current.status !== 'posted') delete updates.status;
-      else updates.status = 'posted';
+      instagramSaved = true;
     } else {
       delete updates.live_url; // unchanged
     }
@@ -191,6 +200,16 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // The Instagram link may have been the fourth piece.
+  if (instagramSaved && (await maybeMarkPosted(params.id))) {
+    const { data: fresh } = await supabase
+      .from('posting_packages')
+      .select(STAFF_PACKAGE_COLUMNS)
+      .eq('id', params.id)
+      .single();
+    return NextResponse.json(fresh ?? data);
   }
 
   return NextResponse.json(data);

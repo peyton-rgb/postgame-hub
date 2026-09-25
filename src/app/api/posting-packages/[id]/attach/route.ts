@@ -183,6 +183,7 @@ export async function POST(
       .from('posting_package_files')
       .select(PHOTO_COLUMNS)
       .eq('package_id', pkg.id)
+      .eq('kind', 'photo')
       .order('position', { ascending: true });
 
     return NextResponse.json({
