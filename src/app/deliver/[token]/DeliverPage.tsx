@@ -892,7 +892,16 @@ function PostScreen({
             <div className="tiles">
               <div className="tile">
                 {videoSlot ? (
-                  <video className="media" src={videoSlot} controls playsInline preload="metadata" />
+                  // The cover as poster, so the tile isn't a black box while
+                  // the (large) video loads.
+                  <video
+                    className="media"
+                    src={videoSlot}
+                    poster={coverSlot ?? undefined}
+                    controls
+                    playsInline
+                    preload="metadata"
+                  />
                 ) : (
                   <div className="onway">
                     <b>On its way.</b>
