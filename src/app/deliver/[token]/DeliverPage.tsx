@@ -30,14 +30,14 @@
 // undated even when its label holds placeholder text ("TBD").
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DeliverPost, DeliverView } from '@/lib/deliver-package';
 import { checkLiveUrl } from '@/lib/post-link';
 
 // --- walkthrough.json (public/posting/walkthroughs/<key>/) -----------------
 
 type Highlight = { tag?: string; x: number; y: number; w: number; h: number; label: string };
-type WalkStep = { n: number; image: string; caption_html: string; highlights?: Highlight[] };
+type WalkStep = { n: number; image: string; caption_html: string; caption_plain?: string; highlights?: Highlight[] };
 type Walkthrough = {
   key: string;
   platform: string;
@@ -46,7 +46,6 @@ type Walkthrough = {
   quick_steps?: Record<string, string[]>;
 };
 
-const TAG_PLACEMENTS = new Set(['above-left', 'right', 'below', 'side-right', 'side-left', 'in-right', 'in-tl']);
 const WALKTHROUGH_KEY = /^[a-z0-9-]{1,80}$/;
 // The walkthrough was shot on the Cane's campaign; its copy names this handle.
 const SHOT_HANDLE = 'raisingcanes';
@@ -323,29 +322,195 @@ function Thumb({ p, size }: { p: DeliverPost; size: 'big' | 'small' }) {
 
 // Highlight boxes are positioned in % of the image, so until the image has
 // loaded they would collapse into thin lines across a zero-height box.
-function Shot({ step, base }: { step: WalkStep; base: string }) {
+// Boxes only: the floating tag labels overflowed the image and got clipped
+// on a phone, so their words are shown under the image instead (ShotViewer).
+function Shot({ step, base, eager }: { step: WalkStep; base: string; eager: boolean }) {
   const [ready, setReady] = useState(false);
   const imgRef = useCallback((img: HTMLImageElement | null) => {
     if (img?.complete && img.naturalWidth > 0) setReady(true);
   }, []);
   return (
-    <figure className="shot">
+    <div className="shot">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img ref={imgRef} src={`${base}/${step.image}`} alt="" loading="lazy" onLoad={() => setReady(true)} />
-      {ready && (step.highlights ?? []).map((h, i) => {
-        const tag = h.tag && TAG_PLACEMENTS.has(h.tag) && h.tag !== 'above-left' ? ` ${h.tag}` : '';
-        return (
+      <img
+        ref={imgRef}
+        src={`${base}/${step.image}`}
+        alt=""
+        loading={eager ? 'eager' : 'lazy'}
+        onLoad={() => setReady(true)}
+      />
+      {ready &&
+        (step.highlights ?? []).map((h, i) => (
           <span
             key={i}
-            className={`hl${tag}`}
+            className="hl"
+            aria-hidden="true"
             style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
-          >
-            <i>{h.label}</i>
-          </span>
-        );
-      })}
-      <figcaption className="snum">{step.n}</figcaption>
-    </figure>
+          />
+        ))}
+    </div>
+  );
+}
+
+// A highlight label is worth showing under the caption only if it says
+// something the caption doesn't: "Your video", "Pending is fine" — not
+// "Tap Share" under "Check it over, then tap Share."
+function extraLabels(step: WalkStep): string[] {
+  const plain = (step.caption_plain ?? step.caption_html.replace(/<[^>]+>/g, '')).toLowerCase();
+  return (step.highlights ?? [])
+    .map((h) => h.label.trim())
+    .filter((label) => {
+      const core = label.toLowerCase().replace(/^tap\s+/, '').replace(/[.!]$/, '');
+      return core && !plain.includes(core);
+    });
+}
+
+/**
+ * The walkthrough, one screenshot at a time.
+ *
+ * A scroll-snap strip (so a swipe works natively) driven by Back / Next.
+ * The step being looked at is remembered per post in localStorage, so
+ * switching platforms and back — which unmounts this — returns to it.
+ * The current and next images load eagerly; the rest stay lazy.
+ */
+function ShotViewer({
+  walk,
+  base,
+  personalise,
+  storageKey,
+  onClose,
+}: {
+  walk: Walkthrough;
+  base: string;
+  personalise: (html: string) => string;
+  storageKey: string;
+  onClose: () => void;
+}) {
+  const steps = useMemo(() => walk.steps.slice().sort((a, b) => a.n - b.n), [walk.steps]);
+  const phaseOf = (n: number) => walk.phases.find((p) => n >= p.from_step && n <= p.to_step)?.title ?? '';
+  const total = steps.length;
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const [idx, setIdx] = useState(() => {
+    try {
+      const v = Number(window.localStorage.getItem(storageKey));
+      return Number.isInteger(v) && v >= 0 && v < total ? v : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Jump (no animation) to the remembered step once the strip has a width.
+  useEffect(() => {
+    const t = trackRef.current;
+    if (t) t.scrollLeft = idx * t.clientWidth;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, String(idx));
+    } catch {
+      /* not critical */
+    }
+  }, [idx, storageKey]);
+
+  // Back / Next scroll the strip smoothly; while that runs, the scroll
+  // events pass through every in-between position, so they are ignored until
+  // the strip arrives. A swipe updates idx only once scrolling has settled —
+  // reading it mid-flight would drag idx back and make a quick second tap
+  // land on the wrong step.
+  const targetRef = useRef<number | null>(null);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (settleRef.current) clearTimeout(settleRef.current);
+  }, []);
+
+  const onScroll = () => {
+    const t = trackRef.current;
+    if (!t || !t.clientWidth) return;
+    if (targetRef.current !== null) {
+      if (Math.abs(t.scrollLeft - targetRef.current * t.clientWidth) > 2) return;
+      targetRef.current = null; // arrived
+      return;
+    }
+    if (settleRef.current) clearTimeout(settleRef.current);
+    settleRef.current = setTimeout(() => {
+      const i = Math.round(t.scrollLeft / t.clientWidth);
+      if (i >= 0 && i < total) setIdx(i);
+    }, 90);
+  };
+
+  const go = (i: number) => {
+    const t = trackRef.current;
+    if (i < 0 || i >= total) return;
+    setIdx(i);
+    if (!t) return;
+    targetRef.current = i;
+    t.scrollTo({ left: i * t.clientWidth, behavior: 'smooth' });
+    // If a swipe interrupts the animation it never "arrives"; stop ignoring.
+    setTimeout(() => {
+      if (targetRef.current === i) targetRef.current = null;
+    }, 900);
+  };
+
+  // The strip is only as tall as the screenshot on show — otherwise every
+  // short step would sit above the tallest image's worth of empty space.
+  const [trackH, setTrackH] = useState<number | null>(null);
+  useEffect(() => {
+    const t = trackRef.current;
+    const slide = t?.children[idx] as HTMLElement | undefined;
+    if (!slide) return;
+    const measure = () => setTrackH(slide.offsetHeight || null);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure); // fires again once the image loads
+    ro.observe(slide);
+    return () => ro.disconnect();
+  }, [idx]);
+
+  const step = steps[idx];
+  const extras = step ? extraLabels(step) : [];
+
+  return (
+    <div className="viewer" role="region" aria-label="Screenshots, one step at a time">
+      <div className="vhead" aria-live="polite">
+        Step {step?.n ?? idx + 1} of {total}
+        {step && phaseOf(step.n) ? ` · ${phaseOf(step.n)}` : ''}
+      </div>
+      <div
+        className="vtrack"
+        ref={trackRef}
+        onScroll={onScroll}
+        style={trackH ? { height: trackH } : undefined}
+      >
+        {steps.map((s, i) => (
+          <div className="vslide" key={s.n} aria-hidden={i !== idx}>
+            <Shot step={s} base={base} eager={i === idx || i === idx + 1} />
+          </div>
+        ))}
+      </div>
+      {step && (
+        <div className="vcap">
+          <p dangerouslySetInnerHTML={{ __html: personalise(step.caption_html) }} />
+          {extras.map((label, i) => (
+            <p className="vlabel" key={i}>
+              <span className="swatch" aria-hidden="true" />
+              {label}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="vnav">
+        <button type="button" className="btn ghost" onClick={() => go(idx - 1)} disabled={idx === 0}>
+          ‹ Back
+        </button>
+        <button type="button" className="btn ghost" onClick={() => (idx >= total - 1 ? onClose() : go(idx + 1))}>
+          Next ›
+        </button>
+      </div>
+      <p className="note">Screenshots are from the Postgame account. Your app may look slightly different.</p>
+    </div>
   );
 }
 
@@ -1069,30 +1234,13 @@ function PostScreen({
                 {showShots ? 'Hide the screenshots' : 'See it with screenshots'}
               </button>
               {showShots && (
-                <div className="shots">
-                  {shots.phases.map((ph, pi) => {
-                    const steps = shots.steps.filter((s) => s.n >= ph.from_step && s.n <= ph.to_step);
-                    return (
-                      <div className="sgroup" key={pi}>
-                        <div className="ghead">
-                          <span className="gt">{ph.title}</span>
-                          <span className="gc">
-                            {steps.length} {steps.length === 1 ? 'step' : 'steps'}
-                          </span>
-                        </div>
-                        <div className="scroller">
-                          {steps.map((s) => (
-                            <div className="scell" key={s.n}>
-                              <Shot step={s} base={walkBase} />
-                              <p className="scap" dangerouslySetInnerHTML={{ __html: personalise(s.caption_html) }} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <p className="note">Screenshots are from the Postgame account. Your app may look slightly different.</p>
-                </div>
+                <ShotViewer
+                  walk={shots}
+                  base={walkBase}
+                  personalise={personalise}
+                  storageKey={`pg-deliver:${token}:${post.postId}:shot`}
+                  onClose={() => setShowShots(false)}
+                />
               )}
             </>
           ) : (

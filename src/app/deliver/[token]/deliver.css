@@ -255,35 +255,29 @@
 .dv .dontskip .t{font-size:15px;font-weight:700;color:var(--accent)}
 .dv .dontskip p{margin-top:4px;font-size:16px;line-height:1.5;color:var(--ink)}
 
-/* screenshots (today's walkthrough, behind "See it with screenshots") */
-.dv .shots{display:flex;flex-direction:column;gap:18px}
-.dv .ghead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}
-.dv .ghead .gt{font-weight:700;font-size:16px}
-.dv .ghead .gc{font-size:14px;color:var(--ink2)}
-.dv .scroller{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
-.dv .scell{flex:0 0 200px;scroll-snap-align:start}
-.dv .scell .scap{margin:8px 0 0;font-size:14px;line-height:1.45;color:var(--ink2)}
-.dv .scell .scap b{color:var(--ink)}
+/* screenshots: one at a time, behind "See it with screenshots" */
+/* Breaks out of the step's 48px indent to the full content width
+   (~350px at 390), capped and centred on wider screens. */
+.dv .viewer{margin-left:-48px;width:calc(100% + 48px);max-width:420px;display:flex;flex-direction:column;gap:12px}
+@media(max-width:360px){ .dv .viewer{margin-left:0;width:100%} }
+@media(min-width:600px){ .dv .viewer{align-self:center;margin-left:0;width:100%} }
+.dv .vhead{font-size:16px;font-weight:700}
+.dv .vtrack{
+  display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;align-items:flex-start;overscroll-behavior-x:contain;
+  overflow-y:hidden;transition:height .2s ease;
+}
+.dv .vtrack::-webkit-scrollbar{display:none}
+.dv .vslide{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always}
 .dv .shot{position:relative;margin:0}
-.dv .shot img{width:100%;height:auto;display:block;border-radius:11px;border:1px solid var(--line)}
-.dv .shot .snum{
-  position:absolute;left:7px;top:7px;width:22px;height:22px;border-radius:999px;
-  background:var(--orange);color:#fff;font-size:13px;font-weight:700;
-  display:flex;align-items:center;justify-content:center;
-}
+.dv .shot img{width:100%;height:auto;display:block;border-radius:14px}
 .dv .hl{position:absolute;border:2px solid var(--orange);border-radius:9px;box-shadow:0 0 0 3px rgba(215,63,9,.20);pointer-events:none;z-index:2}
-.dv .hl i{
-  position:absolute;left:0;top:-8px;transform:translateY(-100%);
-  background:var(--orange);color:#fff;font-family:var(--mono);font-size:10px;
-  letter-spacing:.04em;text-transform:uppercase;font-style:normal;
-  padding:4px 8px;border-radius:6px;white-space:nowrap;line-height:1.2;
-}
-.dv .hl.right i{left:auto;right:0}
-.dv .hl.below i{top:auto;bottom:-8px;transform:translateY(100%)}
-.dv .hl.side-right i{left:100%;right:auto;top:50%;bottom:auto;margin-left:9px;transform:translateY(-50%)}
-.dv .hl.side-left i{left:auto;right:100%;top:50%;bottom:auto;margin-right:9px;transform:translateY(-50%)}
-.dv .hl.in-right i{left:auto;right:7%;top:50%;bottom:auto;transform:translateY(-50%)}
-.dv .hl.in-tl i{left:7px;right:auto;top:7px;bottom:auto;transform:none}
+.dv .vcap p{font-size:17px;line-height:1.5;color:var(--ink2)}
+.dv .vcap b{color:var(--ink)}
+.dv .vcap .vlabel{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:16px;color:var(--ink)}
+.dv .swatch{width:14px;height:14px;flex:none;border:2px solid var(--orange);border-radius:4px;box-shadow:0 0 0 2px rgba(215,63,9,.2)}
+.dv .vnav{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dv .vnav .btn{min-height:52px}
 
 /* step 4 · link */
 .dv .flabel{font-size:15px;font-weight:700}
