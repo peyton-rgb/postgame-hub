@@ -30,7 +30,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffUser } from "@/lib/staff-auth";
+import { getHubStaff } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { createEditJobsForSubmissions, JOB_STATUS, OPEN_JOB_STATUSES } from "@/lib/edit-queue";
 
@@ -78,8 +78,8 @@ async function loadLink(svc: ReturnType<typeof createServiceSupabase>, token: st
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
-  const staff = await getStaffUser();
-  if (!staff) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+  const staff = await getHubStaff();
+  if (!staff.ok) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
 
   const svc = createServiceSupabase();
 
@@ -161,8 +161,8 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 // written. The token is the only thing the caller controls, so trusting the
 // ids alongside it would let one form's page write to another's rows.
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
-  const staff = await getStaffUser();
-  if (!staff) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+  const staff = await getHubStaff();
+  if (!staff.ok) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
 
   let body: any;
   try {
