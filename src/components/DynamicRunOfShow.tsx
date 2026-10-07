@@ -222,7 +222,7 @@ export function DynamicRunOfShowDetail({
               {venue && <div className="font-bold">{venue}</div>}
               <div className={venue ? "" : "font-medium"}>{street}</div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2">
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`}
                 target="_blank"
@@ -240,12 +240,15 @@ export function DynamicRunOfShowDetail({
                 Apple Maps
               </a>
             </div>
-            <iframe
-              src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
-              title="Map of the starting location"
-              loading="lazy"
-              className="w-full aspect-[4/3] sm:aspect-auto sm:h-80 rounded-[10px] border border-gray-200"
-            />
+            {/* The site map below replaces the Google embed when a shoot has one */}
+            {!shoot.site_map_url && (
+              <iframe
+                src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
+                title="Map of the starting location"
+                loading="lazy"
+                className="w-full aspect-[4/3] sm:aspect-auto sm:h-80 rounded-[10px] border border-gray-200 mt-4"
+              />
+            )}
           </div>
         )}
 
