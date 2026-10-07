@@ -3,6 +3,89 @@
 import Image from "next/image";
 import type { RunOfShow, RosShoot, RosShotSection, RosTimelineItem, RosContact } from "@/lib/types";
 
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const MONTHS = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+];
+
+const capitalize3 = (word: string) =>
+  word[0].toUpperCase() + word.slice(1, 3).toLowerCase();
+
+// `date` is free text. "Friday, October 9, 2026" → ["Fri", "Oct 9"];
+// anything else comes back null and the card shows the raw text.
+function splitDate(raw: string): [string, string] | null {
+  const m = raw.trim().match(/^([A-Za-z]{3,9})\.?,?\s+([A-Za-z]{3,9})\.?\s+(\d{1,2})\b/);
+  if (!m) return null;
+  const weekday = WEEKDAYS.find((d) => d.startsWith(m[1].toLowerCase()));
+  const month = MONTHS.find((d) => d.startsWith(m[2].toLowerCase()));
+  if (!weekday || !month) return null;
+  return [capitalize3(weekday), `${capitalize3(month)} ${Number(m[3])}`];
+}
+
+// "4:00 pm ET" → ["4:00", "PM ET"]; "10:30 AM" → ["10:30", "AM"].
+function splitTime(raw: string): [string, string] | null {
+  const m = raw.trim().match(/^(\d{1,2}:\d{2})\s*([ap])\.?m\.?(?:\s+([A-Za-z]{1,5}))?$/i);
+  if (!m) return null;
+  return [m[1], `${m[2].toUpperCase()}M${m[3] ? ` ${m[3].toUpperCase()}` : ""}`];
+}
+
+function TimeCard({
+  label,
+  raw,
+  parts,
+  accent,
+}: {
+  label: string;
+  raw: string;
+  parts: [string, string] | null;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl px-2 py-3 sm:p-5 text-center min-w-0 ${
+        accent
+          ? "border-[1.5px] border-[#D73F09] bg-[#D73F09]/5"
+          : "bg-white border border-gray-200"
+      }`}
+    >
+      <div
+        className={`text-[10px] sm:text-xs font-bold uppercase tracking-[1.5px] mb-2 ${
+          accent ? "text-[#D73F09]" : "text-gray-400"
+        }`}
+      >
+        {label}
+      </div>
+      {parts ? (
+        <>
+          <div
+            className={`text-2xl sm:text-3xl font-black leading-none ${
+              accent ? "text-[#D73F09]" : "text-gray-900"
+            }`}
+          >
+            {parts[0]}
+          </div>
+          <div
+            className={`text-xs sm:text-sm font-bold mt-1.5 ${
+              accent ? "text-[#D73F09]" : "text-gray-500"
+            }`}
+          >
+            {parts[1]}
+          </div>
+        </>
+      ) : (
+        <div
+          className={`text-sm font-bold break-words ${
+            accent ? "text-[#D73F09]" : "text-gray-900"
+          }`}
+        >
+          {raw}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TimelineItem({
   time,
   title,
@@ -47,32 +130,61 @@ function TimelineItem({
 export function DynamicRunOfShowDetail({
   ros,
   shoot,
+  postgameLogoUrl,
+  clientLogoUrl,
 }: {
   ros: RunOfShow;
   shoot: RosShoot;
+  postgameLogoUrl: string | null;
+  clientLogoUrl: string | null;
 }) {
   const contacts: RosContact[] = ros.contacts || [];
   const shotList: RosShotSection[] = shoot.shot_list || [];
   const timeline: RosTimelineItem[] = shoot.timeline || [];
 
+  // "Venue | street address" — the venue is optional.
+  const address = shoot.starting_address?.trim() || "";
+  const pipe = address.indexOf("|");
+  const venue = pipe > -1 ? address.slice(0, pipe).trim() : "";
+  const street = pipe > -1 ? address.slice(pipe + 1).trim() : address;
+  const mapQuery = encodeURIComponent([venue, street].filter(Boolean).join(", "));
+
+  const uploadUrl = shoot.frameio_upload_url || shoot.content_folder_url;
+
   return (
     <div className="min-h-screen bg-[#f5f5f4] text-gray-900">
-      {/* Header */}
+      {/* Header — logo lockup. Logos are always the brands-table files. */}
       <div className="border-b border-[#222] bg-black">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-center">
-          <Image
-            src="/postgame-logo.png"
-            alt="Postgame"
-            width={150}
-            height={31}
-            priority
-          />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-center gap-5">
+          {postgameLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={postgameLogoUrl} alt="Postgame" className="h-[22px] w-auto" />
+          ) : (
+            <Image
+              src="/postgame-logo.png"
+              alt="Postgame"
+              width={106}
+              height={22}
+              priority
+            />
+          )}
+          {clientLogoUrl && (
+            <>
+              <span className="w-px h-7 bg-white/35" aria-hidden />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={clientLogoUrl}
+                alt={ros.client_name}
+                className="h-10 w-auto max-w-[45%] object-contain"
+              />
+            </>
+          )}
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         {/* Title Block */}
-        <div className="mb-10">
+        <div className="mb-8">
           <div className="text-xs font-bold uppercase tracking-[2px] text-[#D73F09] mb-3">
             Run of Show
           </div>
@@ -84,78 +196,85 @@ export function DynamicRunOfShowDetail({
           </p>
         </div>
 
-        {/* Camera Settings */}
-        {ros.camera_settings && (
-          <div className="border-2 border-[#D73F09] bg-[#D73F09]/10 rounded-xl p-4 mb-6 flex items-center gap-3">
-            <div className="text-[#D73F09] text-xl flex-shrink-0">&#9888;</div>
-            <div className="text-[#D73F09] text-sm md:text-base font-black uppercase tracking-wide">
-              {ros.camera_settings}
+        {/* Date / Crew Call / Start — three across at every width */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+          <TimeCard label="Date" raw={shoot.date} parts={splitDate(shoot.date)} />
+          <TimeCard
+            label="Crew Call"
+            raw={shoot.arrival_time}
+            parts={splitTime(shoot.arrival_time)}
+            accent
+          />
+          <TimeCard
+            label="Start"
+            raw={shoot.event_start_time}
+            parts={splitTime(shoot.event_start_time)}
+          />
+        </div>
+
+        {/* Starting Location */}
+        {address && (
+          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+            <div className="text-xs font-bold uppercase tracking-[1.5px] text-gray-400 mb-2">
+              Starting Location
             </div>
+            <div className="text-sm leading-relaxed text-gray-900 select-text mb-4">
+              {venue && <div className="font-bold">{venue}</div>}
+              <div className={venue ? "" : "font-medium"}>{street}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-gray-900 text-white text-sm font-bold text-center py-3"
+              >
+                Google Maps
+              </a>
+              <a
+                href={`https://maps.apple.com/?daddr=${mapQuery}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-white border border-gray-300 text-gray-900 text-sm font-bold text-center py-3"
+              >
+                Apple Maps
+              </a>
+            </div>
+            <iframe
+              src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
+              title="Map of the starting location"
+              loading="lazy"
+              className="w-full aspect-[4/3] sm:aspect-auto sm:h-80 rounded-[10px] border border-gray-200"
+            />
           </div>
         )}
 
-        {/* Content Upload Folder */}
-        {shoot.content_folder_url && (
-          <div className="bg-gray-900 rounded-xl p-5 mb-10">
-            <div className="text-xs font-bold uppercase tracking-[1.5px] text-white/70 mb-3">
-              Content Upload Folder
+        {/* Event Site Map — opens the full image in a new tab to pinch-zoom */}
+        {shoot.site_map_url && (
+          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+            <div className="text-xs font-bold uppercase tracking-[1.5px] text-gray-400 mb-3">
+              Event Site Map
             </div>
             <a
-              href={shoot.content_folder_url}
+              href={shoot.site_map_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 text-white hover:underline text-sm font-bold"
+              className="relative block"
             >
-              <Image
-                src="/google-drive-logo.png"
-                alt="Google Drive"
-                width={28}
-                height={28}
-                className="flex-shrink-0"
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={shoot.site_map_url}
+                alt="Event site map"
+                className="w-full rounded-[10px] border border-gray-200"
               />
-              Upload Content to Google Drive →
+              <span className="absolute bottom-2 right-2 rounded-full bg-gray-900/85 text-white text-xs font-bold px-3 py-1">
+                Tap to zoom
+              </span>
             </a>
           </div>
         )}
 
-        {/* Key Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <div className="text-xs font-bold uppercase tracking-[1.5px] text-gray-400 mb-2">
-              Date
-            </div>
-            <div className="text-lg font-bold text-gray-900">{shoot.date}</div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <div className="text-xs font-bold uppercase tracking-[1.5px] text-gray-400 mb-2">
-              Event Start Time
-            </div>
-            <div className="text-lg font-bold text-gray-900">
-              {shoot.event_start_time}
-            </div>
-          </div>
-          <div className="bg-white border-2 border-[#D73F09] rounded-xl p-5">
-            <div className="text-xs font-bold uppercase tracking-[1.5px] text-[#D73F09] mb-2">
-              Videographer Arrival Time
-            </div>
-            <div className="text-2xl font-black text-gray-900">
-              {shoot.arrival_time}
-            </div>
-            <div className="text-xs text-gray-400 mt-1">
-              Before event start
-            </div>
-          </div>
-          {shoot.starting_address && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="text-xs font-bold uppercase tracking-[1.5px] text-gray-400 mb-2">
-                Starting Location
-              </div>
-              <div className="text-sm font-medium leading-relaxed text-gray-900">
-                {shoot.starting_address}
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="h-6" />
 
         {/* Athlete */}
         {shoot.athlete && (
@@ -343,6 +462,26 @@ export function DynamicRunOfShowDetail({
               className="text-[#D73F09] hover:underline text-sm font-medium break-all"
             >
               {shoot.website}
+            </a>
+          </div>
+        )}
+
+        {/* Upload — last thing on the page, for the end of the shoot */}
+        {uploadUrl && (
+          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-10">
+            <div className="text-xl font-black text-gray-900">
+              Upload Your Footage
+            </div>
+            <p className="text-sm text-gray-500 mt-1 mb-4">
+              Upload before you leave.
+            </p>
+            <a
+              href={uploadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full rounded-lg bg-[#D73F09] text-white text-base font-bold text-center py-4"
+            >
+              Upload Footage →
             </a>
           </div>
         )}
