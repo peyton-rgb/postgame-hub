@@ -440,6 +440,32 @@ function ShootModal({
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Frame.io upload link
+                </label>
+                <input
+                  value={form.frameio_upload_url || ""}
+                  onChange={(e) =>
+                    updateForm({ frameio_upload_url: e.target.value })
+                  }
+                  placeholder="https://..."
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Event site map (image URL)
+                </label>
+                <input
+                  value={form.site_map_url || ""}
+                  onChange={(e) => updateForm({ site_map_url: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
@@ -829,6 +855,8 @@ export default function RunOfShowEditor() {
       shoot_type: data.shoot_type || "standard",
       type_label: data.type_label || null,
       content_folder_url: data.content_folder_url || null,
+      frameio_upload_url: data.frameio_upload_url?.trim() || null,
+      site_map_url: data.site_map_url?.trim() || null,
       client_contact_name: data.client_contact_name || null,
       client_contact_phone: data.client_contact_phone || null,
       shot_list: data.shot_list || [],

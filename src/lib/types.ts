@@ -373,6 +373,7 @@ export interface RunOfShow {
   slug: string;
   client_name: string;
   client_logo_url: string | null;
+  brand_id: string | null;
   event_name: string | null;
   subtitle: string | null;
   camera_settings: string;
@@ -487,6 +488,8 @@ export interface RosShoot {
   shoot_type: string;
   type_label: string | null;
   content_folder_url: string | null;
+  frameio_upload_url: string | null;
+  site_map_url: string | null;
   client_contact_name: string | null;
   client_contact_phone: string | null;
   shot_list: RosShotSection[];

@@ -3,6 +3,13 @@ import { notFound } from "next/navigation";
 import { DynamicRunOfShowDetail } from "@/components/DynamicRunOfShow";
 import type { Metadata } from "next";
 
+// Crew open this on shoot day: always read the live rows. Without this Next
+// caches the Supabase reads on disk indefinitely, so an edited call time (or a
+// newly published run of show) keeps serving the old answer.
+export const dynamic = "force-dynamic";
+
+const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
+
 export async function generateMetadata({
   params,
 }: {
@@ -59,5 +66,26 @@ export default async function DynamicShootPage({
 
   if (!shoot) notFound();
 
-  return <DynamicRunOfShowDetail ros={ros} shoot={shoot} />;
+  // Header lockup: Postgame mark + the client's logo, both from `brands`.
+  const brandIds = [POSTGAME_BRAND_ID, ros.brand_id].filter(Boolean);
+  const { data: brands } = await supabase
+    .from("brands")
+    .select("id, logo_primary_url, logo_white_url, logo_url")
+    .in("id", brandIds);
+
+  const postgame = brands?.find((b) => b.id === POSTGAME_BRAND_ID);
+  const client = ros.brand_id
+    ? brands?.find((b) => b.id === ros.brand_id)
+    : undefined;
+
+  return (
+    <DynamicRunOfShowDetail
+      ros={ros}
+      shoot={shoot}
+      postgameLogoUrl={postgame?.logo_primary_url || null}
+      clientLogoUrl={
+        client?.logo_white_url || client?.logo_primary_url || client?.logo_url || null
+      }
+    />
+  );
 }
