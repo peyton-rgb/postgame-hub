@@ -1,11 +1,12 @@
-import { createPlainSupabase } from "@/lib/supabase";
+import { createLiveSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { DynamicRunOfShowDetail } from "@/components/DynamicRunOfShow";
 import type { Metadata } from "next";
 
-// Crew open this on shoot day: always read the live rows. Without this Next
-// caches the Supabase reads on disk indefinitely, so an edited call time (or a
-// newly published run of show) keeps serving the old answer.
+// Crew open this on shoot day, so it must show the live rows: an edited call
+// time cannot keep serving the old answer. createLiveSupabase() is what
+// guarantees that (it opts every read out of Next's Data Cache); this only
+// keeps the route itself from ever being prerendered.
 export const dynamic = "force-dynamic";
 
 const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
@@ -15,7 +16,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string; city: string };
 }): Promise<Metadata> {
-  const supabase = createPlainSupabase();
+  const supabase = createLiveSupabase();
 
   const { data: ros } = await supabase
     .from("run_of_shows")
@@ -46,7 +47,7 @@ export default async function DynamicShootPage({
 }: {
   params: { slug: string; city: string };
 }) {
-  const supabase = createPlainSupabase();
+  const supabase = createLiveSupabase();
 
   const { data: ros } = await supabase
     .from("run_of_shows")
