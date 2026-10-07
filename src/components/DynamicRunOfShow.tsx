@@ -86,6 +86,25 @@ function TimeCard({
   );
 }
 
+// Tap-to-call. US numbers (10 digits, or 11 with a leading 1) are shown as
+// (XXX) XXX-XXXX; anything else is shown as stored.
+function PhoneLink({ raw }: { raw: string }) {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
+  const us = digits.length === 10;
+  if (!us && !digits) return <div className="text-gray-500 text-sm">{raw}</div>;
+  return (
+    <div className="text-sm">
+      <a
+        href={us ? `tel:+1${digits}` : `tel:${digits}`}
+        className="text-[#D73F09] font-medium hover:underline"
+      >
+        {us ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : raw}
+      </a>
+    </div>
+  );
+}
+
 function TimelineItem({
   time,
   title,
@@ -113,15 +132,17 @@ function TimelineItem({
             : "bg-white border border-gray-200"
         } rounded-lg p-4`}
       >
-        {/* Ranges ("12:30 – 1:00 PM CT") may only wrap at the dash */}
-        <div className="text-sm font-black uppercase tracking-[0.5px] leading-snug mb-1 text-[#D73F09]">
-          {time.split(/\s+[–—-]\s+/).map((part, i, parts) => (
-            <span key={i} className="inline-block whitespace-nowrap">
-              {part}
-              {i < parts.length - 1 ? "\u00a0–\u00a0" : ""}
-            </span>
-          ))}
-        </div>
+        {/* Ranges ("12:30 – 1:00 PM CT") may only wrap at the dash; no line at all without a time */}
+        {time?.trim() && (
+          <div className="text-sm font-black uppercase tracking-[0.5px] leading-snug mb-1 text-[#D73F09]">
+            {time.split(/\s+[–—-]\s+/).map((part, i, parts) => (
+              <span key={i} className="inline-block whitespace-nowrap">
+                {part}
+                {i < parts.length - 1 ? "\u00a0–\u00a0" : ""}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="font-bold text-sm text-gray-900">{title}</div>
         <div className="text-xs text-gray-500 mt-1">{description}</div>
       </div>
@@ -316,9 +337,7 @@ export function DynamicRunOfShowDetail({
                 {shoot.videographer}
               </div>
               {shoot.videographer_phone && (
-                <div className="text-gray-500 text-sm">
-                  {shoot.videographer_phone}
-                </div>
+                <PhoneLink raw={shoot.videographer_phone} />
               )}
             </div>
           </div>
@@ -332,9 +351,7 @@ export function DynamicRunOfShowDetail({
                   {shoot.videographer_2}
                 </div>
                 {shoot.videographer_2_phone && (
-                  <div className="text-gray-500 text-sm">
-                    {shoot.videographer_2_phone}
-                  </div>
+                  <PhoneLink raw={shoot.videographer_2_phone} />
                 )}
               </div>
             </div>
@@ -362,9 +379,7 @@ export function DynamicRunOfShowDetail({
                       {contact.name}
                     </div>
                     {contact.phone && (
-                      <div className="text-gray-500 text-sm">
-                        {contact.phone}
-                      </div>
+                      <PhoneLink raw={contact.phone} />
                     )}
                   </div>
                 </div>
@@ -391,9 +406,7 @@ export function DynamicRunOfShowDetail({
                   {shoot.client_contact_name}
                 </div>
                 {shoot.client_contact_phone && (
-                  <div className="text-gray-500 text-sm">
-                    {shoot.client_contact_phone}
-                  </div>
+                  <PhoneLink raw={shoot.client_contact_phone} />
                 )}
               </div>
             </div>
