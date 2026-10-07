@@ -113,12 +113,14 @@ function TimelineItem({
             : "bg-white border border-gray-200"
         } rounded-lg p-4`}
       >
-        <div
-          className={`text-xs font-bold uppercase tracking-[1.5px] mb-1 ${
-            highlight ? "text-[#D73F09]" : "text-gray-400"
-          }`}
-        >
-          {time}
+        {/* Ranges ("12:30 – 1:00 PM CT") may only wrap at the dash */}
+        <div className="text-sm font-black uppercase tracking-[0.5px] leading-snug mb-1 text-[#D73F09]">
+          {time.split(/\s+[–—-]\s+/).map((part, i, parts) => (
+            <span key={i} className="inline-block whitespace-nowrap">
+              {part}
+              {i < parts.length - 1 ? "\u00a0–\u00a0" : ""}
+            </span>
+          ))}
         </div>
         <div className="font-bold text-sm text-gray-900">{title}</div>
         <div className="text-xs text-gray-500 mt-1">{description}</div>
@@ -227,16 +229,18 @@ export function DynamicRunOfShowDetail({
                 href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-gray-900 text-white text-sm font-bold text-center py-3"
+                className="rounded-lg bg-gray-900 text-white text-sm font-bold flex items-center justify-center gap-2 py-3"
               >
+                <img src="/map-icons/google-maps.svg" alt="" className="w-[18px] h-[18px]" />
                 Google Maps
               </a>
               <a
                 href={`https://maps.apple.com/?daddr=${mapQuery}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-white border border-gray-300 text-gray-900 text-sm font-bold text-center py-3"
+                className="rounded-lg bg-white border border-gray-300 text-gray-900 text-sm font-bold flex items-center justify-center gap-2 py-3"
               >
+                <img src="/map-icons/apple.svg" alt="" className="w-[18px] h-[18px]" />
                 Apple Maps
               </a>
             </div>
