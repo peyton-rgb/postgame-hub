@@ -86,6 +86,48 @@ function TimeCard({
   );
 }
 
+// Tap-to-call. US numbers (10 digits, or 11 with a leading 1) are shown as
+// (XXX) XXX-XXXX; anything else is shown as stored.
+function PhoneLink({ raw }: { raw: string }) {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
+  const us = digits.length === 10;
+  if (!us && !digits) return <div className="text-gray-500 text-sm">{raw}</div>;
+  return (
+    <div className="text-sm">
+      <a
+        href={us ? `tel:+1${digits}` : `tel:${digits}`}
+        className="text-[#D73F09] font-medium hover:underline"
+      >
+        {us ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : raw}
+      </a>
+    </div>
+  );
+}
+
+// Free text that may contain a US phone number (shot-list headings):
+// the number becomes the same tap-to-call link, the rest stays as typed.
+function TextWithPhones({ text }: { text: string }) {
+  const parts = text.split(/((?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d))/);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part;
+        const digits = part.replace(/\D/g, "").slice(-10);
+        return (
+          <a
+            key={i}
+            href={`tel:+1${digits}`}
+            className="text-[#D73F09] whitespace-nowrap hover:underline"
+          >
+            ({digits.slice(0, 3)}) {digits.slice(3, 6)}-{digits.slice(6)}
+          </a>
+        );
+      })}
+    </>
+  );
+}
+
 function TimelineItem({
   time,
   title,
@@ -113,13 +155,17 @@ function TimelineItem({
             : "bg-white border border-gray-200"
         } rounded-lg p-4`}
       >
-        <div
-          className={`text-xs font-bold uppercase tracking-[1.5px] mb-1 ${
-            highlight ? "text-[#D73F09]" : "text-gray-400"
-          }`}
-        >
-          {time}
-        </div>
+        {/* Ranges ("12:30 – 1:00 PM CT") may only wrap at the dash; no line at all without a time */}
+        {time?.trim() && (
+          <div className="text-sm font-black uppercase tracking-[0.5px] leading-snug mb-1 text-[#D73F09]">
+            {time.split(/\s+[–—-]\s+/).map((part, i, parts) => (
+              <span key={i} className="inline-block whitespace-nowrap">
+                {part}
+                {i < parts.length - 1 ? "\u00a0–\u00a0" : ""}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="font-bold text-sm text-gray-900">{title}</div>
         <div className="text-xs text-gray-500 mt-1">{description}</div>
       </div>
@@ -222,30 +268,35 @@ export function DynamicRunOfShowDetail({
               {venue && <div className="font-bold">{venue}</div>}
               <div className={venue ? "" : "font-medium"}>{street}</div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2">
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-gray-900 text-white text-sm font-bold text-center py-3"
+                className="rounded-lg bg-gray-900 text-white text-sm font-bold flex items-center justify-center gap-2 py-3"
               >
+                <img src="/map-icons/google-maps.svg" alt="" className="w-[18px] h-[18px]" />
                 Google Maps
               </a>
               <a
                 href={`https://maps.apple.com/?daddr=${mapQuery}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-white border border-gray-300 text-gray-900 text-sm font-bold text-center py-3"
+                className="rounded-lg bg-white border border-gray-300 text-gray-900 text-sm font-bold flex items-center justify-center gap-2 py-3"
               >
+                <img src="/map-icons/apple.svg" alt="" className="w-[18px] h-[18px]" />
                 Apple Maps
               </a>
             </div>
-            <iframe
-              src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
-              title="Map of the starting location"
-              loading="lazy"
-              className="w-full aspect-[4/3] sm:aspect-auto sm:h-80 rounded-[10px] border border-gray-200"
-            />
+            {/* The site map below replaces the Google embed when a shoot has one */}
+            {!shoot.site_map_url && (
+              <iframe
+                src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
+                title="Map of the starting location"
+                loading="lazy"
+                className="w-full aspect-[4/3] sm:aspect-auto sm:h-80 rounded-[10px] border border-gray-200 mt-4"
+              />
+            )}
           </div>
         )}
 
@@ -309,9 +360,7 @@ export function DynamicRunOfShowDetail({
                 {shoot.videographer}
               </div>
               {shoot.videographer_phone && (
-                <div className="text-gray-500 text-sm">
-                  {shoot.videographer_phone}
-                </div>
+                <PhoneLink raw={shoot.videographer_phone} />
               )}
             </div>
           </div>
@@ -325,9 +374,7 @@ export function DynamicRunOfShowDetail({
                   {shoot.videographer_2}
                 </div>
                 {shoot.videographer_2_phone && (
-                  <div className="text-gray-500 text-sm">
-                    {shoot.videographer_2_phone}
-                  </div>
+                  <PhoneLink raw={shoot.videographer_2_phone} />
                 )}
               </div>
             </div>
@@ -355,9 +402,7 @@ export function DynamicRunOfShowDetail({
                       {contact.name}
                     </div>
                     {contact.phone && (
-                      <div className="text-gray-500 text-sm">
-                        {contact.phone}
-                      </div>
+                      <PhoneLink raw={contact.phone} />
                     )}
                   </div>
                 </div>
@@ -384,9 +429,7 @@ export function DynamicRunOfShowDetail({
                   {shoot.client_contact_name}
                 </div>
                 {shoot.client_contact_phone && (
-                  <div className="text-gray-500 text-sm">
-                    {shoot.client_contact_phone}
-                  </div>
+                  <PhoneLink raw={shoot.client_contact_phone} />
                 )}
               </div>
             </div>
@@ -429,7 +472,7 @@ export function DynamicRunOfShowDetail({
                 >
                   <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
                     <h3 className="font-bold text-sm uppercase tracking-[1.5px] text-gray-900">
-                      {section.category}
+                      <TextWithPhones text={section.category} />
                     </h3>
                   </div>
                   <ul className="divide-y divide-gray-100">
