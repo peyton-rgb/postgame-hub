@@ -347,7 +347,7 @@ export function DynamicRunOfShowDetail({
         {/* Videographer Info */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-10">
           <div className="text-xs font-bold uppercase tracking-[1.5px] text-gray-400 mb-3">
-            {shoot.videographer_2
+            {shoot.videographer_2 || shoot.videographer_3
               ? "Assigned Videographers"
               : "Assigned Videographer"}
           </div>
@@ -375,6 +375,21 @@ export function DynamicRunOfShowDetail({
                 </div>
                 {shoot.videographer_2_phone && (
                   <PhoneLink raw={shoot.videographer_2_phone} />
+                )}
+              </div>
+            </div>
+          )}
+          {shoot.videographer_3 && (
+            <div className="flex items-center gap-4 mt-3">
+              <div className="w-10 h-10 rounded-full bg-[#D73F09] flex items-center justify-center text-sm font-black text-white">
+                {shoot.videographer_3[0]}
+              </div>
+              <div>
+                <div className="font-bold text-lg text-gray-900">
+                  {shoot.videographer_3}
+                </div>
+                {shoot.videographer_3_phone && (
+                  <PhoneLink raw={shoot.videographer_3_phone} />
                 )}
               </div>
             </div>
