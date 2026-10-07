@@ -105,6 +105,29 @@ function PhoneLink({ raw }: { raw: string }) {
   );
 }
 
+// Free text that may contain a US phone number (shot-list headings):
+// the number becomes the same tap-to-call link, the rest stays as typed.
+function TextWithPhones({ text }: { text: string }) {
+  const parts = text.split(/((?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d))/);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part;
+        const digits = part.replace(/\D/g, "").slice(-10);
+        return (
+          <a
+            key={i}
+            href={`tel:+1${digits}`}
+            className="text-[#D73F09] whitespace-nowrap hover:underline"
+          >
+            ({digits.slice(0, 3)}) {digits.slice(3, 6)}-{digits.slice(6)}
+          </a>
+        );
+      })}
+    </>
+  );
+}
+
 function TimelineItem({
   time,
   title,
@@ -449,7 +472,7 @@ export function DynamicRunOfShowDetail({
                 >
                   <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
                     <h3 className="font-bold text-sm uppercase tracking-[1.5px] text-gray-900">
-                      {section.category}
+                      <TextWithPhones text={section.category} />
                     </h3>
                   </div>
                   <ul className="divide-y divide-gray-100">
