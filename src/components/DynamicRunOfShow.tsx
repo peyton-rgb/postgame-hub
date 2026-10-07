@@ -244,7 +244,7 @@ export function DynamicRunOfShowDetail({
               src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
               title="Map of the starting location"
               loading="lazy"
-              className="w-full aspect-[4/3] rounded-[10px] border border-gray-200"
+              className="w-full aspect-[4/3] sm:aspect-auto sm:h-80 rounded-[10px] border border-gray-200"
             />
           </div>
         )}
