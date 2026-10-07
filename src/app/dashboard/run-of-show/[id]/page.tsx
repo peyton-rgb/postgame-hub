@@ -400,6 +400,35 @@ function ShootModal({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                    Third Videographer (drone, optional)
+                  </label>
+                  <input
+                    value={form.videographer_3 || ""}
+                    onChange={(e) =>
+                      updateForm({ videographer_3: e.target.value })
+                    }
+                    placeholder="e.g. Sam R. (Drone)"
+                    className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                    Third Videographer Phone
+                  </label>
+                  <input
+                    value={form.videographer_3_phone || ""}
+                    onChange={(e) =>
+                      updateForm({ videographer_3_phone: e.target.value })
+                    }
+                    placeholder="(555) 123-4567"
+                    className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
                   Starting Address / Location
@@ -850,6 +879,8 @@ export default function RunOfShowEditor() {
       videographer_phone: data.videographer_phone || null,
       videographer_2: data.videographer_2 || null,
       videographer_2_phone: data.videographer_2_phone || null,
+      videographer_3: data.videographer_3 || null,
+      videographer_3_phone: data.videographer_3_phone || null,
       starting_address: data.starting_address || null,
       website: data.website || null,
       shoot_type: data.shoot_type || "standard",
@@ -1168,12 +1199,12 @@ export default function RunOfShowEditor() {
                       </div>
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                          {shoot.videographer_2 ? "Videographers" : "Videographer"}
+                          {shoot.videographer_2 || shoot.videographer_3 ? "Videographers" : "Videographer"}
                         </div>
                         <div className="text-gray-400">
-                          {shoot.videographer_2
-                            ? `${shoot.videographer} · ${shoot.videographer_2}`
-                            : shoot.videographer}
+                          {[shoot.videographer, shoot.videographer_2, shoot.videographer_3]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

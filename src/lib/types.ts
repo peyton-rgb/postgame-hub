@@ -483,6 +483,8 @@ export interface RosShoot {
   videographer_phone: string | null;
   videographer_2: string | null;
   videographer_2_phone: string | null;
+  videographer_3: string | null;
+  videographer_3_phone: string | null;
   starting_address: string | null;
   website: string | null;
   shoot_type: string;
