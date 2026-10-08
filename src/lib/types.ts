@@ -379,6 +379,30 @@ export interface RunOfShow {
   camera_settings: string;
   contacts: RosContact[];
   published: boolean;
+  // Crew upload box: off until both are set. The folder is the campaign's
+  // folder name inside LucidLink (<Brand>/<Year> - <Brand>/<this>/<Stop>).
+  lucid_campaign_folder: string | null;
+  uploads_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// One file the Mac Studio has reported on (see /api/ros-upload/report).
+export interface RosUpload {
+  id: string;
+  ros_shoot_id: string;
+  upload_id: string;
+  batch_id: string | null;
+  file_name: string;
+  relative_path: string | null;
+  uploader_name: string | null;
+  uploader_role: string | null;
+  file_kind: "raw" | "working";
+  size: number | null;
+  sha256: string | null;
+  lucid_path: string | null;
+  status: "in_lucid" | "failed";
+  error: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -781,6 +781,8 @@ export default function RunOfShowEditor() {
   const [subtitle, setSubtitle] = useState("");
   const [cameraSettings, setCameraSettings] = useState("");
   const [contacts, setContacts] = useState<RosContact[]>([]);
+  const [lucidCampaignFolder, setLucidCampaignFolder] = useState("");
+  const [uploadsEnabled, setUploadsEnabled] = useState(false);
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -812,6 +814,8 @@ export default function RunOfShowEditor() {
         { name: "Dom M.", phone: "(352) 530-7027", initials: "DM" },
       ];
       setContacts(r.contacts && r.contacts.length > 0 ? r.contacts : defaultContacts);
+      setLucidCampaignFolder(r.lucid_campaign_folder || "");
+      setUploadsEnabled(Boolean(r.uploads_enabled));
       setPublished(r.published);
     }
     setShoots(shootsRes.data || []);
@@ -832,6 +836,8 @@ export default function RunOfShowEditor() {
         event_name: eventName || null,
         subtitle: subtitle || null,
         camera_settings: cameraSettings,
+        lucid_campaign_folder: lucidCampaignFolder.trim() || null,
+        uploads_enabled: uploadsEnabled,
         contacts,
         updated_at: new Date().toISOString(),
       })
@@ -1071,6 +1077,43 @@ export default function RunOfShowEditor() {
                 onChange={(e) => setCameraSettings(e.target.value)}
                 className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
               />
+            </div>
+
+            {/* Crew upload box on the public shoot pages */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  LucidLink Campaign Folder
+                </label>
+                <input
+                  value={lucidCampaignFolder}
+                  onChange={(e) => setLucidCampaignFolder(e.target.value)}
+                  placeholder="e.g. Pumpkin Patch 2026"
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  The campaign&apos;s folder name in LucidLink. Crew uploads land inside it, one folder per stop.
+                </p>
+              </div>
+              <div>
+                <span className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Crew Uploads
+                </span>
+                <label className="flex items-center gap-3 px-4 py-3 bg-black border border-gray-700 rounded-lg cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={uploadsEnabled}
+                    onChange={(e) => setUploadsEnabled(e.target.checked)}
+                    className="w-4 h-4 accent-[#D73F09]"
+                  />
+                  <span className="text-white">Uploads enabled</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-2">
+                  {uploadsEnabled && !lucidCampaignFolder.trim()
+                    ? "Add the LucidLink folder too — uploads stay closed without it."
+                    : "Shows the upload box on each shoot page instead of the link-out button."}
+                </p>
+              </div>
             </div>
           </div>
         </div>
