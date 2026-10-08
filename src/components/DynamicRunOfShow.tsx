@@ -546,12 +546,7 @@ export function DynamicRunOfShowDetail({
             otherwise the upload box replaces the link-out button once uploads
             are switched on. */}
         {showLucidLink ? (
-          <LucidLinkUploadCard
-            uploadLabel={lucidUploadLabel}
-            stopName={stopName}
-            crew={[shoot.videographer, shoot.videographer_2, shoot.videographer_3]}
-            browserUploadUrl={shoot.content_folder_url}
-          />
+          <LucidLinkUploadCard browserUploadUrl={shoot.content_folder_url} />
         ) : showFrameio ? (
           <FrameioUploadCard
             projectName={frameioProject}
