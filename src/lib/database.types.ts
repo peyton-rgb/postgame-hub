@@ -7387,14 +7387,17 @@ export type Database = {
           contacts: Json | null
           created_at: string | null
           event_name: string | null
+          frameio_project_name: string | null
           id: string
           lucid_campaign_folder: string | null
+          lucid_upload_label: string | null
           name: string
           pin_hash: string | null
           published: boolean | null
           slug: string
           subtitle: string | null
           updated_at: string | null
+          upload_method: string | null
           uploads_enabled: boolean
           visibility: string | null
         }
@@ -7406,14 +7409,17 @@ export type Database = {
           contacts?: Json | null
           created_at?: string | null
           event_name?: string | null
+          frameio_project_name?: string | null
           id?: string
           lucid_campaign_folder?: string | null
+          lucid_upload_label?: string | null
           name: string
           pin_hash?: string | null
           published?: boolean | null
           slug: string
           subtitle?: string | null
           updated_at?: string | null
+          upload_method?: string | null
           uploads_enabled?: boolean
           visibility?: string | null
         }
@@ -7425,14 +7431,17 @@ export type Database = {
           contacts?: Json | null
           created_at?: string | null
           event_name?: string | null
+          frameio_project_name?: string | null
           id?: string
           lucid_campaign_folder?: string | null
+          lucid_upload_label?: string | null
           name?: string
           pin_hash?: string | null
           published?: boolean | null
           slug?: string
           subtitle?: string | null
           updated_at?: string | null
+          upload_method?: string | null
           uploads_enabled?: boolean
           visibility?: string | null
         }

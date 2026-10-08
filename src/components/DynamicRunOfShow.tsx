@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { RunOfShow, RosShoot, RosShotSection, RosTimelineItem, RosContact } from "@/lib/types";
 import { UploadBox, parseCrew } from "@/components/run-of-show/UploadBox";
+import { FrameioUploadCard, LucidLinkUploadCard } from "@/components/run-of-show/DesktopUploadCard";
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const MONTHS = [
@@ -197,6 +198,21 @@ export function DynamicRunOfShowDetail({
   const mapQuery = encodeURIComponent([venue, street].filter(Boolean).join(", "));
 
   const uploadUrl = shoot.frameio_upload_url || shoot.content_folder_url;
+
+  // Desktop-app upload cards. run_of_shows.upload_method picks one, and each
+  // only shows once it has what it needs to name the crew's folders.
+  const frameioProject = ros.frameio_project_name?.trim() || "";
+  const frameioFolder = shoot.frameio_folder?.trim() || "";
+  const lucidUploadLabel = ros.lucid_upload_label?.trim() || "";
+  const showLucidLink = ros.upload_method === "lucidlink" && Boolean(lucidUploadLabel);
+  const showFrameio =
+    ros.upload_method === "frameio" && Boolean(frameioProject && frameioFolder);
+  // "baton-rouge" → "Baton Rouge", for the "<Stop> done" text.
+  const stopName = shoot.slug
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 
   return (
     <div className="min-h-screen bg-[#f5f5f4] text-gray-900">
@@ -525,9 +541,21 @@ export function DynamicRunOfShowDetail({
           </div>
         )}
 
-        {/* Upload — last thing on the page, for the end of the shoot. The
-            upload box replaces the link-out button once uploads are switched on. */}
-        {ros.uploads_enabled ? (
+        {/* Upload — last thing on the page, for the end of the shoot. A
+            campaign set to LucidLink or Frame.io gets that app's steps;
+            otherwise the upload box replaces the link-out button once uploads
+            are switched on. */}
+        {showLucidLink ? (
+          <LucidLinkUploadCard browserUploadUrl={shoot.content_folder_url} />
+        ) : showFrameio ? (
+          <FrameioUploadCard
+            projectName={frameioProject}
+            folder={frameioFolder}
+            stopName={stopName}
+            crew={[shoot.videographer, shoot.videographer_2, shoot.videographer_3]}
+            browserUploadUrl={shoot.content_folder_url}
+          />
+        ) : ros.uploads_enabled ? (
           <UploadBox
             shootId={shoot.id}
             crew={parseCrew([shoot.videographer, shoot.videographer_2, shoot.videographer_3])}
