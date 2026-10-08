@@ -7313,6 +7313,71 @@ export type Database = {
           },
         ]
       }
+      ros_uploads: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          error: string | null
+          file_kind: string
+          file_name: string
+          id: string
+          lucid_path: string | null
+          relative_path: string | null
+          ros_shoot_id: string
+          sha256: string | null
+          size: number | null
+          status: string
+          updated_at: string
+          upload_id: string
+          uploader_name: string | null
+          uploader_role: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          error?: string | null
+          file_kind: string
+          file_name: string
+          id?: string
+          lucid_path?: string | null
+          relative_path?: string | null
+          ros_shoot_id: string
+          sha256?: string | null
+          size?: number | null
+          status: string
+          updated_at?: string
+          upload_id: string
+          uploader_name?: string | null
+          uploader_role?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          error?: string | null
+          file_kind?: string
+          file_name?: string
+          id?: string
+          lucid_path?: string | null
+          relative_path?: string | null
+          ros_shoot_id?: string
+          sha256?: string | null
+          size?: number | null
+          status?: string
+          updated_at?: string
+          upload_id?: string
+          uploader_name?: string | null
+          uploader_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ros_uploads_ros_shoot_id_fkey"
+            columns: ["ros_shoot_id"]
+            isOneToOne: false
+            referencedRelation: "ros_shoots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       run_of_shows: {
         Row: {
           brand_id: string | null
@@ -7323,12 +7388,14 @@ export type Database = {
           created_at: string | null
           event_name: string | null
           id: string
+          lucid_campaign_folder: string | null
           name: string
           pin_hash: string | null
           published: boolean | null
           slug: string
           subtitle: string | null
           updated_at: string | null
+          uploads_enabled: boolean
           visibility: string | null
         }
         Insert: {
@@ -7340,12 +7407,14 @@ export type Database = {
           created_at?: string | null
           event_name?: string | null
           id?: string
+          lucid_campaign_folder?: string | null
           name: string
           pin_hash?: string | null
           published?: boolean | null
           slug: string
           subtitle?: string | null
           updated_at?: string | null
+          uploads_enabled?: boolean
           visibility?: string | null
         }
         Update: {
@@ -7357,12 +7426,14 @@ export type Database = {
           created_at?: string | null
           event_name?: string | null
           id?: string
+          lucid_campaign_folder?: string | null
           name?: string
           pin_hash?: string | null
           published?: boolean | null
           slug?: string
           subtitle?: string | null
           updated_at?: string | null
+          uploads_enabled?: boolean
           visibility?: string | null
         }
         Relationships: [

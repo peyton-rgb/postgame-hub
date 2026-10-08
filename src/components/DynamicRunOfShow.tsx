@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { RunOfShow, RosShoot, RosShotSection, RosTimelineItem, RosContact } from "@/lib/types";
+import { UploadBox, parseCrew } from "@/components/run-of-show/UploadBox";
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const MONTHS = [
@@ -524,8 +525,14 @@ export function DynamicRunOfShowDetail({
           </div>
         )}
 
-        {/* Upload — last thing on the page, for the end of the shoot */}
-        {uploadUrl && (
+        {/* Upload — last thing on the page, for the end of the shoot. The
+            upload box replaces the link-out button once uploads are switched on. */}
+        {ros.uploads_enabled ? (
+          <UploadBox
+            shootId={shoot.id}
+            crew={parseCrew([shoot.videographer, shoot.videographer_2, shoot.videographer_3])}
+          />
+        ) : uploadUrl && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-10">
             <div className="text-xl font-black text-gray-900">
               Upload Your Footage
