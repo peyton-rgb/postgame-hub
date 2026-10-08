@@ -199,20 +199,14 @@ export function DynamicRunOfShowDetail({
 
   const uploadUrl = shoot.frameio_upload_url || shoot.content_folder_url;
 
-  // Desktop-app upload cards. run_of_shows.upload_method picks one, and each
-  // only shows once it has what it needs to name the crew's folders.
+  // Desktop-app upload cards. run_of_shows.upload_method picks one. The
+  // LucidLink card waits for its upload label; the Frame.io card falls back to
+  // generic wording when the project or location folder is blank.
   const frameioProject = ros.frameio_project_name?.trim() || "";
-  const frameioFolder = shoot.frameio_folder?.trim() || "";
+  const frameioLocationFolder = shoot.frameio_location_folder?.trim() || "";
   const lucidUploadLabel = ros.lucid_upload_label?.trim() || "";
   const showLucidLink = ros.upload_method === "lucidlink" && Boolean(lucidUploadLabel);
-  const showFrameio =
-    ros.upload_method === "frameio" && Boolean(frameioProject && frameioFolder);
-  // "baton-rouge" → "Baton Rouge", for the "<Stop> done" text.
-  const stopName = shoot.slug
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
+  const showFrameio = ros.upload_method === "frameio";
 
   return (
     <div className="min-h-screen bg-[#f5f5f4] text-gray-900">
@@ -550,10 +544,7 @@ export function DynamicRunOfShowDetail({
         ) : showFrameio ? (
           <FrameioUploadCard
             projectName={frameioProject}
-            folder={frameioFolder}
-            stopName={stopName}
-            crew={[shoot.videographer, shoot.videographer_2, shoot.videographer_3]}
-            browserUploadUrl={shoot.content_folder_url}
+            locationFolder={frameioLocationFolder}
           />
         ) : ros.uploads_enabled ? (
           <UploadBox
