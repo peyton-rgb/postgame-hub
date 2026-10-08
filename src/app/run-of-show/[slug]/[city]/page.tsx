@@ -81,12 +81,13 @@ export default async function DynamicShootPage({
     : undefined;
 
   // Where this stop lives in LucidLink — the same folders the upload box
-  // writes to: content/<Brand>/<Year> - <Brand>/<campaign folder>/<Stop>.
+  // writes to, under the filespace as crew accounts see it:
+  // postgameproductions/<Brand>/<Year> - <Brand>/<campaign folder>/<Stop>.
   const campaignFolder = ros.lucid_campaign_folder?.trim();
   const shootDate = parseShootDate(shoot.date);
   const lucidStopPath = campaignFolder
     ? [
-        "content",
+        "postgameproductions",
         ...buildDestBase({
           brand: client?.name?.trim() || ros.client_name,
           year: shootDate ? shootDate.getUTCFullYear() : new Date().getFullYear(),

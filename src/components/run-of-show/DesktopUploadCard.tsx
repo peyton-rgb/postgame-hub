@@ -220,7 +220,7 @@ export function LucidLinkUploadCard({
   crew,
   browserUploadUrl,
 }: {
-  // content › <Brand> › <Year> - <Brand> › <campaign folder> › <Stop> › 01 Raw
+  // postgameproductions › <Brand> › <Year> - <Brand> › <campaign folder> › <Stop> › 01 Raw
   basePath: string[];
   stopName: string;
   crew: CrewSlots;
@@ -246,7 +246,7 @@ export function LucidLinkUploadCard({
             Download the <b>LucidLink app</b> and sign in with your invite email
           </Step>
           <Step n={2}>
-            Connect the <b>&quot;content&quot;</b> filespace
+            Connect the <b>&quot;postgameproductions&quot;</b> filespace
             <StepHint>It appears in Finder like a drive</StepHint>
           </Step>
           <Step n={3}>
