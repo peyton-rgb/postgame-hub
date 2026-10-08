@@ -384,9 +384,12 @@ export interface RunOfShow {
   lucid_campaign_folder: string | null;
   uploads_enabled: boolean;
   // Which desktop-app upload card the shoot pages show; null keeps the upload
-  // box / link-out button. 'lucidlink' also needs lucid_campaign_folder;
+  // box / link-out button. 'lucidlink' also needs lucid_upload_label;
   // 'frameio' also needs frameio_project_name and the shoot's frameio_folder.
   upload_method: "lucidlink" | "frameio" | null;
+  // The campaign's short name in each crew member's LucidLink folder:
+  // "Upload - <Name> - <Role> (<lucid_upload_label> <Stop>)".
+  lucid_upload_label: string | null;
   // Frame.io project crew mount to upload.
   frameio_project_name: string | null;
   created_at: string;

@@ -7390,6 +7390,7 @@ export type Database = {
           frameio_project_name: string | null
           id: string
           lucid_campaign_folder: string | null
+          lucid_upload_label: string | null
           name: string
           pin_hash: string | null
           published: boolean | null
@@ -7411,6 +7412,7 @@ export type Database = {
           frameio_project_name?: string | null
           id?: string
           lucid_campaign_folder?: string | null
+          lucid_upload_label?: string | null
           name: string
           pin_hash?: string | null
           published?: boolean | null
@@ -7432,6 +7434,7 @@ export type Database = {
           frameio_project_name?: string | null
           id?: string
           lucid_campaign_folder?: string | null
+          lucid_upload_label?: string | null
           name?: string
           pin_hash?: string | null
           published?: boolean | null

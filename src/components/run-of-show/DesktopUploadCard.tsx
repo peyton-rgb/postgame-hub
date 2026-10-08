@@ -71,7 +71,7 @@ function DesktopUploadCard({
   intro,
   note,
   crew: rawCrew,
-  basePath,
+  folderFor,
   methodTitle,
   methodWhy,
   steps,
@@ -86,11 +86,11 @@ function DesktopUploadCard({
   intro: string;
   note: React.ReactNode;
   crew: CrewSlots;
-  // Folders above each person's own folder, outermost first.
-  basePath: string[];
+  // Where a crew member uploads: their folder's name or its full path.
+  folderFor: (member: FolderCrewMember) => string;
   methodTitle: string;
   methodWhy: string;
-  // `myPath` is the picked person's full folder path, null until they pick.
+  // `myPath` is the picked person's folder (from folderFor), null until they pick.
   steps: (myPath: string | null) => React.ReactNode;
   downloadUrl: string;
   downloadLabel: string;
@@ -104,7 +104,7 @@ function DesktopUploadCard({
   const crew = parseFolderCrew(rawCrew);
   const [selected, setSelected] = useState<number | null>(null);
   const me = selected === null ? null : crew[selected];
-  const myPath = me ? [...basePath, me.folder].join(" › ") : null;
+  const myPath = me ? folderFor(me) : null;
 
   return (
     <section
@@ -215,13 +215,13 @@ function DesktopUploadCard({
 }
 
 export function LucidLinkUploadCard({
-  basePath,
+  uploadLabel,
   stopName,
   crew,
   browserUploadUrl,
 }: {
-  // postgameproductions › <Brand> › <Year> - <Brand> › <campaign folder> › <Stop> › 01 Raw
-  basePath: string[];
+  // The campaign's short name in the folder names, e.g. "Canes Pumpkin".
+  uploadLabel: string;
   stopName: string;
   crew: CrewSlots;
   browserUploadUrl: string | null;
@@ -237,32 +237,34 @@ export function LucidLinkUploadCard({
         </>
       }
       crew={crew}
-      basePath={basePath}
+      // Each person has their own top-level folder in the filespace:
+      // "Upload - Dave Jordan - Video (Canes Pumpkin Ohio)".
+      folderFor={(c) => `Upload - ${c.folder} (${uploadLabel} ${stopName})`}
       methodTitle="LucidLink in Finder"
       methodWhy="Connect our filespace like an external drive and drag your cards straight in."
-      steps={(myPath) => (
+      steps={(myFolder) => (
         <>
           <Step n={1}>
-            Download the <b>LucidLink app</b> and sign in with your invite email
+            Download the <b>LucidLink desktop app</b> and sign in with your invite email
           </Step>
           <Step n={2}>
-            Connect the <b>&quot;postgameproductions&quot;</b> filespace
+            Connect <b>&quot;postgameproductions&quot;</b>
             <StepHint>It appears in Finder like a drive</StepHint>
           </Step>
           <Step n={3}>
-            You&apos;ll only see your own folder — open it
-            {myPath ? (
-              <b className="block mt-0.5 break-words">{myPath}</b>
+            Click <b>Browse files</b>: you&apos;ll only see ONE folder, yours
+            {myFolder ? (
+              <b className="block mt-0.5 break-words">{myFolder}</b>
             ) : (
-              <StepHint>Pick your name above to see where it is</StepHint>
+              <StepHint>Pick your name above to see what it&apos;s called</StepHint>
             )}
           </Step>
           <Step n={4}>
-            Drag each SD card in as its own folder
-            <StepHint>Name them Card 1, Card 2…</StepHint>
+            Drag each SD card onto it as its own folder
+            <StepHint>Card 1, Card 2…</StepHint>
           </Step>
           <Step n={5}>
-            Keep LucidLink open until it says <b>&quot;Remaining upload: 0 B&quot;</b>
+            Keep LucidLink open until it says <b>&quot;Your files are up to date&quot;</b>
             <StepHint>Finder finishing the copy is NOT the end</StepHint>
           </Step>
         </>
@@ -273,7 +275,7 @@ export function LucidLinkUploadCard({
       downloadIcon
       done={
         <>
-          ✅ <b className="text-[#166534]">When Remaining upload hits 0 B,</b> text Peyton
+          ✅ <b className="text-[#166534]">When it says Your files are up to date,</b> text Peyton
           &quot;{stopName} done&quot; + how many cards.
         </>
       }
@@ -306,7 +308,7 @@ export function FrameioUploadCard({
         </>
       }
       crew={crew}
-      basePath={[projectName, folder]}
+      folderFor={(c) => [projectName, folder, c.folder].join(" › ")}
       methodTitle="Frame.io drive in Finder"
       methodWhy="Mount the project like an external drive and drag files straight in."
       steps={(myPath) => (

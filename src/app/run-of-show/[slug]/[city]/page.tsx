@@ -2,7 +2,6 @@ import { createLiveSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { DynamicRunOfShowDetail } from "@/components/DynamicRunOfShow";
 import type { Metadata } from "next";
-import { buildDestBase, parseShootDate } from "@/lib/ros-upload";
 
 // Crew open this on shoot day, so it must show the live rows: an edited call
 // time cannot keep serving the old answer. createLiveSupabase() is what
@@ -72,7 +71,7 @@ export default async function DynamicShootPage({
   const brandIds = [POSTGAME_BRAND_ID, ros.brand_id].filter(Boolean);
   const { data: brands } = await supabase
     .from("brands")
-    .select("id, name, logo_primary_url, logo_white_url, logo_url")
+    .select("id, logo_primary_url, logo_white_url, logo_url")
     .in("id", brandIds);
 
   const postgame = brands?.find((b) => b.id === POSTGAME_BRAND_ID);
@@ -80,26 +79,8 @@ export default async function DynamicShootPage({
     ? brands?.find((b) => b.id === ros.brand_id)
     : undefined;
 
-  // Where this stop lives in LucidLink — the same folders the upload box
-  // writes to, under the filespace as crew accounts see it:
-  // postgameproductions/<Brand>/<Year> - <Brand>/<campaign folder>/<Stop>.
-  const campaignFolder = ros.lucid_campaign_folder?.trim();
-  const shootDate = parseShootDate(shoot.date);
-  const lucidStopPath = campaignFolder
-    ? [
-        "postgameproductions",
-        ...buildDestBase({
-          brand: client?.name?.trim() || ros.client_name,
-          year: shootDate ? shootDate.getUTCFullYear() : new Date().getFullYear(),
-          campaignFolder,
-          shootSlug: shoot.slug,
-        }).split("/"),
-      ]
-    : null;
-
   return (
     <DynamicRunOfShowDetail
-      lucidStopPath={lucidStopPath}
       ros={ros}
       shoot={shoot}
       postgameLogoUrl={postgame?.logo_primary_url || null}

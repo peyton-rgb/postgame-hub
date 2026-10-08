@@ -800,6 +800,7 @@ export default function RunOfShowEditor() {
   const [uploadsEnabled, setUploadsEnabled] = useState(false);
   const [frameioProjectName, setFrameioProjectName] = useState("");
   const [uploadMethod, setUploadMethod] = useState<"" | "lucidlink" | "frameio">("");
+  const [lucidUploadLabel, setLucidUploadLabel] = useState("");
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -835,6 +836,7 @@ export default function RunOfShowEditor() {
       setUploadsEnabled(Boolean(r.uploads_enabled));
       setFrameioProjectName(r.frameio_project_name || "");
       setUploadMethod(r.upload_method || "");
+      setLucidUploadLabel(r.lucid_upload_label || "");
       setPublished(r.published);
     }
     setShoots(shootsRes.data || []);
@@ -859,6 +861,7 @@ export default function RunOfShowEditor() {
         uploads_enabled: uploadsEnabled,
         frameio_project_name: frameioProjectName.trim() || null,
         upload_method: uploadMethod || null,
+        lucid_upload_label: lucidUploadLabel.trim() || null,
         contacts,
         updated_at: new Date().toISOString(),
       })
@@ -1156,8 +1159,8 @@ export default function RunOfShowEditor() {
                   <option value="frameio">Frame.io app</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-2">
-                  {uploadMethod === "lucidlink" && !lucidCampaignFolder.trim()
-                    ? "Add the LucidLink folder too — the LucidLink steps stay hidden without it."
+                  {uploadMethod === "lucidlink" && !lucidUploadLabel.trim()
+                    ? "Add the LucidLink upload label too — the LucidLink steps stay hidden without it."
                     : uploadMethod === "frameio" && !frameioProjectName.trim()
                       ? "Add the Frame.io project name, and a Frame.io folder on each shoot — the Frame.io steps stay hidden without both."
                       : "LucidLink or Frame.io replaces the upload section on each shoot page with that app's steps."}
@@ -1177,6 +1180,21 @@ export default function RunOfShowEditor() {
                   Only used when the upload method is Frame.io, with a Frame.io folder on each shoot.
                 </p>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                LucidLink Upload Label
+              </label>
+              <input
+                value={lucidUploadLabel}
+                onChange={(e) => setLucidUploadLabel(e.target.value)}
+                placeholder="e.g. Canes Pumpkin"
+                className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Only used when the upload method is LucidLink. The campaign&apos;s short name in each crew member&apos;s own LucidLink folder: Upload - Name - Role ({lucidUploadLabel.trim() || "Label"} Stop).
+              </p>
             </div>
           </div>
         </div>

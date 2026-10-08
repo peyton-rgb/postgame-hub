@@ -180,15 +180,11 @@ export function DynamicRunOfShowDetail({
   shoot,
   postgameLogoUrl,
   clientLogoUrl,
-  lucidStopPath = null,
 }: {
   ros: RunOfShow;
   shoot: RosShoot;
   postgameLogoUrl: string | null;
   clientLogoUrl: string | null;
-  // This stop's folder in LucidLink, outermost folder first; null when the
-  // campaign has no LucidLink folder.
-  lucidStopPath?: string[] | null;
 }) {
   const contacts: RosContact[] = ros.contacts || [];
   const shotList: RosShotSection[] = shoot.shot_list || [];
@@ -207,7 +203,8 @@ export function DynamicRunOfShowDetail({
   // only shows once it has what it needs to name the crew's folders.
   const frameioProject = ros.frameio_project_name?.trim() || "";
   const frameioFolder = shoot.frameio_folder?.trim() || "";
-  const showLucidLink = ros.upload_method === "lucidlink" && Boolean(lucidStopPath);
+  const lucidUploadLabel = ros.lucid_upload_label?.trim() || "";
+  const showLucidLink = ros.upload_method === "lucidlink" && Boolean(lucidUploadLabel);
   const showFrameio =
     ros.upload_method === "frameio" && Boolean(frameioProject && frameioFolder);
   // "baton-rouge" → "Baton Rouge", for the "<Stop> done" text.
@@ -548,9 +545,9 @@ export function DynamicRunOfShowDetail({
             campaign set to LucidLink or Frame.io gets that app's steps;
             otherwise the upload box replaces the link-out button once uploads
             are switched on. */}
-        {showLucidLink && lucidStopPath ? (
+        {showLucidLink ? (
           <LucidLinkUploadCard
-            basePath={[...lucidStopPath, "01 Raw"]}
+            uploadLabel={lucidUploadLabel}
             stopName={stopName}
             crew={[shoot.videographer, shoot.videographer_2, shoot.videographer_3]}
             browserUploadUrl={shoot.content_folder_url}
