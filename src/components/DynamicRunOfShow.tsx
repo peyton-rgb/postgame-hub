@@ -537,8 +537,21 @@ export function DynamicRunOfShowDetail({
             <div className="text-xl font-black text-gray-900">
               Upload Your Footage
             </div>
-            <p className="text-sm text-gray-500 mt-1 mb-4">
+            <p className="text-sm text-gray-500 mt-1">
               Upload before you leave.
+            </p>
+            <p className="text-xs text-gray-500 mt-1 mb-4">
+              Big video dumps? Install{" "}
+              <a
+                href="https://www.google.com/drive/download/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-700"
+              >
+                Google Drive for desktop
+              </a>{" "}
+              (free) and drag your card folders in from Finder — it resumes if
+              wifi drops and is more reliable than the browser.
             </p>
             <a
               href={uploadUrl}
