@@ -7396,6 +7396,7 @@ export type Database = {
           slug: string
           subtitle: string | null
           updated_at: string | null
+          upload_method: string | null
           uploads_enabled: boolean
           visibility: string | null
         }
@@ -7416,6 +7417,7 @@ export type Database = {
           slug: string
           subtitle?: string | null
           updated_at?: string | null
+          upload_method?: string | null
           uploads_enabled?: boolean
           visibility?: string | null
         }
@@ -7436,6 +7438,7 @@ export type Database = {
           slug?: string
           subtitle?: string | null
           updated_at?: string | null
+          upload_method?: string | null
           uploads_enabled?: boolean
           visibility?: string | null
         }

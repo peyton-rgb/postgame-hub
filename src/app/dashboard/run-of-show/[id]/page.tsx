@@ -494,7 +494,7 @@ function ShootModal({
                   className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  This stop&apos;s folder inside the campaign&apos;s Frame.io project. With the project name set, the shoot page shows the Frame.io upload steps.
+                  This stop&apos;s folder inside the campaign&apos;s Frame.io project. Only used when the campaign&apos;s upload method is Frame.io.
                 </p>
               </div>
 
@@ -799,6 +799,7 @@ export default function RunOfShowEditor() {
   const [lucidCampaignFolder, setLucidCampaignFolder] = useState("");
   const [uploadsEnabled, setUploadsEnabled] = useState(false);
   const [frameioProjectName, setFrameioProjectName] = useState("");
+  const [uploadMethod, setUploadMethod] = useState<"" | "lucidlink" | "frameio">("");
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -833,6 +834,7 @@ export default function RunOfShowEditor() {
       setLucidCampaignFolder(r.lucid_campaign_folder || "");
       setUploadsEnabled(Boolean(r.uploads_enabled));
       setFrameioProjectName(r.frameio_project_name || "");
+      setUploadMethod(r.upload_method || "");
       setPublished(r.published);
     }
     setShoots(shootsRes.data || []);
@@ -856,6 +858,7 @@ export default function RunOfShowEditor() {
         lucid_campaign_folder: lucidCampaignFolder.trim() || null,
         uploads_enabled: uploadsEnabled,
         frameio_project_name: frameioProjectName.trim() || null,
+        upload_method: uploadMethod || null,
         contacts,
         updated_at: new Date().toISOString(),
       })
@@ -1135,20 +1138,45 @@ export default function RunOfShowEditor() {
               </div>
             </div>
 
-            {/* Frame.io upload card on the public shoot pages */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                Frame.io Project Name
-              </label>
-              <input
-                value={frameioProjectName}
-                onChange={(e) => setFrameioProjectName(e.target.value)}
-                placeholder="e.g. CANES-PUMPKIN"
-                className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                The Frame.io project crew mount to upload. Shoots that also have a Frame.io folder show the Frame.io upload steps instead of the other upload options.
-              </p>
+            {/* Desktop-app upload cards on the public shoot pages */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Upload Method
+                </label>
+                <select
+                  value={uploadMethod}
+                  onChange={(e) =>
+                    setUploadMethod(e.target.value as "" | "lucidlink" | "frameio")
+                  }
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                >
+                  <option value="">Default (upload box or link)</option>
+                  <option value="lucidlink">LucidLink app</option>
+                  <option value="frameio">Frame.io app</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  {uploadMethod === "lucidlink" && !lucidCampaignFolder.trim()
+                    ? "Add the LucidLink folder too — the LucidLink steps stay hidden without it."
+                    : uploadMethod === "frameio" && !frameioProjectName.trim()
+                      ? "Add the Frame.io project name, and a Frame.io folder on each shoot — the Frame.io steps stay hidden without both."
+                      : "LucidLink or Frame.io replaces the upload section on each shoot page with that app's steps."}
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Frame.io Project Name
+                </label>
+                <input
+                  value={frameioProjectName}
+                  onChange={(e) => setFrameioProjectName(e.target.value)}
+                  placeholder="e.g. CANES-PUMPKIN"
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Only used when the upload method is Frame.io, with a Frame.io folder on each shoot.
+                </p>
+              </div>
             </div>
           </div>
         </div>

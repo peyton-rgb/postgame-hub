@@ -383,8 +383,11 @@ export interface RunOfShow {
   // folder name inside LucidLink (<Brand>/<Year> - <Brand>/<this>/<Stop>).
   lucid_campaign_folder: string | null;
   uploads_enabled: boolean;
-  // Frame.io project crew mount to upload. With a shoot's frameio_folder it
-  // switches that shoot page to the Frame.io upload card.
+  // Which desktop-app upload card the shoot pages show; null keeps the upload
+  // box / link-out button. 'lucidlink' also needs lucid_campaign_folder;
+  // 'frameio' also needs frameio_project_name and the shoot's frameio_folder.
+  upload_method: "lucidlink" | "frameio" | null;
+  // Frame.io project crew mount to upload.
   frameio_project_name: string | null;
   created_at: string;
   updated_at: string;
