@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 // The desktop-app upload cards on the public shoot page: crew install a
 // vendor's app, find their own folder and drag their cards in. One layout, two
@@ -9,6 +10,10 @@ import { useState } from "react";
 // Each vendor's own download page.
 const LUCIDLINK_DOWNLOAD_URL = "https://www.lucidlink.com/download";
 const FRAMEIO_DESKTOP_APP_URL = "https://frame.io/drive";
+
+// LucidLink's own logo file, as lucidlink.com serves it (the site's
+// Organization logo): https://dhgs2q3hgrx0j.cloudfront.net/lucidlink_logo_846354e8f3.png
+const LUCIDLINK_LOGO_SRC = "/logos/lucidlink.png";
 
 type CrewSlots = Array<string | null | undefined>;
 
@@ -72,6 +77,8 @@ function DesktopUploadCard({
   steps,
   downloadUrl,
   downloadLabel,
+  downloadLogoSrc,
+  downloadIcon = false,
   done,
   browserUploadUrl,
 }: {
@@ -87,6 +94,10 @@ function DesktopUploadCard({
   steps: (myPath: string | null) => React.ReactNode;
   downloadUrl: string;
   downloadLabel: string;
+  // The vendor's own logo file, shown left of the label.
+  downloadLogoSrc?: string;
+  // Download arrow after the label.
+  downloadIcon?: boolean;
   done: React.ReactNode;
   browserUploadUrl: string | null;
 }) {
@@ -155,9 +166,30 @@ function DesktopUploadCard({
           href={downloadUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-[10px] border-[1.5px] border-gray-900 px-3 py-[11px] text-center text-sm font-bold text-gray-900"
+          className={`rounded-[10px] border-[1.5px] border-gray-900 px-3 py-[11px] text-center text-sm font-bold text-gray-900 ${
+            downloadLogoSrc || downloadIcon ? "flex items-center justify-center gap-2" : "block"
+          }`}
         >
+          {downloadLogoSrc && (
+            <Image src={downloadLogoSrc} alt="" width={22} height={22} className="flex-none" />
+          )}
           {downloadLabel}
+          {downloadIcon && (
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="w-4 h-4 flex-none"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+          )}
         </a>
       </div>
 
@@ -236,7 +268,9 @@ export function LucidLinkUploadCard({
         </>
       )}
       downloadUrl={LUCIDLINK_DOWNLOAD_URL}
-      downloadLabel="Download LucidLink"
+      downloadLabel="Download LucidLink Desktop App"
+      downloadLogoSrc={LUCIDLINK_LOGO_SRC}
+      downloadIcon
       done={
         <>
           ✅ <b className="text-[#166534]">When Remaining upload hits 0 B,</b> text Peyton
