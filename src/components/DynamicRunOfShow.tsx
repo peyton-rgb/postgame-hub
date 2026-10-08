@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { RunOfShow, RosShoot, RosShotSection, RosTimelineItem, RosContact } from "@/lib/types";
 import { UploadBox, parseCrew } from "@/components/run-of-show/UploadBox";
+import { FrameioUploadCard } from "@/components/run-of-show/FrameioUploadCard";
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const MONTHS = [
@@ -197,6 +198,16 @@ export function DynamicRunOfShowDetail({
   const mapQuery = encodeURIComponent([venue, street].filter(Boolean).join(", "));
 
   const uploadUrl = shoot.frameio_upload_url || shoot.content_folder_url;
+
+  // Frame.io card: needs the project (campaign) and this stop's folder in it.
+  const frameioProject = ros.frameio_project_name?.trim() || "";
+  const frameioFolder = shoot.frameio_folder?.trim() || "";
+  // "baton-rouge" → "Baton Rouge", for the "<stop> done" text.
+  const stopName = shoot.slug
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
   return (
     <div className="min-h-screen bg-[#f5f5f4] text-gray-900">
@@ -526,8 +537,18 @@ export function DynamicRunOfShowDetail({
         )}
 
         {/* Upload — last thing on the page, for the end of the shoot. The
-            upload box replaces the link-out button once uploads are switched on. */}
-        {ros.uploads_enabled ? (
+            Frame.io card takes over when the campaign has a Frame.io project
+            and this stop has a folder in it; otherwise the upload box replaces
+            the link-out button once uploads are switched on. */}
+        {frameioProject && frameioFolder ? (
+          <FrameioUploadCard
+            projectName={frameioProject}
+            folder={frameioFolder}
+            stopName={stopName}
+            crew={[shoot.videographer, shoot.videographer_2, shoot.videographer_3]}
+            browserUploadUrl={shoot.content_folder_url}
+          />
+        ) : ros.uploads_enabled ? (
           <UploadBox
             shootId={shoot.id}
             crew={parseCrew([shoot.videographer, shoot.videographer_2, shoot.videographer_3])}

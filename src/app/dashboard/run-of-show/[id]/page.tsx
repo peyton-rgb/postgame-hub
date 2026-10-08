@@ -485,6 +485,21 @@ function ShootModal({
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Frame.io folder
+                </label>
+                <input
+                  value={form.frameio_folder || ""}
+                  onChange={(e) => updateForm({ frameio_folder: e.target.value })}
+                  placeholder="e.g. Cincinnati"
+                  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  This stop&apos;s folder inside the campaign&apos;s Frame.io project. With the project name set, the shoot page shows the Frame.io upload steps.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
                   Event site map (image URL)
                 </label>
                 <input
@@ -783,6 +798,7 @@ export default function RunOfShowEditor() {
   const [contacts, setContacts] = useState<RosContact[]>([]);
   const [lucidCampaignFolder, setLucidCampaignFolder] = useState("");
   const [uploadsEnabled, setUploadsEnabled] = useState(false);
+  const [frameioProjectName, setFrameioProjectName] = useState("");
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -816,6 +832,7 @@ export default function RunOfShowEditor() {
       setContacts(r.contacts && r.contacts.length > 0 ? r.contacts : defaultContacts);
       setLucidCampaignFolder(r.lucid_campaign_folder || "");
       setUploadsEnabled(Boolean(r.uploads_enabled));
+      setFrameioProjectName(r.frameio_project_name || "");
       setPublished(r.published);
     }
     setShoots(shootsRes.data || []);
@@ -838,6 +855,7 @@ export default function RunOfShowEditor() {
         camera_settings: cameraSettings,
         lucid_campaign_folder: lucidCampaignFolder.trim() || null,
         uploads_enabled: uploadsEnabled,
+        frameio_project_name: frameioProjectName.trim() || null,
         contacts,
         updated_at: new Date().toISOString(),
       })
@@ -893,6 +911,7 @@ export default function RunOfShowEditor() {
       type_label: data.type_label || null,
       content_folder_url: data.content_folder_url || null,
       frameio_upload_url: data.frameio_upload_url?.trim() || null,
+      frameio_folder: data.frameio_folder?.trim() || null,
       site_map_url: data.site_map_url?.trim() || null,
       client_contact_name: data.client_contact_name || null,
       client_contact_phone: data.client_contact_phone || null,
@@ -1114,6 +1133,22 @@ export default function RunOfShowEditor() {
                     : "Shows the upload box on each shoot page instead of the link-out button."}
                 </p>
               </div>
+            </div>
+
+            {/* Frame.io upload card on the public shoot pages */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                Frame.io Project Name
+              </label>
+              <input
+                value={frameioProjectName}
+                onChange={(e) => setFrameioProjectName(e.target.value)}
+                placeholder="e.g. CANES-PUMPKIN"
+                className="w-full px-4 py-3 bg-black border border-gray-700 rounded-lg text-white focus:border-[#D73F09] outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                The Frame.io project crew mount to upload. Shoots that also have a Frame.io folder show the Frame.io upload steps instead of the other upload options.
+              </p>
             </div>
           </div>
         </div>
