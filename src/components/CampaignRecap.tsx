@@ -95,7 +95,11 @@ function athleteHasReel(athlete: Athlete, items: Media[]): boolean {
 // Shared collab→modal mappers, used by BOTH the collab-card popup
 // (buildCollabPortalAthlete) and the collab-reel tabs appended to a solo
 // athlete's popup (buildRecapPortalAthlete) — same pooled mapping, no duplication.
-function mapCollabMetrics(group: CollabGroup): SideMetrics | null {
+// Accepts a whole group (pooled across its posts) or one of its `sources` (a
+// single platform's post) — both carry the same metrics shape.
+function mapCollabMetrics(
+  group: Pick<CollabGroup, "metrics" | "combinedEngagementRate">,
+): SideMetrics | null {
   const gm = group.metrics;
   const pooled: SideMetrics = {};
   if (typeof gm.impressions === "number") pooled.impressions = gm.impressions;
@@ -266,8 +270,14 @@ function buildRecapPortalAthlete(
 // pooled post (kind reel when the media has a video, reusing the solo modal's
 // default-to-reel + muted autoplay), the group's shared metrics mapped to the
 // modal's SideMetrics keys, and a per-athlete collaborators[] list (followers
-// are per-person, looked up from the roster). reelPostIndex follows the same
-// rule as solo so View More opens on the reel when there is one.
+// are per-person, looked up from the roster).
+//
+// A merged group ("IG Feed + Reel": both an ig_feed and an ig_reel source)
+// instead gets TWO posts like the solo path — Feed (the images + the feed
+// source's metrics/url) and Reel (the video + the reel source's) — so the modal
+// shows its FEED | REEL toggle and the feed photos aren't dropped. Each post's
+// metrics are still pooled across the athletes; never split per athlete.
+// reelPostIndex is the Reel post's index, -1 when there is none.
 function buildCollabPortalAthlete(
   group: CollabGroup,
   items: Media[],
@@ -282,20 +292,45 @@ function buildCollabPortalAthlete(
     ? { fileUrl: videoItem.file_url, poster: videoItem.thumbnail_url || null }
     : null;
 
-  // ONE pooled metric set — do NOT fabricate per-athlete splits.
-  const metrics = mapCollabMetrics(group);
+  const feedSource = group.sources.find((s) => s.platform === "ig_feed");
+  const reelSource = group.sources.find((s) => s.platform === "ig_reel");
 
-  const kind: "feed" | "reel" = video ? "reel" : "feed";
-  const post: PortalPost = {
-    key: `${group.id}:pooled`,
-    kind,
-    label: kind === "reel" ? "Reel" : "Feed",
-    rowId: group.id,
-    images: kind === "feed" ? images : [],
-    video: kind === "reel" ? video : null,
-    metrics,
-    postUrl: group.url || null,
-  };
+  const posts: PortalPost[] = [];
+  if (feedSource && reelSource) {
+    posts.push({
+      key: `${group.id}:feed`,
+      kind: "feed",
+      label: "Feed",
+      rowId: group.id,
+      images,
+      video: null,
+      metrics: mapCollabMetrics(feedSource),
+      postUrl: feedSource.url || group.url || null,
+    });
+    posts.push({
+      key: `${group.id}:reel`,
+      kind: "reel",
+      label: "Reel",
+      rowId: group.id,
+      images: [],
+      video,
+      metrics: mapCollabMetrics(reelSource),
+      postUrl: reelSource.url || group.url || null,
+    });
+  } else {
+    // ONE pooled metric set — do NOT fabricate per-athlete splits.
+    const kind: "feed" | "reel" = video ? "reel" : "feed";
+    posts.push({
+      key: `${group.id}:pooled`,
+      kind,
+      label: kind === "reel" ? "Reel" : "Feed",
+      rowId: group.id,
+      images: kind === "feed" ? images : [],
+      video: kind === "reel" ? video : null,
+      metrics: mapCollabMetrics(group),
+      postUrl: group.url || null,
+    });
+  }
 
   // Title mirrors the card: stacked last names.
   const lastNames = group.athleteNames
@@ -311,14 +346,14 @@ function buildCollabPortalAthlete(
     name: lastNames,
     campaignId,
     campaignName,
-    posts: [post],
+    posts,
     school: null,
     sport: null,
     igHandle: null,
     igFollowers: null,
     collaborators,
   };
-  const reelPostIndex = kind === "reel" ? 0 : -1;
+  const reelPostIndex = posts.findIndex((p) => p.kind === "reel");
   return { portalAthlete, reelPostIndex };
 }
 
@@ -985,7 +1020,10 @@ export function CampaignRecap({
   };
   const openCollabModal = (group: CollabGroup, items: Media[]) => {
     const { portalAthlete, reelPostIndex } = buildCollabPortalAthlete(group, items, fullRoster, campaign.name);
-    setModalData({ portalAthlete, startPostIndex: reelPostIndex >= 0 ? reelPostIndex : 0 });
+    // A Feed + Reel collab opens on Feed; fall to the Reel only when the feed
+    // photos haven't been uploaded, so the pop-up never opens on an empty tab.
+    const feedHasMedia = portalAthlete.posts.some((p) => p.kind === "feed" && p.images.length > 0);
+    setModalData({ portalAthlete, startPostIndex: feedHasMedia || reelPostIndex < 0 ? 0 : reelPostIndex });
   };
   const [topPerformerMode, setTopPerformerMode] = useState<"engagement" | "impressions">("engagement");
   const [activeSection, setActiveSection] = useState<string>("");
