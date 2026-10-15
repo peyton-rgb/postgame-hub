@@ -50,7 +50,8 @@ export type NavIcon =
   | "chart"
   | "dollar"
   | "calendar"
-  | "settings";
+  | "settings"
+  | "shirt";
 
 export type NavLink = {
   name: string;
@@ -115,6 +116,9 @@ export const DASHBOARD_NAV: NavSection[] = [
       { name: "Run of shows", href: "/dashboard?tab=ros", icon: "runofshow" },
       { name: "Campaign instructions", href: "/dashboard/campaign-instructions", icon: "instructions" },
       { name: "Posting instructions", href: "/dashboard/posting-instructions", icon: "instructions", staffOnly: true },
+      // Athlete order forms (static pages under public/order-forms/) and the
+      // Sheet each one writes to. List lives in src/lib/order-forms.ts.
+      { name: "Order forms", href: "/dashboard/order-forms", icon: "shirt", staffOnly: true },
     ],
   },
   {

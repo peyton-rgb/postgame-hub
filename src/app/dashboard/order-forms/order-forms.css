@@ -1,0 +1,32 @@
+/* ============================================================
+   /dashboard/order-forms — the few pieces posting.css doesn't have.
+   Everything else (.pi, .eye, .title, .plate, .st, .btn) comes from
+   ../posting-instructions/posting.css so the pages stay siblings.
+   ============================================================ */
+
+.of .of-list{display:grid;gap:12px;margin-top:22px;max-width:820px}
+.of .of-card{padding:18px;border-radius:16px;background:var(--surface-card);border:1px solid var(--hairline);display:grid;gap:14px}
+.of .of-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.of .of-chips{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Connected / not: a status, so the status roles — never a raw hex. */
+.of .st.of-conn.ok{color:var(--ink-1)}
+.of .st.of-conn.ok i{background:var(--status-ok)}
+.of .st.of-conn.bad{color:var(--status-bad-ink);border-color:rgb(var(--status-bad-rgb) / .45)}
+.of .st.of-conn.bad i{background:var(--status-bad)}
+
+.of .of-link{display:flex;gap:8px;align-items:center}
+.of .of-link input{
+  flex:1;min-width:0;min-height:36px;padding:0 12px;border-radius:12px;
+  background:var(--surface-raised);border:1px solid var(--hairline);color:var(--ink-1);
+  font-family:var(--pi-label);font-size:12px;letter-spacing:.02em;
+}
+.of .of-link input:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+@media(max-width:749px){
+  .of .of-card{padding:14px}
+  .of .of-link{flex-wrap:wrap}
+  .of .of-link input{font-size:16px} /* under 16px, iOS zooms the page on focus */
+  .of .of-link .btn{width:100%}
+  .of .of-actions .btn{flex:1}
+}
