@@ -709,13 +709,10 @@ function collect(){
   return {
     terms:val("terms"), first_name:val("first_name"), last_name:val("last_name"), instagram:val("instagram").replace(/^@?/,"@"),
     school:val("school"), gender:val("gender"), outfit:val("outfit"),
-    // One Product / SKU / Size trio per piece, matching the Sheet's PUFFER · HOODIE · SHIRT · PANTS blocks.
-    // Pieces the outfit doesn't include stay "N/A".
-    ...Object.fromEntries(["puffer","hoodie","shirt","pants"].flatMap(p=>[[p+"_product","N/A"],[p+"_sku","N/A"],[p+"_size","N/A"]])),
-    ...Object.fromEntries((outfitObj()?.items||[]).flatMap(([code,label,cat])=>{
-      const p = CAT[cat].col;
-      return [[p+"_product",label],[p+"_sku","KIC_"+code],[p+"_size",sizes[code]||""]];
-    })),
+    // One size per piece, matching the Sheet's PUFFER · HOODIE · SHIRT · PANTS columns.
+    // Pieces the outfit doesn't include stay "N/A". (Hollister already knows each outfit's SKUs.)
+    puffer_size:"N/A", hoodie_size:"N/A", shirt_size:"N/A", pants_size:"N/A",
+    ...Object.fromEntries((outfitObj()?.items||[]).map(([code,,cat])=>[CAT[cat].col+"_size", sizes[code]||""])),
     zip:val("zip"), city:val("city"), state:val("state"), street,
   };
 }
