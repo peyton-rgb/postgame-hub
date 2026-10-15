@@ -161,7 +161,8 @@ select.big:has(option[value=""]:checked){color:rgba(250,248,245,.36)}
 .face{position:absolute;inset:0;border-radius:22px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .face.back{transform:rotateY(180deg);background:#E9E5DD}
 .board{background:#9AACBA url("images/sky.jpg") center/cover no-repeat;padding:52px 14px 16px;display:grid;gap:6px}
-.board img{width:100%;height:100%;min-height:0;min-width:0;object-fit:contain;display:block;filter:drop-shadow(0 10px 16px rgba(20,35,50,.28))}
+.board .cell{position:relative;min-width:0;min-height:0;overflow:visible}
+.board .cell img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 10px 16px rgba(20,35,50,.28))}
 .board.l3{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"a c" "b c"}
 .board.l4{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"a b" "c d";gap:10px}
 .board .i0{grid-area:a}.board .i1{grid-area:b}.board .i2{grid-area:c}.board .i3{grid-area:d}
@@ -465,8 +466,6 @@ function slideHTML(s,i){
       <div class="q a1">Order received</div>
       <p class="help a2" id="doneMsg">We'll ship your ${esc(CAMPAIGN)} outfit to the address you gave us.</p>
       <div class="doneCard a3"><div class="ph"><img id="doneImg" alt=""><div class="ov"><small>Your outfit</small><b id="doneName"></b></div></div><ul class="prodRows" id="doneSizes"></ul></div>
-      <div class="ship a4"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg></span>
-        <div><small>Look out for your order</small><b>Estimated delivery</b><em id="doneDate"></em></div></div>
       <div class="devbox" id="devbox" hidden><h4>Test mode · the row that would land in the Sheet</h4><pre id="devrow"></pre>
         <div class="row"><button type="button" class="btn ghost" id="dlCsv">Download test rows</button><button type="button" class="btn ghost" id="again">Start over</button></div></div>
     </div></section>`;
@@ -511,7 +510,7 @@ function renderOutfits(){
   carousel.innerHTML = shown.map((o,k)=>{
     const sel = o.sheet===chosen;
     const front = o.items.length
-      ? o.items.map(([code,label],j)=>`<img class="i${j}" src="${SRC("cut",code)}" alt="${esc(label)}" loading="lazy">`).join("")
+      ? o.items.map(([code,label],j)=>`<div class="cell i${j}"><img src="${SRC("cut",code)}" alt="${esc(label)}" loading="lazy"></div>`).join("")
       : `<div class="slot">Product photos<br>coming soon</div>`;
     const models = o.items.filter(([code])=>MODEL_PHOTOS.includes(code));
     const looks = o.looks || [];
@@ -688,7 +687,6 @@ function playDone(){
     $("#doneSizes").innerHTML = o.items.map(([code,label])=>{ const [nm,color]=label.split(" · ");
       return `<li><div><b>${esc(nm)}</b><small>${esc(color||"")}</small></div><span>${esc(sizes[code]||"—")}</span></li>`; }).join("");
   }
-  $("#doneDate").textContent = DELIVERY_WINDOW || "Date coming soon";
   el.classList.remove("play"); void el.offsetWidth; el.classList.add("play");
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const cv = el.querySelector(".confetti"), ctx = cv.getContext("2d"), dpr = devicePixelRatio||1;
