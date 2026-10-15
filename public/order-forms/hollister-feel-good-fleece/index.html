@@ -138,11 +138,11 @@ select.big:has(option[value=""]:checked){color:rgba(250,248,245,.36)}
 .tile:has(input:focus-visible){outline:2px solid var(--pg-off);outline-offset:2px}
 
 /* Sizes — a grid of big square tiles */
-.sizes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.size{position:relative;cursor:pointer;aspect-ratio:1/.86;border-radius:18px;background:var(--raised);border:1px solid var(--raised-b);display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,transform .15s}
+.sizes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.size{position:relative;cursor:pointer;height:clamp(48px,7.5vh,64px);border-radius:14px;background:var(--raised);border:1px solid var(--raised-b);display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,transform .15s}
 .size:active{transform:scale(.97)}
 .size input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.size b{font:400 40px/1 var(--display);color:var(--ink-100);letter-spacing:.02em}
+.size b{font:400 30px/1 var(--display);color:var(--ink-100);letter-spacing:.02em}
 .size.wide{grid-column:1/-1;aspect-ratio:auto;padding:18px}
 .size.wide b{font:700 12px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-90)}
 .size:has(input:checked){background:var(--pg-orange);border-color:var(--pg-orange)}
@@ -160,10 +160,10 @@ select.big:has(option[value=""]:checked){color:rgba(250,248,245,.36)}
 .ofit.flipped .flipper{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;border-radius:22px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .face.back{transform:rotateY(180deg);background:#E9E5DD}
-.board{background:#9AACBA url("images/sky.jpg") center/cover no-repeat;padding:16px 14px 18px;display:grid;gap:4px}
-.board img{width:100%;height:100%;min-height:0;object-fit:contain;display:block;filter:drop-shadow(0 10px 16px rgba(20,35,50,.28))}
-.board.l3{grid-template-columns:1.12fr .88fr;grid-template-rows:1fr 1fr;grid-template-areas:"a c" "b c"}
-.board.l4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;grid-template-areas:"a b" "c d";gap:10px}
+.board{background:#9AACBA url("images/sky.jpg") center/cover no-repeat;padding:52px 14px 16px;display:grid;gap:6px}
+.board img{width:100%;height:100%;min-height:0;min-width:0;object-fit:contain;display:block;filter:drop-shadow(0 10px 16px rgba(20,35,50,.28))}
+.board.l3{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"a c" "b c"}
+.board.l4{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"a b" "c d";gap:10px}
 .board .i0{grid-area:a}.board .i1{grid-area:b}.board .i2{grid-area:c}.board .i3{grid-area:d}
 .board.empty{display:flex;align-items:center;justify-content:center}
 .board .slot{font:700 10px/1.6 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:rgba(7,7,10,.55);text-align:center;border:1px dashed rgba(7,7,10,.3);border-radius:14px;padding:22px 26px}
@@ -179,9 +179,9 @@ select.big:has(option[value=""]:checked){color:rgba(250,248,245,.36)}
 .seg{position:absolute;top:10px;left:14px;right:14px;z-index:4;display:flex;gap:4px;pointer-events:none}
 .seg i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.4)}
 .seg i:first-child,.ofit.flipped .seg i:last-child{background:#fff}.ofit.flipped .seg i:first-child{background:rgba(255,255,255,.4)}
-.tapHint{position:absolute;right:12px;top:12px;z-index:4;pointer-events:none}
-.tapHint span{display:inline-flex;flex-direction:row-reverse;align-items:center;gap:10px;font:400 12px/1 var(--black);color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.55)}
-.swapIc{width:44px;height:44px;padding:11px;box-sizing:border-box;border-radius:50%;background:var(--pg-orange);box-shadow:0 4px 14px rgba(0,0,0,.25);flex:0 0 auto}
+.tapHint{position:absolute;right:10px;top:10px;z-index:4;pointer-events:none}
+.tapHint span{display:inline-flex;flex-direction:row-reverse;align-items:center;gap:8px;padding:4px 4px 4px 12px;border-radius:999px;background:rgba(7,7,10,.62);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(250,248,245,.16);font:400 11px/1 var(--black);color:#fff;white-space:nowrap}
+.swapW{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--pg-orange);flex:0 0 auto}.swapIc{width:16px;height:13px;display:block}
 .swapIc path[stroke]{stroke:#fff}.swapIc path[fill]{fill:#fff}
 .tapHint .h2,.ofit.flipped .tapHint .h1{display:none}.ofit.flipped .tapHint .h2{display:inline-flex}
 .ofit.sel .face.front{box-shadow:inset 0 0 0 3px var(--pg-orange)}
@@ -193,7 +193,7 @@ select.big:has(option[value=""]:checked){color:rgba(250,248,245,.36)}
 .ofit .items{font-size:13px;line-height:1.45;color:var(--ink-68)}
 .pieceline{font:700 14px/1.45 var(--body);color:var(--ink-68);max-width:340px}
 .count em{font-style:normal}
-.psize .pcard{height:clamp(150px,30vh,230px);border-radius:22px;background:#9AACBA url("images/sky.jpg") center/cover;display:flex;align-items:center;justify-content:center;margin-bottom:18px;flex:0 0 auto}
+.psize .pcard{height:clamp(96px,24vh,230px);border-radius:22px;background:#9AACBA url("images/sky.jpg") center/cover;display:flex;align-items:center;justify-content:center;margin-bottom:14px;flex:0 0 auto}
 .psize .pcard img{height:86%;max-width:80%;object-fit:contain;filter:drop-shadow(0 10px 16px rgba(20,35,50,.28))}
 .psize .q{margin-bottom:6px}
 .pname{font-size:15px;line-height:1.4;color:var(--ink-90);margin-bottom:18px}.pname span{color:var(--ink-50)}
@@ -292,7 +292,9 @@ select.big:has(option[value=""]:checked){color:rgba(250,248,245,.36)}
 .devbox .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .devbox .btn{padding:12px 14px;font-size:10px}
 
-@media (max-height:700px){.q{font-size:44px}.big{font-size:42px}.tile b{font-size:34px}.size b{font-size:32px}}
+@media (max-height:700px){.q{font-size:44px}.big{font-size:42px}.tile b{font-size:34px}.size b{font-size:26px}}
+/* Short screens (phone browsers with address + tool bars): keep every size above the button */
+@media (max-height:640px){.psize .pcard{height:clamp(70px,16vh,120px);margin-bottom:10px}.psize .q{font-size:34px}.psize .pname{font-size:13px;margin-bottom:10px}.size{height:44px;border-radius:12px}.size b{font-size:22px}.sizes{gap:6px}}
 @media (prefers-reduced-motion:reduce){.slide{transition:opacity .2s}.shake{animation:none}.carousel{scroll-behavior:auto}}
 </style>
 </head>
@@ -456,7 +458,7 @@ function slideHTML(s,i){
   if (s.type==="review") return `<section class="slide review" data-i="${i}"><div class="body">
       <div class="count">Last step</div><div class="q">Look right?</div>
       <p class="help">Tap a line to change it.</p>
-      <div id="review"></div><div class="err" role="alert"></div></div>${foot("Submit")}</section>`;
+      <div id="review"></div></div><div class="err" role="alert" style="margin:10px 0 0;text-align:center"></div>${foot("Submit")}</section>`;
 
   if (s.type==="done") return `<section class="slide done" data-i="${i}"><canvas class="confetti" aria-hidden="true"></canvas><div class="body">
       <div class="icon"><svg viewBox="0 0 64 64" width="60" height="60" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#D73F09"/><path class="tick" d="M19 33l9 9 17-19" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -524,7 +526,7 @@ function renderOutfits(){
         <div class="face front board ${o.items.length===4?"l4":o.items.length?"l3":"empty"}">${front}
           <span class="selTag">${check("#fff",10)} Your pick</span></div>
         <div class="face back">${back}</div>
-      </div>${(models.length||looks.length)?`<div class="tapHint" aria-hidden="true"><span class="h1"><svg class="swapIc" width="22" height="18" viewBox="0 0 44 36" fill="none" aria-hidden="true"><path d="M6 15C6 9 15 5 27 5h4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M29 0l9 5.5-9 5.5z" fill="#D73F09"/><path d="M38 21c0 6-9 10-21 10h-4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M15 25.5L6 31l9 5.5z" fill="#D73F09"/></svg>Tap to see on model</span><span class="h2"><svg class="swapIc" width="22" height="18" viewBox="0 0 44 36" fill="none" aria-hidden="true"><path d="M6 15C6 9 15 5 27 5h4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M29 0l9 5.5-9 5.5z" fill="#D73F09"/><path d="M38 21c0 6-9 10-21 10h-4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M15 25.5L6 31l9 5.5z" fill="#D73F09"/></svg>Tap to see products</span></div><button type="button" class="tapZone" data-peek aria-label="See this outfit on a model"></button>`:""}</div>
+      </div>${(models.length||looks.length)?`<div class="tapHint" aria-hidden="true"><span class="h1"><i class="swapW"><svg class="swapIc" width="22" height="18" viewBox="0 0 44 36" fill="none" aria-hidden="true"><path d="M6 15C6 9 15 5 27 5h4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M29 0l9 5.5-9 5.5z" fill="#D73F09"/><path d="M38 21c0 6-9 10-21 10h-4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M15 25.5L6 31l9 5.5z" fill="#D73F09"/></svg></i>Tap to see on model</span><span class="h2"><i class="swapW"><svg class="swapIc" width="22" height="18" viewBox="0 0 44 36" fill="none" aria-hidden="true"><path d="M6 15C6 9 15 5 27 5h4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M29 0l9 5.5-9 5.5z" fill="#D73F09"/><path d="M38 21c0 6-9 10-21 10h-4" stroke="#D73F09" stroke-width="4.5" stroke-linecap="round"/><path d="M15 25.5L6 31l9 5.5z" fill="#D73F09"/></svg></i>Tap to see products</span></div><button type="button" class="tapZone" data-peek aria-label="See this outfit on a model"></button>`:""}</div>
       <div class="info">
         <div class="count">${countText(cur)} <span>· Pick your outfit</span></div>
         <h3>${esc(o.name)}</h3>${list}
