@@ -20,6 +20,13 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async rewrites() {
+    return [
+      // Athlete order forms: /order/<slug> serves the static page in
+      // public/order-forms/<slug>/. No login — middleware doesn't match these.
+      { source: "/order/:slug", destination: "/order-forms/:slug/index.html" },
+    ];
+  },
 };
 
 module.exports = nextConfig;
