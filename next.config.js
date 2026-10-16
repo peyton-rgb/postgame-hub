@@ -22,9 +22,9 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      // Athlete order forms: /order/<slug> serves the static page in
-      // public/order-forms/<slug>/. No login — middleware doesn't match these.
-      { source: "/order/:slug", destination: "/order-forms/:slug/index.html" },
+      // Athlete order forms: /order/<slug> serves the shared engine page, which
+      // loads public/order-forms/<slug>/campaign.json. No login — middleware doesn't match these.
+      { source: "/order/:slug", destination: "/order-forms/_engine/index.html" },
     ];
   },
 };
