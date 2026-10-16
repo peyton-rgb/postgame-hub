@@ -1,0 +1,289 @@
+{
+ "slug": "hollister-feel-good-fleece",
+ "status": "live",
+ "brand": {
+  "name": "Hollister",
+  "logo": "https://xqaybwhpgxillpbbqtks.supabase.co/storage/v1/object/public/campaign-media/brand-kits/1775490788077-i5q6wg3l.png",
+  "titleFont": "Antonio"
+ },
+ "campaign": "Feel Good Fleece",
+ "intro": "Pick your outfit, lock in your sizes, tell us where to ship it.",
+ "terms": "By completing this order form you are hereby opting into the Hollister NIL campaign with Postgame and agreeing to the deliverables and payment that was quoted in the text message you received.",
+ "shipWindow": "from now until the end of October",
+ "background": "sky",
+ "audience": {
+  "key": "gender",
+  "label": "Gender",
+  "q": "Gender?",
+  "help": "So we send the right cut.",
+  "options": [
+   "Men's",
+   "Women's"
+  ]
+ },
+ "picks": [
+  {
+   "key": "outfit",
+   "label": "Outfit",
+   "q": "Pick your outfit",
+   "noun": "outfit",
+   "slots": [
+    {
+     "key": "puffer",
+     "label": "Puffer"
+    },
+    {
+     "key": "hoodie",
+     "label": "Hoodie"
+    },
+    {
+     "key": "shirt",
+     "label": "Shirt"
+    },
+    {
+     "key": "pants",
+     "label": "Pants"
+    }
+   ],
+   "options": [
+    {
+     "name": "Espresso & Grey",
+     "audience": "Women's",
+     "sheet": "Espresso & Grey — Girls Contracted Outfit 3",
+     "desc": "Espresso puffer, grey faux-fur zip hoodie, grey sweatpants, white V-neck",
+     "looks": [
+      "images/look/espresso-duo.jpg"
+     ],
+     "products": [
+      {
+       "slot": "hoodie",
+       "name": "Feel Good Faux Fur Trim Zip-Up Hoodie",
+       "color": "Heather Grey",
+       "sku": "KIC_352-6211-00178-112",
+       "image": "images/cut/352-6211-00178-112.webp",
+       "sizes": "apparel",
+       "q": "Hoodie size?"
+      },
+      {
+       "slot": "puffer",
+       "name": "Feel Good Puffer Jacket",
+       "color": "Espresso",
+       "sku": "KIC_344-6033-00080-440",
+       "image": "images/cut/344-6033-00080-440.webp",
+       "sizes": "apparel",
+       "q": "Jacket size?"
+      },
+      {
+       "slot": "pants",
+       "name": "Low-Rise Logo Baggy Sweatpants",
+       "color": "Heather Grey",
+       "sku": "KIC_347-6136-00474-112",
+       "image": "images/cut/347-6136-00474-112.webp",
+       "sizes": "apparel",
+       "q": "Sweatpants size?"
+      },
+      {
+       "slot": "shirt",
+       "name": "Malibu Long-Sleeve V-Neck",
+       "color": "White",
+       "sku": "KIC_357-6223-00057-101",
+       "image": "images/cut/357-6223-00057-101.webp",
+       "sizes": "apparel",
+       "q": "Top size?"
+      }
+     ]
+    },
+    {
+     "name": "Ballet Pink",
+     "audience": "Women's",
+     "sheet": "Ballet Pink — Girls Gifting Option 1",
+     "desc": "Light pink puffer, pink hoodie, pink sweatpants",
+     "looks": [
+      "images/look/pink-duo.jpg"
+     ],
+     "products": [
+      {
+       "slot": "puffer",
+       "name": "Feel Good Puffer Jacket",
+       "color": "Light Pink",
+       "sku": "KIC_344-6037-00083-630",
+       "image": "images/cut/344-6037-00083-630.webp",
+       "sizes": "apparel",
+       "q": "Jacket size?"
+      },
+      {
+       "slot": "hoodie",
+       "name": "Feel Good Oversized Hoodie",
+       "color": "Pink",
+       "sku": "KIC_352-6248-00557-600",
+       "image": "images/cut/352-6248-00557-600.webp",
+       "sizes": "apparel",
+       "q": "Hoodie size?"
+      },
+      {
+       "slot": "pants",
+       "name": "Feel Good Low-Rise Baggy Sweatpants",
+       "color": "Pink",
+       "sku": "KIC_347-6121-00463-675",
+       "image": "images/cut/347-6121-00463-675.webp",
+       "sizes": "apparel",
+       "q": "Sweatpants size?"
+      }
+     ]
+    },
+    {
+     "name": "Black Leopard",
+     "audience": "Women's",
+     "sheet": "Black Leopard — Girls Gifting Option 2",
+     "desc": "Black puffer, leopard hoodie, leopard sweatpants",
+     "looks": [
+      "images/look/black-puffer.jpg"
+     ],
+     "products": [
+      {
+       "slot": "puffer",
+       "name": "Feel Good Puffer Jacket",
+       "color": "Black",
+       "sku": "KIC_344-6033-00080-900",
+       "image": "images/cut/344-6033-00080-900.webp",
+       "sizes": "apparel",
+       "q": "Jacket size?"
+      },
+      {
+       "slot": "hoodie",
+       "name": "Feel Good Oversized Hoodie",
+       "color": "Leopard",
+       "sku": "KIC_352-6257-00480-908",
+       "image": "images/cut/352-6257-00480-908.webp",
+       "sizes": "apparel",
+       "q": "Hoodie size?"
+      },
+      {
+       "slot": "pants",
+       "name": "Low-Rise Baggy Sweatpants",
+       "color": "Leopard Print",
+       "sku": "KIC_347-6087-00411-478",
+       "image": "images/cut/347-6087-00411-478.webp",
+       "sizes": "apparel",
+       "q": "Sweatpants size?"
+      }
+     ]
+    },
+    {
+     "name": "Big Sky Navy",
+     "audience": "Men's",
+     "sheet": "Big Sky Navy — Guys Gifting Option 1",
+     "desc": "Black fur trim hoodie, white crewneck thermal, black ultra baggy sweatpants",
+     "looks": [
+      "images/look/big-sky.jpg"
+     ],
+     "products": [
+      {
+       "slot": "hoodie",
+       "name": "Big Sky Fur Trim Hoodie",
+       "color": "Black",
+       "sku": "KIC_322-26033-00228-901",
+       "image": "images/cut/322-26033-00228-901.webp",
+       "sizes": "apparel",
+       "q": "Hoodie size?"
+      },
+      {
+       "slot": "shirt",
+       "name": "Long-Sleeve Crewneck Thermal",
+       "color": "White",
+       "sku": "KIC_324-6365-00662-178",
+       "image": "images/cut/324-6365-00662-178.webp",
+       "sizes": "apparel",
+       "q": "Top size?"
+      },
+      {
+       "slot": "pants",
+       "name": "Feel Good Ultra Baggy Sweatpants",
+       "color": "Black",
+       "sku": "KIC_334-6135-00387-900",
+       "image": "images/cut/334-6135-00387-900.webp",
+       "sizes": "apparel",
+       "q": "Sweatpants size?"
+      }
+     ]
+    },
+    {
+     "name": "Washed Red",
+     "audience": "Men's",
+     "sheet": "Washed Red — Guys Gifting Option 2",
+     "desc": "Washed red zip hoodie, grey button-through thermal, heather grey ultra baggy sweatpants",
+     "looks": [
+      "images/look/washed-red.jpg"
+     ],
+     "products": [
+      {
+       "slot": "hoodie",
+       "name": "Feel Good Boxy Full-Zip Hoodie",
+       "color": "Washed Red",
+       "sku": "KIC_322-6272-00181-508",
+       "image": "images/cut/322-6272-00181-508.webp",
+       "sizes": "apparel",
+       "q": "Hoodie size?"
+      },
+      {
+       "slot": "shirt",
+       "name": "Button-Through Long-Sleeve Thermal",
+       "color": "Grey",
+       "sku": "KIC_324-6370-00043-113",
+       "image": "images/cut/324-6370-00043-113.webp",
+       "sizes": "apparel",
+       "q": "Top size?"
+      },
+      {
+       "slot": "pants",
+       "name": "Feel Good Ultra Baggy Sweatpants",
+       "color": "Heather Grey",
+       "sku": "KIC_334-26000-00377-122",
+       "image": "images/cut/334-26000-00377-122.webp",
+       "sizes": "apparel",
+       "q": "Sweatpants size?"
+      }
+     ]
+    },
+    {
+     "name": "Mocha & Cream",
+     "audience": "Men's",
+     "sheet": "Mocha & Cream — Guys Gifting Option 3",
+     "desc": "Brown zip hoodie, white graphic thermal, cream ultra baggy sweatpants",
+     "looks": [
+      "images/look/brown-cream.jpg"
+     ],
+     "products": [
+      {
+       "slot": "hoodie",
+       "name": "Feel Good Boxy Full-Zip Hoodie",
+       "color": "Brown",
+       "sku": "KIC_322-6274-00198-420",
+       "image": "images/cut/322-6274-00198-420.webp",
+       "sizes": "apparel",
+       "q": "Hoodie size?"
+      },
+      {
+       "slot": "shirt",
+       "name": "Graphic Long-Sleeve Crewneck Thermal",
+       "color": "White",
+       "sku": "KIC_323-6857-01227-178",
+       "image": "images/cut/323-6857-01227-178.webp",
+       "sizes": "apparel",
+       "q": "Top size?"
+      },
+      {
+       "slot": "pants",
+       "name": "Feel Good Ultra Baggy Sweatpants",
+       "color": "Cream",
+       "sku": "KIC_334-6121-00428-155",
+       "image": "images/cut/334-6121-00428-155.webp",
+       "sizes": "apparel",
+       "q": "Sweatpants size?"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
