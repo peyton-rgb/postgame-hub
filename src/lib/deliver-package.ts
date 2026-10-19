@@ -441,17 +441,17 @@ export async function loadDeliverView(token: string): Promise<DeliverView | null
     loadStories(ids),
   ]);
 
-  // Campaign order first (reel = 1, feed = 2), then the date, so a campaign
-  // with no deliverables list still comes out in a stable, sensible order.
+  // Date first (undated posts last), then campaign order (reel = 1, feed = 2)
+  // to break ties, so posts come out in the order the athlete posts them.
   const orderOf = (key: string | null) => {
     const i = deliverables.findIndex((d) => d.key === key);
     if (i < 0) return Number.MAX_SAFE_INTEGER;
     return deliverables[i].order ?? i + 1;
   };
   const sorted = rows.slice().sort((a, b) => {
-    const byOrder = orderOf(a.deliverable_key) - orderOf(b.deliverable_key);
-    if (byOrder !== 0) return byOrder;
-    return (a.intended_post_date ?? '9999-12-31').localeCompare(b.intended_post_date ?? '9999-12-31');
+    const byDate = (a.intended_post_date ?? '9999-12-31').localeCompare(b.intended_post_date ?? '9999-12-31');
+    if (byDate !== 0) return byDate;
+    return orderOf(a.deliverable_key) - orderOf(b.deliverable_key);
   });
 
   const posts: DeliverPost[] = sorted.map((r) => {
