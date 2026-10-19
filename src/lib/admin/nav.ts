@@ -1,11 +1,16 @@
 // ============================================================
-// /admin navigation — mirrors the CF admin's nav groups, minus the
-// killed sections (NIL Coin, Account Types, Mass Invite download)
-// and the four open-question families (Orders/ShipBob, Coupons,
-// Cards+Templates, Invites — pending Slack answers; not built).
+// /admin navigation — the postgame1.com (Lovable) admin's menu,
+// rebuilt inside the Hub. Same groups, same order, same labels,
+// so the ops team finds everything where they already look.
 //
-// CF one-screen-four-identities (Users / Ambassadors / Admins /
-// Device IDs) collapses into /admin/users with filter presets.
+// Items whose screen hasn't been rebuilt yet carry `soon: true`:
+// they show greyed out in the menu (not a link) so the full map is
+// visible without anyone landing on a dead page. Remove `soon` as
+// each screen ships.
+//
+// A few existing Hub admin screens with no Lovable equivalent
+// (Company dashboard, ACH / 1099, App Viewer, Access, Notifications)
+// are kept, placed in the closest group.
 // ============================================================
 
 import type { AccessLevel } from "@/lib/admin/auth";
@@ -14,6 +19,8 @@ export interface AdminNavItem {
   label: string;
   href: string;
   min?: AccessLevel; // hidden below this level (default staff)
+  /** screen not rebuilt yet — shown greyed out, not clickable */
+  soon?: boolean;
 }
 
 export interface AdminNavGroup {
@@ -26,42 +33,50 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   {
     label: "Dashboard",
     items: [
-      { label: "Admin Dashboard", href: "/admin" },
-      { label: "Company Dashboard", href: "/admin/company" },
+      { label: "Workspace", href: "/admin/workspace", soon: true },
+      { label: "User", href: "/admin" },
+      { label: "Campaign", href: "/admin/dashboard/campaigns", soon: true },
+      { label: "Payments", href: "/admin/dashboard/payments", soon: true },
+      { label: "Instagram", href: "/admin/dashboard/instagram", soon: true },
+      { label: "Company", href: "/admin/company" },
     ],
   },
   {
-    label: "Accounts",
+    label: "Registered Users",
     items: [
-      { label: "Brands", href: "/admin/brands" },
+      { label: "Athletes", href: "/admin/athletes" },
+      { label: "Videographers", href: "/admin/videographers", soon: true },
+      { label: "Agents", href: "/admin/agents" },
+      { label: "Admins", href: "/admin/users" },
+    ],
+  },
+  {
+    label: "", // standalone items in the Lovable menu (no group heading)
+    items: [
+      { label: "Profiles", href: "/admin/profiles" },
+      { label: "Create Audience", href: "/admin/audiences" },
+      { label: "Accounts", href: "/admin/brands" },
       { label: "Campaigns", href: "/admin/campaigns" },
     ],
   },
   {
-    label: "Athletes",
+    label: "Content Management",
     items: [
-      { label: "Users", href: "/admin/users" },
-      { label: "Athlete Search", href: "/admin/athletes" },
-      { label: "Audiences", href: "/admin/audiences" },
-      { label: "Affiliate Links", href: "/admin/affiliate-links" },
+      { label: "Run of shows", href: "/admin/content/run-of-shows", soon: true },
+      { label: "Submission forms", href: "/admin/content/submissions", soon: true },
+      { label: "Review & Edit", href: "/admin/content/review", soon: true },
+      { label: "Posting instructions", href: "/admin/content/posting", soon: true },
+      { label: "Recap builder", href: "/admin/content/recaps", soon: true },
+      { label: "Media library", href: "/admin/content/media", soon: true },
     ],
   },
   {
-    label: "Non-Athletes",
-    items: [
-      { label: "Agents", href: "/admin/agents" },
-      // Absorbs the CF Admins view: external brand/agency access lives here,
-      // staff accounts stay in /admin/users. admin+ only — this screen grants
-      // and revokes access.
-      { label: "Access Management", href: "/admin/access", min: "admin" },
-    ],
-  },
-  {
-    label: "Pay",
+    label: "Payments",
     min: "exec",
     items: [
-      { label: "Pay Athletes", href: "/admin/pay" },
-      { label: "Pay Vendor", href: "/admin/pay/vendor" },
+      { label: "Pay Athletes (App)", href: "/admin/pay" },
+      { label: "Submit Invoices", href: "/admin/pay/vendor" },
+      { label: "Pay Invoices (Bill)", href: "/admin/pay/invoices", soon: true },
       { label: "Affiliate Payments", href: "/admin/pay/affiliate" },
       { label: "Bonus Payments", href: "/admin/pay/bonus" },
       { label: "ACH / Wire / Zelle", href: "/admin/pay/ach" },
@@ -69,28 +84,37 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     ],
   },
   {
-    label: "Profiles",
+    label: "",
+    items: [{ label: "Reports", href: "/admin/reports", soon: true }],
+  },
+  {
+    label: "Feed",
     items: [
-      { label: "Profiles", href: "/admin/profiles" },
-      { label: "Upload Profiles", href: "/admin/profiles/upload" },
+      { label: "Postgame Feed", href: "/admin/feed/postgame", soon: true },
+      { label: "Mentions", href: "/admin/feed/mentions", soon: true },
+      { label: "Messages", href: "/admin/feed/messages", soon: true },
     ],
   },
   {
-    label: "Notifications",
+    label: "Mobile App",
     items: [
-      { label: "Inbox", href: "/admin/notifications/inbox" },
-      { label: "Mass Send", href: "/admin/notifications/send" },
+      { label: "Cards", href: "/admin/mobile-app/cards", soon: true },
+      { label: "App Viewer", href: "/admin/app" },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { label: "Colleges", href: "/admin/colleges" },
+      { label: "Teams", href: "/admin/teams", soon: true },
+      { label: "Instagram", href: "/admin/instagram", soon: true },
+      { label: "Database", href: "/admin/database", soon: true },
+      { label: "Upload", href: "/admin/profiles/upload" },
+      { label: "Tickets", href: "/admin/tickets", soon: true },
       { label: "Notifications", href: "/admin/notifications" },
-      { label: "Unsubscribes", href: "/admin/notifications/unsubscribes" },
+      { label: "Access Management", href: "/admin/access", min: "admin" },
+      { label: "API", href: "/admin/api", min: "admin", soon: true },
     ],
-  },
-  {
-    label: "App",
-    items: [{ label: "App Viewer", href: "/admin/app" }],
-  },
-  {
-    label: "Database",
-    items: [{ label: "Colleges", href: "/admin/colleges" }],
   },
 ];
 
@@ -98,6 +122,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
 export const ADMIN_TABS: AdminNavItem[] = [
   { label: "Home", href: "/admin" },
   { label: "Campaigns", href: "/admin/campaigns" },
-  { label: "Users", href: "/admin/users" },
+  { label: "Athletes", href: "/admin/athletes" },
   { label: "Pay", href: "/admin/pay", min: "exec" },
 ];

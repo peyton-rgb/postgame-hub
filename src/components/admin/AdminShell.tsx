@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import type { AdminNavGroup, AdminNavItem } from "@/lib/admin/nav";
 import type { AccessLevel } from "@/lib/admin/auth";
 
-const RANK: Record<AccessLevel, number> = { exec: 3, admin: 2, staff: 1, athlete: 0 };
+const RANK: Record<AccessLevel, number> = { exec: 3, admin: 2, staff: 1, athlete: 0, brand: 0 };
 
 function visible(min: AccessLevel | undefined, level: AccessLevel): boolean {
   return RANK[level] >= RANK[min ?? "staff"];
@@ -70,13 +70,28 @@ export default function AdminShell({
           </div>
         </div>
         <nav className="flex-1 px-3 pb-6 space-y-5">
-          {groups.map((group) => (
-            <div key={group.label}>
-              <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
-                {group.label}
-              </div>
+          {groups.map((group, gi) => (
+            <div key={group.label || `group-${gi}`}>
+              {group.label && (
+                <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                  {group.label}
+                </div>
+              )}
               <ul>
                 {group.items.map((item) => {
+                  if (item.soon) {
+                    return (
+                      <li key={item.href}>
+                        <span
+                          title="Not rebuilt in the Hub yet"
+                          className="flex items-center justify-between rounded-md px-2 py-1.5 text-[13px] leading-5 text-stone-600 cursor-default"
+                        >
+                          {item.label}
+                          <span className="text-[10px] uppercase tracking-wider text-stone-700">soon</span>
+                        </span>
+                      </li>
+                    );
+                  }
                   const active = isActive(pathname, item.href);
                   return (
                     <li key={item.href}>
@@ -166,21 +181,29 @@ export default function AdminShell({
                 Close
               </button>
             </div>
-            {groups.map((group) => (
-              <div key={group.label} className="pb-4">
-                <div className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
-                  {group.label}
-                </div>
+            {groups.map((group, gi) => (
+              <div key={group.label || `group-${gi}`} className="pb-4">
+                {group.label && (
+                  <div className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                    {group.label}
+                  </div>
+                )}
                 <ul className="grid grid-cols-2 gap-1">
                   {group.items.map((item) => (
                     <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={() => setMoreOpen(false)}
-                        className="block rounded-md px-2 py-2 text-[13px] text-stone-300 bg-stone-900"
-                      >
-                        {item.label}
-                      </Link>
+                      {item.soon ? (
+                        <span className="block rounded-md px-2 py-2 text-[13px] text-stone-600 bg-stone-900/50">
+                          {item.label} · soon
+                        </span>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          onClick={() => setMoreOpen(false)}
+                          className="block rounded-md px-2 py-2 text-[13px] text-stone-300 bg-stone-900"
+                        >
+                          {item.label}
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>
