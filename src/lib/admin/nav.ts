@@ -45,7 +45,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     label: "Registered Users",
     items: [
       { label: "Athletes", href: "/admin/athletes" },
-      { label: "Videographers", href: "/admin/videographers", soon: true },
+      { label: "Videographers", href: "/admin/videographers" },
       { label: "Agents", href: "/admin/agents" },
       { label: "Admins", href: "/admin/users" },
     ],
