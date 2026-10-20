@@ -10,6 +10,8 @@
 
 /* eslint-disable @next/next/no-img-element */
 
+import { brandMarkUrl } from "@/lib/admin/brand-marks";
+
 export interface PortalLinkRow {
   brand_id: string;
   active: boolean | null;
@@ -58,6 +60,8 @@ export function BrandMark({
   name: string | null;
   size?: number;
 }) {
+  // The prototype's brand icon wins over the full logo from the brands row.
+  src = brandMarkUrl(name) ?? src;
   if (src) {
     return (
       <img

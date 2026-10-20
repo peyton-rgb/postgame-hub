@@ -37,6 +37,7 @@ import {
 import ViewAsSelect from "./ViewAsSelect";
 import ViewAsSwitch from "@/components/admin/view-as/ViewAsSwitch";
 import ViewToggle from "@/components/admin/ViewToggle";
+import { brandMarkUrl } from "@/lib/admin/brand-marks";
 import { getListView } from "@/lib/admin/list-view";
 import { loadAthleteOptions, loadBrandOptions } from "@/lib/admin/view-as/queries";
 
@@ -56,7 +57,7 @@ function initials(name: string | null): string {
 
 /** Bare brand mark — the logo file from the brands row, no container. */
 function BrandMark({ row }: { row: WorkspaceRow }) {
-  const logo = brandLogo(row.brand, "light");
+  const logo = brandMarkUrl(row.brand?.name) ?? brandLogo(row.brand, "light");
   if (logo) {
     return <img src={logo} alt={row.brand?.name ?? ""} className="h-[30px] w-[30px] shrink-0 object-contain" />;
   }
