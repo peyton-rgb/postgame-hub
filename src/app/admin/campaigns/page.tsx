@@ -17,6 +17,7 @@ import { PAGE_SIZE, formatDate, pageRange, sanitizeFilterValue } from "@/lib/adm
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
 import ViewToggle from "@/components/admin/ViewToggle";
+import { BrandMark } from "@/components/admin/brand-bits";
 import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ interface Row {
   total_is_selected: number | null;
   date_stamp: string | null;
   created_at: string;
-  brand: { id: string; name: string | null } | null;
+  brand: { id: string; name: string | null; logo_mark_url: string | null; logo_primary_url: string | null; logo_url: string | null } | null;
   manager: { first_name: string | null; last_name: string | null } | null;
   storage: { campaign_folder_url: string | null } | null;
 }
@@ -69,7 +70,7 @@ export default async function AdminCampaignsPage({
     .from("campaigns")
     .select(
       "campaign_id, campaign_name, is_active, total_is_selected, date_stamp, created_at, " +
-        "brand:brands!brand_id(id, name), manager:people!manager_person_id(first_name, last_name), " +
+        "brand:brands!brand_id(id, name, logo_mark_url, logo_primary_url, logo_url), manager:people!manager_person_id(first_name, last_name), " +
         "storage:campaign_storage(campaign_folder_url)"
     );
   let countQuery = supabase.from("campaigns").select("campaign_id", { count: "exact", head: true });
@@ -213,6 +214,12 @@ export default async function AdminCampaignsPage({
                 // opens the campaign. Two links, so no nested anchors.
                 render: (r) => (
                   <span className="inline-flex flex-wrap items-center gap-x-1">
+                    <span className="mr-1.5 inline-flex">
+                      <BrandMark
+                        name={r.brand?.name ?? null}
+                        src={r.brand?.logo_mark_url ?? r.brand?.logo_primary_url ?? r.brand?.logo_url ?? null}
+                      />
+                    </span>
                     {r.brand?.name && (
                       <>
                         <Link
@@ -281,6 +288,12 @@ export default async function AdminCampaignsPage({
               },
             ]}
             mobile={{
+              icon: (r) => (
+                <BrandMark
+                  name={r.brand?.name ?? null}
+                  src={r.brand?.logo_mark_url ?? r.brand?.logo_primary_url ?? r.brand?.logo_url ?? null}
+                />
+              ),
               title: (r) => r.campaign_name || "—",
               href: (r) => `/admin/campaigns/${r.campaign_id}`,
               subtitle: (r) => [r.brand?.name, managerName(r)].filter(Boolean).join(" · ") || null,
