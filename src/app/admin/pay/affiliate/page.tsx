@@ -4,6 +4,6 @@
 import { redirect } from "next/navigation";
 
 export default function AffiliateRedirect({ searchParams }: { searchParams: Record<string, string | undefined> }) {
-  const view = searchParams.tab === "history" ? "&view=history" : searchParams.tab === "upload" ? "&view=upload" : "";
+  const view = searchParams.tab === "history" ? "&sub=history" : searchParams.tab === "upload" ? "&sub=upload" : "";
   redirect(`/admin/pay/bonus-affiliate?tab=affiliate${view}`);
 }
