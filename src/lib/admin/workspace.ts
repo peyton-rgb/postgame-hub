@@ -193,7 +193,14 @@ export async function loadOpenCampaigns(supabase: Db): Promise<OpenCampaigns> {
     .eq("is_active", true)
     .order("campaign_name", { ascending: true, nullsFirst: false })
     .limit(500);
-  if (error) return { ...empty, error: error.message };
+  if (error) {
+    return {
+      ...empty,
+      error: isMissingSchemaError(error)
+        ? "Campaigns arrive with migration 083 (blended admin schema) — written, not applied to this database yet."
+        : error.message,
+    };
+  }
 
   const raw = (data ?? []) as Record<string, unknown>[];
   const first = raw[0] ?? {};

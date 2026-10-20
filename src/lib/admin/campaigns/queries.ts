@@ -10,7 +10,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isMissingSchemaError } from "@/lib/admin/auth";
-import { applyAudienceFilters, buildAudienceFilters } from "@/lib/admin/audience";
+import { applyAudienceFilters, buildAudienceFilters, savedFiltersToParams } from "@/lib/admin/audience";
 import { sanitizeFilterValue } from "@/lib/admin/db";
 import {
   EMPTY_EXTRAS,
@@ -356,16 +356,9 @@ export interface AudiencePane {
 }
 
 function filtersToParams(f: Record<string, unknown>): Record<string, string | undefined> {
-  const s = (k: string) => (typeof f[k] === "string" ? (f[k] as string) : typeof f[k] === "number" ? String(f[k]) : undefined);
-  return {
-    state: s("state"),
-    gender: s("gender"),
-    sport: s("sport"),
-    college: s("college"),
-    min: s("min") ?? s("minFollowers") ?? s("min_followers"),
-    max: s("max") ?? s("maxFollowers") ?? s("max_followers"),
-    rating: s("rating"),
-  };
+  // Pass every saved key through (levels, include, handles, leave-outs…),
+  // not just the original single-value ones.
+  return savedFiltersToParams(f);
 }
 
 export async function loadAudiencePane(
