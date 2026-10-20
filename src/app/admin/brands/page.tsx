@@ -2,9 +2,10 @@
 // /admin/brands — Brands list (the Lovable admin's "Accounts",
 // restyled to the approved Hub prototype). Source: brands.
 //
-// Each row: logo mark + name + industry, account type, campaigns
-// (active / all, from the blended `campaigns` table), portal
-// status, created date. Name opens the brand detail page.
+// Columns match the prototype: Brand · Drive · Active · All campaigns ·
+// Latest campaign · Portal (status + Copy link). Campaign numbers come
+// from the live portal_campaigns view today, and from the blended
+// `campaigns` table once migration 083 is applied.
 //
 // Logos always render from the brand row's logo columns — never
 // typed as text (standing brand rule). Anything that depends on
@@ -21,6 +22,7 @@ import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import ViewToggle from "@/components/admin/ViewToggle";
 import { getListView } from "@/lib/admin/list-view";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import CopyButton from "@/components/admin/CopyButton";
 import { BrandMark, PortalPill, portalState, type PortalLinkRow } from "@/components/admin/brand-bits";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +38,14 @@ interface BrandRow {
   portal_token: string | null;
   logo_primary_url: string | null;
   logo_mark_url: string | null;
+  drive_parent_folder_id: string | null;
+}
+
+interface BrandActivity {
+  active: number;
+  total: number;
+  latestName: string | null;
+  latestDate: string | null;
 }
 
 interface CampaignCount {
@@ -67,7 +77,7 @@ export default async function BrandsPage({
       supabase
         .from("brands")
         .select(
-          "id, admin_brand_id, name, industry, website, archived, created_at, portal_token, logo_primary_url, logo_mark_url"
+          "id, admin_brand_id, name, industry, website, archived, created_at, portal_token, logo_primary_url, logo_mark_url, drive_parent_folder_id"
         )
     )
       .order("name")
@@ -89,7 +99,7 @@ export default async function BrandsPage({
   // ---- Side lookups for the brands on this page (migration 083 shapes). ----
   // Each is a separate safeQuery so a missing table/column shows "—" in its
   // own column instead of sinking the whole list.
-  const [typeRes, campRes, portalRes] = ids.length
+  const [typeRes, campRes, portalRes, activityRes] = ids.length
     ? await Promise.all([
         safeQuery<{ id: string; account_type: { account_type: string | null } | null }[]>(
           () =>
@@ -104,12 +114,36 @@ export default async function BrandsPage({
         safeQuery<PortalLinkRow[]>(() =>
           supabase.from("brand_portal_links").select("brand_id, active").in("brand_id", ids)
         ),
+        // Live today: one row per campaign recap, with lifecycle + created date.
+        safeQuery<{ brand_id: string | null; name: string | null; lifecycle_status: string | null; admin_created_on: string | null }[]>(() =>
+          supabase
+            .from("portal_campaigns")
+            .select("brand_id, name, lifecycle_status, admin_created_on")
+            .in("brand_id", ids)
+            .limit(5000)
+        ),
       ])
     : [
         { data: null, pending: true, error: null },
         { data: null, pending: true, error: null },
         { data: null, pending: true, error: null },
+        { data: null, pending: true, error: null },
       ];
+
+  // Active / all / latest campaign per brand: the blended campaigns table
+  // when it exists (083), otherwise the live portal_campaigns view.
+  const activity = new Map<string, BrandActivity>();
+  for (const c of activityRes.data ?? []) {
+    if (!c.brand_id) continue;
+    const e = activity.get(c.brand_id) ?? { active: 0, total: 0, latestName: null, latestDate: null };
+    e.total += 1;
+    if (c.lifecycle_status === "active") e.active += 1;
+    if (c.admin_created_on && (!e.latestDate || c.admin_created_on > e.latestDate)) {
+      e.latestDate = c.admin_created_on;
+      e.latestName = c.name;
+    } else if (!e.latestName && !e.latestDate) e.latestName = c.name;
+    activity.set(c.brand_id, e);
+  }
 
   const typeById = new Map<string, string | null>();
   for (const t of typeRes.data ?? []) typeById.set(t.id, t.account_type?.account_type ?? null);
@@ -126,23 +160,20 @@ export default async function BrandsPage({
   const portalById = new Map<string, PortalLinkRow>();
   for (const p of portalRes.data ?? []) portalById.set(p.brand_id, p);
 
-  const campaignsCell = (r: BrandRow) => {
-    if (campRes.pending || campRes.error) {
-      return (
-        <span className="text-stone-400" title="Campaign counts arrive with migration 083.">
-          —
-        </span>
-      );
+  const useBlended = !campRes.pending && !campRes.error;
+  const act = (r: BrandRow): BrandActivity | null => {
+    const live = activity.get(r.id) ?? null;
+    if (useBlended) {
+      const c = campaignsById.get(r.id);
+      if (c) return { active: c.active, total: c.total, latestName: live?.latestName ?? null, latestDate: live?.latestDate ?? null };
     }
-    const c = campaignsById.get(r.id) ?? { active: 0, total: 0 };
-    if (c.total === 0) return <span className="text-stone-400">—</span>;
-    return (
-      <span className="tabular-nums" title={`${c.active} active of ${c.total} campaigns`}>
-        <span className="font-medium text-stone-900">{c.active.toLocaleString()}</span>
-        <span className="text-stone-400"> / {c.total.toLocaleString()}</span>
-      </span>
-    );
+    return live;
   };
+  const num = (n: number | undefined) =>
+    n ? <span className="font-medium tabular-nums text-stone-900">{n.toLocaleString()}</span> : <span className="tabular-nums text-stone-400">0</span>;
+  const driveHref = (r: BrandRow) =>
+    r.drive_parent_folder_id ? `https://drive.google.com/drive/folders/${r.drive_parent_folder_id}` : null;
+  const portalHref = (r: BrandRow) => (r.portal_token ? `/portal/${r.portal_token}` : null);
 
   const listParams = { q: q || undefined, archived: showArchived ? "1" : undefined };
   const toggleHref = (() => {
@@ -198,7 +229,7 @@ export default async function BrandsPage({
         rows={rows}
         rowKey={(r) => r.id}
         view={view}
-        cardDetails={["type", "campaigns"]}
+        cardDetails={["active", "total"]}
         emptyLabel={q ? "No brands match." : "No brands yet."}
         columns={[
           {
@@ -206,10 +237,7 @@ export default async function BrandsPage({
             header: "Brand",
             render: (r) => (
               <span className="flex items-center gap-2.5">
-                <BrandMark
-                  name={r.name}
-                  src={r.logo_mark_url ?? r.logo_primary_url ?? null}
-                />
+                <BrandMark name={r.name} src={r.logo_mark_url ?? r.logo_primary_url ?? null} />
                 <span className="min-w-0">
                   <span className="flex items-center gap-2">
                     <NameLink href={`/admin/brands/${r.id}`}>{r.name ?? "—"}</NameLink>
@@ -219,56 +247,81 @@ export default async function BrandsPage({
                       </span>
                     )}
                   </span>
-                  <span className="block truncate text-[12px] text-stone-500">{r.industry ?? "—"}</span>
+                  {(r.industry || typeById.get(r.id)) && (
+                    <span className="block truncate text-[12px] text-stone-500">
+                      {[r.industry, typeById.get(r.id)].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
                 </span>
               </span>
             ),
           },
           {
-            key: "type",
-            header: (
-              <span title={typeRes.pending ? "Account types arrive with migration 083." : undefined}>
-                Type
-              </span>
-            ),
-            secondary: true,
+            key: "drive",
+            header: "Drive",
+            align: "center",
             render: (r) => {
-              const t = typeById.get(r.id);
-              return t ? <span className="text-stone-700">{t}</span> : <span className="text-stone-400">—</span>;
+              const href = driveHref(r);
+              return href ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open the brand's Drive folder"
+                  className="inline-grid h-[22px] w-[22px] place-items-center rounded-[5px] hover:bg-stone-100"
+                >
+                  <img src="/icons/google-drive.png" alt="Drive" className="h-[14px] w-[14px]" />
+                </a>
+              ) : (
+                <span className="text-stone-300" title="No Drive folder linked">—</span>
+              );
             },
           },
+          { key: "active", header: "Active", align: "right", render: (r) => num(act(r)?.active) },
+          { key: "total", header: "All campaigns", align: "right", render: (r) => num(act(r)?.total) },
           {
-            key: "campaigns",
-            header: "Campaigns",
-            align: "right",
-            render: campaignsCell,
+            key: "latest",
+            header: "Latest campaign",
+            render: (r) => {
+              const a = act(r);
+              if (!a?.latestName) return <span className="text-stone-400">No campaigns yet</span>;
+              return (
+                <span className="block min-w-0">
+                  <span className="block max-w-[260px] truncate text-stone-800">{a.latestName}</span>
+                  {a.latestDate && <span className="block text-[12px] text-stone-500">{formatDate(a.latestDate)}</span>}
+                </span>
+              );
+            },
           },
           {
             key: "portal",
             header: "Portal",
-            align: "center",
-            render: (r) => <PortalPill state={portalState(portalById.get(r.id), r.portal_token)} />,
-          },
-          {
-            key: "created",
-            header: "Created",
-            align: "right",
-            secondary: true,
-            render: (r) => <span className="text-stone-500">{formatDate(r.created_at)}</span>,
+            render: (r) => {
+              const href = portalHref(r);
+              const state = portalState(portalById.get(r.id), r.portal_token);
+              return href ? (
+                <span className="inline-flex items-center gap-2">
+                  <PortalPill state={state} />
+                  <CopyButton value={href} label="Copy link" />
+                </span>
+              ) : (
+                <span className="text-stone-400">No portal yet</span>
+              );
+            },
           },
         ]}
         mobile={{
           icon: (r) => <BrandMark name={r.name} src={r.logo_mark_url ?? r.logo_primary_url ?? null} />,
           title: (r) => r.name ?? "—",
           href: (r) => `/admin/brands/${r.id}`,
-          subtitle: (r) => [r.industry, typeById.get(r.id)].filter(Boolean).join(" · ") || null,
+          subtitle: (r) => act(r)?.latestName ?? ([r.industry, typeById.get(r.id)].filter(Boolean).join(" · ") || null),
           strip: (r) => (
             <>
               <PortalPill state={portalState(portalById.get(r.id), r.portal_token)} />
-              <span className="text-stone-500">{campaignsCell(r)} campaigns</span>
+              <span className="text-stone-500">{(act(r)?.total ?? 0).toLocaleString()} campaigns</span>
             </>
           ),
-          figure: (r) => <span className="text-stone-500">{formatDate(r.created_at)}</span>,
+          figure: (r) => <span className="tabular-nums text-stone-900">{(act(r)?.active ?? 0).toLocaleString()} active</span>,
         }}
       />
 
