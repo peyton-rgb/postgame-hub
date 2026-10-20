@@ -77,11 +77,11 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     icon: "folder",
     items: [
       { label: "Submission forms", href: "/admin/content/submissions", icon: "inbox" },
-      { label: "Review & edit", href: "/admin/content/review", icon: "checkbox", soon: true },
-      { label: "Posting instructions", href: "/admin/content/posting", icon: "send", soon: true },
-      { label: "Recap builder", href: "/admin/content/recaps", icon: "bars", soon: true },
-      { label: "Run of shows", href: "/admin/content/run-of-shows", icon: "list", soon: true },
-      { label: "Media library", href: "/admin/content/media", icon: "image", soon: true },
+      { label: "Review & edit", href: "/admin/content/review", icon: "checkbox" },
+      { label: "Posting instructions", href: "/admin/content/posting", icon: "send" },
+      { label: "Recap builder", href: "/admin/content/recaps", icon: "bars" },
+      { label: "Run of shows", href: "/admin/content/run-of-shows", icon: "list" },
+      { label: "Media library", href: "/admin/content/media", icon: "image" },
     ],
   },
   {
