@@ -3,7 +3,7 @@
 // restyled to the approved Hub prototype). Source: brands.
 //
 // Columns match the prototype: Brand · Drive · Active · All campaigns ·
-// Latest campaign · Portal (status + Copy link). Campaign numbers come
+// Portal (status + Copy link). Campaign numbers come
 // from the live portal_campaigns view today, and from the blended
 // `campaigns` table once migration 083 is applied.
 //
@@ -280,20 +280,6 @@ export default async function BrandsPage({
           { key: "active", header: "Active", align: "right", render: (r) => num(act(r)?.active) },
           { key: "total", header: "All campaigns", align: "right", render: (r) => num(act(r)?.total) },
           {
-            key: "latest",
-            header: "Latest campaign",
-            render: (r) => {
-              const a = act(r);
-              if (!a?.latestName) return <span className="text-stone-400">No campaigns yet</span>;
-              return (
-                <span className="block min-w-0">
-                  <span className="block max-w-[260px] truncate text-stone-800">{a.latestName}</span>
-                  {a.latestDate && <span className="block text-[12px] text-stone-500">{formatDate(a.latestDate)}</span>}
-                </span>
-              );
-            },
-          },
-          {
             key: "portal",
             header: "Portal",
             render: (r) => {
@@ -314,7 +300,7 @@ export default async function BrandsPage({
           icon: (r) => <BrandMark name={r.name} src={r.logo_mark_url ?? r.logo_primary_url ?? null} />,
           title: (r) => r.name ?? "—",
           href: (r) => `/admin/brands/${r.id}`,
-          subtitle: (r) => act(r)?.latestName ?? ([r.industry, typeById.get(r.id)].filter(Boolean).join(" · ") || null),
+          subtitle: (r) => [r.industry, typeById.get(r.id)].filter(Boolean).join(" · ") || null,
           strip: (r) => (
             <>
               <PortalPill state={portalState(portalById.get(r.id), r.portal_token)} />
