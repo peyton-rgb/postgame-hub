@@ -23,6 +23,17 @@
 import { sanitizeFilterValue } from "@/lib/admin/db";
 
 export type AthleteLevel = "high_school" | "college" | "pro" | "former";
+/** A list tab: one level, or every level at once. */
+export type AthleteTab = AthleteLevel | "all";
+
+/** Tab order on /admin/athletes (the prototype's LEVELS). */
+export const ATHLETE_TABS: Array<{ key: AthleteTab; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "college", label: "College" },
+  { key: "high_school", label: "High school" },
+  { key: "pro", label: "Pro" },
+  { key: "former", label: "Former & influencers" },
+];
 
 export const ATHLETE_LEVELS: Array<{ key: AthleteLevel; label: string; short: string }> = [
   { key: "high_school", label: "High school", short: "High school" },
@@ -46,9 +57,11 @@ export function applyAthleteBase(query: any) {
   return query.eq("is_archived", false).in("person_type", ["Athlete", "Former Athlete"]);
 }
 
-/** Narrow a `people` query to one level (after applyAthleteBase). */
-export function applyAthleteLevel(query: any, level: AthleteLevel, influencersOnly = false) {
+/** Narrow a `people` query to one level (after applyAthleteBase). "all" leaves it alone. */
+export function applyAthleteLevel(query: any, level: AthleteTab, influencersOnly = false): any {
   switch (level) {
+    case "all":
+      return influencersOnly ? applyAthleteLevel(query, "former", true) : query;
     case "high_school":
       return query.eq("roster_status", HS);
     case "pro":
@@ -112,21 +125,51 @@ export function isInfluencer(row: {
 // ------------------------------------------------------------
 
 export interface AthleteListFilters {
-  level: AthleteLevel;
+  level: AthleteTab;
   influencersOnly: boolean;
   q: string;
   school: string;
   sport: string;
+  /** "yes" = on the Postgame app (a device on file), "no" = not yet */
+  app: "" | "yes" | "no";
+  /** people.gender codes: M · W · N */
+  gender: string;
+  /** two-letter college state */
+  state: string;
+  /** minimum Instagram followers */
+  minFollowers: number | null;
 }
 
+export const GENDER_OPTIONS = [
+  { value: "M", label: "Men" },
+  { value: "W", label: "Women" },
+  { value: "N", label: "Non-binary" },
+];
+
+export const FOLLOWER_FLOORS = [1_000, 5_000, 10_000, 50_000, 100_000];
+
 export function buildAthleteListFilters(sp: Record<string, string | undefined>): AthleteListFilters {
+  const level = sp.level === "all" || isAthleteLevel(sp.level) ? (sp.level as AthleteTab) : "all";
+  const gender = sanitizeFilterValue(sp.gender ?? "");
+  const state = sanitizeFilterValue(sp.state ?? "").toUpperCase();
   return {
-    level: isAthleteLevel(sp.level) ? sp.level : "college",
+    level,
     influencersOnly: sp.influencers === "1",
     q: sanitizeFilterValue(sp.q ?? ""),
     school: sanitizeFilterValue(sp.school ?? ""),
     sport: sanitizeFilterValue(sp.sport ?? ""),
+    app: sp.app === "yes" || sp.app === "no" ? sp.app : "",
+    gender: GENDER_OPTIONS.some((g) => g.value === gender) ? gender : "",
+    state: /^[A-Z]{2}$/.test(state) ? state : "",
+    minFollowers: /^\d+$/.test(sp.min ?? "") ? parseInt(sp.min!, 10) : null,
   };
+}
+
+/** "On the Postgame app" = the ColdFusion user record has a device on file. */
+export function applyAppFilter(query: any, app: "" | "yes" | "no") {
+  if (app === "yes") return query.not("device", "is", null);
+  if (app === "no") return query.is("device", null);
+  return query;
 }
 
 /** Everything except the level (so tab counts can share the toolbar filters). */
@@ -137,6 +180,10 @@ export function applyAthleteToolbar(query: any, f: AthleteListFilters, collegeId
     );
   }
   if (f.sport) query = query.ilike("sport", `%${f.sport}%`);
+  if (f.gender) query = query.eq("gender", f.gender);
+  if (f.state) query = query.eq("college_state", f.state);
+  if (f.minFollowers != null) query = query.gte("instagram_followers", f.minFollowers);
+  query = applyAppFilter(query, f.app);
   if (f.school) {
     const terms = [`college_raw.ilike.%${f.school}%`];
     if (collegeIds.length) terms.push(`college_id.in.(${collegeIds.join(",")})`);

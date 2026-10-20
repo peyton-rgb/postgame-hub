@@ -65,8 +65,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { label: "Athletes", href: "/admin/athletes", icon: "user" },
       { label: "App users", href: "/admin/users", icon: "phone" },
-      { label: "Rosters", href: "/admin/rosters", icon: "school", soon: true },
-      { label: "Invites", href: "/admin/invites", icon: "send", soon: true },
+      { label: "Rosters", href: "/admin/rosters", icon: "school" },
+      { label: "Invites", href: "/admin/invites", icon: "send" },
       { label: "Videographers", href: "/admin/videographers", icon: "video" },
       { label: "Agents", href: "/admin/agents", icon: "handshake" },
       { label: "Audiences", href: "/admin/audiences", icon: "target" },
