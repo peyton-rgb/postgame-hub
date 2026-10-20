@@ -14,13 +14,21 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { loadRunOfShows } from "@/lib/admin/content/queries";
 import { EmptyRows, ErrorNote, PageHeader } from "@/components/admin/ui";
 import { CampCell, CardFoot } from "@/components/admin/ops-bits";
-import { BtnLink, Card, Pill, TableWrap, Td, Th } from "@/components/admin/content/bits";
+import { BtnLink, Card, CardGrid, ListCard, Pill, TableWrap, Td, Th } from "@/components/admin/content/bits";
+import { BrandMark } from "@/components/admin/brand-bits";
 import CopyButton from "@/components/admin/CopyButton";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function RunOfShowsPage() {
+export default async function RunOfShowsPage({
+  searchParams = {},
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   await requireAdmin("staff");
+  const view = getListView("content-run-of-shows", searchParams);
   const { rows, error } = await loadRunOfShows(createServiceSupabase());
   return (
     <div>
@@ -28,9 +36,12 @@ export default async function RunOfShowsPage() {
         title="Run of shows"
         subtitle="Shoot-day plans shared with videographers and athletes."
         actions={
-          <BtnLink href="/dashboard?tab=ros" primary>
-            + New run of show
-          </BtnLink>
+          <>
+            <ViewToggle listKey="content-run-of-shows" view={view} />
+            <BtnLink href="/dashboard?tab=ros" primary>
+              + New run of show
+            </BtnLink>
+          </>
         }
       />
       {error && (
@@ -41,6 +52,39 @@ export default async function RunOfShowsPage() {
       <Card>
         {rows.length === 0 ? (
           <EmptyRows label="No runs of show yet." />
+        ) : view === "cards" ? (
+          <CardGrid>
+            {rows.map((r) => (
+              <ListCard
+                key={r.id}
+                href={`/dashboard/run-of-show/${r.id}`}
+                mark={<BrandMark src={r.logo} name={r.client} />}
+                title={r.name}
+                subtitle={r.client ?? "No brand"}
+                foot={
+                  <>
+                    <span className="min-w-0 truncate text-stone-500">
+                      Next shoot <span className="font-medium text-stone-900">{r.nextShoot ?? "—"}</span>
+                    </span>
+                    {r.slug && (
+                      <CopyButton
+                        value={`/run-of-show/${r.slug}`}
+                        label="Copy link"
+                        className="whitespace-nowrap rounded-md px-2 py-1 text-[12px] font-medium text-stone-600 hover:bg-stone-100"
+                      />
+                    )}
+                  </>
+                }
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  {r.published ? <Pill tone="ok">Live</Pill> : <Pill>Draft</Pill>}
+                  <span className="tabular-nums text-stone-500">
+                    {r.shoots} shoot{r.shoots === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </ListCard>
+            ))}
+          </CardGrid>
         ) : (
           <TableWrap>
             <thead>

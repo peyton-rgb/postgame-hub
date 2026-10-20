@@ -12,17 +12,21 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { listCards, loadWhitelist, type Whitelist } from "@/lib/admin/mobile-app/cards";
 import { PageHeader, PendingMigration } from "@/components/admin/ui";
 import CardsTable from "@/components/admin/mobile-app/CardsTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
 interface CardsPageProps {
   searchParams: {
     result?: string;
+    view?: string;
   };
 }
 
 export default async function MobileAppCardsPage({ searchParams }: CardsPageProps) {
   await requireAdmin("staff");
+  const view = getListView("mobile-app-cards", searchParams);
 
   const supabase = createServiceSupabase();
   const cardsRes = await listCards(supabase);
@@ -43,6 +47,7 @@ export default async function MobileAppCardsPage({ searchParams }: CardsPageProp
         subtitle="Drag the handle to set the order cards appear in the app"
         actions={
           <>
+            <ViewToggle listKey="mobile-app-cards" view={view} />
             <Link
               href="/admin/mobile-app/feed"
               className="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-[13px] font-medium text-stone-700 hover:border-stone-400"
@@ -101,7 +106,7 @@ export default async function MobileAppCardsPage({ searchParams }: CardsPageProp
       )}
 
       {/* Cards list table */}
-      <CardsTable initialCards={cardsRes.rows} whitelists={whitelists} />
+      <CardsTable initialCards={cardsRes.rows} whitelists={whitelists} view={view} />
     </div>
   );
 }

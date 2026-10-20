@@ -162,4 +162,6 @@ export interface MediaTile {
   school: string | null;
   campaignName: string | null;
   brandName: string | null;
+  /** media.created_at — shown in the Rows view */
+  createdAt?: string | null;
 }

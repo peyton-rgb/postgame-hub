@@ -661,6 +661,7 @@ export async function loadMedia(
     thumbnail_url: string | null;
     athlete_id: string | null;
     campaign_id: string | null;
+    created_at: string | null;
   }>;
   const athIds = Array.from(new Set(rows.map((r) => r.athlete_id).filter((x): x is string => !!x)));
   const athMap = new Map<string, { name: string | null; school: string | null }>();
@@ -683,6 +684,7 @@ export async function loadMedia(
       school: ath?.school ?? null,
       campaignName: camp?.name ?? null,
       brandName: brand?.name ?? null,
+      createdAt: r.created_at ?? null,
     };
   });
 

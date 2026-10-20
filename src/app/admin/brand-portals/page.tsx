@@ -18,6 +18,8 @@ import { CardFoot, CardTabs, Toolbar } from "@/components/admin/ops-bits";
 import { BrandMark } from "@/components/admin/brand-bits";
 import { Btn } from "@/components/admin/campaign/bits";
 import NavIcon from "@/components/admin/NavIcon";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,7 @@ export default async function BrandPortalsPage({ searchParams }: { searchParams:
   const tab = searchParams.tab === "all" ? "all" : "live";
   const q = (searchParams.q ?? "").trim().toLowerCase();
   const page = Math.max(1, Number(searchParams.page) || 1);
+  const view = getListView("brand-portals", searchParams);
 
   const { rows, error, usersPending } = await loadPortalBrands();
   const inFlight = rows.filter((r) => r.active > 0);
@@ -65,7 +68,61 @@ export default async function BrandPortalsPage({ searchParams }: { searchParams:
               { href: "/admin/brand-portals?tab=all", label: "All brands", count: rows.length, active: tab === "all" },
             ]}
           />
-          <Toolbar action="/admin/brand-portals" placeholder="Search brands" q={searchParams.q} hidden={{ tab: tab === "all" ? "all" : undefined }} />
+          <Toolbar action="/admin/brand-portals" placeholder="Search brands" q={searchParams.q} hidden={{ tab: tab === "all" ? "all" : undefined }} right={<ViewToggle listKey="brand-portals" view={view} />} />
+          {view === "cards" ? (
+            pageRows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-[13px] text-stone-500">
+                {q ? "No brands match." : tab === "live" ? "No brands have a campaign in flight." : "No brands with campaigns yet."}
+              </div>
+            ) : (
+              <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 xl:grid-cols-3">
+                {pageRows.map((r) => (
+                  <li key={r.id} className="min-w-0">
+                    <div className="flex h-full flex-col gap-3 rounded-[10px] border border-[#E3E5E9] bg-white p-3.5 transition-colors hover:border-stone-300">
+                      <Link href={`/admin/brands/${r.id}`} className="flex flex-col gap-3 text-inherit no-underline">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <BrandMark src={r.logo} name={r.name} />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-stone-900">{r.name}</span>
+                            <span className="block truncate text-[12px] text-stone-500">
+                              {r.latestName ? `Latest: ${r.latestName}` : "No campaigns yet"}
+                              {r.latestDate ? ` · ${shortDate(r.latestDate)}` : ""}
+                            </span>
+                          </span>
+                        </span>
+                        <span className="grid grid-cols-3 gap-2 text-[12px]">
+                          <span>
+                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">Campaigns</span>
+                            <span className="block font-medium tabular-nums text-stone-900">{r.total.toLocaleString("en-US")}</span>
+                          </span>
+                          <span>
+                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">In flight</span>
+                            <span className={"block font-medium tabular-nums " + (r.active ? "text-stone-900" : "text-stone-400")}>{r.active.toLocaleString("en-US")}</span>
+                          </span>
+                          <span>
+                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">Users</span>
+                            <span className={"block font-medium tabular-nums " + (r.users ? "text-stone-900" : "text-stone-400")}>{r.users == null ? "—" : r.users}</span>
+                          </span>
+                        </span>
+                      </Link>
+                      <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-[#E3E5E9] pt-2.5">
+                        <Btn href={`/admin/view-as/brand/${r.id}`} small>
+                          View as brand
+                        </Btn>
+                        <Link
+                          href={`/admin/access?brand=${r.id}`}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                        >
+                          <NavIcon name="send" size={13} />
+                          Invite user
+                        </Link>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-[14px]">
               <thead>
@@ -121,9 +178,10 @@ export default async function BrandPortalsPage({ searchParams }: { searchParams:
               </tbody>
             </table>
           </div>
+          )}
           {total > PAGE && (
             <div className="border-t border-stone-200 px-3">
-              <Paginator page={page} total={total} pageSize={PAGE} basePath="/admin/brand-portals" params={{ tab: tab === "all" ? "all" : undefined, q: searchParams.q }} />
+              <Paginator page={page} total={total} pageSize={PAGE} basePath="/admin/brand-portals" params={{ tab: tab === "all" ? "all" : undefined, q: searchParams.q, view: searchParams.view }} />
             </div>
           )}
           <CardFoot>

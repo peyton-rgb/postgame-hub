@@ -11,6 +11,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { FormListRow, WorkerStatus } from "@/lib/admin/submissions/types";
 import { CampCell } from "@/components/admin/ops-bits";
+import { BrandMark } from "@/components/admin/brand-bits";
+import ViewToggle from "@/components/admin/ViewToggle";
 import { EmptyRows, PendingMigration } from "@/components/admin/ui";
 import { WorkerPill } from "./WorkerPill";
 import { DesktopAppModal } from "./DesktopAppModal";
@@ -20,6 +22,8 @@ interface SubmissionsTableProps {
   pending083: boolean;
   pending087: boolean;
   worker: WorkerStatus;
+  /** Rows (table) or Cards (grid) — from getListView("content-submissions") */
+  view?: "rows" | "cards";
 }
 
 export function SubmissionsTable({
@@ -27,6 +31,7 @@ export function SubmissionsTable({
   pending083,
   pending087,
   worker,
+  view = "rows",
 }: SubmissionsTableProps) {
   const [q, setQ] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("all");
@@ -161,9 +166,82 @@ export function SubmissionsTable({
             <option value="active">Active</option>
             <option value="past">Past</option>
           </select>
+
+          <div className="ml-auto">
+            <ViewToggle listKey="content-submissions" view={view} />
+          </div>
         </div>
 
-        {/* Table content */}
+        {view === "cards" ? (
+          filtered.length === 0 ? (
+            <EmptyRows label={q || selectedBrand !== "all" ? "No campaigns match your search" : "No submission forms found"} />
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 xl:grid-cols-3">
+              {filtered.map((row) => {
+                const campHref = `/admin/content/submissions/${row.campaignId}`;
+                const fullAthleteLink = row.athleteLink ? `postgame1.com${row.athleteLink}` : null;
+                const isReady = !!(row.lucidPath || row.lucidStatus === "ready");
+                return (
+                  <li key={row.campaignId} className="min-w-0">
+                    <div className="flex h-full flex-col gap-3 rounded-[10px] border border-[#E3E5E9] bg-white p-3.5 transition-colors hover:border-stone-300">
+                      <Link href={campHref} className="flex flex-col gap-3 text-inherit no-underline">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <BrandMark src={row.brand?.logo_dark_url ?? row.brand?.logo_primary_url ?? null} name={row.brand?.name ?? null} />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-stone-900">{row.campaignName ?? "Untitled Campaign"}</span>
+                            <span className="block truncate text-[12px] text-stone-500">{row.brand?.name ?? "No brand"}</span>
+                          </span>
+                        </span>
+                        <span className="grid grid-cols-3 gap-2 text-[12px]">
+                          <span>
+                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">Uploaded</span>
+                            <span className="block tabular-nums">
+                              <span className="font-medium text-stone-900">{row.uploaded}</span>
+                              <span className="text-stone-400"> of {row.total}</span>
+                            </span>
+                          </span>
+                          <span>
+                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">Nudge</span>
+                            <span className={"block font-medium tabular-nums " + (row.nudges > 0 ? "text-amber-600" : "text-stone-400")}>{row.nudges}</span>
+                          </span>
+                          <span>
+                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">Videographers</span>
+                            <span className="block tabular-nums text-stone-900">{row.videographers == null ? <span className="text-stone-400">—</span> : row.videographers}</span>
+                          </span>
+                        </span>
+                      </Link>
+                      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#E3E5E9] pt-2.5 text-[12px]">
+                        {isReady ? (
+                          <span className="font-medium text-emerald-600">✓ LucidLink ready</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => showToast("LucidLink folders queued")}
+                            className="font-medium text-[#D73F09] hover:underline"
+                          >
+                            Create folders
+                          </button>
+                        )}
+                        {fullAthleteLink ? (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(`https://${fullAthleteLink}`, "Athlete link")}
+                            className="font-medium text-[#D73F09] hover:underline"
+                            title={fullAthleteLink}
+                          >
+                            Copy athlete link
+                          </button>
+                        ) : (
+                          <span className="text-stone-400">No athlete link</span>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-[13px]">
             <thead>
@@ -286,6 +364,7 @@ export function SubmissionsTable({
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Card Footer */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 bg-stone-50/50 px-4 py-2.5 text-[12px] text-stone-500">

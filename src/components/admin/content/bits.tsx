@@ -158,3 +158,76 @@ export function Crumb({ href, label }: { href: string; label: string }) {
     </Link>
   );
 }
+
+// ---- Cards view (Rows / Cards toggle) ---------------------------------------
+// The card grid every Content list shows when ?view=cards. The top of each
+// card (mark, title, subtitle, middle) is one link to the row's detail page;
+// the foot sits OUTSIDE that link so it can hold its own buttons and links
+// without nesting <a> inside <a>.
+
+export function CardGrid({ children }: { children: React.ReactNode }) {
+  return <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 xl:grid-cols-3">{children}</ul>;
+}
+
+export function ListCard({
+  href,
+  mark,
+  title,
+  subtitle,
+  children,
+  foot,
+}: {
+  href?: string | null;
+  mark?: React.ReactNode;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  /** middle: status pills / key numbers */
+  children?: React.ReactNode;
+  /** bottom: the most useful next action or figure */
+  foot?: React.ReactNode;
+}) {
+  const head = (
+    <>
+      <span className="flex min-w-0 items-center gap-2.5">
+        {mark}
+        <span className="min-w-0">
+          <span className="block truncate font-medium text-stone-900">{title}</span>
+          {subtitle && <span className="block truncate text-[12px] text-stone-500">{subtitle}</span>}
+        </span>
+      </span>
+      {children && <span className="block text-[12px]">{children}</span>}
+    </>
+  );
+  return (
+    <li className="min-w-0">
+      <div className="flex h-full flex-col gap-3 rounded-[10px] border border-[#E3E5E9] bg-white p-3.5 transition-colors hover:border-stone-300">
+        {href ? (
+          <Link href={href} className="flex flex-col gap-3 text-inherit no-underline">
+            {head}
+          </Link>
+        ) : (
+          <div className="flex flex-col gap-3">{head}</div>
+        )}
+        {foot && (
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#E3E5E9] pt-2.5 text-[12px]">
+            {foot}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** A row of small label / value figures inside a card. */
+export function CardStats({ children }: { children: React.ReactNode }) {
+  return <span className="grid grid-cols-3 gap-2">{children}</span>;
+}
+
+export function CardStat({ label, children, muted = false }: { label: string; children: React.ReactNode; muted?: boolean }) {
+  return (
+    <span className="min-w-0">
+      <span className="block text-[11px] uppercase tracking-wide text-stone-400">{label}</span>
+      <span className={"block truncate font-medium tabular-nums " + (muted ? "text-stone-400" : "text-stone-900")}>{children}</span>
+    </span>
+  );
+}
