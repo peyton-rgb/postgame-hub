@@ -18,6 +18,29 @@ import { isMissingSchemaError } from "@/lib/admin/auth";
 import { BRAND_COLUMNS } from "@/lib/admin/campaigns/queries";
 import type { BrandLite, PersonLite } from "@/lib/admin/campaigns/types";
 import { EMPTY_FORM, parseSubmissionForm, type SubmissionFormData } from "./form";
+import {
+  type WorkerStatus,
+  type FormRow,
+  type FormListRow,
+  type FormList,
+  type ReviewLabel,
+  type AthleteUploadRow,
+  type VideographerRow,
+  type AvailableVideographer,
+  type CampaignSubmission,
+} from "./types";
+
+export type {
+  WorkerStatus,
+  FormRow,
+  FormListRow,
+  FormList,
+  ReviewLabel,
+  AthleteUploadRow,
+  VideographerRow,
+  AvailableVideographer,
+  CampaignSubmission,
+};
 
 type Db = SupabaseClient<any, "public", any>;
 
@@ -35,10 +58,7 @@ const norm = (h: string | null | undefined) => (h ?? "").trim().replace(/^@+/, "
 // Worker heartbeat (the office Mac that moves files into LucidLink)
 // ------------------------------------------------------------
 
-export interface WorkerStatus {
-  state: "online" | "offline" | "unknown";
-  lastSeen: string | null;
-}
+
 
 export async function loadWorkerStatus(supabase: Db): Promise<WorkerStatus> {
   try {
@@ -108,22 +128,7 @@ async function loadLegacyBridge(supabase: Db, campaignIds: number[]): Promise<Le
 // Form row (083 base + 087 fields, feature-detected)
 // ------------------------------------------------------------
 
-export interface FormRow {
-  id: string;
-  campaign_id: number;
-  status: string;
-  public_token: string | null;
-  min_photos: number;
-  min_videos: number;
-  max_files_per_athlete: number | null;
-  brief_url: string | null;
-  /** 087 fields; defaults when the migration is unapplied */
-  data: SubmissionFormData;
-  lucidlink_path: string | null;
-  /** true = 087 not applied (the `title` column is absent) */
-  fieldsPending: boolean;
-  updated_at: string | null;
-}
+
 
 function formFromRow(row: Record<string, unknown>): FormRow {
   const fieldsPending = !("title" in row);
@@ -147,31 +152,7 @@ function formFromRow(row: Record<string, unknown>): FormRow {
 // The list
 // ------------------------------------------------------------
 
-export interface FormListRow {
-  campaignId: number;
-  form: FormRow;
-  campaignName: string | null;
-  isActive: boolean | null;
-  brand: BrandLite | null;
-  /** site-relative athlete link, when a live submission_links token exists */
-  athleteLink: string | null;
-  uploaded: number;
-  /** selected athletes on the campaign */
-  total: number;
-  nudges: number;
-  /** null = migration 087 (campaign_videographers) not applied */
-  videographers: number | null;
-  lucidPath: string | null;
-  lucidStatus: string | null;
-}
 
-export interface FormList {
-  pending083: boolean;
-  pending087: boolean;
-  error: string | null;
-  rows: FormListRow[];
-  worker: WorkerStatus;
-}
 
 export async function listSubmissionForms(supabase: Db, opts: { q?: string } = {}): Promise<FormList> {
   const worker = await loadWorkerStatus(supabase);
@@ -220,11 +201,11 @@ export async function listSubmissionForms(supabase: Db, opts: { q?: string } = {
     set.add(norm(s.instagram_handle));
     uploaded.set(s.campaign_id, set);
   }
-  for (const [cid, list] of legacy.uploads) {
+  legacy.uploads.forEach((list, cid) => {
     const set = uploaded.get(cid) ?? new Set<string>();
     for (const u of list) if (u.handle) set.add(u.handle);
     uploaded.set(cid, set);
-  }
+  });
 
   const vgPending = !!vgRes.error && isMissingSchemaError(vgRes.error);
   const vg = new Map<number, number>();
@@ -276,50 +257,7 @@ export async function listCampaignsWithoutForm(supabase: Db): Promise<{ campaign
 // One campaign: athletes, videographers, form
 // ------------------------------------------------------------
 
-export type ReviewLabel = "To review" | "In review" | "Sent back" | "Approved";
 
-export interface AthleteUploadRow {
-  key: string;
-  optInId: number | null;
-  person: PersonLite | null;
-  handle: string | null;
-  photos: number;
-  videos: number;
-  raw: number;
-  lastUpload: string | null;
-  /** files the worker has copied into LucidLink */
-  lucid: "synced" | "partial" | null;
-  review: ReviewLabel | null;
-  viaVideographer: boolean;
-  remindedAt: string | null;
-  /** matched to a profiles row (app account) by Instagram handle */
-  hasApp: boolean;
-}
-
-export interface VideographerRow {
-  id: string;
-  profileId: string;
-  name: string;
-  email: string;
-  accountStatus: string;
-  lucidAccess: string;
-  assignedAt: string;
-}
-
-export interface CampaignSubmission {
-  form: FormRow | null;
-  /** true = content_submission_forms table missing (083) */
-  pending083: boolean;
-  /** true = 087 columns / campaign_videographers missing */
-  pending087: boolean;
-  athletes: { pending: boolean; error: string | null; rows: AthleteUploadRow[] };
-  videographers: { pending: boolean; rows: VideographerRow[]; available: { id: string; full_name: string; email: string; status: string }[] };
-  athleteLink: string | null;
-  lucidPath: string | null;
-  lucidStatus: string | null;
-  filesInLucid: number;
-  worker: WorkerStatus;
-}
 
 function reviewFromStatuses(statuses: string[]): ReviewLabel | null {
   if (statuses.length === 0) return null;
@@ -474,10 +412,10 @@ export async function loadCampaignSubmission(supabase: Db, campaignId: number): 
     const person: PersonLite | null = s.first_name || s.last_name ? ({ id: s.person_id ?? s.id, first_name: s.first_name, last_name: s.last_name, instagram_handle: s.instagram_handle_display ?? s.instagram_handle, instagram_followers: null, college_raw: null, sport: null, agency: null, profilepicurl: null } as PersonLite) : null;
     rows.push(build(`sub-${s.id}`, null, person, handle, null, s, handle ? legacyByHandle.get(handle) ?? [] : []));
   }
-  for (const [handle, list] of legacyByHandle) {
-    if (used.has(`legacy:${handle}`)) continue;
+  legacyByHandle.forEach((list, handle) => {
+    if (used.has(`legacy:${handle}`)) return;
     rows.push(build(`legacy-${handle}`, null, null, handle, null, null, list));
-  }
+  });
   // Uploaded first (newest), then the ones still waiting.
   rows.sort((a, b) => {
     if (!!a.lastUpload !== !!b.lastUpload) return a.lastUpload ? -1 : 1;

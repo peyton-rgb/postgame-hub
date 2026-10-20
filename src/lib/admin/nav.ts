@@ -76,7 +76,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     label: "Content",
     icon: "folder",
     items: [
-      { label: "Submission forms", href: "/admin/content/submissions", icon: "inbox", soon: true },
+      { label: "Submission forms", href: "/admin/content/submissions", icon: "inbox" },
       { label: "Review & edit", href: "/admin/content/review", icon: "checkbox", soon: true },
       { label: "Posting instructions", href: "/admin/content/posting", icon: "send", soon: true },
       { label: "Recap builder", href: "/admin/content/recaps", icon: "bars", soon: true },
