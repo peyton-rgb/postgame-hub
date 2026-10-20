@@ -24,6 +24,9 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, formatDate, pageRange, safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote, PendingMigration, StatTile } from "@/components/admin/ui";
 import AdminTable from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
+import { Avatar } from "@/components/admin/people/bits";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 import { setVideographerStatus } from "./actions";
 import { STATUS_HELP, STATUS_LABEL, VIDEOGRAPHER_STATUSES, type VideographerStatus } from "./statuses";
@@ -83,6 +86,7 @@ export default async function VideographersPage({
 }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("videographers", searchParams);
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const q = sanitizeFilterValue(searchParams.q ?? "");
@@ -117,6 +121,7 @@ export default async function VideographersPage({
       subtitle="Accounts from the desktop app sign-up. Switch an account to “Can upload” once their LucidLink access is set."
       actions={
         <>
+          <ViewToggle listKey="videographers" view={view} />
           <Link href="/desktop" className="rounded-md border border-stone-300 px-3 py-1.5 text-[13px] text-stone-700 hover:bg-stone-50">
             Download page
           </Link>
@@ -179,6 +184,25 @@ export default async function VideographersPage({
     </>
   );
 
+  const statusActions = (r: Row) => (
+              <div className="flex flex-wrap justify-end gap-1">
+                {VIDEOGRAPHER_STATUSES.filter((s) => s !== r.status).map((s) => (
+                  <form action={setVideographerStatus} key={s}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="status" value={s} />
+                    {returnFields}
+                    <ConfirmSubmit
+                      variant={s === "inactive" ? "danger" : s === "can_upload" ? "primary" : "quiet"}
+                      summary={`Set ${r.full_name} to “${STATUS_LABEL[s]}”? ${STATUS_HELP[s]} This is logged with your name.`}
+                      confirmLabel={STATUS_LABEL[s]}
+                    >
+                      {s === "can_upload" ? "Allow uploads" : s === "inactive" ? "Deactivate" : "Back to signed up"}
+                    </ConfirmSubmit>
+                  </form>
+                ))}
+              </div>
+            );
+
   return (
     <div>
       {header}
@@ -240,6 +264,8 @@ export default async function VideographersPage({
       <AdminTable<Row>
         rows={rows}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["city", "gear", "status", "campaigns"]}
         emptyLabel={q || statusFilter ? "No videographers match." : "No videographer accounts yet. Send the download page link to get the first one."}
         columns={[
           {
@@ -291,31 +317,16 @@ export default async function VideographersPage({
           {
             key: "actions",
             header: "",
-            render: (r) => (
-              <div className="flex flex-wrap justify-end gap-1">
-                {VIDEOGRAPHER_STATUSES.filter((s) => s !== r.status).map((s) => (
-                  <form action={setVideographerStatus} key={s}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <input type="hidden" name="status" value={s} />
-                    {returnFields}
-                    <ConfirmSubmit
-                      variant={s === "inactive" ? "danger" : s === "can_upload" ? "primary" : "quiet"}
-                      summary={`Set ${r.full_name} to “${STATUS_LABEL[s]}”? ${STATUS_HELP[s]} This is logged with your name.`}
-                      confirmLabel={STATUS_LABEL[s]}
-                    >
-                      {s === "can_upload" ? "Allow uploads" : s === "inactive" ? "Deactivate" : "Back to signed up"}
-                    </ConfirmSubmit>
-                  </form>
-                ))}
-              </div>
-            ),
+            render: statusActions,
           },
         ]}
         mobile={{
+          icon: view === "cards" ? (r) => <Avatar name={r.full_name} /> : undefined,
           title: (r) => r.full_name,
-          subtitle: (r) => [r.city, r.email].filter(Boolean).join(" · "),
-          figure: (r) => (r.videographer_id ? `${assigned.get(r.videographer_id) ?? 0} campaigns` : ""),
-          strip: (r) => <StatusPill status={r.status} />,
+          subtitle: (r) => (view === "cards" ? r.email : [r.city, r.email].filter(Boolean).join(" · ")),
+          figure: (r) => (view === "cards" ? "" : r.videographer_id ? `${assigned.get(r.videographer_id) ?? 0} campaigns` : ""),
+          // Cards aren't links here, so the status buttons can sit on them.
+          strip: view === "cards" ? statusActions : (r) => <StatusPill status={r.status} />,
         }}
       />
 

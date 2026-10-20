@@ -13,6 +13,8 @@ import { PAGE_SIZE, pageRange } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import { timeAgo } from "@/components/admin/ops-bits";
 import { TabbedCard, btnCls } from "@/components/admin/tools/bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +37,10 @@ export default async function NotificationsListPage({
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
-  const unread = searchParams.view === "unread";
+  // The Unread tab used to be ?view=unread; ?view= now carries Rows / Cards,
+  // so the tab moved to ?show=unread (old links still land on Unread).
+  const unread = searchParams.show === "unread" || searchParams.view === "unread";
+  const view = getListView("notifications", searchParams);
 
   const { from, to } = pageRange(page);
   let list: any = supabase
@@ -56,6 +61,7 @@ export default async function NotificationsListPage({
 
   const actions = (
     <>
+      <ViewToggle listKey="notifications" view={view} />
       <Link href="/admin/notifications/unsubscribes" className={btnCls}>
         Unsubscribes
       </Link>
@@ -82,13 +88,52 @@ export default async function NotificationsListPage({
       <TabbedCard
         tabs={[
           { href: "/admin/notifications", label: "All", active: !unread },
-          { href: "/admin/notifications?view=unread", label: "Unread", count: unreadCount ?? null, active: unread },
+          { href: "/admin/notifications?show=unread", label: "Unread", count: unreadCount ?? null, active: unread },
         ]}
       >
         {rows.length === 0 ? (
           <div className="px-4 py-10 text-center text-[13px] text-stone-500">
             {unread ? "Nothing unread." : "No notifications yet."}
           </div>
+        ) : view === "cards" ? (
+          <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 xl:grid-cols-3">
+            {rows.map((r) => {
+              const to = r.profiles?.full_name ?? r.profiles?.email ?? null;
+              const cls =
+                "flex h-full flex-col gap-3 rounded-[10px] border border-[#E3E5E9] bg-white p-3.5 text-inherit no-underline transition-colors " +
+                (r.link_url ? "hover:border-stone-300" : "");
+              const inner = (
+                <>
+                  <span className="flex min-w-0 items-start gap-2.5">
+                    <span
+                      className={"mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full " + (r.is_read ? "bg-stone-200" : "bg-[#D73F09]")}
+                      title={r.is_read ? "Read" : "Unread"}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-stone-900">{r.title ?? r.notification_type ?? "Notification"}</span>
+                      <span className="block truncate text-[12px] text-stone-500">{to ? `To ${to}` : "No recipient"}</span>
+                    </span>
+                  </span>
+                  {r.message && <span className="line-clamp-3 text-[13px] text-stone-600">{r.message}</span>}
+                  <span className="mt-auto flex items-center justify-between gap-2 border-t border-[#E3E5E9] pt-2.5 text-[12px] text-stone-500">
+                    <span>{r.is_read ? "Read" : "Unread"}{r.notification_type && r.title ? ` · ${r.notification_type}` : ""}</span>
+                    <span className="shrink-0">{timeAgo(r.created_at)}</span>
+                  </span>
+                </>
+              );
+              return (
+                <li key={r.id} className="min-w-0">
+                  {r.link_url ? (
+                    <a href={r.link_url} className={cls}>
+                      {inner}
+                    </a>
+                  ) : (
+                    <div className={cls}>{inner}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         ) : (
           rows.map((r) => {
             const to = r.profiles?.full_name ?? r.profiles?.email ?? null;
@@ -122,7 +167,7 @@ export default async function NotificationsListPage({
             total={count ?? 0}
             pageSize={PAGE_SIZE}
             basePath="/admin/notifications"
-            params={{ view: unread ? "unread" : undefined }}
+            params={{ show: unread ? "unread" : undefined }}
           />
         </div>
       </TabbedCard>

@@ -17,6 +17,8 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, pageRange, safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator } from "@/components/admin/ui";
 import AdminTable from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { Card, Pill } from "@/components/admin/campaign/bits";
 import { TablePending } from "@/components/admin/ops-bits";
 import { CardFoot, LinkBtn, Note, TabStrip, Tiles, Toolbar, fmtCount } from "@/components/admin/people/bits";
@@ -74,6 +76,7 @@ interface RunRow {
 export default async function RostersPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("rosters", searchParams);
   const db = supabase as any; // 091 tables are not in the generated types yet
   const tab: Tab = (TABS.find((t) => t.key === searchParams.tab)?.key ?? "look") as Tab;
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
@@ -119,6 +122,8 @@ export default async function RostersPage({ searchParams }: { searchParams: Reco
       <AdminTable<(typeof rows)[number]>
         rows={rows}
         rowKey={(r) => String(r.id)}
+        view={view}
+        cardDetails={["s", "d", "a"]}
         emptyLabel="No colleges match."
         columns={[
           {
@@ -173,6 +178,8 @@ export default async function RostersPage({ searchParams }: { searchParams: Reco
       <AdminTable<any>
         rows={data ?? []}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["d", "a"]}
         emptyLabel="Nothing needs a look. Every school updated on its own."
         columns={[
           { key: "c", header: "College", render: (r) => <span className="font-medium text-stone-900">{r.colleges?.name ?? "—"}</span> },
@@ -202,6 +209,22 @@ export default async function RostersPage({ searchParams }: { searchParams: Reco
           title: (r) => r.colleges?.name ?? "—",
           subtitle: (r) => r.detail ?? ISSUE_TEXT[r.kind] ?? r.kind,
           figure: (r) => fmtCount(r.athletes_count),
+          strip:
+            view === "cards"
+              ? (r) => (
+                  <>
+                    <LinkBtn href="/admin/profiles/upload" small>
+                      Upload by hand
+                    </LinkBtn>
+                    <form action={resolveRosterIssue}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <button className="rounded-md border border-stone-300 bg-white px-2.5 py-1 text-[12px] font-medium text-stone-700 hover:border-stone-400">
+                        Mark handled
+                      </button>
+                    </form>
+                  </>
+                )
+              : undefined,
         }}
       />
     );
@@ -216,6 +239,8 @@ export default async function RostersPage({ searchParams }: { searchParams: Reco
       <AdminTable<any>
         rows={data ?? []}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["f", "n", "a"]}
         emptyLabel="No hand uploads yet."
         columns={[
           { key: "d", header: "Uploaded", render: (r) => fmtDay(r.created_at) },
@@ -239,6 +264,8 @@ export default async function RostersPage({ searchParams }: { searchParams: Reco
       <AdminTable<any>
         rows={data ?? []}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["k", "d", "f", "t"]}
         emptyLabel={tab === "transfers" ? "No transfers tracked yet." : "No roster changes yet."}
         columns={[
           { key: "d", header: "Date", render: (r) => <span className="text-stone-500">{fmtDay(r.created_at)}</span> },
@@ -276,7 +303,12 @@ export default async function RostersPage({ searchParams }: { searchParams: Reco
       <PageHeader
         title="Rosters"
         subtitle="The athlete list updates itself. Bots check every school's athletics site on a schedule and apply the changes. You only step in when a school needs a look."
-        actions={<LinkBtn href="/admin/profiles/upload">Upload a roster by hand</LinkBtn>}
+        actions={
+          <>
+            <ViewToggle listKey="rosters" view={view} />
+            <LinkBtn href="/admin/profiles/upload">Upload a roster by hand</LinkBtn>
+          </>
+        }
       />
 
       {result && <div className="mb-4 rounded-lg border border-stone-200 bg-white px-4 py-3 text-[13px] text-stone-700">{result}</div>}
