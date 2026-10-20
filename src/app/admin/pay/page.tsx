@@ -27,11 +27,14 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PageHeader } from "@/components/admin/ui";
 import { Card } from "@/components/admin/campaign/bits";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import {
   AthleteCell,
   Btn,
   MobileRow,
   PAY_RESULT_NOTES,
+  PayCard,
   PayTable,
   ResultNote,
   SegLinks,
@@ -74,6 +77,7 @@ export default async function PaymentsOverviewPage({
   const type = TYPES.some((t) => t.key === searchParams.type) ? searchParams.type! : "all";
   const q = (searchParams.q ?? "").slice(0, 80);
   const note = searchParams.result ? PAY_RESULT_NOTES[searchParams.result] : undefined;
+  const view = getListView("pay", searchParams);
 
   const owed = await loadOwed(createServiceSupabase());
   const rows = filterLedger(owed.items, type, q);
@@ -167,6 +171,7 @@ export default async function PaymentsOverviewPage({
           <SegLinks active={type} items={TYPES.map((t) => ({ key: t.key, label: t.label, href: href(t.key) }))} />
           <form action="/admin/pay" method="get" className="flex min-w-0 flex-1 items-center gap-2 md:ml-auto md:max-w-xs md:flex-none">
             {type !== "all" && <input type="hidden" name="type" value={type} />}
+            {searchParams.view && <input type="hidden" name="view" value={view} />}
             <input
               type="search"
               name="q"
@@ -176,11 +181,27 @@ export default async function PaymentsOverviewPage({
               className="w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] text-stone-900"
             />
           </form>
+          <ViewToggle listKey="pay" view={view} />
         </div>
 
         <PayTable<LedgerItem>
           rows={rows}
           rowKey={(i) => i.key}
+          view={view}
+          card={(i) => (
+            <PayCard
+              top={<AthleteCell name={i.who} pic={i.pic} href={i.payoutId ? `/admin/pay/${i.payoutId}` : undefined} />}
+              figure={amountOf(i)}
+              strip={
+                <>
+                  <TypePill type={i.type} />
+                  <span className={i.late ? "font-medium text-status-bad" : ""}>{i.when}</span>
+                </>
+              }
+              details={[{ label: "For", value: i.what || "—" }]}
+              actions={action(i)}
+            />
+          )}
           emptyLabel={q || type !== "all" ? "Nothing owed matches that." : "Nothing is owed right now."}
           columns={[
             { key: "type", header: "Type", render: (i) => <TypePill type={i.type} /> },

@@ -25,6 +25,8 @@ import { PAGE_SIZE, formatMoney, pageRange, sanitizeFilterValue } from "@/lib/ad
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import { Card, fmtShortDate } from "@/components/admin/campaign/bits";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import {
   AthleteCell,
   Btn,
@@ -32,6 +34,7 @@ import {
   CardTabs,
   MethodPill,
   MobileRow,
+  PayCard,
   PayTable,
   ResultNote,
   StatusPill,
@@ -76,6 +79,7 @@ export default async function PayAthletesPage({
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const nowIso = new Date().toISOString();
   const note = searchParams.result ? RESULT_NOTES[searchParams.result] : undefined;
+  const view = getListView("pay-athletes", searchParams);
 
   // Search matches the athlete (name / handle / email). It needs an inner
   // join so rows whose profile doesn't match drop out of the page.
@@ -203,6 +207,7 @@ export default async function PayAthletesPage({
           selects={[{ name: "method", value: method, ariaLabel: "Payment method", options: METHOD_FILTERS.map((m) => ({ value: m.key, label: m.label })) }]}
           right={
             <>
+              <ViewToggle listKey="pay-athletes" view={view} />
               <Btn href="/admin/pay/bonus-affiliate">Pay bonus</Btn>
               <Btn href="/admin/pay/export?scope=all" external>
                 CSV: All payments
@@ -214,6 +219,32 @@ export default async function PayAthletesPage({
         <PayTable<PayoutRow>
           rows={rows}
           rowKey={(r) => r.id}
+          view={view}
+          card={(r) => (
+            <PayCard
+              top={<AthleteCell name={payoutName(r)} handle={r.profiles?.ig_handle} pic={r.profiles?.avatar_url} href={`/admin/pay/${r.id}`} />}
+              figure={amountOf(r)}
+              strip={
+                <>
+                  <StatusPill status={r.status} />
+                  <MethodPill method={r.provider} />
+                  <span>
+                    {tab === "paid" ? "Paid" : tab === "scheduled" ? "Pay date" : "Requested"}{" "}
+                    {fmtShortDate(tab === "paid" ? r.paid_at : tab === "scheduled" ? r.scheduled_for : r.created_at)}
+                  </span>
+                </>
+              }
+              details={[
+                {
+                  label: "Campaign",
+                  value: (
+                    <CampaignCell title={r.campaign?.title ?? null} brandName={r.campaign?.brandName ?? null} brandLogo={r.campaign?.brandLogo ?? null} />
+                  ),
+                },
+              ]}
+              actions={actionsFor(r)}
+            />
+          )}
           emptyLabel={
             q || method !== "all"
               ? "No payouts match that search."

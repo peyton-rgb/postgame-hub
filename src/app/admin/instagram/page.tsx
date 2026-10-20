@@ -16,6 +16,8 @@ import { PageHeader, ErrorNote } from "@/components/admin/ui";
 import { CardFoot, TablePending, Tiles, timeAgo } from "@/components/admin/ops-bits";
 import { Pill, type Tone } from "@/components/admin/campaign/bits";
 import { Dim, SimpleTable, TabbedCard, btnDisabledCls } from "@/components/admin/tools/bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +72,7 @@ export default async function InstagramStatsPage({ searchParams }: { searchParam
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
   const tab = searchParams.tab === "spiders" ? "spiders" : searchParams.tab === "history" ? "history" : "queue";
+  const view = getListView("instagram", searchParams);
 
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const countBy = (status: string, since?: string) =>
@@ -152,6 +155,7 @@ export default async function InstagramStatsPage({ searchParams }: { searchParam
       />
 
       <TabbedCard
+        right={<ViewToggle listKey="instagram" view={view} />}
         tabs={[
           { href: "/admin/instagram", label: "Queue", active: tab === "queue" },
           { href: "/admin/instagram?tab=spiders", label: "Spiders", active: tab === "spiders" },
@@ -169,6 +173,13 @@ export default async function InstagramStatsPage({ searchParams }: { searchParam
                 rows={queueRes.data ?? []}
                 rowKey={(r) => r.id}
                 empty="The queue is empty."
+                view={view}
+                card={(r) => ({
+                  title: `@${r.instagram_username.replace(/^@/, "")}`,
+                  subtitle: `${SOURCE_LABEL[r.source ?? ""] ?? r.source ?? "—"} · queued ${timeAgo(r.requested_at)}`,
+                  strip: statusPill(r),
+                  foot: r.last_error ? <span className="block truncate text-[12px] text-stone-500">{r.last_error.slice(0, 80)}</span> : undefined,
+                })}
                 cols={[
                   { h: "Handle", r: (r) => <span className="font-medium text-stone-900">@{r.instagram_username.replace(/^@/, "")}</span> },
                   { h: "Reason", r: (r) => SOURCE_LABEL[r.source ?? ""] ?? r.source ?? <Dim>—</Dim> },
@@ -193,6 +204,17 @@ export default async function InstagramStatsPage({ searchParams }: { searchParam
               rows={spiderRes.data ?? []}
               rowKey={(r) => r.id}
               empty="No spiders set up."
+              view={view}
+              card={(r) => ({
+                title: r.name,
+                subtitle: r.rule_type,
+                strip: r.enabled ? <Pill tone="ok">On</Pill> : <Pill>Off</Pill>,
+                details: [
+                  { label: "Schedule", value: <code className="text-[12px] text-stone-500">{r.cron_schedule ?? "—"}</code> },
+                  { label: "Queued last run", value: r.last_run_enqueued_count ?? <Dim>—</Dim> },
+                ],
+                foot: <span className="text-[12px] text-stone-500">Ran {timeAgo(r.last_run_at)}</span>,
+              })}
               cols={[
                 { h: "Spider", r: (r) => <span className="font-medium text-stone-900">{r.name}</span> },
                 { h: "Schedule", r: (r) => <code className="text-[12px] text-stone-500">{r.cron_schedule ?? "—"}</code> },
@@ -213,6 +235,15 @@ export default async function InstagramStatsPage({ searchParams }: { searchParam
               rows={histRes.data ?? []}
               rowKey={(r) => r.id}
               empty="No snapshots recorded yet."
+              view={view}
+              card={(r) => ({
+                title: r.instagram_username ? `@${r.instagram_username.replace(/^@/, "")}` : "—",
+                subtitle: `Recorded ${timeAgo(r.recorded_at)}`,
+                details: [
+                  { label: "Followers", value: r.followers != null ? r.followers.toLocaleString() : <Dim>—</Dim> },
+                  { label: "Engagement", value: r.engagement_rate != null ? `${Number(r.engagement_rate).toFixed(2)}%` : <Dim>—</Dim> },
+                ],
+              })}
               cols={[
                 { h: "Handle", r: (r) => (r.instagram_username ? `@${r.instagram_username.replace(/^@/, "")}` : <Dim>—</Dim>) },
                 { h: "Followers", num: true, r: (r) => (r.followers != null ? r.followers.toLocaleString() : <Dim>—</Dim>) },

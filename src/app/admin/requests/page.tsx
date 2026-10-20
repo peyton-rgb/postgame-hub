@@ -14,6 +14,8 @@ import { PageHeader, ErrorNote } from "@/components/admin/ui";
 import { Avatar, CardFoot, TablePending, timeAgo } from "@/components/admin/ops-bits";
 import { Pill } from "@/components/admin/campaign/bits";
 import { Dim, SimpleTable, TabbedCard } from "@/components/admin/tools/bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +72,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Rec
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
   const tab = searchParams.tab === "reports" ? "reports" : "changes";
+  const view = getListView("requests", searchParams);
 
   const [ticketsRes, openCountRes, reportsRes] = await Promise.all([
     tab === "changes"
@@ -110,11 +113,16 @@ export default async function RequestsPage({ searchParams }: { searchParams: Rec
   }
 
   const openCount = openCountRes.pending ? null : (openCountRes.data ?? []).length;
+  const ticketName = (t: TicketRow) =>
+    (t.person_id && names.get(t.person_id)) || (t.instagram_username ? `@${t.instagram_username}` : t.email) || "—";
+  const ticketStatus = (t: TicketRow) =>
+    t.is_approved ? <Pill tone="ok">Approved</Pill> : t.is_denied ? <Pill>Denied</Pill> : <Pill tone="warn">Open</Pill>;
 
   return (
     <div>
       <PageHeader title="Requests" subtitle="Things athletes and brands have asked us to change or look at." />
       <TabbedCard
+        right={<ViewToggle listKey="requests" view={view} />}
         tabs={[
           { href: "/admin/requests", label: "Athlete change requests", count: openCount, active: tab === "changes" },
           { href: "/admin/requests?tab=reports", label: "Reports", active: tab === "reports" },
@@ -131,11 +139,22 @@ export default async function RequestsPage({ searchParams }: { searchParams: Rec
                 rows={ticketsRes.data ?? []}
                 rowKey={(t) => String(t.ticket_id)}
                 empty="No change requests yet."
+                view={view}
+                card={(t) => ({
+                  icon: <Avatar name={ticketName(t)} />,
+                  title: ticketName(t),
+                  subtitle: `Sent ${timeAgo(t.date_stamp ?? t.created_at)}`,
+                  strip: ticketStatus(t),
+                  details: [
+                    { label: "Wants to change", value: changesOf(t).what },
+                    { label: "To", value: changesOf(t).to },
+                  ],
+                })}
                 cols={[
                   {
                     h: "Athlete",
                     r: (t) => {
-                      const n = (t.person_id && names.get(t.person_id)) || (t.instagram_username ? `@${t.instagram_username}` : t.email) || "—";
+                      const n = ticketName(t);
                       return (
                         <div className="flex items-center gap-2.5">
                           <Avatar name={n} />
@@ -149,7 +168,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Rec
                   { h: "Sent", r: (t) => timeAgo(t.date_stamp ?? t.created_at) },
                   {
                     h: "Status",
-                    r: (t) => (t.is_approved ? <Pill tone="ok">Approved</Pill> : t.is_denied ? <Pill>Denied</Pill> : <Pill tone="warn">Open</Pill>),
+                    r: ticketStatus,
                   },
                 ]}
               />
@@ -170,6 +189,16 @@ export default async function RequestsPage({ searchParams }: { searchParams: Rec
               rows={reportsRes.data ?? []}
               rowKey={(r) => String(r.report_id)}
               empty="No reports yet."
+              view={view}
+              card={(r) => ({
+                title: (r.person_id && names.get(r.person_id)) || "Unknown reporter",
+                subtitle: timeAgo(r.date_stamp ?? r.created_at),
+                strip: <Pill>{r.report_type ?? "Other"}</Pill>,
+                details: [
+                  { label: "About", value: r.athlete_profile_id ? `Profile #${r.athlete_profile_id}` : "—" },
+                  { label: "Details", value: r.description ?? "—" },
+                ],
+              })}
               cols={[
                 { h: "Type", r: (r) => <Pill>{r.report_type ?? "Other"}</Pill> },
                 { h: "Reported by", r: (r) => (r.person_id && names.get(r.person_id)) || <Dim>—</Dim> },

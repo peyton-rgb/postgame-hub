@@ -16,6 +16,8 @@ import { CardFoot, Tiles, timeAgo } from "@/components/admin/ops-bits";
 import AutoSubmitSelect from "@/components/admin/AutoSubmitSelect";
 import { Pill, type Tone } from "@/components/admin/campaign/bits";
 import { Dim, HubNote, SimpleTable, TabbedCard } from "@/components/admin/tools/bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +63,7 @@ export default async function AgentsTasksPage({ searchParams }: { searchParams: 
   const supabase = createServiceSupabase();
   const tab = searchParams.tab === "jobs" ? "jobs" : searchParams.tab === "board" ? "board" : "runs";
   const agent = (searchParams.agent ?? "").replace(/[^a-z0-9_]/g, "");
+  const view = getListView("agents", searchParams);
 
   const head = (table: string, f?: (q: any) => any) => {
     let q: any = supabase.from(table).select("id", { count: "exact", head: true });
@@ -109,6 +112,20 @@ export default async function AgentsTasksPage({ searchParams }: { searchParams: 
           rows={rows}
           rowKey={(r) => r.id}
           empty="No runs."
+          view={view}
+          card={(r) => ({
+            title: human(r.agent_name),
+            subtitle: [timeAgo(r.created_at), r.trigger_source ? human(r.trigger_source) : null].filter(Boolean).join(" · "),
+            figure: r.cost_usd != null ? `$${Number(r.cost_usd).toFixed(3)}` : undefined,
+            strip: (
+              <>
+                <Pill tone={RUN_TONE[r.status] ?? "muted"}>{human(r.status)}</Pill>
+                {r.duration_ms != null && <span>{(r.duration_ms / 1000).toFixed(1)}s</span>}
+                {r.model && <span className="truncate">{r.model}</span>}
+              </>
+            ),
+            foot: r.error_message ? <span className="block truncate text-[12px] text-status-bad">{r.error_message.slice(0, 70)}</span> : undefined,
+          })}
           cols={[
             { h: "Agent", r: (r) => <span className="font-medium text-stone-900">{human(r.agent_name)}</span> },
             { h: "Status", r: (r) => <Pill tone={RUN_TONE[r.status] ?? "muted"}>{human(r.status)}</Pill> },
@@ -137,6 +154,14 @@ export default async function AgentsTasksPage({ searchParams }: { searchParams: 
         rows={rows}
         rowKey={(r) => r.id}
         empty="No agent jobs."
+        view={view}
+        card={(r) => ({
+          title: r.title ?? "Untitled",
+          subtitle: `#${r.seq ?? "—"} · created ${timeAgo(r.created_at)}`,
+          strip: <Pill tone={JOB_TONE[r.status ?? ""] ?? "muted"}>{human(r.status)}</Pill>,
+          details: r.blocked_on ? [{ label: "Blocked on", value: r.blocked_on.slice(0, 70) }] : undefined,
+          foot: <span className="text-[12px] text-stone-500">Reported {timeAgo(r.reported_at)}</span>,
+        })}
         cols={[
           { h: "#", r: (r) => <Dim>{r.seq ?? "—"}</Dim> },
           { h: "Job", r: (r) => <span className="font-medium text-stone-900">{r.title ?? "Untitled"}</span> },
@@ -162,6 +187,24 @@ export default async function AgentsTasksPage({ searchParams }: { searchParams: 
         rows={rows}
         rowKey={(r) => r.id}
         empty="The board is empty."
+        view={view}
+        card={(r) => ({
+          title: r.title ?? "Untitled",
+          subtitle: r.is_agent ? "Agent" : "Team",
+          strip: (
+            <>
+              <Pill tone={BOARD_TONE[r.status ?? ""] ?? "muted"}>{human(r.status)}</Pill>
+              <Pill>{r.lane ?? "—"}</Pill>
+            </>
+          ),
+          details: [
+            { label: "Priority", value: r.priority ? human(r.priority) : <Dim>—</Dim> },
+            {
+              label: "Due",
+              value: r.due_date ? new Date(r.due_date + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : <Dim>—</Dim>,
+            },
+          ],
+        })}
         cols={[
           { h: "Task", r: (r) => <span className="font-medium text-stone-900">{r.title ?? "Untitled"}</span> },
           { h: "Lane", r: (r) => <Pill>{r.lane ?? "—"}</Pill> },
@@ -188,6 +231,7 @@ export default async function AgentsTasksPage({ searchParams }: { searchParams: 
         ]}
       />
       <TabbedCard
+        right={<ViewToggle listKey="agents" view={view} />}
         tabs={[
           { href: "/admin/tools/agents", label: "Agent runs", active: tab === "runs" },
           { href: "/admin/tools/agents?tab=jobs", label: "Agent jobs", active: tab === "jobs" },

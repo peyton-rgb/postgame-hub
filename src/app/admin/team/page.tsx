@@ -16,13 +16,16 @@ import { PageHeader, ErrorNote, PendingMigration } from "@/components/admin/ui";
 import { Avatar, CardFoot, Tiles } from "@/components/admin/ops-bits";
 import { Pill } from "@/components/admin/campaign/bits";
 import { Dim, HubNote, SimpleTable, btnCls } from "@/components/admin/tools/bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
 const LEVEL_TONE: Record<string, "ok" | "info" | "muted"> = { Exec: "ok", Admin: "info" };
 
-export default async function TeamPage() {
+export default async function TeamPage({ searchParams = {} }: { searchParams?: Record<string, string | undefined> }) {
   await requireAdmin("staff");
+  const view = getListView("team", searchParams);
   const supabase = createServiceSupabase();
 
   const [staffList, open] = await Promise.all([loadStaff(supabase), loadOpenCampaigns(supabase)]);
@@ -47,9 +50,12 @@ export default async function TeamPage() {
         title="Team"
         subtitle="Postgame staff, their role, and the campaigns they run."
         actions={
-          <Link href="/admin/access" className={btnCls}>
-            Manage access
-          </Link>
+          <>
+            <ViewToggle listKey="team" view={view} />
+            <Link href="/admin/access" className={btnCls}>
+              Manage access
+            </Link>
+          </>
         }
       />
 
@@ -75,6 +81,28 @@ export default async function TeamPage() {
           rows={rows}
           rowKey={(r) => r.s.id}
           empty="No staff accounts found."
+          view={view}
+          card={(r) => ({
+            icon: <Avatar name={r.s.label} />,
+            title: r.s.label,
+            subtitle: r.s.email,
+            strip: <Pill tone={LEVEL_TONE[r.s.level] ?? "muted"}>{r.s.level}</Pill>,
+            details: [
+              { label: "Runs", value: r.runs ? r.runs : <Dim>—</Dim> },
+              { label: "Directs", value: open.hasDirector && r.directs ? r.directs : <Dim>—</Dim> },
+            ],
+            foot:
+              open.hasStage && r.runs > 0 ? (
+                <span className="block truncate text-[12px] text-stone-500">
+                  {Array.from(r.stages.entries())
+                    .map(([k, v]) => `${v} ${k ? stageLabel(k).toLowerCase() : "no stage"}`)
+                    .join(" · ")}
+                </span>
+              ) : (
+                <span className="text-[12px] font-medium text-[#D73F09]">View their workspace</span>
+              ),
+            href: `/admin?as=${r.s.id}`,
+          })}
           cols={[
             {
               h: "Name",

@@ -10,7 +10,8 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { safeQuery } from "@/lib/admin/db";
 import { ErrorNote } from "@/components/admin/ui";
 import { Avatar, TablePending, timeAgo } from "@/components/admin/ops-bits";
-import { SocialShell } from "@/components/admin/tools/social";
+import { SocialShell, socialView } from "@/components/admin/tools/social";
+import { CardGrid, SimpleCard } from "@/components/admin/tools/bits";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,9 @@ interface MsgRow {
   received_at: string | null;
 }
 
-export default async function MessagesPage() {
+export default async function MessagesPage({ searchParams = {} }: { searchParams?: Record<string, string | undefined> }) {
   await requireAdmin("staff");
+  const view = socialView(searchParams, "rows");
   const supabase = createServiceSupabase();
 
   const res = await safeQuery<MsgRow[]>(() =>
@@ -50,6 +52,7 @@ export default async function MessagesPage() {
   return (
     <SocialShell
       current="messages"
+      view={res.pending ? undefined : view}
       foot={res.pending ? null : <span>{list.length} conversations · reply from Instagram for now</span>}
     >
       {res.pending ? (
@@ -60,6 +63,31 @@ export default async function MessagesPage() {
         </div>
       ) : list.length === 0 ? (
         <div className="px-4 py-10 text-center text-[13px] text-stone-500">No messages yet.</div>
+      ) : view === "cards" ? (
+        <CardGrid>
+          {list.map((c) => (
+            <li key={c.other} className="min-w-0">
+              <SimpleCard
+                spec={{
+                  icon: <Avatar name={c.other} />,
+                  title: `IG user ${c.other}`,
+                  subtitle: timeAgo(c.last.sent_at ?? c.last.received_at),
+                  strip: (
+                    <span className="line-clamp-2 text-stone-600">
+                      {c.last.direction === "outgoing" ? "You: " : ""}
+                      {c.last.text ?? "(attachment)"}
+                    </span>
+                  ),
+                  foot: (
+                    <span className="text-[12px] text-stone-500">
+                      {c.count} message{c.count === 1 ? "" : "s"}
+                    </span>
+                  ),
+                }}
+              />
+            </li>
+          ))}
+        </CardGrid>
       ) : (
         <div>
           {list.map((c) => (

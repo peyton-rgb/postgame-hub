@@ -9,7 +9,7 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { ErrorNote } from "@/components/admin/ui";
 import { TablePending, Toolbar, timeAgo } from "@/components/admin/ops-bits";
-import { SocialShell, PostGrid } from "@/components/admin/tools/social";
+import { SocialShell, PostGrid, socialView } from "@/components/admin/tools/social";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +30,7 @@ export default async function PostgameFeedPage({ searchParams }: { searchParams:
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
   const q = sanitizeFilterValue(searchParams.q ?? "");
+  const view = socialView(searchParams, "cards");
 
   const res = await safeQuery<PostRow[]>(() => {
     let query = supabase
@@ -46,6 +47,7 @@ export default async function PostgameFeedPage({ searchParams }: { searchParams:
   return (
     <SocialShell
       current="postgame"
+      view={res.pending ? undefined : view}
       foot={res.pending ? null : <span>Showing {rows.length} newest posts</span>}
     >
       {res.pending ? (
@@ -64,6 +66,7 @@ export default async function PostgameFeedPage({ searchParams }: { searchParams:
           ) : (
             <PostGrid
               ago={timeAgo}
+              view={view}
               posts={rows.map((p) => ({
                 id: p.id,
                 who: p.source === "owned" ? p.ig_username : p.author_username ?? p.ig_username,
