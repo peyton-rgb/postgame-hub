@@ -827,7 +827,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
 
   useEffect(() => {
     supabase
-      .from("campaigns")
+      .from("campaign_recaps")
       .select("id,name,client_name,slug,status,published,visibility,featured,created_at,brands(name)")
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -889,7 +889,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
       patch.visibility = "public";
       nextVisibility = "public";
     }
-    await supabase.from("campaigns").update(patch).eq("id", c.id);
+    await supabase.from("campaign_recaps").update(patch).eq("id", c.id);
     setCampaigns(p => p.map(x => x.id === c.id
       ? { ...x, status: goingLive ? "published" : "draft", published: goingLive, visibility: nextVisibility }
       : x));
@@ -926,7 +926,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
         patch.visibility = "public";
         nextVisibility = "public";
       }
-      await supabase.from("campaigns").update(patch).eq("id", c.id);
+      await supabase.from("campaign_recaps").update(patch).eq("id", c.id);
       // carousel_order lives on the base table only — write it directly.
       await supabase.from("campaign_recaps").update({ carousel_order: nextOrder }).eq("id", c.id);
 
@@ -940,7 +940,7 @@ function CampaignsEditor({ onSaved }: { onSaved: () => void }) {
     } else {
       // Turning OFF: just clear featured. Leave published/visibility/status and
       // carousel_order alone (order is ignored once it's no longer featured).
-      await supabase.from("campaigns").update({ featured: false }).eq("id", c.id);
+      await supabase.from("campaign_recaps").update({ featured: false }).eq("id", c.id);
       setCampaigns(p => p.map(x => x.id === c.id ? { ...x, featured: false } : x));
       setCarousel(prev => prev.filter(r => r.id !== c.id));
     }

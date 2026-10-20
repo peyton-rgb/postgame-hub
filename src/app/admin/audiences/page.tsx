@@ -1,162 +1,199 @@
 // ============================================================
-// /admin/audiences — Audience builder (audiences_edit.cfm rebuilt
-// as a LIVE segment builder).
+// /admin/audiences — saved athlete lists (the prototype's
+// S.audiences): a card per audience with its live size, a plain
+// summary of its filters, and Open / Edit / Download CSV.
 //
-// CF stored 894 saved audiences in its own DB; the Hub has no
-// audiences table yet, so tonight this is the real-time version:
-// build a segment against `people` with CF's filter set, see the
-// live count + a 50-row preview, download the full segment as CSV.
-// Saving named audiences lands with an audiences migration —
-// flagged in the morning report, not faked here.
+// Source: saved_audiences (migration 083). Until 083 is applied the
+// grid says so and points at the builder, which already counts and
+// downloads live. ColdFusion's 894 saved audiences stay in the CF
+// database until the data copy.
 // ============================================================
 
+import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
-import { buildAudienceFilters, applyAudienceFilters } from "@/lib/admin/audience";
-import { PageHeader } from "@/components/admin/ui";
-import AdminTable from "@/components/admin/AdminTable";
-import FilterPopover from "@/components/admin/FilterPopover";
-import { KNOWN_SPORTS } from "@/lib/team-folders";
+import { safeQuery } from "@/lib/admin/db";
+import { PageHeader, ErrorNote } from "@/components/admin/ui";
+import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
+import { TablePending } from "@/components/admin/ops-bits";
+import { LinkBtn, Note } from "@/components/admin/people/bits";
+import { buildAudienceFilters, countAudience, describeAudience, resolveExcludedPeople, savedFiltersToParams } from "@/lib/admin/audience";
+import { fmtDay } from "@/lib/admin/athlete-detail";
 
 export const dynamic = "force-dynamic";
 
-const US_STATES = "AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split(" ");
+interface SavedRow {
+  id: string;
+  name: string;
+  description: string | null;
+  filters: Record<string, unknown> | null;
+  updated_at: string | null;
+}
 
-export default async function AudiencesPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | undefined>;
-}) {
+export default async function AudiencesPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
-  const f = buildAudienceFilters(searchParams);
-  const hasFilters = Object.values(f).some((v) => v !== "" && v != null);
+  const view = getListView("audiences", searchParams);
 
-  const [{ data, error }, { count }] = await Promise.all([
-    applyAudienceFilters(
-      supabase
-        .from("people")
-        .select("id, first_name, last_name, sport, college_raw, college_state, instagram_handle, instagram_followers, rating"),
-      f
-    )
-      .order("instagram_followers", { ascending: false, nullsFirst: false })
-      .limit(50),
-    applyAudienceFilters(supabase.from("people").select("id", { count: "exact", head: true }), f),
-  ]);
+  const saved = await safeQuery<SavedRow[]>(
+    () => (supabase as any).from("saved_audiences").select("id, name, description, filters, updated_at").order("updated_at", { ascending: false }).limit(60)
+  );
 
-  const rows = (data ?? []) as {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    sport: string | null;
-    college_raw: string | null;
-    college_state: string | null;
-    instagram_handle: string | null;
-    instagram_followers: number | null;
-    rating: string | null;
-  }[];
-
-  const exportQs = new URLSearchParams();
-  for (const [k, v] of Object.entries(searchParams)) if (v) exportQs.set(k, v);
+  const rows = saved.data ?? [];
+  const cards = await Promise.all(
+    rows.map(async (a) => {
+      const f = buildAudienceFilters(savedFiltersToParams(a.filters));
+      const excluded = await resolveExcludedPeople(supabase, f);
+      const c = await countAudience(supabase, f, excluded);
+      return { a, size: c.error ? null : c.total, lines: describeAudience(f).slice(0, 3) };
+    })
+  );
 
   return (
     <div>
       <PageHeader
         title="Audiences"
-        subtitle="Live segment builder over the athlete network · CF's 894 saved audiences stay in the CF database (saved audiences land with their migration)"
+        subtitle="Saved athlete lists you can reuse for campaigns and app cards."
         actions={
-          hasFilters ? (
-            <a
-              href={`/admin/audiences/export?${exportQs}`}
-              className="rounded-md bg-[#D73F09] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#B33407]"
-            >
-              Download segment CSV ({(count ?? 0).toLocaleString()})
-            </a>
-          ) : undefined
+          <>
+            <ViewToggle listKey="audiences" view={view} />
+            <LinkBtn href="/admin/audiences/new" primary>
+              + Make an audience
+            </LinkBtn>
+          </>
         }
       />
 
-      <div className="pb-4">
-        <FilterPopover
-          fields={[
-            {
-              key: "state",
-              label: "State",
-              type: "select",
-              options: US_STATES.map((s) => ({ value: s, label: s })),
-            },
-            {
-              key: "gender",
-              label: "Gender",
-              type: "select",
-              options: [
-                { value: "Male", label: "Male" },
-                { value: "Female", label: "Female" },
-              ],
-            },
-            {
-              key: "sport",
-              label: "Sport",
-              type: "select",
-              options: KNOWN_SPORTS.map((s: string) => ({ value: s, label: s })),
-            },
-            { key: "college", label: "College", type: "text" },
-            { key: "min", label: "Followers from", type: "text", placeholder: "e.g. 10000" },
-            { key: "max", label: "Followers to", type: "text", placeholder: "e.g. 100000" },
-            { key: "rating", label: "Minimum rating", type: "text", placeholder: "e.g. A" },
-          ]}
-        />
-      </div>
+      {searchParams.result === "deleted" && (
+        <div className="mb-4 rounded-lg border border-stone-200 bg-white px-4 py-3 text-[13px] text-stone-600">Audience deleted.</div>
+      )}
 
-      <div className="pb-3 text-[13px] text-stone-600">
-        {hasFilters ? (
-          <>
-            Segment size: <span className="font-semibold text-stone-900">{(count ?? 0).toLocaleString()}</span>{" "}
-            active athletes · previewing top 50 by followers
-          </>
-        ) : (
-          "Add filters to build a segment. The count, preview, and CSV update live."
-        )}
-      </div>
-
-      {hasFilters && (
-        <AdminTable
-          rows={rows}
-          rowKey={(r) => r.id}
-          emptyLabel="No athletes match this segment."
+      {saved.error ? (
+        <ErrorNote message={saved.error} />
+      ) : saved.pending ? (
+        <section className="rounded-xl border border-stone-200 bg-white">
+          <TablePending table="saved_audiences" feature="Saved audiences" />
+          <div className="border-t border-stone-200 px-4 py-3 text-center text-[13px] text-stone-600">
+            You can already{" "}
+            <Link href="/admin/audiences/new" className="font-medium text-[#D73F09] hover:underline">
+              build an audience
+            </Link>
+            , see its exact size and download it as a CSV. Saving it for reuse turns on with the migration.
+          </div>
+        </section>
+      ) : cards.length === 0 ? (
+        <section className="rounded-xl border border-stone-200 bg-white px-4 py-10 text-center text-[13px] text-stone-500">
+          No saved audiences yet.{" "}
+          <Link href="/admin/audiences/new" className="font-medium text-[#D73F09] hover:underline">
+            Make the first one
+          </Link>
+          .
+        </section>
+      ) : view === "rows" ? (
+        <AdminTable<(typeof cards)[number]>
+          rows={cards}
+          rowKey={({ a }) => a.id}
           columns={[
             {
               key: "name",
-              header: "Name",
-              render: (r) => (
-                <span className="font-medium text-stone-900">
-                  {[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}
-                </span>
+              header: "Audience",
+              render: ({ a }) => (
+                <div className="min-w-0">
+                  <NameLink href={`/admin/audiences/${a.id}`}>{a.name}</NameLink>
+                  {a.description && <div className="truncate text-[12px] text-stone-500">{a.description}</div>}
+                </div>
               ),
             },
-            { key: "sport", header: "Sport", render: (r) => r.sport ?? "—" },
-            { key: "college", header: "College", render: (r) => r.college_raw ?? "—" },
-            { key: "state", header: "State", secondary: true, render: (r) => r.college_state ?? "—" },
             {
-              key: "ig",
-              header: "IG",
-              render: (r) => (r.instagram_handle ? `@${r.instagram_handle.replace(/^@/, "")}` : "—"),
-            },
-            {
-              key: "followers",
-              header: "Followers",
+              key: "size",
+              header: "Athletes",
               align: "right",
-              render: (r) => r.instagram_followers?.toLocaleString() ?? "—",
+              render: ({ size }) => (size == null ? "—" : size.toLocaleString("en-US")),
             },
-            { key: "rating", header: "Rating", align: "center", render: (r) => r.rating ?? "—" },
+            {
+              key: "filters",
+              header: "Filters",
+              secondary: true,
+              render: ({ lines }) =>
+                lines.length === 0 ? (
+                  <span className="text-stone-400">Every active college athlete</span>
+                ) : (
+                  <span className="text-[12px] text-stone-600">
+                    {lines.map((l, i) => (
+                      <span key={l.k}>
+                        {i > 0 && " · "}
+                        <span className="text-stone-400">{l.k}:</span> {l.v}
+                      </span>
+                    ))}
+                  </span>
+                ),
+            },
+            { key: "updated", header: "Updated", render: ({ a }) => fmtDay(a.updated_at) },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: ({ a }) => (
+                <div className="flex justify-end gap-1.5">
+                  <LinkBtn href={`/admin/audiences/new?id=${a.id}`} small>
+                    Edit
+                  </LinkBtn>
+                  <LinkBtn href={`/admin/audiences/export?id=${a.id}`} small external>
+                    Download CSV
+                  </LinkBtn>
+                </div>
+              ),
+            },
           ]}
           mobile={{
-            title: (r) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "—",
-            subtitle: (r) => [r.college_raw, r.sport].filter(Boolean).join(" · "),
-            figure: (r) => r.instagram_followers?.toLocaleString() ?? "",
+            title: ({ a }) => a.name,
+            href: ({ a }) => `/admin/audiences/${a.id}`,
+            subtitle: ({ a }) => `Updated ${fmtDay(a.updated_at)}`,
+            figure: ({ size }) => (size == null ? "—" : size.toLocaleString("en-US")),
           }}
         />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map(({ a, size, lines }) => (
+            <section key={a.id} className="flex flex-col rounded-xl border border-stone-200 bg-white p-4">
+              <Link href={`/admin/audiences/${a.id}`} className="font-semibold text-stone-900 hover:underline">
+                {a.name}
+              </Link>
+              <div className="mt-0.5 text-[12px] text-stone-500">Updated {fmtDay(a.updated_at)}</div>
+              <div className="mt-3">
+                <div className="text-2xl font-semibold tabular-nums text-stone-900">{size == null ? "—" : size.toLocaleString("en-US")}</div>
+                <div className="text-[12px] text-stone-500">Athletes</div>
+              </div>
+              <div className="mt-3 grid flex-1 gap-0.5 text-[12px] text-stone-600">
+                {lines.length === 0 ? (
+                  <span className="text-stone-400">Every active college athlete</span>
+                ) : (
+                  lines.map((l) => (
+                    <span key={l.k} className="truncate">
+                      <span className="text-stone-400">{l.k}:</span> {l.v}
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                <LinkBtn href={`/admin/audiences/new?id=${a.id}`} small>
+                  Edit
+                </LinkBtn>
+                <LinkBtn href={`/admin/audiences/export?id=${a.id}`} small external>
+                  Download CSV
+                </LinkBtn>
+              </div>
+            </section>
+          ))}
+        </div>
       )}
+
+      <Note>
+        Audiences stay live: new roster athletes who match are added automatically, and anyone archived drops off. ColdFusion&apos;s
+        894 saved audiences come over with the data copy.
+      </Note>
     </div>
   );
 }

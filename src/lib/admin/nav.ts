@@ -1,11 +1,20 @@
 // ============================================================
-// /admin navigation — mirrors the CF admin's nav groups, minus the
-// killed sections (NIL Coin, Account Types, Mass Invite download)
-// and the four open-question families (Orders/ShipBob, Coupons,
-// Cards+Templates, Invites — pending Slack answers; not built).
+// /admin navigation — the approved Hub admin prototype's menu
+// (hub-admin-prototype NAV), in the same groups, order and labels.
 //
-// CF one-screen-four-identities (Users / Ambassadors / Admins /
-// Device IDs) collapses into /admin/users with filter presets.
+// Two top-level links (Workspace, Overview), then collapsible groups.
+// Every entry carries an `icon` key that AdminShell renders from its
+// inline SVG set (src/components/admin/NavIcon.tsx).
+//
+// Items whose screen hasn't been built yet carry `soon: true`: they
+// show greyed out in the menu (not a link) so the full map is visible
+// without anyone landing on a dead page. Flip `soon` off (and the href
+// to the canonical route) as each screen ships.
+//
+// Where a canonical route is not built yet but the Hub already has an
+// equivalent page, the item points at the existing page so nothing
+// that works today becomes unreachable. Those are marked "(today:)"
+// in the comments below.
 // ============================================================
 
 import type { AccessLevel } from "@/lib/admin/auth";
@@ -13,91 +22,136 @@ import type { AccessLevel } from "@/lib/admin/auth";
 export interface AdminNavItem {
   label: string;
   href: string;
+  /** key into the NavIcon set */
+  icon: string;
   min?: AccessLevel; // hidden below this level (default staff)
+  /** screen not built yet — shown greyed out, not clickable */
+  soon?: boolean;
 }
 
 export interface AdminNavGroup {
+  /** group heading; empty string = top-level links with no heading */
   label: string;
+  icon: string;
   items: AdminNavItem[];
   min?: AccessLevel;
+  /** small "New" tag next to the heading */
+  isNew?: boolean;
+  /** Workspace badge: count of open campaigns (filled in by the layout) */
+  badgeKey?: "openCampaigns";
 }
 
 export const ADMIN_NAV: AdminNavGroup[] = [
   {
-    label: "Dashboard",
+    label: "",
+    icon: "",
     items: [
-      { label: "Admin Dashboard", href: "/admin" },
-      { label: "Company Dashboard", href: "/admin/company" },
+      { label: "Workspace", href: "/admin", icon: "home" },
+      { label: "Overview", href: "/admin/overview", icon: "chart" },
     ],
   },
   {
-    label: "Accounts",
+    label: "Brands",
+    icon: "building",
     items: [
-      { label: "Brands", href: "/admin/brands" },
-      { label: "Campaigns", href: "/admin/campaigns" },
+      { label: "All brands", href: "/admin/brands", icon: "building" },
+      { label: "Campaigns", href: "/admin/campaigns", icon: "mega" },
+      { label: "Brand portals", href: "/admin/brand-portals", icon: "portal" },
     ],
   },
   {
-    label: "Athletes",
+    label: "People",
+    icon: "users",
     items: [
-      { label: "Users", href: "/admin/users" },
-      { label: "Athlete Search", href: "/admin/athletes" },
-      { label: "Audiences", href: "/admin/audiences" },
-      { label: "Affiliate Links", href: "/admin/affiliate-links" },
+      { label: "Athletes", href: "/admin/athletes", icon: "user" },
+      { label: "App users", href: "/admin/users", icon: "phone" },
+      { label: "Rosters", href: "/admin/rosters", icon: "school" },
+      { label: "Invites", href: "/admin/invites", icon: "send" },
+      { label: "Videographers", href: "/admin/videographers", icon: "video" },
+      { label: "Agents", href: "/admin/agents", icon: "handshake" },
+      { label: "Audiences", href: "/admin/audiences", icon: "target" },
     ],
   },
   {
-    label: "Non-Athletes",
+    label: "Content",
+    icon: "folder",
     items: [
-      { label: "Agents", href: "/admin/agents" },
-      // Absorbs the CF Admins view: external brand/agency access lives here,
-      // staff accounts stay in /admin/users. admin+ only — this screen grants
-      // and revokes access.
-      { label: "Access Management", href: "/admin/access", min: "admin" },
+      { label: "Submission forms", href: "/admin/content/submissions", icon: "inbox" },
+      { label: "Review & edit", href: "/admin/content/review", icon: "checkbox" },
+      { label: "Posting instructions", href: "/admin/content/posting", icon: "send" },
+      { label: "Recap builder", href: "/admin/content/recaps", icon: "bars" },
+      { label: "Run of shows", href: "/admin/content/run-of-shows", icon: "list" },
+      { label: "Media library", href: "/admin/content/media", icon: "image" },
     ],
   },
   {
-    label: "Pay",
+    label: "Payments",
+    icon: "dollar",
     min: "exec",
     items: [
-      { label: "Pay Athletes", href: "/admin/pay" },
-      { label: "Pay Vendor", href: "/admin/pay/vendor" },
-      { label: "Affiliate Payments", href: "/admin/pay/affiliate" },
-      { label: "Bonus Payments", href: "/admin/pay/bonus" },
-      { label: "ACH / Wire / Zelle", href: "/admin/pay/ach" },
-      { label: "1099 Report", href: "/admin/pay/1099" },
+      // Old routes (/admin/pay/vendor, /bonus, /affiliate, /1099, /ach) redirect to these.
+      { label: "Payments overview", href: "/admin/pay", icon: "pie" },
+      { label: "Pay athletes (app)", href: "/admin/pay/athletes", icon: "card" },
+      { label: "Invoices", href: "/admin/pay/invoices", icon: "receipt" },
+      { label: "Bonuses & affiliate", href: "/admin/pay/bonus-affiliate", icon: "gift" },
+      { label: "History & 1099", href: "/admin/pay/history", icon: "history" },
     ],
   },
   {
-    label: "Profiles",
+    label: "Social",
+    icon: "at",
     items: [
-      { label: "Profiles", href: "/admin/profiles" },
-      { label: "Upload Profiles", href: "/admin/profiles/upload" },
+      { label: "Postgame feed", href: "/admin/feed/postgame", icon: "news" },
+      { label: "Mentions", href: "/admin/feed/mentions", icon: "at" },
+      { label: "Messages", href: "/admin/feed/messages", icon: "chat" },
     ],
   },
   {
-    label: "Notifications",
+    label: "Mobile app",
+    icon: "phone",
     items: [
-      { label: "Inbox", href: "/admin/notifications/inbox" },
-      { label: "Mass Send", href: "/admin/notifications/send" },
-      { label: "Notifications", href: "/admin/notifications" },
-      { label: "Unsubscribes", href: "/admin/notifications/unsubscribes" },
+      { label: "Cards", href: "/admin/mobile-app/cards", icon: "grid" },
+      { label: "Feed preview", href: "/admin/mobile-app/feed", icon: "phone" },
     ],
   },
   {
-    label: "App",
-    items: [{ label: "App Viewer", href: "/admin/app" }],
+    label: "Hub tools",
+    icon: "spark",
+    isNew: true,
+    items: [
+      // These are the existing Hub dashboard tools until they move under /admin.
+      { label: "Website & deal tracker", href: "/dashboard/website", icon: "globe" },
+      { label: "Pitch pages", href: "/dashboard/pitches", icon: "present" },
+      { label: "Concepts & inspo", href: "/dashboard/inspo", icon: "bulb" },
+      { label: "Agents & tasks", href: "/admin/tools/agents", icon: "bot" },
+    ],
   },
   {
-    label: "Database",
-    items: [{ label: "Colleges", href: "/admin/colleges" }],
+    label: "Admin",
+    icon: "shield",
+    items: [
+      { label: "Requests", href: "/admin/requests", icon: "ticket" },
+      { label: "Team", href: "/admin/team", icon: "users" },
+      { label: "Roles & permissions", href: "/admin/roles", icon: "key" },
+      { label: "Access", href: "/admin/access", icon: "shield", min: "admin" },
+      { label: "Schools & teams", href: "/admin/schools", icon: "school" },
+      { label: "Data tools", href: "/admin/data-tools", icon: "db" },
+      { label: "Instagram stats", href: "/admin/instagram", icon: "insta" },
+      { label: "Notifications", href: "/admin/notifications", icon: "bell" },
+      { label: "Settings", href: "/admin/settings", icon: "cog" },
+    ],
   },
+];
+
+/** Sidebar footer links (Settings · Log out). Log out is handled by the shell. */
+export const ADMIN_FOOT: AdminNavItem[] = [
+  { label: "Settings", href: "/admin/settings", icon: "cog" },
 ];
 
 // Mobile bottom tab bar — five tabs max; "More" opens the full nav sheet.
 export const ADMIN_TABS: AdminNavItem[] = [
-  { label: "Home", href: "/admin" },
-  { label: "Campaigns", href: "/admin/campaigns" },
-  { label: "Users", href: "/admin/users" },
-  { label: "Pay", href: "/admin/pay", min: "exec" },
+  { label: "Home", href: "/admin", icon: "home" },
+  { label: "Campaigns", href: "/admin/campaigns", icon: "mega" },
+  { label: "Athletes", href: "/admin/athletes", icon: "user" },
+  { label: "Pay", href: "/admin/pay", icon: "dollar", min: "exec" },
 ];

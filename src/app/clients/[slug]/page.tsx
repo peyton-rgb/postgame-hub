@@ -93,7 +93,7 @@ async function loadBrandPageData(brand: Brand) {
   //    we query both and merge by slug to avoid duplicates.
   const campaignsQ = brandDb
     ? supabase
-        .from('campaigns')
+        .from('campaign_recaps')
         .select('id, name, slug, description, hero_image_url, thumbnail_url, created_at')
         .eq('brand_id', brandDb.id)
         .eq('published', true)

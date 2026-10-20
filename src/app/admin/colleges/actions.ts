@@ -65,6 +65,7 @@ export async function saveCollege(formData: FormData): Promise<void> {
   }
   revalidatePath(`/admin/colleges/${id}/edit`);
   revalidatePath("/admin/colleges");
+  revalidatePath("/admin/schools");
   redirect(`/admin/colleges/${id}/edit?result=${failed ? "error" : "saved"}`);
 }
 

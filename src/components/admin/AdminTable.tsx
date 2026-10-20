@@ -22,6 +22,8 @@ export interface AdminColumn<Row> {
 }
 
 export interface MobileCardSpec<Row> {
+  /** optional leading mark (logo, avatar) shown before the title */
+  icon?: (row: Row) => React.ReactNode;
   title: (row: Row) => React.ReactNode;
   href?: (row: Row) => string | null;
   subtitle?: (row: Row) => React.ReactNode;
@@ -36,6 +38,8 @@ export default function AdminTable<Row>({
   mobile,
   rowWarn,
   emptyLabel = "No rows.",
+  view = "rows",
+  cardDetails = [],
 }: {
   rows: Row[];
   columns: AdminColumn<Row>[];
@@ -43,12 +47,69 @@ export default function AdminTable<Row>({
   mobile: MobileCardSpec<Row>;
   rowWarn?: (row: Row) => boolean;
   emptyLabel?: string;
+  /** "cards" shows the card layout at every width (see ViewToggle) */
+  view?: "rows" | "cards";
+  /** column keys to list inside each card as label / value pairs */
+  cardDetails?: string[];
 }) {
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-stone-200 bg-white">
         <EmptyRows label={emptyLabel} />
       </div>
+    );
+  }
+
+  const card = (row: Row) => {
+    const details = columns.filter((c) => cardDetails.includes(c.key));
+    return (
+      <div
+        className={
+          "h-full rounded-lg border border-stone-200 bg-white p-3 transition-colors hover:border-stone-300 " +
+          (rowWarn?.(row) ? "bg-orange-50/60" : "")
+        }
+      >
+        <div className="flex items-start justify-between gap-3">
+          {mobile.icon && <div className="shrink-0">{mobile.icon(row)}</div>}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[14px] font-medium text-stone-900">{mobile.title(row)}</div>
+            {mobile.subtitle && (
+              <div className="mt-0.5 truncate text-[12px] text-stone-500">{mobile.subtitle(row)}</div>
+            )}
+          </div>
+          {mobile.figure && (
+            <div className="shrink-0 text-right text-[13px] font-medium tabular-nums text-stone-900">
+              {mobile.figure(row)}
+            </div>
+          )}
+        </div>
+        {details.length > 0 && (
+          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-stone-100 pt-3 text-[12px]">
+            {details.map((c) => (
+              <div key={c.key} className="min-w-0">
+                <dt className="text-[11px] uppercase tracking-wide text-stone-400">{c.header}</dt>
+                <dd className="mt-0.5 truncate text-stone-800">{c.render(row)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {mobile.strip && <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px]">{mobile.strip(row)}</div>}
+      </div>
+    );
+  };
+
+  if (view === "cards") {
+    return (
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {rows.map((row) => {
+          const href = mobile.href?.(row) ?? null;
+          return (
+            <li key={rowKey(row)} className="min-w-0">
+              {href ? <Link href={href} className="block h-full">{card(row)}</Link> : card(row)}
+            </li>
+          );
+        })}
+      </ul>
     );
   }
 

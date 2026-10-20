@@ -28,6 +28,8 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, formatDate, pageRange, safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote, PendingMigration, EmptyRows } from "@/components/admin/ui";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import FilterPopover from "@/components/admin/FilterPopover";
 import { getAccessSchemaState } from "@/lib/admin/access-schema";
 import AccessAttachmentMenu from "@/components/admin/AccessAttachmentMenu";
@@ -61,6 +63,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
   if (tab === "staff") return <StaffTab />;
 
   const supabase = createServiceSupabase();
+  const view = getListView("access", searchParams);
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const q = sanitizeFilterValue(searchParams.q ?? "");
   const brandFilter = sanitizeFilterValue(searchParams.brand ?? "");
@@ -188,7 +191,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
     <div>
       <PageHeader
         title="Access management"
-        subtitle="Everyone with a door into the Hub · staff accounts live in Users — this view is external access: portal contacts & agencies"
+        subtitle="Who can sign in to the Hub and what they can see. Staff are listed on Team; this view manages brand portal contacts and agencies."
         actions={<AccessInviteForm brands={brands} />}
       />
 
@@ -230,6 +233,8 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
             className="w-full max-w-xs rounded-md border border-stone-300 px-3 py-1.5 text-[13px]"
           />
         </form>
+        <div className="flex items-center gap-2">
+        <ViewToggle listKey="access" view={view} />
         <FilterPopover
           fields={[
             {
@@ -250,6 +255,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
             { key: "revoked", label: "Show revoked attachments", type: "checkbox" },
           ]}
         />
+        </div>
       </div>
 
       {seatBrand && seatUsage && (
@@ -267,6 +273,8 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
       <AdminTable<IdentityRow>
         rows={identities}
         rowKey={(r) => r.contact.id}
+        view={view}
+        cardDetails={["type", "last"]}
         emptyLabel={
           q || brandFilter || statusFilter
             ? "No contacts match these filters."
@@ -301,7 +309,11 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
         mobile={{
           title: (r) => r.contact.name,
           subtitle: (r) => displayEmail(r)?.value ?? "no email on file",
-          strip: (r) => <Attachments identity={r} pending={schemaPending} hiddenRevoked={hiddenRevoked.get(r.contact.id) ?? 0} />,
+          strip: (r) => (
+            <div className="w-full">
+              <Attachments identity={r} pending={schemaPending} hiddenRevoked={hiddenRevoked.get(r.contact.id) ?? 0} />
+            </div>
+          ),
         }}
       />
 
@@ -518,7 +530,7 @@ function StaffTab() {
     <div>
       <PageHeader
         title="Access management"
-        subtitle="Everyone with a door into the Hub · staff accounts live in Users — this view is external access: portal contacts & agencies"
+        subtitle="Who can sign in to the Hub and what they can see. Staff are listed on Team; this view manages brand portal contacts and agencies."
       />
       <Tabs active="staff" />
       <div className="rounded-lg border border-stone-200 bg-white p-6">

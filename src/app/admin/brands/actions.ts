@@ -33,6 +33,52 @@ function cleanUrl(raw: FormDataEntryValue | null): string | null | undefined {
   }
 }
 
+/**
+ * Add brand — the Lovable "New account" dialog as its own page. Writes
+ * only the registry fields the form owns (name, industry, website);
+ * logos, colours and fonts stay with the brand-kit flow. Lands on the
+ * new brand's detail page.
+ */
+export async function createBrand(formData: FormData): Promise<void> {
+  const actor = await getAdminActor("staff");
+  if (!actor) redirect("/login");
+
+  const name = cleanText(formData.get("name"));
+  if (!name) redirect("/admin/brands/new?result=name-required");
+
+  const website = cleanUrl(formData.get("website"));
+  if (website === undefined && String(formData.get("website") ?? "").trim() !== "") {
+    redirect("/admin/brands/new?result=bad-website");
+  }
+
+  const row = {
+    name,
+    industry: cleanText(formData.get("industry")) ?? null,
+    website: website ?? null,
+    archived: false,
+  };
+
+  const supabase = createServiceSupabase();
+  const { data, error } = await supabase.from("brands").insert(row).select("id").single();
+  if (error || !data) {
+    console.error("[admin/brands] create failed", error);
+    redirect("/admin/brands/new?result=error");
+  }
+
+  await logAdminAction({
+    actorId: actor.id,
+    actorEmail: actor.email,
+    action: "brand.create",
+    entity: "brands",
+    entityId: data.id,
+    before: null,
+    after: row,
+  });
+
+  revalidatePath("/admin/brands");
+  redirect(`/admin/brands/${data.id}?result=created`);
+}
+
 export async function saveBrand(formData: FormData): Promise<void> {
   const actor = await getAdminActor("staff");
   if (!actor) redirect("/login");
