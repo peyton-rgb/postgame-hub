@@ -10,7 +10,7 @@
 // ============================================================
 
 import Link from "next/link";
-import { initialsOf } from "@/lib/admin/athletes";
+import { ATHLETE_LEVELS, initialsOf, isInfluencer, levelOf } from "@/lib/admin/athletes";
 
 export function Tiles({
   items,
@@ -237,5 +237,103 @@ export function LinkBtn({
     <Link href={href} className={cls}>
       {children}
     </Link>
+  );
+}
+
+// ------------------------------------------------------------
+// Level + app pills (the prototype's levelPill / appPill). Status
+// colours only where they carry meaning; the influencer tag uses the
+// accent rather than a new hue (palette rule).
+// ------------------------------------------------------------
+
+const PILL = "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ";
+
+export function LevelPill({
+  row,
+}: {
+  row: { person_type: string | null; roster_status: string | null; instagram_followers: number | null };
+}) {
+  if (isInfluencer(row)) return <span className={PILL + "bg-[#D73F09]/10 text-[#D73F09]"}>Influencer</span>;
+  const l = levelOf(row);
+  const label = ATHLETE_LEVELS.find((x) => x.key === l)?.short ?? l;
+  const tone =
+    l === "pro" ? "bg-status-ok/10 text-status-ok" : l === "high_school" ? "bg-stone-200 text-stone-700" : "bg-stone-100 text-stone-600";
+  return <span className={PILL + tone}>{label}</span>;
+}
+
+/** On the Postgame app = a device on the ColdFusion user record. Shows the device. */
+export function AppPill({ device }: { device: string | null }) {
+  if (!device) return <span className="text-[12px] text-stone-400">Not yet</span>;
+  const d = /^ip(hone|ad)$/i.test(device) ? (device.toLowerCase() === "ipad" ? "iPad" : "iPhone") : device;
+  return <span className={PILL + "bg-status-ok/10 text-status-ok"}>On the app · {d}</span>;
+}
+
+export const fmtCount = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("en-US"));
+export const fmtUsd = (n: number | null | undefined) =>
+  n == null ? "—" : Number(n).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+/** Breadcrumb line above a detail page's title (the prototype's `.crumb`). */
+export function Crumb({ items }: { items: Array<{ label: string; href?: string }> }) {
+  return (
+    <div className="mb-1 flex flex-wrap items-center gap-1 text-[12px] text-stone-500">
+      {items.map((it, i) => (
+        <span key={i} className="flex items-center gap-1">
+          {i > 0 && <span className="text-stone-300">/</span>}
+          {it.href ? (
+            <Link href={it.href} className="hover:text-stone-800 hover:underline">
+              {it.label}
+            </Link>
+          ) : (
+            <span>{it.label}</span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Label / value rows inside a card (details panels). */
+export function Facts({ rows }: { rows: Array<[string, React.ReactNode]> }) {
+  return (
+    <dl className="divide-y divide-stone-100 text-[13px]">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-start justify-between gap-4 py-2">
+          <dt className="shrink-0 text-stone-500">{k}</dt>
+          <dd className="min-w-0 text-right text-stone-900">{v ?? <span className="text-stone-400">—</span>}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Big person header: avatar, name, a sub line and pills. */
+export function PersonHead({
+  name,
+  sub,
+  pills,
+  actions,
+  crumb,
+}: {
+  name: string;
+  sub?: React.ReactNode;
+  pills?: React.ReactNode;
+  actions?: React.ReactNode;
+  crumb?: React.ReactNode;
+}) {
+  return (
+    <div className="pb-5">
+      {crumb}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={name} size={48} />
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-semibold text-stone-900">{name}</h1>
+            {sub && <div className="mt-0.5 text-[13px] text-stone-500">{sub}</div>}
+            {pills && <div className="mt-1.5 flex flex-wrap gap-1.5">{pills}</div>}
+          </div>
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      </div>
+    </div>
   );
 }
