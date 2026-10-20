@@ -99,6 +99,16 @@ export default async function BrandsPage({
   // ---- Side lookups for the brands on this page (migration 083 shapes). ----
   // Each is a separate safeQuery so a missing table/column shows "—" in its
   // own column instead of sinking the whole list.
+  // Parent company / agency (migration 096) — its own query so a missing
+  // column never sinks the list.
+  const parentRes = ids.length
+    ? await safeQuery<{ id: string; parent: { name: string | null } | null }[]>(
+        () => supabase.from("brands").select("id, parent:brands!parent_brand_id(name)").in("id", ids) as any
+      )
+    : { data: null, pending: true, error: null };
+  const parentById = new Map<string, string>();
+  for (const p of parentRes.data ?? []) if (p.parent?.name) parentById.set(p.id, p.parent.name);
+
   const [typeRes, campRes, portalRes, activityRes] = ids.length
     ? await Promise.all([
         safeQuery<{ id: string; account_type: { account_type: string | null } | null }[]>(
@@ -247,9 +257,15 @@ export default async function BrandsPage({
                       </span>
                     )}
                   </span>
-                  {(r.industry || typeById.get(r.id)) && (
+                  {(parentById.get(r.id) || r.industry || typeById.get(r.id)) && (
                     <span className="block truncate text-[12px] text-stone-500">
-                      {[r.industry, typeById.get(r.id)].filter(Boolean).join(" · ")}
+                      {[
+                        parentById.get(r.id) ? `Through ${parentById.get(r.id)}` : null,
+                        r.industry,
+                        typeById.get(r.id),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   )}
                 </span>
@@ -300,7 +316,8 @@ export default async function BrandsPage({
           icon: (r) => <BrandMark name={r.name} src={r.logo_mark_url ?? r.logo_primary_url ?? null} />,
           title: (r) => r.name ?? "—",
           href: (r) => `/admin/brands/${r.id}`,
-          subtitle: (r) => [r.industry, typeById.get(r.id)].filter(Boolean).join(" · ") || null,
+          subtitle: (r) =>
+            [parentById.get(r.id) ? `Through ${parentById.get(r.id)}` : null, r.industry, typeById.get(r.id)].filter(Boolean).join(" · ") || null,
           strip: (r) => (
             <>
               <PortalPill state={portalState(portalById.get(r.id), r.portal_token)} />
