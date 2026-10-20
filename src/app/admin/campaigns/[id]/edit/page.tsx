@@ -14,7 +14,7 @@ import { requireAdmin, hasLevel } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { PageHeader, ErrorNote } from "@/components/admin/ui";
 import AdminForm, { FieldCard, Field } from "@/components/admin/StickySaveBar";
-import { saveCampaign, deleteCampaign } from "../../actions";
+import { saveCampaign, archiveCampaign } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ const RESULT_NOTES: Record<string, { tone: "ok" | "bad"; text: string }> = {
   saved: { tone: "ok", text: "Saved." },
   error: { tone: "bad", text: "Save failed. Nothing was changed." },
   "name-required": { tone: "bad", text: "Campaign name is required. Nothing was changed." },
-  "delete-unconfirmed": { tone: "bad", text: "Type DELETE exactly to delete this campaign." },
+  "delete-unconfirmed": { tone: "bad", text: "Type ARCHIVE exactly to archive this campaign." },
   "delete-blocked": {
     tone: "bad",
     text: "This campaign can't be deleted: it still has content, contracts or other records linked to it.",
@@ -182,7 +182,7 @@ export default async function CampaignEditPage({
       </AdminForm>
 
       {hasLevel(user, "admin") && (
-        <form action={deleteCampaign} className="mb-28 mt-2 rounded-lg border border-red-200 bg-white p-4 md:p-5">
+        <form action={archiveCampaign} className="mb-28 mt-2 rounded-lg border border-red-200 bg-white p-4 md:p-5">
           <input type="hidden" name="campaign_id" value={c.campaign_id} />
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-status-bad">Danger Zone</h2>
           <p className="mt-2 text-[13px] text-stone-600">
@@ -192,7 +192,7 @@ export default async function CampaignEditPage({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <input
               name="confirm"
-              placeholder='Type "DELETE" to confirm'
+              placeholder='Type "ARCHIVE" to confirm'
               autoComplete="off"
               className="max-w-xs flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-[13px]"
             />

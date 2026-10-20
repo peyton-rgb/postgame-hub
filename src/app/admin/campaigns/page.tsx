@@ -202,7 +202,7 @@ export default async function AdminCampaignsPage({
                 key: "campaign",
                 header: "Campaign",
                 render: (r) => (
-                  <NameLink href={`/admin/campaigns/${r.campaign_id}/edit`}>
+                  <NameLink href={`/admin/campaigns/${r.campaign_id}`}>
                     {r.brand?.name ? `${r.brand.name} - ` : ""}
                     {r.campaign_name || "—"}
                   </NameLink>
@@ -262,7 +262,7 @@ export default async function AdminCampaignsPage({
             ]}
             mobile={{
               title: (r) => r.campaign_name || "—",
-              href: (r) => `/admin/campaigns/${r.campaign_id}/edit`,
+              href: (r) => `/admin/campaigns/${r.campaign_id}`,
               subtitle: (r) => [r.brand?.name, managerName(r)].filter(Boolean).join(" · ") || null,
               strip: (r) => (r.is_active ? "Active" : "Inactive"),
               figure: (r) => `${(r.total_is_selected ?? 0).toLocaleString()} selected`,
