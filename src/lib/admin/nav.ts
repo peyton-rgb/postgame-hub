@@ -89,16 +89,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     icon: "dollar",
     min: "exec",
     items: [
-      // /admin/pay is the canonical overview route; today it serves the
-      // Pay Athletes queue until the overview screen is built.
+      // Old routes (/admin/pay/vendor, /bonus, /affiliate, /1099, /ach) redirect to these.
       { label: "Payments overview", href: "/admin/pay", icon: "pie" },
-      { label: "Pay athletes (app)", href: "/admin/pay/athletes", icon: "card", soon: true },
-      // today: /admin/pay/vendor (Submit invoices) → flips to /admin/pay/invoices
-      { label: "Invoices", href: "/admin/pay/vendor", icon: "receipt" },
-      // today: /admin/pay/bonus (affiliate lives at /admin/pay/affiliate) → /admin/pay/bonus-affiliate
-      { label: "Bonuses & affiliate", href: "/admin/pay/bonus", icon: "gift" },
-      // today: /admin/pay/1099 → flips to /admin/pay/history
-      { label: "History & 1099", href: "/admin/pay/1099", icon: "history" },
+      { label: "Pay athletes (app)", href: "/admin/pay/athletes", icon: "card" },
+      { label: "Invoices", href: "/admin/pay/invoices", icon: "receipt" },
+      { label: "Bonuses & affiliate", href: "/admin/pay/bonus-affiliate", icon: "gift" },
+      { label: "History & 1099", href: "/admin/pay/history", icon: "history" },
     ],
   },
   {

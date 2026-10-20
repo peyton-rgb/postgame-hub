@@ -1,35 +1,58 @@
 // ============================================================
 // /admin/pay — Payments overview. Exec-only (layout).
 //
-// Prototype: "What's owed, what's due and what went out." — a row of
-// tiles, then "Next payouts" and "Invoices due soon", plus the
-// "Waiting on you" list and the most recent payouts.
+// Prototype S.pay ("To pay"): everyone Postgame owes money to, in one
+// list — tiles (athlete payouts, invoices due now / scheduled,
+// bonuses, affiliate balances, total owed), then one card with an
+// All / Payouts / Invoices / Bonuses / Affiliate switch and a search.
 //
-// Every number is a query result. The payouts ledger (migration 004)
-// is live; invoices / bonuses / affiliate balances come from
-// migration 083 tables that are not applied yet, so those tiles show
-// "—" with the reason underneath instead of a made-up figure.
+// Every number is a query result (src/lib/admin/pay/ledger.ts).
+// Pending payouts come from the live `payouts` ledger; invoices,
+// bonuses and affiliate balances are migration 083 tables (unapplied),
+// so they show "—" with the reason instead of a made-up figure.
 //
-// The old queue that lived at this URL moved to /admin/pay/athletes;
-// links that still carry its ?status= filter are redirected there.
+// Row actions are the existing confirmed-POST writes (payout approve,
+// invoice / bonus mark paid) with return_to=/admin/pay so the user
+// lands back here. Affiliate balances have no pay action yet — they
+// open the affiliate tab.
+//
+// Old queue links (/admin/pay?status=…) still redirect to the
+// athletes list.
 // ============================================================
 
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
-import { formatMoney } from "@/lib/admin/db";
 import { PageHeader } from "@/components/admin/ui";
-import { Card, fmtShortDate } from "@/components/admin/campaign/bits";
-import { AthleteCell, Btn, CampaignCell, MethodPill, Pending083, Tiles, type TileSpec } from "@/components/admin/pay/bits";
-import { PAYOUT_SELECT, loadInvoices, loadPayOverview, payoutName, shapePayout, type PayoutRow } from "@/lib/admin/pay/queries";
+import { Card } from "@/components/admin/campaign/bits";
+import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
+import {
+  AthleteCell,
+  Btn,
+  MobileRow,
+  PAY_RESULT_NOTES,
+  PayTable,
+  ResultNote,
+  SegLinks,
+  SourceNotes,
+  Tiles,
+  TypePill,
+  dollarsFmt,
+  type TileSpec,
+} from "@/components/admin/pay/bits";
+import { filterLedger, loadOwed, type LedgerItem } from "@/lib/admin/pay/ledger";
+import { markBonusPaid, markInvoicePaid, markPayoutPaid } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-const PENDING_083 = "Arrives with migration 083";
-
-function dollars(n: number | null): string {
-  return n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-}
+const TYPES = [
+  { key: "all", label: "All" },
+  { key: "payout", label: "Payouts" },
+  { key: "invoice", label: "Invoices" },
+  { key: "bonus", label: "Bonuses" },
+  { key: "affiliate", label: "Affiliate" },
+];
 
 export default async function PaymentsOverviewPage({
   searchParams,
@@ -48,201 +71,159 @@ export default async function PaymentsOverviewPage({
     redirect(s ? `/admin/pay/athletes?${s}` : "/admin/pay/athletes");
   }
 
-  const supabase = createServiceSupabase();
-  const nowIso = new Date().toISOString();
+  const type = TYPES.some((t) => t.key === searchParams.type) ? searchParams.type! : "all";
+  const q = (searchParams.q ?? "").slice(0, 80);
+  const note = searchParams.result ? PAY_RESULT_NOTES[searchParams.result] : undefined;
 
-  const [ov, nextRes, recentRes, dueInvoices] = await Promise.all([
-    loadPayOverview(supabase),
-    supabase
-      .from("payouts")
-      .select(PAYOUT_SELECT)
-      .eq("status", "pending")
-      .order("scheduled_for", { ascending: true, nullsFirst: true })
-      .limit(5),
-    supabase.from("payouts").select(PAYOUT_SELECT).eq("status", "paid").order("paid_at", { ascending: false }).limit(5),
-    loadInvoices(supabase, "asap"),
-  ]);
-
-  const next: PayoutRow[] = (nextRes.data ?? []).map(shapePayout);
-  const recent: PayoutRow[] = (recentRes.data ?? []).map(shapePayout);
-  const dueSoon = dueInvoices.rows.slice(0, 5);
-  const amountOf = (r: PayoutRow) => (r.amount_cents != null ? formatMoney(r.amount_cents) : (r.amount_label ?? "—"));
+  const owed = await loadOwed(createServiceSupabase());
+  const rows = filterLedger(owed.items, type, q);
+  const pend = owed.sources;
+  const p083 = "Arrives with migration 083";
 
   const tiles: TileSpec[] = [
+    { n: owed.counts.payouts == null ? "—" : owed.counts.payouts.toLocaleString(), label: "Athlete payouts", href: "/admin/pay/athletes", flag: (owed.counts.payouts ?? 0) > 0 },
+    { n: owed.counts.invoicesDue == null ? "—" : owed.counts.invoicesDue.toLocaleString(), label: "Invoices due now", sub: pend.Invoice.pending ? p083 : undefined, href: "/admin/pay/invoices", flag: (owed.counts.invoicesDue ?? 0) > 0 },
+    { n: owed.counts.invoicesScheduled == null ? "—" : owed.counts.invoicesScheduled.toLocaleString(), label: "Invoices scheduled", sub: pend.Invoice.pending ? p083 : undefined, href: "/admin/pay/invoices?tab=scheduled" },
+    { n: owed.counts.bonuses == null ? "—" : owed.counts.bonuses.toLocaleString(), label: "Bonuses", sub: pend.Bonus.pending ? "Bonus-labeled payouts only until 083" : undefined, href: "/admin/pay/bonus-affiliate" },
+    { n: dollarsFmt(owed.affiliateOwed), label: "Affiliate balances", sub: pend.Affiliate.pending ? p083 : undefined, href: "/admin/pay/bonus-affiliate?tab=affiliate" },
     {
-      n: ov.pendingPayouts == null ? "—" : ov.pendingPayouts.toLocaleString(),
-      label: "Payout requests pending",
-      href: "/admin/pay/athletes",
-      flag: (ov.pendingPayouts ?? 0) > 0,
-    },
-    {
-      n: ov.invoices.dueNow == null ? "—" : ov.invoices.dueNow.toLocaleString(),
-      label: "Invoices due now",
-      sub: ov.invoices.pending ? PENDING_083 : undefined,
-      href: "/admin/pay/invoices",
-      flag: (ov.invoices.dueNow ?? 0) > 0,
-    },
-    {
-      n: ov.invoices.scheduled == null ? "—" : ov.invoices.scheduled.toLocaleString(),
-      label: "Invoices scheduled",
-      sub: ov.invoices.pending ? PENDING_083 : undefined,
-      href: "/admin/pay/invoices?tab=scheduled",
-    },
-    {
-      n: dollars(ov.invoices.openTotal),
-      label: "Open invoice total",
-      sub: ov.invoices.pending ? PENDING_083 : undefined,
-      href: "/admin/pay/invoices",
-    },
-    {
-      n:
-        ov.bonuses.unpaid == null && ov.pendingBonusPayouts == null
-          ? "—"
-          : ((ov.bonuses.unpaid ?? 0) + (ov.pendingBonusPayouts ?? 0)).toLocaleString(),
-      label: "Unpaid bonuses",
-      sub: ov.bonuses.pending ? "Bonus-labeled payouts only until migration 083" : undefined,
-      href: "/admin/pay/bonus-affiliate",
-    },
-    {
-      n: dollars(ov.affiliate.owed),
-      label: "Affiliate balance owed",
-      sub: ov.affiliate.pending ? PENDING_083 : undefined,
-      href: "/admin/pay/bonus-affiliate?tab=affiliate",
-    },
-    {
-      n: ov.paid30Cents == null ? "—" : formatMoney(ov.paid30Cents),
-      label: "Paid in last 30 days",
-      sub:
-        ov.paid30Count == null
-          ? undefined
-          : `${ov.paid30Count.toLocaleString()} payout${ov.paid30Count === 1 ? "" : "s"}${ov.paid30Unpriced ? ` · ${ov.paid30Unpriced} without a dollar figure` : ""}`,
-      href: "/admin/pay/history",
+      n: dollarsFmt(owed.totalOwed),
+      label: "Total owed",
+      sub: [owed.unpriced ? `${owed.unpriced} without a dollar figure` : "", pend.Invoice.pending ? "Hub payouts only" : ""].filter(Boolean).join(" · ") || undefined,
     },
   ];
 
-  const waiting: { label: string; detail: string; value: string; href: string }[] = [
-    {
-      label: "Payouts to approve",
-      detail: "Pay athletes (app)",
-      value: ov.pendingPayouts == null ? "—" : ov.pendingPayouts.toLocaleString(),
-      href: "/admin/pay/athletes",
-    },
-    {
-      label: "Invoices due now",
-      detail: ov.invoices.pending ? PENDING_083 : "Invoices",
-      value: ov.invoices.dueNow == null ? "—" : ov.invoices.dueNow.toLocaleString(),
-      href: "/admin/pay/invoices",
-    },
-    {
-      label: "Bonuses to pay",
-      detail: ov.bonuses.pending ? "Bonus-labeled payouts" : "Bonuses & affiliate",
-      value:
-        ov.bonuses.unpaid == null && ov.pendingBonusPayouts == null
-          ? "—"
-          : ((ov.bonuses.unpaid ?? 0) + (ov.pendingBonusPayouts ?? 0)).toLocaleString(),
-      href: "/admin/pay/bonus-affiliate",
-    },
-    {
-      label: "Affiliate balances owed",
-      detail: ov.affiliate.pending ? PENDING_083 : "Affiliate balances",
-      value: dollars(ov.affiliate.owed),
-      href: "/admin/pay/bonus-affiliate?tab=affiliate",
-    },
-  ];
+  const href = (t: string) => {
+    const sp = new URLSearchParams();
+    if (t !== "all") sp.set("type", t);
+    if (q) sp.set("q", q);
+    const s = sp.toString();
+    return s ? `/admin/pay?${s}` : "/admin/pay";
+  };
 
-  const payoutList = (rows: PayoutRow[], when: "scheduled" | "paid", empty: string) =>
-    rows.length === 0 ? (
-      <div className="px-4 py-8 text-center text-[13px] text-stone-500">{empty}</div>
-    ) : (
-      <ul className="divide-y divide-stone-100">
-        {rows.map((r) => (
-          <li key={r.id} className="flex items-center gap-3 px-4 py-2.5 md:px-5">
-            <div className="min-w-0 flex-1">
-              <AthleteCell name={payoutName(r)} handle={r.profiles?.ig_handle} pic={r.profiles?.avatar_url} href={`/admin/pay/${r.id}`} />
-            </div>
-            <div className="hidden min-w-0 flex-1 sm:block">
-              <CampaignCell title={r.campaign?.title ?? null} brandName={r.campaign?.brandName ?? null} brandLogo={r.campaign?.brandLogo ?? null} />
-            </div>
-            <div className="shrink-0 text-right">
-              <div className="text-[13px] font-semibold tabular-nums text-stone-900">{amountOf(r)}</div>
-              <div className="flex items-center justify-end gap-1.5 text-[11px] text-stone-500">
-                <MethodPill method={r.provider} />
-                <span>{when === "paid" ? `paid ${fmtShortDate(r.paid_at)}` : `due ${fmtShortDate(r.scheduled_for)}`}</span>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-    );
+  const ret = (
+    <>
+      <input type="hidden" name="return_to" value="/admin/pay" />
+      {type !== "all" && <input type="hidden" name="return_type" value={type} />}
+      {q && <input type="hidden" name="return_q" value={q} />}
+    </>
+  );
+
+  const amountOf = (i: LedgerItem) => (i.amount != null ? dollarsFmt(i.amount, i.amount % 1 !== 0) : (i.amountLabel ?? "—"));
+
+  const action = (i: LedgerItem) => {
+    if (i.payoutId) {
+      return (
+        <form action={markPayoutPaid}>
+          <input type="hidden" name="id" value={i.payoutId} />
+          {ret}
+          <ConfirmSubmit
+            summary={`Mark the ${amountOf(i)} ${i.type.toLowerCase()} to ${i.who} as PAID? This stamps paid_at now and is written to the audit log. It does not move money — send it by hand first.`}
+            confirmLabel="Mark paid"
+          >
+            {i.type === "Bonus" ? "Pay bonus" : "Mark paid"}
+          </ConfirmSubmit>
+        </form>
+      );
+    }
+    if (i.invoiceId != null) {
+      return (
+        <form action={markInvoicePaid}>
+          <input type="hidden" name="invoice_id" value={i.invoiceId} />
+          {ret}
+          <ConfirmSubmit summary={`Mark the ${amountOf(i)} invoice from ${i.who} as paid? Only do this once the money has gone out. Logged to the audit trail.`} confirmLabel="Mark paid">
+            Mark paid
+          </ConfirmSubmit>
+        </form>
+      );
+    }
+    if (i.bonusId != null) {
+      return (
+        <form action={markBonusPaid}>
+          <input type="hidden" name="payment_bonus_id" value={i.bonusId} />
+          {ret}
+          <ConfirmSubmit summary={`Mark the ${amountOf(i)} bonus to ${i.who} as paid? Only do this once the money has gone out. Logged to the audit trail.`} confirmLabel="Mark paid">
+            Pay bonus
+          </ConfirmSubmit>
+        </form>
+      );
+    }
+    return <Btn href="/admin/pay/bonus-affiliate?tab=affiliate">Open balance</Btn>;
+  };
 
   return (
     <div>
-      <PageHeader title="Payments overview" subtitle="What's owed, what's due and what went out." />
+      <PageHeader
+        title="Payments overview"
+        subtitle="Everyone Postgame owes money to, in one list."
+        actions={<Btn href="/admin/pay/invoices?tab=submit">+ Submit invoice</Btn>}
+      />
+      {note && <ResultNote tone={note.tone}>{note.text}</ResultNote>}
 
       <Tiles items={tiles} />
 
-      <div className="mt-3.5 grid grid-cols-1 items-start gap-3.5 lg:grid-cols-2">
-        <Card title="Waiting on you" pad={false}>
-          <div>
-            {waiting.map((w) => (
-              <a
-                key={w.label}
-                href={w.href}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-t border-stone-100 px-4 py-2.5 first:border-t-0 hover:bg-stone-50 md:px-5"
-              >
-                <span className="text-[13px] font-medium text-stone-900">{w.label}</span>
-                <span className="row-span-2 text-xl font-semibold tabular-nums text-stone-900">{w.value}</span>
-                <span className="text-[12px] text-stone-500">{w.detail}</span>
-              </a>
-            ))}
-          </div>
-        </Card>
+      <Card pad={false} className="mt-3.5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-3 py-2.5 md:px-4">
+          <SegLinks active={type} items={TYPES.map((t) => ({ key: t.key, label: t.label, href: href(t.key) }))} />
+          <form action="/admin/pay" method="get" className="flex min-w-0 flex-1 items-center gap-2 md:ml-auto md:max-w-xs md:flex-none">
+            {type !== "all" && <input type="hidden" name="type" value={type} />}
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="Search name or campaign"
+              aria-label="Search name or campaign"
+              className="w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-[13px] text-stone-900"
+            />
+          </form>
+        </div>
 
-        <Card title="Next payouts" sub="Pending, soonest pay date first" actions={<Btn href="/admin/pay/athletes">Open</Btn>} pad={false}>
-          {payoutList(next, "scheduled", "No pending payouts in the Hub ledger.")}
-        </Card>
-
-        <Card title="Invoices due soon" actions={<Btn href="/admin/pay/invoices">Open</Btn>} pad={false}>
-          {dueInvoices.pending ? (
-            <Pending083 feature="Invoices" />
-          ) : dueInvoices.error ? (
-            <div className="px-4 py-6 text-[13px] text-status-bad">{dueInvoices.error}</div>
-          ) : dueSoon.length === 0 ? (
-            <div className="px-4 py-8 text-center text-[13px] text-stone-500">No invoices are due right now.</div>
-          ) : (
-            <ul className="divide-y divide-stone-100">
-              {dueSoon.map((inv) => {
-                const overdue = inv.dueAt ? inv.dueAt.getTime() < Date.now() - 24 * 60 * 60 * 1000 : false;
-                return (
-                  <li key={inv.invoice_id} className="flex items-center gap-3 px-4 py-2.5 md:px-5">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13px] font-medium text-stone-900">{inv.name ?? "—"}</div>
-                      <div className="truncate text-[12px] text-stone-500">
-                        {inv.payee_type ? inv.payee_type[0].toUpperCase() + inv.payee_type.slice(1) : "Payee"}
-                        {inv.campaignName ? ` · ${inv.campaignName}` : ""}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <div className="text-[13px] font-semibold tabular-nums text-stone-900">{dollars(inv.amount)}</div>
-                      <div className={"text-[11px] " + (overdue ? "font-medium text-status-bad" : "text-stone-500")}>
-                        {overdue ? "Overdue" : "Due"} {fmtShortDate(inv.dueAt?.toISOString())}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+        <PayTable<LedgerItem>
+          rows={rows}
+          rowKey={(i) => i.key}
+          emptyLabel={q || type !== "all" ? "Nothing owed matches that." : "Nothing is owed right now."}
+          columns={[
+            { key: "type", header: "Type", render: (i) => <TypePill type={i.type} /> },
+            { key: "who", header: "Who", render: (i) => <AthleteCell name={i.who} pic={i.pic} href={i.payoutId ? `/admin/pay/${i.payoutId}` : undefined} /> },
+            { key: "for", header: "For", render: (i) => <span className="text-stone-500">{i.what}</span> },
+            {
+              key: "when",
+              header: "When",
+              secondary: true,
+              render: (i) =>
+                i.late ? (
+                  <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-status-bad">{i.when}</span>
+                ) : (
+                  <span className="text-stone-600">{i.when}</span>
+                ),
+            },
+            { key: "amount", header: "Amount", align: "right", render: (i) => <span className="font-semibold text-stone-900">{amountOf(i)}</span> },
+            { key: "act", header: "", align: "right", render: (i) => <span className="inline-flex justify-end">{action(i)}</span> },
+          ]}
+          mobile={(i) => (
+            <MobileRow
+              top={<AthleteCell name={i.who} pic={i.pic} href={i.payoutId ? `/admin/pay/${i.payoutId}` : undefined} />}
+              figure={amountOf(i)}
+              strip={
+                <>
+                  <TypePill type={i.type} />
+                  <span className={i.late ? "font-medium text-status-bad" : ""}>{i.when}</span>
+                  <span className="truncate">{i.what}</span>
+                </>
+              }
+              actions={action(i)}
+            />
           )}
-        </Card>
+        />
+        <SourceNotes sources={owed.sources} />
+      </Card>
 
-        <Card title="Recent payouts" sub="Marked paid most recently" actions={<Btn href="/admin/pay/history">History</Btn>} pad={false}>
-          {payoutList(recent, "paid", "Nothing has been marked paid in the Hub ledger yet.")}
-        </Card>
-      </div>
-
-      <p className="pt-4 text-[12px] text-stone-500">
-        CF&apos;s historical payments, affiliate ledgers and bonus list stay in the CF database until they are imported — the Hub shows only its own
-        rows here. Checked at {new Date(nowIso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.
+      <p className="pt-3 text-[12px] text-stone-500">
+        Marking something paid only records it — the money still goes out by hand. Everything that has gone out is in{" "}
+        <Link href="/admin/pay/history" className="text-[#D73F09] hover:underline">
+          History &amp; 1099
+        </Link>
+        .
       </p>
     </div>
   );

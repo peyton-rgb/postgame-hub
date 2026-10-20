@@ -426,3 +426,75 @@ export function Btn({
     </Link>
   );
 }
+
+// ------------------------------------------------------------
+// Prototype "seg" control as links (type filter on To pay), and
+// the Type pill (Payout info · Invoice neutral · Bonus accent ·
+// Affiliate ok — the prototype's TONE map).
+// ------------------------------------------------------------
+
+export function SegLinks({ items, active }: { items: { key: string; label: string; href: string }[]; active: string }) {
+  return (
+    <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-stone-200 bg-stone-50 p-0.5" role="group">
+      {items.map((s) => (
+        <Link
+          key={s.key}
+          href={s.href}
+          aria-pressed={active === s.key}
+          className={
+            "whitespace-nowrap rounded-md px-2.5 py-1 text-[12px] font-medium " +
+            (active === s.key ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-800")
+          }
+        >
+          {s.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+const TYPE_TONE: Record<string, Tone> = { Payout: "info", Invoice: "muted", Bonus: "acc", Affiliate: "ok" };
+
+export function TypePill({ type }: { type: string }) {
+  return <Pill tone={TYPE_TONE[type] ?? "muted"}>{type}</Pill>;
+}
+
+const SOURCE_PLURAL: Record<string, string> = { Payout: "payouts", Invoice: "invoices", Bonus: "bonuses", Affiliate: "affiliate balances" };
+
+/** The honest per-source note under a cross-source list. */
+export function SourceNotes({ sources }: { sources: Record<string, { pending: boolean; error: string | null }> }) {
+  const pending = Object.entries(sources).filter(([, s]) => s.pending).map(([k]) => SOURCE_PLURAL[k] ?? k.toLowerCase());
+  const errors = Object.entries(sources).filter(([, s]) => s.error);
+  if (pending.length === 0 && errors.length === 0) return null;
+  return (
+    <div className="border-t border-stone-200 px-4 py-2.5 text-[12px] text-stone-500 md:px-5">
+      {pending.length > 0 && (
+        <span>
+          {pending.join(", ").replace(/, ([^,]*)$/, " and $1")} arrive with migration 083 (written, not applied) — only Hub payouts show until then.
+        </span>
+      )}
+      {errors.map(([k, s]) => (
+        <div key={k} className="text-status-bad">
+          {k}: {s.error}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function dollarsFmt(n: number | null | undefined, cents = false): string {
+  if (n == null) return "—";
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: cents ? 2 : 0, minimumFractionDigits: cents ? 2 : 0 });
+}
+
+/** ?result= codes the pay actions redirect with. */
+export const PAY_RESULT_NOTES: Record<string, { tone: "ok" | "warn" | "err"; text: string }> = {
+  saved: { tone: "ok", text: "Done — logged to the audit trail." },
+  submitted: { tone: "ok", text: "Invoice logged — it's in the list below." },
+  unchanged: { tone: "warn", text: "That one was already marked paid — nothing changed." },
+  error: { tone: "err", text: "Action failed — nothing was changed." },
+  invalid: { tone: "err", text: "Some fields were missing or invalid — nothing was saved." },
+  "exec-only": { tone: "err", text: "That action is exec-only. Nothing was changed." },
+  "not-found": { tone: "err", text: "That row no longer exists — nothing was changed." },
+  pending083: { tone: "warn", text: "That table arrives with migration 083, which isn't applied yet — nothing was saved." },
+};
