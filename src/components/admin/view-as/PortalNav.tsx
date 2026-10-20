@@ -31,7 +31,10 @@ export default function PortalNav({
   items,
   settings,
   footLine,
+  full = false,
 }: {
+  /** full-height sidebar with no staff links — the brand's own view */
+  full?: boolean;
   who: string;
   sub: string;
   /** brand mark (light ink) or athlete avatar; null = empty tile / initials */
@@ -87,7 +90,13 @@ export default function PortalNav({
   return (
     <>
       {/* Desktop rail */}
-      <aside aria-label="Preview menu" className="hidden w-[220px] shrink-0 self-start overflow-hidden rounded-xl bg-[#111318] text-[#B4B9C2] md:sticky md:top-[84px] md:flex md:flex-col">
+      <aside
+        aria-label="Preview menu"
+        className={
+          "hidden shrink-0 overflow-hidden bg-[#111318] text-[#B4B9C2] md:flex md:flex-col " +
+          (full ? "w-[240px] md:sticky md:top-0 md:h-screen" : "w-[220px] self-start rounded-xl md:sticky md:top-[84px]")
+        }
+      >
         <div className="flex items-center gap-2.5 border-b border-[#22262E] px-3.5 pb-3.5 pt-3">
           {mark}
           <div className="min-w-0">
@@ -95,13 +104,15 @@ export default function PortalNav({
             <div className="truncate text-[11px] text-[#B4B9C2] opacity-75">{sub}</div>
           </div>
         </div>
-        <nav className="flex flex-col gap-px p-2">{items.map((i) => link(i))}</nav>
+        <nav className={"flex flex-col gap-px p-2" + (full ? " flex-1" : "")}>{items.map((i) => link(i))}</nav>
         <div className="flex flex-col gap-px border-t border-[#22262E] p-2">
           {link(settings)}
+          {!full && (
           <Link href="/admin" className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[14px] font-medium text-[#B4B9C2] hover:bg-[#1B1E25] hover:text-[#EEF0F3]">
             <NavIcon name="out" />
             Back to staff view
           </Link>
+          )}
           <div className="truncate px-2.5 pb-0.5 pt-2 text-[12px] text-[#747A85]" title={footLine}>
             {footLine}
           </div>
@@ -109,16 +120,18 @@ export default function PortalNav({
       </aside>
 
       {/* Phone: who line + scrolling tab strip */}
-      <div className="mb-3 overflow-hidden rounded-xl bg-[#111318] text-[#B4B9C2] md:hidden">
+      <div className={"overflow-hidden bg-[#111318] text-[#B4B9C2] md:hidden " + (full ? "" : "mb-3 rounded-xl")}>
         <div className="flex items-center gap-2.5 px-3 pb-2 pt-2.5">
           {mark}
           <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-semibold text-white">{who}</div>
             <div className="truncate text-[11px] opacity-75">{sub}</div>
           </div>
-          <Link href="/admin" className="shrink-0 text-[12px] font-medium text-[#B4B9C2] underline-offset-2 hover:underline">
-            Staff view
-          </Link>
+          {!full && (
+            <Link href="/admin" className="shrink-0 text-[12px] font-medium text-[#B4B9C2] underline-offset-2 hover:underline">
+              Staff view
+            </Link>
+          )}
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 [scrollbar-width:none]">
           {[...items, settings].map((i) => link(i, true))}

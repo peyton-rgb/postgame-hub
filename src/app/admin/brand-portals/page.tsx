@@ -2,7 +2,7 @@
 // /admin/brand-portals — Brand portals (staff), prototype
 // S["brand-portals"] (last definition): every brand's private portal,
 // with "View as brand" opening that portal inside this shell
-// (/admin/view-as/brand/<id>) and "Invite user" going to Access.
+// (/admin/view-as/brand/<id>) and "Add seat" going to Access.
 //
 // Data: portal_campaigns (campaign counts, in flight, latest) and
 // brand_contacts (active portal logins). Logos from the brands row —
@@ -100,21 +100,21 @@ export default async function BrandPortalsPage({ searchParams }: { searchParams:
                             <span className={"block font-medium tabular-nums " + (r.active ? "text-stone-900" : "text-stone-400")}>{r.active.toLocaleString("en-US")}</span>
                           </span>
                           <span>
-                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">Users</span>
+                            <span className="block text-[11px] uppercase tracking-wide text-stone-400">Seats</span>
                             <span className={"block font-medium tabular-nums " + (r.users ? "text-stone-900" : "text-stone-400")}>{r.users == null ? "—" : r.users}</span>
                           </span>
                         </span>
                       </Link>
                       <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-[#E3E5E9] pt-2.5">
                         <Btn href={`/admin/view-as/brand/${r.id}`} small>
-                          View as brand
+                          Open portal
                         </Btn>
                         <Link
                           href={`/admin/access?brand=${r.id}`}
                           className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
                         >
-                          <NavIcon name="send" size={13} />
-                          Invite user
+                          <NavIcon name="plus" size={13} />
+                          Add seat
                         </Link>
                       </div>
                     </div>
@@ -131,7 +131,7 @@ export default async function BrandPortalsPage({ searchParams }: { searchParams:
                   <th className={th + " text-right"}>Campaigns</th>
                   <th className={th + " text-right"}>In flight</th>
                   <th className={th}>Latest campaign</th>
-                  <th className={th + " text-right"}>Portal users</th>
+                  <th className={th + " text-right"}>Seats</th>
                   <th className={th} />
                 </tr>
               </thead>
@@ -161,14 +161,14 @@ export default async function BrandPortalsPage({ searchParams }: { searchParams:
                       <td className={td + " whitespace-nowrap text-right"}>
                         <span className="inline-flex gap-1.5">
                           <Btn href={`/admin/view-as/brand/${r.id}`} small>
-                            View as brand
+                            Open portal
                           </Btn>
                           <Link
                             href={`/admin/access?brand=${r.id}`}
                             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
                           >
-                            <NavIcon name="send" size={13} />
-                            Invite user
+                            <NavIcon name="plus" size={13} />
+                            Add seat
                           </Link>
                         </span>
                       </td>
