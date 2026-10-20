@@ -1,0 +1,1331 @@
+/* ============================================================
+   Brand portal — the shared visual system.
+
+   TYPE SCALE. The portal read small; this is the floor now and nothing may
+   go under it.
+     body            16px
+     minimum         14px   table cells, captions, meta, footnotes — anything
+     page title      44px   Bebas
+     tile title      18px   Arimo bold
+     figures         40px   Anton on tiles, 56px on Results
+     prose           16px / 1.5
+   A rule that sets a size below 14px is a bug, not a style choice: the two
+   places that look like exceptions (the rail tooltip and the tab-bar label)
+   are chrome, and they are at 14 too.
+
+   MINIMAL. Fewer boxes, more air. Surfaces separate content, not borders:
+   #111114 tile on #07070A ground with NO outline. Tiles are padded 20px, the
+   page gutter is 32px, and a tile header is a title — there is no icon in a
+   square beside it. Chips are gone wherever a coloured word does the job.
+
+   Derived from docs/briefs/reference/brand-dashboard-desktop-1440x900.html,
+   which set the grid: radius 14, 10px gap, 72px rail.
+
+   The reference is a fixed 1440x900 frame. This is the responsive version of
+   the same layout:
+     >= 1100px   12 columns x 6 rows, the reference's exact spans
+     <  1100px   6 columns, tiles stack in the brief's order
+     <  640px    one column, bottom tab bar (design system: mobile nav is a
+                 bottom tab bar, never a hamburger, never a top nav)
+   ============================================================ */
+
+.pgd {
+  --ink: #FAF8F5;
+  --ink-90: rgba(250, 248, 245, 0.9);
+  --ink-75: rgba(250, 248, 245, 0.75);
+  --ink-60: rgba(250, 248, 245, 0.6);
+  --ink-50: rgba(250, 248, 245, 0.5);
+  --ink-45: rgba(250, 248, 245, 0.45);
+  --hair: rgba(250, 248, 245, 0.09);
+  --tile: #111114;
+  /* Kept as a token because a handful of places still need a HAIRLINE — a
+     table header underline, a row divider inside a tile. It is no longer a
+     tile outline. */
+  --tile-edge: rgba(250, 248, 245, 0.08);
+  --orange: #D73F09;
+  --orange-soft: #FF6A3D;
+
+  background: #07070A;
+  color: var(--ink);
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  font-size: 16px;
+  line-height: 1.5;
+  /* THE PAGE SCROLLS. It used to be locked to the viewport, like the
+     reference's fixed 1440x900 frame — the whole dashboard fitting on one
+     screen, with tiles scrolling inside themselves. That worked at 13px and
+     collapsed at 16: three flexible rows sharing 900px minus the header left
+     the roster showing ONE athlete and Top posts cut off mid-second-row.
+     Fitting the frame is not worth a tile that can't show its own contents,
+     so the content row gets the height it needs and the campaigns and
+     activity rows sit below the fold. */
+  min-height: 100vh;
+}
+
+/* ---- left icon rail ------------------------------------------ */
+.pgd-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0;
+  gap: 6px;
+  border-right: 1px solid var(--hair);
+  background: #0A0A0D;
+  /* Sticky, not fixed: the page scrolls now, and the rail is the navigation,
+     so it stays put while the campaigns and activity rows come up. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  /* Above the tile grid. The rail is positioned, so it forms a stacking
+     context; without a z-index the tiles paint over it and the tooltips
+     appear BEHIND the first tile — which is exactly what happened. */
+  z-index: 90;
+}
+.pgd-rail img { width: 32px; height: 32px; margin-bottom: 14px; object-fit: contain; }
+.pgd-rail a,
+.pgd-rail span.pgd-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-45); text-decoration: none; flex: 0 0 auto;
+  position: relative;
+}
+.pgd-rail a:hover { color: var(--ink); background: rgba(250, 248, 245, 0.06); }
+.pgd-rail a.on { background: rgba(250, 248, 245, 0.1); color: var(--ink); }
+
+/* ---- rail tooltips -------------------------------------------
+   The rail is the navigation and its icons are unlabelled, so the name has
+   to be reachable. This is the visual affordance; the aria-label on each
+   control is what a screen reader gets, so the two never disagree.
+   Shown on focus as well as hover — a keyboard user needs it too.
+   ------------------------------------------------------------- */
+.pgd-tip {
+  position: absolute; left: 48px; top: 50%; transform: translateY(-50%);
+  background: rgba(7, 7, 10, 0.94);
+  border: 1px solid rgba(250, 248, 245, 0.14);
+  backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+  color: var(--ink-90); font-size: 14px; line-height: 1;
+  padding: 8px 11px; border-radius: 8px; white-space: nowrap;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 0.12s ease; z-index: 70;
+}
+.pgd-rail a:hover .pgd-tip,
+.pgd-rail a:focus-visible .pgd-tip,
+.pgd-rail span.pgd-icon:hover .pgd-tip { opacity: 1; visibility: visible }
+.pgd-rail svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.pgd-rail .pgd-spacer { flex: 1 }
+.pgd-rail .pgd-ava {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(250, 248, 245, 0.14);
+  border: 2px solid rgba(250, 248, 245, 0.2);
+  flex: 0 0 auto;
+}
+
+/* ---- main column --------------------------------------------- */
+.pgd-main {
+  /* 32px gutter. The 22 it replaces was the reference's, and at 1440 it put
+     the tiles almost against the rail. */
+  padding: 24px 32px 28px;
+  display: grid;
+  /* Two rows now, not three: the pill nav row is gone (the rail IS the
+     navigation) and the greeting has risen into the space it freed. */
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Tools sit top-right with the KPIs stacked directly beneath them, so the
+   greeting owns the freed height on the left. */
+.pgd-headright { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.pgd-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pgd-t {
+  height: 40px; padding: 0 16px; border-radius: 999px;
+  background: var(--tile); border: 0;
+  display: flex; align-items: center; gap: 8px; color: var(--ink-75);
+  white-space: nowrap; font-size: 14px;
+}
+/* The search field is a real form now, so it is styled as an input rather
+   than as a label-shaped span. */
+.pgd-search-form { display: flex; align-items: center; flex: 0 0 auto }
+.pgd-t.pgd-search {
+  width: 260px; color: var(--ink); font-family: inherit; font-size: 14px;
+  outline: none;
+}
+.pgd-t.pgd-search::placeholder { color: rgba(250, 248, 245, 0.42) }
+.pgd-t.pgd-search:focus-visible { box-shadow: inset 0 0 0 1px rgba(250, 248, 245, 0.3) }
+/* Sits inside the field's pill, on its right edge. */
+.pgd-search-form { position: relative }
+.pgd-t.pgd-search { padding-right: 42px }
+.pgd-search-go {
+  position: absolute; right: 4px; top: 4px; width: 32px; height: 32px;
+  border: 0; border-radius: 999px; background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  color: var(--ink-50);
+}
+.pgd-search-go:hover { color: var(--ink); background: rgba(250, 248, 245, 0.08) }
+.pgd-search-go svg {
+  width: 17px; height: 17px; fill: none; stroke: currentColor;
+  stroke-width: 1.9; stroke-linecap: round;
+}
+.pgd-av {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--orange);
+  display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+.pgd-av svg {
+  width: 18px; height: 18px; fill: none; stroke: #fff;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.pgd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.pgd-h1 {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-weight: 400; font-size: 44px; line-height: 0.92;
+  margin: 0; letter-spacing: 0.01em;
+}
+.pgd-sub { color: rgba(250, 248, 245, 0.55); margin: 6px 0 0; font-size: 16px }
+/* The header's only line, on a page that names itself in its body. Sits on
+   the h1's baseline rather than 6px below where the h1 would have been. */
+.pgd-sub.pgd-sub-lead { margin: 0; padding-top: 6px }
+.pgd-kpis { display: flex; gap: 26px; flex-wrap: wrap }
+.pgd-kpi { text-align: right }
+.pgd-kpi b {
+  display: block;
+  font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 32px; line-height: 1;
+}
+.pgd-kpi span { font-size: 14px; color: var(--ink-50) }
+/* ONE LINE, always. This was clamped to 104px so it would stay inside its
+   own column, which at 14px broke "across all campaigns" over three lines.
+   The label is shortened at the source instead, and the KPI is simply as
+   wide as its widest line — .pgd-kpis is a flex row, so a wider item widens
+   that item and overlaps nothing. */
+.pgd-kpi small {
+  display: block; font-size: 14px; color: var(--ink-45); margin-top: 3px;
+  white-space: nowrap; line-height: 1.25;
+}
+
+/* ---- the tile grid ------------------------------------------- */
+.pgd-grid {
+  display: grid;
+  /* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so one wide
+     child (the roster table) can push the whole grid past the viewport. */
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  /* THREE ROWS: the content row, the campaigns row, the activity strip.
+     Was five, three of them fractions of the viewport.
+
+     690px for the content row, measured in the browser rather than chosen.
+     The ask was 480 for "8 roster rows and all 6 top posts"; at the new type
+     480 shows six. What 8 rows actually cost, all measured at 1440x900:
+
+       roster row      64px  (16px name over a 14px sport, plus padding)
+       8 rows         512
+       sticky thead    33    scrolls nothing, permanently occupies the top
+       bottom fade     24    row 8 has to sit clear of it to be readable
+       tile chrome    116    20px padding x2, plus the two-line heading
+       ------------------
+                      685 -> 690
+
+     Top posts' six rows come to 616px, which fits inside the same 690 with
+     no inner scroll at all.
+
+     A DEFINITE 690, not minmax(690px, auto): with `auto` the row grew to the
+     tallest tile's max-content — 918px, the roster's full twelve rows — which
+     pushed Campaigns to y=1080 and cut the roster across the fold anyway.
+     Definite keeps the promise the number makes: 8 rows and 6 posts above the
+     fold, the remaining four a scroll inside the roster, and Campaigns at
+     y=865 with Activity at y=1032. */
+  grid-template-rows: 690px auto auto;
+  gap: 10px;
+  min-height: 0;
+}
+/* No border. The tile is #111114 on a #07070A ground and that contrast is
+   the whole separation — an outline on top of it was drawing the same line
+   twice. */
+.pgd-tile {
+  background: var(--tile); border: 0;
+  border-radius: 14px; padding: 20px; position: relative;
+  overflow: hidden; min-height: 0; display: flex; flex-direction: column;
+}
+.pgd-tile h3 {
+  margin: 0 0 12px; font-size: 18px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; line-height: 1.25;
+}
+.pgd-more {
+  position: absolute; top: 20px; right: 20px; font-size: 14px;
+  color: var(--ink-50); text-decoration: none;
+}
+.pgd-more:hover { color: var(--ink) }
+.pgd-muted { color: var(--ink-50); font-size: 14px }
+.pgd-num { font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400 }
+
+/* reference spans */
+/* ---- placement -------------------------------------------------
+   Ordered by how much a brand actually has to look at. Rows 1-3 are the
+   three tiles carrying real CVS data — the wrapped hero, the roster, the
+   top posts. Row 4 is the campaigns strip. Row 5 is the four workflow
+   tiles, which are empty for every brand today, compacted into one short
+   strip instead of occupying prime space individually.
+
+   Row template is 3fr 3fr 3fr / auto / 120px: the content rows share the
+   space and the workflow strip is a fixed 120, so the empty tiles cannot
+   grow into the room the real ones need. */
+.pgd-photo    { grid-column: 1 / 4;   grid-row: 1 / 2; padding: 0 }
+.pgd-roster   { grid-column: 4 / 10;  grid-row: 1 / 2 }
+.pgd-top      { grid-column: 10 / 13; grid-row: 1 / 2 }
+.pgd-camps    { grid-column: 1 / 13;  grid-row: 2 / 3 }
+.pgd-activity { grid-column: 1 / 13;  grid-row: 3 / 4 }
+
+/* ---- Activity ------------------------------------------------
+   Was four tiles — Waiting on you, Posts going live, Deliverables, This
+   week — and all four are empty for every brand today, because
+   review_sessions is empty database-wide and athlete_deliverables carries
+   no dates. Four cards saying nothing is four times the furniture for the
+   same nothing, so they are one quiet row of four lines.
+
+   Each line is label + state. When a state stops being empty it says so in
+   the same place, and Waiting on you says it in orange — a coloured word,
+   which is what that tile's orange panel was actually for.
+   ------------------------------------------------------------- */
+.pgd-acts {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 28px;
+}
+.pgd-act { font-size: 16px; color: var(--ink-90); min-width: 0 }
+.pgd-act b {
+  font-weight: 700; color: var(--ink-50); font-size: 14px;
+  display: block; margin-bottom: 2px;
+}
+/* The one place orange survives on this strip: a real queue. An empty queue
+   in alarm orange argued with its own text. */
+.pgd-act.pgd-act-on { color: var(--orange-soft) }
+
+/* ---- shared empty state -------------------------------------
+   One pattern for the data-less panels across the pages: one line saying
+   what is absent, and a quieter second line saying when it will appear. A
+   designed absence, not a broken tile — and never a fake figure.
+
+   The icon disc it used to open with is gone with the rest of the
+   icons-in-squares.
+   ------------------------------------------------------------- */
+.pgd-blank {
+  margin: auto 0; display: flex; flex-direction: column; gap: 6px;
+  align-items: flex-start; min-width: 0;
+}
+.pgd-blank .pgd-blank-ic { display: none }
+.pgd-blank b { font-weight: 700; font-size: 16px; color: var(--ink-90); display: block }
+.pgd-blank span { font-size: 14px; line-height: 1.5; color: var(--ink-50); display: block }
+
+/* legacy single-line helpers, still used by the roster's no-campaign state */
+.pgd-empty-body {
+  margin: auto 0; color: var(--ink-50); font-size: 14px; line-height: 1.5;
+}
+
+
+/* Latest wrapped photo tile */
+/* 42%, moved down from 15%. The overlay now sits over the top of the tile,
+   so a face framed at 15% ends up behind the campaign name. */
+.pgd-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; display: block }
+/* TOP-LEFT, not bottom. The block is the tile's heading — campaign name, the
+   figures, then where they came from — and a heading belongs where the eye
+   starts. At the bottom it also had to fight the photograph: these are
+   portraits, so the subject's face is usually in the upper half and the lower
+   half is the busiest part of the frame.
+
+   Three gradient stops, not two: the block holds a name, a row of 40px
+   figures and a footnote, and against a linear fade its far end sat on the
+   bright part of a poolside photograph. Near-solid ink behind the text,
+   fading only past it. */
+.pgd-over {
+  position: absolute; left: 0; right: 0; top: 0; padding: 20px 20px 92px;
+  background: linear-gradient(180deg,
+    rgba(7, 7, 10, 0.96) 0%, rgba(7, 7, 10, 0.86) 46%, rgba(7, 7, 10, 0) 100%);
+}
+.pgd-over h2 {
+  font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; text-transform: uppercase; font-size: 34px;
+  line-height: 0.92; margin: 0 0 12px;
+}
+.pgd-over .pgd-stats { display: flex; gap: 20px; font-size: 14px; color: var(--ink-75); flex-wrap: wrap }
+.pgd-over .pgd-stats b {
+  display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 40px; line-height: 1; color: var(--ink);
+}
+
+/* roster table */
+/* The roster holds more rows than the tile is tall, so its body scrolls
+   inside the tile. That is what keeps the page itself from scrolling while
+   still showing as many rows as fit. min-height:0 is required or the flex
+   child refuses to shrink and pushes the tile past its grid row. */
+/* Two lines, always: the roster's meta line is "Q2 2026 · Instagram (Feed +
+   Reels + Stories) + TikTok · 132 athletes · 102 schools", which at the body
+   size cannot share a row with the title AND clear the "All athletes" link in
+   the corner — it ran straight under it. Title on top, meta beneath, and the
+   header keeps 120px clear on the right for the link. */
+.pgd-roster h3 { display: block; padding-right: 120px; margin-bottom: 10px }
+.pgd-roster h3 .pgd-muted { display: block; font-weight: 400; margin-top: 3px }
+.pgd-roster .pgd-scroll {
+  overflow: auto; margin-top: 6px; flex: 1; min-height: 0;
+  /* Snap so a row is never left half-hidden behind the sticky header. The
+     header is 34px of the box that never scrolls, so scroll-margin-top on the
+     rows is what makes "aligned to the start" mean "aligned under the
+     header". proximity, not mandatory: a deliberate small scroll should still
+     be possible. */
+  scroll-snap-type: y proximity;
+}
+.pgd-roster tbody tr { scroll-snap-align: start; scroll-margin-top: 34px }
+/* Both scrolling tile bodies fade out at the bottom edge. Without it the last
+   visible row is sliced through the middle of its type, which reads as a
+   layout bug rather than as "there is more below". */
+.pgd-roster .pgd-scroll, .pgd-top .pgd-scroll {
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent 100%);
+}
+.pgd-roster thead th { position: sticky; top: 0; background: var(--tile); z-index: 2 }
+/* SEPARATE, not collapse. The sticky header was opaque (#111114), positioned,
+   and above the rows by z-index — elementFromPoint at its centre returned the
+   th — and the rows STILL showed through it. Collapsed borders are why: with
+   border-collapse: collapse a cell's background is painted in the table's
+   own background layer, below the in-flow content of other rows, so no
+   z-index on the cell can lift it. border-spacing: 0 keeps the layout
+   identical, and nothing here needs merged borders — th and td each set only
+   their own bottom edge. */
+.pgd-roster table {
+  width: 100%; border-collapse: separate; border-spacing: 0; min-width: 560px;
+}
+.pgd-roster th {
+  text-align: left; font-weight: 400; font-size: 14px; color: var(--ink-45);
+  padding: 6px 8px; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
+}
+.pgd-roster td {
+  padding: 9px 8px; border-bottom: 1px solid rgba(250, 248, 245, 0.06);
+  font-size: 16px; vertical-align: middle;
+}
+.pgd-roster tr:last-child td { border-bottom: 0 }
+.pgd-who { display: flex; align-items: center; gap: 8px }
+.pgd-who img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: 0 0 auto }
+/* No photo on file -> initials on a dark disc, never a stock image. Same
+   treatment as the athletes directory, just smaller. An empty circle read as
+   a broken image; initials read as a person we have no photo of. */
+.pgd-who .pgd-noface {
+  width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: var(--ink-50); letter-spacing: 0.02em;
+}
+/* 16/14 on the roster, same pairing as the athlete cards. */
+.pgd-who small { display: block; font-size: 14px; color: var(--ink-50) }
+
+/* ---- Top posts ----------------------------------------------
+   Six rows at the body size are taller than the tile, so the LIST scrolls
+   inside it — same treatment as the roster, and the same reason: the page
+   itself must not scroll at 1440x900. */
+.pgd-top .pgd-scroll { overflow: auto; flex: 1; min-height: 0 }
+.pgd-post {
+  display: flex; align-items: center; gap: 11px; padding: 8px 0;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.06); text-decoration: none; color: inherit;
+}
+.pgd-post:last-child { border-bottom: 0 }
+.pgd-post img { width: 38px; height: 46px; border-radius: 8px; object-fit: cover; flex: 0 0 auto }
+/* A disc, not the 34x42 rounded rectangle the photo uses: with no image the
+   rectangle was a grey slab. Initials in a circle match the roster and the
+   directory, so the no-photo state looks the same everywhere. */
+.pgd-post .pgd-nothumb {
+  width: 38px; height: 38px; border-radius: 50%; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: var(--ink-50);
+}
+.pgd-post .pgd-r { font-family: var(--font-anton), Anton, Impact, sans-serif; color: rgba(250, 248, 245, 0.4); width: 16px; font-size: 16px; flex: 0 0 auto }
+.pgd-post b { display: block; font-size: 16px }
+.pgd-post small { font-size: 14px; color: var(--ink-50) }
+.pgd-post .pgd-v { margin-left: auto; text-align: right; font-size: 14px; flex: 0 0 auto; line-height: 1.2 }
+.pgd-post .pgd-v b { font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400; font-size: 22px }
+.pgd-post .pgd-v.pgd-v-inline { display: flex; align-items: baseline; gap: 7px }
+
+/* ---- Campaigns strip ----------------------------------------
+   NOT a tile: a plain heading with a row of cards under it. As a card it was
+   a box holding boxes, and the outer one said nothing the heading didn't. */
+.pgd-camps {
+  background: none; border: 0; padding: 0; overflow: visible;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.pgd-camps h3 {
+  margin: 0; display: flex; font-weight: 400;
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-weight: 400; font-size: 26px; letter-spacing: 0.02em;
+  align-items: baseline; gap: 10px;
+}
+.pgd-camps h3 small { font-weight: 400; color: var(--ink-50); font-size: 14px;
+  font-family: var(--font-arimo), Arimo, Arial, sans-serif }
+/* Flex, not a 6-track grid. The card count is deliberately not padded out to
+   six — three live plus three wrapped, and fewer when a brand has fewer — and
+   in a fixed 6-track grid four cards left two empty tracks and the row read as
+   half-loaded. Flex children share whatever is there. */
+.pgd-campgrid { display: flex; gap: 10px; min-width: 0 }
+.pgd-campgrid > * { flex: 1 1 0; min-width: 0 }
+.pgd-camp {
+  background: var(--tile); border: 0;
+  border-radius: 12px; padding: 14px; display: flex; flex-direction: column;
+  gap: 5px; min-width: 0; text-decoration: none; color: inherit;
+}
+.pgd-camp:hover { background: #16161a }
+.pgd-camp .pgd-cn {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 22px; line-height: 1.1; letter-spacing: 0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pgd-camp .pgd-cm { font-size: 14px; color: var(--ink-50);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+/* Status is a coloured word, not a chip: orange for live, quiet ink for
+   wrapped. A pill around a one-word state was one more box. */
+.pgd-camp .pgd-cf {
+  display: flex; gap: 8px; align-items: baseline;
+  font-size: 14px; color: rgba(250, 248, 245, 0.55); margin-top: auto; padding-top: 4px;
+}
+.pgd-camp .pgd-cf b { white-space: nowrap; flex: 0 0 auto; font-weight: 700;
+  color: rgba(250, 248, 245, 0.6) }
+.pgd-camp.pgd-live .pgd-cf b { color: var(--orange-soft) }
+
+/* ---- admin preview pill -------------------------------------
+   Lives IN the top-right toolbar, left of search. It was a full-width banner
+   (read as a website nav bar, pushed the page down), then a floating chip in
+   three different corners — and a viewport-fixed element on a full-bleed grid
+   covers something in every one of them: an athlete row bottom-left, the 895K
+   figure in Top posts bottom-right, a roster cell bottom-centre. In the
+   toolbar it occupies real layout, so it covers nothing and moves nothing.
+
+   Sized to match the sibling .pgd-t controls (36px, same fill and border) so
+   it reads as part of the toolbar; the orange dot is what distinguishes it.
+
+   Still admin/exec only. `preview` is populated by exactly one branch of
+   resolveSessionPortal(), so a brand session cannot render this markup.
+   ------------------------------------------------------------- */
+.pgd-chip {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--tile);
+  border: 0;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.pgd-chip .pgd-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--orange); flex: 0 0 auto;
+}
+.pgd-chip .pgd-chip-label {
+  color: var(--ink-90); overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.pgd-chip a {
+  color: var(--ink-60); text-decoration: none; flex: 0 0 auto;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.24); padding-bottom: 1px;
+}
+.pgd-chip a:hover { color: var(--ink) }
+
+/* bottom tab bar, phone only */
+.pgd-tabbar { display: none }
+
+/* ---- tablet: 6 columns, tiles stack in the brief's order ----- */
+@media (max-width: 1100px) {
+  /* The page already scrolls; below the reference width the tiles also stack,
+     so the content row's 620px floor comes off — each tile is its own row
+     here and sizes to what it holds. */
+  .pgd-grid { grid-template-rows: none }
+  .pgd-rail { height: auto; min-height: 100vh }
+  /* overflow-x stays auto — the roster table has min-width: 520px so its
+     columns stay readable, and below ~600px that width has to scroll INSIDE
+     the tile. Setting overflow:visible here let the 520px leak out and made
+     the whole page 520px wide at a 390px viewport: every tile ran off the
+     right edge and the tab bar lost its fifth item. Only the vertical clamp
+     is released. */
+  .pgd-roster .pgd-scroll { overflow-x: auto; overflow-y: visible; flex: none }
+  .pgd-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: none }
+  .pgd-photo, .pgd-roster, .pgd-top, .pgd-camps, .pgd-activity {
+    grid-column: auto / span 6; grid-row: auto;
+  }
+  /* Same priority as the desktop grid, expressed with `order` because the
+     rows collapse: real content first, the activity strip last. */
+  .pgd-photo    { order: 1 }
+  .pgd-roster   { order: 2 }
+  .pgd-top      { order: 3 }
+  .pgd-camps    { order: 4 }
+  .pgd-activity { order: 5 }
+  /* Two-up rather than four-up: at this width four labelled states in one
+     row put every one of them onto three lines. */
+  .pgd-acts { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  /* height, not just min-height: the tile has no grid row to size it once the
+     rows collapse, so a 1:2 portrait grew to its own aspect ratio and filled
+     the screen. A banner, not a poster. */
+  .pgd-photo { height: 320px; min-height: 0 }
+  .pgd-campgrid { flex-wrap: wrap }
+  .pgd-campgrid > * { flex: 1 1 30% }
+  .pgd-main { padding: 22px 24px 26px }
+}
+
+/* ---- phone: one column + bottom tab bar --------------------- */
+@media (max-width: 640px) {
+  .pgd { grid-template-columns: minmax(0, 1fr); overflow-x: hidden }
+  .pgd-rail { display: none }
+  .pgd-main { padding: 20px 20px 92px }
+  .pgd-grid { grid-template-columns: minmax(0, 1fr) }
+  .pgd-photo, .pgd-roster, .pgd-top, .pgd-camps, .pgd-activity {
+    grid-column: auto; grid-row: auto;
+  }
+  /* Phone keeps the desktop running order — the wrapped photo, the roster and
+     the top posts before the activity strip, which is empty. */
+  .pgd-photo    { order: 1 }
+  .pgd-roster   { order: 2 }
+  .pgd-top      { order: 3 }
+  .pgd-camps    { order: 4 }
+  .pgd-activity { order: 5 }
+  /* One per row: four states two-up still wrapped every label. */
+  .pgd-acts { grid-template-columns: minmax(0, 1fr); gap: 14px }
+
+  /* 240 on a phone: the hero was taking the whole first screen, so nothing
+     below it existed until you scrolled. */
+  .pgd-photo { height: 240px }
+
+  /* The roster heading and its meta line were fighting over one row and both
+     wrapped — "Latest roster · SPF" broke across three lines. Stack them. */
+  .pgd-roster h3 { flex-wrap: wrap; row-gap: 4px }
+  .pgd-roster h3 .pgd-muted { flex-basis: 100%; font-size: 14px }
+  .pgd-roster h3 .pgd-more { margin-left: auto }
+  .pgd-campgrid { flex-wrap: wrap }
+  .pgd-campgrid > * { flex: 1 1 44% }
+  .pgd-h1 { font-size: 44px }
+  /* Search comes back on the phone now that it works — it is the fastest way
+     to a campaign on a small screen. It takes a row of its own: sharing one
+     with the admin preview chip and the avatar left it 90px wide, showing
+     "Sear". */
+  .pgd-search-form { flex: 1 0 100%; order: 3 }
+  .pgd-t.pgd-search { width: 100%; min-width: 0 }
+  /* 26px, not 40: three 40px Anton figures plus their labels and the
+     footnote do not fit a 240px band at 390 — the name was pushed into the
+     top of the photo. */
+  .pgd-over h2 { font-size: 28px; margin-bottom: 8px }
+  .pgd-over .pgd-stats { gap: 16px }
+  .pgd-over .pgd-stats b { font-size: 26px }
+  .pgd-over .pgd-figs-note { margin-top: 6px }
+  .pgd-kpis { gap: 22px }
+  .pgd-kpi { text-align: left }
+  /* the rail is gone on phones, so the header stacks and the tools/KPIs
+     left-align with everything else */
+  .pgd-headright { align-items: flex-start; width: 100% }
+  .pgd-tools { justify-content: flex-start; width: 100% }
+
+  .pgd-tabbar {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    background: rgba(7, 7, 10, 0.94);
+    backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+    border-top: 1px solid var(--hair);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  .pgd-tabbar a, .pgd-tabbar span {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--ink-50); text-decoration: none; font-size: 14px; padding: 4px 0;
+  }
+  .pgd-tabbar .on { color: var(--ink) }
+  .pgd-tabbar svg {
+    width: 20px; height: 20px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgd * { transition: none !important; animation: none !important }
+}
+
+/* ============================================================
+   Phase 3b page primitives.
+
+   Shared by Campaigns, Campaign detail, Athletes, Content, Reports and
+   Settings so the six pages are one visual system rather than six. Same
+   tokens as the dashboard: #111114 card on #07070A, radius 14, Bebas
+   headings, Anton figures, Arimo body, orange as accent only.
+
+   Pages SCROLL (unlike the dashboard, which is locked to the viewport):
+   a gallery of 460 items and a directory of 1,501 athletes are lists, and
+   a list that cannot scroll is a list you cannot read.
+   ============================================================ */
+/* min-width: 0 so a wide child (the Reports table) cannot stretch the column
+   it sits in. */
+.pgd-page { overflow-y: auto; min-height: 0; min-width: 0; padding-bottom: 32px }
+.pgd.pgd-scrolls { height: 100vh }
+.pgd.pgd-scrolls .pgd-main { height: 100vh; overflow: hidden }
+
+/* filter row */
+.pgd-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px }
+/* The filter controls keep their pill shape — they ARE controls, and a
+   pressed state needs a boundary. The chips that went were labels pretending
+   to be controls. */
+.pgd-pill {
+  padding: 9px 16px; border-radius: 999px; font-size: 14px;
+  background: var(--tile); border: 0;
+  color: var(--ink-60); cursor: pointer; white-space: nowrap; font-family: inherit;
+}
+.pgd-pill:hover { color: var(--ink) }
+.pgd-pill.on { background: var(--ink); color: #07070A; font-weight: 700 }
+.pgd-input {
+  height: 40px; padding: 0 14px; border-radius: 999px; font-size: 14px;
+  background: var(--tile); border: 0; color: var(--ink);
+  outline: none; min-width: 200px; font-family: inherit;
+}
+.pgd-select {
+  height: 40px; padding: 0 12px; border-radius: 999px; font-size: 14px;
+  background: var(--tile); border: 0; color: var(--ink-90);
+  outline: none; font-family: inherit;
+}
+.pgd-count { font-size: 14px; color: var(--ink-50); margin-left: auto }
+
+/* generic card grid */
+.pgd-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) }
+.pgd-card {
+  background: var(--tile); border: 0; border-radius: 14px;
+  overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: inherit;
+}
+.pgd-card:hover { background: #16161a }
+/* UNIFORM CARDS. Every campaign card now has a header band — a photo where
+   there is one, a gradient with the quarter and type where there isn't — so
+   the two sections read as one grid instead of tall cards next to short ones.
+   .pgd-card-noimg is kept for the other pages' image-less cards. */
+.pgd-card-noimg { align-self: start }
+/* Fixed height, not aspect-ratio. Two reasons: this is a <span>, so it needs
+   display:block for any box sizing at all; and aspect-ratio on a flex item
+   whose child is height:100% did not resolve to a stable height — cards came
+   out 600px tall in a 280px column. An explicit height is predictable and
+   makes every card in the grid the same size, which is the point. */
+.pgd-card-thumb { display: block; position: relative; height: 170px; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.04) }
+/* The live card's band: no hero media exists on any live campaign in this
+   data, so instead of an empty grey rectangle it carries the two facts a live
+   campaign does have — quarter and type — with the name in Bebas over a dark
+   gradient. Same height as the photo band, so the grid stays uniform. */
+.pgd-card-band {
+  display: flex; flex-direction: column; justify-content: flex-end;
+  position: relative; height: 170px; flex: 0 0 auto; padding: 16px;
+  background: linear-gradient(155deg, #26262c 0%, #17171c 45%, #0b0b0f 100%);
+}
+.pgd-card-band .pgd-band-name {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 30px; line-height: 1.02; letter-spacing: 0.01em;
+}
+.pgd-card-band .pgd-band-meta {
+  font-size: 14px; color: var(--ink-60); margin-bottom: 6px;
+}
+.pgd-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
+/* Hard rule 4: a flat image edge on the black ground gets an edge-blend. */
+.pgd-card-thumb::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 46%;
+  background: linear-gradient(0deg, rgba(17, 17, 20, 0.92), rgba(17, 17, 20, 0));
+}
+.pgd-card-body { padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1 }
+.pgd-card-name {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 24px; line-height: 1.05; letter-spacing: 0.01em;
+}
+.pgd-card-meta { font-size: 14px; color: var(--ink-50) }
+.pgd-card-foot { margin-top: auto; padding-top: 8px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap }
+.pgd-stat b {
+  display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 26px; line-height: 1;
+}
+.pgd-stat span { font-size: 14px; color: var(--ink-50) }
+/* Status as a coloured word. These two were pills; the pill added a box and
+   a 10px label to say one word that colour already says. */
+.pgd-state-live, .pgd-state-wrapped { font-size: 14px; font-weight: 700; white-space: nowrap }
+.pgd-state-live { color: var(--orange-soft) }
+.pgd-state-wrapped { color: var(--ink-50) }
+
+/* ---- Reports ------------------------------------------------
+   Period filter and export sit above everything, because they change
+   everything below them.
+   ------------------------------------------------------------- */
+.pgd-report-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.pgd-periods { display: flex; gap: 8px; flex-wrap: wrap }
+.pgd-periods .pgd-pill { text-decoration: none; display: inline-flex; align-items: center }
+
+/* SIX KPI TILES. auto-fit rather than a fixed six across: at 1440 they sit
+   six-up, at the tablet width three-up, and on a phone two-up, without three
+   separate rules — and a brand with fewer than six figures (no follower data,
+   say) gets a full row of what it does have instead of a gap. */
+.pgd-kpi-grid {
+  display: grid; gap: 12px; margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.pgd-kpi-tile { padding: 18px 20px; gap: 0 }
+.pgd-kpi-value {
+  font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
+  font-size: 40px; line-height: 1;
+}
+.pgd-kpi-label { font-size: 16px; color: var(--ink-75); margin-top: 6px }
+.pgd-kpi-sub { font-size: 14px; color: var(--ink-45) }
+/* The comparison line. Orange for up is wrong here — orange is the brand
+   accent, not a verdict — so direction is carried by the arrow and a quiet
+   ink/positive pair. */
+.pgd-kpi-cmp { font-size: 14px; margin-top: 10px; color: var(--ink-50) }
+.pgd-kpi-cmp.up { color: #7fd1a3 }
+.pgd-kpi-cmp.down { color: rgba(250, 248, 245, 0.55) }
+
+/* Chart beside the two side panels at desktop; stacked below it. */
+.pgd-report-split {
+  display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 12px; align-items: start; margin-bottom: 12px;
+}
+.pgd-report-side { display: flex; flex-direction: column; gap: 12px; min-width: 0 }
+@media (max-width: 1100px) {
+  .pgd-report-split { grid-template-columns: minmax(0, 1fr) }
+}
+
+.pgd-legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 10px }
+.pgd-legend-key { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-75) }
+.pgd-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block }
+.pgd-swatch-posts { background: rgba(250, 248, 245, 0.34) }
+.pgd-swatch-views { background: var(--orange) }
+.pgd-legend-note { font-size: 14px; color: var(--ink-45) }
+
+/* The hover readout. One line above the chart rather than a floating tooltip:
+   a tooltip that follows the pointer covers the bars it describes, and on a
+   touch screen it never appears at all. */
+.pgd-readout {
+  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  min-height: 24px; margin-bottom: 12px; font-size: 14px; color: var(--ink-75);
+}
+.pgd-readout b {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 20px; letter-spacing: 0.02em; color: var(--ink);
+}
+.pgd-readout-idle { color: var(--ink-45) }
+
+/* VERTICAL GROUPED BARS over a gridded plot. The plot is a fixed 240px so
+   every quarter is comparable by height; the gridlines are what turn a
+   height into a quantity.
+
+   The label gutters are padding on the plot, not columns in a table: the
+   bars have to span the full width for their proportions to hold, and the
+   numbers sit in the margins either side. */
+.pgd-plot { position: relative; padding: 0 52px 0 44px }
+.pgd-grid-lines { position: absolute; inset: 0 52px 26px 44px; pointer-events: none }
+.pgd-grid-line {
+  position: absolute; left: 0; right: 0; height: 0;
+  border-top: 1px solid rgba(250, 248, 245, 0.09);
+}
+.pgd-grid-line span {
+  position: absolute; top: -9px; font-size: 14px; color: var(--ink-45);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+/* Posts left, reel views right — the same order as the legend. */
+.pgd-grid-left { right: calc(100% + 8px) }
+.pgd-grid-right { left: calc(100% + 8px) }
+.pgd-axis-note { margin: 14px 0 0; font-size: 14px; color: var(--ink-45) }
+.pgd-bars { display: flex; align-items: flex-end; gap: 10px; min-height: 0; position: relative }
+.pgd-bar-group {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+  align-items: center; gap: 8px; border-radius: 10px; padding: 6px 2px;
+  cursor: default;
+}
+.pgd-bar-group.on, .pgd-bar-group:focus-visible {
+  background: rgba(250, 248, 245, 0.05); outline: none;
+}
+.pgd-bar-pair {
+  display: flex; align-items: flex-end; justify-content: center; gap: 5px;
+  height: 240px; width: 100%;
+}
+/* Above the gridlines, so a bar covers the line it crosses rather than being
+   striped by it. */
+.pgd-bar-pair, .pgd-bar-label { position: relative; z-index: 1 }
+.pgd-bar { width: 26px; max-width: 44%; border-radius: 4px 4px 0 0; display: block }
+.pgd-bar-posts { background: rgba(250, 248, 245, 0.34) }
+.pgd-bar-views { background: var(--orange) }
+.pgd-bar-label {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 16px; letter-spacing: 0.02em; color: var(--ink-60);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+
+/* Where the views came from. */
+.pgd-surfaces { display: flex; flex-direction: column; gap: 14px }
+.pgd-surface { display: flex; flex-direction: column; gap: 5px; min-width: 0 }
+.pgd-surface-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.pgd-surface-head b { font-size: 16px; font-weight: 700 }
+.pgd-surface-head em {
+  font-style: normal; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 22px;
+}
+.pgd-surface-track {
+  height: 10px; border-radius: 999px; background: rgba(250, 248, 245, 0.08);
+  overflow: hidden; display: block;
+}
+.pgd-surface-fill { height: 100%; display: block; background: var(--orange); border-radius: 999px }
+.pgd-surface-foot { font-size: 14px; color: var(--ink-45) }
+
+/* Best quarter. */
+.pgd-best-q {
+  display: block; font-family: var(--font-anton), Anton, Impact, sans-serif;
+  font-weight: 400; font-size: 40px; line-height: 1; text-transform: uppercase;
+}
+.pgd-best-line { margin: 10px 0 0; font-size: 16px; line-height: 1.5; color: var(--ink-75) }
+
+/* Top athletes: the dashboard's row, with a headshot. */
+.pgd-tops .pgd-post img {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+}
+
+/* The table is wider than a phone and, with every column present, wider than
+   the content column at 1440, so it scrolls in its own container.
+   max-width: 100% is what CONTAINS it: without it the table's min-width
+   propagated up through the panel and the page and laid the whole main column
+   out at 760px — at 390 that pushed the header, the search field and every
+   panel off the right edge, clipped by .pgd's overflow-x: hidden so the page
+   looked cropped rather than scrollable. */
+.pgd-table-scroll { overflow-x: auto; max-width: 100%; margin: 0 -4px; padding: 0 4px }
+.pgd-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 720px }
+.pgd-table th {
+  text-align: left; font-weight: 400; font-size: 14px; color: var(--ink-45);
+  padding: 0 12px 8px 0; border-bottom: 1px solid var(--tile-edge); white-space: nowrap;
+}
+.pgd-table th button {
+  background: none; border: 0; padding: 0; font: inherit; color: inherit;
+  cursor: pointer; white-space: nowrap;
+}
+.pgd-table th button:hover { color: var(--ink) }
+.pgd-table th button.on { color: var(--ink); font-weight: 700 }
+.pgd-table td {
+  padding: 11px 12px 11px 0; font-size: 16px;
+  border-bottom: 1px solid rgba(250, 248, 245, 0.06);
+}
+.pgd-table tr:last-child td { border-bottom: 0 }
+/* Figures right-aligned and tabular, so the digits line up down the column. */
+.pgd-table .pgd-num-col { text-align: right; font-variant-numeric: tabular-nums }
+.pgd-table td a { color: var(--orange-soft); text-decoration: none; white-space: nowrap }
+.pgd-table td a:hover { text-decoration: underline }
+
+/* A text button in a panel heading — "Show all 46". Not a pill: it is an
+   action on the panel it sits in, not a filter chip, and the heading is
+   already the boundary. */
+.pgd-toggle {
+  margin-left: auto; background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 400; color: var(--orange-soft);
+  padding: 0;
+}
+.pgd-toggle:hover { text-decoration: underline }
+
+/* A qualifier under a headline figure's label — "distinct people", "feed +
+   stories" — where the label alone would overstate what was counted. */
+.pgd-fig-sub { display: block; font-style: normal; font-size: 14px; color: var(--ink-45) }
+
+/* ---- recap cards -------------------------------------------
+   Photo, name, button, tight. The generic .pgd-card stretches to its row's
+   tallest sibling and pushes its footer down with margin-top: auto, which is
+   right for a card whose footer is a row of figures and wrong for one whose
+   last element is a single button — it left a band of dead tile under every
+   name. These size to their own content.
+   ------------------------------------------------------------- */
+.pgd-recaps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) }
+.pgd-recap {
+  background: var(--tile); border: 0; border-radius: 14px; overflow: hidden;
+  display: flex; flex-direction: column; align-self: start;
+}
+.pgd-recap:hover { background: #16161a }
+.pgd-recap-thumb {
+  display: block; position: relative; height: 150px; flex: 0 0 auto;
+  background: rgba(250, 248, 245, 0.04);
+}
+.pgd-recap-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
+/* Hard rule 4: a flat image edge on the black ground gets an edge-blend. */
+.pgd-recap-thumb::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 40%;
+  background: linear-gradient(0deg, rgba(17, 17, 20, 0.92), rgba(17, 17, 20, 0));
+}
+.pgd-recap-body {
+  padding: 14px 16px 16px; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 10px;
+}
+
+/* athlete cards */
+/* 400px, measured rather than guessed. At 1440 the grid is 1304px wide, and
+   the widest school+sport in CVS's roster — "University of North Carolina at
+   Asheville · TRACK & FIELD" — is 363px at 14px Arimo. 400px gives three
+   columns of 426px, which leaves the meta 246px: every ordinary school fits
+   on ONE line and the longest wraps to two. It was 200px, where both the
+   name and the meta could only fit by being ellipsised.
+
+   Guaranteeing one line for even the worst case would mean 533px cards, i.e.
+   two columns at 1440, and a 132-person roster two-across is a scroll no one
+   wants. Two lines, never three, and never a cut-off word. */
+.pgd-people { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)) }
+.pgd-person {
+  background: var(--tile); border: 0; border-radius: 14px;
+  padding: 16px; display: flex; gap: 14px; align-items: center; min-width: 0;
+}
+.pgd-person img, .pgd-person .pgd-noface {
+  width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+}
+.pgd-person .pgd-noface {
+  background: rgba(250, 248, 245, 0.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--ink-50); font-weight: 700;
+}
+/* TWO LINES, NEITHER TRUNCATED. Name 16, meta 14, both allowed to wrap —
+   the ellipsis is gone, so a long school name breaks rather than being cut
+   off mid-word. The figures move to their own column on the right so they
+   are not a third line competing for the same width. */
+.pgd-person-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; flex: 1 }
+.pgd-person-name { font-size: 16px; font-weight: 700; line-height: 1.3; overflow-wrap: break-word }
+.pgd-person-meta { font-size: 14px; color: var(--ink-50); line-height: 1.4; overflow-wrap: break-word }
+/* A COLUMN, not just a right-aligned blob: a fixed 92px so the figures line
+   up from one card to the next down the grid, with a hairline separating them
+   from the name and meta. Without the fixed width each card put its number
+   wherever its own text ended, and a grid of them read as ragged. */
+.pgd-person-nums {
+  flex: 0 0 92px; text-align: right; display: flex; flex-direction: column; gap: 2px;
+  font-size: 14px; color: var(--ink-50);
+  padding-left: 14px; border-left: 1px solid rgba(250, 248, 245, 0.08);
+}
+.pgd-person-nums b {
+  font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
+  font-size: 20px; color: var(--ink-90); display: block; line-height: 1.1;
+}
+/* Kept: the directory's own third line (campaign count / last campaign) is a
+   different fact from the figures and still belongs under the meta. */
+.pgd-person-num { font-size: 14px; color: var(--ink-60); line-height: 1.4 }
+
+/* media grid + lightbox */
+.pgd-media { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) }
+.pgd-media.pgd-media-2 { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) }
+/* ---- media tile ---------------------------------------------
+   DARK SHIMMER WHILE LOADING. These are 40 originals from Storage on a black
+   ground; until each one paints, the tile was a flat black rectangle
+   indistinguishable from a broken image. The shimmer says "coming" instead.
+
+   It lives on the tile, behind the image, so nothing has to switch it off:
+   the image is opaque and covers it the moment it paints. Killed under
+   prefers-reduced-motion by the blanket rule at the end of the dashboard
+   block, which leaves the plain tint.
+   ------------------------------------------------------------- */
+.pgd-shot {
+  position: relative; aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden;
+  background: #16161a; border: 0;
+  cursor: pointer; padding: 0; display: block; width: 100%;
+}
+.pgd-shot::before {
+  content: ""; position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(100deg,
+    #16161a 0%, #16161a 34%,
+    rgba(250, 248, 245, 0.13) 50%,
+    #16161a 66%, #16161a 100%);
+  background-size: 260% 100%;
+  animation: pgd-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes pgd-shimmer {
+  from { background-position: 130% 0 }
+  to   { background-position: -130% 0 }
+}
+.pgd-shot img { width: 100%; height: 100%; object-fit: cover; display: block;
+  position: relative; z-index: 1 }
+.pgd-shot::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 46%; z-index: 2;
+  background: linear-gradient(0deg, rgba(7, 7, 10, 0.96) 0%, rgba(7, 7, 10, 0.7) 38%, rgba(7, 7, 10, 0) 100%);
+}
+.pgd-shot figcaption {
+  position: absolute; left: 10px; right: 10px; bottom: 9px; z-index: 3;
+  font-size: 14px; color: rgba(250, 248, 245, 0.88); text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pgd-shot .pgd-play {
+  position: absolute; top: 9px; left: 9px; z-index: 3; width: 24px; height: 24px;
+  border-radius: 50%; background: var(--orange); display: flex;
+  align-items: center; justify-content: center;
+}
+.pgd-shot .pgd-play svg { width: 12px; height: 12px; fill: #fff }
+.pgd-shot .pgd-new {
+  position: absolute; top: 9px; right: 9px; z-index: 3; font-size: 14px; font-weight: 700;
+  background: var(--ink); color: #07070A; padding: 2px 8px; border-radius: 999px;
+}
+.pgd-shot.pgd-picked { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange) }
+
+/* Keyword chips, under the filter row. A chip is a removable value, which is
+   the one job a pill shape is still right for here. */
+.pgd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 16px }
+.pgd-term {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--ink); color: #07070A; font: inherit; font-size: 14px; font-weight: 700;
+}
+.pgd-term span { font-size: 16px; line-height: 1; opacity: 0.6 }
+.pgd-term:hover span { opacity: 1 }
+.pgd-term-clear {
+  background: none; border: 0; cursor: pointer; font: inherit; font-size: 14px;
+  color: var(--ink-50); padding: 6px 4px;
+}
+.pgd-term-clear:hover { color: var(--ink) }
+
+/* Lightbox paging. Big hit areas down the left and right edges. */
+.pgd-lb-step {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 52px; height: 52px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(17, 17, 20, 0.9); color: var(--ink);
+  font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+}
+.pgd-lb-step:hover { background: rgba(17, 17, 20, 1) }
+.pgd-lb-step[disabled] { opacity: 0.3; cursor: default }
+.pgd-lb-prev { left: 18px }
+.pgd-lb-next { right: 18px }
+.pgd-lb-count {
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  font-size: 14px; color: var(--ink-50);
+}
+
+.pgd-lightbox {
+  position: fixed; inset: 0; z-index: 200; background: rgba(7, 7, 10, 0.94);
+  display: flex; align-items: center; justify-content: center; padding: 32px;
+}
+.pgd-lightbox img, .pgd-lightbox video { max-width: 100%; max-height: 100%; border-radius: 12px }
+.pgd-lightbox .pgd-close {
+  position: absolute; top: 18px; right: 18px; background: var(--tile);
+  border: 0; color: var(--ink); border-radius: 999px;
+  padding: 10px 16px; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+
+/* ---- tabs ---------------------------------------------------
+   STICKY. The Content tab runs to 40 tiles and the Athletes tab to 418
+   cards, so by the time you have scrolled into either one the tab row — the
+   only way back out — was off screen. It sticks to the top of the scrolling
+   pane instead. The ground colour is repeated on it because the cards pass
+   underneath. */
+.pgd-tabs {
+  display: flex; gap: 24px; border-bottom: 1px solid var(--tile-edge);
+  margin-bottom: 18px; position: sticky; top: 0; z-index: 5;
+  background: #07070A;
+}
+.pgd-tabs button {
+  background: none; border: 0; padding: 12px 0; font-size: 16px; cursor: pointer;
+  color: var(--ink-50); border-bottom: 2px solid transparent; font-family: inherit;
+}
+.pgd-tabs button.on { color: var(--ink); border-bottom-color: var(--orange); font-weight: 700 }
+
+/* detail hero */
+/* ---- campaign detail hero -----------------------------------
+   A SPLIT, not a full-bleed band, and the reason is arithmetic. SPF's hero is
+   2400x3200. In a 1325x220 full-bleed band, object-fit: cover scales it to
+   1325x1767 and shows 220 of those 1767px — 12.5% of the image height. A head
+   in a close-up portrait occupies far more than 12.5%, so NO object-position
+   could ever frame one: every crop point was a slice of a face, which is why
+   SPF came out eyes-only. Measured across CVS's six heroes the band showed
+   11-25% of the frame.
+
+   Giving the photo 46% of the width instead drops the scale to 0.25, so the
+   same 220px shows 27% of the image and a whole face fits. The name sits on
+   the dark half, which is also exactly the state a live campaign with no hero
+   media needs, so both use one component.
+
+   FOLLOW-UP, still open: media.focal_y exists (it is NOT missing, as an
+   earlier run-log note claimed) but is populated on 2 of 63 hero rows. Where
+   it is set, it is used, via the --hero-focal custom property. Populating it
+   is the real fix for the remaining crops; 26% is the default and suits a
+   portrait, where faces sit in the upper third. */
+.pgd-hero {
+  position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 16px;
+  height: 220px; border: 0; display: flex; align-items: stretch;
+  background: linear-gradient(115deg, #23232a 0%, #14141a 46%, #0a0a0e 100%);
+}
+.pgd-hero-in {
+  position: relative; z-index: 2; padding: 20px 24px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  flex: 1 1 auto; min-width: 0;
+}
+.pgd-hero-in h1, .pgd-hero-in h2 {
+  font-family: var(--font-anton), Anton, Impact, sans-serif; font-weight: 400;
+  text-transform: uppercase; font-size: 40px; line-height: 0.94; margin: 0;
+  overflow-wrap: break-word;
+}
+/* One line under the name, for the state where that is all there is to say. */
+.pgd-hero-in .pgd-hero-note { margin: 10px 0 0; font-size: 16px; color: var(--ink-60); max-width: 62ch }
+.pgd-hero-photo { position: relative; flex: 0 0 46%; overflow: hidden }
+.pgd-hero-photo img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  object-position: center var(--hero-focal, 26%);
+}
+/* Feathered into the dark half so the split is not a hard vertical seam. */
+.pgd-hero-photo::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, #14141a 0%, rgba(20, 20, 26, 0.45) 34%, rgba(20, 20, 26, 0) 72%);
+}
+
+/* Campaign Overview tab. gap does the spacing, so the panels inside drop
+   their own bottom margin. align-items:start keeps the short right-hand column
+   at its content height instead of stretching to match Objective. */
+.pgd-overview { display: flex; flex-direction: column; gap: 10px }
+.pgd-overview .pgd-panel { margin-bottom: 0 }
+.pgd-overview-split {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 10px; align-items: start;
+}
+.pgd-overview-side { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+@media (max-width: 900px) {
+  .pgd-overview-split { grid-template-columns: minmax(0, 1fr) }
+}
+
+/* Secondary marker beside a heading: "by delivery date" on a derived quarter. */
+.pgd-group-note {
+  margin-left: 10px; font-family: var(--font-arimo), Arimo, Arial, sans-serif;
+  font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  color: var(--ink-45);
+}
+
+/* ---- figure rows --------------------------------------------
+   The Anton scale: 40px in a panel or tile, 56px on Results, which is the
+   one surface whose whole job is the numbers. Sizes live here rather than as
+   inline styles on each <b>, which is how four figure rows ended up at four
+   different sizes. */
+.pgd-figs { display: flex; gap: 32px; flex-wrap: wrap; align-items: baseline }
+.pgd-figs .pgd-stat b { font-size: 40px }
+.pgd-figs.pgd-figs-lg { gap: 40px }
+.pgd-figs.pgd-figs-lg .pgd-stat b { font-size: 56px }
+
+/* "No campaigns match that" and its siblings: a heading, at heading size. */
+.pgd-empty-h { font-size: 18px; font-weight: 700; display: block }
+
+/* ONE footnote under a set of figures, wherever they are derived rather than
+   set — "From post metrics". It was a caption hung on each figure and a
+   marker in the Results heading; both are now this single line, so the
+   provenance is stated once and reads as a note about the row above it. */
+.pgd-figs-note {
+  display: block; margin-top: 12px; font-size: 14px; color: var(--ink-45);
+}
+.pgd-over .pgd-figs-note { margin-top: 10px; color: rgba(250, 248, 245, 0.6) }
+
+/* Rich text from campaign_recaps.description / settings.key_takeaways, after
+   sanitising. Styled here rather than inline because the markup is arbitrary
+   within the allowlist — lists, paragraphs, headings — and it all has to sit
+   on the portal's ink ladder. Arimo at the body size, 1.5. */
+.pgd-prose { font-size: 16px; line-height: 1.5; color: var(--ink-75) }
+.pgd-prose > :first-child { margin-top: 0 }
+.pgd-prose > :last-child { margin-bottom: 0 }
+.pgd-prose p { margin: 0 0 12px }
+.pgd-prose ul, .pgd-prose ol { margin: 0 0 12px; padding-left: 22px }
+/* The app's base stylesheet strips list markers, so takeaways rendered as
+   unmarked indented paragraphs. Restated here rather than globally. */
+.pgd-prose ul { list-style: disc outside }
+.pgd-prose ol { list-style: decimal outside }
+.pgd-prose li { margin: 0 0 8px }
+.pgd-prose li > p { margin: 0 }
+.pgd-prose strong, .pgd-prose b { color: var(--ink-90); font-weight: 700 }
+.pgd-prose h3, .pgd-prose h4, .pgd-prose h5 {
+  font-size: 18px; font-weight: 700; color: var(--ink-90); margin: 16px 0 8px;
+}
+.pgd-prose blockquote {
+  margin: 0 0 10px; padding-left: 12px;
+  border-left: 2px solid rgba(215, 63, 9, 0.5); color: var(--ink-60);
+}
+.pgd-prose a { color: var(--orange-soft) }
+
+/* "Load more" row, under a paginated grid. */
+.pgd-more-row {
+  display: flex; align-items: center; gap: 12px;
+  justify-content: center; padding: 18px 0 6px;
+}
+
+/* simple panels + table for Settings / Results */
+.pgd-panel {
+  background: var(--tile); border: 0; border-radius: 14px;
+  padding: 20px; margin-bottom: 12px; min-width: 0;
+}
+.pgd-panel h3 { margin: 0 0 14px; font-size: 18px; font-weight: 700; line-height: 1.25 }
+.pgd-rows { display: flex; flex-direction: column }
+.pgd-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 1px solid rgba(250, 248, 245, 0.06); font-size: 14px;
+}
+.pgd-row:last-child { border-bottom: 0 }
+.pgd-row .pgd-row-main { min-width: 0; flex: 1 }
+.pgd-row .pgd-row-main b { display: block; font-size: 16px }
+.pgd-row .pgd-row-main span { font-size: 14px; color: var(--ink-50) }
+/* A trailing note on a row — a role, a status, "Coming soon". Plain words:
+   these were pills, and a pill is a box drawn around a value that needs no
+   boundary because it is the only thing on that side of the row. */
+.pgd-row-note { font-size: 14px; color: var(--ink-50); white-space: nowrap }
+.pgd-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px;
+  border-radius: 12px; font-size: 14px; text-decoration: none;
+  background: rgba(255, 255, 255, 0.07); border: 0;
+  color: var(--ink-90); cursor: pointer; font-family: inherit;
+}
+.pgd-btn:hover { background: rgba(255, 255, 255, 0.13) }
+.pgd-btn[disabled] { opacity: 0.45; cursor: default }
+.pgd-sticky-bar {
+  position: sticky; bottom: 0; margin-top: 12px; padding: 10px 0;
+  background: linear-gradient(0deg, #07070A 60%, rgba(7, 7, 10, 0));
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.pgd-group-h {
+  font-family: var(--font-bebas), "Bebas Neue", Impact, sans-serif;
+  font-size: 26px; letter-spacing: 0.02em; margin: 26px 0 12px;
+}
+.pgd-group-h:first-child { margin-top: 0 }
+
+@media (max-width: 640px) {
+  .pgd.pgd-scrolls, .pgd.pgd-scrolls .pgd-main { height: auto; overflow: visible }
+  .pgd-page { overflow: visible }
+  .pgd-media { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .pgd-cards, .pgd-people { grid-template-columns: minmax(0, 1fr) }
+  .pgd-count { margin-left: 0 }
+  /* At 390 the split would leave the name 180px. The photo goes full-bleed
+     behind the name instead, and it can: a 390x180 box scales SPF's 2400x3200
+     by 0.16, showing 32% of the frame — MORE than the desktop split. The
+     geometry that forced the split at 1325 wide does not exist here. */
+  .pgd-hero { height: 180px; display: block }
+  .pgd-hero-in { position: absolute; inset: 0; z-index: 2; justify-content: flex-end }
+  .pgd-hero-in h1, .pgd-hero-in h2 { font-size: 32px }
+  .pgd-hero-photo { position: absolute; inset: 0; flex: none }
+  .pgd-hero-photo::after {
+    background: linear-gradient(0deg, rgba(7, 7, 10, 0.94) 0%, rgba(7, 7, 10, 0.45) 55%, rgba(7, 7, 10, 0.1) 100%);
+  }
+  /* TWO-UP, not one. minmax(190px, 1fr) resolves to a single column in a
+     350px content width, which put six tiles down six screens before the
+     chart. Six figures in three rows is the whole summary in one glance. */
+  .pgd-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+  .pgd-kpi-tile { padding: 14px }
+  .pgd-kpi-label { font-size: 14px }
+  .pgd-kpi-cmp { margin-top: 8px }
+  /* Left gutter only on a phone: two 50px gutters plus the bars leave the
+     plot 250px, and the right-hand numbers were the first thing to become
+     unreadable. Reel views move to the axis note underneath. */
+  .pgd-plot { padding: 0 0 0 40px }
+  .pgd-grid-lines { inset: 0 0 26px 40px }
+  .pgd-grid-right { display: none }
+  /* The chart scrolls sideways rather than squeezing eleven quarters into
+     350px, which would leave each pair 12px wide and the labels unreadable. */
+  .pgd-bars { overflow-x: auto; padding-bottom: 6px }
+  .pgd-bar-group { flex: 0 0 62px }
+  .pgd-bar-pair { height: 180px }
+  .pgd-bar { width: 20px }
+  .pgd-kpi-value { font-size: 34px }
+  .pgd-best-q { font-size: 34px }
+  .pgd-table { min-width: 640px }
+  /* 56px Anton x5 is a whole phone screen of numbers before the first
+     takeaway. The Results row drops to 38 and the panel rows to 32; both are
+     still the largest type on the page. */
+  .pgd-figs { gap: 22px }
+  .pgd-figs .pgd-stat b { font-size: 32px }
+  .pgd-figs.pgd-figs-lg { gap: 24px }
+  .pgd-figs.pgd-figs-lg .pgd-stat b { font-size: 38px }
+  /* Four tabs at 16px overflow 390 — they scroll sideways rather than wrap
+     into two rows under a sticky bar. */
+  .pgd-tabs { gap: 18px; overflow-x: auto; scrollbar-width: none }
+  .pgd-tabs::-webkit-scrollbar { display: none }
+  .pgd-tabs button { white-space: nowrap }
+}
