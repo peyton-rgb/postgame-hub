@@ -20,6 +20,8 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PageHeader, ErrorNote } from "@/components/admin/ui";
 import { Card, fmtShortDate } from "@/components/admin/campaign/bits";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import {
   Btn,
   CampaignCell,
@@ -27,6 +29,7 @@ import {
   MethodPill,
   MobileRow,
   PAY_RESULT_NOTES,
+  PayCard,
   PayTable,
   Pending083,
   ResultNote,
@@ -65,6 +68,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Rec
   const q = (searchParams.q ?? "").trim().slice(0, 80);
   const payee = PAYEE_TYPES.some((p) => p.value === searchParams.payee) ? searchParams.payee! : "all";
   const note = searchParams.result ? PAY_RESULT_NOTES[searchParams.result] : undefined;
+  const view = getListView("pay-invoices", searchParams);
 
   const [summary, list, campaigns] = await Promise.all([
     loadInvoiceSummary(supabase),
@@ -264,6 +268,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Rec
           hidden={{ tab: tab === "asap" ? undefined : tab }}
           search={{ name: "q", value: q, placeholder: "Search payee or campaign" }}
           selects={[{ name: "payee", value: payee, ariaLabel: "Payee type", options: [{ value: "all", label: "All payee types" }, ...PAYEE_TYPES] }]}
+          right={<ViewToggle listKey="pay-invoices" view={view} />}
         />
         {list?.pending ? (
           <Pending083 feature="Invoices" />
@@ -271,6 +276,29 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Rec
           <PayTable<InvoiceRow>
             rows={rows}
             rowKey={(r) => String(r.invoice_id)}
+            view={view}
+            card={(r) => (
+              <PayCard
+                top={
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-stone-900">{r.name ?? "—"}</div>
+                    <div className="truncate text-[12px] text-stone-500">{cap(r.payee_type)}</div>
+                  </div>
+                }
+                figure={dollarsFmt(r.amount, true)}
+                strip={
+                  <>
+                    {dueCell(r)}
+                    <MethodPill method={r.payment_method} />
+                  </>
+                }
+                details={[
+                  { label: "Campaign", value: <CampaignCell title={r.campaignName} brandName={r.brandName} brandLogo={r.brandLogo} /> },
+                  { label: "Terms", value: termsLabel(r.payment_due_days) },
+                ]}
+                actions={actionFor(r)}
+              />
+            )}
             emptyLabel={q || payee !== "all" ? "No invoices match that." : tab === "paid" ? "No invoices have been marked paid yet." : tab === "scheduled" ? "No invoices are scheduled." : "No invoices are due right now."}
             columns={[
               {

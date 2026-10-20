@@ -19,12 +19,15 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { formatMoney } from "@/lib/admin/db";
 import { PageHeader, Masked } from "@/components/admin/ui";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { Card, Pill } from "@/components/admin/campaign/bits";
 import {
   AthleteCell,
   Btn,
   CardTabs,
   MobileRow,
+  PayCard,
   PayTable,
   SourceNotes,
   Toolbar,
@@ -54,6 +57,8 @@ export default async function PaymentHistoryPage({ searchParams }: { searchParam
   const supabase = createServiceSupabase();
 
   const tab = searchParams.tab === "1099" ? "1099" : "paid";
+  const view = getListView("pay-history", searchParams);
+  const toggle = <ViewToggle listKey="pay-history" view={view} />;
   const now = new Date();
   const year = /^\d{4}$/.test(searchParams.year ?? "") ? parseInt(searchParams.year!, 10) : now.getFullYear();
 
@@ -127,8 +132,9 @@ export default async function PaymentHistoryPage({ searchParams }: { searchParam
         />
         <Card pad={false}>
           {tabs}
-          <div className="border-b border-stone-200 px-4 py-2.5 text-[12px] text-stone-500 md:px-5">
-            Payees paid $600 or more in {year}, for tax forms. Totals come from the Hub payout ledger.
+          <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-4 py-2.5 text-[12px] text-stone-500 md:px-5">
+            <span className="min-w-0 flex-1">Payees paid $600 or more in {year}, for tax forms. Totals come from the Hub payout ledger.</span>
+            {toggle}
           </div>
           {error ? (
             <div className="px-4 py-6 text-[13px] text-status-bad">{error.message}</div>
@@ -136,6 +142,32 @@ export default async function PaymentHistoryPage({ searchParams }: { searchParam
             <PayTable<Row1099>
               rows={rows}
               rowKey={(r) => r.athleteId}
+              view={view}
+              card={(r) => (
+                <PayCard
+                  top={<AthleteCell name={r.name} pic={r.pic} />}
+                  figure={formatMoney(r.totalCents)}
+                  strip={
+                    <>
+                      {w9(r)}
+                      {r.totalCents >= THRESHOLD_CENTS && (
+                        <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[11px] font-medium text-[#B33407]">1099</span>
+                      )}
+                    </>
+                  }
+                  details={[
+                    { label: "Payments", value: r.payments.toLocaleString() },
+                    {
+                      label: "Tax number",
+                      value: (
+                        <span title="Tax numbers are not stored in the Hub database.">
+                          <Masked />
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+              )}
               emptyLabel={`No paid payouts recorded in ${year}. CF's historical 1099 data stays in the CF database.`}
               columns={[
                 { key: "who", header: "Payee", render: (r) => <AthleteCell name={r.name} pic={r.pic} /> },
@@ -219,11 +251,30 @@ export default async function PaymentHistoryPage({ searchParams }: { searchParam
             { name: "type", value: type, ariaLabel: "Type", options: [{ value: "all", label: "All types" }, ...LEDGER_TYPES.map((t) => ({ value: t.toLowerCase(), label: t + "s" }))] },
             { name: "range", value: range, ariaLabel: "Date range", options: HISTORY_RANGES.map((r) => ({ value: r.key, label: r.label })) },
           ]}
-          right={<span className="text-[12px] text-stone-500 tabular-nums">{rows.length.toLocaleString()} paid · {dollarsFmt(total)}</span>}
+          right={
+            <>
+              <span className="text-[12px] text-stone-500 tabular-nums">{rows.length.toLocaleString()} paid · {dollarsFmt(total)}</span>
+              {toggle}
+            </>
+          }
         />
         <PayTable<LedgerItem>
           rows={rows}
           rowKey={(i) => i.key}
+          view={view}
+          card={(i) => (
+            <PayCard
+              top={<AthleteCell name={i.who} pic={i.pic} href={i.payoutId ? `/admin/pay/${i.payoutId}` : undefined} />}
+              figure={amountOf(i)}
+              strip={
+                <>
+                  <TypePill type={i.type} />
+                  <span>{i.when}</span>
+                </>
+              }
+              details={[{ label: "For", value: i.what || "—" }]}
+            />
+          )}
           emptyLabel={q || type !== "all" ? "Nothing paid matches that." : "Nothing has been marked paid in this period."}
           columns={[
             { key: "type", header: "Type", render: (i) => <TypePill type={i.type} /> },

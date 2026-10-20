@@ -176,6 +176,8 @@ export function PayTable<Row>({
   rowKey,
   mobile,
   emptyLabel,
+  view = "rows",
+  card,
 }: {
   rows: Row[];
   columns: PayColumn<Row>[];
@@ -183,8 +185,28 @@ export function PayTable<Row>({
   /** the phone card for one row */
   mobile: (row: Row) => React.ReactNode;
   emptyLabel: string;
+  /** "cards" shows a grid of cards at every width (see ViewToggle) */
+  view?: "rows" | "cards";
+  /** the grid card body for one row (usually a <PayCard>); falls back to `mobile` */
+  card?: (row: Row) => React.ReactNode;
 }) {
   if (rows.length === 0) return <EmptyRows label={emptyLabel} />;
+  if (view === "cards") {
+    // Cards are never wrapped in a link either — the title cell carries the
+    // link and the confirmed-POST forms sit in the card's footer.
+    return (
+      <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 xl:grid-cols-3">
+        {rows.map((row) => (
+          <li
+            key={rowKey(row)}
+            className="flex min-w-0 flex-col rounded-[10px] border border-[#E3E5E9] bg-white p-3.5 transition-colors hover:border-stone-300"
+          >
+            {card ? card(row) : mobile(row)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
@@ -257,6 +279,54 @@ export function MobileRow({
       {strip && <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-stone-500">{strip}</div>}
       {actions && <div className="mt-2.5 flex flex-wrap gap-1.5">{actions}</div>}
     </div>
+  );
+}
+
+/**
+ * Grid card body (Rows / Cards toggle): who/what + figure on top, pills and
+ * key facts in the middle, and the next action pinned to the bottom. Sits
+ * inside PayTable's card shell, which is a flex column — so the footer's
+ * mt-auto lines the actions up across a row of cards.
+ */
+export function PayCard({
+  top,
+  figure,
+  strip,
+  details,
+  actions,
+}: {
+  top: React.ReactNode;
+  figure?: React.ReactNode;
+  strip?: React.ReactNode;
+  /** label / value pairs shown as a small two-column list */
+  details?: { label: string; value: React.ReactNode }[];
+  actions?: React.ReactNode;
+}) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">{top}</div>
+        {figure != null && figure !== false && (
+          <div className="shrink-0 text-right text-[14px] font-semibold tabular-nums text-stone-900">{figure}</div>
+        )}
+      </div>
+      {strip && <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-stone-500">{strip}</div>}
+      {details && details.length > 0 && (
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[12px]">
+          {details.map((d) => (
+            <div key={d.label} className="min-w-0">
+              <dt className="text-[11px] uppercase tracking-wide text-stone-400">{d.label}</dt>
+              <dd className="mt-0.5 truncate text-stone-800">{d.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {actions && (
+        <div className="mt-auto pt-3">
+          <div className="flex flex-wrap gap-1.5 border-t border-[#E3E5E9] pt-2.5">{actions}</div>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -9,7 +9,7 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { ErrorNote } from "@/components/admin/ui";
 import { TablePending, Toolbar, timeAgo } from "@/components/admin/ops-bits";
-import { SocialShell, PostGrid } from "@/components/admin/tools/social";
+import { SocialShell, PostGrid, socialView } from "@/components/admin/tools/social";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,7 @@ export default async function MentionsPage({ searchParams }: { searchParams: Rec
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
   const q = sanitizeFilterValue(searchParams.q ?? "");
+  const view = socialView(searchParams, "cards");
 
   const res = await safeQuery<MentionRow[]>(() => {
     let query = supabase
@@ -39,7 +40,7 @@ export default async function MentionsPage({ searchParams }: { searchParams: Rec
   const rows = res.data ?? [];
 
   return (
-    <SocialShell current="mentions" foot={res.pending ? null : <span>Showing {rows.length} newest mentions</span>}>
+    <SocialShell current="mentions" view={res.pending ? undefined : view} foot={res.pending ? null : <span>Showing {rows.length} newest mentions</span>}>
       {res.pending ? (
         <TablePending table="postgame_mentions" feature="Posts that mention @postgame" />
       ) : res.error ? (
@@ -56,6 +57,7 @@ export default async function MentionsPage({ searchParams }: { searchParams: Rec
           ) : (
             <PostGrid
               ago={timeAgo}
+              view={view}
               posts={rows.map((m) => ({
                 id: m.id,
                 who: m.username,

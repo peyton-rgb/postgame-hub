@@ -7,9 +7,11 @@
 //                  Hub payouts whose deal label says "bonus" (what the
 //                  old /admin/pay/bonus screen showed). ?show=unpaid|paid|all
 //   ?tab=affiliate Affiliate balances — earned / paid / owed per athlete
-//                  from affiliate_earnings (083). ?view=history lists
-//                  affiliate_payments; ?view=upload is the monthly
+//                  from affiliate_earnings (083). ?sub=history lists
+//                  affiliate_payments; ?sub=upload is the monthly
 //                  report preview (moved from /admin/pay/affiliate).
+//                  (?view= is the Rows / Cards toggle; the old
+//                  ?view=history|upload links still open the sub-view.)
 //
 // Writes: bonus "Mark paid" (payment_bonus.date_paid) and the payout
 // approve for bonus-labeled payouts — both confirmed POSTs with audit.
@@ -23,6 +25,8 @@ import { PageHeader, ErrorNote } from "@/components/admin/ui";
 import { Card, fmtShortDate } from "@/components/admin/campaign/bits";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 import CsvPreview from "@/components/admin/CsvPreview";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import {
   AthleteCell,
   CampaignCell,
@@ -30,6 +34,7 @@ import {
   MethodPill,
   MobileRow,
   PAY_RESULT_NOTES,
+  PayCard,
   PayTable,
   Pending083,
   ResultNote,
@@ -76,7 +81,10 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
 
   const tab = searchParams.tab === "affiliate" ? "affiliate" : "bonuses";
   const show: Show = searchParams.show === "paid" || searchParams.show === "all" ? searchParams.show : "unpaid";
-  const view = searchParams.view === "history" || searchParams.view === "upload" ? searchParams.view : "balances";
+  const subRaw = searchParams.sub ?? searchParams.view;
+  const sub = subRaw === "history" || subRaw === "upload" ? subRaw : "balances";
+  const layout = getListView("pay-bonus-affiliate", searchParams);
+  const toggle = <ViewToggle listKey="pay-bonus-affiliate" view={layout} />;
   const note = searchParams.result ? PAY_RESULT_NOTES[searchParams.result] : undefined;
 
   // Bonus count for the tab pill is always the unpaid count.
@@ -89,8 +97,8 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
     supabase.from("payouts").select("id", { count: "exact", head: true }).ilike("amount_label", "%bonus%").eq("status", "pending"),
     tab === "bonuses" ? loadBonusRows(supabase, show) : Promise.resolve(null),
     tab === "bonuses" ? payoutQ : Promise.resolve(null),
-    tab === "affiliate" && view === "balances" ? loadAffiliateBalances(supabase) : Promise.resolve(null),
-    tab === "affiliate" && view === "history" ? loadAffiliatePayments(supabase) : Promise.resolve(null),
+    tab === "affiliate" && sub === "balances" ? loadAffiliateBalances(supabase) : Promise.resolve(null),
+    tab === "affiliate" && sub === "history" ? loadAffiliatePayments(supabase) : Promise.resolve(null),
   ]);
 
   const bonusCount = (unpaidBonus.pending || unpaidBonus.error ? 0 : unpaidBonus.rows.length) + (unpaidPayoutBonus.count ?? 0);
@@ -211,10 +219,23 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
                 { key: "all", label: "All", href: `${BASE}?show=all` },
               ]}
             />
+            <div className="ml-auto">{toggle}</div>
           </div>
           <PayTable<BonusItem>
             rows={items}
             rowKey={(i) => i.key}
+            view={layout}
+            card={(i) => (
+              <PayCard
+                top={<AthleteCell name={i.who} pic={i.pic} handle={i.handle} href={i.payoutId ? `/admin/pay/${i.payoutId}` : undefined} />}
+                figure={amt(i)}
+                details={[
+                  { label: "Campaign", value: <CampaignCell {...i.campaign} /> },
+                  { label: "Reason", value: i.reason ?? "—" },
+                ]}
+                actions={action(i)}
+              />
+            )}
             emptyLabel={show === "unpaid" ? "No unpaid bonuses." : show === "paid" ? "No bonuses have been paid in the Hub yet." : "No bonuses in the Hub yet."}
             columns={[
               { key: "who", header: "Athlete", render: (i) => <AthleteCell name={i.who} pic={i.pic} handle={i.handle} href={i.payoutId ? `/admin/pay/${i.payoutId}` : undefined} /> },
@@ -247,13 +268,14 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
   const viewSeg = (
     <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-3 py-2.5 md:px-4">
       <SegLinks
-        active={view}
+        active={sub}
         items={[
           { key: "balances", label: "Balances", href: `${BASE}?tab=affiliate` },
-          { key: "history", label: "Payout history", href: `${BASE}?tab=affiliate&view=history` },
-          { key: "upload", label: "Monthly upload", href: `${BASE}?tab=affiliate&view=upload` },
+          { key: "history", label: "Payout history", href: `${BASE}?tab=affiliate&sub=history` },
+          { key: "upload", label: "Monthly upload", href: `${BASE}?tab=affiliate&sub=upload` },
         ]}
       />
+      {sub !== "upload" && <div className="ml-auto">{toggle}</div>}
     </div>
   );
 
@@ -265,7 +287,7 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
         {tabs}
         {viewSeg}
 
-        {view === "balances" &&
+        {sub === "balances" &&
           (balances?.pending ? (
             <Pending083 feature="Affiliate balances" />
           ) : balances?.error ? (
@@ -274,6 +296,24 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
             <PayTable<AffiliateBalance>
               rows={balances?.rows ?? []}
               rowKey={(r) => r.key}
+              view={layout}
+              card={(r) => (
+                <PayCard
+                  top={
+                    <AthleteCell
+                      name={r.personName ?? (r.instagram_username ? `@${r.instagram_username.replace(/^@/, "")}` : "—")}
+                      pic={r.personPic}
+                      handle={r.personName ? r.instagram_username : null}
+                    />
+                  }
+                  figure={dollarsFmt(Math.max(0, r.earned - r.paid), true)}
+                  details={[
+                    { label: "Brand", value: r.programs.join(", ") || "—" },
+                    { label: "Earned", value: dollarsFmt(r.earned, true) },
+                    { label: "Paid", value: dollarsFmt(r.paid, true) },
+                  ]}
+                />
+              )}
               emptyLabel="No affiliate earnings in the Hub yet."
               columns={[
                 {
@@ -306,7 +346,7 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
             />
           ))}
 
-        {view === "history" &&
+        {sub === "history" &&
           (history?.pending ? (
             <Pending083 feature="Affiliate payouts" />
           ) : history?.error ? (
@@ -315,6 +355,18 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
             <PayTable<AffiliatePaymentRow>
               rows={history?.rows ?? []}
               rowKey={(r) => String(r.affiliate_payment_id)}
+              view={layout}
+              card={(r) => (
+                <PayCard
+                  top={<AthleteCell name={r.personName ?? "—"} pic={r.personPic} />}
+                  figure={dollarsFmt(r.payment, true)}
+                  strip={<MethodPill method={r.payment_method} />}
+                  details={[
+                    { label: "Program", value: r.program ?? "—" },
+                    { label: "Paid", value: fmtShortDate(r.payment_date) },
+                  ]}
+                />
+              )}
               emptyLabel="No affiliate payouts in the Hub yet."
               columns={[
                 { key: "who", header: "Athlete", render: (r) => <AthleteCell name={r.personName ?? "—"} pic={r.personPic} /> },
@@ -333,7 +385,7 @@ export default async function BonusAffiliatePage({ searchParams }: { searchParam
             />
           ))}
 
-        {view === "upload" && (
+        {sub === "upload" && (
           <div className="px-4 py-4 md:px-5">
             <h2 className="pb-3 text-[13px] font-semibold text-stone-900">Upload the monthly affiliate report</h2>
             <CsvPreview />

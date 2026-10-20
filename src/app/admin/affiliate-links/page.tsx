@@ -18,7 +18,9 @@ import { safeQuery } from "@/lib/admin/db";
 import { PageHeader } from "@/components/admin/ui";
 import { Card, fmtShortDate } from "@/components/admin/campaign/bits";
 import CsvPreview from "@/components/admin/CsvPreview";
-import { AthleteCell, Btn, CampaignCell, CardTabs, MobileRow, PayTable, Pending083 } from "@/components/admin/pay/bits";
+import { AthleteCell, Btn, CampaignCell, CardTabs, MobileRow, PayCard, PayTable, Pending083 } from "@/components/admin/pay/bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { attachCampaigns, attachPeople } from "@/lib/admin/pay/queries";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +46,7 @@ interface LinkRow {
 export default async function AffiliateLinksPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   await requireAdmin("staff");
   const tab = searchParams.tab === "upload" ? "upload" : "links";
+  const view = getListView("affiliate-links", searchParams);
 
   let pending = false;
   let error: string | null = null;
@@ -82,9 +85,12 @@ export default async function AffiliateLinksPage({ searchParams }: { searchParam
         subtitle="Each athlete's tracking link for a campaign, and the CSV upload that creates them."
         actions={
           tab === "links" ? (
-            <Btn href="/admin/affiliate-links?tab=upload" primary>
-              Upload links
-            </Btn>
+            <>
+              <ViewToggle listKey="affiliate-links" view={view} />
+              <Btn href="/admin/affiliate-links?tab=upload" primary>
+                Upload links
+              </Btn>
+            </>
           ) : undefined
         }
       />
@@ -105,6 +111,18 @@ export default async function AffiliateLinksPage({ searchParams }: { searchParam
             <PayTable<LinkRow>
               rows={rows}
               rowKey={(r) => String(r.affiliate_id)}
+              view={view}
+              card={(r) => (
+                <PayCard
+                  top={<AthleteCell name={who(r)} pic={r.personPic} handle={r.personName ? r.ig : null} />}
+                  figure={r.clicks == null ? undefined : `${r.clicks.toLocaleString()} clicks`}
+                  details={[
+                    { label: "Campaign", value: <CampaignCell title={r.campaignName} brandName={r.brandName} brandLogo={r.brandLogo} /> },
+                    { label: "Added", value: fmtShortDate(r.date_stamp ?? r.created_at) },
+                  ]}
+                  actions={r.short_url ?? r.link ? linkCell(r) : undefined}
+                />
+              )}
               emptyLabel="No affiliate links in the Hub yet."
               columns={[
                 { key: "who", header: "Athlete", render: (r) => <AthleteCell name={who(r)} pic={r.personPic} handle={r.personName ? r.ig : null} /> },

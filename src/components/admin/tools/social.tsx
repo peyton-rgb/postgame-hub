@@ -1,25 +1,51 @@
 // ============================================================
 // Social — the prototype's S.social / S["social-mentions"] /
 // S["social-messages"]: one "Social" header, one card, three
-// bookmarkable tabs. Server-safe.
+// bookmarkable tabs. Server-only (reads the Rows / Cards cookie).
+//
+// The three tabs share one Rows / Cards choice ("social"). Until
+// someone picks, the post feeds open as cards (they are pictures)
+// and Messages opens as rows.
 // ============================================================
 
+/* eslint-disable @next/next/no-img-element */
+import { cookies } from "next/headers";
 import { PageHeader } from "@/components/admin/ui";
 import { CardFoot } from "@/components/admin/ops-bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { listViewCookie, type ListView } from "@/lib/admin/list-view";
 import { TabbedCard, btnDisabledCls } from "@/components/admin/tools/bits";
 
 export type SocialTab = "postgame" | "mentions" | "messages";
+
+export const SOCIAL_LIST_KEY = "social";
+
+/** ?view= first, then the saved choice, then this tab's natural layout. */
+export function socialView(searchParams: Record<string, string | undefined>, fallback: ListView): ListView {
+  const v = searchParams.view;
+  if (v === "rows" || v === "cards") return v;
+  try {
+    const saved = cookies().get(listViewCookie(SOCIAL_LIST_KEY))?.value;
+    if (saved === "rows" || saved === "cards") return saved;
+  } catch {
+    /* outside a request */
+  }
+  return fallback;
+}
 
 export function SocialShell({
   current,
   children,
   foot,
   counts = {},
+  view,
 }: {
   current: SocialTab;
   children: React.ReactNode;
   foot?: React.ReactNode;
   counts?: Partial<Record<SocialTab, number | null>>;
+  /** shows the Rows / Cards toggle at the end of the tab strip */
+  view?: ListView;
 }) {
   return (
     <div>
@@ -38,6 +64,7 @@ export function SocialShell({
         }
       />
       <TabbedCard
+        right={view ? <ViewToggle listKey={SOCIAL_LIST_KEY} view={view} /> : undefined}
         tabs={[
           { href: "/admin/feed/postgame", label: "Postgame feed", count: counts.postgame ?? null, active: current === "postgame" },
           { href: "/admin/feed/mentions", label: "Mentions", count: counts.mentions ?? null, active: current === "mentions" },
@@ -61,7 +88,51 @@ export interface PostTile {
   href: string | null;
 }
 
-export function PostGrid({ posts, ago }: { posts: PostTile[]; ago: (v: string | null) => string }) {
+export function PostGrid({
+  posts,
+  ago,
+  view = "cards",
+}: {
+  posts: PostTile[];
+  ago: (v: string | null) => string;
+  view?: ListView;
+}) {
+  if (view === "rows") {
+    return (
+      <ul>
+        {posts.map((p) => {
+          const body = (
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-stone-800">
+                {p.image && <img src={p.image} alt="" className="h-full w-full object-cover" loading="lazy" />}
+              </div>
+              <div className="min-w-0 flex-1 text-[13px]">
+                <div className="truncate font-medium text-stone-900">{p.who ? `@${p.who.replace(/^@/, "")}` : "—"}</div>
+                <div className="truncate text-[12px] text-stone-500">
+                  {p.isVideo ? "Reel · " : ""}
+                  {ago(p.when)}
+                </div>
+              </div>
+              <div className="shrink-0 text-right text-[13px] tabular-nums text-stone-700">
+                {p.likes != null ? `${p.likes.toLocaleString()} likes` : <span className="text-stone-400">—</span>}
+              </div>
+            </div>
+          );
+          return (
+            <li key={p.id} className="border-b border-stone-100 last:border-0">
+              {p.href ? (
+                <a href={p.href} target="_blank" rel="noreferrer" className="block hover:bg-stone-50/60">
+                  {body}
+                </a>
+              ) : (
+                body
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
   return (
     <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">
       {posts.map((p) => {

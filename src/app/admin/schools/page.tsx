@@ -15,6 +15,8 @@ import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import { CardFoot, TablePending, Toolbar } from "@/components/admin/ops-bits";
 import { Pill } from "@/components/admin/campaign/bits";
 import { Dim, SimpleTable, TabbedCard, btnCls } from "@/components/admin/tools/bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -45,13 +47,17 @@ export default async function SchoolsPage({ searchParams }: { searchParams: Reco
   const q = sanitizeFilterValue(searchParams.q ?? "");
   const status = searchParams.status === "active" || searchParams.status === "inactive" ? searchParams.status : "";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const view = getListView("schools", searchParams);
 
   const { count: collegeTotal } = await supabase.from("colleges").select("id", { count: "exact", head: true });
 
   const actions = (
-    <Link href="/admin/colleges/mapper" className={btnCls}>
-      Alias mapper
-    </Link>
+    <>
+      <ViewToggle listKey="schools" view={view} />
+      <Link href="/admin/colleges/mapper" className={btnCls}>
+        Alias mapper
+      </Link>
+    </>
   );
 
   const tabs = [
@@ -96,6 +102,23 @@ export default async function SchoolsPage({ searchParams }: { searchParams: Reco
                 rows={rows}
                 rowKey={(t) => String(t.team_id)}
                 empty="No teams yet."
+                view={view}
+                card={(t) => ({
+                  title: t.team_name ?? (t.college_id != null ? colName.get(t.college_id) : null) ?? "—",
+                  subtitle: [(t.sport_id != null ? sportName.get(t.sport_id) : null) || null, `#${rows.indexOf(t) + 1} by NIL value`]
+                    .filter(Boolean)
+                    .join(" · "),
+                  figure:
+                    t.nil_value != null
+                      ? Number(t.nil_value).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+                      : undefined,
+                  details: [
+                    {
+                      label: "Instagram followers",
+                      value: t.instagram_followers != null ? t.instagram_followers.toLocaleString() : <Dim>—</Dim>,
+                    },
+                  ],
+                })}
                 cols={[
                   { h: "#", r: (t) => <Dim>{rows.indexOf(t) + 1}</Dim> },
                   {
@@ -185,6 +208,23 @@ export default async function SchoolsPage({ searchParams }: { searchParams: Reco
             rows={rows}
             rowKey={(c) => String(c.id)}
             empty="No colleges match."
+            view={view}
+            card={(c) => ({
+              title: c.name ?? "—",
+              subtitle: [c.city, c.state].filter(Boolean).join(", ") || c.short_name || undefined,
+              strip: (
+                <>
+                  {c.is_active ? <Pill tone="ok">Active</Pill> : <Pill>Inactive</Pill>}
+                  {c.ncaa_division && <span>{c.ncaa_division}</span>}
+                </>
+              ),
+              foot: (
+                <span className="text-[12px] text-stone-500">
+                  {(aliasCounts.get(c.id) ?? 0).toLocaleString()} alias{(aliasCounts.get(c.id) ?? 0) === 1 ? "" : "es"}
+                </span>
+              ),
+              href: `/admin/colleges/${c.id}/edit`,
+            })}
             cols={[
               {
                 h: "College",
