@@ -58,7 +58,8 @@ export default async function NewCampaignPage({
           </label>
           <label className={label}>
             Account
-            <select name="brand_id" defaultValue="" className={input}>
+            {/* ?brand=<uuid> preselects the account (the brand detail page's "New campaign" button). */}
+            <select name="brand_id" defaultValue={searchParams.brand ?? ""} className={input}>
               <option value="">Choose a brand</option>
               {(brands ?? []).map((b) => (
                 <option key={b.id} value={b.id}>
