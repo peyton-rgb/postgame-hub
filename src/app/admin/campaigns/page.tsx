@@ -36,7 +36,7 @@ interface Row {
   total_is_selected: number | null;
   date_stamp: string | null;
   created_at: string;
-  brand: { name: string | null } | null;
+  brand: { id: string; name: string | null } | null;
   manager: { first_name: string | null; last_name: string | null } | null;
   storage: { campaign_folder_url: string | null } | null;
 }
@@ -66,7 +66,7 @@ export default async function AdminCampaignsPage({
     .from("campaigns")
     .select(
       "campaign_id, campaign_name, is_active, total_is_selected, date_stamp, created_at, " +
-        "brand:brands!brand_id(name), manager:people!manager_person_id(first_name, last_name), " +
+        "brand:brands!brand_id(id, name), manager:people!manager_person_id(first_name, last_name), " +
         "storage:campaign_storage(campaign_folder_url)"
     );
   let countQuery = supabase.from("campaigns").select("campaign_id", { count: "exact", head: true });
@@ -201,11 +201,23 @@ export default async function AdminCampaignsPage({
               {
                 key: "campaign",
                 header: "Campaign",
+                // Brand name opens the brand detail page; campaign name
+                // opens the campaign. Two links, so no nested anchors.
                 render: (r) => (
-                  <NameLink href={`/admin/campaigns/${r.campaign_id}/edit`}>
-                    {r.brand?.name ? `${r.brand.name} - ` : ""}
-                    {r.campaign_name || "—"}
-                  </NameLink>
+                  <span className="inline-flex flex-wrap items-center gap-x-1">
+                    {r.brand?.name && (
+                      <>
+                        <Link
+                          href={`/admin/brands/${r.brand.id}`}
+                          className="font-medium text-stone-700 hover:text-[#D73F09] hover:underline"
+                        >
+                          {r.brand.name}
+                        </Link>
+                        <span className="text-stone-400">-</span>
+                      </>
+                    )}
+                    <NameLink href={`/admin/campaigns/${r.campaign_id}/edit`}>{r.campaign_name || "—"}</NameLink>
+                  </span>
                 ),
               },
               {
