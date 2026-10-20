@@ -8,6 +8,9 @@
 // The Postgame wordmark is loaded from the brands table row
 // (logo_light_url — light-ink mark for the dark sidebar). Never
 // rendered as text (standing brand rule).
+//
+// The Workspace badge is a live COUNT of open (is_active) campaigns;
+// it is omitted (no badge) when the count can't be read.
 // ============================================================
 
 import { requireAdmin } from "@/lib/admin/auth";
@@ -25,16 +28,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireAdmin("staff");
 
   let logoUrl: string | null = null;
+  let openCampaigns: number | null = null;
   try {
     const supabase = createServiceSupabase();
-    const { data } = await supabase
-      .from("brands")
-      .select("logo_light_url, logo_white_url, logo_primary_url")
-      .eq("id", POSTGAME_BRAND_ID)
-      .single();
+    const [logoRes, countRes] = await Promise.all([
+      supabase
+        .from("brands")
+        .select("logo_light_url, logo_white_url, logo_primary_url")
+        .eq("id", POSTGAME_BRAND_ID)
+        .single(),
+      supabase.from("campaigns").select("campaign_id", { count: "exact", head: true }).eq("is_active", true),
+    ]);
+    const data = logoRes.data;
     logoUrl = data?.logo_light_url || data?.logo_white_url || data?.logo_primary_url || null;
+    openCampaigns = countRes.error ? null : countRes.count ?? null;
   } catch {
     logoUrl = null;
+    openCampaigns = null;
   }
 
   return (
@@ -45,6 +55,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       userLabel={user.email ?? "Signed in"}
       accessLevel={user.accessLevel}
       accessLevelPending={user.accessLevelPending}
+      openCampaigns={openCampaigns}
     >
       {children}
     </AdminShell>
