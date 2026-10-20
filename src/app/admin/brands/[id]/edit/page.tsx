@@ -6,6 +6,7 @@
 // ============================================================
 
 /* eslint-disable @next/next/no-img-element */
+import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { safeQuery } from "@/lib/admin/db";
@@ -81,6 +82,17 @@ export default async function BrandEditPage({
 
   return (
     <div>
+      <div className="pb-1 text-[12px] text-stone-500">
+        <Link href="/admin/brands" className="hover:text-stone-900">
+          Brands
+        </Link>
+        <span className="px-1.5">/</span>
+        <Link href={`/admin/brands/${brand.id}`} className="hover:text-stone-900">
+          {brand.name ?? "Brand"}
+        </Link>
+        <span className="px-1.5">/</span>
+        <span className="text-stone-700">Edit</span>
+      </div>
       <PageHeader
         title={brand.name ?? "Brand"}
         subtitle={`Brand edit · ID ${brand.admin_brand_id ?? brand.id.slice(0, 8)}${brand.archived ? " · ARCHIVED" : ""}`}
