@@ -188,7 +188,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Searc
     <div>
       <PageHeader
         title="Access management"
-        subtitle="Everyone with a door into the Hub · staff accounts live in Users — this view is external access: portal contacts & agencies"
+        subtitle="Who can sign in to the Hub and what they can see. Staff are listed on Team; this view manages brand portal contacts and agencies."
         actions={<AccessInviteForm brands={brands} />}
       />
 
@@ -518,7 +518,7 @@ function StaffTab() {
     <div>
       <PageHeader
         title="Access management"
-        subtitle="Everyone with a door into the Hub · staff accounts live in Users — this view is external access: portal contacts & agencies"
+        subtitle="Who can sign in to the Hub and what they can see. Staff are listed on Team; this view manages brand portal contacts and agencies."
       />
       <Tabs active="staff" />
       <div className="rounded-lg border border-stone-200 bg-white p-6">

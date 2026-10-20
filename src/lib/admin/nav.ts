@@ -101,9 +101,9 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     label: "Social",
     icon: "at",
     items: [
-      { label: "Postgame feed", href: "/admin/feed/postgame", icon: "news", soon: true },
-      { label: "Mentions", href: "/admin/feed/mentions", icon: "at", soon: true },
-      { label: "Messages", href: "/admin/feed/messages", icon: "chat", soon: true },
+      { label: "Postgame feed", href: "/admin/feed/postgame", icon: "news" },
+      { label: "Mentions", href: "/admin/feed/mentions", icon: "at" },
+      { label: "Messages", href: "/admin/feed/messages", icon: "chat" },
     ],
   },
   {
@@ -123,30 +123,29 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: "Website & deal tracker", href: "/dashboard/website", icon: "globe" },
       { label: "Pitch pages", href: "/dashboard/pitches", icon: "present" },
       { label: "Concepts & inspo", href: "/dashboard/inspo", icon: "bulb" },
-      { label: "Agents & tasks", href: "/admin/tools/agents", icon: "bot", soon: true },
+      { label: "Agents & tasks", href: "/admin/tools/agents", icon: "bot" },
     ],
   },
   {
     label: "Admin",
     icon: "shield",
     items: [
-      { label: "Requests", href: "/admin/requests", icon: "ticket", soon: true },
-      { label: "Team", href: "/admin/team", icon: "users", soon: true },
-      { label: "Roles & permissions", href: "/admin/roles", icon: "key", soon: true },
+      { label: "Requests", href: "/admin/requests", icon: "ticket" },
+      { label: "Team", href: "/admin/team", icon: "users" },
+      { label: "Roles & permissions", href: "/admin/roles", icon: "key" },
       { label: "Access", href: "/admin/access", icon: "shield", min: "admin" },
-      // today: /admin/colleges → flips to /admin/schools
-      { label: "Schools & teams", href: "/admin/colleges", icon: "school" },
-      { label: "Data tools", href: "/admin/data-tools", icon: "db", soon: true },
-      { label: "Instagram stats", href: "/admin/instagram", icon: "insta", soon: true },
+      { label: "Schools & teams", href: "/admin/schools", icon: "school" },
+      { label: "Data tools", href: "/admin/data-tools", icon: "db" },
+      { label: "Instagram stats", href: "/admin/instagram", icon: "insta" },
       { label: "Notifications", href: "/admin/notifications", icon: "bell" },
-      { label: "Settings", href: "/admin/settings", icon: "cog", soon: true },
+      { label: "Settings", href: "/admin/settings", icon: "cog" },
     ],
   },
 ];
 
 /** Sidebar footer links (Settings · Log out). Log out is handled by the shell. */
 export const ADMIN_FOOT: AdminNavItem[] = [
-  { label: "Settings", href: "/admin/settings", icon: "cog", soon: true },
+  { label: "Settings", href: "/admin/settings", icon: "cog" },
 ];
 
 // Mobile bottom tab bar — five tabs max; "More" opens the full nav sheet.
