@@ -44,7 +44,11 @@ export function PortalPill({ state }: { state: PortalState }) {
   );
 }
 
-/** 30px logo tile (the prototype's `.mk`). Empty when the brand has no logo on file. */
+/**
+ * 30px brand mark (the prototype's `.mk`): the logo file sits bare on the
+ * page — no border, no background, no rounded box. When a brand has no
+ * logo on file, a faint placeholder square holds the space instead.
+ */
 export function BrandMark({
   src,
   name,
@@ -54,17 +58,22 @@ export function BrandMark({
   name: string | null;
   size?: number;
 }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name ? `${name} logo` : ""}
+        className="shrink-0 object-contain"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <span
-      className="inline-grid shrink-0 place-items-center overflow-hidden rounded-[7px] border border-stone-200 bg-white"
-      style={{ width: size, height: size, padding: Math.round(size * 0.13) }}
-      title={src ? undefined : "No logo on file"}
-    >
-      {src ? (
-        <img src={src} alt={name ? `${name} logo` : ""} className="h-full w-full object-contain" />
-      ) : (
-        <span className="h-full w-full rounded-[3px] bg-stone-100" aria-hidden />
-      )}
-    </span>
+      className="inline-block shrink-0 rounded-[7px] bg-stone-100"
+      style={{ width: size, height: size }}
+      title="No logo on file"
+      aria-hidden
+    />
   );
 }
