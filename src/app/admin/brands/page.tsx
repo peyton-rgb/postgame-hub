@@ -18,6 +18,8 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, formatDate, pageRange, safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
 import { BrandMark, PortalPill, portalState, type PortalLinkRow } from "@/components/admin/brand-bits";
 
@@ -48,6 +50,7 @@ export default async function BrandsPage({
 }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("brands", searchParams);
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const q = sanitizeFilterValue(searchParams.q ?? "");
   const showArchived = searchParams.archived === "1";
@@ -157,6 +160,7 @@ export default async function BrandsPage({
         subtitle="Every brand Postgame runs campaigns for. Open one for its campaigns, portal and files."
         actions={
           <>
+            <ViewToggle listKey="brands" view={view} />
             <Link
               href={toggleHref}
               className="rounded-md border border-stone-300 px-3 py-1.5 text-[13px] font-medium text-stone-700 hover:border-stone-400"
@@ -193,6 +197,8 @@ export default async function BrandsPage({
       <AdminTable<BrandRow>
         rows={rows}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["type", "campaigns"]}
         emptyLabel={q ? "No brands match." : "No brands yet."}
         columns={[
           {
@@ -252,6 +258,7 @@ export default async function BrandsPage({
           },
         ]}
         mobile={{
+          icon: (r) => <BrandMark name={r.name} src={r.logo_mark_url ?? r.logo_primary_url ?? null} />,
           title: (r) => r.name ?? "—",
           href: (r) => `/admin/brands/${r.id}`,
           subtitle: (r) => [r.industry, typeById.get(r.id)].filter(Boolean).join(" · ") || null,

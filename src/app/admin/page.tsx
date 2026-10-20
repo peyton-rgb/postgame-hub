@@ -36,6 +36,8 @@ import {
 } from "@/lib/admin/workspace";
 import ViewAsSelect from "./ViewAsSelect";
 import ViewAsSwitch from "@/components/admin/view-as/ViewAsSwitch";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { loadAthleteOptions, loadBrandOptions } from "@/lib/admin/view-as/queries";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +87,7 @@ export default async function WorkspacePage({
   const scope: Scope = searchParams.scope === "all" ? "all" : "mine";
   const sort: Sort = searchParams.sort === "stage" ? "stage" : searchParams.sort === "name" ? "name" : "due";
   const q = sanitizeFilterValue(searchParams.q ?? "");
+  const view = getListView("workspace", searchParams);
 
   const [staffList, open, brandOptions, athleteOptions] = await Promise.all([
     loadStaff(supabase),
@@ -253,6 +256,7 @@ export default async function WorkspacePage({
                 Name
               </Link>
             </div>
+            <ViewToggle listKey="workspace" view={view} />
             <form action="/admin" method="get" className="flex h-[34px] min-w-0 flex-1 basis-[200px] items-center gap-2 rounded-lg border border-[#E3E5E9] bg-white px-2.5 text-stone-500 md:ml-auto md:max-w-[320px] md:flex-none">
               {scope !== "mine" && <input type="hidden" name="scope" value={scope} />}
               {sort !== "due" && <input type="hidden" name="sort" value={sort} />}
@@ -269,7 +273,71 @@ export default async function WorkspacePage({
             </form>
           </div>
 
-          {/* The table — scrolls sideways inside the card on narrow screens */}
+          {/* Cards, or the table (which scrolls sideways inside the card on narrow screens) */}
+          {view === "cards" ? (
+            rows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-[13px] text-stone-500">
+                {q ? "No open campaigns match." : scope === "mine" ? `No open campaigns are assigned to ${who} in the Hub yet.` : "No open campaigns. Campaigns marked active show here."}
+              </div>
+            ) : (
+              <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 xl:grid-cols-3">
+                {rows.map((r) => {
+                  const href = `/admin/campaigns/${r.id}`;
+                  const mgr = firstName(personName(r.manager));
+                  const owner = r.director ?? r.manager;
+                  const ownerRole = r.director ? "Director" : "Manager";
+                  const nextIdx = checklist.connected ? checklist.next.get(r.id) ?? 0 : null;
+                  const tone = dueTone(r.due, today);
+                  return (
+                    <li key={r.id} className="min-w-0">
+                      <Link
+                        href={href}
+                        className="flex h-full flex-col gap-3 rounded-[10px] border border-[#E3E5E9] bg-white p-3.5 text-inherit no-underline transition-colors hover:border-stone-300"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <BrandMark row={r} />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-stone-900">{r.name}</span>
+                            <span className="block truncate text-[12px] text-stone-500">
+                              {r.brand?.name ?? "Set brand"} · {mgr ?? "No manager"}
+                            </span>
+                          </span>
+                        </span>
+                        <span className="flex flex-wrap items-center gap-2 text-[12px]">
+                          {open.hasStage && r.stage ? (
+                            <Pill tone={stageTone(r.stage)}>{stageLabel(r.stage)}</Pill>
+                          ) : (
+                            <span className="text-stone-400">No stage</span>
+                          )}
+                          {open.hasDue && r.due && (
+                            <span className={tone === "bad" ? "text-status-bad" : tone === "warn" ? "text-status-warn" : "text-stone-500"}>
+                              Due {fmtDue(r.due)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-auto border-t border-[#E3E5E9] pt-2.5 text-[13px]">
+                          <span className="block text-[11px] uppercase tracking-wide text-stone-400">Next task</span>
+                          {nextIdx == null ? (
+                            <span className="block text-stone-500">Checklist not connected yet</span>
+                          ) : nextIdx >= CHECKLIST.length ? (
+                            <span className="block font-medium text-stone-900">All steps done</span>
+                          ) : (
+                            <>
+                              <span className="block truncate font-medium text-stone-900">{CHECKLIST[nextIdx]}</span>
+                              <span className="block text-[12px] text-stone-500">
+                                Step {nextIdx + 1} of {CHECKLIST.length}
+                                {owner && ` · ${ownerRole} ${firstName(personName(owner))}`}
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-[14px]">
               <thead>
@@ -379,6 +447,7 @@ export default async function WorkspacePage({
               </tbody>
             </table>
           </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E3E5E9] px-3 py-2.5 text-[12px] text-stone-500 md:px-4">
             <span>{notes.join(" ")}</span>

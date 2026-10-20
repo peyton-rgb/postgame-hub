@@ -16,6 +16,8 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, formatDate, pageRange, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +55,7 @@ export default async function AdminCampaignsPage({
 }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("campaigns", searchParams);
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const q = sanitizeFilterValue(searchParams.q ?? "");
@@ -125,12 +128,15 @@ export default async function AdminCampaignsPage({
         title="Campaigns"
         subtitle="Manage influencer campaigns"
         actions={
+          <>
+          <ViewToggle listKey="campaigns" view={view} />
           <Link
             href="/admin/campaigns/new"
             className="rounded-md bg-[#D73F09] px-3 py-1.5 text-[13px] font-medium text-white"
           >
             + New campaign
           </Link>
+          </>
         }
       />
 
@@ -194,6 +200,8 @@ export default async function AdminCampaignsPage({
           <AdminTable<Row>
             rows={rows}
             rowKey={(r) => String(r.campaign_id)}
+            view={view}
+            cardDetails={["manager", "status", "created"]}
             emptyLabel={
               q || missing ? "No campaigns match." : "No campaigns yet. The real list arrives with the data migration."
             }
