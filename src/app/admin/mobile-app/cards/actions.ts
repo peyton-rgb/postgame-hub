@@ -26,7 +26,7 @@ import {
   type CardStatus,
   type CardType,
   type Whitelist,
-} from "@/lib/admin/mobile-app/cards";
+} from "@/lib/admin/mobile-app/types";
 
 const LIST = "/admin/mobile-app/cards";
 

@@ -12,7 +12,7 @@
 // ============================================================
 
 /* eslint-disable @next/next/no-img-element */
-import { CARD_SPEC, DEFAULT_BG, isVideoUrl, type CardType } from "@/lib/admin/mobile-app/cards";
+import { CARD_SPEC, DEFAULT_BG, isVideoUrl, type CardType } from "@/lib/admin/mobile-app/types";
 
 export interface CardArtProps {
   type: CardType;

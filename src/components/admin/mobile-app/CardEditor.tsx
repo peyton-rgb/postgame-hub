@@ -19,14 +19,14 @@ import {
   CARD_SPEC,
   CARD_TYPES,
   DEFAULT_BG,
+  brandLogo,
   emptyDraft,
   isVideoUrl,
   type CardDraft,
   type CardStatus,
   type CardType,
   type EditorOptions,
-} from "@/lib/admin/mobile-app/cards";
-import { brandLogo } from "@/lib/admin/campaigns/queries";
+} from "@/lib/admin/mobile-app/types";
 import { buildCardSvg, svgFileName } from "@/lib/admin/mobile-app/card-svg";
 import CardArt from "./CardArt";
 import { Pill } from "@/components/admin/campaign/bits";
@@ -114,6 +114,7 @@ export default function CardEditor({
   options,
   action,
   statusAction,
+  result,
 }: {
   id: string | null;
   initial: CardDraft;
@@ -122,6 +123,7 @@ export default function CardEditor({
   options: EditorOptions;
   action: (formData: FormData) => Promise<void> | void;
   statusAction: (formData: FormData) => Promise<void> | void;
+  result?: string | null;
 }) {
   const [d, setD] = useState<CardDraft>(initial);
   const [linkMode, setLinkMode] = useState<LinkMode>(() => linkModeOf(initial));
@@ -235,6 +237,41 @@ export default function CardEditor({
           </button>
         </div>
       </div>
+
+      {result === "pending086" && (
+        <div className="mb-4 rounded-lg border border-status-warn bg-amber-50 px-4 py-3 text-[13px] text-status-warn">
+          <span className="font-semibold">Waiting on migration 086:</span> The{" "}
+          <code className="rounded bg-amber-100 px-1 font-mono text-[12px]">mobile_app_cards</code> table
+          is not live in the database yet. Changes cannot be saved until migration 086 is applied.
+        </div>
+      )}
+      {result && result !== "pending086" && (
+        <div
+          className={
+            "mb-4 rounded-lg px-4 py-3 text-[13px] " +
+            (result === "saved" || result === "published" || result === "created" || result === "went-live"
+              ? "border border-status-ok bg-emerald-50 text-status-ok"
+              : result === "went-off"
+                ? "border border-stone-200 bg-stone-50 text-stone-700"
+                : "border border-status-bad bg-red-50 text-status-bad")
+          }
+        >
+          {result === "saved" && "Draft saved."}
+          {result === "published" && "Card published live."}
+          {result === "created" && "Card created."}
+          {result === "went-live" && "Card is now live."}
+          {result === "went-off" && "Card is now off (draft)."}
+          {result === "saved-nowhitelist" && "Card saved (whitelist pending migration 086)."}
+          {result === "bad-media-url" && "Please provide a valid https:// URL for media."}
+          {result === "bad-cta-url" && "Please provide a valid CTA link or app path."}
+          {result === "bad-color" && "Please provide a valid 6-digit hex background colour."}
+          {result === "bad-schedule" && "Invalid schedule date/time format."}
+          {result === "schedule-order" && "Schedule start time must be before schedule end time."}
+          {result === "bad-type" && "Invalid card type."}
+          {result === "bad-json" && "Malformed draft payload."}
+          {result === "error" && "An error occurred while saving the card."}
+        </div>
+      )}
 
       <form id="card-form" action={action} onSubmit={() => setSaving(true)}>
         {id && <input type="hidden" name="id" value={id} />}

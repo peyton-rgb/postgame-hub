@@ -114,9 +114,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     label: "Mobile app",
     icon: "phone",
     items: [
-      { label: "Cards", href: "/admin/mobile-app/cards", icon: "grid", soon: true },
-      // today: /admin/app (App Viewer) → flips to /admin/mobile-app/feed
-      { label: "Feed preview", href: "/admin/app", icon: "phone" },
+      { label: "Cards", href: "/admin/mobile-app/cards", icon: "grid" },
+      { label: "Feed preview", href: "/admin/mobile-app/feed", icon: "phone" },
     ],
   },
   {

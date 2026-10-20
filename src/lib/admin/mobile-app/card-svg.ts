@@ -11,7 +11,7 @@
 // or the SVG falls back to the system sans.
 // ============================================================
 
-import { CARD_SPEC, DEFAULT_BG, isVideoUrl, type CardDraft } from "./cards";
+import { CARD_SPEC, DEFAULT_BG, isVideoUrl, type CardDraft } from "./types";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
