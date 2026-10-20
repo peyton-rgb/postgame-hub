@@ -10,6 +10,9 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, formatDate, pageRange, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
+import { Avatar } from "@/components/admin/people/bits";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +23,7 @@ export default async function AgentsPage({
 }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("agents", searchParams);
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const q = sanitizeFilterValue(searchParams.q ?? "");
 
@@ -62,7 +66,11 @@ export default async function AgentsPage({
 
   return (
     <div>
-      <PageHeader title="Agents" subtitle={`${(count ?? 0).toLocaleString()} agents in the network`} />
+      <PageHeader
+        title="Agents"
+        subtitle={`${(count ?? 0).toLocaleString()} agents in the network`}
+        actions={<ViewToggle listKey="agents" view={view} />}
+      />
 
       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
         Agent ↔ athlete linking arrives with the <code className="rounded bg-amber-100 px-1">representations</code>{" "}
@@ -82,6 +90,8 @@ export default async function AgentsPage({
       <AdminTable
         rows={rows}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["id", "phone", "created"]}
         emptyLabel="No agents match."
         columns={[
           {
@@ -108,6 +118,7 @@ export default async function AgentsPage({
           },
         ]}
         mobile={{
+          icon: (r) => <Avatar name={[r.first_name, r.last_name].filter(Boolean).join(" ") || null} />,
           title: (r) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "—",
           href: (r) => `/admin/users/${r.id}`,
           subtitle: (r) => r.email ?? "",

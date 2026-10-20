@@ -20,10 +20,12 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, pageRange, safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import AdminTable from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { Card, Pill } from "@/components/admin/campaign/bits";
 import { TablePending } from "@/components/admin/ops-bits";
 import CopyButton from "@/components/admin/CopyButton";
-import { CardFoot, LinkBtn, Note, TabStrip, Toolbar, Who, fmtCount, handleText } from "@/components/admin/people/bits";
+import { Avatar, CardFoot, LinkBtn, Note, TabStrip, Toolbar, Who, fmtCount, handleText } from "@/components/admin/people/bits";
 import { applyAthleteBase } from "@/lib/admin/athletes";
 import { fmtDay } from "@/lib/admin/athlete-detail";
 import { markInvite } from "./actions";
@@ -75,6 +77,7 @@ function inviteText(r: InviteRow): string {
 export default async function InvitesPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("invites", searchParams);
   const db = supabase as any; // athlete_invites (091) / teams (083) are not in the generated types yet
   const tab: Tab = searchParams.tab === "sent" ? "sent" : searchParams.tab === "teams" ? "teams" : "not_sent";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
@@ -152,6 +155,8 @@ export default async function InvitesPage({ searchParams }: { searchParams: Reco
         <AdminTable<(typeof withCounts)[number]>
           rows={withCounts}
           rowKey={(r) => String(r.team_id)}
+          view={view}
+          cardDetails={["r", "u"]}
           emptyLabel="No teams match."
           columns={[
             { key: "t", header: "Team", render: (r) => <span className="font-medium text-stone-900">{r.team_name ?? "—"}</span> },
@@ -173,7 +178,24 @@ export default async function InvitesPage({ searchParams }: { searchParams: Reco
                 ) : null,
             },
           ]}
-          mobile={{ title: (r) => r.team_name ?? "—", subtitle: (r) => `${fmtCount(r.app)} of ${fmtCount(r.roster)} have the app` }}
+          mobile={{
+            title: (r) => r.team_name ?? "—",
+            subtitle: (r) =>
+              view === "cards" ? r.college ?? r.sport ?? null : `${fmtCount(r.app)} of ${fmtCount(r.roster)} have the app`,
+            strip:
+              view === "cards"
+                ? (r) =>
+                    r.college ? (
+                      <LinkBtn
+                        href={`/admin/athletes/export?level=college&app=no${r.sport ? `&sport=${encodeURIComponent(r.sport)}` : ""}&school=${encodeURIComponent(r.college)}`}
+                        small
+                        external
+                      >
+                        Download IG handles
+                      </LinkBtn>
+                    ) : null
+                : undefined,
+          }}
         />
       );
     }
@@ -210,10 +232,37 @@ export default async function InvitesPage({ searchParams }: { searchParams: Reco
         </button>
       </form>
     );
+    const actionsCell = (r: InviteRow) =>
+      tab === "sent" ? (
+        <span className="text-[12px] text-stone-500">
+          Sent by {r.sender?.full_name?.split(" ")[0] ?? r.sender?.email ?? "staff"} · {fmtDay(r.sent_at)}
+          {r.joined_at && <> · <span className="text-status-ok">joined the app</span></>}
+        </span>
+      ) : (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {r.channel === "text" ? (
+            <CopyButton value={inviteText(r)} label="Copy text" className="whitespace-nowrap rounded-md border border-stone-300 bg-white px-2.5 py-1 text-[12px] font-medium text-stone-700 hover:border-stone-400" />
+          ) : r.person.instagram_handle ? (
+            <a
+              href={`https://ig.me/m/${r.person.instagram_handle.replace(/^@/, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="whitespace-nowrap rounded-md border border-stone-300 bg-white px-2.5 py-1 text-[12px] font-medium text-stone-700 hover:border-stone-400"
+            >
+              Open DM
+            </a>
+          ) : null}
+          {state ? action(r, "not_sent", "Back to queue") : action(r, "sent", "Mark sent", true)}
+          {!state && action(r, "private", "Private")}
+          {!state && action(r, "bad_ig", "Bad IG")}
+        </div>
+      );
     body = (
       <AdminTable<InviteRow>
         rows={rows}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["s", "f", "c", "ch"]}
         emptyLabel={tab === "sent" ? "No invites sent yet." : state ? "None marked this way." : "Nothing to send. Every athlete in the queue has been invited."}
         columns={[
           { key: "d", header: "Date", render: (r) => <span className="text-stone-500">{fmtDay(tab === "sent" ? r.sent_at : r.created_at)}</span> },
@@ -227,36 +276,23 @@ export default async function InvitesPage({ searchParams }: { searchParams: Reco
             key: "x",
             header: "",
             align: "right",
-            render: (r) =>
-              tab === "sent" ? (
-                <span className="text-[12px] text-stone-500">
-                  Sent by {r.sender?.full_name?.split(" ")[0] ?? r.sender?.email ?? "staff"} · {fmtDay(r.sent_at)}
-                  {r.joined_at && <> · <span className="text-status-ok">joined the app</span></>}
-                </span>
-              ) : (
-                <div className="flex justify-end gap-1.5">
-                  {r.channel === "text" ? (
-                    <CopyButton value={inviteText(r)} label="Copy text" className="whitespace-nowrap rounded-md border border-stone-300 bg-white px-2.5 py-1 text-[12px] font-medium text-stone-700 hover:border-stone-400" />
-                  ) : r.person.instagram_handle ? (
-                    <a
-                      href={`https://ig.me/m/${r.person.instagram_handle.replace(/^@/, "")}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="whitespace-nowrap rounded-md border border-stone-300 bg-white px-2.5 py-1 text-[12px] font-medium text-stone-700 hover:border-stone-400"
-                    >
-                      Open DM
-                    </a>
-                  ) : null}
-                  {state ? action(r, "not_sent", "Back to queue") : action(r, "sent", "Mark sent", true)}
-                  {!state && action(r, "private", "Private")}
-                  {!state && action(r, "bad_ig", "Bad IG")}
-                </div>
-              ),
+            render: actionsCell,
           },
         ]}
         mobile={{
-          title: (r) => nm(r) ?? "—",
-          href: (r) => `/admin/athletes/${r.person.id}`,
+          // Cards carry the send buttons, so the card itself isn't a link
+          // (no <a> inside <a>); the name links to the athlete instead.
+          icon: view === "cards" ? (r) => <Avatar name={nm(r)} /> : undefined,
+          title: (r) =>
+            view === "cards" ? (
+              <Link href={`/admin/athletes/${r.person.id}`} className="hover:underline">
+                {nm(r) ?? "—"}
+              </Link>
+            ) : (
+              nm(r) ?? "—"
+            ),
+          href: (r) => (view === "cards" ? null : `/admin/athletes/${r.person.id}`),
+          strip: view === "cards" ? actionsCell : undefined,
           subtitle: (r) => [handleText(r.person.instagram_handle), r.person.college_raw, r.channel === "text" ? "Text" : "Instagram DM"].filter(Boolean).join(" · "),
           figure: (r) => fmtCount(r.person.instagram_followers),
         }}
@@ -278,11 +314,14 @@ export default async function InvitesPage({ searchParams }: { searchParams: Reco
         title="Invites"
         subtitle="Athletes to invite to the app, one text or DM at a time."
         actions={
-          tab !== "teams" ? (
-            <LinkBtn href={`/admin/athletes/export?${dlQs}`} external>
-              Download handles
-            </LinkBtn>
-          ) : undefined
+          <>
+            <ViewToggle listKey="invites" view={view} />
+            {tab !== "teams" && (
+              <LinkBtn href={`/admin/athletes/export?${dlQs}`} external>
+                Download handles
+              </LinkBtn>
+            )}
+          </>
         }
       />
 

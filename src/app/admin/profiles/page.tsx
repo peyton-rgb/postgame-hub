@@ -13,8 +13,10 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, pageRange, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import AdminTable from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { Card } from "@/components/admin/campaign/bits";
-import { CardFoot, LinkBtn, Toolbar, Who, fmtCount, fmtUsd, handleText } from "@/components/admin/people/bits";
+import { Avatar, CardFoot, LinkBtn, Toolbar, Who, fmtCount, fmtUsd, handleText } from "@/components/admin/people/bits";
 import { FOLLOWER_FLOORS, GENDER_OPTIONS } from "@/lib/admin/athletes";
 import { KNOWN_SPORTS } from "@/lib/team-folders";
 
@@ -47,6 +49,7 @@ export default async function ProfilesPage({
 }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("profiles", searchParams);
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const q = sanitizeFilterValue(searchParams.q ?? "");
   const school = sanitizeFilterValue(searchParams.school ?? "");
@@ -132,11 +135,14 @@ export default async function ProfilesPage({
             },
             { name: "updated", label: "Updated any time", value: updated, options: UPDATED },
           ]}
+          right={<ViewToggle listKey="profiles" view={view} />}
         />
         <div className="p-3 md:p-4">
           <AdminTable<ProfileRow & { rank: number }>
             rows={rows}
             rowKey={(r) => r.id}
+            view={view}
+            cardDetails={["ig", "tt", "college", "sport"]}
             emptyLabel="No profiles match."
             columns={[
               { key: "rank", header: "#", render: (r) => <span className="tabular-nums text-stone-400">{r.rank.toLocaleString()}</span> },
@@ -152,11 +158,12 @@ export default async function ProfilesPage({
               { key: "nil", header: "NIL value", align: "right", render: (r) => <span className="font-semibold">{fmtUsd(r.nil_value)}</span> },
             ]}
             mobile={{
+              icon: (r) => <Avatar name={nameOf(r)} />,
               title: (r) => `${r.rank}. ${nameOf(r) ?? "—"}`,
               href: (r) => `/admin/profiles/${r.id}`,
               subtitle: (r) => [handleText(r.instagram_handle), schoolOf(r), r.sport].filter(Boolean).join(" · "),
               figure: (r) => fmtUsd(r.nil_value),
-              strip: (r) => <span className="text-stone-500">{fmtCount(r.instagram_followers)} Instagram followers</span>,
+              strip: view === "cards" ? undefined : (r) => <span className="text-stone-500">{fmtCount(r.instagram_followers)} Instagram followers</span>,
             }}
           />
         </div>

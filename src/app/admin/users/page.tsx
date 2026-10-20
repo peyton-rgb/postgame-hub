@@ -31,6 +31,9 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, formatDate, pageRange, safeQuery, sanitizeFilterValue } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote, PendingMigration } from "@/components/admin/ui";
 import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
+import { Avatar } from "@/components/admin/people/bits";
 import { USER_TYPE_LABELS } from "@/lib/signup/types";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +179,7 @@ export default async function AppUsersPage({
 }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("users", searchParams);
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const q = sanitizeFilterValue(searchParams.q ?? "");
@@ -206,6 +210,7 @@ export default async function AppUsersPage({
       subtitle="Everyone who uses the Postgame app: current and former athletes, coaches, videographers and agents."
       actions={
         <>
+          <ViewToggle listKey="users" view={view} />
           <Link href="/admin/users/types" className="rounded-md border border-stone-300 px-3 py-1.5 text-[13px] text-stone-700 hover:bg-stone-50">
             Roles &amp; user types
           </Link>
@@ -306,6 +311,8 @@ export default async function AppUsersPage({
         <AdminTable<PersonRow>
           rows={rows}
           rowKey={(r) => r.id}
+          view={view}
+          cardDetails={["type", "college", "followers", "match"]}
           emptyLabel={q ? "No users match." : `No ${tab.label.toLowerCase()} yet.`}
           columns={[
             {
@@ -364,11 +371,12 @@ export default async function AppUsersPage({
             },
           ]}
           mobile={{
+            icon: (r) => <Avatar name={name(r) === "—" ? null : name(r)} />,
             title: (r) => name(r),
             href: (r) => `/admin/users/${r.id}`,
             subtitle: (r) => [r.college_raw, r.sport].filter(Boolean).join(" · "),
-            figure: (r) => r.instagram_followers?.toLocaleString() ?? "",
-            strip: (r) => (
+            figure: (r) => (view === "cards" ? "" : r.instagram_followers?.toLocaleString() ?? ""),
+            strip: view === "cards" ? undefined : (r) => (
               <span className="text-stone-500">
                 {typeLabel(r)}
                 {r.instagram_handle ? ` · @${r.instagram_handle.replace(/^@/, "")}` : ""}
@@ -436,6 +444,8 @@ export default async function AppUsersPage({
       <AdminTable<SignupRow>
         rows={rows}
         rowKey={(r) => r.id}
+        view={view}
+        cardDetails={["org", "status", "extra", "match"]}
         emptyLabel={q ? "No users match." : `No ${tab.label.toLowerCase()} have signed up yet.`}
         columns={[
           {
@@ -483,10 +493,11 @@ export default async function AppUsersPage({
           },
         ]}
         mobile={{
+          icon: (r) => <Avatar name={r.full_name} />,
           title: (r) => r.full_name,
           href: (r) => detailHref(r),
           subtitle: (r) => [org(r), r.email].filter(Boolean).join(" · "),
-          strip: (r) => (
+          strip: view === "cards" ? (() => <span className="text-stone-500">{typeLabel}</span>) : (r) => (
             <span className="text-stone-500">
               {typeLabel} · {STATUS_LABEL[r.status] ?? r.status}
             </span>

@@ -14,6 +14,9 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { safeQuery } from "@/lib/admin/db";
 import { PageHeader, ErrorNote } from "@/components/admin/ui";
+import AdminTable, { NameLink } from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { TablePending } from "@/components/admin/ops-bits";
 import { LinkBtn, Note } from "@/components/admin/people/bits";
 import { buildAudienceFilters, countAudience, describeAudience, resolveExcludedPeople, savedFiltersToParams } from "@/lib/admin/audience";
@@ -32,6 +35,7 @@ interface SavedRow {
 export default async function AudiencesPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("audiences", searchParams);
 
   const saved = await safeQuery<SavedRow[]>(
     () => (supabase as any).from("saved_audiences").select("id, name, description, filters, updated_at").order("updated_at", { ascending: false }).limit(60)
@@ -53,9 +57,12 @@ export default async function AudiencesPage({ searchParams }: { searchParams: Re
         title="Audiences"
         subtitle="Saved athlete lists you can reuse for campaigns and app cards."
         actions={
-          <LinkBtn href="/admin/audiences/new" primary>
-            + Make an audience
-          </LinkBtn>
+          <>
+            <ViewToggle listKey="audiences" view={view} />
+            <LinkBtn href="/admin/audiences/new" primary>
+              + Make an audience
+            </LinkBtn>
+          </>
         }
       />
 
@@ -84,6 +91,69 @@ export default async function AudiencesPage({ searchParams }: { searchParams: Re
           </Link>
           .
         </section>
+      ) : view === "rows" ? (
+        <AdminTable<(typeof cards)[number]>
+          rows={cards}
+          rowKey={({ a }) => a.id}
+          columns={[
+            {
+              key: "name",
+              header: "Audience",
+              render: ({ a }) => (
+                <div className="min-w-0">
+                  <NameLink href={`/admin/audiences/${a.id}`}>{a.name}</NameLink>
+                  {a.description && <div className="truncate text-[12px] text-stone-500">{a.description}</div>}
+                </div>
+              ),
+            },
+            {
+              key: "size",
+              header: "Athletes",
+              align: "right",
+              render: ({ size }) => (size == null ? "—" : size.toLocaleString("en-US")),
+            },
+            {
+              key: "filters",
+              header: "Filters",
+              secondary: true,
+              render: ({ lines }) =>
+                lines.length === 0 ? (
+                  <span className="text-stone-400">Every active college athlete</span>
+                ) : (
+                  <span className="text-[12px] text-stone-600">
+                    {lines.map((l, i) => (
+                      <span key={l.k}>
+                        {i > 0 && " · "}
+                        <span className="text-stone-400">{l.k}:</span> {l.v}
+                      </span>
+                    ))}
+                  </span>
+                ),
+            },
+            { key: "updated", header: "Updated", render: ({ a }) => fmtDay(a.updated_at) },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: ({ a }) => (
+                <div className="flex justify-end gap-1.5">
+                  <LinkBtn href={`/admin/audiences/new?id=${a.id}`} small>
+                    Edit
+                  </LinkBtn>
+                  <LinkBtn href={`/admin/audiences/export?id=${a.id}`} small external>
+                    Download CSV
+                  </LinkBtn>
+                </div>
+              ),
+            },
+          ]}
+          mobile={{
+            title: ({ a }) => a.name,
+            href: ({ a }) => `/admin/audiences/${a.id}`,
+            subtitle: ({ a }) => `Updated ${fmtDay(a.updated_at)}`,
+            figure: ({ size }) => (size == null ? "—" : size.toLocaleString("en-US")),
+          }}
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map(({ a, size, lines }) => (

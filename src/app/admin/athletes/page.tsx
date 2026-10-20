@@ -21,9 +21,12 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { PAGE_SIZE, pageRange } from "@/lib/admin/db";
 import { PageHeader, Paginator, ErrorNote } from "@/components/admin/ui";
 import AdminTable from "@/components/admin/AdminTable";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { Card } from "@/components/admin/campaign/bits";
 import {
   AppPill,
+  Avatar,
   CardFoot,
   LevelPill,
   LinkBtn,
@@ -78,6 +81,7 @@ export default async function AthletesPage({
 }) {
   await requireAdmin("staff");
   const supabase = createServiceSupabase();
+  const view = getListView("athletes", searchParams);
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
   const f = buildAthleteListFilters(searchParams);
@@ -246,9 +250,12 @@ export default async function AthletesPage({
             },
           ]}
           right={
-            <LinkBtn href={audienceHref} small>
-              + Make an audience
-            </LinkBtn>
+            <>
+              <LinkBtn href={audienceHref} small>
+                + Make an audience
+              </LinkBtn>
+              <ViewToggle listKey="athletes" view={view} />
+            </>
           }
         />
 
@@ -256,6 +263,8 @@ export default async function AthletesPage({
           <AdminTable<AthleteRow>
             rows={rows}
             rowKey={(r) => r.id}
+            view={view}
+            cardDetails={["level", "followers", "nil", "app"]}
             emptyLabel={
               f.q || f.school || f.sport || f.gender || f.state || f.app || f.minFollowers != null
                 ? "No athletes match this search on this tab."
@@ -276,17 +285,21 @@ export default async function AthletesPage({
               { key: "app", header: "Postgame app", secondary: true, render: (r) => <AppPill device={r.device} /> },
             ]}
             mobile={{
+              icon: (r) => <Avatar name={nameOf(r)} />,
               title: (r) => nameOf(r) ?? "—",
               href: (r) => `/admin/athletes/${r.id}`,
               subtitle: (r) => [handleText(r.instagram_handle), schoolOf(r), r.sport].filter(Boolean).join(" · "),
-              figure: (r) => fmtCount(r.instagram_followers),
-              strip: (r) => (
-                <>
-                  <LevelPill row={r} />
-                  <AppPill device={r.device} />
-                  {r.nil_value != null && <span className="text-stone-500">NIL {fmtUsd(r.nil_value)}</span>}
-                </>
-              ),
+              figure: view === "cards" ? undefined : (r) => fmtCount(r.instagram_followers),
+              strip:
+                view === "cards"
+                  ? undefined
+                  : (r) => (
+                      <>
+                        <LevelPill row={r} />
+                        <AppPill device={r.device} />
+                        {r.nil_value != null && <span className="text-stone-500">NIL {fmtUsd(r.nil_value)}</span>}
+                      </>
+                    ),
             }}
           />
         </div>
@@ -294,6 +307,7 @@ export default async function AthletesPage({
           <span>
             {first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()} · people table, live. Scraped roster
             profiles join with migration 083.
+            {view === "cards" && " Switch to Rows to pick athletes for an audience or CSV."}
           </span>
           <span>
             Page {Math.min(page, pages).toLocaleString()} of {pages.toLocaleString()}
