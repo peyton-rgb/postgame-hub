@@ -10,7 +10,7 @@
 
 import type { CampaignBundle, Playbook } from "@/lib/admin/campaigns/queries";
 import { driveFolderUrl } from "@/lib/admin/campaigns/queries";
-import { Card, Ico, ListRow, TextLink } from "./bits";
+import { Card, Ico, ListRow, Pill, TextLink } from "./bits";
 import CopyButton from "./CopyButton";
 
 const APPROVES: Record<string, string> = {
@@ -57,7 +57,11 @@ export default function SetupCard({
   const editHref = `/admin/campaigns/${id}/edit`;
   const st = playbook.storage;
 
-  const formUrl = playbook.submissionForm ? `${siteUrl}/submit/${playbook.submissionForm.public_token}` : null;
+  // content_submission_forms (083) has a public_token, but the Hub's /submit/[token]
+  // route reads the older submission_links table, so there is no public URL to
+  // copy yet. Show the row's status honestly instead of a link that 404s.
+  const form = playbook.submissionForm;
+  void siteUrl;
   const lucidPath = extras.lucidlink_folder_path || st?.lucid_root_path || null;
   const driveUrl = st?.campaign_folder_url || driveFolderUrl(extras.drive_folder_id || st?.campaign_folder_id);
   const approvesKey = extras.brand_approves_in || c.brand_approval_mode || null;
@@ -71,11 +75,11 @@ export default function SetupCard({
           icon={<Ico name="up" />}
           label="Content submission form"
           right={
-            formUrl ? (
+            form ? (
               <>
-                <CopyButton value={formUrl} />
-                <span className="text-[12px] text-stone-400" title="The form editor moves over in the Content slice">
-                  {playbook.submissionForm?.status === "live" ? "Live" : playbook.submissionForm?.status}
+                <Pill tone={form.status === "live" ? "ok" : form.status === "draft" ? "warn" : "muted"}>{form.status}</Pill>
+                <span className="text-[12px] text-stone-400" title="The form's public page and editor move over in the Content slice">
+                  Copy · Open soon
                 </span>
               </>
             ) : (
