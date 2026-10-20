@@ -315,7 +315,7 @@ export default function AdminShell({
         </header>
 
         <main className="pb-24 md:pb-0">
-          <div className="mx-auto max-w-6xl px-4 py-5 md:px-7 md:py-6">{children}</div>
+          <div className="px-4 py-5 md:px-7 md:py-6">{children}</div>
         </main>
       </div>
 
