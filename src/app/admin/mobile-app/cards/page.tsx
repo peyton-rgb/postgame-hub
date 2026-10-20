@@ -30,7 +30,7 @@ export default async function MobileAppCardsPage({ searchParams }: CardsPageProp
   const ids = cardsRes.rows.map((c) => c.id);
   const whitelistMap = ids.length > 0 ? await loadWhitelist(supabase, ids) : new Map<string, Whitelist>();
   const whitelists: Record<string, Whitelist> = {};
-  for (const [id, w] of whitelistMap.entries()) {
+  for (const [id, w] of Array.from(whitelistMap.entries())) {
     whitelists[id] = w;
   }
 

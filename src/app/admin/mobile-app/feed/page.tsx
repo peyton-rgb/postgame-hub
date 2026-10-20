@@ -38,12 +38,12 @@ export default async function MobileAppFeedPage() {
   ]);
 
   const whitelists: Record<string, Whitelist> = {};
-  for (const [id, w] of whitelistMap.entries()) {
+  for (const [id, w] of Array.from(whitelistMap.entries())) {
     whitelists[id] = w;
   }
 
   const brands: Record<string, BrandLite> = {};
-  for (const [id, b] of brandsMap.entries()) {
+  for (const [id, b] of Array.from(brandsMap.entries())) {
     brands[id] = b;
   }
 
