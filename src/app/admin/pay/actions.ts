@@ -28,8 +28,11 @@ const INVOICES = "/admin/pay/invoices";
 
 /** Rebuild the list URL the user came from (tab / method / q / page) plus a result code. */
 function backTo(base: string, formData: FormData, result: string): string {
+  // A row action on the To pay overview carries return_to so the user lands back there.
+  const returnTo = String(formData.get("return_to") ?? "");
+  if (/^\/admin\/pay(\/[a-z0-9-]+)?$/.test(returnTo)) base = returnTo;
   const q = new URLSearchParams();
-  for (const key of ["tab", "method", "q", "page", "show", "view"]) {
+  for (const key of ["tab", "method", "q", "page", "show", "view", "type"]) {
     const v = String(formData.get(`return_${key}`) ?? "").trim();
     if (v) q.set(key, v);
   }
@@ -257,4 +260,48 @@ export async function markInvoicePaid(formData: FormData): Promise<void> {
   revalidatePath("/admin/pay");
   revalidatePath("/admin/pay/history");
   redirect(backTo(INVOICES, formData, error ? "error" : "saved"));
+}
+
+// ------------------------------------------------------------
+// Bonuses (migration 083 `payment_bonus`)
+// ------------------------------------------------------------
+
+const BONUSES = "/admin/pay/bonus-affiliate";
+
+/** Stamp date_paid on one bonus once the money has actually gone out. */
+export async function markBonusPaid(formData: FormData): Promise<void> {
+  const actor = await getAdminActor("exec");
+  if (!actor) redirect(backTo(BONUSES, formData, "exec-only"));
+
+  const idRaw = String(formData.get("payment_bonus_id") ?? "");
+  if (!/^\d+$/.test(idRaw)) redirect(BONUSES);
+  const id = Number(idRaw);
+
+  const supabase = createServiceSupabase();
+  const { data: before, error: beforeError } = await supabase
+    .from("payment_bonus")
+    .select("payment_bonus_id, amount, date_paid")
+    .eq("payment_bonus_id", id)
+    .single();
+  if (beforeError) {
+    redirect(backTo(BONUSES, formData, isMissingSchemaError(beforeError) ? "pending083" : "not-found"));
+  }
+  if (!before) redirect(backTo(BONUSES, formData, "not-found"));
+  if (before.date_paid) redirect(backTo(BONUSES, formData, "unchanged"));
+
+  const update = { date_paid: new Date().toISOString() };
+  const { error } = await supabase.from("payment_bonus").update(update).eq("payment_bonus_id", id).is("date_paid", null);
+  if (!error) {
+    await logAdminAction({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: "bonus.mark_paid",
+      entity: "payment_bonus",
+      entityId: String(id),
+      before: { date_paid: before.date_paid },
+      after: update,
+    });
+  }
+  revalidatePay();
+  redirect(backTo(BONUSES, formData, error ? "error" : "saved"));
 }

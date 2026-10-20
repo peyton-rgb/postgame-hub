@@ -103,7 +103,7 @@ export default async function PayAthletesPage({
   const header = (
     <PageHeader
       title="Pay athletes (app)"
-      subtitle="Payout requests from the athlete app — one row per verified deal. Approving stamps the payout paid and logs it; the money itself still goes out by hand."
+      subtitle="Payout requests from the athlete app, one per verified deal. Approving records it as paid — the money itself still goes out by hand."
       actions={
         <>
           <Btn href="/admin/pay/export?scope=paypal-venmo" external>
@@ -202,9 +202,12 @@ export default async function PayAthletesPage({
           search={{ name: "q", value: q, placeholder: "Search athlete, handle or email" }}
           selects={[{ name: "method", value: method, ariaLabel: "Payment method", options: METHOD_FILTERS.map((m) => ({ value: m.key, label: m.label })) }]}
           right={
-            <Btn href="/admin/pay/export?scope=all" external>
-              CSV: All payments
-            </Btn>
+            <>
+              <Btn href="/admin/pay/bonus-affiliate">Pay bonus</Btn>
+              <Btn href="/admin/pay/export?scope=all" external>
+                CSV: All payments
+              </Btn>
+            </>
           }
         />
 
