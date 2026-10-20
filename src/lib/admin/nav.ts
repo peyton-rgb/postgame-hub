@@ -56,7 +56,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { label: "All brands", href: "/admin/brands", icon: "building" },
       { label: "Campaigns", href: "/admin/campaigns", icon: "mega" },
-      { label: "Brand portals", href: "/admin/brand-portals", icon: "portal", soon: true },
+      { label: "Brand portals", href: "/admin/brand-portals", icon: "portal" },
     ],
   },
   {

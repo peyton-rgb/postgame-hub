@@ -1,7 +1,8 @@
 // ============================================================
 // /admin — Workspace (the prototype's S.workspace, ws2.js): one plain
 // table of open campaigns — Campaign / Stage / Next task / Open — with
-// a "Viewing as <staff member>" select, scope tabs (All open · Mine)
+// a "Viewing as <staff member>" select, scope tabs (My campaigns ·
+// Everyone's), the View as Staff / Brand employee / Athlete switch,
 // and a sort (Due date · Stage · Name).
 //
 // Data: campaigns (is_active) joined to brands and people. Stage, due
@@ -34,6 +35,8 @@ import {
   type WorkspaceRow,
 } from "@/lib/admin/workspace";
 import ViewAsSelect from "./ViewAsSelect";
+import ViewAsSwitch from "@/components/admin/view-as/ViewAsSwitch";
+import { loadAthleteOptions, loadBrandOptions } from "@/lib/admin/view-as/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +86,12 @@ export default async function WorkspacePage({
   const sort: Sort = searchParams.sort === "stage" ? "stage" : searchParams.sort === "name" ? "name" : "due";
   const q = sanitizeFilterValue(searchParams.q ?? "");
 
-  const [staffList, open] = await Promise.all([loadStaff(supabase), loadOpenCampaigns(supabase)]);
+  const [staffList, open, brandOptions, athleteOptions] = await Promise.all([
+    loadStaff(supabase),
+    loadOpenCampaigns(supabase),
+    loadBrandOptions().catch(() => []),
+    loadAthleteOptions().catch(() => []),
+  ]);
 
   // Who we're viewing as: ?as=<profile id>, else the signed-in user.
   const viewingId = searchParams.as && staffList.staff.some((s) => s.id === searchParams.as) ? searchParams.as : user.id;
@@ -174,10 +182,11 @@ export default async function WorkspacePage({
           <h1 className="text-xl font-semibold text-stone-900">Workspace</h1>
           <p className="mt-0.5 text-[13px] text-stone-500">{subtitle}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <ViewAsSwitch mode="staff" brands={brandOptions} athletes={athleteOptions} />
           <Btn href="/admin/campaigns/new" primary>
             <NavIcon name="plus" size={15} />
-            New campaign
+            Campaign
           </Btn>
         </div>
       </div>
@@ -209,11 +218,11 @@ export default async function WorkspacePage({
           {/* Toolbar: scope · sort · search */}
           <div className="flex flex-wrap items-center gap-2 border-b border-[#E3E5E9] px-3 py-3 md:px-4">
             <div className="inline-flex max-w-full flex-wrap gap-0.5 rounded-lg bg-[#F1F2F4] p-[3px]">
-              <Link href={hrefWith({ scope: "all" })} aria-pressed={scope === "all"} className={segBtn(scope === "all")}>
-                All open
-              </Link>
               <Link href={hrefWith({ scope: "mine" })} aria-pressed={scope === "mine"} className={segBtn(scope === "mine")}>
-                Mine
+                {viewingSelf ? "My campaigns" : `${firstName(viewing.label) ?? "Their"}'s campaigns`}
+              </Link>
+              <Link href={hrefWith({ scope: "all" })} aria-pressed={scope === "all"} className={segBtn(scope === "all")}>
+                Everyone&rsquo;s
               </Link>
             </div>
             <span className="ml-1 text-[12px] text-stone-500">Sort by</span>
